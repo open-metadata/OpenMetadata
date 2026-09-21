@@ -36,8 +36,13 @@ import { PaletteKey } from '../../../generated/entity/data/relationshipType';
 import { createRelationshipTypeMock } from '../../../mocks/Ontology.mock';
 import { RELATION_META } from '../OntologyExplorer.constants';
 import {
+  buildComboStyle,
+  buildDataModeAssetNodeStyle,
+  buildDataModeTermNodeStyle,
+  buildDefaultRectNodeStyle,
   formatRelationLabel,
   getCanvasColor,
+  getEdgeRelationLabelStyle,
   getEffectiveRelationColor,
   truncateHierarchyBadgeToFitWidth,
 } from './graphStyles';
@@ -54,6 +59,107 @@ const mockComputedStyle = (
     color,
     getPropertyValue: () => propertyValue,
   } as unknown as CSSStyleDeclaration);
+
+const resolveSemanticColor = (color: string, fallback: string): string =>
+  ({
+    'var(--color-bg-primary)': 'rgb(12, 14, 18)',
+    'var(--color-bg-secondary)': 'rgb(24, 27, 33)',
+    'var(--color-border-primary)': 'rgb(55, 58, 65)',
+    'var(--color-border-secondary)': 'rgb(34, 38, 47)',
+    'var(--color-text-primary)': 'rgb(247, 247, 247)',
+    'var(--color-text-tertiary)': 'rgb(148, 153, 162)',
+    'var(--color-text-white)': 'rgb(255, 255, 255)',
+  }[color] ?? fallback);
+
+describe('theme-aware graph styles', () => {
+  it('resolves semantic surface colors before returning a rectangular canvas node', () => {
+    const style = buildDefaultRectNodeStyle(
+      resolveSemanticColor,
+      'Customer',
+      [180, 40]
+    );
+
+    expect(style).toMatchObject({
+      fill: 'rgb(12, 14, 18)',
+      labelFill: 'rgb(247, 247, 247)',
+      shadowColor: 'rgb(34, 38, 47)',
+      stroke: 'rgb(34, 38, 47)',
+    });
+  });
+
+  it('resolves semantic chrome colors before returning a data-mode term node', () => {
+    const style = buildDataModeTermNodeStyle(
+      resolveSemanticColor,
+      'Customer',
+      '#1570ef'
+    );
+
+    expect(style).toMatchObject({
+      haloShadowColor: 'rgb(34, 38, 47)',
+      haloStroke: 'rgb(34, 38, 47)',
+      labelBackgroundShadowColor: 'rgb(34, 38, 47)',
+      labelBackgroundStroke: 'rgb(12, 14, 18)',
+      labelFill: 'rgb(255, 255, 255)',
+      shadowColor: 'rgb(55, 58, 65)',
+      stroke: 'rgb(12, 14, 18)',
+    });
+  });
+
+  it('resolves semantic card colors before returning a data-mode asset node', () => {
+    const getContextSpy = jest
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue(null);
+    const style = buildDataModeAssetNodeStyle(
+      resolveSemanticColor,
+      'Customer table',
+      '#1570ef'
+    );
+    getContextSpy.mockRestore();
+
+    expect(style).toMatchObject({
+      fill: 'rgb(12, 14, 18)',
+      labelBackgroundFill: 'rgb(12, 14, 18)',
+      labelBackgroundStroke: 'rgb(34, 38, 47)',
+      labelFill: 'rgb(247, 247, 247)',
+    });
+  });
+
+  it('resolves semantic colors before returning a generic edge label', () => {
+    const style = getEdgeRelationLabelStyle(
+      'RELATED TO',
+      undefined,
+      undefined,
+      false,
+      resolveSemanticColor
+    );
+
+    expect(style).toMatchObject({
+      labelBackgroundFill: 'rgb(24, 27, 33)',
+      labelBackgroundShadowColor: 'rgb(34, 38, 47)',
+      labelBackgroundStroke: 'rgb(12, 14, 18)',
+      labelFill: 'rgb(148, 153, 162)',
+    });
+  });
+
+  it('resolves semantic colors before returning a glossary combo', () => {
+    const getContextSpy = jest
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue(null);
+    const style = buildComboStyle(
+      'Marketing',
+      'var(--color-border-primary)',
+      0,
+      resolveSemanticColor
+    );
+    getContextSpy.mockRestore();
+
+    expect(style).toMatchObject({
+      fill: 'rgb(12, 14, 18)',
+      labelFill: 'rgb(55, 58, 65)',
+      stroke: 'rgb(55, 58, 65)',
+    });
+  });
+});
 
 describe('getEffectiveRelationColor', () => {
   it('prefers RELATION_META over the configured palette for system relations', () => {

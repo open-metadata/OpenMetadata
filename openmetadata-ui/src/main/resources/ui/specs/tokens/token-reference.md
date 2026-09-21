@@ -4,9 +4,9 @@
 
 Master map of every **project (`--om-*`) token** — the tokens components reference. Each references the matching upstream `globals.css` token (or holds a raw value) and resolves to the value shown. Full layering: [../README.md](../README.md).
 
-Total project tokens: **829**.
+Total project tokens: **836**.
 
-## Spacing (61)
+## Spacing (60)
 
 padding / margin / gap. See foundations/spacing.md.
 
@@ -42,7 +42,6 @@ padding / margin / gap. See foundations/spacing.md.
 | `--om-space-24` | `24px` |
 | `--om-space-26` | `26px` |
 | `--om-space-28` | `28px` |
-| `--om-space-28_8` | `28.8px` |
 | `--om-space-30` | `30px` |
 | `--om-space-32` | `32px` |
 | `--om-space-35` | `35px` |
@@ -52,6 +51,7 @@ padding / margin / gap. See foundations/spacing.md.
 | `--om-space-42` | `42px` |
 | `--om-space-44` | `44px` |
 | `--om-space-45` | `45px` |
+| `--om-space-46` | `46px` |
 | `--om-space-48` | `48px` |
 | `--om-space-50` | `50px` |
 | `--om-space-54` | `54px` |
@@ -65,7 +65,6 @@ padding / margin / gap. See foundations/spacing.md.
 | `--om-space-96` | `96px` |
 | `--om-space-100` | `100px` |
 | `--om-space-120` | `120px` |
-| `--om-space-124` | `124px` |
 | `--om-space-144` | `144px` |
 | `--om-space-154` | `154px` |
 | `--om-space-176` | `176px` |
@@ -161,7 +160,7 @@ font-weight.
 | `--om-font-weight-semibold` | `600` |
 | `--om-font-weight-thin` | `100` |
 
-## Font family & line height (7)
+## Font family, line height & letter spacing (8)
 
 | Token | Value |
 | --- | --- |
@@ -169,13 +168,14 @@ font-weight.
     Consolas, 'Liberation Mono', 'Courier New', monospace` |
 | `--om-font-sans` | `'Inter', 'Poppins', -apple-system, 'Segoe UI', Roboto, Arial,
     sans-serif` |
+| `--om-letter-spacing-wide` | `0.08em` |
 | `--om-line-height-none` | `1` |
 | `--om-line-height-normal` | `1.5` |
 | `--om-line-height-relaxed` | `1.625` |
 | `--om-line-height-snug` | `1.375` |
 | `--om-line-height-tight` | `1.25` |
 
-## Elevation (7)
+## Elevation (10)
 
 box-shadow. See foundations/elevation.md.
 
@@ -183,17 +183,20 @@ box-shadow. See foundations/elevation.md.
 | --- | --- |
 | `--om-shadow-2xl` | `0px 24px 48px -12px rgba(10, 13, 18, 0.18)` |
 | `--om-shadow-3xl` | `0px 32px 64px -12px rgba(10, 13, 18, 0.14)` |
+| `--om-shadow-card` | `var(--shadow-xs)` |
 | `--om-shadow-lg` | `0px 12px 16px -4px rgba(10, 13, 18, 0.08),
     0px 4px 6px -2px rgba(10, 13, 18, 0.03)` |
 | `--om-shadow-md` | `0px 4px 6px -1px rgba(10, 13, 18, 0.1),
     0px 2px 4px -2px rgba(10, 13, 18, 0.06)` |
+| `--om-shadow-overlay` | `var(--shadow-xl)` |
+| `--om-shadow-raised` | `var(--shadow-lg)` |
 | `--om-shadow-sm` | `0px 1px 3px rgba(10, 13, 18, 0.1),
     0px 1px 2px -1px rgba(10, 13, 18, 0.1)` |
 | `--om-shadow-xl` | `0px 20px 24px -4px rgba(10, 13, 18, 0.08),
     0px 8px 8px -4px rgba(10, 13, 18, 0.03)` |
 | `--om-shadow-xs` | `0px 1px 2px rgba(10, 13, 18, 0.05)` |
 
-## z-index (31)
+## z-index (32)
 
 stacking. Prefer the semantic ladder for new work.
 
@@ -225,6 +228,7 @@ stacking. Prefer the semantic ladder for new work.
 | `--om-z-dropdown` | `1000` |
 | `--om-z-max` | `9999` |
 | `--om-z-modal` | `1500` |
+| `--om-z-n1` | `-1` |
 | `--om-z-overlay` | `1050` |
 | `--om-z-popover` | `2000` |
 | `--om-z-raised` | `1` |
@@ -264,7 +268,7 @@ transition / animation. See foundations/motion.md.
 | `--om-ease-out` | `cubic-bezier(0, 0, 0.2, 1)` |
 | `--om-ease-standard` | `cubic-bezier(0.4, 0, 0.2, 1)` |
 
-## Semantic colors (59)
+## Semantic colors (71)
 
 Prefer these — they adapt to dark mode.
 
@@ -273,22 +277,34 @@ Prefer these — they adapt to dark mode.
 | `--om-color-bg` | `#ffffff` |
 | `--om-color-bg-brand` | `#eff8ff` |
 | `--om-color-bg-brand-solid` | `#1570ef` |
+| `--om-color-bg-canvas` | `#fafafa` |
 | `--om-color-bg-disabled` | `#f5f5f5` |
 | `--om-color-bg-error` | `#fef3f2` |
 | `--om-color-bg-overlay` | `#0a0d12` |
+| `--om-color-bg-overlay-surface` | `#ffffff` |
+| `--om-color-bg-page` | `#ffffff` |
 | `--om-color-bg-primary` | `#ffffff` |
 | `--om-color-bg-quaternary` | `#e9eaeb` |
+| `--om-color-bg-raised` | `#ffffff` |
 | `--om-color-bg-secondary` | `#fafafa` |
+| `--om-color-bg-secondary-hover` | `#f5f5f5` |
 | `--om-color-bg-success` | `#ecfdf3` |
+| `--om-color-bg-surface` | `#ffffff` |
 | `--om-color-bg-tertiary` | `#f5f5f5` |
 | `--om-color-bg-warning` | `#fffaeb` |
 | `--om-color-border` | `#d5d7da` |
 | `--om-color-border-brand` | `#2e90fa` |
+| `--om-color-border-brand-subtle` | `#84caff` |
 | `--om-color-border-disabled` | `#d5d7da` |
 | `--om-color-border-error` | `#f04438` |
+| `--om-color-border-error-subtle` | `#fda29b` |
+| `--om-color-border-hover` | `#a4a7ae` |
 | `--om-color-border-primary` | `#d5d7da` |
 | `--om-color-border-secondary` | `#e9eaeb` |
+| `--om-color-border-subtle` | `rgb(0 0 0 / 0.08)` |
+| `--om-color-border-success-subtle` | `#75e0a7` |
 | `--om-color-border-tertiary` | `#f5f5f5` |
+| `--om-color-border-warning-subtle` | `#fec84b` |
 | `--om-color-fg-brand` | `#1570ef` |
 | `--om-color-fg-error` | `#d92d20` |
 | `--om-color-fg-success` | `#079455` |
@@ -696,11 +712,11 @@ Fixed swatches; do NOT adapt to dark mode. Prefer semantic tokens.
 
 </details>
 
-## Legacy colors (229)
+## Legacy colors (220)
 
 Exact migrated one-offs (migration debt). Do not use in new code; re-express with a semantic token.
 
-<details><summary>Show all 229</summary>
+<details><summary>Show all 220</summary>
 
 | Token | Value |
 | --- | --- |
@@ -720,7 +736,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-0-0-0-0-13` | `rgba(0, 0, 0, 0.13)` |
 | `--om-legacy-color-0-0-0-0-15` | `rgba(0, 0, 0, 0.15)` |
 | `--om-legacy-color-0-0-0-0-25` | `rgba(0, 0, 0, 0.25)` |
-| `--om-legacy-color-0-0-0-0-051` | `#0000000d` |
 | `--om-legacy-color-0-0-0-0-059` | `#0000000f` |
 | `--om-legacy-color-0-0-0-0-102` | `#0000001a` |
 | `--om-legacy-color-0c5460` | `#0c5460` |
@@ -751,6 +766,7 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-13c2c2` | `#13c2c2` |
 | `--om-legacy-color-15-15-15-0-1` | `rgba(15, 15, 15, 0.1)` |
 | `--om-legacy-color-15-23-42-0-06` | `rgba(15, 23, 42, 0.06)` |
+| `--om-legacy-color-16-24-40-0-12` | `rgba(16, 24, 40, 0.12)` |
 | `--om-legacy-color-16-24-40-0-14` | `rgba(16, 24, 40, 0.14)` |
 | `--om-legacy-color-0017e4` | `#0017e4` |
 | `--om-legacy-color-23aa66` | `#23aa66` |
@@ -761,7 +777,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-37-99-235-0-12` | `rgba(37, 99, 235, 0.12)` |
 | `--om-legacy-color-40-167-69-0-059` | `#28a7450f` |
 | `--om-legacy-color-40-167-69-0-302` | `#28a7454d` |
-| `--om-legacy-color-40a9ff` | `#40a9ff` |
 | `--om-legacy-color-41-41-41-0-1` | `rgba(41, 41, 41, 0.1)` |
 | `--om-legacy-color-43a047` | `#43a047` |
 | `--om-legacy-color-46-170-220-0-15` | `rgba(46, 170, 220, 0.15)` |
@@ -822,7 +837,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-111827` | `#111827` |
 | `--om-legacy-color-155724` | `#155724` |
 | `--om-legacy-color-344054` | `#344054` |
-| `--om-legacy-color-373737` | `#373737` |
 | `--om-legacy-color-444444` | `#444` |
 | `--om-legacy-color-515151` | `#515151` |
 | `--om-legacy-color-595959` | `#595959` |
@@ -831,7 +845,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-757575` | `#757575` |
 | `--om-legacy-color-777777` | `#777` |
 | `--om-legacy-color-856404` | `#856404` |
-| `--om-legacy-color-a9dcb5` | `#a9dcb5` |
 | `--om-legacy-color-a9efc5` | `#a9efc5` |
 | `--om-legacy-color-a84c3d` | `#a84c3d` |
 | `--om-legacy-color-afafc1` | `#afafc1` |
@@ -839,7 +852,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-b1b1b7` | `rgb(177, 177, 183)` |
 | `--om-legacy-color-b4d5ff` | `#b4d5ff` |
 | `--om-legacy-color-b1271c` | `#b1271c` |
-| `--om-legacy-color-bbbbbb` | `#bbb` |
 | `--om-legacy-color-bee5eb` | `#bee5eb` |
 | `--om-legacy-color-c3e6cb` | `#c3e6cb` |
 | `--om-legacy-color-c6b5f6` | `#c6b5f6` |
@@ -866,8 +878,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-dde3ea` | `#dde3ea` |
 | `--om-legacy-color-e1e4e8` | `#e1e4e8` |
 | `--om-legacy-color-e2dfd4` | `#e2dfd4` |
-| `--om-legacy-color-e2e2e2` | `#e2e2e2` |
-| `--om-legacy-color-e3e8f0` | `#e3e8f0` |
 | `--om-legacy-color-e4e4e4` | `#e4e4e4` |
 | `--om-legacy-color-e5ebff` | `#e5ebff` |
 | `--om-legacy-color-e6f1fe` | `#e6f1fe` |
@@ -884,7 +894,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-eeeeee` | `#eeeeee` |
 | `--om-legacy-color-ef6820` | `#ef6820` |
 | `--om-legacy-color-efbdc1` | `#efbdc1` |
-| `--om-legacy-color-efefef` | `#efefef` |
 | `--om-legacy-color-f0f0f0` | `#f0f0f0` |
 | `--om-legacy-color-f0f1f3` | `#f0f1f3` |
 | `--om-legacy-color-f0f5ff` | `#f0f5ff` |
@@ -913,11 +922,9 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-f8faff` | `#f8faff` |
 | `--om-legacy-color-f9f5ff` | `#f9f5ff` |
 | `--om-legacy-color-f9fafc` | `#f9fafc` |
-| `--om-legacy-color-f9fbfc` | `#f9fbfc` |
 | `--om-legacy-color-f9816c` | `#f9816c` |
 | `--om-legacy-color-f44336` | `#f44336` |
 | `--om-legacy-color-f59638` | `#f59638` |
-| `--om-legacy-color-fbb4ae` | `#fbb4ae` |
 | `--om-legacy-color-fbf8f8` | `#fbf8f8` |
 | `--om-legacy-color-fbfaf9` | `#fbfaf9` |
 | `--om-legacy-color-fbfcff` | `#fbfcff` |

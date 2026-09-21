@@ -433,10 +433,19 @@ migrationConfiguration:
 authorizerConfiguration:
   className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
   containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.JwtFilter}
+
+  # Email-first admin configuration (recommended)
+  adminEmails: ${AUTHORIZER_ADMIN_EMAILS:-[]}
+  allowedEmailDomains: ${AUTHORIZER_ALLOWED_EMAIL_DOMAINS:-[]}
+  botDomain: ${AUTHORIZER_BOT_DOMAIN:-""}
+
+  # Deprecated - use adminEmails instead
   adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
+  # Deprecated - use botDomain for bots, allowedEmailDomains for user restrictions
+  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"open-metadata.org"}
+
   # For MCP OAuth: Set to specific domains like ["company.com"] to restrict self-signup
   allowedEmailRegistrationDomains: ${AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN:-["all"]}
-  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"open-metadata.org"}
   allowedDomains: ${AUTHORIZER_ALLOWED_DOMAINS:-[]}
   enforcePrincipalDomain: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
   enableSecureSocketConnection : ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
@@ -464,7 +473,16 @@ authenticationConfiguration:
   # Each entry must exactly match the requested redirect URI. Use for browser-extension logins,
   # e.g. ["https://<extension-id>.chromiumapp.org/auth0"].
   additionalTrustedRedirectUris: ${AUTHENTICATION_ADDITIONAL_TRUSTED_REDIRECT_URIS:-[]}
+
+  # Email-first claim configuration (recommended)
+  # Set these to opt in to email-first identity resolution.
+  # When unset, OpenMetadata continues using legacy jwtPrincipalClaims behavior.
+  emailClaim: ${AUTHENTICATION_EMAIL_CLAIM:-""}
+  displayNameClaim: ${AUTHENTICATION_DISPLAY_NAME_CLAIM:-""}
+
+  # Deprecated - use emailClaim instead
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
+  # Deprecated - use emailClaim and displayNameClaim instead
   jwtPrincipalClaimsMapping: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS_MAPPING:-[]}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
   enableAutoRedirect: ${AUTHENTICATION_ENABLE_AUTO_REDIRECT:-false}
@@ -612,6 +630,12 @@ elasticsearch:
 llmConfiguration:
   enabled: ${LLM_ENABLED:-false}
   provider: ${LLM_PROVIDER:-noop}  # noop | openai | azureOpenAI | bedrock | google | anthropic
+  # Context Center memory extraction (files + articles -> knowledge pills). Independent of
+  # `enabled` above, which also gates embeddings: LLM features can stay on for semantic search
+  # with extraction off. Unmetered here, so opt-in.
+  memoryExtractionEnabled: ${LLM_MEMORY_EXTRACTION_ENABLED:-false}
+  # FQCN of an alternate AiProvider for Context Center memory extraction; empty = built-in LLM provider
+  aiProviderClass: ${LLM_AI_PROVIDER_CLASS:-""}
   maxConcurrentRequests: ${LLM_MAX_CONCURRENT_REQUESTS:-5}
   openai:
     apiKey: ${LLM_OPENAI_API_KEY:-""}
@@ -876,6 +900,11 @@ rdf:
   bulkEntityBatchSize: ${RDF_BULK_ENTITY_BATCH_SIZE:-100}
   bulkRelationshipSourceBatchSize: ${RDF_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE:-100}
   bulkLineageEdgeBatchSize: ${RDF_BULK_LINEAGE_EDGE_BATCH_SIZE:-50}
+  maxUpdatePayloadBytes: ${RDF_MAX_UPDATE_PAYLOAD_BYTES:-4194304}
+  maxAppendPayloadBytes: ${RDF_MAX_APPEND_PAYLOAD_BYTES:-16777216}
+  bulkAppendEntityBatchSize: ${RDF_BULK_APPEND_ENTITY_BATCH_SIZE:-1000}
+  streamingAppendEnabled: ${RDF_STREAMING_APPEND_ENABLED:-true}
+  gzipRequests: ${RDF_GZIP_REQUESTS:-false}
   maxInMemoryInferenceTriples: ${RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES:-100000}
   materializedInferenceEnabled: ${RDF_MATERIALIZED_INFERENCE_ENABLED:-false}
   username: ${RDF_REMOTE_USERNAME:-"admin"}
@@ -896,6 +925,7 @@ rdf:
 # Caching layer for entity metadata, relationships, and tag usage to reduce database load
 # Default: none (no external dependency). Set CACHE_PROVIDER=redis to enable the
 # Redis L2 cache; it falls back to NoopCacheProvider if Redis is unreachable at startup.
+# Multi-server deployments must use Redis so credential revocations reach every server.
 cache:
   # Cache provider: none (default) or redis
   provider: ${CACHE_PROVIDER:-none}

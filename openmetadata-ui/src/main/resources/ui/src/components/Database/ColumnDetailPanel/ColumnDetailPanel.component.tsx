@@ -39,8 +39,10 @@ import { listTestCases } from '../../../rest/testAPI';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityPureUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import { toEntityData } from '../../../utils/EntitySummaryPanelPureUtils';
-import { getErrorText, stringToHTML } from '../../../utils/StringUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { getErrorText } from '../../../utils/StringUtils';
 import {
   buildColumnBreadcrumbPath,
   findOriginalColumnIndex,
@@ -64,7 +66,7 @@ import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRig
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import CustomPropertiesSection from '../../Explore/EntitySummaryPanel/CustomPropertiesSection/CustomPropertiesSection';
 import DataQualityTab from '../../Explore/EntitySummaryPanel/DataQualityTab/DataQualityTab';
-import { LineageTabContent } from '../../Explore/EntitySummaryPanel/LineageTab';
+import LineageTabContent from '../../Explore/EntitySummaryPanel/LineageTab/LineageTabContent';
 import { LineageData } from '../../Lineage/Lineage.interface';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -75,7 +77,7 @@ import {
   TestCaseStatusCounts,
 } from './ColumnDetailPanel.interface';
 import './ColumnDetailPanel.less';
-import { KeyProfileMetrics } from './KeyProfileMetrics';
+import { KeyProfileMetrics } from './KeyProfileMetrics/KeyProfileMetrics.component';
 import { NestedColumnsSection } from './NestedColumnsSection';
 const isColumn = (item: ColumnOrTask | null): item is Column => {
   return item !== null && 'dataType' in item;
@@ -94,16 +96,19 @@ function computeHasEditPermission(
   permissions: OperationPermission,
   deleted: boolean
 ): ColumnEditPermissionFlags {
-  const canEdit = (specific: boolean) =>
-    (specific || permissions.EditAll) && !deleted;
+  // Each field was a raw `(EditX || EditAll) && !deleted`; the prioritized named flags are a
+  // documented explicit-deny-wins fix (Task 6 Finding 1 / Task 8 Batch 2 precedent): an
+  // explicit `EditX: false` now wins over a bare `EditAll: true`, where the old OR granted
+  // regardless. The flags apply the `deleted` gate themselves.
+  const flags = getDerivedPermissionFlags(permissions, deleted);
 
   return {
-    tags: canEdit(permissions.EditTags),
-    glossaryTerms: canEdit(permissions.EditGlossaryTerms),
-    description: canEdit(permissions.EditDescription),
-    viewAllPermission: permissions.ViewAll,
-    customProperties: canEdit(permissions.EditCustomFields),
-    displayName: canEdit(permissions.EditDisplayName),
+    tags: flags.canEditTags,
+    glossaryTerms: flags.canEditGlossaryTerms,
+    description: flags.canEditDescription,
+    viewAllPermission: flags.canViewAll,
+    customProperties: flags.canEditCustomFields,
+    displayName: flags.canEditDisplayName,
   };
 }
 
@@ -156,11 +161,11 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     [permissions, deleted]
   );
 
-  const hasViewPermission = useMemo(
-    () => ({
-      customProperties: permissions.ViewAll || permissions.ViewCustomFields,
-    }),
-    [permissions]
+  // The view-tier flags are consumed directly further down (custom properties and the data
+  // quality tab); `computeHasEditPermission` only returns the edit-tier object.
+  const { canViewCustomFields, canViewTests } = useMemo(
+    () => getDerivedPermissionFlags(permissions, deleted),
+    [permissions, deleted]
   );
 
   const flattenedColumns = useMemo(
@@ -611,10 +616,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       }
     };
 
-    if (hasViewPermission.customProperties) {
+    if (canViewCustomFields) {
       fetchEntityTypeDetail();
     }
-  }, [hasViewPermission.customProperties]);
+  }, [canViewCustomFields]);
 
   useEffect(() => {
     if (localToast.open) {
@@ -637,14 +642,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   }, [fetchColumnDetails]);
 
   useEffect(() => {
-    if (
-      isOpen &&
-      entityType === EntityType.TABLE &&
-      (permissions.ViewTests || permissions.ViewAll)
-    ) {
+    if (isOpen && entityType === EntityType.TABLE && canViewTests) {
       fetchTestCases();
     }
-  }, [isOpen, fetchTestCases, permissions.ViewTests, permissions.ViewAll]);
+  }, [isOpen, fetchTestCases, entityType, canViewTests]);
 
   useEffect(() => {
     if (isOpen && activeColumn) {
@@ -803,9 +804,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           entityTypeDetail={entityTypeDetail}
           hasEditPermissions={hasEditPermission.customProperties}
           isEntityDataLoading={false}
-          viewCustomPropertiesPermission={
-            hasViewPermission?.customProperties ?? false
-          }
+          viewCustomPropertiesPermission={canViewCustomFields}
           onExtensionUpdate={handleExtensionUpdate}
         />
       </div>
@@ -898,7 +897,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         className="tw:text-gray-400 tw:text-xs"
         data-testid="entity-name"
         ellipsis={{ tooltip: true }}>
-        {stringToHTML(activeColumn.name || '')}
+        {renderHighlightedText(activeColumn.name || '')}
       </Typography.Text>
     );
   }
@@ -965,7 +964,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                       ellipsis
                       className="entity-title-link"
                       data-testid="entity-link">
-                      {stringToHTML(
+                      {renderHighlightedText(
                         (activeColumn as { displayName?: string })
                           .displayName ||
                           activeColumn.name ||
@@ -1011,7 +1010,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           <DataQualityTab
             isColumnDetailPanel
             entityFQN={activeColumn.fullyQualifiedName || ''}
-            hasViewTests={permissions.ViewTests || permissions.ViewAll}
+            hasViewTests={canViewTests}
           />
         );
       case EntityRightPanelTab.LINEAGE:

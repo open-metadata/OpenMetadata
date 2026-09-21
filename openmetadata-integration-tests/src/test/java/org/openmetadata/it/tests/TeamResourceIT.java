@@ -628,6 +628,99 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   }
 
   @Test
+  void test_descendantTeams_recursiveSubtree(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    UUID orgId = client.teams().getByName("Organization").getId();
+
+    Team bu =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("dbu"))
+                .withTeamType(TeamType.BUSINESS_UNIT)
+                .withParents(List.of(orgId)));
+    Team div =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("ddiv"))
+                .withTeamType(TeamType.DIVISION)
+                .withParents(List.of(bu.getId())));
+    Team dept =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("ddept"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withParents(List.of(div.getId())));
+    Team group =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("dgrp"))
+                .withTeamType(TeamType.GROUP)
+                .withParents(List.of(dept.getId())));
+
+    // descendantTeams is the whole subtree below the team (recursive), excluding itself and any
+    // ancestor. For the Division that is the Department plus the nested Group.
+    Team fetchedDiv = client.teams().get(div.getId().toString(), "descendantTeams");
+    assertNotNull(fetchedDiv.getDescendantTeams());
+    List<UUID> descendantIds =
+        fetchedDiv.getDescendantTeams().stream().map(EntityReference::getId).toList();
+    assertTrue(descendantIds.contains(dept.getId()), "descendants should include the Department");
+    assertTrue(
+        descendantIds.contains(group.getId()), "descendants should include the nested Group");
+    assertFalse(descendantIds.contains(div.getId()), "descendants must exclude the team itself");
+    assertFalse(descendantIds.contains(bu.getId()), "descendants must exclude ancestors");
+
+    // A Group (leaf) team has no descendant teams.
+    Team fetchedGroup = client.teams().get(group.getId().toString(), "descendantTeams");
+    assertNotNull(fetchedGroup.getDescendantTeams());
+    assertTrue(
+        fetchedGroup.getDescendantTeams().isEmpty(), "a leaf Group team has no descendant teams");
+  }
+
+  @Test
+  void test_descendantTeams_diamondHierarchyDedupes(TestNamespace ns) {
+    // Teams form a DAG: a Department can have multiple parents. A team reachable through more than
+    // one path (a diamond) must be listed once, not once per path.
+    OpenMetadataClient client = SdkClients.adminClient();
+    UUID orgId = client.teams().getByName("Organization").getId();
+
+    Team bu =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("diamond-bu"))
+                .withTeamType(TeamType.BUSINESS_UNIT)
+                .withParents(List.of(orgId)));
+    Team div1 =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("diamond-div1"))
+                .withTeamType(TeamType.DIVISION)
+                .withParents(List.of(bu.getId())));
+    Team div2 =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("diamond-div2"))
+                .withTeamType(TeamType.DIVISION)
+                .withParents(List.of(bu.getId())));
+    Team dept =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("diamond-dept"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withParents(List.of(div1.getId(), div2.getId())));
+
+    Team fetchedBu = client.teams().get(bu.getId().toString(), "descendantTeams");
+    assertNotNull(fetchedBu.getDescendantTeams());
+    List<UUID> descendantIds =
+        fetchedBu.getDescendantTeams().stream().map(EntityReference::getId).toList();
+    assertTrue(descendantIds.contains(div1.getId()));
+    assertTrue(descendantIds.contains(div2.getId()));
+    assertEquals(
+        1,
+        descendantIds.stream().filter(id -> id.equals(dept.getId())).count(),
+        "the shared Department must appear exactly once despite two parent paths");
+  }
+
+  @Test
   void test_invalidHierarchy_groupCannotHaveChildren(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 

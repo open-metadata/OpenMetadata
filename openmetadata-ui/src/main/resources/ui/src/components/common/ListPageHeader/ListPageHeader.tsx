@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, PageLayout } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as MarketplaceIcon } from '../../../assets/svg/marketplace-default.svg';
 import { ROUTES } from '../../../constants/constants';
 import HeaderBreadcrumb from '../HeaderBreadcrumb/HeaderBreadcrumb.component';
-import HeaderShell from '../HeaderShell/HeaderShell.component';
 import {
   ListPageHeaderConfig,
   ListPageHeaderRenderProps,
@@ -41,9 +40,9 @@ const ListPageHeader: FC<ListPageHeaderConfig & ListPageHeaderRenderProps> = ({
   ) : null;
 
   return (
-    <HeaderShell
+    <PageLayout.PageHeader
       actions={
-        // HeaderShell renders its actions box on any truthy value, so keep this
+        // PageLayout.PageHeader renders its actions box on any truthy value, so keep this
         // undefined when there is nothing to show rather than passing a fragment.
         search || addButton ? (
           <>
@@ -69,6 +68,7 @@ const ListPageHeader: FC<ListPageHeaderConfig & ListPageHeaderRenderProps> = ({
       }
       className="tw:mb-5"
       data-testid="list-page-header"
+      density="compact"
       subtitle={subtitleKey ? t(subtitleKey) : undefined}
       title={t(titleKey)}
       variant="gradient"

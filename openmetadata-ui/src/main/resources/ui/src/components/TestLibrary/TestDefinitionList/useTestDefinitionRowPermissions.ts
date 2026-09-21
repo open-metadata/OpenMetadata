@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AxiosError } from 'axios';
 import { useCallback, useMemo, useState } from 'react';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -19,27 +18,38 @@ import {
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
+import { useBulkEntityPermissions } from '../../../hooks/useEntityPermissions/useBulkEntityPermissions';
 import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../../utils/PermissionsUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 
 /**
- * Owns the PERMISSION concern: the resource-level create/view permissions and
- * the per-row permission map keyed by definition name. The map fans out one
- * {@link getEntityPermissionByFqn} call per row via `Promise.allSettled`,
- * falling back to {@link DEFAULT_ENTITY_PERMISSION} for any rejected lookup.
- * {@link fetchTestDefinitionPermissions} is returned so the data concern can
- * drive it right after it loads a page of definitions.
+ * Owns the PERMISSION concern: the resource-level create/view permissions
+ * (still a direct {@link checkPermission} read off the provider's cached
+ * `permissions` object — those never had a per-row identifier to key a
+ * {@link useBulkEntityPermissions} query on) and the per-row permission map
+ * keyed by definition name. The row map is driven by
+ * {@link useBulkEntityPermissions}, one cached query per FQN, re-keyed here
+ * from FQN to `name` — {@link fetchTestDefinitionPermissions} is an
+ * imperative callback only in the sense that it stores the definitions the
+ * data concern just loaded; the actual fetch (and its caching/dedup) is owned
+ * by the shared hook. A row missing a `fullyQualifiedName` has no identifier
+ * to query and degrades straight to {@link DEFAULT_ENTITY_PERMISSION} without
+ * a network call (useBulkEntityPermissions filters falsy FQNs out of its
+ * query list).
  */
 export const useTestDefinitionRowPermissions = () => {
-  const { permissions, getEntityPermissionByFqn } = usePermissionProvider();
+  const { permissions } = usePermissionProvider();
 
-  const [testDefinitionPermissions, setTestDefinitionPermissions] = useState<
-    Record<string, OperationPermission>
-  >({});
-  const [permissionLoading, setPermissionLoading] = useState(true);
+  const [definitionsForPermissions, setDefinitionsForPermissions] = useState<
+    TestDefinition[]
+  >([]);
+  // useBulkEntityPermissions reports isLoading:false for an empty fqn list —
+  // correct once a fetch has actually run, but wrong before the first
+  // fetchTestDefinitionPermissions call (old code started permissionLoading
+  // true). hasFetched preserves that initial-loading semantic.
+  const [hasFetched, setHasFetched] = useState(false);
 
   const createPermission = useMemo(
     () =>
@@ -66,49 +76,52 @@ export const useTestDefinitionRowPermissions = () => {
     [permissions]
   );
 
+  const fqns = useMemo(
+    () => definitionsForPermissions.map((def) => def.fullyQualifiedName ?? ''),
+    [definitionsForPermissions]
+  );
+
+  const { permissionsByFqn, isLoading: isBulkLoading } =
+    useBulkEntityPermissions(ResourceEntity.TEST_DEFINITION, fqns);
+
+  const testDefinitionPermissions = useMemo(
+    () =>
+      definitionsForPermissions.reduce<Record<string, OperationPermission>>(
+        (acc, def) => {
+          const fqn = def.fullyQualifiedName ?? '';
+          acc[def.name] = permissionsByFqn[fqn] ?? DEFAULT_ENTITY_PERMISSION;
+
+          return acc;
+        },
+        {}
+      ),
+    [definitionsForPermissions, permissionsByFqn]
+  );
+
+  const permissionLoading = !hasFetched || isBulkLoading;
+
+  /**
+   * CONTRACT CHANGE from the pre-fold implementation: the returned promise
+   * now resolves once `definitions` have been STORED (synchronously, on the
+   * next tick), NOT once permissions have actually been fetched. The real
+   * fetch — and its resolution — is owned by {@link useBulkEntityPermissions}
+   * and happens asynchronously afterward, driven by the `fqns` derived from
+   * this stored state; `testDefinitionPermissions`/`permissionLoading` are
+   * what observe that fetch completing, not this promise. The pre-fold
+   * version awaited the actual Promise.allSettled fetch here, so a caller
+   * that `await`s this call expecting fresh `testDefinitionPermissions`
+   * immediately afterward will NOT get them — the current sole caller
+   * (`useTestDefinitionData.ts`'s `fetchTestDefinitions`) is fire-and-forget
+   * (`fetchTestDefinitionPermissions(data)`, not awaited) and is therefore
+   * unaffected, but a future caller that awaits this must not assume the
+   * fetch has completed when it resolves.
+   */
   const fetchTestDefinitionPermissions = useCallback(
     async (definitions: TestDefinition[]) => {
-      try {
-        setPermissionLoading(true);
-
-        if (!definitions.length) {
-          setTestDefinitionPermissions({});
-
-          return;
-        }
-
-        const permissionPromises: Promise<OperationPermission>[] =
-          definitions.map((def) =>
-            getEntityPermissionByFqn(
-              ResourceEntity.TEST_DEFINITION,
-              def.fullyQualifiedName ?? ''
-            )
-          );
-
-        const permissionResponses = await Promise.allSettled(
-          permissionPromises
-        );
-
-        const permissionsMap = definitions.reduce((acc, def, idx) => {
-          const response = permissionResponses[idx];
-
-          return {
-            ...acc,
-            [def.name]:
-              response?.status === 'fulfilled'
-                ? response.value
-                : DEFAULT_ENTITY_PERMISSION,
-          };
-        }, {} as Record<string, OperationPermission>);
-
-        setTestDefinitionPermissions(permissionsMap);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setPermissionLoading(false);
-      }
+      setDefinitionsForPermissions(definitions);
+      setHasFetched(true);
     },
-    [getEntityPermissionByFqn]
+    []
   );
 
   return {

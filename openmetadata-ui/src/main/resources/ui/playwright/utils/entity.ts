@@ -46,6 +46,13 @@ import {
   getEpochMillisForFutureDays,
 } from './dateTime';
 import { searchAndClickOnOption } from './explore';
+import {
+  applyGlossaryPicker,
+  glossaryWidgetTrigger,
+  openGlossaryPicker,
+  pickGlossaryTerm,
+  toggleGlossaryTermInPicker,
+} from './glossaryPicker';
 import { sidebarClick } from './sidebar';
 
 export const waitForAllLoadersToDisappear = async (
@@ -230,10 +237,15 @@ export const addOwner = async ({
 
   if (type === 'Teams') {
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-    await page.getByRole('listitem', { name: owner }).click();
+    await page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner })
+      .click();
     await patchRequest;
   } else {
-    const ownerItem = page.getByRole('listitem', { name: owner });
+    const ownerItem = page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner });
 
     await expect
       .poll(
@@ -322,10 +334,18 @@ export const addOwnerWithoutValidation = async ({
     .fill(owner);
   await searchUser;
 
+  // Scope the option to the open picker panel — some pages (e.g. the Data
+  // Contract form) render more than one owner list, so a page-wide match is
+  // ambiguous.
+  const ownerOption = page
+    .getByTestId(`owner-select-${lowerCase(type)}-panel`)
+    .locator('[data-testid="owner-option"]')
+    .filter({ hasText: owner });
+
   if (type === 'Teams') {
-    await page.getByRole('listitem', { name: owner }).click();
+    await ownerOption.click();
   } else {
-    await page.getByRole('listitem', { name: owner }).click();
+    await ownerOption.click();
     await page.getByTestId('selectable-list-update-btn').click();
   }
 };
@@ -357,10 +377,16 @@ export const updateOwner = async ({
 
   if (type === 'Teams') {
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-    await page.getByRole('listitem', { name: owner }).click();
+    await page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner })
+      .click();
     await patchRequest;
   } else {
-    await page.getByRole('listitem', { name: owner }).click();
+    await page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner })
+      .click();
 
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
     await page.getByTestId('selectable-list-update-btn').click();
@@ -387,10 +413,9 @@ export const removeOwnersFromList = async ({
   await waitForAllLoadersToDisappear(page);
 
   for (const ownerName of ownerNames) {
-    const ownerItem = page.getByRole('listitem', {
-      name: ownerName,
-      exact: true,
-    });
+    const ownerItem = page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: ownerName });
 
     await ownerItem.click();
   }
@@ -486,7 +511,7 @@ export const addMultiOwner = async (data: {
 
   const isClearButtonVisible = await page
     .getByTestId('select-owner-tabs')
-    .locator('[id^="rc-tabs-"][id$="-panel-users"]')
+    .locator('[data-testid="owner-select-users-panel"]')
     .getByTestId('clear-all-button')
     .isVisible();
 
@@ -506,7 +531,7 @@ export const addMultiOwner = async (data: {
 
   if (clearAll && isMultipleOwners) {
     const clearButton = page
-      .locator('[id^="rc-tabs-"][id$="-panel-users"]')
+      .locator('[data-testid="owner-select-users-panel"]')
       .getByTestId('clear-all-button');
 
     await clearButton.click();
@@ -531,10 +556,9 @@ export const addMultiOwner = async (data: {
       .first()
       .waitFor({ state: 'detached' });
 
-    const ownerItem = page.getByRole('listitem', {
-      name: ownerName,
-      exact: true,
-    });
+    const ownerItem = page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: ownerName });
     await ownerItem.waitFor({ state: 'visible' });
 
     // Wait for the item to exist and be visible before clicking
@@ -554,7 +578,7 @@ export const addMultiOwner = async (data: {
 
   if (isMultipleOwners) {
     const updateButton = page
-      .locator('[id^="rc-tabs-"][id$="-panel-users"]')
+      .locator('[data-testid="owner-select-users-panel"]')
       .getByTestId('selectable-list-update-btn');
 
     if (isSelectableInsideForm) {
@@ -722,9 +746,19 @@ export const updateDescription = async (
   validationContainerTestId = 'asset-description-container',
   endpoint?: EntityTypeEndpoint
 ) => {
+  // The description widget is lazy-loaded behind a Suspense skeleton that is
+  // not a [data-testid="loader"], so the generic loader wait does not cover it
+  // -- on Metric in particular the edit affordance was looked for before the
+  // widget had mounted.
+  await waitForWidgetsToRender(page);
+
   const editDescriptionButton = page.getByTestId('edit-description');
   const editButton = page.getByTestId('edit-button');
 
+  // Prefer the dedicated affordance and fall back to the generic one. These
+  // must NOT be combined with .or(): a page carries one `edit-description` but
+  // several `edit-button`s, so the union is ambiguous under strict mode where
+  // each locator alone is not.
   try {
     await expect(editDescriptionButton).toBeVisible();
     await editDescriptionButton.click();
@@ -1083,49 +1117,27 @@ type GlossaryTermOption = {
   fullyQualifiedName: string;
 };
 
+// Column-level tags are patched through the columns endpoint, not the entity's.
+const childPatchUrl = (entityEndpoint: string) =>
+  entityEndpoint === 'tables' || entityEndpoint === 'dashboard/datamodels'
+    ? '/api/v1/columns/name/*'
+    : `/api/v1/${entityEndpoint}/*`;
+
 export const assignGlossaryTerm = async (
   page: Page,
   glossaryTerm: GlossaryTermOption,
   action: 'Add' | 'Edit' = 'Add',
   entityEndpoint: string
 ) => {
-  await page
-    .getByTestId('KnowledgePanel.GlossaryTerms')
-    .getByTestId('glossary-container')
-    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
-    .click();
-  const searchGlossaryTerm = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
+  await pickGlossaryTerm(
+    page,
+    glossaryWidgetTrigger(
+      page.getByTestId('KnowledgePanel.GlossaryTerms'),
+      action
+    ),
+    glossaryTerm,
+    `/api/v1/${entityEndpoint}/*`
   );
-  await page.locator('#tagsForm_tags').waitFor({ state: 'visible' });
-
-  await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
-  await searchGlossaryTerm;
-
-  await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
-
-  await page
-    .locator('.ant-select-dropdown')
-    .getByTestId('saveAssociatedTag')
-    .waitFor({ state: 'visible' });
-
-  await expect(
-    page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
-  ).toBeEnabled();
-
-  const patchRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
-
-  await page
-    .getByTestId('custom-drop-down-menu')
-    .getByTestId('saveAssociatedTag')
-    .click();
-
-  await patchRequest;
-  await page
-    .getByTestId('saveAssociatedTag')
-    .locator('[data-icon="loading"]')
-    .waitFor({ state: 'detached' });
-  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
   await expect(
     page
@@ -1235,65 +1247,21 @@ export const assignGlossaryTermToChildren = async ({
   rowSelector?: string;
   entityEndpoint: string;
 }) => {
-  // First, wait for the row itself to be visible
   const rowLocator = page.locator(`[${rowSelector}="${rowId}"]`);
   await expect(rowLocator).toBeVisible();
-
-  // Scroll the row into view to ensure it's accessible
   await rowLocator.scrollIntoViewIfNeeded();
 
-  const addButton = rowLocator
-    .getByTestId('glossary-container')
-    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
-    .first();
-
-  await expect(addButton).toBeVisible();
-  await addButton.click();
-
-  // Wait for input field to be visible
-  const glossaryInput = page.locator('#tagsForm_tags');
-  await expect(glossaryInput).toBeVisible();
-
-  const searchGlossaryTerm = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
+  await pickGlossaryTerm(
+    page,
+    glossaryWidgetTrigger(rowLocator, action).first(),
+    glossaryTerm,
+    childPatchUrl(entityEndpoint)
   );
-  await glossaryInput.fill(glossaryTerm.displayName);
-  await searchGlossaryTerm;
-
-  // Wait for loader to disappear after search
-  await waitForAllLoadersToDisappear(page);
-
-  // Wait for glossary term tag to be visible before clicking
-  const glossaryTermTag = page.getByTestId(
-    `tag-${glossaryTerm.fullyQualifiedName}`
-  );
-  await expect(glossaryTermTag).toBeVisible();
-
-  await glossaryTermTag.click();
-
-  await page
-    .locator('.ant-select-dropdown')
-    .getByTestId('saveAssociatedTag')
-    .waitFor({ state: 'visible' });
-
-  const patchRequest =
-    entityEndpoint === 'tables' || entityEndpoint === 'dashboard/datamodels'
-      ? page.waitForResponse('/api/v1/columns/name/*')
-      : page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
-
-  const saveButton = page.getByTestId('saveAssociatedTag');
-  await expect(saveButton).toBeVisible();
-  await expect(saveButton).toBeEnabled();
-  await saveButton.click();
-  await patchRequest;
-
-  await expect(saveButton).not.toBeVisible();
 
   await waitForAllLoadersToDisappear(page);
 
   await expect(
-    page
-      .locator(`[${rowSelector}="${rowId}"]`)
+    rowLocator
       .getByTestId('glossary-container')
       .getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`)
   ).toBeVisible();
@@ -1304,45 +1272,17 @@ export const removeGlossaryTerm = async (
   glossaryTerms: GlossaryTermOption[]
 ) => {
   for (const tag of glossaryTerms) {
-    await page
-      .getByTestId('KnowledgePanel.GlossaryTerms')
-      .getByTestId('glossary-container')
-      .getByTestId('edit-button')
-      .click();
-    // eslint-disable-next-line playwright/no-wait-for-timeout -- avoid popup collision with click
-    await page.waitForTimeout(500);
-
-    await page
-      .getByTestId('glossary-container')
-      .getByTestId(new RegExp(tag.name))
-      .getByTestId('remove-tags')
-      .locator('svg')
-      .click();
-
-    const patchRequest = page.waitForResponse(
-      (response) => response.request().method() === 'PATCH'
+    await openGlossaryPicker(
+      page,
+      page
+        .getByTestId('KnowledgePanel.GlossaryTerms')
+        .getByTestId('glossary-container')
+        .getByTestId('edit-button')
     );
 
-    await page
-      .locator('.ant-select-dropdown')
-      .getByTestId('saveAssociatedTag')
-      .waitFor({ state: 'visible' });
-
-    await expect(
-      page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
-    ).toBeEnabled();
-
-    await page
-      .getByTestId('custom-drop-down-menu')
-      .getByTestId('saveAssociatedTag')
-      .click();
-    await patchRequest;
-
-    await page
-      .getByTestId('saveAssociatedTag')
-      .locator('[data-icon="loading"]')
-      .waitFor({ state: 'detached' });
-    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+    // The term is already ticked, so toggling it clears the selection.
+    await toggleGlossaryTermInPicker(page, tag);
+    await applyGlossaryPicker(page);
 
     await expect(
       page
@@ -1366,52 +1306,28 @@ export const removeGlossaryTermFromChildren = async ({
   entityEndpoint: string;
   rowSelector?: string;
 }) => {
+  const rowLocator = page.locator(`[${rowSelector}="${rowId}"]`);
+
   for (const tag of glossaryTerms) {
-    await page
-      .locator(`[${rowSelector}="${rowId}"]`)
-      .getByTestId('glossary-container')
-      .getByTestId('edit-button')
-      .first()
-      .click();
+    await openGlossaryPicker(
+      page,
+      rowLocator
+        .getByTestId('glossary-container')
+        .getByTestId('edit-button')
+        .first()
+    );
 
-    await page
-      .getByTestId('glossary-container')
-      .getByTestId(new RegExp(tag.name))
-      .getByTestId('remove-tags')
-      .locator('svg')
-      .click();
-
-    const patchRequest =
-      entityEndpoint === 'tables' || entityEndpoint === 'dashboard/datamodels'
-        ? page.waitForResponse('/api/v1/columns/name/*')
-        : page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
-
-    await page
-      .locator('.ant-select-dropdown')
-      .getByTestId('saveAssociatedTag')
-      .waitFor({ state: 'visible' });
-
-    await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
-
-    await page.getByTestId('saveAssociatedTag').click();
-
-    await patchRequest;
-
-    await page
-      .getByTestId('saveAssociatedTag')
-      .locator('[data-icon="loading"]')
-      .waitFor({ state: 'detached' });
-    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+    // The term is already ticked, so toggling it clears the selection.
+    await toggleGlossaryTermInPicker(page, tag);
+    await applyGlossaryPicker(page, childPatchUrl(entityEndpoint));
 
     await expect(
-      page
-        .locator(`[${rowSelector}="${rowId}"]`)
+      rowLocator
         .getByTestId('glossary-container')
         .getByTestId(`tag-${tag.fullyQualifiedName}`)
     ).not.toBeVisible();
   }
 };
-
 export const upVote = async (page: Page, endPoint: string) => {
   const patchRequest = page.waitForResponse(`/api/v1/${endPoint}/*/vote`);
 
@@ -2082,13 +1998,24 @@ export const checkForEditActions = async ({
 
 export const checkLineageTabActions = async (page: Page, deleted?: boolean) => {
   // Click the lineage tab
-  const lineageApi = page.waitForResponse('/api/v1/lineage/getLineage?fqn=*');
+  const lineageApi = page.waitForResponse('**/api/v1/lineage/scene?*');
   await page.click('[data-testid="lineage"]');
 
   // Ensure the response has been received and check the status code
   await lineageApi;
 
   await waitForAllLoadersToDisappear(page);
+
+  const onboardingDialog = page.getByTestId('lineage-map-onboarding-dialog');
+  const hasSeenOnboarding = (await page.context().cookies()).some(
+    ({ name, value }) =>
+      name === 'lineageMapsOnboardingSeen' && value === 'true'
+  );
+  if (!hasSeenOnboarding) {
+    await expect(onboardingDialog).toBeVisible();
+    await onboardingDialog.getByRole('button').click();
+    await expect(onboardingDialog).not.toBeVisible();
+  }
 
   // Check the presence or absence of the edit-lineage element based on the deleted flag
   if (deleted) {
@@ -2395,9 +2322,12 @@ export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
   // Click on filter dropdown
   await page.getByTestId('search-dropdown-Service Type').click();
   // assert on dropdown item visibility
-  await page.getByRole('menuitem', { name: serviceType }).waitFor();
-  // assert on checkbox state
-  await expect(page.getByTestId(`${serviceType}-checkbox`)).toBeChecked();
+  await page.getByRole('menuitemcheckbox', { name: serviceType }).waitFor();
+  // assert on selection state
+  await expect(page.getByTestId(serviceType)).toHaveAttribute(
+    'aria-checked',
+    'true'
+  );
 
   await expect(
     page
