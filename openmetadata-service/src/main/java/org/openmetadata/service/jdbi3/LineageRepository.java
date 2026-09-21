@@ -397,7 +397,11 @@ public class LineageRepository {
     insertServiceEdgeIfDistinct(fromService, toService, entityLineageDetails, childAlreadyCounted);
   }
 
-  /** Releases the service edges the prior details fed, when the pipeline changed. */
+  /**
+   * Reports whether this edge now feeds a different pair of service edges than it did before, so
+   * the caller counts it as a fresh contributor to the new shape. Releases the previous shape too,
+   * whenever that shape can still be identified.
+   */
   private boolean releaseReshapedServiceEdges(
       EntityInterface fromEntity,
       EntityInterface toEntity,
@@ -419,7 +423,10 @@ public class LineageRepository {
       // The prior edge did route through a pipeline, but that pipeline is gone so its hops can no
       // longer be named. Releasing anything here would fall through to the direct edge, which is
       // owned by other child edges entirely — leave the stale hops to the service lineage repair.
-      return false;
+      // The edge has still moved onto its current shape and must be counted into it: a hop shared
+      // with another child would otherwise stay one contributor short and be deleted while this
+      // edge still needs it. Over-counting merely keeps a redundant hop alive a little longer.
+      return true;
     }
     if (pipelineService != null
         && Objects.equals(priorPipelineService.getId(), pipelineService.getId())) {

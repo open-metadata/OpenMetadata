@@ -27,8 +27,10 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.type.EntitiesEdge;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.service.Entity;
@@ -190,6 +192,113 @@ public class ServiceLineagePipelineRoutingMigrationIT {
         1,
         assetEdgesOfDirectEdge(collectionDAO, sourceId, targetId),
         "the unrelated plain pair's direct edge must be untouched");
+  }
+
+  /**
+   * A child edge whose prior pipeline was hard-deleted still moves onto its new pipeline's hops, so
+   * it has to be counted into them. Skipping that increment leaves a hop shared with another child
+   * one contributor short, and deleting that other child then takes the hop away from this edge.
+   */
+  @Test
+  void movingOffAHardDeletedPipelineStillCountsIntoTheNewHops() {
+    CollectionDAO collectionDAO = Entity.getCollectionDAO();
+    UUID sourceId = sourceService.getId();
+    UUID targetId = targetService.getId();
+    UUID pipelineServiceId = pipelineService.getId();
+
+    // annotatedSource -> annotatedTarget already routes through `pipeline`, so it is the hops' only
+    // contributor. Point the plain pair at a pipeline that no longer exists, mimicking an edge
+    // whose annotator was hard-deleted, then move it onto the same live pipeline.
+    pointChildEdgeAtMissingPipeline(collectionDAO, plainSource, plainTarget);
+    addLineage(plainSource, plainTarget, pipeline);
+
+    assertEquals(
+        2,
+        assetEdges(directEdge(collectionDAO, sourceId, pipelineServiceId)),
+        "the moved edge must be counted into the source -> pipeline hop it now depends on");
+    assertEquals(
+        2,
+        assetEdges(directEdge(collectionDAO, pipelineServiceId, targetId)),
+        "the moved edge must be counted into the pipeline -> target hop it now depends on");
+
+    client
+        .lineage()
+        .deleteLineage("table:" + annotatedSource.getId(), "table:" + annotatedTarget.getId());
+
+    assertNotNull(
+        directEdge(collectionDAO, sourceId, pipelineServiceId),
+        "the hop is still needed by the moved edge and must survive the other child's deletion");
+    assertNotNull(
+        directEdge(collectionDAO, pipelineServiceId, targetId),
+        "the hop is still needed by the moved edge and must survive the other child's deletion");
+
+    addLineage(annotatedSource, annotatedTarget, pipeline);
+    addLineage(plainSource, plainTarget, null);
+  }
+
+  /**
+   * A child edge the scan cannot classify must not be read as absent: treating it that way makes
+   * the pair look purely annotated and costs it a direct edge the unreadable child may still earn.
+   */
+  @Test
+  void anUnclassifiableChildEdgeLeavesItsServicePairUntouched() {
+    CollectionDAO collectionDAO = Entity.getCollectionDAO();
+    UUID sourceId = sourceService.getId();
+    UUID targetId = targetService.getId();
+
+    assertEquals(
+        1,
+        assetEdges(directEdge(collectionDAO, sourceId, targetId)),
+        "precondition: the plain pair earns the direct edge");
+
+    corruptChildEdgeDetails(collectionDAO, plainSource, plainTarget);
+
+    ServiceLineagePipelineRoutingMigration.removeServiceEdgesBypassingPipeline(collectionDAO);
+
+    assertNotNull(
+        directEdge(collectionDAO, sourceId, targetId),
+        "the direct edge must survive while a contributing child edge cannot be classified");
+
+    // Restore through the DAO: addLineage would have to read the corrupt prior details first.
+    replaceChildEdgeJson(
+        collectionDAO,
+        plainSource,
+        plainTarget,
+        JsonUtils.pojoToJson(new LineageDetails().withSource(LineageDetails.Source.MANUAL)));
+  }
+
+  /** Rewrites the child edge to reference a pipeline id that no entity holds. */
+  private void pointChildEdgeAtMissingPipeline(CollectionDAO collectionDAO, Table from, Table to) {
+    LineageDetails details =
+        new LineageDetails()
+            .withSource(LineageDetails.Source.PIPELINE_LINEAGE)
+            .withPipeline(
+                new EntityReference().withId(UUID.randomUUID()).withType(Entity.PIPELINE));
+    replaceChildEdgeJson(collectionDAO, from, to, JsonUtils.pojoToJson(details));
+  }
+
+  /** Stores syntactically valid JSON that cannot bind to {@link LineageDetails}. */
+  private void corruptChildEdgeDetails(CollectionDAO collectionDAO, Table from, Table to) {
+    replaceChildEdgeJson(collectionDAO, from, to, "{\"pipeline\": \"not-an-entity-reference\"}");
+  }
+
+  private void replaceChildEdgeJson(
+      CollectionDAO collectionDAO, Table from, Table to, String json) {
+    collectionDAO
+        .relationshipDAO()
+        .insert(
+            from.getId(),
+            to.getId(),
+            Entity.TABLE,
+            Entity.TABLE,
+            Relationship.UPSTREAM.ordinal(),
+            json);
+  }
+
+  private int assetEdges(CollectionDAO.EntityRelationshipObject edge) {
+    assertNotNull(edge, "expected service edge is missing");
+    LineageDetails details = JsonUtils.readValue(edge.getJson(), LineageDetails.class);
+    return details.getAssetEdges() == null ? 0 : details.getAssetEdges();
   }
 
   private CollectionDAO.EntityRelationshipObject directEdge(

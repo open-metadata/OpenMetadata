@@ -29,6 +29,7 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
@@ -84,6 +85,14 @@ public class ServiceLineagePipelineRoutingMigration {
   private static final class ChildEdgeCounts {
     private int annotated;
     private int plain;
+
+    /** A contributing child could not be classified, so this pair's plain count is a lower bound. */
+    private boolean uncertain;
+  }
+
+  /** Edges the scan could not attribute to any service pair, which taints every pair. */
+  private static final class ScanIssues {
+    private int unattributed;
   }
 
   enum Outcome {
@@ -95,13 +104,28 @@ public class ServiceLineagePipelineRoutingMigration {
   public static void removeServiceEdgesBypassingPipeline(CollectionDAO collectionDAO) {
     LOG.info("Starting migration: removing service lineage edges that bypass the pipeline service");
 
-    Map<ServicePair, ChildEdgeCounts> counts = countChildEdgesByServicePair(collectionDAO);
+    ScanIssues issues = new ScanIssues();
+    Map<ServicePair, ChildEdgeCounts> counts = countChildEdgesByServicePair(collectionDAO, issues);
+    if (issues.unattributed > 0) {
+      LOG.warn(
+          "{} lineage edges could not be attributed to a service pair, so no direct service edge was"
+              + " repaired - any pair could be missing a contributor and lose an edge it still"
+              + " needs. Resolve the cause above and re-run via openmetadata-ops.sh migrate.",
+          issues.unattributed);
+      return;
+    }
+
     int deleted = 0;
     int recounted = 0;
     int failed = 0;
+    int skipped = 0;
 
     for (Map.Entry<ServicePair, ChildEdgeCounts> entry : counts.entrySet()) {
       if (entry.getValue().annotated == 0) {
+        continue;
+      }
+      if (entry.getValue().uncertain) {
+        skipped++;
         continue;
       }
       try {
@@ -123,12 +147,15 @@ public class ServiceLineagePipelineRoutingMigration {
             + " Run an Elasticsearch/OpenSearch reindex so the lineage graph reflects these rows.",
         deleted,
         recounted);
-    if (failed > 0) {
+    if (failed + skipped > 0) {
       LOG.warn(
-          "{} service pairs could not be repaired and still carry a redundant direct edge or a stale"
+          "{} service pairs were left unrepaired ({} failed, {} skipped because a contributing child"
+              + " edge could not be classified) and still carry a redundant direct edge or a stale"
               + " refcount. This migration is safe to re-run (via openmetadata-ops.sh migrate) once"
               + " the cause above is resolved.",
-          failed);
+          failed + skipped,
+          failed,
+          skipped);
     }
   }
 
@@ -138,7 +165,7 @@ public class ServiceLineagePipelineRoutingMigration {
    * and degrades badly on large lineage tables.
    */
   private static Map<ServicePair, ChildEdgeCounts> countChildEdgesByServicePair(
-      CollectionDAO collectionDAO) {
+      CollectionDAO collectionDAO, ScanIssues issues) {
     Map<ServicePair, ChildEdgeCounts> counts = new HashMap<>();
     Cache<String, Optional<EntityReference>> serviceCache =
         Caffeine.newBuilder().maximumSize(SERVICE_CACHE_SIZE).build();
@@ -157,7 +184,7 @@ public class ServiceLineagePipelineRoutingMigration {
         return counts;
       }
       for (CollectionDAO.EntityRelationshipObject record : batch) {
-        tally(record, serviceCache, counts);
+        tally(record, serviceCache, counts, issues);
       }
       CollectionDAO.EntityRelationshipObject last = batch.getLast();
       fromId = last.getFromId();
@@ -170,12 +197,42 @@ public class ServiceLineagePipelineRoutingMigration {
   private static void tally(
       CollectionDAO.EntityRelationshipObject record,
       Cache<String, Optional<EntityReference>> serviceCache,
-      Map<ServicePair, ChildEdgeCounts> counts) {
+      Map<ServicePair, ChildEdgeCounts> counts,
+      ScanIssues issues) {
     if (record.getRelation() != Relationship.UPSTREAM.ordinal()
         || SERVICE_ENTITY_TYPES.contains(record.getFromEntity())
         || SERVICE_ENTITY_TYPES.contains(record.getToEntity())) {
       return;
     }
+    ServicePair pair = resolveServicePair(record, serviceCache, issues);
+    if (pair == null) {
+      return;
+    }
+    ChildEdgeCounts pairCounts = counts.computeIfAbsent(pair, k -> new ChildEdgeCounts());
+    try {
+      if (isPipelineAnnotated(record.getJson())) {
+        pairCounts.annotated++;
+      } else {
+        pairCounts.plain++;
+      }
+    } catch (Exception e) {
+      // Dropping an unreadable child would let the pair look purely annotated and cost it a direct
+      // edge this child may still be earning, so the pair is left alone instead.
+      pairCounts.uncertain = true;
+      LOG.warn(
+          "Cannot classify lineage edge {} -> {}, leaving service pair {} -> {} unrepaired: {}",
+          record.getFromId(),
+          record.getToId(),
+          pair.fromId(),
+          pair.toId(),
+          e.getMessage());
+    }
+  }
+
+  private static ServicePair resolveServicePair(
+      CollectionDAO.EntityRelationshipObject record,
+      Cache<String, Optional<EntityReference>> serviceCache,
+      ScanIssues issues) {
     try {
       EntityReference fromService =
           serviceOf(record.getFromEntity(), record.getFromId(), serviceCache);
@@ -183,22 +240,23 @@ public class ServiceLineagePipelineRoutingMigration {
       if (fromService == null
           || toService == null
           || fromService.getId().equals(toService.getId())) {
-        return;
+        return null;
       }
-      ChildEdgeCounts pairCounts =
-          counts.computeIfAbsent(
-              new ServicePair(fromService.getId(), toService.getId()), k -> new ChildEdgeCounts());
-      if (isPipelineAnnotated(record.getJson())) {
-        pairCounts.annotated++;
-      } else {
-        pairCounts.plain++;
-      }
+      return new ServicePair(fromService.getId(), toService.getId());
+    } catch (EntityNotFoundException e) {
+      // The asset itself is gone, so this row is an orphan that earns no service edge at all.
+      LOG.debug("Ignoring orphaned lineage edge {} -> {}", record.getFromId(), record.getToId());
+      return null;
     } catch (Exception e) {
+      // Without both services the edge cannot be attributed, and the pair it belonged to is
+      // unknown, so no pair can be trusted this run.
+      issues.unattributed++;
       LOG.warn(
-          "Skipping lineage edge {} -> {}: {}",
+          "Cannot resolve the services behind lineage edge {} -> {}: {}",
           record.getFromId(),
           record.getToId(),
           e.getMessage());
+      return null;
     }
   }
 
