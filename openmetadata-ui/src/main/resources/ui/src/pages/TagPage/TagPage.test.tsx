@@ -93,6 +93,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children, isOpen }) =>
       isOpen ? <div>{children}</div> : null
     ),
+  Skeleton: jest.fn().mockImplementation(() => <span />),
+  Tooltip: jest.fn().mockImplementation(({ children }) => <>{children}</>),
   Typography: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
@@ -190,7 +192,7 @@ jest.mock(
       updateFeed: jest.fn(),
     }),
     __esModule: true,
-    default: 'ActivityFeedProvider',
+    default: ({ children }) => <>{children}</>,
   })
 );
 
@@ -260,7 +262,7 @@ jest.mock('../../components/Modals/StyleModal/StyleModal.component', () => {
   return jest.fn().mockImplementation(() => <div>StyleModal</div>);
 });
 
-jest.mock('../../components/Modals/IconColorModal', () => {
+jest.mock('../../components/Modals/IconColorModal/IconColorModal', () => {
   return jest.fn().mockImplementation(() => <div>IconColorModal</div>);
 });
 

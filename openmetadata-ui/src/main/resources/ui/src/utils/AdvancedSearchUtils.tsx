@@ -11,17 +11,16 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import {
   Field,
   FieldOrGroup,
   ListValues,
-  RenderSettings,
   ValueSource,
 } from '@react-awesome-query-builder/ui';
-import { Plus, Trash01, X } from '@untitledui/icons';
 import { escapeRegExp, isArray, isEmpty } from 'lodash';
 import React from 'react';
+import { Focusable } from 'react-aria-components';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
@@ -32,10 +31,8 @@ import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getTags } from '../rest/tagAPI';
 import { getCountBadge } from '../utils/EntityDisplayPureUtils';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
-import { t } from './i18next/LocalUtil';
 import jsonLogicSearchClassBase from './JSONLogicSearchClassBase';
 import type { QueryBuilderConfigModes } from './queryBuilder/types';
-import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import searchClassBase from './SearchClassBase';
 import { toTagSelectOptions } from './SearchPureUtils';
 
@@ -73,62 +70,6 @@ export const getDropDownItems = (index: string): ExploreQuickFilterField[] => {
   return searchClassBase.getDropDownItems(index);
 };
 
-export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
-  props
-) => {
-  const type = props?.type;
-
-  if (type === 'delRule') {
-    return (
-      <X
-        className="action action--DELETE tw:size-4 tw:cursor-pointer tw:text-fg-quaternary tw:hover:text-fg-error-primary"
-        data-testid="advanced-search-delete-rule"
-        onClick={props?.onClick}
-      />
-    );
-  }
-
-  if (type === 'addRule') {
-    return (
-      <Button
-        className="action action--ADD-RULE"
-        color="secondary"
-        data-testid="advanced-search-add-rule"
-        iconLeading={Plus}
-        size="sm"
-        onPress={() => props?.onClick?.()}>
-        {t('label.add')}
-      </Button>
-    );
-  }
-
-  if (type === 'addGroup') {
-    return (
-      <Button
-        className="action action--ADD-GROUP"
-        color="secondary"
-        data-testid="advanced-search-add-group"
-        iconLeading={Plus}
-        size="sm"
-        onPress={() => props?.onClick?.()}>
-        {t('label.add')}
-      </Button>
-    );
-  }
-
-  if (type === 'delGroup') {
-    return (
-      <Trash01
-        className="action action--DELETE tw:size-4 tw:cursor-pointer tw:text-fg-error-primary"
-        data-testid="advanced-search-delete-group"
-        onClick={props?.onClick as () => void}
-      />
-    );
-  }
-
-  return <></>;
-};
-
 export const generateSearchDropdownLabel = (
   option: SearchDropdownOption,
   checked: boolean,
@@ -164,11 +105,22 @@ export const generateSearchDropdownLabel = (
           </div>
         )}
         <div>
-          <span
-            className="dropdown-option-label tw:truncate tw:block"
-            title={option.label}>
-            <span>{renderSearchLabel(option.label, searchKey)}</span>
-          </span>
+          {/* These labels live inside an Ant `Menu` item whose selection is
+              wired on the item's click. Tooltip's default trigger is an
+              AriaButton whose press handling would swallow that click, so the
+              option could no longer be selected by clicking its text. Wrapping
+              the label in <Focusable> instead makes it consume the tooltip's
+              hover context (so the full label still surfaces on hover) without
+              adding any press handler, so the click bubbles to the menu item.
+              excludeFromTabOrder keeps the label out of the tab order — the
+              menu owns keyboard navigation. */}
+          <Tooltip title={option.label}>
+            <Focusable excludeFromTabOrder>
+              <span className="dropdown-option-label tw:truncate tw:block">
+                <span>{renderSearchLabel(option.label, searchKey)}</span>
+              </span>
+            </Focusable>
+          </Tooltip>
           {option.description && (
             <span
               className="text-xs d-block tw:text-secondary"
@@ -242,7 +194,6 @@ export const getTreeConfig = ({
     : {
         showLabels: false,
         useFriendlyOperatorLabels: true,
-        renderButton: renderQueryBuilderFilterButtons,
       };
 
   if (searchOutputType === SearchOutputType.ElasticSearch) {

@@ -15,24 +15,16 @@ package org.openmetadata.service.security.policyevaluator;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.type.Include.NON_DELETED;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
-import org.openmetadata.schema.entity.teams.Role;
-import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -43,8 +35,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public record SubjectContext(User user, String impersonatedBy, String requestedPersona) {
   private static final int MAX_LOGGED_PERSONA_LENGTH = 64;
-  public static final String TEAM_FIELDS =
-      "defaultRoles, defaultPersona, policies, parents, profile,domains";
 
   public SubjectContext(User user, String impersonatedBy) {
     this(user, impersonatedBy, null);
@@ -233,12 +223,12 @@ public record SubjectContext(User user, String impersonatedBy, String requestedP
 
   /** Returns true if the user of this SubjectContext is under the team hierarchy of parentTeam */
   public boolean isUserUnderTeam(String parentTeam) {
-    for (EntityReference userTeam : listOrEmpty(user.getTeams())) {
-      if (isInTeam(parentTeam, userTeam)) {
-        return true;
-      }
-    }
-    return false;
+    // The subject's own hierarchy is resolved once per user and reused. A rule condition such as
+    // inAnyTeam() or matchTeam() is evaluated for every rule of every policy against every entity
+    // in a listing, so walking the hierarchy here is the difference between one resolution per
+    // request and thousands (#19778).
+    return SubjectCache.getTeamNamesInHierarchy(user.getName(), user.getTeams())
+        .contains(parentTeam);
   }
 
   /** Returns true if any of the resource owners is under the team hierarchy of parentTeam */
@@ -259,8 +249,7 @@ public record SubjectContext(User user, String impersonatedBy, String requestedP
       if (owner.getType().equals(Entity.USER)) {
         result = getSubjectContext(owner.getName()).isUserUnderTeam(parentTeam);
       } else if (owner.getType().equals(Entity.TEAM)) {
-        Team team = Entity.getEntity(Entity.TEAM, owner.getId(), TEAM_FIELDS, Include.NON_DELETED);
-        result = isInTeam(parentTeam, team.getEntityReference());
+        result = isInTeam(parentTeam, owner);
       }
     } catch (Exception ex) {
       // Owner could not be resolved (e.g. a deleted user/team still referenced as an owner).
@@ -274,58 +263,11 @@ public record SubjectContext(User user, String impersonatedBy, String requestedP
 
   /** Return true if the team is part of the hierarchy of parentTeam */
   public static boolean isInTeam(String parentTeam, EntityReference team) {
-    Deque<EntityReference> stack = new ArrayDeque<>();
-    Set<UUID> visitedTeams = new HashSet<>();
-    stack.push(team); // Start with team and see if the parent matches
-    while (!stack.isEmpty()) {
-      try {
-        EntityReference currentTeamRef = stack.pop();
-        // Skip if we've already visited this team to prevent circular dependencies
-        if (visitedTeams.contains(currentTeamRef.getId())) {
-          LOG.warn(
-              "Circular dependency detected in team hierarchy for team: {}. Skipping to prevent infinite loop.",
-              currentTeamRef.getName());
-          continue;
-        }
-        visitedTeams.add(currentTeamRef.getId());
-        Team parent = Entity.getEntity(Entity.TEAM, currentTeamRef.getId(), "parents", NON_DELETED);
-        if (parent.getName().equals(parentTeam)) {
-          return true;
-        }
-        listOrEmpty(parent.getParents())
-            .forEach(stack::push); // Continue to go up the chain of parents
-      } catch (Exception ex) {
-        // Ignore and return false
-      }
-    }
-    return false;
+    return TeamHierarchyResolver.isInTeam(parentTeam, team);
   }
 
   public static List<EntityReference> getRolesForTeams(List<EntityReference> teams) {
-    return getRolesForTeams(teams, new HashSet<>());
-  }
-
-  private static List<EntityReference> getRolesForTeams(
-      List<EntityReference> teams, Set<UUID> visitedTeams) {
-    List<EntityReference> roles = new ArrayList<>();
-    for (EntityReference teamRef : listOrEmpty(teams)) {
-      // Skip if we've already visited this team to prevent circular dependencies
-      if (visitedTeams.contains(teamRef.getId())) {
-        LOG.warn(
-            "Circular dependency detected in team hierarchy for team: {}. Skipping to prevent StackOverflowError.",
-            teamRef.getName());
-        continue;
-      }
-      try {
-        visitedTeams.add(teamRef.getId());
-        Team team = Entity.getEntity(Entity.TEAM, teamRef.getId(), TEAM_FIELDS, NON_DELETED);
-        roles.addAll(team.getDefaultRoles());
-        roles.addAll(getRolesForTeams(team.getParents(), visitedTeams));
-      } catch (Exception ex) {
-        // Ignore and continue
-      }
-    }
-    return roles.stream().distinct().collect(Collectors.toList());
+    return TeamHierarchyResolver.rolesForTeams(teams);
   }
 
   public List<EntityReference> getUserDomains() {
@@ -363,7 +305,10 @@ public record SubjectContext(User user, String impersonatedBy, String requestedP
 
   /** Returns true if the user has any of the roles (either direct or inherited roles) */
   public boolean hasAnyRole(String roles) {
-    return hasRole(user, roles);
+    // Same reasoning as isUserUnderTeam: hasAnyRole() is a rule condition, so it runs once per
+    // rule per entity. Resolve the subject's inherited roles once and answer from the set.
+    return hasRole(user.getRoles(), roles)
+        || SubjectCache.getInheritedRoleNames(user.getName(), user.getTeams()).contains(roles);
   }
 
   /** Returns true if the user has domain-only access role. */
@@ -373,36 +318,9 @@ public record SubjectContext(User user, String impersonatedBy, String requestedP
 
   /** Return true if the given user has any roles the list of roles */
   public static boolean hasRole(User user, String role) {
-    Deque<EntityReference> stack = new ArrayDeque<>();
-    Set<UUID> visitedTeams = new HashSet<>();
-    // If user has one of the roles directly assigned then return true
-    if (hasRole(user.getRoles(), role)) {
-      return true;
-    }
-    listOrEmpty(user.getTeams()).forEach(stack::push); // Continue to go up the chain of parents
-    while (!stack.isEmpty()) {
-      try {
-        EntityReference currentTeamRef = stack.pop();
-        // Skip if we've already visited this team to prevent circular dependencies
-        if (visitedTeams.contains(currentTeamRef.getId())) {
-          LOG.warn(
-              "Circular dependency detected in team hierarchy for team: {}. Skipping to prevent infinite loop.",
-              currentTeamRef.getName());
-          continue;
-        }
-        visitedTeams.add(currentTeamRef.getId());
-        Team parent =
-            Entity.getEntity(Entity.TEAM, currentTeamRef.getId(), TEAM_FIELDS, NON_DELETED);
-        if (hasRole(parent.getDefaultRoles(), role)) {
-          return true;
-        }
-        listOrEmpty(parent.getParents())
-            .forEach(stack::push); // Continue to go up the chain of parents
-      } catch (Exception ex) {
-        // Ignore the exception and return false
-      }
-    }
-    return false;
+    // Direct roles first: a user carrying the role needs no hierarchy resolution at all.
+    return hasRole(user.getRoles(), role)
+        || hasRole(TeamHierarchyResolver.rolesForTeams(user.getTeams()), role);
   }
 
   private static boolean hasRole(List<EntityReference> userRoles, String expectedRole) {
@@ -489,168 +407,6 @@ public record SubjectContext(User user, String impersonatedBy, String requestedP
         rules.add(new CompiledRule(r));
       }
       return rules;
-    }
-  }
-
-  /** RolePolicyIterator goes over policies in a set of roles one by one. */
-  static class RolePolicyIterator implements Iterator<PolicyContext> {
-    // Either User or Team to which the policies from a Role are attached to
-    private final String entityType;
-    // Either User or Team name to which the policies from a Role are attached to
-    private final String entityName;
-    // Index in the iterator points to the current policy being evaluated
-    private int iteratorIndex = 0;
-    // List of policies from the role to evaluate
-    private final List<PolicyIterator> policyIterators = new ArrayList<>();
-
-    RolePolicyIterator(String entityType, String entityName, List<EntityReference> roles) {
-      this.entityType = entityType;
-      this.entityName = entityName;
-      for (EntityReference role : listOrEmpty(roles)) {
-        Role roleEntity =
-            Entity.getEntity(Entity.ROLE, role.getId(), "policies", Include.NON_DELETED);
-        policyIterators.add(
-            new PolicyIterator(entityType, entityName, role.getName(), roleEntity.getPolicies()));
-      }
-    }
-
-    @Override
-    public boolean hasNext() {
-      while (iteratorIndex < policyIterators.size()) {
-        if (policyIterators.get(iteratorIndex).hasNext()) {
-          return true;
-        }
-        iteratorIndex++;
-      }
-      LOG.debug(
-          "iteration over roles attached to entity {}:{} is completed", entityType, entityName);
-      return false;
-    }
-
-    @Override
-    public PolicyContext next() {
-      if (!hasNext()) {
-        throw new NoSuchElementException();
-      }
-      return policyIterators.get(iteratorIndex).next();
-    }
-  }
-
-  /**
-   * A class that allows iterating over policies of a user using iterator of iterators. For a user, the policies in user
-   * roles are visited one by one, followed by policies in the teams that a user belongs to.
-   */
-  static class UserPolicyIterator implements Iterator<PolicyContext> {
-    private final User user;
-    private int iteratorIndex = 0;
-    private final List<Iterator<PolicyContext>> iterators = new ArrayList<>();
-
-    /** Policy iterator for a user */
-    UserPolicyIterator(User user, List<EntityReference> resourceOwners, List<UUID> teamsVisited) {
-      this.user = user;
-
-      // Iterate over policies in user role
-      if (!listOrEmpty(user.getRoles()).isEmpty()) {
-        iterators.add(new RolePolicyIterator(Entity.USER, user.getName(), user.getRoles()));
-      }
-
-      // Next, iterate over policies of teams to which the user belongs to
-      // Note that ** Bots don't inherit policies or default roles from teams **
-      if (!Boolean.TRUE.equals(user.getIsBot())) {
-        for (EntityReference team : user.getTeams()) {
-          iterators.add(new TeamPolicyIterator(team.getId(), teamsVisited, false));
-        }
-      }
-
-      // Finally, iterate over policies of teams that own the resource
-      if (!nullOrEmpty(resourceOwners)) {
-        for (EntityReference resourceOwner : resourceOwners) {
-          if (resourceOwner.getType().equals(Entity.TEAM)) {
-            try {
-              Team team =
-                  Entity.getEntity(
-                      Entity.TEAM, resourceOwner.getId(), TEAM_FIELDS, Include.NON_DELETED);
-              iterators.add(new TeamPolicyIterator(team.getId(), teamsVisited, true));
-            } catch (Exception ex) {
-              // Ignore
-            }
-          }
-        }
-      }
-    }
-
-    @Override
-    public boolean hasNext() {
-      while (iteratorIndex < iterators.size()) {
-        if (iterators.get(iteratorIndex).hasNext()) {
-          return true;
-        }
-        iteratorIndex++;
-      }
-      LOG.debug("Subject {} policy iteration done", user.getName());
-      return false;
-    }
-
-    @Override
-    public PolicyContext next() {
-      if (!hasNext()) {
-        throw new NoSuchElementException();
-      }
-      return iterators.get(iteratorIndex).next();
-    }
-  }
-
-  /**
-   * A class that allows iterating over policies of a team using iterator of iterators. For a team, the policies in team
-   * roles are visited one by one, followed by the policies in the parent teams.
-   */
-  static class TeamPolicyIterator implements Iterator<PolicyContext> {
-    private int iteratorIndex = 0;
-    private final List<Iterator<PolicyContext>> iterators = new ArrayList<>();
-
-    /** Policy iterator for a team */
-    TeamPolicyIterator(UUID teamId, List<UUID> teamsVisited, boolean skipRoles) {
-      Team team = Entity.getEntity(Entity.TEAM, teamId, TEAM_FIELDS, Include.NON_DELETED);
-
-      // If a team is already visited (because user can belong to multiple teams
-      // and a team can belong to multiple teams) then don't visit the roles/policies of that team
-      // This also protects against circular dependencies in team hierarchy
-      if (!teamsVisited.contains(teamId)) {
-        teamsVisited.add(teamId);
-        if (!skipRoles && team.getDefaultRoles() != null) {
-          iterators.add(
-              new RolePolicyIterator(Entity.TEAM, team.getName(), team.getDefaultRoles()));
-        }
-        if (team.getPolicies() != null) {
-          iterators.add(new PolicyIterator(Entity.TEAM, team.getName(), null, team.getPolicies()));
-        }
-        for (EntityReference parentTeam : listOrEmpty(team.getParents())) {
-          iterators.add(new TeamPolicyIterator(parentTeam.getId(), teamsVisited, skipRoles));
-        }
-      } else {
-        LOG.warn(
-            "Circular dependency detected in team hierarchy for team: {}. Skipping to prevent infinite loop.",
-            team.getName());
-      }
-    }
-
-    @Override
-    public boolean hasNext() {
-      while (iteratorIndex < iterators.size()) {
-        if (iterators.get(iteratorIndex).hasNext()) {
-          return true;
-        }
-        iteratorIndex++;
-      }
-      return false;
-    }
-
-    @Override
-    public PolicyContext next() {
-      if (!hasNext()) {
-        throw new NoSuchElementException();
-      }
-      return iterators.get(iteratorIndex).next();
     }
   }
 }

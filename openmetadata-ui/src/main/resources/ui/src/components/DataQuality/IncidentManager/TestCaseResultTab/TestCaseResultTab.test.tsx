@@ -48,6 +48,15 @@ const mockTestCaseData: TestCase = {
     fullyQualifiedName:
       'sample_data.ecommerce_db.shopify.dim_address.testSuite',
   },
+  testSuites: [
+    {
+      id: 'fe44ef1a-1b83-4872-bef6-fbd1885986b8',
+      name: 'sample_data.ecommerce_db.shopify.dim_address.testSuite',
+      fullyQualifiedName:
+        'sample_data.ecommerce_db.shopify.dim_address.testSuite',
+      basic: true,
+    },
+  ],
   parameterValues: [
     {
       name: 'columnCount',
@@ -167,6 +176,15 @@ jest.mock('../../../../rest/testAPI', () => ({
   },
 }));
 
+const mockTestSuitesCard = jest.fn();
+jest.mock('./TestCaseTestSuitesCard/TestCaseTestSuitesCard', () => {
+  return jest.fn().mockImplementation((props) => {
+    mockTestSuitesCard(props);
+
+    return <div data-testid="test-suites-container">TestSuitesCard</div>;
+  });
+});
+
 // Mock TagsContainerV2 to capture props
 const mockTagsContainerV2 = jest.fn();
 jest.mock('../../../Tag/TagsContainerV2/TagsContainerV2', () => {
@@ -193,6 +211,7 @@ describe('TestCaseResultTab', () => {
     mockUseTestCaseStore.testCase.useDynamicAssertion = undefined;
     mockUseTestCaseStore.testCase.computePassedFailedRowCount = undefined;
     mockUseTestCaseStore.testCase.deleted = undefined;
+    mockUseTestCaseStore.testCase.dataQualityDimension = undefined;
     mockUseTestCaseStore.isTabExpanded = true;
     mockShouldRenderDefaultGraph.mockReturnValue(true);
   });
@@ -355,6 +374,41 @@ describe('TestCaseResultTab', () => {
     expect(screen.getByTestId('dynamic-assertion')).toBeInTheDocument();
     expect(screen.getByText('label.compute-row-count')).toBeInTheDocument();
     expect(screen.queryByText('columnCount')).not.toBeInTheDocument();
+  });
+
+  it('shows the test case data quality dimension in the configuration card', async () => {
+    mockUseTestCaseStore.testCase.dataQualityDimension = {
+      id: 'dim-1',
+      type: 'dataQualityDimension',
+      name: 'Timeliness',
+      displayName: 'Timeliness of data',
+    };
+
+    render(<TestCaseResultTab />);
+
+    await screen.findByTestId('test-case-configuration-card');
+
+    expect(
+      screen.getByText('label.data-quality-dimension')
+    ).toBeInTheDocument();
+    expect(screen.getByText('Timeliness of data')).toBeInTheDocument();
+  });
+
+  it('does not fall back to the test definition dimension', async () => {
+    mockGetTestDefinitionById.mockResolvedValue({
+      id: '48063740-ac35-4854-9ab3-b1b542c820fe',
+      name: 'tableColumnCountToEqual',
+      dataQualityDimension: 'Accuracy',
+    });
+
+    render(<TestCaseResultTab />);
+
+    await screen.findByTestId('test-case-configuration-card');
+
+    expect(
+      screen.queryByText('label.data-quality-dimension')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Accuracy')).not.toBeInTheDocument();
   });
 
   it('Should show edit button, for useDynamicAssertion', async () => {
@@ -733,6 +787,30 @@ describe('TestCaseResultTab', () => {
       expect(
         screen.queryByTestId('test-case-configuration-card')
       ).not.toBeInTheDocument();
+    });
+
+    it('lists the test suites in the rail, between the description and the tags', async () => {
+      render(<TestCaseResultTab />);
+
+      const rail = await screen.findByTestId('test-case-rail');
+      const testSuites = await screen.findByTestId('test-suites-container');
+      const description = await screen.findByText('Description');
+      const tags = await screen.findByTestId('tags-container-Classification');
+
+      expect(rail).toContainElement(testSuites);
+      expect(
+        description.compareDocumentPosition(testSuites) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+      expect(
+        testSuites.compareDocumentPosition(tags) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+      expect(mockTestSuitesCard).toHaveBeenCalledWith(
+        expect.objectContaining({
+          testSuites: mockUseTestCaseStore.testCase.testSuites,
+        })
+      );
     });
 
     it('renders the description in the rail, not the main column', async () => {

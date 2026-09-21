@@ -60,7 +60,9 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
     def _evaluate_test_condition(self, metric_values: dict, test_params: dict | None = None) -> TestEvaluation:
         """Evaluate the uniqueness test condition and calculate derived values
 
-        For uniqueness test: all values should be unique, meaning COUNT == UNIQUE_COUNT
+        For uniqueness test: the duplicates (COUNT - UNIQUE_COUNT) must stay within the
+        failure threshold, counted against the non-null values. With the default threshold,
+        that means COUNT == UNIQUE_COUNT.
 
         Args:
             metric_values: Dictionary with keys from Metrics enum names
@@ -69,7 +71,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
 
         Returns:
             TestEvaluation: TypedDict with keys:
-                - matched: bool - whether test passed (count == unique_count)
+                - matched: bool - whether the duplicates are within the threshold
                 - passed_rows: int - number of unique values
                 - failed_rows: int - number of duplicate values
                 - total_rows: int - total row count
@@ -78,7 +80,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         unique_count = metric_values[Metrics.uniqueCount.name]
 
         return {
-            "matched": count == unique_count,
+            "matched": self._apply_row_threshold(count - unique_count, count),
             "passed_rows": unique_count,
             "failed_rows": count - unique_count,
             "total_rows": count,
