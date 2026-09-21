@@ -41908,7 +41908,6 @@
                       "description": "Authentication method: username/password or SSH private key",
                       "oneOf": [
                         {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "title": "Username/Password Authentication",
                           "description": "Username and password authentication for SFTP",
                           "type": "object",
@@ -41933,7 +41932,6 @@
                           "additionalProperties": false
                         },
                         {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "title": "Private Key Authentication",
                           "description": "SSH private key authentication for SFTP",
                           "type": "object",
@@ -84450,7 +84448,6 @@
                       "description": "Authentication method: username/password or SSH private key",
                       "oneOf": [
                         {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "title": "Username/Password Authentication",
                           "description": "Username and password authentication for SFTP",
                           "type": "object",
@@ -84475,7 +84472,6 @@
                           "additionalProperties": false
                         },
                         {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "title": "Private Key Authentication",
                           "description": "SSH private key authentication for SFTP",
                           "type": "object",
