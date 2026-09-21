@@ -59,6 +59,8 @@ class GlueTable(BaseModel):
     Description: Optional[str] = None  # noqa: UP045
     StorageDescriptor: Optional[StorageDetails] = StorageDetails()  # noqa: UP045
     PartitionKeys: Optional[List[Column]] = []  # noqa: UP006, UP045
+    ViewOriginalText: Optional[str] = None  # noqa: UP045
+    ViewExpandedText: Optional[str] = None  # noqa: UP045
 
 
 class TablePage(BaseModel):
