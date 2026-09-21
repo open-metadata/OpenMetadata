@@ -39,7 +39,7 @@ const DqFilterChip = ({
     return (
       <GlossaryTermPicker
         commitMode="staged"
-        data-testid={`search-dropdown-${filter.searchKey}`}
+        data-testid={`search-dropdown-${filter.label}`}
         label={filter.label}
         triggerVariant="button"
         value={fqnsToGlossaryTags(filter.selectedFqns)}

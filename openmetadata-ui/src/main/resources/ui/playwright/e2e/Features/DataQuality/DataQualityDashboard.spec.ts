@@ -570,7 +570,7 @@ test.describe(
         // The glossary filter is the shared tree picker, which owns its search
         // box and keys its rows by FQN.
         const glossarySearch = page.getByTestId(
-          'search-dropdown-glossaryTerms-search'
+          'search-dropdown-Glossary Term-search'
         );
         await glossarySearch.click();
         const glossaryTermSearchApi = page.waitForResponse(

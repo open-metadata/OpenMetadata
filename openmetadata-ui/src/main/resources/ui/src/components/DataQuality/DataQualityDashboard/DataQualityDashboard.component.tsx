@@ -140,7 +140,7 @@ const DataQualityDashboard = ({
               return (
                 <GlossaryTermPicker
                   commitMode="staged"
-                  data-testid={`search-dropdown-${filter.searchKey}`}
+                  data-testid={`search-dropdown-${filter.label}`}
                   key={filter.key}
                   label={filter.label}
                   triggerVariant="button"
