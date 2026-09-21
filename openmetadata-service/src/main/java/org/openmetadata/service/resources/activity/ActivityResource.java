@@ -188,6 +188,13 @@ public class ActivityResource {
           @Max(200)
           @QueryParam("limit")
           int limit) {
+    // A listing scoped to one entity returns that entity's change history (old and new field
+    // values), so it requires the same ViewBasic the /entity/{type}/{id} route enforces —
+    // otherwise it is a query-param bypass of that check (issue #18158).
+    if (entityType != null && entityId != null) {
+      authorizeTargetView(
+          securityContext, new ResourceContext<>(entityType, entityId, null, Include.ALL));
+    }
     return activityStreamRepository.listActivityEvents(
         securityContext, entityType, entityId, actorId, domainsParam, domain, days, limit);
   }
