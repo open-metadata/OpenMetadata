@@ -1267,15 +1267,28 @@ export const addTagsAndGlossaryToDomain = async (
       .includes(`/api/v1/${isDomain ? 'domains' : 'dataProducts'}/`) &&
     response.request().method() === 'PATCH';
 
-  // Add classification tag (still uses the old tag-select form)
+  // Add classification tag via ClassificationTagPicker
   const tagsContainer = '[data-testid="tags-container"]';
   await page.locator(`${tagsContainer} [data-testid="add-tag"]`).click();
-  const tagInput = page.locator(`${tagsContainer} #tagsForm_tags`);
-  await tagInput.click();
-  await tagInput.fill(tagFqn);
-  await page.getByTestId(`tag-${tagFqn}`).click();
+
+  await expect(
+    page.getByTestId('classification-tag-picker-search')
+  ).toBeVisible();
+
+  const searchTagResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(tagFqn)) &&
+      response.request().method() === 'GET'
+  );
+  await page.getByTestId('classification-tag-picker-search').fill(tagFqn);
+  await searchTagResponse;
+  await page.getByTestId(`tree-node-${tagFqn}`).click();
+
+  await page.getByTestId('update-btn').waitFor({ state: 'visible' });
   const tagPatchResponse = page.waitForResponse(patchUrl);
-  await page.getByTestId('saveAssociatedTag').click();
+  await expect(page.getByTestId('update-btn')).toBeEnabled();
+  await page.getByTestId('update-btn').click();
   await tagPatchResponse;
 
   // Add glossary term (uses the new GlossaryTermPicker)

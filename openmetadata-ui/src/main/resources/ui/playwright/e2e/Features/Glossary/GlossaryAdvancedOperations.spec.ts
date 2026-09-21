@@ -1128,12 +1128,23 @@ test.describe('Glossary Advanced Operations', () => {
         .getByTestId('tags-container')
         .getByTestId('edit-button')
         .click();
-      await page.getByTestId('tag-selector').waitFor();
 
-      // Remove the tag by clicking its close button
-      await page.getByTestId('remove-tags').locator('svg').click();
+      await expect(
+        page.getByTestId('classification-tag-picker-search')
+      ).toBeVisible();
 
-      await page.getByTestId('saveAssociatedTag').click();
+      // Search for the tag and uncheck it
+      const searchRemove = page.waitForResponse(
+        `/api/v1/search/query?q=*${encodeURIComponent('Sensitive')}*`
+      );
+      await page.getByTestId('classification-tag-picker-search').fill('Sensitive');
+      await searchRemove;
+
+      await page.getByTestId('tree-node-PII.Sensitive').click();
+
+      await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+      await expect(page.getByTestId('update-btn')).toBeEnabled();
+      await page.getByTestId('update-btn').click();
 
       await expect(page.getByRole('heading')).toContainText(
         'Would you like to proceed with updating the tags?'

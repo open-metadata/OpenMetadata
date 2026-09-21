@@ -214,17 +214,14 @@ test.describe(
           .fill(NEW_TABLE_TEST_CASE.description);
 
         // Add tags to test case
-        await page.click('[data-testid="tags-selector"] input');
         const tagsSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=tag*`
         );
-        await page.fill(
-          '[data-testid="tags-selector"] input',
-          testTag1.data.name
-        );
+        await page.getByTestId('tags-input').click();
+        await page.getByTestId('search-input').fill(testTag1.data.name);
         await tagsSearchResponse;
         await page
-          .getByTestId(`tag-option-${testTag1.responseData.fullyQualifiedName}`)
+          .getByTestId(testTag1.responseData.fullyQualifiedName)
           .click();
 
         await dismissTagSuggestions(page);
@@ -269,23 +266,18 @@ test.describe(
 
         // Remove existing tag and add new one
         await page
-          .locator(
-            '[data-testid="tags-selector"] [data-testid="tag-suggestion"] button'
-          )
-          .first()
+          .locator('[data-testid="tags-selector"] [data-testid="filter-chip"]')
+          .getByRole('button')
           .click();
 
-        await page.click('[data-testid="tags-selector"] input');
         const newTagsSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=tag*`
         );
-        await page.fill(
-          '[data-testid="tags-selector"] input',
-          testTag2.data.name
-        );
+        await page.getByTestId('tags-input').click();
+        await page.getByTestId('search-input').fill(testTag2.data.name);
         await newTagsSearchResponse;
         await page
-          .getByTestId(`tag-option-${testTag2.responseData.fullyQualifiedName}`)
+          .getByTestId(testTag2.responseData.fullyQualifiedName)
           .click();
 
         await dismissTagSuggestions(page);
@@ -426,17 +418,14 @@ test.describe(
           .fill(NEW_COLUMN_TEST_CASE.description);
 
         // Add tags to column test case
-        await page.click('[data-testid="tags-selector"] input');
         const columnTagsSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=tag*`
         );
-        await page.fill(
-          '[data-testid="tags-selector"] input',
-          testTag1.data.name
-        );
+        await page.getByTestId('tags-input').click();
+        await page.getByTestId('search-input').fill(testTag1.data.name);
         await columnTagsSearchResponse;
         await page
-          .getByTestId(`tag-option-${testTag1.responseData.fullyQualifiedName}`)
+          .getByTestId(testTag1.responseData.fullyQualifiedName)
           .click();
 
         await dismissTagSuggestions(page);
@@ -475,22 +464,18 @@ test.describe(
 
         // Remove existing tag and add new one for column test case
         await page
-          .locator(
-            '[data-testid="tags-selector"] [data-testid="tag-suggestion"] button'
-          )
-          .first()
+          .locator('[data-testid="tags-selector"] [data-testid="filter-chip"]')
+          .getByRole('button')
           .click();
-        await page.click('[data-testid="tags-selector"] input');
+
         const columnNewTagsSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=tag*`
         );
-        await page.fill(
-          '[data-testid="tags-selector"] input',
-          testTag2.data.name
-        );
+        await page.getByTestId('tags-input').click();
+        await page.getByTestId('search-input').fill(testTag2.data.name);
         await columnNewTagsSearchResponse;
         await page
-          .getByTestId(`tag-option-${testTag2.responseData.fullyQualifiedName}`)
+          .getByTestId(testTag2.responseData.fullyQualifiedName)
           .click();
 
         await dismissTagSuggestions(page);

@@ -70,6 +70,7 @@ const TagSelector: FC<TagSelectorProps> = ({
   popoverClassName,
   isOpen,
   onOpenChange,
+  'data-testid': dataTestId,
 }) => {
   const { t } = useTranslation();
   const [options, setOptions] = useState<FilterSelectOption[]>([]);
@@ -78,7 +79,6 @@ const TagSelector: FC<TagSelectorProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const tagCacheRef = useRef<Map<string, TagLabel>>(new Map());
   const requestIdRef = useRef(0);
-  const hasInitializedRef = useRef(false);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -146,16 +146,9 @@ const TagSelector: FC<TagSelectorProps> = ({
     [debouncedSearch]
   );
 
-  const handleOpenChange = useCallback(
-    (open: boolean) => {
-      if (open && !hasInitializedRef.current) {
-        hasInitializedRef.current = true;
-        void fetchTags('');
-      }
-      onOpenChange?.(open);
-    },
-    [fetchTags, onOpenChange]
-  );
+  useEffect(() => {
+    void fetchTags('');
+  }, [fetchTags]);
 
   const selectedValues = useMemo(() => value.map((tag) => tag.tagFQN), [value]);
 
@@ -184,8 +177,9 @@ const TagSelector: FC<TagSelectorProps> = ({
     <div
       aria-disabled={disabled || undefined}
       className={`tw:flex tw:flex-col tw:gap-1.5 tw:w-full${
-        disabled ? ' tw:pointer-events-none tw:opacity-50' : ''
+        disabled ? ' tw:opacity-50' : ''
       }`}
+      {...(disabled ? { inert: '' } : {})}
       ref={containerRef}>
       {label !== undefined && (
         <FormItemLabel label={resolvedLabel} required={required} />
@@ -204,10 +198,11 @@ const TagSelector: FC<TagSelectorProps> = ({
         popoverStyle={popoverWidth ? { width: popoverWidth } : undefined}
         resolveMissingLabel={handleResolveMissingLabel}
         selectedValues={selectedValues}
+        data-testid={dataTestId}
         triggerDisplay={triggerDisplay}
         triggerVariant={triggerVariant}
         onChange={handleChange}
-        onOpenChange={handleOpenChange}
+        onOpenChange={onOpenChange}
         onSearch={debouncedSearch}
       />
     </div>

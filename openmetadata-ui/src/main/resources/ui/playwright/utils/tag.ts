@@ -641,14 +641,13 @@ export const selectTagInTagSuggestion = async (
   {
     searchTerm,
     tagFqn,
+    triggerTestId = 'tags-input',
   }: {
     searchTerm: string;
     tagFqn: string;
+    triggerTestId?: string;
   }
 ) => {
-  const tagInput = page.getByRole('combobox', { name: 'Tags' });
-  const tagOption = page.getByTestId(`tag-option-${tagFqn}`);
-
   const tagSearchResponse = page.waitForResponse((response) => {
     const url = response.url();
     return (
@@ -658,11 +657,9 @@ export const selectTagInTagSuggestion = async (
     );
   });
 
-  await tagInput.click();
-  await tagInput.fill(searchTerm);
+  await page.getByTestId(triggerTestId).click();
+  await page.getByTestId('search-input').fill(searchTerm);
   await tagSearchResponse;
 
-  await tagOption.click();
-  await page.keyboard.press('Escape');
-  await tagOption.waitFor({ state: 'hidden' });
+  await page.getByTestId(tagFqn).click();
 };

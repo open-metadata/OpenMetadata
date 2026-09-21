@@ -318,27 +318,23 @@ test.describe('Glossary Remove Operations', () => {
       // Click add tag button in tags section
       await page.getByTestId('tags-container').getByTestId('add-tag').click();
 
-      // Wait for tag selector form
-      await page.locator('#tagsForm_tags').waitFor({ state: 'visible' });
+      // Wait for ClassificationTagPicker search
+      await expect(
+        page.getByTestId('classification-tag-picker-search')
+      ).toBeVisible();
 
       // Search and select tag
       const searchTags = page.waitForResponse(
         `/api/v1/search/query?q=*${encodeURIComponent(tagName)}*`
       );
-      await page.locator('#tagsForm_tags').fill(tagName);
+      await page.getByTestId('classification-tag-picker-search').fill(tagName);
       await searchTags;
 
-      await page.getByTestId(`tag-${tagFqn}`).click();
+      await page.getByTestId(`tree-node-${tagFqn}`).click();
 
-      // Wait for save button and click
-      await page
-        .locator('.ant-select-dropdown')
-        .getByTestId('saveAssociatedTag')
-        .waitFor({ state: 'visible' });
-
-      await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
-
-      await page.getByTestId('saveAssociatedTag').click();
+      await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+      await expect(page.getByTestId('update-btn')).toBeEnabled();
+      await page.getByTestId('update-btn').click();
 
       await expect(page.getByRole('heading')).toContainText(
         'Would you like to proceed with updating the tags?'
@@ -359,22 +355,22 @@ test.describe('Glossary Remove Operations', () => {
         .getByTestId('edit-button')
         .click();
 
-      // Remove tag by clicking the X icon
-      await page
-        .getByTestId(`selected-tag-${tagFqn}`)
-        .getByTestId('remove-tags')
-        .locator('svg')
-        .click();
+      // Search for the tag to uncheck it
+      await expect(
+        page.getByTestId('classification-tag-picker-search')
+      ).toBeVisible();
 
-      // Save the changes
-      await page
-        .locator('.ant-select-dropdown')
-        .getByTestId('saveAssociatedTag')
-        .waitFor({ state: 'visible' });
+      const searchRemove = page.waitForResponse(
+        `/api/v1/search/query?q=*${encodeURIComponent(tagName)}*`
+      );
+      await page.getByTestId('classification-tag-picker-search').fill(tagName);
+      await searchRemove;
 
-      await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+      await page.getByTestId(`tree-node-${tagFqn}`).click();
 
-      await page.getByTestId('saveAssociatedTag').click();
+      await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+      await expect(page.getByTestId('update-btn')).toBeEnabled();
+      await page.getByTestId('update-btn').click();
 
       await expect(page.getByRole('heading')).toContainText(
         'Would you like to proceed with updating the tags?'

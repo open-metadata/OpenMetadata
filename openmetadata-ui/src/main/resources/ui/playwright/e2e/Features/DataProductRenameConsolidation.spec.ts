@@ -269,20 +269,29 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       await page.getByTestId('documentation').click();
       await page.getByTestId('tags-container').getByTestId('add-tag').click();
 
-      await page
-        .locator('[data-testid="tag-selector"] input')
-        .fill(tag.data.name);
+      await expect(
+        page.getByTestId('classification-tag-picker-search')
+      ).toBeVisible();
+
+      const tagSearchResponse = page.waitForResponse(
+        `/api/v1/search/query?q=*${encodeURIComponent(tag.data.name)}*`
+      );
+      await page.getByTestId('classification-tag-picker-search').fill(tag.data.name);
+      await tagSearchResponse;
 
       await page
-        .locator(`[data-testid="tag-${tag.responseData.fullyQualifiedName}"]`)
+        .getByTestId(`tree-node-${tag.responseData.fullyQualifiedName}`)
         .click();
+
+      await page.getByTestId('update-btn').waitFor({ state: 'visible' });
 
       const patchResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/dataProducts/') &&
           response.request().method() === 'PATCH'
       );
-      await page.getByTestId('saveAssociatedTag').click();
+      await expect(page.getByTestId('update-btn')).toBeEnabled();
+      await page.getByTestId('update-btn').click();
       await patchResponse;
 
       // Step 3: Verify assets

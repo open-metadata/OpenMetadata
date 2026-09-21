@@ -113,26 +113,23 @@ export const updateTags = async (
     await editTagBtn.click();
   }
 
-  await page.waitForSelector('[data-testid="tag-selector"] input', {
-    state: 'visible',
-  });
+  await expect(page.getByTestId('classification-tag-picker-search')).toBeVisible();
+
   const searchTagResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes(`q=*${data.tag}*`) &&
+      response.url().includes(encodeURIComponent(data.tag)) &&
       response.request().method() === 'GET'
   );
-  await page.fill('[data-testid="tag-selector"] input', data.tag);
+  await page.getByTestId('classification-tag-picker-search').fill(data.tag);
   await searchTagResponse;
-  await page.click(`[data-testid='tag-${data.tagFqn}']`);
 
-  await expect(
-    page.locator(
-      `[data-testid="tag-selector"] [data-testid="selected-tag-${data.tagFqn}"]`
-    )
-  ).toBeVisible();
+  await page.getByTestId(`tree-node-${data.tagFqn}`).click();
 
-  await page.locator('[data-testid="saveAssociatedTag"]').click();
+  await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+  await expect(page.getByTestId('update-btn')).toBeEnabled();
+  await page.getByTestId('update-btn').click();
+
   const response = await updateKnowledgePage;
   expect(response.status()).toBe(200);
 };

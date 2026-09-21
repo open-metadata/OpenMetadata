@@ -390,6 +390,7 @@ const TestDetailsCard: FC<{
       {({ field }) => (
         <div data-testid="tags-selector" id="root/tags" {...tagsDoc}>
           <TagSelector
+            data-testid="tags-input"
             label={t('label.tag-plural')}
             placeholder={t('label.select-field', {
               field: t('label.tag-plural'),

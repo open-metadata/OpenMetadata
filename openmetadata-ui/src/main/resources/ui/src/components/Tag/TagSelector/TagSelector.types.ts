@@ -32,4 +32,5 @@ export interface TagSelectorProps {
   popoverClassName?: string;
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+  'data-testid'?: string;
 }

@@ -17,7 +17,6 @@ import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import tagClassBase from '../../../utils/TagClassBase';
 import TagSelector from './TagSelector';
 
-// Capture FilterSelect props for assertion
 let capturedFilterSelectProps: Record<string, unknown> = {};
 
 jest.mock('@openmetadata/ui-core-components', () => ({

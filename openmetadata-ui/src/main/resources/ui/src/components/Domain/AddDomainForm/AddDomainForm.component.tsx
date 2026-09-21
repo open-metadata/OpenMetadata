@@ -1023,6 +1023,7 @@ const AddDomainForm = ({
         {({ field }) => (
           <TagSelector
             className="tw:w-full"
+            data-testid="tags-input"
             label={t('label.tag-plural')}
             placeholder={t('label.select-field', {
               field: t('label.tag-plural'),
