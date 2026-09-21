@@ -83,7 +83,6 @@ const IncidentGroupsView = ({ children }: IncidentGroupsViewProps) => {
     <Box className="tw:gap-4" data-testid="incident-groups" direction="col">
       <Box className="tw:items-center tw:justify-between tw:gap-2">
         <Typography
-          inline
           className="tw:text-secondary"
           data-testid="incident-groups-count"
           size="text-sm"

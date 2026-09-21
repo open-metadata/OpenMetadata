@@ -14,16 +14,19 @@
 import axios from 'axios';
 import { IncidentGroupBy } from '../generated/tests/testCaseIncidentGroup';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
+import APIClient from './axiosClient';
 import {
   bulkCreateResolutionStatus,
   getListTestCaseIncidentStatus,
   listIncidentGroups,
 } from './incidentManagerAPI';
-import APIClient from './index';
 
-jest.mock('./index', () => ({
-  get: jest.fn(),
-  put: jest.fn(),
+jest.mock('./axiosClient', () => ({
+  __esModule: true,
+  default: {
+    get: jest.fn(),
+    put: jest.fn(),
+  },
 }));
 
 const INCIDENT_URL = '/dataQuality/testCases/testCaseIncidentStatus';
