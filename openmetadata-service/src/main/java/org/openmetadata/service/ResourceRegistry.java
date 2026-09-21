@@ -59,6 +59,7 @@ public class ResourceRegistry {
     mapFieldOperation(MetadataOperation.EDIT_DESCRIPTION, Entity.FIELD_DESCRIPTION);
     mapFieldOperation(MetadataOperation.EDIT_DISPLAY_NAME, Entity.FIELD_DISPLAY_NAME);
     mapFieldOperation(MetadataOperation.EDIT_CERTIFICATION, Entity.FIELD_CERTIFICATION);
+    mapFieldOperation(MetadataOperation.EDIT_DOMAINS, Entity.FIELD_DOMAINS);
 
     // Set up "all" resource descriptor that includes operations for all entities
     List<MetadataOperation> allOperations = Arrays.asList(MetadataOperation.values());
@@ -110,6 +111,9 @@ public class ResourceRegistry {
     }
     if (entityFields.contains(Entity.FIELD_CERTIFICATION)) {
       operations.add(MetadataOperation.EDIT_CERTIFICATION);
+    }
+    if (entityFields.contains(Entity.FIELD_DOMAINS)) {
+      operations.add(MetadataOperation.EDIT_DOMAINS);
     }
     return new ArrayList<>(operations);
   }
