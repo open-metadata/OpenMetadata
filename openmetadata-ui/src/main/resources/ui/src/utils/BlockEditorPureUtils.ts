@@ -72,7 +72,7 @@ const STRUCTURAL_HTML_SELECTOR = 'ul, ol, table';
 
 export const isHTMLString = (content: string) => {
   const commonHtmlTags =
-    /<(p|div|span|a|ul|ol|li|h[1-6]|br|strong|em|code|pre)[>\s]/i;
+    /<(p|div|span|a|ul|ol|li|table|h[1-6]|br|strong|em|code|pre)[>\s]/i;
 
   if (!commonHtmlTags.test(content)) {
     return false;

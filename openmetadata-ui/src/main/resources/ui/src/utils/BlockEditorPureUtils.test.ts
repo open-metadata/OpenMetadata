@@ -116,6 +116,14 @@ describe('isHTMLString: already-rendered HTML', () => {
     ).toBe(true);
   });
 
+  it('should treat a table as HTML even without a wrapping block tag', () => {
+    // `table` has to be in the cheap tag pre-check too, or a bare table never
+    // reaches the DOM query that would recognise it.
+    expect(isHTMLString('<table><tr><td>**Value**</td></tr></table>')).toBe(
+      true
+    );
+  });
+
   it('should not misread markdown characters in attributes as markdown', () => {
     expect(
       isHTMLString('<p><a href="https://x.dev/a__b__c">link</a></p>')
