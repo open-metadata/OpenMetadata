@@ -17,8 +17,6 @@ import type {
 } from '@react-awesome-query-builder/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Key } from 'react-aria-components';
-import GlossaryTermQueryWidget from './GlossaryTermQueryWidget';
-import { isGlossaryTermQueryField } from './glossaryTermQueryField';
 
 const toSelectItems = (
   listValues: MultiSelectWidgetProps['listValues']
@@ -47,10 +45,8 @@ const OMMultiSelectWidget = ({
   listValues,
   asyncFetch,
   useAsyncSearch,
-  fieldDefinition,
 }: MultiSelectWidgetProps) => {
   const valueArray = Array.isArray(value) ? value.map(String) : [];
-  const isGlossaryTerm = isGlossaryTermQueryField(fieldDefinition);
   const isAsync = Boolean(useAsyncSearch && asyncFetch);
 
   const staticItems = useMemo(
@@ -139,20 +135,6 @@ const OMMultiSelectWidget = ({
 
     [valueArray.join(','), setValue]
   );
-
-  if (isGlossaryTerm) {
-    return (
-      <GlossaryTermQueryWidget
-        multiple
-        placeholder={placeholder}
-        readonly={readonly}
-        value={valueArray}
-        onChange={(next) =>
-          setValue(Array.isArray(next) && next.length > 0 ? next : null)
-        }
-      />
-    );
-  }
 
   return (
     // `tw:contents` keeps the wrapper out of layout: it is a test handle and nothing else.

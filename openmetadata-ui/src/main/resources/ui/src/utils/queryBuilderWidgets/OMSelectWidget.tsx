@@ -17,8 +17,6 @@ import type {
 } from '@react-awesome-query-builder/ui';
 import type { FC } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import GlossaryTermQueryWidget from './GlossaryTermQueryWidget';
-import { isGlossaryTermQueryField } from './glossaryTermQueryField';
 
 const toSelectItems = (
   listValues: SelectWidgetProps['listValues']
@@ -51,7 +49,6 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
   asyncFetch,
   useAsyncSearch,
   field,
-  fieldDefinition,
 }) => {
   const staticItems = toSelectItems(listValues);
   // Seed with the current value as a placeholder so the widget shows something while the async fetch is in-flight.
@@ -146,18 +143,6 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
           )}
         </Select.ComboBox>
       </div>
-    );
-  }
-
-  if (isGlossaryTermQueryField(fieldDefinition)) {
-    return (
-      <GlossaryTermQueryWidget
-        multiple={false}
-        placeholder={placeholder}
-        readonly={readonly}
-        value={value as string | null | undefined}
-        onChange={(next) => setValue(next as string)}
-      />
     );
   }
 

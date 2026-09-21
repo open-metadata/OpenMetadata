@@ -25,12 +25,12 @@ import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import { getSelectedOptionLabelString } from '../../../utils/AdvancedSearchPureUtils';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
-import './data-quality-dashboard.style.less';
 import {
   fqnsToGlossaryTags,
   glossaryTagsToFqns,
 } from '../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
 import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
+import './data-quality-dashboard.style.less';
 import { DqDashboardChartFilters } from './DataQualityDashboard.interface';
 import DqDashboardSectionContent, {
   DQ_DASHBOARD_SECTIONS,

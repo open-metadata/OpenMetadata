@@ -25,11 +25,7 @@ interface GlossaryTermQueryWidgetProps {
   onChange: (value: string | string[] | undefined) => void;
 }
 
-/**
- * Renders the shared glossary tree inside a query-builder rule. Only the control
- * changes: the widget still hands RAQB the same FQN string (or array of them),
- * so operator handling and the ES/JSONLogic serialisation are untouched.
- */
+// Swaps only the control: RAQB still gets the same FQN, so serialisation holds.
 const GlossaryTermQueryWidget: FC<GlossaryTermQueryWidgetProps> = ({
   value,
   multiple,
@@ -37,7 +33,14 @@ const GlossaryTermQueryWidget: FC<GlossaryTermQueryWidgetProps> = ({
   readonly,
   onChange,
 }) => {
-  const fqns = Array.isArray(value) ? value.map(String) : value ? [value] : [];
+  const toFqnList = (): string[] => {
+    if (Array.isArray(value)) {
+      return value.map(String);
+    }
+
+    return value ? [value] : [];
+  };
+  const fqns = toFqnList();
 
   return (
     <GlossaryTermPicker

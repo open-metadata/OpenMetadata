@@ -47,9 +47,9 @@ import { getTags } from '../rest/tagAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { t } from './i18next/LocalUtil';
 import type { QueryBuilderConfigModes } from './queryBuilder/types';
-import { withGlossaryTermField } from './queryBuilderWidgets/glossaryTermQueryField';
 import { OMConfig } from './QueryBuilderOMConfig';
 import { getFieldsByKeys } from './QueryBuilderPureUtils';
+import { withGlossaryTermField } from './queryBuilderWidgets/glossaryTermQueryField';
 import { toTagSelectOptions } from './SearchPureUtils';
 
 // The value format RAQB's `date` widget stores and the native `<input type="date">` renders.

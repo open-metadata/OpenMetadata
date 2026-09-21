@@ -50,8 +50,8 @@ import { buildTermQuery } from './elasticsearchQueryBuilder';
 import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import type { QueryBuilderConfigModes } from './queryBuilder/types';
-import { withGlossaryTermField } from './queryBuilderWidgets/glossaryTermQueryField';
 import { OMConfig } from './QueryBuilderOMConfig';
+import { withGlossaryTermField } from './queryBuilderWidgets/glossaryTermQueryField';
 import { parseBucketsData } from './SearchPureUtils';
 
 const CLASSIFICATION_NAME_KEYWORD = 'classification.name.keyword';

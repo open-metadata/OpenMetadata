@@ -567,8 +567,7 @@ test.describe(
 
       await test.step('Filter by Glossary Term and verify all API responses succeed', async () => {
         await page.getByRole('button', { name: 'Glossary Term' }).click();
-        // The glossary filter is the shared tree picker, which owns its search
-        // box and keys its rows by FQN.
+        // The tree picker owns its search box and keys rows by FQN.
         const glossarySearch = page.getByTestId(
           'search-dropdown-Glossary Term-search'
         );

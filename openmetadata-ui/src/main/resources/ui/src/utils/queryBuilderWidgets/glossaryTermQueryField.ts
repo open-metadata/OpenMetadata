@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-/**
- * Marks a query-builder field as holding glossary terms so its rule renders the
- * shared tree picker. It lives on the field rather than being matched by path
- * because the JSONLogic builders reach glossary terms, classification tags and
- * tier through the same `tags.tagFQN` subfield.
- */
+// On the field, not matched by path: glossary, tags and tier share `tags.tagFQN`.
 export const GLOSSARY_TERM_FIELD_MARKER = 'omGlossaryTermField';
 
 type MarkedFieldSettings = Record<string, unknown>;

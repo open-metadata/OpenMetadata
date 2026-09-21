@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { withGlossaryTermField } from '../queryBuilderWidgets/glossaryTermQueryField';
 import { RuleObject } from 'antd/lib/form';
 import { dump } from 'js-yaml';
 import { isEmpty, omit } from 'lodash';
@@ -35,6 +34,7 @@ import { DataContractResult } from '../../generated/entity/datacontract/dataCont
 import { formatMonth } from '../date-time/DateTimeUtils';
 import i18n, { t } from '../i18next/LocalUtil';
 import jsonLogicSearchClassBase from '../JSONLogicSearchClassBase';
+import { withGlossaryTermField } from '../queryBuilderWidgets/glossaryTermQueryField';
 import { getTermQuery } from '../SearchPureUtils';
 
 export const semanticRuleValidator = (_: RuleObject, value: string) => {

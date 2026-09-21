@@ -12,12 +12,12 @@
  */
 import { ChevronDown } from '@untitledui/icons';
 import classNames from 'classnames';
-import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import {
   fqnsToGlossaryTags,
   glossaryTagsToFqns,
 } from '../../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
 import GlossaryTermPicker from '../../../common/GlossaryTermPicker/GlossaryTermPicker';
+import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { DqFilterDescriptor } from '../../../DataQuality/DataQualityDashboard/useDataQualityDashboardFilters';
 import {
   chipCountBadgeClassName,
@@ -40,10 +40,13 @@ const DqFilterChip = ({
       <GlossaryTermPicker
         commitMode="staged"
         data-testid={`search-dropdown-${filter.label}`}
+        // The bar owns which chip is open, so it can close this one.
+        isOpen={isOpen}
         label={filter.label}
         triggerVariant="button"
         value={fqnsToGlossaryTags(filter.selectedFqns)}
         onChange={(terms) => filter.onChange(glossaryTagsToFqns(terms))}
+        onOpenChange={onOpenChange}
       />
     );
   }
