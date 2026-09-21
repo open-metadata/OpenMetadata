@@ -256,15 +256,26 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
    * authorization check. Bounded by the number of registered entity types.
    */
   private void warnServiceNotPopulated() {
-    if (SERVICE_FIELD_WARNED.add(entityRepository.getEntityType())) {
+    String type = entityRepository.getEntityType();
+    if (!SERVICE_FIELD_REPORTED.add(type)) {
+      return;
+    }
+    if (ServiceAttributeUtil.declaresService(entityRepository.getEntityClass())) {
       LOG.warn(
-          "Entity type {} does not populate 'service', so matchAnyServiceTag/Type/Name/Environment "
-              + "cannot match it and any Deny rule using them will not hide its assets",
-          entityRepository.getEntityType());
+          "Entity type {} declares 'service' but did not populate it, so "
+              + "matchAnyServiceTag/Type/Name/Environment cannot match it and any Deny rule using "
+              + "them will not hide its assets",
+          type);
+    } else {
+      // A Deny scoped to All evaluates against every resource type, so these conditions are asked
+      // about glossary terms, users, teams and domains on every such check. Having no service is
+      // the documented, correct answer for them -- warning would fire on correct behaviour and
+      // bury the case above.
+      LOG.debug("Entity type {} has no service, so service conditions do not apply to it", type);
     }
   }
 
-  private static final Set<String> SERVICE_FIELD_WARNED = ConcurrentHashMap.newKeySet();
+  private static final Set<String> SERVICE_FIELD_REPORTED = ConcurrentHashMap.newKeySet();
 
   /**
    * Tags of the service that ingested this resource.

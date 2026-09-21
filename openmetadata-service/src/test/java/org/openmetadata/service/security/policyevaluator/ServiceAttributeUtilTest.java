@@ -9,7 +9,13 @@ import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 
@@ -63,6 +69,30 @@ class ServiceAttributeUtilTest {
   void rejectsATypo() {
     assertFalse(ServiceAttributeUtil.isKnownServiceType("Snowflak"));
     assertFalse(ServiceAttributeUtil.isKnownServiceType("NoSuchConnector"));
+  }
+
+  /**
+   * A Deny scoped to All evaluates the service conditions against every resource type, so these
+   * two cases have to be told apart: an asset that declares a service and did not get it populated
+   * is a silent opt-out worth reporting, while a glossary term having none is the documented,
+   * correct answer and must stay quiet.
+   */
+  @Test
+  void separatesAssetsThatDeclareAServiceFromTypesThatHaveNone() {
+    assertTrue(ServiceAttributeUtil.declaresService(Table.class));
+    assertTrue(ServiceAttributeUtil.declaresService(Topic.class));
+    assertFalse(
+        ServiceAttributeUtil.declaresService(GlossaryTerm.class),
+        "a glossary term has no service concept, so a null there is not a defect");
+    assertFalse(ServiceAttributeUtil.declaresService(User.class));
+    assertFalse(ServiceAttributeUtil.declaresService(Team.class));
+    assertFalse(ServiceAttributeUtil.declaresService(Domain.class));
+  }
+
+  /** A repository that cannot report its class must not blow up the check. */
+  @Test
+  void treatsAnUnknownClassAsHavingNoService() {
+    assertFalse(ServiceAttributeUtil.declaresService(null));
   }
 
   @Test

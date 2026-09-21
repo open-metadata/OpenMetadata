@@ -16,7 +16,9 @@ package org.openmetadata.service.security.policyevaluator;
 import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EnumInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
@@ -107,6 +109,40 @@ final class ServiceAttributeUtil {
       }
     }
   }
+
+  /**
+   * True when {@code entityClass} declares a service of its own, i.e. it overrides {@link
+   * EntityInterface#getService()} rather than inheriting the default that returns null.
+   *
+   * <p>This separates the two reasons a resource can answer "no service". A table or topic declares
+   * the field, so a null there means its repository did not populate it -- the silent opt-out worth
+   * reporting. A glossary term, user, team or domain has no service concept at all, and a policy
+   * condition finding none on them is the documented, correct outcome; treating that as a problem
+   * would bury the first case under noise from the second.
+   */
+  static boolean declaresService(Class<?> entityClass) {
+    if (entityClass == null) {
+      return false;
+    }
+    return DECLARES_SERVICE.computeIfAbsent(
+        entityClass,
+        candidate -> {
+          try {
+            return !EntityInterface.class.equals(
+                candidate.getMethod(SERVICE_GETTER).getDeclaringClass());
+          } catch (NoSuchMethodException e) {
+            return false;
+          }
+        });
+  }
+
+  /**
+   * Keyed by entity class, so bounded by the number of registered entity types rather than by
+   * anything a request controls.
+   */
+  private static final Map<Class<?>, Boolean> DECLARES_SERVICE = new ConcurrentHashMap<>();
+
+  private static final String SERVICE_GETTER = "getService";
 
   private static final String SERVICE_TYPE_GETTER = "getServiceType";
 }
