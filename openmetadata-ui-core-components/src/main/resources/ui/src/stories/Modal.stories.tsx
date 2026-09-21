@@ -417,18 +417,14 @@ export const ContentOnly: Story = {
 
 export const DarkOverlay: Story = {
   name: 'Dark overlay & surface',
-  decorators: [
-    (StoryFn) => {
-      useEffect(() => {
-        document.body.classList.add('dark-mode');
-        return () => document.body.classList.remove('dark-mode');
-      }, []);
-
-      return <StoryFn />;
-    },
-  ],
   render: () => {
     const [isOpen, setIsOpen] = useState(true);
+
+    useEffect(() => {
+      document.body.classList.add('dark-mode');
+
+      return () => document.body.classList.remove('dark-mode');
+    }, []);
 
     return (
       <DialogTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
