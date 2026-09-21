@@ -50,6 +50,7 @@ import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 
 /**
  * Integration tests for Search functionality using fluent API.
@@ -1774,23 +1775,29 @@ public class SearchResourceIT {
   // SEARCH EDGE CASES AND ERROR HANDLING
   // ===================================================================
 
+  /**
+   * A malformed {@code queryFilter} used to be logged and dropped, so the search came back 200 with
+   * every row the filter was meant to exclude. Silently widening the result set is worse than
+   * failing, so it is now rejected — see #27990.
+   */
   @Test
-  void testSearchWithMalformedQueryFilter(TestNamespace ns) throws Exception {
+  void testSearchWithMalformedQueryFilter(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
     String malformedFilter = "{\"query\": {\"invalid_syntax";
 
-    assertDoesNotThrow(
-        () -> {
-          String response =
-              client
-                  .search()
-                  .query("*")
-                  .index("table_search_index")
-                  .queryFilter(malformedFilter)
-                  .execute();
-          assertNotNull(response);
-        });
+    InvalidRequestException thrown =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                client
+                    .search()
+                    .query("*")
+                    .index("table_search_index")
+                    .queryFilter(malformedFilter)
+                    .execute());
+
+    assertTrue(thrown.getMessage().contains("queryFilter"), thrown.getMessage());
   }
 
   @Test
@@ -1809,9 +1816,11 @@ public class SearchResourceIT {
   void testSearchWithNegativeOffset(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Negative offset is invalid - Elasticsearch rejects it
+    // Negative offset is invalid - the search engine rejects it. That rejection is the caller's
+    // error, so it now arrives as a 400 rather than the 500 the engine's status used to be
+    // flattened into (#27990).
     assertThrows(
-        org.openmetadata.sdk.exceptions.ApiException.class,
+        InvalidRequestException.class,
         () -> client.search().query("*").index("table_search_index").from(-1).size(10).execute());
   }
 
