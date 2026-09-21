@@ -6,7 +6,8 @@
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -15,6 +16,7 @@
           "tokenizer": "letter",
           "filter": [
             "lowercase",
+            "asciifolding",
             "om_stemmer"
           ]
         },
@@ -22,13 +24,15 @@
           "type": "custom",
           "tokenizer": "n_gram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         },
         "om_compound_analyzer": {
           "tokenizer": "standard",
           "filter": [
             "lowercase",
+            "asciifolding",
             "compound_word_delimiter_graph",
             "flatten_graph"
           ]
