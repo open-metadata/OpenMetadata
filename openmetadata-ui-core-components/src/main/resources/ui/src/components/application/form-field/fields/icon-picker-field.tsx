@@ -110,7 +110,9 @@ export const IconPickerField = ({
   const selectedItem = items.find((item) => item.id === value);
   const normalizedBackgroundColor =
     (backgroundColorProp ? normalizeHexColor(backgroundColorProp) : null) ??
-    ENTITY_PALETTE_HEX[6];
+    // Index 0 (blue) is the established default when no color is picked yet
+    // (glossary terms, tags, domains pass an undefined color until selection).
+    ENTITY_PALETTE_HEX[0];
   const backgroundColor = getEntityPalettePresentationColor(
     normalizedBackgroundColor
   );
