@@ -45,7 +45,7 @@ jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
   })),
 }));
 
-jest.mock('../../components/Auth/AuthProviders/BasicAuthProvider', () => ({
+jest.mock('../../components/Auth/AuthProviders/BasicAuthContext', () => ({
   useBasicAuth: jest.fn().mockImplementation(() => ({
     handleLogin: jest.fn(),
   })),

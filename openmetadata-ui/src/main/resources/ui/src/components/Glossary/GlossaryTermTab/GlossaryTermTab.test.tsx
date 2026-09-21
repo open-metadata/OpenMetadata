@@ -176,13 +176,18 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 // The real wrapper div in GlossaryTermTab.component.tsx now carries these
 // same testids (for Playwright), so the mocks render plain content instead
 // of duplicating them — a duplicate testid makes screen.getByTestId ambiguous.
-jest.mock('../../common/EmptyPlaceholder', () => ({
-  NoFilteredResultsPlaceholder: jest
+jest.mock('../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder', () => ({
+  __esModule: true,
+  default: jest
     .fn()
     .mockImplementation(({ description }: { description?: ReactNode }) => (
       <div>{description}</div>
     )),
-  NoSearchResultsPlaceholder: jest.fn().mockImplementation(() => <div />),
+}));
+
+jest.mock('../../common/EmptyPlaceholder/NoSearchResultsPlaceholder', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => <div />),
 }));
 
 jest.mock('../../common/Loader/Loader', () =>

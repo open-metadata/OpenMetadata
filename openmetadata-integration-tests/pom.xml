@@ -21,8 +21,8 @@
     <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
     <integrationTests.skipParallel>false</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
-    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,AppsResourceIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,EntityShapeIT</integrationTests.globalStateTests>
-    <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
+    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,AppsResourceIT,TestSuiteReindexIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,EntityShapeIT</integrationTests.globalStateTests>
+    <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,TokenRevocationRedisMultiNodeIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
     <!-- Tags excluded from the ui-it profile. Override on the CLI to include them, e.g.
          -Dui.it.excludedGroups= to run every UIIT including @Tag("sso-bootstrap"). -->
@@ -415,6 +415,7 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -423,6 +424,7 @@
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -460,6 +462,7 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -469,6 +472,7 @@
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
@@ -530,6 +534,7 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -538,6 +543,7 @@
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -575,6 +581,7 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -584,6 +591,7 @@
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
@@ -645,6 +653,7 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -653,6 +662,7 @@
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -691,6 +701,7 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -700,6 +711,7 @@
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
@@ -761,6 +773,7 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -769,6 +782,7 @@
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -806,6 +820,7 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -815,6 +830,7 @@
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
@@ -875,6 +891,7 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -883,6 +900,7 @@
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -920,6 +938,7 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -929,6 +948,7 @@
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
@@ -988,6 +1008,7 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -996,6 +1017,7 @@
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -1034,6 +1056,7 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -1043,6 +1066,7 @@
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
@@ -1119,6 +1143,7 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -1127,6 +1152,7 @@
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -1166,6 +1192,7 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -1175,6 +1202,7 @@
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
@@ -1241,6 +1269,7 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -1249,6 +1278,7 @@
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -1287,6 +1317,7 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -1296,6 +1327,7 @@
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
@@ -1413,6 +1445,11 @@
                   <systemPropertyVariables>
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                    <!-- Keeps the pre-2026-09 cascade cap: this suite really does hard-delete a
+                         100k-table service, whose cascade ran ~6 min on an unloaded cluster. The
+                         NamespaceCleanup default dropped to 2 min so a *failed* cascade stops
+                         billing 15 idle minutes to every ordinary test. -->
+                    <jpw.cleanup.cascadeTimeoutMin>15</jpw.cleanup.cascadeTimeoutMin>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>
@@ -1514,6 +1551,11 @@
                   <systemPropertyVariables>
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                    <!-- Keeps the pre-2026-09 cascade cap: this suite really does hard-delete a
+                         100k-table service, whose cascade ran ~6 min on an unloaded cluster. The
+                         NamespaceCleanup default dropped to 2 min so a *failed* cascade stops
+                         billing 15 idle minutes to every ordinary test. -->
+                    <jpw.cleanup.cascadeTimeoutMin>15</jpw.cleanup.cascadeTimeoutMin>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>
