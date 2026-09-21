@@ -12,6 +12,10 @@
  */
 import { act, renderHook } from '@testing-library/react';
 import { Edge, Node } from 'reactflow';
+// Type-only import of the shared Lineage interface (also consumed the same way by
+// LineageProvider.interface.tsx); relocating it to a lower layer is out of scope for this task.
+// eslint-disable-next-line openmetadata-imports/no-hook-ui-imports
+import type { EntityLineageResponse } from '../components/Lineage/Lineage.interface';
 import { ZOOM_VALUE } from '../constants/Lineage.constants';
 import { LineagePlatformView } from '../context/LineageProvider/LineageProvider.interface';
 import { LineageBand } from '../generated/api/lineage/lineageScene';
@@ -667,5 +671,47 @@ describe('graph slice', () => {
     useLineageStore.getState().redraw();
 
     expect(useLineageStore.getState().lineageMutationTick).toBe(before + 1);
+  });
+});
+
+describe('data slice', () => {
+  beforeEach(() => useLineageStore.getState().reset());
+
+  it('beginLoad sets loading=true, status=waiting, init unchanged', () => {
+    useLineageStore.getState().beginLoad();
+    const s = useLineageStore.getState();
+
+    expect(s.loading).toBe(true);
+    expect(s.status).toBe('waiting');
+  });
+
+  it('setLineageData stores payload, flips init=true, loading=false, status=success', () => {
+    const payload = { entity: { id: 'e' } } as unknown as EntityLineageResponse;
+    useLineageStore.getState().setLineageData(payload);
+    const s = useLineageStore.getState();
+
+    expect(s.entityLineage).toBe(payload);
+    expect(s.init).toBe(true);
+    expect(s.loading).toBe(false);
+    expect(s.status).toBe('success');
+  });
+
+  it('setLoadError sets loading=false and status=initial', () => {
+    useLineageStore.getState().beginLoad();
+    useLineageStore.getState().setLoadError();
+    const s = useLineageStore.getState();
+
+    expect(s.loading).toBe(false);
+    expect(s.status).toBe('initial');
+  });
+
+  it('commitEdits promotes updatedEntityLineage to entityLineage', () => {
+    const updated = { entity: { id: 'u' } } as unknown as EntityLineageResponse;
+    useLineageStore.setState({ updatedEntityLineage: updated });
+    useLineageStore.getState().commitEdits();
+    const s = useLineageStore.getState();
+
+    expect(s.entityLineage).toBe(updated);
+    expect(s.updatedEntityLineage).toBeUndefined();
   });
 });

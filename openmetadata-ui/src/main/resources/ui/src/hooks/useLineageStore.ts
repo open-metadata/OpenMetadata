@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 import { uniq } from 'lodash';
+import { LoadingState } from 'Models';
 import type { Edge, EdgeChange, Node, NodeChange } from 'reactflow';
 import { applyEdgeChanges, applyNodeChanges } from 'reactflow';
 import { create } from 'zustand';
+// Type-only import of the shared Lineage interface (also consumed the same way by
+// LineageProvider.interface.tsx); relocating it to a lower layer is out of scope for this task.
+// eslint-disable-next-line openmetadata-imports/no-hook-ui-imports
+import type { EntityLineageResponse } from '../components/Lineage/Lineage.interface';
 import { ZOOM_VALUE } from '../constants/Lineage.constants';
 import { LineagePlatformView } from '../context/LineageProvider/LineageProvider.interface';
 import { LineageBand } from '../generated/api/lineage/lineageScene';
@@ -48,6 +53,13 @@ interface LineageState {
   nodes: Node[];
   edges: Edge[];
   columnEdges: Edge[];
+  entityLineage: EntityLineageResponse;
+  updatedEntityLineage?: EntityLineageResponse;
+  dataQualityLineage?: EntityLineageResponse;
+  dqHighlightedEdges: Set<string>;
+  status: LoadingState;
+  init: boolean;
+  loading: boolean;
 
   // Actions
   setIsEditMode: (isEditMode: boolean) => void;
@@ -88,6 +100,14 @@ interface LineageState {
   applyEdgesChange: (changes: EdgeChange[]) => void;
   redraw: () => void;
   resetGraph: () => void;
+  beginLoad: () => void;
+  setLineageData: (data: EntityLineageResponse) => void;
+  setUpdatedEntityLineage: (data?: EntityLineageResponse) => void;
+  setDQLineage: (data?: EntityLineageResponse) => void;
+  setDQHighlightedEdges: (ids: Set<string>) => void;
+  setLoadError: () => void;
+  commitEdits: () => void;
+  resetData: () => void;
 }
 
 const defaultLineageSettings = {
@@ -118,6 +138,11 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   nodes: [],
   edges: [],
   columnEdges: [],
+  entityLineage: {} as EntityLineageResponse,
+  dqHighlightedEdges: new Set(),
+  status: 'initial',
+  init: false,
+  loading: false,
 
   // Actions
   setLineageConfig: (lineageConfig: LineageConfig) => set({ lineageConfig }),
@@ -299,6 +324,13 @@ export const useLineageStore = create<LineageState>((set, get) => ({
       nodes: [],
       edges: [],
       columnEdges: [],
+      entityLineage: {} as EntityLineageResponse,
+      updatedEntityLineage: undefined,
+      dataQualityLineage: undefined,
+      dqHighlightedEdges: new Set(),
+      status: 'initial',
+      init: false,
+      loading: false,
     }),
 
   setNodes: (nodes: Node[]) => set({ nodes }),
@@ -325,4 +357,42 @@ export const useLineageStore = create<LineageState>((set, get) => ({
       columnEdges: [],
       lineageMutationTick: state.lineageMutationTick + 1,
     })),
+
+  beginLoad: () => set({ loading: true, status: 'waiting' }),
+
+  setLineageData: (data: EntityLineageResponse) =>
+    set({
+      entityLineage: data,
+      loading: false,
+      init: true,
+      status: 'success',
+    }),
+
+  setUpdatedEntityLineage: (updatedEntityLineage?: EntityLineageResponse) =>
+    set({ updatedEntityLineage }),
+
+  setDQLineage: (dataQualityLineage?: EntityLineageResponse) =>
+    set({ dataQualityLineage }),
+
+  setDQHighlightedEdges: (dqHighlightedEdges: Set<string>) =>
+    set({ dqHighlightedEdges }),
+
+  setLoadError: () => set({ loading: false, status: 'initial' }),
+
+  commitEdits: () =>
+    set((state) => ({
+      entityLineage: state.updatedEntityLineage ?? state.entityLineage,
+      updatedEntityLineage: undefined,
+    })),
+
+  resetData: () =>
+    set({
+      entityLineage: {} as EntityLineageResponse,
+      updatedEntityLineage: undefined,
+      dataQualityLineage: undefined,
+      dqHighlightedEdges: new Set(),
+      status: 'initial',
+      init: false,
+      loading: false,
+    }),
 }));
