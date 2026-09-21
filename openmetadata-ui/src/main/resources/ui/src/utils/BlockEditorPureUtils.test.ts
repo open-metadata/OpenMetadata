@@ -206,6 +206,49 @@ describe('isHTMLString: already-rendered HTML', () => {
     expect(isHTMLString(markdown)).toBe(false);
   });
 
+  it('should treat an indented block beside a top-level tag as HTML', () => {
+    // Deliberate tie-break, not an oversight.
+    //
+    // This is the same shape as `should keep pretty-printed HTML as HTML when
+    // an item holds a backtick` below: a tag at column zero, a blank line,
+    // then indented structural markup, all at top level. Read as markdown the
+    // indented part is a code example; read as HTML it is a pretty-printed
+    // list. Nothing in the string separates the two, and the DOM shape is
+    // identical — `p + table` here, `p + ol` there.
+    //
+    // It resolves to HTML, because the cost is asymmetric: calling a real
+    // description an example renders a fenced-looking block of raw tags, and
+    // calling an example a description renders one table that should have
+    // been code.
+    const content = [
+      '<p>Example:</p>',
+      '',
+      '    <table><tr><td>Cell</td></tr></table>',
+    ].join('\n');
+
+    expect(isHTMLString(content)).toBe(true);
+  });
+
+  it('should treat a blockquoted indented example as markdown', () => {
+    // A blockquote marker sits outside the indentation it quotes, so it has
+    // to come off before the line is measured.
+    const markdown = [
+      'Example:',
+      '',
+      '>     <table><tr><td>Cell</td></tr></table>',
+    ].join('\n');
+
+    expect(isHTMLString(markdown)).toBe(false);
+  });
+
+  it('should treat a nested blockquoted indented example as markdown', () => {
+    const markdown = ['Example:', '', '> >     <ul><li>one</li></ul>'].join(
+      '\n'
+    );
+
+    expect(isHTMLString(markdown)).toBe(false);
+  });
+
   it('should treat pretty-printed HTML as HTML, not as indented code', () => {
     // Indentation in serialized editor output is pretty printing. Reading it
     // as a code block would strip the document's own markup.
