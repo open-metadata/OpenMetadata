@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page, Response } from '@playwright/test';
+import { clickOutside } from './common';
 
 // Drives the picker popover: portaled, and nothing is saved until Apply.
 
@@ -20,21 +21,29 @@ export type GlossaryTermRef = {
   fullyQualifiedName: string;
 };
 
-const POPOVER = 'glossary-term-picker-popover';
+// The popover's testid varies per instance; this class is set by the component.
+const POPOVER = '.glossary-term-picker-popover';
 
-// Scoped to the popover rather than a placeholder, which is translated.
-const searchBox = (page: Page) => page.getByTestId(POPOVER).locator('input');
+// Only the button and custom-trigger variants put a search box in the popover.
+const popoverSearchBox = (page: Page) => page.locator(POPOVER).locator('input');
 
-const tree = (page: Page) =>
-  page.getByTestId(POPOVER).locator('[role="treegrid"]');
+const tree = (page: Page) => page.locator(POPOVER).locator('[role="treegrid"]');
 
+// Terms are keyed by FQN, glossary roots by bare `name` — accept both spellings.
 const termRow = (page: Page, term: GlossaryTermRef) =>
-  page.getByTestId(`tree-node-${term.fullyQualifiedName}`);
+  page
+    .getByTestId(`tree-node-${term.fullyQualifiedName}`)
+    .or(
+      page.getByTestId(
+        `tree-node-${term.fullyQualifiedName.replace(/^"|"$/g, '')}`
+      )
+    )
+    .or(page.getByTestId(`tree-node-${term.name}`));
 
 // Rows are keyed by FQN; callers that only know a display name match on text.
 export const glossaryPickerRow = (page: Page, name: string) =>
   page
-    .getByTestId(POPOVER)
+    .locator(POPOVER)
     .locator('[data-testid^="tree-node-"]')
     .filter({ hasText: name });
 
@@ -45,14 +54,19 @@ export const isGlossaryTermSelected = (row: Locator) =>
     .count()
     .then((n) => n > 0);
 
-export const searchGlossaryPicker = async (page: Page, term: string) => {
-  const searchResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes('glossary')
-  );
-  await searchBox(page).fill(term);
-  await searchResponse;
+// The tree debounces and may skip the call, so the caller's row assertion is the wait.
+export const searchGlossaryPicker = async (
+  page: Page,
+  term: string,
+  trigger?: Locator
+) => {
+  const inPopover = popoverSearchBox(page);
+  // The input variant's own trigger is the search box; prefer it over `:focus`.
+  const box = (await inPopover.count())
+    ? inPopover
+    : trigger?.locator('input') ?? page.locator('input:focus');
+
+  await box.fill(term);
 };
 
 // Opens the picker and waits for the treegrid to render.
@@ -139,6 +153,32 @@ export const applyGlossaryPicker = async (
   await patchRequest;
 
   await expect(page.getByTestId('update-btn')).not.toBeVisible();
+};
+
+// The trigger of a form picker, which renders its selection inline.
+export const glossaryFieldTrigger = (scope: Page | Locator, testId: string) =>
+  scope.getByTestId(testId);
+
+// Chips live on the trigger; each carries an aria-label remove button.
+export const removeGlossaryTermChip = async (
+  trigger: Locator,
+  label: string
+) => {
+  await trigger.getByRole('button', { name: `Remove ${label}` }).click();
+};
+
+// A form picker commits on click, so there is no Apply step to wait on.
+export const pickGlossaryTermInField = async (
+  page: Page,
+  trigger: Locator,
+  term: GlossaryTermRef
+) => {
+  await openGlossaryPicker(page, trigger);
+  await toggleGlossaryTermInPicker(page, term);
+
+  // Not Escape: these pickers sit in editors and drawers that close on it too.
+  await clickOutside(page);
+  await expect(page.locator(POPOVER)).not.toBeVisible();
 };
 
 // Open, pick one term, apply — the whole flow for a single-term assignment.
