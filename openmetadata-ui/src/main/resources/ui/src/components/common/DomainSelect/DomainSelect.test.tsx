@@ -80,15 +80,21 @@ describe('DomainSelect', () => {
   });
 
   it('should default commitMode to immediate for the input trigger', () => {
-    renderSelect({ triggerVariant: 'input' });
+    renderSelect({ triggerVariant: 'input', multiple: true });
 
     expect(lastProps().commitMode).toBe('immediate');
   });
 
-  it('should default commitMode to staged for the button trigger', () => {
-    renderSelect({ triggerVariant: 'button' });
+  it('should default commitMode to staged for a multi-select button trigger', () => {
+    renderSelect({ triggerVariant: 'button', multiple: true });
 
     expect(lastProps().commitMode).toBe('staged');
+  });
+
+  it('should default commitMode to immediate for a single-select button trigger', () => {
+    renderSelect({ triggerVariant: 'button', multiple: false });
+
+    expect(lastProps().commitMode).toBe('immediate');
   });
 
   it('should honour an explicit commitMode', () => {

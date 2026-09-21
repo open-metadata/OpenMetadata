@@ -56,8 +56,12 @@ const DomainSelect: FC<DomainSelectProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  // Staged (batch Apply/Cancel footer) only earns its keep for multi-select in
+  // the popover/filter triggers. Single-select and the inline input field
+  // commit immediately (pick one → apply + close), so no footer is shown.
   const resolvedCommitMode =
-    commitMode ?? (triggerVariant === 'input' ? 'immediate' : 'staged');
+    commitMode ??
+    (triggerVariant !== 'input' && multiple ? 'staged' : 'immediate');
 
   const restrictedFqns = useMemo(
     () =>
