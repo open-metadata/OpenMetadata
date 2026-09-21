@@ -71,7 +71,6 @@ const ArticlesListToolbar = ({
         )}
         <Dropdown.Root>
           <AriaButton
-            aria-label={t('label.sort')}
             className={SORT_BUTTON_CLS}
             data-testid="articles-sort-button">
             <Sort className="tw:text-quaternary" size={14} />
