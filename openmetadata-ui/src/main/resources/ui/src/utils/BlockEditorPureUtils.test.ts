@@ -222,6 +222,37 @@ describe('isHTMLString: already-rendered HTML', () => {
     expect(isHTMLString(html)).toBe(true);
   });
 
+  it('should keep pretty-printed HTML as HTML when an item looks markdown', () => {
+    // The case above survives even a code-stripped structural query, because
+    // its text holds nothing a markdown pattern matches. This one does not:
+    // lose the indented `<ul>` and it falls through to the pattern check,
+    // `**one**` matches, and a real list goes back to the converter.
+    const html = [
+      '<div>',
+      '',
+      '    <ul>',
+      '      <li>**one**</li>',
+      '    </ul>',
+      '',
+      '</div>',
+    ].join('\n');
+
+    expect(isHTMLString(html)).toBe(true);
+  });
+
+  it('should keep pretty-printed HTML as HTML when an item holds a backtick', () => {
+    const html = [
+      '<p><strong>Discontinued UEs:</strong></p>',
+      '',
+      '    <ol>',
+      '      <li>use `x` here</li>',
+      '      <li>VCR</li>',
+      '    </ol>',
+    ].join('\n');
+
+    expect(isHTMLString(html)).toBe(true);
+  });
+
   it('should treat an indented line continuing a paragraph as HTML', () => {
     // No blank line before it, so it is a continuation rather than a block.
     const html = ['<p>Intro</p>', '    <ul><li>one</li></ul>'].join('\n');
