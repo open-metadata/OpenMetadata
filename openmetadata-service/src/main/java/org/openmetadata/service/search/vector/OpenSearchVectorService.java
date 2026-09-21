@@ -57,7 +57,6 @@ public class OpenSearchVectorService implements VectorIndexService {
   public static synchronized void init(OpenSearchClient client, EmbeddingClient embeddingClient) {
     if (instance != null) {
       LOG.warn("OpenSearchVectorService already initialized, reinitializing");
-      EntityLifecycleEventDispatcher.getInstance().unregisterHandler("VectorEmbeddingHandler");
     }
     OpenSearchVectorService svc = new OpenSearchVectorService(client, embeddingClient);
     svc.registerVectorEmbeddingHandler();
@@ -75,7 +74,7 @@ public class OpenSearchVectorService implements VectorIndexService {
   private void registerVectorEmbeddingHandler() {
     try {
       VectorEmbeddingHandler handler = new VectorEmbeddingHandler(this);
-      EntityLifecycleEventDispatcher.getInstance().registerHandler(handler);
+      EntityLifecycleEventDispatcher.getInstance().replaceHandler(handler);
       LOG.info("Registered VectorEmbeddingHandler for entity lifecycle events");
     } catch (Exception e) {
       LOG.error("Failed to register VectorEmbeddingHandler", e);

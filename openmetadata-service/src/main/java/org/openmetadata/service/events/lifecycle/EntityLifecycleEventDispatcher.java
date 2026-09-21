@@ -13,12 +13,12 @@
 
 package org.openmetadata.service.events.lifecycle;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
@@ -41,11 +41,14 @@ import org.openmetadata.service.util.PostCommitActionQueue;
 public class EntityLifecycleEventDispatcher {
 
   private static volatile EntityLifecycleEventDispatcher instance;
-  private final List<EntityLifecycleEventHandler> handlers;
+  // CopyOnWriteArrayList: writes are synchronized (see registerHandler/unregisterHandler/
+  // replaceHandler) for compound check-then-act atomicity; reads (getApplicableHandlers,
+  // getHandlerCount) iterate over a stable snapshot and never race with a concurrent removal.
+  private final CopyOnWriteArrayList<EntityLifecycleEventHandler> handlers;
   private final OrderedLaneExecutor orderedLaneExecutor;
 
   private EntityLifecycleEventDispatcher() {
-    this.handlers = new ArrayList<>();
+    this.handlers = new CopyOnWriteArrayList<>();
     this.orderedLaneExecutor = new OrderedLaneExecutor(this::enqueueLaneFailureRetry);
   }
 
@@ -98,6 +101,25 @@ public class EntityLifecycleEventDispatcher {
       LOG.info("Unregistered entity lifecycle handler: {}", handlerName);
     }
     return removed;
+  }
+
+  /**
+   * Atomically replace a handler by name, or register it if none with that name exists.
+   * Eliminates the gap between an unregisterHandler + registerHandler pair during which entity
+   * writes would not be delivered to any handler of that name.
+   */
+  public synchronized void replaceHandler(EntityLifecycleEventHandler handler) {
+    if (handler == null) {
+      LOG.warn("Attempted to replace with null entity lifecycle handler");
+      return;
+    }
+    handlers.removeIf(h -> h.getHandlerName().equals(handler.getHandlerName()));
+    handlers.add(handler);
+    handlers.sort(Comparator.comparingInt(EntityLifecycleEventHandler::getPriority));
+    LOG.info(
+        "Replaced entity lifecycle handler: {} with priority {}",
+        handler.getHandlerName(),
+        handler.getPriority());
   }
 
   /**
