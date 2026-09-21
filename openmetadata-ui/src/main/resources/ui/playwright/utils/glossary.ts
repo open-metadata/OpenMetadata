@@ -2267,10 +2267,15 @@ export const expandTreeNodeByName = async (
   await nodeText.scrollIntoViewIfNeeded();
 
   const treeItem = nodeText.locator('xpath=ancestor::*[@role="row"][1]');
-  const expandButton = treeItem.locator('button').first();
-  await expect(expandButton).toBeVisible({ timeout: 5000 });
-  await expandButton.click();
-  await waitForAllLoadersToDisappear(page);
+  const alreadyExpanded =
+    (await treeItem.getAttribute('aria-expanded')) === 'true';
+
+  if (!alreadyExpanded) {
+    const expandButton = treeItem.locator('button').first();
+    await expect(expandButton).toBeVisible({ timeout: 5000 });
+    await expandButton.click();
+    await waitForAllLoadersToDisappear(page);
+  }
 };
 
 export const expandToGlossaryTermChildren = async (
@@ -2287,9 +2292,8 @@ export const expandToGlossaryTermChildren = async (
     timeout: 10000,
   });
 
-  await expandTreeNodeByName(page, glossaryDisplayName, { search: false });
+  await expandTreeNodeByName(page, glossaryDisplayName);
   if (parentTermDisplayName) {
-    // Not searched: a nested search returns a leaf, whose chevron stays hidden.
     await expandTreeNodeByName(page, parentTermDisplayName, { search: false });
   }
 };
