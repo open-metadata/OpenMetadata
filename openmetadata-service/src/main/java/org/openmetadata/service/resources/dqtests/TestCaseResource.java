@@ -1014,7 +1014,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Operation(
       operationId = "removeManyTestCasesFromBundleTestSuite",
       summary = "Remove test cases from a logical test suite",
-      description = "Remove a list of test cases from a logical test suite.",
+      description =
+          "Remove a list of test cases from a logical test suite. Ids the suite does not contain "
+              + "are ignored.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1040,7 +1042,13 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             null,
             false);
 
-    List<UUID> testCaseIds = listOrEmpty(bundleSuiteBulkRemoveRequest.getTestCaseIds());
+    // Ids the suite does not contain are ignored rather than rejected, so authorization is scoped
+    // to the memberships that are really going to be removed. Authorizing every requested id would
+    // let one id that is absent, already removed, or simply not readable by the caller fail the
+    // whole request for callers who rely on per test case delete permission.
+    List<UUID> testCaseIds =
+        repository.getLogicalTestSuiteMemberIds(
+            testSuite.getId(), listOrEmpty(bundleSuiteBulkRemoveRequest.getTestCaseIds()));
     authorizeLogicalTestCaseDeletion(securityContext, testSuite, testCaseIds);
 
     if (testCaseIds.isEmpty()) {

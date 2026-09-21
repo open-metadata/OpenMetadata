@@ -1163,17 +1163,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     addTestCasesToLogicalTestSuite(
         client, logicalSuite.getId(), List.of(testCase1.getId(), testCase2.getId()));
 
-    Map<String, Object> request = new HashMap<>();
-    request.put("testSuiteId", logicalSuite.getId().toString());
-    request.put("testCaseIds", List.of(testCase1.getId().toString()));
-
-    client
-        .getHttpClient()
-        .executeForString(
-            HttpMethod.POST,
-            "/v1/dataQuality/testCases/logicalTestCases/bulk/remove",
-            request,
-            RequestOptions.builder().build());
+    bulkRemoveFromLogicalTestSuite(client, logicalSuite.getId(), List.of(testCase1.getId()));
 
     TestSuite suiteWithTests = client.testSuites().get(logicalSuite.getId().toString(), "tests");
     assertNotNull(suiteWithTests.getTests());
@@ -1201,6 +1191,75 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                     "removed test case should not list the logical suite in search");
               });
     }
+  }
+
+  @Test
+  void test_bulkRemoveIgnoresIdsTheLogicalSuiteDoesNotContain(TestNamespace ns) {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+
+    // USER2 has no roles, so its only delete permission on these test cases comes from owning the
+    // table they hang off. It cannot edit the logical suite, which is what makes this exercise the
+    // per test case branch of the authorization check rather than the suite-wide one.
+    Table ownedTable = createTable(ns);
+    Table foreignTable = createTable(ns);
+    Table fetchedOwnedTable = adminClient.tables().get(ownedTable.getId().toString(), "owners");
+    fetchedOwnedTable.setOwners(List.of(shared.USER2_REF));
+    adminClient.tables().update(fetchedOwnedTable.getId().toString(), fetchedOwnedTable);
+
+    TestCase memberToRemove =
+        TestCaseBuilder.create(adminClient)
+            .name(ns.prefix("bulk_remove_member"))
+            .forTable(ownedTable)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    TestCase memberToKeep =
+        TestCaseBuilder.create(adminClient)
+            .name(ns.prefix("bulk_remove_keep"))
+            .forTable(ownedTable)
+            .testDefinition("tableColumnCountToEqual")
+            .parameter("columnCount", "2")
+            .create();
+
+    // Never added to the suite, and owned by nobody, so USER2 cannot delete it either
+    TestCase nonMember =
+        TestCaseBuilder.create(adminClient)
+            .name(ns.prefix("bulk_remove_non_member"))
+            .forTable(foreignTable)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    CreateTestSuite suiteReq = new CreateTestSuite();
+    suiteReq.setName(ns.prefix("logical_bulk_remove_partial"));
+    TestSuite logicalSuite = adminClient.testSuites().create(suiteReq);
+    addTestCasesToLogicalTestSuite(
+        adminClient, logicalSuite.getId(), List.of(memberToRemove.getId(), memberToKeep.getId()));
+
+    // A member USER2 may remove, a test case the suite does not contain, and an id that does not
+    // resolve at all. The last two are ignored instead of failing the whole request.
+    bulkRemoveFromLogicalTestSuite(
+        SdkClients.user2Client(),
+        logicalSuite.getId(),
+        List.of(memberToRemove.getId(), nonMember.getId(), UUID.randomUUID()));
+
+    TestSuite suiteWithTests =
+        adminClient.testSuites().get(logicalSuite.getId().toString(), "tests");
+    assertNotNull(suiteWithTests.getTests());
+    assertEquals(1, suiteWithTests.getTests().size());
+    assertEquals(memberToKeep.getId(), suiteWithTests.getTests().get(0).getId());
+
+    // A member USER2 cannot delete still fails, so the ids above were skipped because the suite
+    // does not contain them and not because the authorization check stopped being applied
+    addTestCasesToLogicalTestSuite(adminClient, logicalSuite.getId(), List.of(nonMember.getId()));
+    assertThrows(
+        Exception.class,
+        () ->
+            bulkRemoveFromLogicalTestSuite(
+                SdkClients.user2Client(), logicalSuite.getId(), List.of(nonMember.getId())),
+        "USER2 should not be able to remove a test case it has no delete permission on");
   }
 
   @Test
@@ -5795,6 +5854,21 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         .executeForString(
             HttpMethod.PUT,
             "/v1/dataQuality/testCases/logicalTestCases",
+            request,
+            RequestOptions.builder().build());
+  }
+
+  private void bulkRemoveFromLogicalTestSuite(
+      OpenMetadataClient client, UUID testSuiteId, List<UUID> testCaseIds) {
+    Map<String, Object> request = new HashMap<>();
+    request.put("testSuiteId", testSuiteId.toString());
+    request.put("testCaseIds", testCaseIds.stream().map(UUID::toString).toList());
+
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            "/v1/dataQuality/testCases/logicalTestCases/bulk/remove",
             request,
             RequestOptions.builder().build());
   }

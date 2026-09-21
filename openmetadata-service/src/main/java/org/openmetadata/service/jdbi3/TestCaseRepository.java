@@ -1527,15 +1527,33 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.DeleteResponse<>(testSuite, ENTITY_DELETED);
   }
 
+  /**
+   * The ids among {@code testCaseIds} that the logical test suite currently contains, in suite
+   * order and without duplicates. Callers use this to narrow a bulk request down to the
+   * memberships that are actually going to change before they authorize it.
+   */
+  public List<UUID> getLogicalTestSuiteMemberIds(UUID testSuiteId, List<UUID> testCaseIds) {
+    if (nullOrEmpty(testCaseIds)) {
+      return List.of();
+    }
+    return logicalTestSuiteMembers(testSuiteId, testCaseIds).stream()
+        .map(EntityReference::getId)
+        .toList();
+  }
+
+  private List<EntityReference> logicalTestSuiteMembers(UUID testSuiteId, List<UUID> testCaseIds) {
+    Set<UUID> requestedIds = new HashSet<>(testCaseIds);
+    return findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE).stream()
+        .filter(ref -> requestedIds.contains(ref.getId()))
+        .toList();
+  }
+
   private LogicalSuiteRelationshipChange deleteTestCasesFromLogicalTestSuiteFlush(
       UUID testSuiteId, List<UUID> testCaseIds) {
     // Only the test cases the suite actually contains are removed, so that the relationship change
     // published afterwards describes what really changed
-    Set<UUID> requestedIds = new HashSet<>(testCaseIds);
     List<EntityReference> removedTestCaseReferences =
-        findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE).stream()
-            .filter(ref -> requestedIds.contains(ref.getId()))
-            .toList();
+        logicalTestSuiteMembers(testSuiteId, testCaseIds);
     if (removedTestCaseReferences.isEmpty()) {
       return LogicalSuiteRelationshipChange.empty();
     }
