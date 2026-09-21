@@ -794,9 +794,11 @@ class LineageRepositoryTest {
   }
 
   /**
-   * Bug #2: When entity lineage has a pipeline whose service is distinct from fromService and
-   * toService, three service-level edges must be created: fromService→toService,
-   * fromService→pipelineService, and pipelineService→toService.
+   * When entity lineage has a pipeline whose service is distinct from fromService and toService,
+   * exactly two service-level hop edges must be created: fromService→pipelineService and
+   * pipelineService→toService.  The direct fromService→toService edge must NOT be created because
+   * the pipeline hops already represent the relationship; adding the direct edge too would produce a
+   * spurious shortcut in the "By Service" view (#33685).
    */
   @Test
   void testPipelineServiceEdges_WithDistinctPipelineService_CreatesBothEdges() throws Exception {
@@ -865,15 +867,17 @@ class LineageRepositoryTest {
     buildExtendedLineage.setAccessible(true);
     buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, false);
 
-    verify(relDAO, times(3))
+    // Only the two pipeline-hop edges must be created; the direct fromService→toService edge
+    // must NOT be inserted when a pipeline is present (fix for #33685).
+    verify(relDAO, times(2))
         .insert(fromCaptor.capture(), toCaptor.capture(), any(), any(), anyInt(), any());
 
     List<UUID> insertedFromIds = fromCaptor.getAllValues();
     List<UUID> insertedToIds = toCaptor.getAllValues();
 
-    assertTrue(
+    assertFalse(
         edgePairExists(insertedFromIds, insertedToIds, fromServiceId, toServiceId),
-        "fromService→toService edge must be created");
+        "direct fromService→toService edge must NOT be created when a pipeline mediates lineage");
     assertTrue(
         edgePairExists(insertedFromIds, insertedToIds, fromServiceId, pipelineServiceId),
         "fromService→pipelineService edge must be created");

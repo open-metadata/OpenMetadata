@@ -372,11 +372,17 @@ public class LineageRepository {
     EntityReference fromService = fromEntity.getService();
     EntityReference toService = toEntity.getService();
     if (!fromService.getId().equals(toService.getId())) {
-      LineageDetails serviceLineageDetails =
-          getOrCreateLineageDetails(
-                  fromService.getId(), toService.getId(), entityLineageDetails, childRelationExists)
-              .withPipeline(null);
-      insertLineage(fromService, toService, serviceLineageDetails);
+      // Only insert the direct service→service edge when no pipeline mediates the
+      // lineage.  When a pipeline is present, addPipelineServiceEdges inserts the
+      // two hop edges (fromService→pipelineService→toService), so the direct edge
+      // would be a spurious duplicate that makes the "By Service" graph misleading.
+      if (getPipelineService(entityLineageDetails) == null) {
+        LineageDetails serviceLineageDetails =
+            getOrCreateLineageDetails(
+                    fromService.getId(), toService.getId(), entityLineageDetails, childRelationExists)
+                .withPipeline(null);
+        insertLineage(fromService, toService, serviceLineageDetails);
+      }
     }
     addPipelineServiceEdges(fromService, toService, entityLineageDetails, childRelationExists);
   }
