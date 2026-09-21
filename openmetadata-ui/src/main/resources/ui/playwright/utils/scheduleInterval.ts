@@ -22,9 +22,24 @@ import { chooseSelectOption } from './common';
 export type ScheduleFrequency = 'hour' | 'day' | 'week' | 'month' | 'custom';
 
 export const selectOnDemandSchedule = async (page: Page) => {
-  await page.getByTestId('schedular-on-demand').click();
+  const onDemand = page.getByTestId('schedular-on-demand');
 
-  await expect(page.getByTestId('cron-container')).not.toBeVisible();
+  // The scheduler remounts while the form above it settles, so a click begun
+  // then races the remount: Playwright reports the option as "not stable",
+  // then "element was detached from the DOM, retrying", and keeps retrying
+  // against a node that no longer exists. Unbounded, that ran out the whole
+  // 900s budget of the DataContracts test and surfaced as "Target page,
+  // context or browser has been closed" rather than as anything about the
+  // scheduler. Bound each attempt so a detach re-resolves the locator.
+  //
+  // Re-clicking is safe: on-demand and schedule are two states of one control,
+  // so selecting on-demand twice leaves it exactly where the first click did.
+  await expect(async () => {
+    await onDemand.click({ timeout: 10_000 });
+    await expect(page.getByTestId('cron-container')).not.toBeVisible({
+      timeout: 5_000,
+    });
+  }).toPass({ timeout: 60_000 });
 };
 
 export const selectScheduleType = async (page: Page) => {
