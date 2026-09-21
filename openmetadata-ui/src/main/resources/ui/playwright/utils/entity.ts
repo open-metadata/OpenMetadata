@@ -1672,7 +1672,17 @@ export const replyAnnouncement = async (page: Page) => {
 
 export const deleteAnnouncement = async (page: Page) => {
   await page.getByTestId('manage-button').click();
+
+  // Opening the drawer fires the announcements GET; its response replaces the
+  // card list and closes any antd Dropdown opened before it lands, detaching the
+  // delete action so the click hangs. Wait for the list to settle before acting.
+  const announcementsResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/announcements?entityLink=') &&
+      response.request().method() === 'GET'
+  );
   await page.getByTestId('announcement-button').click();
+  await announcementsResponse;
 
   const drawerAnnouncementCard = page.locator(
     '[data-testid="announcement-drawer"] [data-testid="announcement-card"]'
@@ -1710,7 +1720,17 @@ export const editAnnouncement = async (
 ) => {
   // Open announcement drawer via manage button
   await page.getByTestId('manage-button').click();
+
+  // Opening the drawer fires the announcements GET; its response replaces the
+  // card list and closes any antd Dropdown opened before it lands, detaching the
+  // edit action so the click hangs. Wait for the list to settle before acting.
+  const announcementsResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/announcements?entityLink=') &&
+      response.request().method() === 'GET'
+  );
   await page.getByTestId('announcement-button').click();
+  await announcementsResponse;
 
   // Wait for drawer to open and announcement cards to be visible
   await expect(page.getByTestId('announcement-drawer')).toBeVisible();
