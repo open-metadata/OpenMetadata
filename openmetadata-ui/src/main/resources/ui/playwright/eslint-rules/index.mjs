@@ -12,6 +12,7 @@
  */
 
 import justifiedRuleDisable from './justified-rule-disable.mjs';
+import noAccumulatingBeforeAll from './no-accumulating-before-all.mjs';
 import noAwaitedWaitForResponse from './no-awaited-wait-for-response.mjs';
 import noBlanketTestSlow from './no-blanket-test-slow.mjs';
 import noPositionalLocator from './no-positional-locator.mjs';
@@ -24,5 +25,6 @@ export default {
     'require-assertion-per-test': requireAssertionPerTest,
     'no-positional-locator': noPositionalLocator,
     'justified-rule-disable': justifiedRuleDisable,
+    'no-accumulating-before-all': noAccumulatingBeforeAll,
   },
 };
