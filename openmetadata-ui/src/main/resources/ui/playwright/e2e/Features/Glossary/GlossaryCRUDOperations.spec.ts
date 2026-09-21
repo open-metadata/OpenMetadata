@@ -720,14 +720,18 @@ test.describe('Glossary CRUD Operations', () => {
         if (await editTagBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
           await editTagBtn.click();
 
-          const pickerSearch = page.getByTestId('classification-tag-picker-search');
+          const pickerSearch = page.getByTestId(
+            'classification-tag-picker-search'
+          );
 
           if (
             await pickerSearch.isVisible({ timeout: 2000 }).catch(() => false)
           ) {
             // Clear the current selection by clicking the first selected tree node
             const selectedNode = page.locator('[data-testid^="tree-node-"]');
-            if (await selectedNode.isVisible({ timeout: 2000 }).catch(() => false)) {
+            if (
+              await selectedNode.isVisible({ timeout: 2000 }).catch(() => false)
+            ) {
               await selectedNode.click();
             }
 

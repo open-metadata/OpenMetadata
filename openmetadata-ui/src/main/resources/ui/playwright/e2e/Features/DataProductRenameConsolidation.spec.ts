@@ -276,7 +276,9 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       const tagSearchResponse = page.waitForResponse(
         `/api/v1/search/query?q=*${encodeURIComponent(tag.data.name)}*`
       );
-      await page.getByTestId('classification-tag-picker-search').fill(tag.data.name);
+      await page
+        .getByTestId('classification-tag-picker-search')
+        .fill(tag.data.name);
       await tagSearchResponse;
 
       await page

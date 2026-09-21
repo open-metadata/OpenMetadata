@@ -189,6 +189,7 @@ const TagSelector: FC<TagSelectorProps> = ({
         searchable
         className={className}
         commitMode={commitMode}
+        data-testid={dataTestId}
         isLoading={isLoading}
         isOpen={isOpen}
         label={resolvedLabel}
@@ -198,7 +199,6 @@ const TagSelector: FC<TagSelectorProps> = ({
         popoverStyle={popoverWidth ? { width: popoverWidth } : undefined}
         resolveMissingLabel={handleResolveMissingLabel}
         selectedValues={selectedValues}
-        data-testid={dataTestId}
         triggerDisplay={triggerDisplay}
         triggerVariant={triggerVariant}
         onChange={handleChange}

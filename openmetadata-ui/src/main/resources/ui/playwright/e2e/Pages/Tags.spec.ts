@@ -203,9 +203,9 @@ test('Classification Page', async ({ page }) => {
         tag.responseData.displayName
       )}*`
     );
-    await page.getByTestId('classification-tag-picker-search').fill(
-      tag.responseData.displayName
-    );
+    await page
+      .getByTestId('classification-tag-picker-search')
+      .fill(tag.responseData.displayName);
     await tagResponse;
 
     await expect(
@@ -565,7 +565,9 @@ test('Search tag using classification display name should work', async ({
   );
 
   // Enter the display name in the search box
-  await page.getByTestId('classification-tag-picker-search').fill(displayNameToSearch);
+  await page
+    .getByTestId('classification-tag-picker-search')
+    .fill(displayNameToSearch);
 
   const response = await tagSearchResponse;
   const searchResults = await response.json();
@@ -574,9 +576,9 @@ test('Search tag using classification display name should work', async ({
   expect(searchResults.hits.hits.length).toBeGreaterThan(0);
 
   // Verify that the classification display name is shown in search input
-  await expect(page.getByTestId('classification-tag-picker-search')).toHaveValue(
-    displayNameToSearch
-  );
+  await expect(
+    page.getByTestId('classification-tag-picker-search')
+  ).toHaveValue(displayNameToSearch);
 
   // Verify that the tag with matching display name is shown in the tree
   await expect(
@@ -789,20 +791,26 @@ test('Adds one tag and removes another in the same save preserves appliedBy on t
     ).toBeVisible();
 
     // Search for and uncheck the tag to remove
-    const searchRemove = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(removedTagFqn))
+    const searchRemove = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(encodeURIComponent(removedTagFqn))
     );
-    await page.getByTestId('classification-tag-picker-search').fill(removedTagFqn);
+    await page
+      .getByTestId('classification-tag-picker-search')
+      .fill(removedTagFqn);
     await searchRemove;
     await page.getByTestId(`tree-node-${removedTagFqn}`).click();
 
     // Now search for and select the tag to add
-    const searchAdd = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(addedTag.data.name))
+    const searchAdd = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(encodeURIComponent(addedTag.data.name))
     );
-    await page.getByTestId('classification-tag-picker-search').fill(addedTag.data.name);
+    await page
+      .getByTestId('classification-tag-picker-search')
+      .fill(addedTag.data.name);
     await searchAdd;
     await page.getByTestId(`tree-node-${addedTagFqn}`).click();
 

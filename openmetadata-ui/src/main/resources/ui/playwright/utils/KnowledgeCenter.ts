@@ -113,7 +113,9 @@ export const updateTags = async (
     await editTagBtn.click();
   }
 
-  await expect(page.getByTestId('classification-tag-picker-search')).toBeVisible();
+  await expect(
+    page.getByTestId('classification-tag-picker-search')
+  ).toBeVisible();
 
   const searchTagResponse = page.waitForResponse(
     (response) =>

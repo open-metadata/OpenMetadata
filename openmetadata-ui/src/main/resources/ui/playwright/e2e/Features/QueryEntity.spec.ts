@@ -179,7 +179,9 @@ test('Query Entity', async ({ page }) => {
     const searchTagResponse = page.waitForResponse(
       `/api/v1/search/query?q=*${encodeURIComponent(queryData.tagFqn)}*`
     );
-    await page.getByTestId('classification-tag-picker-search').fill(queryData.tagFqn);
+    await page
+      .getByTestId('classification-tag-picker-search')
+      .fill(queryData.tagFqn);
     await searchTagResponse;
     await page.getByTestId(`tree-node-${queryData.tagFqn}`).click();
 

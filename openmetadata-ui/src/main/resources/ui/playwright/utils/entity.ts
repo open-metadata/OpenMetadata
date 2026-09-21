@@ -910,12 +910,14 @@ export const assignTag = async (
   await expect(tagButton).toBeVisible();
   await tagButton.click();
 
-  await expect(page.getByTestId('classification-tag-picker-search')).toBeVisible();
+  await expect(
+    page.getByTestId('classification-tag-picker-search')
+  ).toBeVisible();
 
   const searchTags = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
   );
-  
+
   await page.getByTestId('classification-tag-picker-search').fill(tag);
 
   await searchTags;
@@ -925,9 +927,7 @@ export const assignTag = async (
     .first()
     .click();
 
-  await page
-    .getByTestId('update-btn')
-    .waitFor({ state: 'visible' });
+  await page.getByTestId('update-btn').waitFor({ state: 'visible' });
 
   const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
 
@@ -1023,8 +1023,8 @@ export const removeTag = async (
     ).toBeVisible();
 
     const searchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
-  );
+      `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+    );
     await page.getByTestId('classification-tag-picker-search').fill(tag);
     await searchResponse;
 
@@ -1074,8 +1074,8 @@ export const removeTagsFromChildren = async ({
     ).toBeVisible();
 
     const searchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
-  );
+      `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+    );
     await page.getByTestId('classification-tag-picker-search').fill(tag);
     await searchResponse;
 

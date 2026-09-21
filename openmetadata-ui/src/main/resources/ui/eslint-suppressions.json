@@ -26,7 +26,7 @@
   },
   "playwright/e2e/Features/ActivityStream.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 2
     }
   },
   "playwright/e2e/Features/AdvancedSearch.spec.ts": {
@@ -239,7 +239,7 @@
   },
   "playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 12
+      "count": 11
     }
   },
   "playwright/e2e/Features/Glossary/GlossaryMiscOperations.spec.ts": {
@@ -434,7 +434,7 @@
   },
   "playwright/e2e/Features/Table.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 8
+      "count": 6
     }
   },
   "playwright/e2e/Features/Tasks.spec.ts": {
@@ -630,7 +630,7 @@
   },
   "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 4
+      "count": 3
     }
   },
   "playwright/e2e/Pages/DataProducts.spec.ts": {
@@ -1087,11 +1087,6 @@
   "playwright/utils/sso.ts": {
     "om-playwright/no-positional-locator": {
       "count": 10
-    }
-  },
-  "playwright/utils/tag.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
     }
   },
   "playwright/utils/task.ts": {

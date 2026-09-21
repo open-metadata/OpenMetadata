@@ -324,7 +324,9 @@ test.describe('Data Product Comprehensive Tests', () => {
       const tagSearchResponse = page.waitForResponse(
         `/api/v1/search/query?q=*${encodeURIComponent('Personal')}*`
       );
-      await page.getByTestId('classification-tag-picker-search').fill('Personal');
+      await page
+        .getByTestId('classification-tag-picker-search')
+        .fill('Personal');
       await tagSearchResponse;
 
       // Select the tag

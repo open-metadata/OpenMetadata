@@ -61,7 +61,9 @@ test(
     const tagSearchResponse = page.waitForResponse(
       '/api/v1/search/query?q=*Sensitive*'
     );
-    await page.getByTestId('classification-tag-picker-search').fill('Sensitive');
+    await page
+      .getByTestId('classification-tag-picker-search')
+      .fill('Sensitive');
     await tagSearchResponse;
 
     await page.getByTestId('tree-node-PII.Sensitive').click();
@@ -94,7 +96,9 @@ test(
     const tagSearchResponse2 = page.waitForResponse(
       '/api/v1/search/query?q=*NonSensitive*'
     );
-    await page.getByTestId('classification-tag-picker-search').fill('NonSensitive');
+    await page
+      .getByTestId('classification-tag-picker-search')
+      .fill('NonSensitive');
     await tagSearchResponse2;
 
     await page.getByTestId('tree-node-PII.NonSensitive').click();

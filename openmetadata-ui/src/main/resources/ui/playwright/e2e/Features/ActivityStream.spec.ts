@@ -176,7 +176,9 @@ test.describe('Activity Stream on Entity Pages', () => {
 
           const saveButton = page.getByTestId('update-btn');
 
-          if (await saveButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+          if (
+            await saveButton.isVisible({ timeout: 3000 }).catch(() => false)
+          ) {
             const updateResponse = page.waitForResponse(
               (response) =>
                 response.url().includes('/api/v1/tables/') &&

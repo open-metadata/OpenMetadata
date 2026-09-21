@@ -1137,7 +1137,9 @@ test.describe('Glossary Advanced Operations', () => {
       const searchRemove = page.waitForResponse(
         `/api/v1/search/query?q=*${encodeURIComponent('Sensitive')}*`
       );
-      await page.getByTestId('classification-tag-picker-search').fill('Sensitive');
+      await page
+        .getByTestId('classification-tag-picker-search')
+        .fill('Sensitive');
       await searchRemove;
 
       await page.getByTestId('tree-node-PII.Sensitive').click();

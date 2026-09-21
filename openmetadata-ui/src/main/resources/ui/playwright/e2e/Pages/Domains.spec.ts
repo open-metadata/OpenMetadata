@@ -3324,7 +3324,9 @@ test.describe('Domain Tree View Functionality', () => {
       ).toBeVisible();
 
       const searchTagResponse = page.waitForResponse(
-        `/api/v1/search/query?q=*${encodeURIComponent(testTag.responseData.fullyQualifiedName)}*`
+        `/api/v1/search/query?q=*${encodeURIComponent(
+          testTag.responseData.fullyQualifiedName
+        )}*`
       );
       await page
         .getByTestId('classification-tag-picker-search')

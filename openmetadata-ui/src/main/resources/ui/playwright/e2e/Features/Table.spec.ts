@@ -584,10 +584,14 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     const addSearchResponse = page.waitForResponse(
       `/api/v1/search/query?q=*${encodeURIComponent(testTag.data.name)}*`
     );
-    await page.getByTestId('classification-tag-picker-search').fill(testTag.data.name);
+    await page
+      .getByTestId('classification-tag-picker-search')
+      .fill(testTag.data.name);
     await addSearchResponse;
 
-    await page.getByTestId(`tree-node-${testTag.responseData.fullyQualifiedName}`).click();
+    await page
+      .getByTestId(`tree-node-${testTag.responseData.fullyQualifiedName}`)
+      .click();
 
     const saveTagResponse = page.waitForResponse('api/v1/columns/name/*');
     await page.getByTestId('update-btn').waitFor({ state: 'visible' });
@@ -632,11 +636,15 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     const removeSearchResponse = page.waitForResponse(
       `/api/v1/search/query?q=*${encodeURIComponent(testTag.data.name)}*`
     );
-    await page.getByTestId('classification-tag-picker-search').fill(testTag.data.name);
+    await page
+      .getByTestId('classification-tag-picker-search')
+      .fill(testTag.data.name);
     await removeSearchResponse;
 
     // Tag is currently selected — clicking again unchecks it
-    await page.getByTestId(`tree-node-${testTag.responseData.fullyQualifiedName}`).click();
+    await page
+      .getByTestId(`tree-node-${testTag.responseData.fullyQualifiedName}`)
+      .click();
 
     const removeTagResponse = page.waitForResponse('api/v1/columns/name/*');
     await page.getByTestId('update-btn').waitFor({ state: 'visible' });
