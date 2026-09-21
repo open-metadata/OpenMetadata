@@ -97,6 +97,8 @@ export interface ServiceConnectionClass {
  * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
  * create, deploy, and manage paginated reports
  *
+ * Rill Connection Config
+ *
  * SAP S/4HANA Connection Config for Embedded Analytics
  *
  * Omni BI connector: models, topics, workbooks/dashboards and lineage
@@ -390,6 +392,8 @@ export interface Connection {
      *
      * Hex API token for authentication. Can be personal or workspace token.
      *
+     * API token to authenticate with Rill.
+     *
      * API token to authenticate with Omni.
      *
      * To Connect to Dagster Cloud
@@ -429,6 +433,8 @@ export interface Connection {
      * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
      *
      * Client SSL verification.
+     *
+     * Boolean marking if we need to verify the SSL certs for Rill. Default to True.
      *
      * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
      * validation, 'validate' to verify against a CA certificate.
@@ -488,6 +494,13 @@ export interface Connection {
      */
     dataModelFilterPattern?: FilterPattern;
     /**
+     * Optional URL for human-facing Looker links when the API URL differs from the browser
+     * URL.
+     *
+     * Qlik Sense Base URL, used for genrating dashboard & chat url
+     */
+    displayUrl?: string;
+    /**
      * Credentials to extract the .lkml files from a repository. This is required to get all the
      * lineage and definitions.
      */
@@ -526,6 +539,8 @@ export interface Connection {
      * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
      *
      * Host and Port of the Ssrs instance.
+     *
+     * URL of a Rill Developer runtime or Rill Cloud project endpoint.
      *
      * Base URL of the SAP S/4HANA instance (e.g. https://s4hana.example.com).
      *
@@ -1067,10 +1082,6 @@ export interface Connection {
      */
     namespace?:    string;
     certificates?: QlikCertificatesBy;
-    /**
-     * Qlik Sense Base URL, used for genrating dashboard & chat url
-     */
-    displayUrl?: string;
     /**
      * User Directory.
      */
@@ -5381,6 +5392,7 @@ export enum AirflowConnectionType {
     Redash = "Redash",
     Redpanda = "Redpanda",
     Redshift = "Redshift",
+    Rill = "Rill",
     S3 = "S3",
     SAS = "SAS",
     SFTP = "Sftp",

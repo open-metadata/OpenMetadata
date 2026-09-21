@@ -25,7 +25,7 @@ import {
   PageHierarchy,
   PageType,
 } from '../interface/knowledge-center.interface';
-import APIClient from '../rest/index';
+import APIClient from './axiosClient';
 
 const CONTEXT_CENTER_PAGES_PATH = '/contextCenter/pages';
 

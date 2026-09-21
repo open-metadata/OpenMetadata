@@ -117,7 +117,6 @@ export const renderFieldElement = (
     onItemCleared,
     onSearchChange,
     onSelect: _onSelect,
-    size: _size,
     selectedItems: _selectedItems,
     options: _options,
     items: _items,

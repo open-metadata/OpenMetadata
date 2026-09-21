@@ -37,6 +37,11 @@
       "types": "./dist/types/src/icons/index.d.ts",
       "import": "./dist/icons/index.es.js",
       "require": "./dist/icons/index.cjs.js"
+    },
+    "./icon": {
+      "types": "./dist/types/src/icon/index.d.ts",
+      "import": "./dist/icon/index.es.js",
+      "require": "./dist/icon/index.cjs.js"
     }
   },
   "files": [
@@ -66,8 +71,8 @@
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist",
     "prepublishOnly": "yarn clean && yarn build",
-    "storybook": "yarn icons:generate && storybook dev -p 6006",
-    "build-storybook": "yarn icons:generate && storybook build",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src/",
@@ -172,7 +177,7 @@
   "resolutions": {
     "brace-expansion": "5.0.9",
     "browserslist": "4.28.8",
-    "fast-uri": "3.1.7",
+    "fast-uri": "3.1.8",
     "lodash": "4.18.1",
     "minimatch": "10.2.3",
     "nanoid": "3.3.17",
