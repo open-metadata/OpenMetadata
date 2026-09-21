@@ -31,9 +31,6 @@ export interface SearchDropdownProps {
   independent?: boolean; // flag to indicate if the filters are independent of aggregations
   hideCounts?: boolean; // Determines if the count should be displayed or not.
   hasNullOption?: boolean; // Determines if the null option should be displayed or not. For e.g No Owner, No Tier etc
-  // @deprecated Ignored. Kept only so Collate `main`, which still passes it,
-  // type-checks against this branch; remove with the SearchDropdown shim.
-  showSelectedCounts?: boolean;
   hideSearchBar?: boolean; // Determines if the search bar should be hidden. Default is false
   singleSelect?: boolean; // Enable single-select mode with radio buttons instead of checkboxes
   // Tri-state Select All row over the currently displayed options (multi-select only)
