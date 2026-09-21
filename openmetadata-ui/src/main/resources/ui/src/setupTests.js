@@ -160,6 +160,20 @@ if (typeof Blob !== 'undefined' && typeof Blob.prototype.text !== 'function') {
   };
 }
 
+if (
+  typeof Blob !== 'undefined' &&
+  typeof Blob.prototype.arrayBuffer !== 'function'
+) {
+  Blob.prototype.arrayBuffer = function arrayBuffer() {
+    return new Promise((resolve, reject) => {
+      const reader = new window.FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(this);
+    });
+  };
+}
+
 /**
  * mock react-i18next
  */
