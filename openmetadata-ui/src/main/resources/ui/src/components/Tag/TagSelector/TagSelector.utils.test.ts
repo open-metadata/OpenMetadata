@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  LabelType,
-  State,
-  TagSource,
-} from '../../../generated/type/tagLabel';
+import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import {
   buildTagLabelFromFqn,
   buildTagLabelFromResult,
@@ -33,7 +29,9 @@ const makeResult = (overrides?: Partial<RawTagResult>): RawTagResult => ({
 
 describe('getTagDisplayLabel', () => {
   it('returns displayName when present', () => {
-    const result = makeResult({ data: { displayName: 'Email Tag', name: 'Email' } });
+    const result = makeResult({
+      data: { displayName: 'Email Tag', name: 'Email' },
+    });
 
     expect(getTagDisplayLabel(result)).toBe('Email Tag');
   });
@@ -76,7 +74,11 @@ describe('buildTagLabelFromResult', () => {
   it('builds a TagLabel with correct fixed fields', () => {
     const result = makeResult({
       value: 'Personal.Email',
-      data: { name: 'Email', displayName: 'Email Tag', style: { color: '#f00' } },
+      data: {
+        name: 'Email',
+        displayName: 'Email Tag',
+        style: { color: '#f00' },
+      },
     });
     const label = buildTagLabelFromResult(result);
 

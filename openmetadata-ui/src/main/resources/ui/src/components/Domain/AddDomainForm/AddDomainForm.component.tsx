@@ -1010,7 +1010,16 @@ const AddDomainForm = ({
           </Box>
         )}
       </FormField>
-      <FormField control={form.control} name="tags">
+      <FormField
+        control={form.control}
+        name="tags"
+        rules={{
+          validate: (v) => {
+            const msg = intakeFormRequiredMessage('tags');
+
+            return msg && !v?.length ? msg : true;
+          },
+        }}>
         {({ field }) => (
           <TagSelector
             className="tw:w-full"

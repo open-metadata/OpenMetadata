@@ -13,11 +13,7 @@
 
 import { act, renderHook } from '@testing-library/react';
 import axios from 'axios';
-import {
-  LabelType,
-  State,
-  TagSource,
-} from '../../../generated/type/tagLabel';
+import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { RawTagResult } from '../../Tag/TagSelector/TagSelector.utils';
@@ -128,7 +124,9 @@ describe('useClassificationTreeData', () => {
     const error = new Error('Network error');
 
     (tagClassBase.getTags as jest.Mock).mockRejectedValue(error);
-    (axios.isCancel as jest.MockedFunction<typeof axios.isCancel>).mockReturnValue(false);
+    (
+      axios.isCancel as jest.MockedFunction<typeof axios.isCancel>
+    ).mockReturnValue(false);
 
     const { result } = renderHook(() => useClassificationTreeData());
 
@@ -148,12 +146,16 @@ describe('useClassificationTreeData', () => {
     const cancelError = new Error('cancelled');
 
     (tagClassBase.getTags as jest.Mock).mockRejectedValue(cancelError);
-    (axios.isCancel as jest.MockedFunction<typeof axios.isCancel>).mockReturnValue(true);
+    (
+      axios.isCancel as jest.MockedFunction<typeof axios.isCancel>
+    ).mockReturnValue(true);
 
     const { result } = renderHook(() => useClassificationTreeData());
 
     await act(async () => {
-      await expect(result.current({ searchTerm: '' })).rejects.toThrow('cancelled');
+      await expect(result.current({ searchTerm: '' })).rejects.toThrow(
+        'cancelled'
+      );
     });
 
     expect(showErrorToast).not.toHaveBeenCalled();

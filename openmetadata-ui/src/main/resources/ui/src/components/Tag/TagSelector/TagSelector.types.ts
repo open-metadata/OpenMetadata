@@ -24,6 +24,7 @@ export interface TagSelectorProps {
   label?: string;
   placeholder?: string;
   required?: boolean;
+  disabled?: boolean;
   commitMode?: FilterSelectCommitMode;
   triggerVariant?: FilterSelectTriggerVariant;
   triggerDisplay?: FilterSelectTriggerDisplay;

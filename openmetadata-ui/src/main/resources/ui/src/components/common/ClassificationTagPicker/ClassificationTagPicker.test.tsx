@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { TreeSelectNode } from '@openmetadata/ui-core-components';
+import { render, screen } from '@testing-library/react';
 import {
   LabelType,
   State,
@@ -37,7 +36,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   }),
 }));
 
-const makeClassificationTag = (fqn: string, overrides?: Partial<TagLabel>): TagLabel => ({
+const makeClassificationTag = (
+  fqn: string,
+  overrides?: Partial<TagLabel>
+): TagLabel => ({
   tagFQN: fqn,
   source: TagSource.Classification,
   labelType: LabelType.Manual,
@@ -83,7 +85,8 @@ describe('ClassificationTagPicker', () => {
 
     render(<ClassificationTagPicker value={tags} onChange={jest.fn()} />);
 
-    const selected = capturedTreeSelectProps.value as TreeSelectNode<TagLabel>[];
+    const selected =
+      capturedTreeSelectProps.value as TreeSelectNode<TagLabel>[];
 
     expect(selected).toHaveLength(1);
     expect(selected[0].value).toBe('Personal.Email');
@@ -94,7 +97,8 @@ describe('ClassificationTagPicker', () => {
 
     render(<ClassificationTagPicker value={[tag]} onChange={jest.fn()} />);
 
-    const selected = capturedTreeSelectProps.value as TreeSelectNode<TagLabel>[];
+    const selected =
+      capturedTreeSelectProps.value as TreeSelectNode<TagLabel>[];
 
     expect(selected[0]).toMatchObject({
       id: 'Personal.Email',
@@ -115,7 +119,8 @@ describe('ClassificationTagPicker', () => {
 
     render(<ClassificationTagPicker value={[tag]} onChange={jest.fn()} />);
 
-    const selected = capturedTreeSelectProps.value as TreeSelectNode<TagLabel>[];
+    const selected =
+      capturedTreeSelectProps.value as TreeSelectNode<TagLabel>[];
 
     expect(selected[0].label).toBe('Personal.Email');
   });
@@ -126,7 +131,9 @@ describe('ClassificationTagPicker', () => {
     } as Partial<TagLabel>);
     const onChange = jest.fn();
 
-    render(<ClassificationTagPicker value={[originalTag]} onChange={onChange} />);
+    render(
+      <ClassificationTagPicker value={[originalTag]} onChange={onChange} />
+    );
 
     const handleChange = capturedTreeSelectProps.onChange as (
       nodes: TreeSelectNode<TagLabel>[]
@@ -181,9 +188,9 @@ describe('ClassificationTagPicker', () => {
   it('forwards label, required and data-testid props to TreeSelect', () => {
     render(
       <ClassificationTagPicker
+        required
         data-testid="tag-picker"
         label="Tags"
-        required
         value={[]}
         onChange={jest.fn()}
       />

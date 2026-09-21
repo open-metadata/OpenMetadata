@@ -62,6 +62,7 @@ const TagSelector: FC<TagSelectorProps> = ({
   label,
   placeholder,
   required,
+  disabled,
   commitMode = 'immediate',
   triggerVariant = 'input',
   triggerDisplay = 'chips',
@@ -76,6 +77,8 @@ const TagSelector: FC<TagSelectorProps> = ({
   const [popoverWidth, setPopoverWidth] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const tagCacheRef = useRef<Map<string, TagLabel>>(new Map());
+  const requestIdRef = useRef(0);
+  const hasInitializedRef = useRef(false);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -103,9 +106,13 @@ const TagSelector: FC<TagSelectorProps> = ({
 
   const fetchTags = useCallback(
     async (searchText: string) => {
+      const id = ++requestIdRef.current;
       setIsLoading(true);
       try {
         const response = await tagClassBase.getTags(searchText, 1);
+        if (id !== requestIdRef.current) {
+          return;
+        }
         const results = response?.data ?? [];
         const fetchedOptions = results.map((result) => {
           const tag = buildTagLabelFromResult(result);
@@ -115,17 +122,17 @@ const TagSelector: FC<TagSelectorProps> = ({
         });
         setOptions(fetchedOptions);
       } catch {
-        setOptions([]);
+        if (id === requestIdRef.current) {
+          setOptions([]);
+        }
       } finally {
-        setIsLoading(false);
+        if (id === requestIdRef.current) {
+          setIsLoading(false);
+        }
       }
     },
     [cacheTag]
   );
-
-  useEffect(() => {
-    fetchTags('');
-  }, [fetchTags]);
 
   const debouncedSearch = useMemo(
     () => debounce((text: string) => void fetchTags(text), 300),
@@ -139,17 +146,30 @@ const TagSelector: FC<TagSelectorProps> = ({
     [debouncedSearch]
   );
 
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (open && !hasInitializedRef.current) {
+        hasInitializedRef.current = true;
+        void fetchTags('');
+      }
+      onOpenChange?.(open);
+    },
+    [fetchTags, onOpenChange]
+  );
+
   const selectedValues = useMemo(() => value.map((tag) => tag.tagFQN), [value]);
 
   const handleChange = useCallback(
     (fqns: string[]) => {
       const cache = tagCacheRef.current;
+      const existing = new Map(value.map((tag) => [tag.tagFQN, tag]));
       const tags = fqns.map(
-        (fqn) => cache.get(fqn) ?? buildTagLabelFromFqn(fqn)
+        (fqn) =>
+          existing.get(fqn) ?? cache.get(fqn) ?? buildTagLabelFromFqn(fqn)
       );
       onChange(tags);
     },
-    [onChange]
+    [onChange, value]
   );
 
   const handleResolveMissingLabel = useCallback((fqn: string) => {
@@ -161,7 +181,12 @@ const TagSelector: FC<TagSelectorProps> = ({
   const resolvedLabel = label ?? t('label.tag-plural');
 
   return (
-    <div className="tw:flex tw:flex-col tw:gap-1.5 tw:w-full" ref={containerRef}>
+    <div
+      aria-disabled={disabled || undefined}
+      className={`tw:flex tw:flex-col tw:gap-1.5 tw:w-full${
+        disabled ? ' tw:pointer-events-none tw:opacity-50' : ''
+      }`}
+      ref={containerRef}>
       {label !== undefined && (
         <FormItemLabel label={resolvedLabel} required={required} />
       )}
@@ -182,7 +207,7 @@ const TagSelector: FC<TagSelectorProps> = ({
         triggerDisplay={triggerDisplay}
         triggerVariant={triggerVariant}
         onChange={handleChange}
-        onOpenChange={onOpenChange}
+        onOpenChange={handleOpenChange}
         onSearch={debouncedSearch}
       />
     </div>

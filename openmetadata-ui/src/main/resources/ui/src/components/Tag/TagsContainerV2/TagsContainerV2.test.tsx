@@ -35,19 +35,22 @@ const TRIGGER_STATE = {
 
 let capturedClassificationProps: ClassificationTagPickerProps | undefined;
 
-jest.mock('../../common/ClassificationTagPicker/ClassificationTagPicker', () => {
-  return jest
-    .fn()
-    .mockImplementation((props: ClassificationTagPickerProps) => {
-      capturedClassificationProps = props;
+jest.mock(
+  '../../common/ClassificationTagPicker/ClassificationTagPicker',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation((props: ClassificationTagPickerProps) => {
+        capturedClassificationProps = props;
 
-      return (
-        <div data-testid="mock-classification-picker">
-          {props.renderTrigger?.(TRIGGER_STATE)}
-        </div>
-      );
-    });
-});
+        return (
+          <div data-testid="mock-classification-picker">
+            {props.renderTrigger?.(TRIGGER_STATE)}
+          </div>
+        );
+      });
+  }
+);
 
 let capturedGlossaryProps: GlossaryTermPickerProps | undefined;
 

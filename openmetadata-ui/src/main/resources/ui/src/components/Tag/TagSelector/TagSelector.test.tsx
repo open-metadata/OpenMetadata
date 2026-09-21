@@ -13,11 +13,7 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import {
-  LabelType,
-  State,
-  TagSource,
-} from '../../../generated/type/tagLabel';
+import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import tagClassBase from '../../../utils/TagClassBase';
 import TagSelector from './TagSelector';
 
@@ -56,7 +52,11 @@ const mockGetTags = jest.fn().mockResolvedValue({
     {
       label: 'Personal.Email',
       value: 'Personal.Email',
-      data: { name: 'Email', displayName: 'Email Tag', style: { color: '#f00' } },
+      data: {
+        name: 'Email',
+        displayName: 'Email Tag',
+        style: { color: '#f00' },
+      },
     },
   ],
 });

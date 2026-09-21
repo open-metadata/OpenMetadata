@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TreeSelectDataFetcher, TreeSelectNode } from '@openmetadata/ui-core-components';
+import {
+  TreeSelectDataFetcher,
+  TreeSelectNode,
+} from '@openmetadata/ui-core-components';
 import { Tag as TagIcon } from '@openmetadata/ui-core-components/icons';
 import axios, { AxiosError } from 'axios';
 import { useCallback } from 'react';
@@ -24,30 +27,31 @@ import {
 } from '../../Tag/TagSelector/TagSelector.utils';
 
 // Flat fetcher — classification tags have no hierarchy, every node is a leaf.
-export const useClassificationTreeData = (): TreeSelectDataFetcher<TagLabel> => {
-  return useCallback(async ({ searchTerm }) => {
-    try {
-      const response = await tagClassBase.getTags(searchTerm ?? '', 1);
-      const results: RawTagResult[] = response?.data ?? [];
+export const useClassificationTreeData =
+  (): TreeSelectDataFetcher<TagLabel> => {
+    return useCallback(async ({ searchTerm }) => {
+      try {
+        const response = await tagClassBase.getTags(searchTerm ?? '', 1);
+        const results: RawTagResult[] = response?.data ?? [];
 
-      const nodes: TreeSelectNode<TagLabel>[] = results.map((result) => ({
-        id: result.value,
-        label: getTagDisplayLabel(result),
-        value: result.value,
-        data: buildTagLabelFromResult(result),
-        isLeaf: true,
-        allowSelection: true,
-        icon: <TagIcon size={16} />,
-      }));
+        const nodes: TreeSelectNode<TagLabel>[] = results.map((result) => ({
+          id: result.value,
+          label: getTagDisplayLabel(result),
+          value: result.value,
+          data: buildTagLabelFromResult(result),
+          isLeaf: true,
+          allowSelection: true,
+          icon: <TagIcon size={16} />,
+        }));
 
-      return { nodes };
-    } catch (error) {
-      if (axios.isCancel(error)) {
-        throw error;
+        return { nodes };
+      } catch (error) {
+        if (axios.isCancel(error)) {
+          throw error;
+        }
+        showErrorToast(error as AxiosError);
+
+        return { nodes: [] };
       }
-      showErrorToast(error as AxiosError);
-
-      return { nodes: [] };
-    }
-  }, []);
-};
+    }, []);
+  };

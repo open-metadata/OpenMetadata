@@ -515,6 +515,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
                 {({ field }) => (
                   <TagSelector
                     className="tw:w-full"
+                    disabled={!canEditTags}
                     label={t('label.tag-plural')}
                     placeholder={t(SELECT_FIELD_LABEL_KEY, {
                       field: t('label.tag-plural'),

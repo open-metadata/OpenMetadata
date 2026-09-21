@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TreeSelect, TreeSelectNode, TreeSelectProps } from '@openmetadata/ui-core-components';
+import {
+  TreeSelect,
+  TreeSelectNode,
+  TreeSelectProps,
+} from '@openmetadata/ui-core-components';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TagSource } from '../../../generated/entity/data/container';
@@ -97,7 +101,6 @@ const ClassificationTagPicker: FC<ClassificationTagPickerProps> = ({
   return (
     <TreeSelect
       searchable
-      showExpandIcon={false}
       commitMode={commitMode}
       data-testid={dataTestId}
       fetchData={fetchData}
@@ -106,14 +109,14 @@ const ClassificationTagPicker: FC<ClassificationTagPickerProps> = ({
       label={label}
       multiple={multiple}
       placeholder={
-        placeholder ??
-        t('label.select-field', { field: t('label.tag-plural') })
+        placeholder ?? t('label.select-field', { field: t('label.tag-plural') })
       }
       renderTrigger={renderTrigger}
       required={required}
       searchPlaceholder={t('label.search-entity', {
         entity: t('label.tag-plural'),
       })}
+      showExpandIcon={false}
       value={selectedValue}
       onChange={handleChange}
       onOpenChange={onOpenChange}

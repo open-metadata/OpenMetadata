@@ -590,19 +590,20 @@ const MemoryTagsRow: FC<{
     </div>
     <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap tw:flex-1">
       {isViewOnly && selectedTags.length === 0 && !showTagForm && <EmptyTags />}
-      {!showTagForm && selectedTags.map((tag) => (
-        <ClassificationTag
-          color={tag.style?.color}
-          icon={tag.style?.iconURL}
-          key={String(tag.tagFQN ?? '')}
-          label={tag.tagFQN ?? ''}
-          maxWidth={160}
-          size="sm"
-          onDelete={
-            isViewOnly ? undefined : () => handleRemoveTag(tag.tagFQN)
-          }
-        />
-      ))}
+      {!showTagForm &&
+        selectedTags.map((tag) => (
+          <ClassificationTag
+            color={tag.style?.color}
+            icon={tag.style?.iconURL}
+            key={String(tag.tagFQN ?? '')}
+            label={tag.tagFQN ?? ''}
+            maxWidth={160}
+            size="sm"
+            onDelete={
+              isViewOnly ? undefined : () => handleRemoveTag(tag.tagFQN)
+            }
+          />
+        ))}
       {!isViewOnly && !showTagForm && (
         <Button
           color="link-color"
