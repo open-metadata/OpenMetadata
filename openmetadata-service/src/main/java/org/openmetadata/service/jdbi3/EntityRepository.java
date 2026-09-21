@@ -9946,6 +9946,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // No DERIVED label is ever persisted, so the persisted state is exactly the non-derived
       // subset and that is what the diff has to compare. Mirrors how owners and domains are lined
       // up before comparison.
+      //
+      // Both sides need it. `restoreEntity` builds `updated` as a deep copy of the already
+      // inherited `original` and never runs it through prepareInternal, so there the derived
+      // labels sit on the updated side instead -- and diffing that way records the same inherited
+      // tag as an addition on every restore. `updatedTags` itself is left alone: the PUT branch
+      // merges into that list in place and the entity keeps the result, so only the two diff
+      // reads are narrowed.
       origTags = getNonDerivedTags(listOrEmpty(origTags));
       // updatedTags cannot be immutable list, as we are adding the origTags to updatedTags even if
       // its empty.
@@ -9964,7 +9971,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // Calculate what needs to be added (tags in updatedTags but not in origTags)
         // Use Set for O(1) lookup performance instead of O(n) stream().anyMatch()
         Set<String> origTagKeys = createTagKeySet(origTags);
-        for (TagLabel updatedTag : updatedTags) {
+        for (TagLabel updatedTag : getNonDerivedTags(updatedTags)) {
           if (!origTagKeys.contains(createTagKey(updatedTag))) {
             addedTags.add(updatedTag);
           }
@@ -9976,7 +9983,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       } else {
         // PATCH and an explicit PUT override replace tags.
         // Use Set for O(1) lookup performance instead of O(n) stream().anyMatch()
-        Set<String> updatedTagKeys = createTagKeySet(updatedTags);
+        List<TagLabel> persistableUpdatedTags = getNonDerivedTags(updatedTags);
+        Set<String> updatedTagKeys = createTagKeySet(persistableUpdatedTags);
         Set<String> origTagKeys = createTagKeySet(origTags);
 
         // Calculate what needs to be deleted (tags in origTags but not in updatedTags)
@@ -9986,7 +9994,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           }
         }
         // Calculate what needs to be added (tags in updatedTags but not in origTags)
-        for (TagLabel updatedTag : updatedTags) {
+        for (TagLabel updatedTag : persistableUpdatedTags) {
           if (!origTagKeys.contains(createTagKey(updatedTag))) {
             addedTags.add(updatedTag);
           }
@@ -10012,9 +10020,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
             addedTags.stream().map(tag -> tag.withAppliedBy(updatingUser.getName())).toList(), fqn);
       }
 
-      // Record changes for audit trail
+      // Record changes for audit trail.
+      //
+      // This diffs the two lists directly rather than reusing addedTags/deletedTags, so it needs
+      // the same persistable view: the version history and the ChangeEvent are exactly what was
+      // wrong before. Taken after the PUT merge above, so on that path it still sees the request's
+      // tags unioned with what already existed. `updatedTags` itself stays the live list -- the
+      // entity keeps the merged result and the sort below orders it.
       recordListChange(
-          fieldName, origTags, updatedTags, new ArrayList<>(), new ArrayList<>(), tagLabelMatch);
+          fieldName,
+          origTags,
+          getNonDerivedTags(updatedTags),
+          new ArrayList<>(),
+          new ArrayList<>(),
+          tagLabelMatch);
       updatedTags.sort(compareTagLabel);
     }
 

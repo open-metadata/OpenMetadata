@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -466,6 +467,44 @@ public class ServiceAttributePolicyIT {
   }
 
   /**
+   * The mirror of the edit case, on the other side of the comparison.
+   *
+   * <p>`restoreEntity` builds `updated` as a deep copy of an `original` that inheritance has
+   * already decorated, and never runs it through prepareInternal -- so the derived labels sit on
+   * the updated side. Diffing only the original side would record the inherited tag as newly
+   * added on every restore, the same false entry as the edit case but with the sign flipped.
+   */
+  @Test
+  void restoringAnAsset_doesNotRecordTheInheritedTagsAsAdded(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String prefix = ns.shortPrefix();
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+      Table table = createTable(admin, prefix + "_restored", schema);
+      tagService(admin, service, HIDDEN_TAG);
+
+      assertTrue(
+          tagFqnsOf(admin.tables().get(table.getId().toString(), TAGS_FIELD)).contains(HIDDEN_TAG),
+          "the table has something to inherit first");
+
+      admin.tables().delete(table.getId().toString(), Map.of("hardDelete", "false"));
+      Table restored = admin.tables().restore(table.getId().toString());
+
+      assertFalse(
+          changeDescriptionMentions(restored, HIDDEN_TAG, true),
+          "the inherited tag was already there, so the restore must not record it as added");
+      assertFalse(changeDescriptionMentions(restored, HIDDEN_TAG, false), "nor as removed");
+      assertTrue(
+          tagFqnsOf(admin.tables().get(table.getId().toString(), TAGS_FIELD)).contains(HIDDEN_TAG),
+          "and it is still inherited after the restore");
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  /**
    * Appends one tag of the asset's own, the way a UI edit does: the caller sends only the label it
    * is adding and leaves the inherited ones untouched.
    */
@@ -478,13 +517,20 @@ public class ServiceAttributePolicyIT {
   }
 
   private boolean changeDescriptionMentionsRemoval(Table table, String tagFqn) {
+    return changeDescriptionMentions(table, tagFqn, false);
+  }
+
+  /** Whether the recorded diff names {@code tagFqn} as added ({@code added}) or as removed. */
+  private boolean changeDescriptionMentions(Table table, String tagFqn, boolean added) {
     ChangeDescription change = table.getChangeDescription();
     if (change == null) {
       return false;
     }
-    return listOrEmpty(change.getFieldsDeleted()).stream()
+    return listOrEmpty(added ? change.getFieldsAdded() : change.getFieldsDeleted()).stream()
         .filter(field -> TAGS_FIELD.equals(field.getName()))
-        .anyMatch(field -> String.valueOf(field.getOldValue()).contains(tagFqn));
+        .anyMatch(
+            field ->
+                String.valueOf(added ? field.getNewValue() : field.getOldValue()).contains(tagFqn));
   }
 
   private static Set<String> tagFqnsOf(Table table) {
