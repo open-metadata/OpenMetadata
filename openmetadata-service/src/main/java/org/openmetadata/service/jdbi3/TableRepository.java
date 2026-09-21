@@ -608,6 +608,12 @@ public class TableRepository extends EntityRepository<Table> {
     // Patch can't make changes to following fields. Ignore the changes.
     super.restorePatchAttributes(original, updated);
     updated.withDatabase(original.getDatabase()).withService(original.getService());
+    // super.restorePatchAttributes may have reverted the table name (when renameAllowed=false).
+    // Re-derive column FQNs from the (now-restored) table FQN so child columns
+    // are not left with the rejected name as their FQN prefix.
+    if (updated.getColumns() != null) {
+      ColumnUtil.setColumnFQN(updated.getFullyQualifiedName(), updated.getColumns());
+    }
   }
 
   @Override
