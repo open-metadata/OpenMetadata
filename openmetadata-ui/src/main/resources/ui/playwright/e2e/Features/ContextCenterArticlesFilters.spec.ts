@@ -93,7 +93,7 @@ const applyDomainFilter = async (page: Page, domainDisplayName: string) => {
 };
 
 const selectSort = async (page: Page, sortLabel: string) => {
-  await page.getByRole('button', { name: /sort/i }).click();
+  await page.getByTestId('articles-sort-button').click();
   const menuItem = page.getByRole('menuitemradio', { name: sortLabel });
   await expect(menuItem).toBeVisible();
   await menuItem.click();
