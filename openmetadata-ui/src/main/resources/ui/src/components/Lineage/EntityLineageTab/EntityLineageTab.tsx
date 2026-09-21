@@ -12,11 +12,11 @@
  */
 import { FC, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
-import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import LineageTable from '../../LineageTable/LineageTable';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
-import Lineage from '../Lineage.component';
+import LineageComponent from '../Lineage.component';
+import { Lineage } from '../Lineage/Lineage';
 
 interface EntityLineageTabProps {
   deleted: boolean;
@@ -43,7 +43,7 @@ export const EntityLineageTab: FC<EntityLineageTabProps> = ({
 
   const lineageTab = useMemo(
     () => (
-      <Lineage
+      <LineageComponent
         deleted={deleted}
         entity={entity}
         entityType={entityType}
@@ -60,13 +60,17 @@ export const EntityLineageTab: FC<EntityLineageTabProps> = ({
   );
 
   return (
-    <LineageProvider>
+    <Lineage
+      entity={entity}
+      entityFqn={entity.fullyQualifiedName ?? ''}
+      entityType={entityType}
+      isPlatformLineage={false}>
       <div
         aria-hidden={viewMode !== 'lineage'}
         style={{ display: viewMode === 'lineage' ? undefined : 'none' }}>
         {lineageTab}
       </div>
       {viewMode === 'impact_analysis' ? lineageTable : null}
-    </LineageProvider>
+    </Lineage>
   );
 };

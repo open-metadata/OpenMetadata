@@ -34,7 +34,8 @@ import { useEntityExportModalProvider } from '../../components/Entity/EntityExpo
 import { LineageConfig } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import EntitySuggestionOption from '../../components/Entity/EntityLineage/EntitySuggestionOption/EntitySuggestionOption.component';
 import LineageConfigModal from '../../components/Entity/EntityLineage/LineageConfigModal';
-import Lineage from '../../components/Lineage/Lineage.component';
+import LineageComponent from '../../components/Lineage/Lineage.component';
+import { Lineage } from '../../components/Lineage/Lineage/Lineage';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
@@ -48,7 +49,6 @@ import {
 } from '../../constants/Export.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
-import LineageProvider from '../../context/LineageProvider/LineageProvider';
 import { LineagePlatformView } from '../../context/LineageProvider/LineageProvider.interface';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
@@ -85,10 +85,9 @@ const PlatformLineage = () => {
   const [defaultValue, setDefaultValue] = useState<string | undefined>(
     decodedFqn || undefined
   );
-  // Config lives in the Zustand store — LineageProvider's fetch effect
-  // depends on it, so writing here triggers a refetch. Local useState here
-  // would leave the store untouched and the depth change would never
-  // reach the network.
+  // Config lives in the Zustand store — Lineage's fetch effect depends on
+  // it, so writing here triggers a refetch. Local useState here would leave
+  // the store untouched and the depth change would never reach the network.
   const lineageConfig = useLineageStore((state) => state.lineageConfig);
   const setLineageConfig = useLineageStore((state) => state.setLineageConfig);
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -316,17 +315,21 @@ const PlatformLineage = () => {
     }
 
     return (
-      <LineageProvider>
-        <Lineage
+      <Lineage
+        isPlatformLineage
+        entity={selectedEntity}
+        entityFqn={decodedFqn}
+        entityType={entityType}>
+        <LineageComponent
           isPlatformLineage
           entity={selectedEntity}
           entityType={entityType}
           hasEditAccess={canEditLineage}
           platformHeader={header}
         />
-      </LineageProvider>
+      </Lineage>
     );
-  }, [selectedEntity, loading, canEditLineage, entityType, header]);
+  }, [selectedEntity, loading, canEditLineage, entityType, header, decodedFqn]);
 
   return (
     <PageLayoutV1
