@@ -804,6 +804,12 @@
       "specs": [
         "playwright/e2e/Features/AppMode/**/*.spec.ts"
       ]
+    },
+    {
+      "_comment": "Backend integration tests are a test-only Maven module — not packaged into the server the suite runs against, nor into the UI bundle — so no change here can alter a spec outcome. Mapped to no specs rather than left unmapped: openmetadata-integration-tests/ is in UNMAPPED_CODE_ROOTS, so without this every backend-IT change escalates to a full-suite run.",
+      "sources": ["openmetadata-integration-tests/**"],
+      "projects": [],
+      "specs": []
     }
   ]
 }

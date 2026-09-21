@@ -28,7 +28,7 @@ import { getTextFromHtmlString } from '../../../utils/BlockEditorPureUtils';
 import dataMarketplaceClassBase from '../../../utils/DataMarketplace/DataMarketplaceClassBase';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { getEncodedFqn } from '../../../utils/StringUtils';
-import { CreatePlaceholder } from '../../common/EmptyPlaceholder';
+import CreatePlaceholder from '../../common/EmptyPlaceholder/CreatePlaceholder';
 import Loader from '../../common/Loader/Loader';
 import '../marketplace-widget-shared.less';
 import MarketplaceItemCard from '../MarketplaceItemCard/MarketplaceItemCard.component';

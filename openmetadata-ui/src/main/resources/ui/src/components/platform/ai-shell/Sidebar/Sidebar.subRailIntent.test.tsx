@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
-import { act } from 'react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, SVGProps } from 'react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import {
   ResourceEntity,
@@ -22,7 +22,7 @@ import { Operation } from '../../../../generated/entity/policies/policy';
 import { OBSERVABILITY_ROUTES } from '../../../observability/observability.constants';
 import ObservabilityLayout from '../../../observability/ObservabilityLayout/ObservabilityLayout';
 import { observabilityModule } from '../../../observability/ObservabilityModule/observability.module';
-import { AppModule, Intent } from '../AppModule.types';
+import { AppModule, Intent, SubNavItem } from '../AppModule.types';
 import { useActiveModuleStore } from '../state/useActiveModule';
 import { emitIntent } from '../useIntent';
 import Sidebar from './Sidebar';
@@ -62,6 +62,7 @@ jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
 
 // ObservabilityLayout boundaries: the real drawers pull permissions, airflow
 // status and the whole test-case form stack, so stub them as open-state probes.
+// Only the expanded-panel suite mounts the layout; inert for the collapsed one.
 jest.mock('../../../DataQuality/BundleSuiteForm/BundleSuiteFormDrawer', () => ({
   __esModule: true,
   default: ({ open }: { open?: boolean }) => (
@@ -87,6 +88,45 @@ jest.mock('../context/useRouteActivation', () => ({
 
 const DATA_QUALITY_PATH = OBSERVABILITY_ROUTES.OBSERVABILITY_DATA_QUALITY_BASE;
 
+const permissionsWith = (testSuiteCreate: boolean): UIPermission =>
+  ({
+    [ResourceEntity.TEST_SUITE]: { [Operation.Create]: testSuiteCreate },
+  } as unknown as UIPermission);
+
+// A pathless item that brings its own rail glyph — the supported
+// "action-only rail item" contract SubRail renders as a <button>. The two
+// distinct stubs let the test prove railIcon wins over icon in the rail.
+const PanelOnlyIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg data-testid="panel-only-icon" {...props} />
+);
+const RailOnlyIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg data-testid="rail-only-icon" {...props} />
+);
+
+const RAIL_ICON_ITEM: SubNavItem = {
+  key: 'rail-icon-action',
+  icon: PanelOnlyIcon,
+  railIcon: RailOnlyIcon,
+  labelKey: 'label.add-test-case',
+  intent: Intent.UploadFile,
+};
+
+// Clone the module with RAIL_ICON_ITEM appended to its Quick Actions section.
+const moduleWithRailIconItem = (): AppModule => {
+  const { subNav } = observabilityModule;
+  if (!subNav) {
+    throw new Error('observabilityModule is expected to define subNav');
+  }
+
+  const sections = subNav.sections.map((section, index) =>
+    index === subNav.sections.length - 1
+      ? { ...section, items: [...section.items, RAIL_ICON_ITEM] }
+      : section
+  );
+
+  return { ...observabilityModule, subNav: { ...subNav, sections } };
+};
+
 let lastPathname = '';
 const PathnameProbe = () => {
   lastPathname = useLocation().pathname;
@@ -94,13 +134,26 @@ const PathnameProbe = () => {
   return null;
 };
 
-const permissionsWith = (testSuiteCreate: boolean): UIPermission =>
-  ({
-    [ResourceEntity.TEST_SUITE]: { [Operation.Create]: testSuiteCreate },
-  } as unknown as UIPermission);
-
-const renderShell = () => {
+// Collapsed sub-rail: the Sidebar alone is enough, so skip the layout.
+const renderSidebar = () => {
   const result = render(
+    <MemoryRouter initialEntries={[DATA_QUALITY_PATH]}>
+      <Sidebar />
+    </MemoryRouter>
+  );
+
+  // The submenu now opens expanded on entering a sub-context; collapse it to
+  // the sub-rail, which is what these tests exercise.
+  fireEvent.click(screen.getByTestId('ask-sub-panel-collapse-btn'));
+
+  return result;
+};
+
+// Expanded sub-panel: the Quick Action CTAs are only wired end-to-end through
+// ObservabilityLayout, which owns the intent listeners and the drawers the
+// assertions read, so this suite mounts the real layout.
+const renderExpandedSidebar = () =>
+  render(
     <MemoryRouter initialEntries={[DATA_QUALITY_PATH]}>
       <PathnameProbe />
       <ObservabilityLayout>
@@ -109,32 +162,89 @@ const renderShell = () => {
     </MemoryRouter>
   );
 
-  // The submenu opens expanded on entering a sub-context; collapse it to the
-  // sub-rail, which is where these intent CTAs live.
-  fireEvent.click(screen.getByTestId('ask-sub-panel-collapse-btn'));
+beforeEach(() => {
+  mockModules = [observabilityModule];
+  mockPermissions = permissionsWith(true);
+  useActiveModuleStore.setState({ activeModule: 'observability' });
+  localStorage.clear();
+  lastPathname = '';
+});
 
-  return result;
-};
+afterEach(() => {
+  act(() => {
+    useActiveModuleStore.setState({ activeModule: null });
+  });
+});
 
-describe('Sidebar collapsed sub-rail intent CTAs', () => {
-  beforeEach(() => {
-    mockModules = [observabilityModule];
-    mockPermissions = permissionsWith(true);
-    useActiveModuleStore.setState({ activeModule: 'observability' });
-    localStorage.clear();
-    lastPathname = '';
+describe('Sidebar collapsed sub-rail', () => {
+  it('renders the sub-rail rather than the sub-panel', () => {
+    renderSidebar();
+
+    expect(screen.getByTestId('ask-sub-rail')).toBeInTheDocument();
+    expect(screen.queryByTestId('ask-sub-panel')).toBeNull();
   });
 
-  afterEach(() => {
-    act(() => {
-      useActiveModuleStore.setState({ activeModule: null });
+  it('omits the intent-only Quick Action CTAs — the rail is navigation-only', () => {
+    renderSidebar();
+
+    // An unlabeled "+" in a 65px icon strip can't convey what it creates, and
+    // two of them are indistinguishable. Create actions live in the expanded
+    // SubPanel's Quick Actions instead (see the expanded suite below).
+    expect(screen.queryByTestId('ask-sub-rail-item-add-test-case')).toBeNull();
+    expect(
+      screen.queryByTestId('ask-sub-rail-item-add-bundle-suite')
+    ).toBeNull();
+  });
+
+  it('keeps a pathless item that defines its own railIcon, as a button', () => {
+    // Regression guard for the narrowed `!item.path && !item.railIcon` skip:
+    // a broad `!item.path` skip would silently drop this supported case.
+    mockModules = [moduleWithRailIconItem()];
+    renderSidebar();
+
+    const action = screen.getByTestId('ask-sub-rail-item-rail-icon-action');
+
+    // No `path` → renders as the action button branch, not an anchor.
+    expect(action.tagName).toBe('BUTTON');
+    expect(action).not.toHaveAttribute('href');
+    // and it renders the rail-specific glyph, not the `icon` fallback.
+    expect(within(action).getByTestId('rail-only-icon')).toBeInTheDocument();
+    expect(within(action).queryByTestId('panel-only-icon')).toBeNull();
+  });
+
+  it('still renders every path-based sub-nav item as an anchor with its href', () => {
+    renderSidebar();
+
+    // Regression guard for the `!item.path` skip: navigable items must be
+    // untouched by it.
+    const dataQuality = screen.getByTestId('ask-sub-rail-item-data-quality');
+
+    expect(dataQuality.tagName).toBe('A');
+    expect(dataQuality).toHaveAttribute('href', DATA_QUALITY_PATH);
+
+    ['incidents', 'alerts', 'pipeline', 'test-library'].forEach((key) => {
+      expect(screen.getByTestId(`ask-sub-rail-item-${key}`).tagName).toBe('A');
     });
   });
 
+  it('keeps the nav items when the user lacks TEST_SUITE.Create', () => {
+    mockPermissions = permissionsWith(false);
+    renderSidebar();
+
+    expect(
+      screen.getByTestId('ask-sub-rail-item-data-quality')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ask-sub-rail-item-add-bundle-suite')
+    ).toBeNull();
+  });
+});
+
+describe('Sidebar expanded sub-panel intent CTAs', () => {
   it('renders the intent-only CTAs as action buttons and keeps both drawers closed', () => {
-    renderShell();
-    const testCase = screen.getByTestId('ask-sub-rail-item-add-test-case');
-    const bundle = screen.getByTestId('ask-sub-rail-item-add-bundle-suite');
+    renderExpandedSidebar();
+    const testCase = screen.getByTestId('ask-sub-panel-item-add-test-case');
+    const bundle = screen.getByTestId('ask-sub-panel-item-add-bundle-suite');
 
     // intent-only items have no `path` → render as <button>, not an anchor.
     expect(testCase.tagName).toBe('BUTTON');
@@ -149,10 +259,10 @@ describe('Sidebar collapsed sub-rail intent CTAs', () => {
     );
   });
 
-  it('opens the test-case drawer when the add-test-case chip is clicked', () => {
-    renderShell();
+  it('opens the test-case drawer when the add-test-case CTA is clicked', () => {
+    renderExpandedSidebar();
 
-    fireEvent.click(screen.getByTestId('ask-sub-rail-item-add-test-case'));
+    fireEvent.click(screen.getByTestId('ask-sub-panel-item-add-test-case'));
 
     expect(screen.getByTestId('test-case-drawer')).toHaveAttribute(
       'data-open',
@@ -166,10 +276,10 @@ describe('Sidebar collapsed sub-rail intent CTAs', () => {
     expect(lastPathname).toBe(DATA_QUALITY_PATH);
   });
 
-  it('opens the bundle-suite drawer when the add-bundle-suite chip is clicked', () => {
-    renderShell();
+  it('opens the bundle-suite drawer when the add-bundle-suite CTA is clicked', () => {
+    renderExpandedSidebar();
 
-    fireEvent.click(screen.getByTestId('ask-sub-rail-item-add-bundle-suite'));
+    fireEvent.click(screen.getByTestId('ask-sub-panel-item-add-bundle-suite'));
 
     expect(screen.getByTestId('bundle-suite-drawer')).toHaveAttribute(
       'data-open',
@@ -182,9 +292,9 @@ describe('Sidebar collapsed sub-rail intent CTAs', () => {
     expect(lastPathname).toBe(DATA_QUALITY_PATH);
   });
 
-  it('still renders path-only sub-rail items as anchors with the route href', () => {
-    renderShell();
-    const dataQuality = screen.getByTestId('ask-sub-rail-item-data-quality');
+  it('still renders path-only sub-nav items as anchors with the route href', () => {
+    renderExpandedSidebar();
+    const dataQuality = screen.getByTestId('ask-sub-panel-item-data-quality');
 
     // Navigable items keep their href → open-in-new-tab affordances survive.
     expect(dataQuality.tagName).toBe('A');
@@ -192,7 +302,7 @@ describe('Sidebar collapsed sub-rail intent CTAs', () => {
   });
 
   it('opens the bundle-suite drawer on a direct emitIntent (listener-wiring control)', () => {
-    renderShell();
+    renderExpandedSidebar();
 
     act(() => {
       emitIntent(Intent.AddBundleSuite);
@@ -204,23 +314,23 @@ describe('Sidebar collapsed sub-rail intent CTAs', () => {
     );
   });
 
-  it('hides the add-bundle-suite chip when the user lacks TEST_SUITE.Create', () => {
+  it('hides the add-bundle-suite CTA when the user lacks TEST_SUITE.Create', () => {
     mockPermissions = permissionsWith(false);
-    renderShell();
+    renderExpandedSidebar();
 
     expect(
-      screen.queryByTestId('ask-sub-rail-item-add-bundle-suite')
+      screen.queryByTestId('ask-sub-panel-item-add-bundle-suite')
     ).toBeNull();
     expect(
-      screen.getByTestId('ask-sub-rail-item-add-test-case')
+      screen.getByTestId('ask-sub-panel-item-add-test-case')
     ).toBeInTheDocument();
   });
 
   it('still opens the test-case drawer without TEST_SUITE.Create (ungated CTA)', () => {
     mockPermissions = permissionsWith(false);
-    renderShell();
+    renderExpandedSidebar();
 
-    fireEvent.click(screen.getByTestId('ask-sub-rail-item-add-test-case'));
+    fireEvent.click(screen.getByTestId('ask-sub-panel-item-add-test-case'));
 
     expect(screen.getByTestId('test-case-drawer')).toHaveAttribute(
       'data-open',
@@ -228,15 +338,15 @@ describe('Sidebar collapsed sub-rail intent CTAs', () => {
     );
   });
 
-  it('hides the add-bundle-suite chip while permissions are still loading', () => {
+  it('hides the add-bundle-suite CTA while permissions are still loading', () => {
     mockPermissions = undefined;
-    renderShell();
+    renderExpandedSidebar();
 
     expect(
-      screen.queryByTestId('ask-sub-rail-item-add-bundle-suite')
+      screen.queryByTestId('ask-sub-panel-item-add-bundle-suite')
     ).toBeNull();
     expect(
-      screen.getByTestId('ask-sub-rail-item-add-test-case')
+      screen.getByTestId('ask-sub-panel-item-add-test-case')
     ).toBeInTheDocument();
   });
 });

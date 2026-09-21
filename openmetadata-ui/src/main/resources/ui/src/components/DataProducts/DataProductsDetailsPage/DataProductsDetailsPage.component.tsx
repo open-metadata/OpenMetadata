@@ -118,8 +118,8 @@ import { OnboardingChecklist } from '../../governance/onboarding/OnboardingCheck
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
-import { DataProductMetadataModal } from '../DataProductMetadataModal';
-import { ODPSImportModal } from '../ODPSImportModal';
+import DataProductMetadataModal from '../DataProductMetadataModal/DataProductMetadataModal.component';
+import ODPSImportModal from '../ODPSImportModal/ODPSImportModal.component';
 import './data-products-details-page.less';
 import { DataProductsDetailsPageProps } from './DataProductsDetailsPage.interface';
 

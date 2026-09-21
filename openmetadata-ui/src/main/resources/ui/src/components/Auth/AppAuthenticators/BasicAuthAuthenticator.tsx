@@ -26,7 +26,8 @@ import {
   AccessTokenResponse,
   getAccessTokenOnExpiry,
 } from '../../../rest/auth-API';
-import { authCoordinator, Renewer } from '../../../utils/Auth/AuthCoordinator';
+import { authCoordinator } from '../../../utils/Auth/AuthCoordinator/AuthCoordinator';
+import type { Renewer } from '../../../utils/Auth/AuthCoordinator/types';
 import { extractDetailsFromToken } from '../../../utils/AuthProvider.util';
 import {
   setOidcToken,

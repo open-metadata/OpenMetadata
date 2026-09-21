@@ -17,7 +17,7 @@ import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { CreateWorkflowDefinition } from '../generated/api/governance/createWorkflowDefinition';
 import { WorkflowDefinition } from '../generated/governance/workflows/workflowDefinition';
 import { WorkflowInstance } from '../generated/governance/workflows/workflowInstance';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const WORKFLOW_DEFINITIONS_BASE_URL = '/governance/workflowDefinitions';
 const WORKFLOW_INSTANCES_BASE_URL = '/governance/workflowInstances';

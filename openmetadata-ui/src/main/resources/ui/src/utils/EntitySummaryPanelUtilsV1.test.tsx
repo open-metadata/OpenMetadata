@@ -112,8 +112,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     )),
 }));
 
-jest.mock('../components/common/FieldCard', () => ({
-  FieldCard: jest.fn(({ fieldName, dataType, description }) => (
+jest.mock('../components/common/FieldCard/FieldCard', () => ({
+  __esModule: true,
+  default: jest.fn(({ fieldName, dataType, description }) => (
     <div data-testid={`field-card-${fieldName}`}>
       <div data-testid={`field-name-${fieldName}`}>{fieldName}</div>
       <div data-testid={`field-type-${fieldName}`}>{dataType}</div>
