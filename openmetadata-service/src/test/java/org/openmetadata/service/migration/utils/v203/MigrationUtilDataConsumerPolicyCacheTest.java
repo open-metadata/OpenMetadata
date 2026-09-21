@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.migration.utils.v202;
+package org.openmetadata.service.migration.utils.v203;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -41,9 +41,9 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 
 /**
- * Regression test for #32668, v202 repair copy: installs already on 2.0.0/2.0.1 never re-run v200,
- * so the v202 copies of the DataConsumerPolicy task-rule backfills repair them. These copies must be
- * cache-safe in their own right — the v202 {@code Migration} invokes the two helpers back-to-back in
+ * Regression test for #32668, v203 repair copy: installs already on 2.0.0/2.0.1 never re-run v200,
+ * so the v203 copies of the DataConsumerPolicy task-rule backfills repair them. These copies must be
+ * cache-safe in their own right — the v203 {@code Migration} invokes the two helpers back-to-back in
  * one migrate JVM, the same shape that dropped {@code CreateTask-Rule} in v200.
  *
  * <p>Like the v200 test, this drives the production {@link EntityRepository#findByName} against the
@@ -137,17 +137,17 @@ class MigrationUtilDataConsumerPolicyCacheTest {
       }
     }
 
-    assertTrue(hasTaskRule, "v202 should have added " + TASK_RULE_NAME);
+    assertTrue(hasTaskRule, "v203 should have added " + TASK_RULE_NAME);
     assertTrue(
         hasCreateTaskRule,
-        "BUG #32668: the v202 copy must not read a stale L1 snapshot and drop "
+        "BUG #32668: the v203 copy must not read a stale L1 snapshot and drop "
             + CREATE_TASK_RULE_NAME
             + " when the two helpers run back-to-back.");
   }
 
   /**
-   * The real v202 repair scenario: an install already upgraded to 2.0.0/2.0.1 carries the corrupted
-   * state — {@code TaskRule} present but {@code CreateTask-Rule} dropped. The v202 helpers must
+   * The real v203 repair scenario: an install already upgraded to 2.0.0/2.0.1 carries the corrupted
+   * state — {@code TaskRule} present but {@code CreateTask-Rule} dropped. The v203 helpers must
    * re-add the missing rule and must not duplicate the rule that already exists.
    */
   @Test
@@ -179,7 +179,7 @@ class MigrationUtilDataConsumerPolicyCacheTest {
   }
 
   /**
-   * The v202 repair must be idempotent: running the helpers a second time on an install that already
+   * The v203 repair must be idempotent: running the helpers a second time on an install that already
    * carries both rules is a no-op — no duplicate rules.
    */
   @Test
