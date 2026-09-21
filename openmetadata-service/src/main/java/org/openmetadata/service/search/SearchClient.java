@@ -392,7 +392,11 @@ public interface SearchClient
         edgeData.put('sqlQueryKey', sqlKey);
         edgeData.remove('sqlQuery');
       } else {
-        edgeData = params.lineageData;
+        edgeData = new HashMap();
+        edgeData.putAll(params.lineageData);
+      }
+      if (ctx._source.upstreamLineage == null) {
+        ctx._source.upstreamLineage = new ArrayList();
       }
       // Replace or add the edge, capturing the old sqlQueryKey for cleanup.
       def oldSqlQueryKey = null;
@@ -728,6 +732,8 @@ public interface SearchClient
           "changeDescription");
 
   Set<String> FIELDS_TO_REMOVE_WHEN_NULL = Set.of("tier", "certification");
+
+  String FIELDS_TO_REMOVE = "fieldsToRemove";
 
   boolean isClientAvailable();
 

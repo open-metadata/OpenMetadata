@@ -13,7 +13,6 @@
 
 import { Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -42,6 +41,7 @@ import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useFieldFocusManagement } from '../../hooks/useFieldFocusManagement';
 import { useFqn } from '../../hooks/useFqn';
 import { DataObj } from '../../interface/service.interface';
 import {
@@ -86,7 +86,6 @@ const AddIngestionPage = () => {
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
-  const [activeField, setActiveField] = useState<string>('');
   const addIngestionRef = useRef<AddIngestionHandle>(null);
 
   const isSettingsPipeline = useMemo(
@@ -224,14 +223,8 @@ const AddIngestionPage = () => {
 
   const handleCancelClick = isSettingsPipeline ? goToSettingsPage : goToService;
 
-  const handleFieldFocus = (fieldName: string) => {
-    if (isEmpty(fieldName)) {
-      return;
-    }
-    setTimeout(() => {
-      setActiveField(fieldName);
-    }, 50);
-  };
+  const { activeField, activeFieldMeta, handleFieldFocus } =
+    useFieldFocusManagement();
 
   useEffect(() => {
     const breadCrumbsArray = getBreadCrumbsArray(
@@ -323,6 +316,7 @@ const AddIngestionPage = () => {
       focusedMode
       isWorkflow
       activeField={activeField}
+      activeFieldMeta={activeFieldMeta}
       serviceName={serviceData?.serviceType ?? ''}
       serviceType={getServiceType(serviceCategory as ServiceCategory)}
       workflowType={ingestionType as PipelineType}

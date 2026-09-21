@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { render } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { APIRequestMethod } from '../../../generated/api/data/createAPIEndpoint';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -39,6 +39,15 @@ const mockApiEndpointDetails: APIEndpoint = {
     fullyQualifiedName: 'test-service',
     deleted: false,
   },
+};
+
+const ENDPOINT_ROUTE =
+  '/apiEndpoint/test-service.test-collection.test-apiendpoint';
+
+const LocationProbe = () => {
+  const { pathname } = useLocation();
+
+  return <p data-testid="location-display">{pathname}</p>;
 };
 
 const mockProps: APIEndpointDetailsProps = {
@@ -80,6 +89,7 @@ jest.mock('../../../hooks/useCustomPages', () => ({
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({
     fqn: 'test.apiendpoint',
+    entityFqn: 'test-service.test-collection.test-apiendpoint',
   }),
 }));
 
@@ -91,6 +101,8 @@ jest.mock('../../../utils/useRequiredParams', () => ({
 
 jest.mock('../../../utils/FeedUtilsPure', () => ({
   getFeedCounts: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
+  fetchEntityActivityCountInto: jest.fn(),
 }));
 
 jest.mock('../../../utils/TablePureUtils', () => ({
@@ -101,7 +113,29 @@ jest.mock('../../../utils/TablePureUtils', () => ({
 jest.mock(
   '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component',
   () => ({
-    DataAssetsHeader: jest.fn().mockReturnValue(<div>DataAssetsHeader</div>),
+    DataAssetsHeader: jest
+      .fn()
+      .mockImplementation(
+        ({
+          afterDeleteAction,
+        }: {
+          afterDeleteAction: (isSoftDelete?: boolean) => void;
+        }) => (
+          <div>
+            DataAssetsHeader
+            <button
+              data-testid="hard-delete"
+              onClick={() => afterDeleteAction(false)}>
+              hardDelete
+            </button>
+            <button
+              data-testid="soft-delete"
+              onClick={() => afterDeleteAction(true)}>
+              softDelete
+            </button>
+          </div>
+        )
+      ),
   })
 );
 
@@ -152,5 +186,59 @@ describe('APIEndpointDetails component', () => {
       }),
       expect.anything()
     );
+  });
+
+  // A hard-deleted endpoint no longer exists, so the page sends the user to the
+  // collection it belonged to.
+  describe('post-delete redirect', () => {
+    const renderEndpoint = (props: APIEndpointDetailsProps = mockProps) =>
+      render(
+        <MemoryRouter initialEntries={[ENDPOINT_ROUTE]}>
+          <APIEndpointDetails {...props} />
+          <LocationProbe />
+        </MemoryRouter>
+      );
+
+    it('should land on the collection named by the entity reference', () => {
+      renderEndpoint({
+        ...mockProps,
+        apiEndpointDetails: {
+          ...mockApiEndpointDetails,
+          apiCollection: {
+            id: 'test-collection-id',
+            type: 'apiCollection',
+            fullyQualifiedName: 'other-service.other-collection',
+          },
+        },
+      });
+
+      fireEvent.click(screen.getByTestId('hard-delete'));
+
+      expect(screen.getByTestId('location-display')).toHaveTextContent(
+        '/apiCollection/other-service.other-collection'
+      );
+    });
+
+    // The reference is absent on a partially-loaded endpoint; the collection FQN
+    // is then sliced out of the endpoint's own service.collection.endpoint FQN.
+    it('should derive the collection from the endpoint FQN when the reference is missing', () => {
+      renderEndpoint();
+
+      fireEvent.click(screen.getByTestId('hard-delete'));
+
+      expect(screen.getByTestId('location-display')).toHaveTextContent(
+        '/apiCollection/test-service.test-collection'
+      );
+    });
+
+    it('should stay on the endpoint page after a soft delete', () => {
+      renderEndpoint();
+
+      fireEvent.click(screen.getByTestId('soft-delete'));
+
+      expect(screen.getByTestId('location-display')).toHaveTextContent(
+        ENDPOINT_ROUTE
+      );
+    });
   });
 });
