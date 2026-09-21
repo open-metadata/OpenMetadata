@@ -275,11 +275,28 @@ export class CrossTabLock {
       // immediately so the coordinator's retry can re-acquire it. Aborted
       // when the message-broadcast or timeout path wins first; the
       // `AbortError` is caught below.
+      //
+      // Grace window before synthesising `failed`: a HEALTHY leader
+      // finishes by calling `notifyDone()` inside `publish` and then
+      // returning from the lock callback. `notifyDone()`'s postMessage
+      // dispatches asynchronously — even though the call itself happens
+      // under the lock, the message can arrive at followers AFTER the
+      // lock release grant. Without a grace, our blocking request would
+      // preempt the pending `done`, we'd resolve `failed`, and the
+      // coordinator would retry — a duplicate `renewer()` invocation
+      // that with rotating refresh tokens invalidates the first result.
+      // The grace holds THIS tab's newly-acquired lock briefly (~ one
+      // event-loop turn plus a comfortable buffer for cross-context
+      // postMessage) so a pending broadcast can land at our listener
+      // and win the race via `finish()` first. Greptile r4053143978 /
+      // gitar-bot r4053151880.
+      const HANDOFF_GRACE_MS = 250;
       locks
         .request(
           this.lockName,
           { mode: 'exclusive', signal: abort.signal },
           async () => {
+            await new Promise<void>((r) => setTimeout(r, HANDOFF_GRACE_MS));
             finish({
               kind: 'resolve',
               message: {

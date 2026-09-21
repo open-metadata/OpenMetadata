@@ -262,7 +262,23 @@ export const setOidcTokenStrict = async (token: string): Promise<void> => {
 
   // Browsers without SW/IndexedDB fall back to localStorage; a quota /
   // security-mode throw here is a real persistence failure — propagate it.
-  localStorage.setItem(APP_STATE_KEY, stateStr);
+  // Also stage the fresh token in memory and flip `swStorageBroken` so
+  // subsequent `getOidcToken()` reads see the token via the in-memory
+  // fallback rather than the same throwing localStorage. Without both
+  // steps the coordinator's "renewer succeeded, publish threw →
+  // applyRefreshed locally" branch returns the token but downstream
+  // reads still miss it, leaving auth state inconsistent. Greptile
+  // (r4053121387). The `swStorageBroken` flag is per-tab-lifetime by
+  // design; a persistent-storage failure on this path is functionally
+  // the same as the SW-unreachable case that flag already gates.
+  try {
+    localStorage.setItem(APP_STATE_KEY, stateStr);
+  } catch (error) {
+    markSwStorageBroken(error);
+    inMemoryState = { ...state };
+
+    throw error;
+  }
 };
 
 export const getRefreshToken = async (): Promise<string> => {

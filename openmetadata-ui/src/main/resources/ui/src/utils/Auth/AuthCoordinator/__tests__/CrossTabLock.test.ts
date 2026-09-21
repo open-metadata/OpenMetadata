@@ -289,7 +289,40 @@ describe('CrossTabLock (Web Locks path)', () => {
     });
   });
 
-  it('follower unblocks immediately when the leader releases its lock without broadcasting', async () => {
+  it('follower still resolves with `done` when the broadcast arrives just after the lock release', async () => {
+    // Greptile r4053143978 / gitar-bot r4053151880: `notifyDone()`
+    // dispatches asynchronously, so a healthy leader that finishes by
+    // publishing + returning from its lock callback can look like a
+    // crashed leader to a follower — the lock release grant arrives
+    // before the pending `done` broadcast. Without the handoff grace
+    // this follower would synthesise `failed` and the coordinator would
+    // duplicate-invoke the renewer (invalidating the first refresh
+    // when the IdP rotates refresh tokens).
+    const lock = new CrossTabLock(TEST_LOCK_NAME, TEST_CHANNEL_NAME);
+    held.add(TEST_LOCK_NAME);
+    const payload = { idToken: 'from-healthy-leader', expiresAt: 12_345 };
+    const p = lock.runExclusive(async () => 42, { waitTimeoutMs: 5_000 });
+
+    setTimeout(() => {
+      // Release the lock (leader returned from its callback) FIRST.
+      held.delete(TEST_LOCK_NAME);
+      const queue = waiterQueues.get(TEST_LOCK_NAME);
+      if (queue && queue.length > 0) {
+        queue.shift()?.run();
+      }
+      // Then the delayed BroadcastChannel message arrives at the
+      // follower, mimicking the cross-context postMessage delivery lag.
+      // Well within the follower's handoff-grace window.
+      setTimeout(() => lock.notifyDone(payload), 30);
+    }, 20);
+
+    await expect(p).resolves.toEqual({
+      role: 'follower',
+      message: { type: 'done', payload },
+    });
+  });
+
+  it('follower unblocks after the handoff grace when the leader releases its lock without broadcasting', async () => {
     const lock = new CrossTabLock(TEST_LOCK_NAME, TEST_CHANNEL_NAME);
     // Model a crashed / closed leader: it acquires the lock, then goes
     // away WITHOUT broadcasting done or failed. The browser releases the
