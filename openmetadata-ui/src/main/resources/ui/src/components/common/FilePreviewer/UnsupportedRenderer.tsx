@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { useTranslation } from 'react-i18next';
 import { Button, Typography } from '@openmetadata/ui-core-components';
+import { useTranslation } from 'react-i18next';
 import { PreviewRendererProps } from './FilePreviewer.interface';
 
 const UnsupportedRenderer = ({ fileName, objectUrl }: PreviewRendererProps) => {

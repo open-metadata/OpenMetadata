@@ -11,49 +11,76 @@
  *  limitations under the License.
  */
 
-import { PreviewRendererId, ResolveRendererArgs } from './FilePreviewer.interface';
+import { FileType } from '../../../generated/entity/data/contextFile';
+import {
+  PreviewRendererId,
+  ResolveRendererArgs,
+} from './FilePreviewer.interface';
 
-const EXTENSION_MAP: Record<string, PreviewRendererId> = {
-  md: PreviewRendererId.Markdown,
-  markdown: PreviewRendererId.Markdown,
-  txt: PreviewRendererId.Text,
-  pdf: PreviewRendererId.Pdf,
-  png: PreviewRendererId.Image,
-  jpg: PreviewRendererId.Image,
-  jpeg: PreviewRendererId.Image,
-  gif: PreviewRendererId.Image,
-  webp: PreviewRendererId.Image,
-};
+const isSvg = (ext?: string, mime?: string): boolean =>
+  ext === 'svg' || mime === 'image/svg+xml';
 
-const resolveByMime = (mimeType: string): PreviewRendererId => {
-  const mime = mimeType.toLowerCase();
-  if (mime === 'application/pdf') {
-    return PreviewRendererId.Pdf;
-  }
-  if (mime === 'text/markdown') {
-    return PreviewRendererId.Markdown;
-  }
-  if (['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(mime)) {
-    return PreviewRendererId.Image;
-  }
-  if (mime.startsWith('text/')) {
-    return PreviewRendererId.Text;
+const isMarkdown = (ext?: string, mime?: string): boolean =>
+  ext === 'md' || ext === 'markdown' || mime === 'text/markdown';
+
+// Mirror of the backend ContextFileUploadSupport.detectFileType classifier, used
+// only when the entity did not carry a fileType. Same vocabulary and evaluation
+// order as the backend, expressed as a rule table to stay under the complexity
+// budget rather than a long if/else chain.
+const MIME_RULES: { test: (mime: string) => boolean; type: FileType }[] = [
+  { test: (mime) => mime === 'application/pdf', type: FileType.PDF },
+  {
+    test: (mime) => mime.includes('spreadsheet') || mime.includes('excel'),
+    type: FileType.Spreadsheet,
+  },
+  {
+    test: (mime) =>
+      mime.includes('presentation') || mime.includes('powerpoint'),
+    type: FileType.Presentation,
+  },
+  { test: (mime) => mime.startsWith('image/'), type: FileType.Image },
+  {
+    test: (mime) => mime === 'text/csv' || mime === 'application/csv',
+    type: FileType.CSV,
+  },
+  {
+    test: (mime) => mime.includes('document') || mime.includes('word'),
+    type: FileType.Document,
+  },
+  { test: (mime) => mime.startsWith('text/'), type: FileType.Text },
+];
+
+const classifyByMime = (mime?: string): FileType => {
+  if (!mime) {
+    return FileType.Other;
   }
 
-  return PreviewRendererId.Unsupported;
+  return MIME_RULES.find((rule) => rule.test(mime))?.type ?? FileType.Other;
 };
 
 export const resolveRenderer = ({
+  fileType,
   fileExtension,
   mimeType,
 }: ResolveRendererArgs): PreviewRendererId => {
   const ext = fileExtension?.toLowerCase().replace(/^\./, '');
-  if (ext && EXTENSION_MAP[ext]) {
-    return EXTENSION_MAP[ext];
-  }
-  if (mimeType) {
-    return resolveByMime(mimeType);
-  }
+  const mime = mimeType?.toLowerCase();
+  const type = fileType ?? classifyByMime(mime);
 
-  return PreviewRendererId.Unsupported;
+  switch (type) {
+    case FileType.PDF:
+      return PreviewRendererId.Pdf;
+    case FileType.Image:
+      return isSvg(ext, mime)
+        ? PreviewRendererId.Unsupported
+        : PreviewRendererId.Image;
+    case FileType.Text:
+      return isMarkdown(ext, mime)
+        ? PreviewRendererId.Markdown
+        : PreviewRendererId.Text;
+    case FileType.CSV:
+      return PreviewRendererId.Text;
+    default:
+      return PreviewRendererId.Unsupported;
+  }
 };

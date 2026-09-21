@@ -39,6 +39,7 @@ const FilePreviewer = ({
   content,
   fileExtension,
   fileName,
+  fileType,
   mimeType,
 }: FilePreviewerProps) => {
   const objectUrl = useMemo(() => URL.createObjectURL(content), [content]);
@@ -47,7 +48,8 @@ const FilePreviewer = ({
     return () => URL.revokeObjectURL(objectUrl);
   }, [objectUrl]);
 
-  const Renderer = RENDERERS[resolveRenderer({ fileExtension, mimeType })];
+  const Renderer =
+    RENDERERS[resolveRenderer({ fileExtension, fileType, mimeType })];
 
   return (
     <Renderer content={content} fileName={fileName} objectUrl={objectUrl} />

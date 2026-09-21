@@ -11,44 +11,68 @@
  *  limitations under the License.
  */
 
-import { PreviewRendererId, ResolveRendererArgs } from './FilePreviewer.interface';
+import { FileType } from '../../../generated/entity/data/contextFile';
+import {
+  PreviewRendererId,
+  ResolveRendererArgs,
+} from './FilePreviewer.interface';
 import { resolveRenderer } from './FilePreviewer.utils';
 
 const resolve = (a: ResolveRendererArgs) => resolveRenderer(a);
 
 describe('resolveRenderer', () => {
-  it('maps markdown by extension', () => {
-    expect(resolve({ fileExtension: 'md' })).toBe(PreviewRendererId.Markdown);
-    expect(resolve({ fileExtension: '.MARKDOWN' })).toBe(PreviewRendererId.Markdown);
+  it('maps pdf by fileType', () => {
+    expect(resolve({ fileType: FileType.PDF })).toBe(PreviewRendererId.Pdf);
   });
 
-  it('maps text and pdf by extension', () => {
-    expect(resolve({ fileExtension: 'txt' })).toBe(PreviewRendererId.Text);
-    expect(resolve({ fileExtension: 'pdf' })).toBe(PreviewRendererId.Pdf);
-  });
-
-  it('maps raster images by extension', () => {
-    ['png', 'jpg', 'jpeg', 'gif', 'webp'].forEach((e) =>
-      expect(resolve({ fileExtension: e })).toBe(PreviewRendererId.Image)
+  it('maps raster images by fileType', () => {
+    expect(resolve({ fileType: FileType.Image, fileExtension: 'png' })).toBe(
+      PreviewRendererId.Image
     );
   });
 
-  it('never renders svg inline', () => {
-    expect(resolve({ fileExtension: 'svg' })).toBe(PreviewRendererId.Unsupported);
-    expect(resolve({ mimeType: 'image/svg+xml' })).toBe(PreviewRendererId.Unsupported);
-  });
-
-  it('falls back to mime when no extension', () => {
-    expect(resolve({ mimeType: 'application/pdf' })).toBe(PreviewRendererId.Pdf);
-    expect(resolve({ mimeType: 'text/markdown' })).toBe(PreviewRendererId.Markdown);
-    expect(resolve({ mimeType: 'text/plain' })).toBe(PreviewRendererId.Text);
-    expect(resolve({ mimeType: 'image/png' })).toBe(PreviewRendererId.Image);
-  });
-
-  it('returns Unsupported for unknown', () => {
-    expect(resolve({ fileExtension: 'exe', mimeType: 'application/x-msdownload' })).toBe(
+  it('never renders svg inline when fileType is Image', () => {
+    expect(resolve({ fileType: FileType.Image, fileExtension: 'svg' })).toBe(
       PreviewRendererId.Unsupported
     );
+    expect(
+      resolve({ fileType: FileType.Image, mimeType: 'image/svg+xml' })
+    ).toBe(PreviewRendererId.Unsupported);
+  });
+
+  it('maps plain text by fileType', () => {
+    expect(resolve({ fileType: FileType.Text })).toBe(PreviewRendererId.Text);
+  });
+
+  it('maps markdown within Text by extension or mime', () => {
+    expect(resolve({ fileType: FileType.Text, fileExtension: 'md' })).toBe(
+      PreviewRendererId.Markdown
+    );
+    expect(
+      resolve({ fileType: FileType.Text, mimeType: 'text/markdown' })
+    ).toBe(PreviewRendererId.Markdown);
+  });
+
+  it('maps CSV to the text renderer', () => {
+    expect(resolve({ fileType: FileType.CSV })).toBe(PreviewRendererId.Text);
+  });
+
+  it('returns Unsupported for file types with no renderer yet', () => {
+    expect(resolve({ fileType: FileType.Document })).toBe(
+      PreviewRendererId.Unsupported
+    );
+  });
+
+  it('falls back to mime-based classification when fileType is absent', () => {
+    expect(resolve({ mimeType: 'application/pdf' })).toBe(
+      PreviewRendererId.Pdf
+    );
+    expect(resolve({ mimeType: 'image/svg+xml' })).toBe(
+      PreviewRendererId.Unsupported
+    );
+  });
+
+  it('returns Unsupported for an empty input', () => {
     expect(resolve({})).toBe(PreviewRendererId.Unsupported);
   });
 });

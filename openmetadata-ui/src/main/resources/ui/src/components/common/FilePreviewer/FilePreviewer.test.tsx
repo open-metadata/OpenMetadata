@@ -12,6 +12,7 @@
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
+import { FileType } from '../../../generated/entity/data/contextFile';
 import FilePreviewer from './FilePreviewer';
 
 const createObjectURL = jest.fn(() => 'blob:x');
@@ -44,7 +45,7 @@ describe('FilePreviewer', () => {
     render(
       <FilePreviewer
         content={new Blob()}
-        fileExtension="svg"
+        fileType={FileType.Image}
         mimeType="image/svg+xml"
       />
     );

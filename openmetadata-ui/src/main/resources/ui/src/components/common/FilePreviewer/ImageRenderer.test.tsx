@@ -24,6 +24,7 @@ describe('ImageRenderer', () => {
       />
     );
     const img = screen.getByRole('img');
+
     expect(img).toHaveAttribute('src', 'blob:test-url');
     expect(img).toHaveAttribute('alt', 'pic.png');
   });

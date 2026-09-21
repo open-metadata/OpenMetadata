@@ -111,6 +111,7 @@ const FilePreviewModal = ({ file, isOpen, onClose }: FilePreviewModalProps) => {
         content={blob}
         fileExtension={file?.fileExtension}
         fileName={file?.displayName ?? file?.name}
+        fileType={file?.fileType}
         mimeType={file?.contentType}
       />
     );

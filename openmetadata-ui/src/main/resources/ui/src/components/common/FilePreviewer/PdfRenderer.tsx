@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { useEffect, useRef } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { useEffect, useRef } from 'react';
 import { PreviewRendererProps } from './FilePreviewer.interface';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = PdfWorker;

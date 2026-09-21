@@ -21,11 +21,9 @@ jest.mock('pdfjs-dist', () => ({
   getDocument: (opts: unknown) => getDocument(opts),
 }));
 
-jest.mock(
-  'pdfjs-dist/build/pdf.worker.min.mjs?url',
-  () => 'worker-url',
-  { virtual: true }
-);
+jest.mock('pdfjs-dist/build/pdf.worker.min.mjs?url', () => 'worker-url', {
+  virtual: true,
+});
 
 describe('PdfRenderer', () => {
   beforeEach(() => {

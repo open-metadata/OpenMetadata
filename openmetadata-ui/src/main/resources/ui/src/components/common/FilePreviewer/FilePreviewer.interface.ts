@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 
+import { FileType } from '../../../generated/entity/data/contextFile';
+
 export interface FilePreviewerProps {
   content: Blob;
   mimeType?: string;
   fileExtension?: string;
   fileName?: string;
+  fileType?: FileType;
 }
 
 export interface PreviewRendererProps {
@@ -33,6 +36,7 @@ export enum PreviewRendererId {
 }
 
 export interface ResolveRendererArgs {
+  fileType?: FileType;
   fileExtension?: string;
   mimeType?: string;
 }
