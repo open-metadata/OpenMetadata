@@ -244,6 +244,89 @@ export const test = base.extend({
 
 4. **Only test UI flows once** — if a UI flow is already tested, use API for setup in other tests that depend on that state.
 
+### Signing in: use the role page fixtures, not a bespoke user
+
+`support/fixtures/userPages.ts` is the **single** place a signed-in page is built. It exposes one
+fixture per pre-seeded role — `adminPage`, `dataConsumerPage`, `dataStewardPage`, `ownerPage`,
+`editDescriptionPage`, `editTagsPage`, `editGlossaryTermPage`, `viewOnlyPage` — whose storage
+states `e2e/auth.setup.ts` creates once and every worker reuses.
+
+`e2e/fixtures/pages.ts` re-exports those and additionally aliases the built-in `page` to
+`adminPage`. It contains no page-construction logic. Import it when the spec is admin-first and
+wants `{ page }` to be a signed-in admin; import `support/fixtures/userPages` when the spec drives
+named roles and wants `page` left as Playwright's own, so a file-level `test.use({ storageState })`
+still applies.
+
+```typescript
+// yes — one context, no login on the critical path
+import { test } from '../fixtures/pages';
+
+test('a consumer cannot edit the description', async ({ page, dataConsumerPage }) => { … });
+
+// no — a signup, a UI login, and a user teardown, per test
+const user = new UserClass();
+await user.create(apiContext);
+const { page } = await performUserLogin(browser, user);
+```
+
+### When a seeded role will not do: `isolatedUser`
+
+Some tests genuinely need their own account — their own team, their own policy, or they rename or
+delete the account they are signed in as. That case has a fixture too, so there is never a reason
+to hand-roll the lifecycle:
+
+```typescript
+import { test } from '../../support/fixtures/isolatedUser';
+
+test.use({ isolatedUserOptions: { isAdmin: true } });
+
+test('…', async ({ isolatedUserPage, isolatedUser }) => { … });
+```
+
+| Fixture | Scope | Cost | Use when |
+|---|---|---|---|
+| `isolatedUserPage` + `isolatedUser` | one account per **worker**, fresh page per test | one signup + one sign-in per worker | the test needs an account that is not a seeded role, but does not modify the account itself |
+| `freshUserPage` | a new account per **test** | a signup + a sign-in per test | the test mutates the account it is signed in as (rename, role change, deactivate, delete) |
+
+Both create the account and delete it in teardown. That is the whole point: the lifecycle is
+Playwright's, not yours, so the `beforeAll` + array + `afterAll` shape that produces the merge
+queue's number-one flake cannot be written by accident. `isolatedUserPage` also restores a
+captured storage state — including IndexedDB, where the app keeps its token — instead of signing
+in for every test.
+
+### Signing in without the form: `signInViaApi`
+
+Both fixtures authenticate through `utils/apiSignIn.ts` rather than `UserClass.login()`:
+
+```typescript
+await signInUserViaApi(page, user); // one POST + two navigations
+```
+
+`UserClass.login()` performs nine UI interactions — navigate to /signin, wait for the form, fill,
+Tab, fill, click, await the response, await the redirect, dismiss the getting-started modal,
+collapse the sidebar. The suite does that ~290 times and none of it is what the tests are testing.
+`signInViaApi` posts to `/api/v1/auth/login` (the same request `createAdminApiContext` makes, with
+the base64 password the UI's `btoa()` produces) and writes the returned token with `setToken`,
+which is the exact inverse of the `getToken` that `auth.setup.ts` reads back after a real sign-in.
+
+`performUserLogin` already routes through it, so its call sites got the speed-up without changing.
+Drive `UserClass.login()` directly only in a spec that is testing the sign-in **form**.
+
+Two things to know if you touch this path:
+
+- The navigation to the app origin before writing the token is required — IndexedDB is
+  origin-scoped, so there is nowhere to write until the page has loaded the origin.
+- `tokenStorage` only uses IndexedDB when `'serviceWorker' in navigator`, which is false on a
+  non-secure origin; it silently falls back to localStorage there. Any test of this path must run
+  against `localhost` or it exercises the fallback and proves nothing.
+  `e2e/Features/TokenStorage.spec.ts` guards both, and the third case in it exists specifically to
+  fail if the fallback is what is under test.
+
+Use `signIn()` in new specs. `login()` remains for the specs that are testing the sign-in form
+itself — `Pages/Login.spec.ts`, `Features/OnlineUsers.spec.ts`, `Flow/Tour.spec.ts` and the
+`Features/AppMode` specs. Creating a user as test data is unrelated and unaffected: `new
+UserClass()` for an owner, reviewer or assignee stays exactly as it is.
+
 ---
 
 ## Locator Priority Order

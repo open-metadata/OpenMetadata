@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as setup } from '@playwright/test';
+import { Page, test as setup } from '@playwright/test';
 import { mkdir, writeFile } from 'fs/promises';
 import {
   EDIT_DESCRIPTION_RULE,
@@ -93,6 +93,30 @@ const ownerUser = new UserClass({
   password: 'User@OMD123',
 });
 
+/**
+ * Capture a signed-in context's storage state, and fail loudly if it is missing
+ * the session cookie.
+ *
+ * The app authenticates from the token in IndexedDB, so a state without
+ * `OM_SESSION` still drives every test locally — which is exactly what makes its
+ * absence easy to ship. CI's `.github/scripts/rotate_playwright_auth_state.py`
+ * rotates the cached preseeded state by replacing that cookie, and without it
+ * every shard dies in "Setup Openmetadata Test Environment" with
+ * "Playwright auth state has no OM_SESSION cookie" — a failure that names
+ * neither the test nor the sign-in path that dropped it.
+ */
+const saveStorageState = async (page: Page, path: string) => {
+  const state = await page.context().storageState({ path, indexedDB: true });
+
+  if (!state.cookies.some((cookie) => cookie.name === 'OM_SESSION')) {
+    throw new Error(
+      `Refusing to write ${path}: the signed-in context has no OM_SESSION cookie, so CI's auth-state rotation would fail. The login request must go through the browser context (page.context().request), not a standalone request context, or the Set-Cookie is discarded.`
+    );
+  }
+
+  return state;
+};
+
 setup('authenticate all users', async ({ browser }) => {
   setup.setTimeout(120 * 1000);
   // Create separate pages for each user
@@ -122,10 +146,19 @@ setup('authenticate all users', async ({ browser }) => {
 
     await loginAsAdmin(adminPage, admin);
 
-    // Create a new page to login with admin user after token expiry is set to 4 hours
-    // This is done to avoid logging out the user to get the new token
+    // Create a new page to sign the admin in after token expiry is set to 4
+    // hours. This is done to avoid logging out the user to get the new token.
+    //
+    // Every sign-in here goes through `UserClass.signIn()` — one POST to
+    // /api/v1/auth/login, then the token written where the app reads it —
+    // rather than driving the sign-in form eight times. The storage state this
+    // captures is what every worker in every lane reuses, so the only thing
+    // that matters is that the session is real; how it was established is not
+    // part of the fixture's contract. `loginAsAdmin` above already took this
+    // path. A spec that is testing the sign-in *form* drives
+    // `UserClass.login()` directly instead.
     const newAdminPage = await browser.newPage();
-    await admin.login(newAdminPage);
+    await admin.signIn(newAdminPage);
 
     await newAdminPage.waitForURL(
       (url) => url.pathname === '/' || url.pathname === '/my-data'
@@ -234,52 +267,36 @@ setup('authenticate all users', async ({ browser }) => {
 
     // Save admin state
     await disableEtagConditionalReads(newAdminPage);
-    await newAdminPage
-      .context()
-      .storageState({ path: adminFile, indexedDB: true });
+    await saveStorageState(newAdminPage, adminFile);
 
     // Save states for each user sequentially to avoid file operation conflicts
-    await dataConsumer.login(dataConsumerPage);
+    await dataConsumer.signIn(dataConsumerPage);
     await disableEtagConditionalReads(dataConsumerPage);
-    await dataConsumerPage
-      .context()
-      .storageState({ path: dataConsumerFile, indexedDB: true });
+    await saveStorageState(dataConsumerPage, dataConsumerFile);
 
-    await dataSteward.login(dataStewardPage);
+    await dataSteward.signIn(dataStewardPage);
     await disableEtagConditionalReads(dataStewardPage);
-    await dataStewardPage
-      .context()
-      .storageState({ path: dataStewardFile, indexedDB: true });
+    await saveStorageState(dataStewardPage, dataStewardFile);
 
-    await editDescriptionUser.login(editDescriptionPage);
+    await editDescriptionUser.signIn(editDescriptionPage);
     await disableEtagConditionalReads(editDescriptionPage);
-    await editDescriptionPage
-      .context()
-      .storageState({ path: editDescriptionFile, indexedDB: true });
+    await saveStorageState(editDescriptionPage, editDescriptionFile);
 
-    await editTagsUser.login(editTagsPage);
+    await editTagsUser.signIn(editTagsPage);
     await disableEtagConditionalReads(editTagsPage);
-    await editTagsPage
-      .context()
-      .storageState({ path: editTagsFile, indexedDB: true });
+    await saveStorageState(editTagsPage, editTagsFile);
 
-    await editGlossaryTermUser.login(editGlossaryTermPage);
+    await editGlossaryTermUser.signIn(editGlossaryTermPage);
     await disableEtagConditionalReads(editGlossaryTermPage);
-    await editGlossaryTermPage
-      .context()
-      .storageState({ path: editGlossaryTermFile, indexedDB: true });
+    await saveStorageState(editGlossaryTermPage, editGlossaryTermFile);
 
-    await viewOnlyUser.login(viewOnlyPage);
+    await viewOnlyUser.signIn(viewOnlyPage);
     await disableEtagConditionalReads(viewOnlyPage);
-    await viewOnlyPage
-      .context()
-      .storageState({ path: viewOnlyFile, indexedDB: true });
+    await saveStorageState(viewOnlyPage, viewOnlyFile);
 
-    await ownerUser.login(ownerPage);
+    await ownerUser.signIn(ownerPage);
     await disableEtagConditionalReads(ownerPage);
-    await ownerPage
-      .context()
-      .storageState({ path: ownerFile, indexedDB: true });
+    await saveStorageState(ownerPage, ownerFile);
 
     await afterAction();
 
