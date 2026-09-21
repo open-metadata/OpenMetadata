@@ -18,7 +18,7 @@ import { ContextFile } from '../generated/entity/data/contextFile';
 import { Folder } from '../generated/entity/data/folder';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { ListParams } from '../interface/API.interface';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export interface CreateFolderRequest {
   name: string;
