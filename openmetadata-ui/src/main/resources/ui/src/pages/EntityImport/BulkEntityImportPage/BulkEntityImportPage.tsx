@@ -818,7 +818,6 @@ const BulkEntityImportPage = () => {
       handleActiveStepChange(VALIDATION_STEP.EDIT_VALIDATE);
     },
     [
-      entityType,
       handleActiveStepChange,
       handleEditCellHeightChange,
       importedEntityType,
@@ -1214,6 +1213,7 @@ const BulkEntityImportPage = () => {
       }
 
       if (job.status === 'COMPLETED') {
+        // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls -- gated on COMPLETED status above
         const result = await getCsvAsyncImportResult(jobId, signal);
 
         if (activeAsyncImportJobRef.current?.jobId !== jobId) {
@@ -1333,7 +1333,9 @@ const BulkEntityImportPage = () => {
             importResponse
           ) as CSVImportAsyncWebsocketResponse;
 
-          handleImportWebsocketResponse(importResponseData);
+          // Call through the ref so the socket subscription stays registered
+          // once (the handler identity changes across renders, the ref stays stable).
+          handleImportWebsocketResponseRef.current?.(importResponseData);
         }
       });
     }
@@ -1342,7 +1344,7 @@ const BulkEntityImportPage = () => {
       socket?.off(SOCKET_EVENTS.CSV_IMPORT_CHANNEL);
       handleResetImportJob();
     };
-  }, [socket]);
+  }, [socket, handleResetImportJob]);
 
   /*
     Owner dropdown uses <ProfilePicture /> which uses useUserProfile hook
@@ -1417,7 +1419,7 @@ const BulkEntityImportPage = () => {
       </div>
     );
   }, [
-    columns,
+    filterColumns,
     editableDataSource,
     getEditableRowHeight,
     handleCopy,
