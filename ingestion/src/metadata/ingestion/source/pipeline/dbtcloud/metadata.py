@@ -12,9 +12,8 @@
 DBTcloud source to extract metadata from OM UI
 """
 import traceback
-from collections import defaultdict
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional
 
 from cachetools import LRUCache
 
@@ -77,6 +76,10 @@ STATUS_MAP = {
 }
 
 
+# Number of table lookups (resolved or not) kept in memory at once
+TABLE_LOOKUP_CACHE_SIZE = 1024
+
+
 class DbtcloudSource(PipelineServiceSource):
     """
     Implements the necessary methods ot extract
@@ -97,10 +100,10 @@ class DbtcloudSource(PipelineServiceSource):
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata)
-        # Cache for observability data: {(job_id, run_id): {models, parents, pipeline_entity, ...}}
-        self.observability_cache: Dict[Tuple[int, str], Dict[str, Any]] = {}
-        # Cache for table entity lookups to avoid redundant API calls
-        self._table_entity_cache: Dict[str, Optional[Table]] = {}
+        # Bounded cache for table entity lookups (hits and misses) to avoid
+        # redundant API calls. Hits are also registered on the base-class cache
+        # so the observability stage that follows does not re-fetch them.
+        self._table_lookup_cache: LRUCache = LRUCache(maxsize=TABLE_LOOKUP_CACHE_SIZE)
         # Bounded cache for resolved SQL dialects keyed by database service name
         self._dialect_cache: LRUCache = LRUCache(maxsize=128)
 
@@ -108,11 +111,12 @@ class DbtcloudSource(PipelineServiceSource):
         """
         Cached table entity lookup to avoid redundant API calls.
         """
-        if table_fqn not in self._table_entity_cache:
-            self._table_entity_cache[table_fqn] = self.metadata.get_by_name(
-                entity=Table, fqn=table_fqn
-            )
-        return self._table_entity_cache[table_fqn]
+        if table_fqn not in self._table_lookup_cache:
+            table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+            self._table_lookup_cache[table_fqn] = table
+            if table:
+                self.cache_table_entity(table)
+        return self._table_lookup_cache[table_fqn]
 
     def _get_task_list(self, job_id: int) -> Optional[List[Task]]:
         """
@@ -226,21 +230,6 @@ class DbtcloudSource(PipelineServiceSource):
                 pipeline_entity.fullyQualifiedName.root
             )
 
-            # Create cache_key once at the start
-            cache_key = (
-                (pipeline_details.id, str(self.context.get().latest_run_id))
-                if self.context.get().latest_run_id
-                else None
-            )
-
-            if cache_key:
-                self.observability_cache[cache_key] = {
-                    "pipeline_entity": pipeline_entity,
-                    "job_details": pipeline_details,
-                    "table_fqns": set(),  # Use set for O(1) lookup
-                    "runs": self.context.get().current_runs,
-                }
-
             for model in dbt_models or []:
                 if not model.runGeneratedAt:
                     logger.debug(
@@ -274,12 +263,6 @@ class DbtcloudSource(PipelineServiceSource):
                     # Add to context table FQNs
                     if to_entity_fqn not in self.context.get().current_table_fqns:
                         self.context.get().current_table_fqns.append(to_entity_fqn)
-
-                    # Add to observability cache using set.add() for O(1)
-                    if cache_key and cache_key in self.observability_cache:
-                        self.observability_cache[cache_key]["table_fqns"].add(
-                            to_entity_fqn
-                        )
 
                     if model.compiledCode and to_entity_fqn:
                         # dialect is resolved from the resolved table FQN's service, not the
@@ -329,12 +312,6 @@ class DbtcloudSource(PipelineServiceSource):
                         # Add to context table FQNs
                         if from_entity_fqn not in self.context.get().current_table_fqns:
                             self.context.get().current_table_fqns.append(
-                                from_entity_fqn
-                            )
-
-                        # Add to observability cache using set.add() for O(1)
-                        if cache_key and cache_key in self.observability_cache:
-                            self.observability_cache[cache_key]["table_fqns"].add(
                                 from_entity_fqn
                             )
 
@@ -497,84 +474,52 @@ class DbtcloudSource(PipelineServiceSource):
         self, pipeline_details: DBTJob
     ) -> Iterable[Dict[str, List[PipelineObservability]]]:
         """
-        Extract pipeline observability data from cached lineage artifacts.
-        Uses context data first (current job), falls back to cache for historical data.
+        Build observability for the tables this job touches.
+
+        A ``(table, pipeline)`` observability record is fully determined by this one
+        job, and the server upserts it under ``table.pipelineObservability.<pipelineFqn>``
+        keyed on the pipeline FQN. So exactly one record per table is emitted from the
+        latest run -- replaying earlier jobs here only rewrites rows already correct.
         """
         try:
-            table_pipeline_map: Dict[str, List[PipelineObservability]] = defaultdict(
-                list
+            ctx = self.context.get()
+
+            pipeline_entity = getattr(ctx, "current_pipeline_entity", None)
+            table_fqns = getattr(ctx, "current_table_fqns", None)
+            latest_run = getattr(ctx, "latest_run", None)
+
+            if not (pipeline_entity and table_fqns and latest_run):
+                logger.debug(
+                    "No observability data to emit for job %s", pipeline_details.id
+                )
+                return
+
+            schedule_interval = (
+                str(pipeline_details.schedule.cron)
+                if pipeline_details.schedule
+                else None
             )
 
-            ctx = self.context.get()
-            if (
-                hasattr(ctx, "current_table_fqns")
-                and hasattr(ctx, "latest_run")
-                and hasattr(ctx, "current_pipeline_entity")
-                and ctx.latest_run
-                and ctx.current_pipeline_entity
-                and ctx.current_table_fqns
-            ):
-                logger.debug(
-                    f"Using context data for observability - {len(ctx.current_table_fqns)} tables"
-                )
+            observability = self._build_observability_from_run(
+                run=latest_run,
+                pipeline_entity=pipeline_entity,
+                schedule_interval=schedule_interval,
+            )
 
-                schedule_interval = (
-                    str(pipeline_details.schedule.cron)
-                    if pipeline_details.schedule
-                    else None
-                )
+            table_pipeline_map: Dict[str, List[PipelineObservability]] = {
+                table_fqn: [observability] for table_fqn in table_fqns
+            }
 
-                # using cached table FQNs directly from lineage processing
-                for table_fqn in ctx.current_table_fqns:
-                    observability = self._build_observability_from_run(
-                        run=ctx.latest_run,
-                        pipeline_entity=ctx.current_pipeline_entity,
-                        schedule_interval=schedule_interval,
-                    )
-
-                    table_pipeline_map[table_fqn].append(observability)
-
-            for cache_key, cached_data in self.observability_cache.items():
-                job_id, run_id = cache_key
-
-                if hasattr(ctx, "current_job_id") and job_id == ctx.current_job_id:
-                    continue
-
-                table_fqns = cached_data.get("table_fqns", set())
-                pipeline_entity = cached_data.get("pipeline_entity")
-                job_details = cached_data.get("job_details")
-                runs = cached_data.get("runs")
-
-                if not pipeline_entity or not table_fqns or not runs:
-                    continue
-
-                run = next((r for r in runs if str(r.id) == str(run_id)), None)
-
-                if not run:
-                    continue
-
-                schedule_interval = (
-                    str(job_details.schedule.cron)
-                    if job_details
-                    and job_details.schedule
-                    and job_details.schedule.cron
-                    else None
-                )
-
-                # using cached table FQNs directly from lineage processing
-                for table_fqn in table_fqns:
-                    observability = self._build_observability_from_run(
-                        run=run,
-                        pipeline_entity=pipeline_entity,
-                        schedule_interval=schedule_interval,
-                    )
-
-                    table_pipeline_map[table_fqn].append(observability)
+            logger.debug(
+                "Emitting observability for %s tables of job %s",
+                len(table_pipeline_map),
+                pipeline_details.id,
+            )
 
             yield table_pipeline_map
 
         except Exception as exc:
-            logger.error(f"Failed to extract pipeline observability data: {exc}")
+            logger.error("Failed to extract pipeline observability data: %s", exc)
             logger.debug(traceback.format_exc())
 
     def yield_pipeline_status(
