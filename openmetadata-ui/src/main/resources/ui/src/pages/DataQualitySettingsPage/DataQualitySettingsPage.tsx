@@ -23,7 +23,7 @@ import { compare } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { useFormDrawerWithHook } from '../../components/common/atoms/drawer';
+import { useFormDrawerWithHook } from '../../components/common/atoms/drawer/useFormDrawer';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import {
   DeleteIconButton,
