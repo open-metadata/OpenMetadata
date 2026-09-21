@@ -66,7 +66,7 @@
   },
   "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 2
     }
   },
   "playwright/e2e/Features/Container.spec.ts": {
@@ -149,7 +149,7 @@
   },
   "playwright/e2e/Features/DataQuality/DataQuality.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 7
+      "count": 5
     }
   },
   "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts": {
@@ -1008,7 +1008,7 @@
   },
   "playwright/utils/importUtils.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 38
+      "count": 37
     }
   },
   "playwright/utils/incidentManager.ts": {

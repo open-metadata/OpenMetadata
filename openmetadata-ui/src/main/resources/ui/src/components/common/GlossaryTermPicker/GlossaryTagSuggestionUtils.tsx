@@ -13,9 +13,48 @@
 import { TreeSelectNode } from '@openmetadata/ui-core-components';
 import { GlossaryTerm as GlossaryTermIcon } from '@openmetadata/ui-core-components/icons';
 import { TagSource } from '../../../generated/entity/data/container';
+import { Glossary } from '../../../generated/entity/data/glossary';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
+
+// A `TagLabel` plus the entity it came from, for callers that need its id.
+export interface GlossaryPickerValue extends TagLabel {
+  entity?: Glossary | GlossaryTerm;
+  // A glossary root is checkable to cascade its terms but is not itself a tag.
+  isGlossaryRoot?: boolean;
+}
+
+// `TagLabel` is `additionalProperties: false`, so drop the UI-only fields.
+export const toTagLabel = ({
+  entity: _entity,
+  isGlossaryRoot: _isGlossaryRoot,
+  ...tag
+}: GlossaryPickerValue): TagLabel => tag;
+
+// The payload a glossary root carries so a parent picker can resolve its entity.
+export const glossaryRootValue = (glossary: Glossary): GlossaryPickerValue =>
+  ({
+    tagFQN: glossary.fullyQualifiedName || glossary.name,
+    name: getEntityName(glossary),
+    source: TagSource.Glossary,
+    entity: glossary,
+    isGlossaryRoot: true,
+  } as GlossaryPickerValue);
+
+// Drops the excluded FQNs and any subtree under them.
+export const pruneNodes = (
+  nodes: TreeSelectNode<GlossaryPickerValue>[],
+  excluded: Set<string>
+): TreeSelectNode<GlossaryPickerValue>[] =>
+  nodes
+    .filter((node) => !excluded.has(node.value))
+    .map((node) =>
+      node.children?.length
+        ? { ...node, children: pruneNodes(node.children, excluded) }
+        : node
+    );
 
 export interface TreeOptionNode {
   id: string;
@@ -31,7 +70,7 @@ export interface TreeOptionNode {
 
 export const convertToTreeNodes = (
   options: TreeOptionNode[]
-): TreeSelectNode<TagLabel>[] => {
+): TreeSelectNode<GlossaryPickerValue>[] => {
   return options.map((option) => ({
     id: option.id,
     label: option.title,
@@ -48,7 +87,8 @@ export const convertToTreeNodes = (
           name: getEntityName(option.data),
           displayName: option.data.displayName,
           source: TagSource.Glossary,
-        } as TagLabel)
+          entity: option.data,
+        } as GlossaryPickerValue)
       : undefined,
   }));
 };

@@ -19,7 +19,6 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import {
-  clickOutside,
   fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
@@ -38,6 +37,7 @@ import {
   selectStyleColor,
   selectStyleIcon,
 } from '../../../utils/glossary';
+import { pickGlossaryTermInField } from '../../../utils/glossaryPicker';
 import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({
@@ -1052,24 +1052,11 @@ test.describe('Glossary Advanced Operations', () => {
       await page.fill('[data-testid="name"]', termName);
       await fillDescriptionBox(page, 'Term with related terms');
 
-      const searchResponse = page.waitForResponse('/api/v1/search/query*');
-
-      await page.getByTestId('related-terms').click();
-
-      // Add related term
-      await page
-        .getByTestId('related-terms')
-        .locator('input')
-        .fill(existingTerm.responseData.displayName);
-
-      await searchResponse;
-
-      // Select the term
-      await page
-        .getByTestId(`tag-${existingTerm.responseData.fullyQualifiedName}`)
-        .click();
-
-      await clickOutside(page);
+      await pickGlossaryTermInField(page, page.getByTestId('related-terms'), {
+        name: existingTerm.responseData.name,
+        displayName: existingTerm.responseData.displayName,
+        fullyQualifiedName: existingTerm.responseData.fullyQualifiedName,
+      });
 
       const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
       await page.click('[data-testid="save-glossary-term"]');
