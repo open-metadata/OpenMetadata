@@ -604,6 +604,73 @@ class EntityLifecycleEventDispatcherTest {
     assertFalse(syncHandler.softDeletedOrRestoredCalled);
   }
 
+  @Test
+  void testReplaceHandler() {
+    TestHandler first = new TestHandler("ReplacedHandler", 100, false, Set.of());
+    TestHandler second = new TestHandler("ReplacedHandler", 100, false, Set.of());
+    dispatcher.registerHandler(first);
+    assertEquals(1, dispatcher.getHandlerCount());
+
+    dispatcher.replaceHandler(second);
+
+    // count must not increase — the old entry was removed
+    assertEquals(1, dispatcher.getHandlerCount());
+    // the active instance must be the second one
+    List<EntityLifecycleEventHandler> handlers = dispatcher.getHandlers();
+    assertSame(second, handlers.get(0));
+  }
+
+  @Test
+  void testReplaceHandlerRegistersWhenAbsent() {
+    TestHandler handler = new TestHandler("NewHandler", 100, false, Set.of());
+    assertEquals(0, dispatcher.getHandlerCount());
+
+    dispatcher.replaceHandler(handler);
+
+    assertEquals(1, dispatcher.getHandlerCount());
+    assertSame(handler, dispatcher.getHandlers().get(0));
+  }
+
+  @Test
+  void testConcurrentDispatchWithReplaceShouldNotThrowNpe() throws InterruptedException {
+    // Regression test for the race where ArrayList.removeIf nulled a trailing slot while
+    // getApplicableHandlers was streaming the same list, causing an NPE on
+    // handler.getSupportedEntityTypes().
+    int threads = 8;
+    int iterations = 200;
+    CountDownLatch start = new CountDownLatch(1);
+    CountDownLatch done = new CountDownLatch(threads);
+    AtomicReference<Throwable> error = new AtomicReference<>();
+
+    for (int i = 0; i < threads; i++) {
+      final int idx = i;
+      new Thread(
+              () -> {
+                try {
+                  start.await();
+                  for (int j = 0; j < iterations; j++) {
+                    if (idx % 2 == 0) {
+                      // Even threads replace the handler (simulates vector-service reinit)
+                      dispatcher.replaceHandler(
+                          new TestHandler("ConcurrentHandler", 200, false, Set.of()));
+                    } else {
+                      // Odd threads dispatch events (entity writes)
+                      dispatcher.onEntityCreated(createAsyncSafeEntity(), mockSubjectContext);
+                    }
+                  }
+                } catch (Throwable t) {
+                  error.compareAndSet(null, t);
+                } finally {
+                  done.countDown();
+                }
+              })
+          .start();
+    }
+    start.countDown();
+    assertTrue(done.await(10, TimeUnit.SECONDS), "Threads did not finish in time");
+    assertNull(error.get(), "Unexpected exception during concurrent dispatch+replace");
+  }
+
   // Test handler implementation
   private static class TestHandler implements EntityLifecycleEventHandler {
     private final String name;

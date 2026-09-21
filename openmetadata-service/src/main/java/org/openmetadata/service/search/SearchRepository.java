@@ -551,8 +551,7 @@ public class SearchRepository {
       // Entity.setSearchRepository(...); without this the dispatcher keeps delivering events to
       // the first instance and state maintained on the current instance (e.g. activeStagedIndices
       // used for reindex write-routing) is never consulted.
-      dispatcher.unregisterHandler(searchHandler.getHandlerName());
-      dispatcher.registerHandler(searchHandler);
+      dispatcher.replaceHandler(searchHandler);
       LOG.info("Successfully registered SearchIndexHandler for entity lifecycle events");
     } catch (Exception e) {
       LOG.error("Failed to register SearchIndexHandler", e);
