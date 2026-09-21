@@ -73,7 +73,6 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.TagPropagation;
 
 @Slf4j
 public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
@@ -589,14 +588,12 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   public List<PropagationDescriptor> getSearchPropagationDescriptors() {
     List<PropagationDescriptor> descriptors =
         new ArrayList<>(super.getSearchPropagationDescriptors());
-    // Gated on the same setting as the read-time inheritance: this cascade carries this entity's
-    // OWN tags into its children, so leaving it ungated would show tags in Explore that
-    // GET /{entity}/{id} does not report while propagation is off.
-    if (TagPropagation.isEnabled()) {
-      descriptors.add(
-          new PropagationDescriptor(
-              Entity.FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
-    }
+    // Keeps the index in step with the read-time inheritance in EntityRepository. This cascade
+    // carries this entity's OWN tags down, and inheritance re-derives the same labels on read, so
+    // both halves have to move together or Explore and GET /{entity}/{id} disagree.
+    descriptors.add(
+        new PropagationDescriptor(
+            Entity.FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
     return descriptors;
   }
 

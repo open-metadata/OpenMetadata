@@ -36,7 +36,6 @@ import org.openmetadata.schema.api.configuration.AppConfiguration;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
-import org.openmetadata.schema.api.configuration.TagPropagationSettings;
 import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -328,8 +327,6 @@ public interface SystemTokenDAOs {
             case SPARQL_QUERY_SETTINGS -> JsonUtils.readValue(json, SparqlQuerySettings.class);
             case APP_CONFIGURATION -> JsonUtils.readValue(json, AppConfiguration.class);
             case STARTUP_CHECKSUMS -> JsonUtils.readValue(json, StartupChecksums.class);
-            case TAG_PROPAGATION_SETTINGS -> JsonUtils.readValue(
-                json, TagPropagationSettings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);

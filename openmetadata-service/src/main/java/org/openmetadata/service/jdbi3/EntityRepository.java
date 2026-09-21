@@ -274,7 +274,6 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
-import org.openmetadata.service.util.TagPropagation;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import software.amazon.awssdk.utils.Either;
 
@@ -1045,7 +1044,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * deployments — the default — that have propagation switched off.
    */
   protected final String withPropagatedTags(String fields, String parentEntityType) {
-    if (!supportsTags || parentEntityType == null || !TagPropagation.isEnabled()) {
+    if (!supportsTags || parentEntityType == null) {
       return fields;
     }
     if (!Entity.hasEntityRepository(parentEntityType)
@@ -1103,10 +1102,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * read, the parent is never loaded, and propagation silently does nothing.
    */
   protected final boolean requiresParentForPropagatedTags(Fields fields) {
-    return supportsTags
-        && fields != null
-        && fields.contains(FIELD_TAGS)
-        && TagPropagation.isEnabled();
+    return supportsTags && fields != null && fields.contains(FIELD_TAGS);
   }
 
   private static final String RETENTION_PERIOD_FIELD = "retentionPeriod";
@@ -8437,10 +8433,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * directly. Package-private for {@code InheritTagsTest}.
    */
   static void applyInheritedTags(EntityInterface entity, Fields fields, EntityInterface parent) {
-    if (fields == null
-        || !fields.contains(FIELD_TAGS)
-        || parent == null
-        || !TagPropagation.isEnabled()) {
+    if (fields == null || !fields.contains(FIELD_TAGS) || parent == null) {
       return;
     }
     List<TagLabel> inherited = inheritedTagLabels(parent.getTags());

@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
@@ -28,7 +27,6 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
-import org.openmetadata.schema.api.configuration.TagPropagationSettings;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -382,19 +380,18 @@ public class ServiceAttributePolicyIT {
   }
 
   /**
-   * Issue #22095 ask 3: a tag on the service reaches its assets once propagation is switched on.
+   * Issue #22095 ask 3: a tag on the service reaches its assets.
    *
    * <p>A table is the case that matters and the one most easily missed: {@code TableRepository}
    * loads its parent itself rather than going through the generic inheritance path, so it decides
    * for itself whether the parent is needed and which of its fields to project. The chain also has
-   * to be walked transitively — the tag is set on the service, and the table's parent is the schema
-   * two hops below it.
+   * to be walked transitively -- the tag is set on the service, and the table's parent is the
+   * schema two hops below it.
+   *
+   * <p>No setting to turn on: inheritance is intrinsic, as it already is for owners and domains.
    */
   @Test
-  @ResourceLock(
-      value = SharedResourceLocks.TAG_PROPAGATION_SETTINGS,
-      mode = ResourceAccessMode.READ_WRITE)
-  void tagPropagation_carriesAServiceTagDownToItsTables(TestNamespace ns) throws Exception {
+  void tagPropagation_carriesAServiceTagDownToItsTables(TestNamespace ns) {
     OpenMetadataClient admin = SdkClients.adminClient();
     Deque<Runnable> cleanup = new ArrayDeque<>();
     try {
@@ -402,16 +399,12 @@ public class ServiceAttributePolicyIT {
       DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
       DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
       Table table = createTable(admin, prefix + "_propagated", schema);
-      tagService(admin, service, HIDDEN_TAG);
-
-      boolean originalPropagation = setTagPropagation(admin, false);
-      cleanup.push(() -> setTagPropagationQuietly(admin, originalPropagation));
 
       assertFalse(
           tagFqnsOf(admin.tables().get(table.getId().toString(), TAGS_FIELD)).contains(HIDDEN_TAG),
-          "propagation is opt-in: with the setting off the service's tag must not appear");
+          "nothing to inherit before the service is tagged");
 
-      setTagPropagation(admin, true);
+      tagService(admin, service, HIDDEN_TAG);
 
       assertTrue(
           tagFqnsOf(admin.tables().get(table.getId().toString(), TAGS_FIELD)).contains(HIDDEN_TAG),
@@ -421,11 +414,11 @@ public class ServiceAttributePolicyIT {
               .contains(HIDDEN_TAG),
           "the intermediate schema inherits it too, which is what makes the walk transitive");
 
-      setTagPropagation(admin, false);
+      untagService(admin, service);
 
       assertFalse(
           tagFqnsOf(admin.tables().get(table.getId().toString(), TAGS_FIELD)).contains(HIDDEN_TAG),
-          "switching propagation back off stops the API reporting the inherited tag");
+          "removing the service tag withdraws it from the assets that inherited it");
     } finally {
       drain(cleanup);
     }
@@ -445,43 +438,6 @@ public class ServiceAttributePolicyIT {
       tags.forEach(tag -> fqns.add(tag.getTagFQN()));
     }
     return fqns;
-  }
-
-  /** Returns the setting as it was, so the test can put it back. */
-  private boolean setTagPropagation(OpenMetadataClient admin, boolean enabled)
-      throws JsonProcessingException {
-    String settingsJson =
-        admin
-            .getHttpClient()
-            .executeForString(
-                HttpMethod.GET,
-                "/v1/system/settings/" + SettingsType.TAG_PROPAGATION_SETTINGS.value(),
-                null,
-                RequestOptions.builder().build());
-    Settings settings = MAPPER.readValue(settingsJson, Settings.class);
-    TagPropagationSettings config =
-        MAPPER.convertValue(settings.getConfigValue(), TagPropagationSettings.class);
-    boolean original = Boolean.TRUE.equals(config.getEnabled());
-    Settings updated =
-        new Settings()
-            .withConfigType(SettingsType.TAG_PROPAGATION_SETTINGS)
-            .withConfigValue(new TagPropagationSettings().withEnabled(enabled));
-    admin
-        .getHttpClient()
-        .executeForString(
-            HttpMethod.PUT,
-            "/v1/system/settings",
-            MAPPER.writeValueAsString(updated),
-            RequestOptions.builder().build());
-    return original;
-  }
-
-  private void setTagPropagationQuietly(OpenMetadataClient admin, boolean enabled) {
-    try {
-      setTagPropagation(admin, enabled);
-    } catch (OpenMetadataException | JsonProcessingException ignored) {
-      // Best-effort restore; the next test sets the value it needs rather than trusting this.
-    }
   }
 
   private void tagService(OpenMetadataClient admin, DatabaseService service, String tagFqn) {

@@ -44,8 +44,7 @@
         "glossaryTermRelationSettings",
         "sparqlQuerySettings",
         "appConfiguration",
-        "startupChecksums",
-        "tagPropagationSettings"
+        "startupChecksums"
       ]
     }
   },
@@ -124,9 +123,6 @@
         },
         {
           "$ref": "../configuration/sparqlQuerySettings.json"
-        },
-        {
-          "$ref": "../configuration/tagPropagationSettings.json"
         },
         {
           "$ref": "../api/configuration/appConfiguration.json"

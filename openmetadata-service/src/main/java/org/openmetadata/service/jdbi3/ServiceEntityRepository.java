@@ -48,7 +48,6 @@ import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.security.policyevaluator.ServiceAttributeResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
-import org.openmetadata.service.util.TagPropagation;
 
 public abstract class ServiceEntityRepository<
         T extends ServiceEntityInterface, S extends ServiceConnectionEntityInterface>
@@ -89,13 +88,11 @@ public abstract class ServiceEntityRepository<
           new PropagationDescriptor(
               FIELD_STYLE, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
     }
-    // Keeps the search index in step with the read-time tag inheritance in EntityRepository. Both
-    // halves are needed and both must be gated the same way: this cascade carries the service's
-    // OWN tags into child documents, not inherited ones, so registering it unconditionally would
-    // write tags into child docs that GET /{entity}/{id} does not report while propagation is off
-    // -- the Explore-vs-API disagreement this design exists to avoid. Descriptors are read per
-    // propagation event, so the check follows the setting without a restart.
-    if (supportsTags && TagPropagation.isEnabled()) {
+    // Keeps the search index in step with the read-time tag inheritance in EntityRepository. This
+    // cascade carries the service's OWN tags into child documents and inheritance re-derives the
+    // same labels on read, so both halves have to move together or Explore and
+    // GET /{entity}/{id} disagree about an asset's tags.
+    if (supportsTags) {
       descriptors.add(
           new PropagationDescriptor(
               Entity.FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));

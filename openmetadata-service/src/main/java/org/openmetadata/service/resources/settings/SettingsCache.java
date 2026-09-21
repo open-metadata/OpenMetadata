@@ -50,7 +50,6 @@ import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.AppConfiguration;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
-import org.openmetadata.schema.api.configuration.TagPropagationSettings;
 import org.openmetadata.schema.api.lineage.LineageLayer;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
@@ -339,29 +338,6 @@ public class SettingsCache {
         }
       } catch (IOException e) {
         LOG.error("Failed to read default Enitty Rules settings. Message: {}", e.getMessage(), e);
-      }
-    }
-
-    Settings tagPropagationSettings =
-        Entity.getSystemRepository()
-            .getConfigWithKey(SettingsType.TAG_PROPAGATION_SETTINGS.toString());
-    if (tagPropagationSettings == null) {
-      try {
-        List<String> jsonDataFiles =
-            EntityUtil.getJsonDataResources(".*json/data/settings/tagPropagationSettings.json$");
-        if (!jsonDataFiles.isEmpty()) {
-          String json =
-              CommonUtil.getResourceAsStream(
-                  EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
-          Settings setting =
-              new Settings()
-                  .withConfigType(SettingsType.TAG_PROPAGATION_SETTINGS)
-                  .withConfigValue(JsonUtils.readValue(json, TagPropagationSettings.class));
-          Entity.getSystemRepository().createNewSetting(setting);
-        }
-      } catch (IOException e) {
-        LOG.error(
-            "Failed to read default Tag Propagation settings. Message: {}", e.getMessage(), e);
       }
     }
 

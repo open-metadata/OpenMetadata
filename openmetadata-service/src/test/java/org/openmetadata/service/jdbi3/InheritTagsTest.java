@@ -1,7 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -21,30 +20,18 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.TagPropagation;
 
 /**
  * Read-time tag inheritance: the half of service-to-asset tag propagation that the REST API reports.
- * The search half rides on the existing {@code PropagationDescriptor} cascade, which is only correct
- * because this one makes the API agree with it.
+ * The search half rides on the existing {@code PropagationDescriptor} cascade, and the two are only
+ * correct together -- this one is what makes the API agree with the index.
+ *
+ * <p>Inheritance is intrinsic, the way owners and domains already are, so there is no setting to
+ * mock here.
  */
 class InheritTagsTest {
 
   private static final Fields TAG_FIELDS = new Fields(Set.of(Entity.FIELD_TAGS));
-
-  @Test
-  void inheritTags_isANoOp_whenPropagationIsDisabled() {
-    try (MockedStatic<TagPropagation> propagation = mockStatic(TagPropagation.class)) {
-      propagation.when(TagPropagation::isEnabled).thenReturn(false);
-      Table table = table();
-
-      EntityRepository.applyInheritedTags(table, TAG_FIELDS, parentWithTags("PII.Sensitive"));
-
-      assertTrue(
-          tagFqns(table).isEmpty(),
-          "with the setting off, a parent tag must not appear on the asset at all");
-    }
-  }
 
   /**
    * Merge, not replace. A parent tag is an addition to whatever the asset carries, unlike domain
@@ -52,89 +39,71 @@ class InheritTagsTest {
    */
   @Test
   void inheritTags_mergesParentTagsIntoTheAssetsOwn() {
-    try (MockedStatic<TagPropagation> propagation = mockStatic(TagPropagation.class)) {
-      propagation.when(TagPropagation::isEnabled).thenReturn(true);
-      Table table = table();
-      table.setTags(new ArrayList<>(List.of(manual("Tier.Tier1"))));
+    Table table = table();
+    table.setTags(new ArrayList<>(List.of(manual("Tier.Tier1"))));
 
-      EntityRepository.applyInheritedTags(table, TAG_FIELDS, parentWithTags("PII.Sensitive"));
+    EntityRepository.applyInheritedTags(table, TAG_FIELDS, parentWithTags("PII.Sensitive"));
 
-      assertEquals(List.of("Tier.Tier1", "PII.Sensitive"), tagFqns(table));
-    }
+    assertEquals(List.of("Tier.Tier1", "PII.Sensitive"), tagFqns(table));
   }
 
   /** Inherited labels are Derived, which the platform already treats as not user-editable. */
   @Test
   void inheritTags_marksInheritedLabelsAsDerived() {
-    try (MockedStatic<TagPropagation> propagation = mockStatic(TagPropagation.class)) {
-      propagation.when(TagPropagation::isEnabled).thenReturn(true);
-      Table table = table();
+    Table table = table();
 
-      EntityRepository.applyInheritedTags(table, TAG_FIELDS, parentWithTags("PII.Sensitive"));
+    EntityRepository.applyInheritedTags(table, TAG_FIELDS, parentWithTags("PII.Sensitive"));
 
-      assertEquals(1, table.getTags().size());
-      assertEquals(TagLabel.LabelType.DERIVED, table.getTags().get(0).getLabelType());
-    }
+    assertEquals(1, table.getTags().size());
+    assertEquals(TagLabel.LabelType.DERIVED, table.getTags().get(0).getLabelType());
   }
 
   /** The parent's own label must not be rewritten to Derived as a side effect of the copy. */
   @Test
   void inheritTags_doesNotMutateTheParentsLabels() {
-    try (MockedStatic<TagPropagation> propagation = mockStatic(TagPropagation.class)) {
-      propagation.when(TagPropagation::isEnabled).thenReturn(true);
-      Database parent = parentWithTags("PII.Sensitive");
+    Database parent = parentWithTags("PII.Sensitive");
 
-      EntityRepository.applyInheritedTags(table(), TAG_FIELDS, parent);
+    EntityRepository.applyInheritedTags(table(), TAG_FIELDS, parent);
 
-      assertEquals(TagLabel.LabelType.MANUAL, parent.getTags().get(0).getLabelType());
-    }
+    assertEquals(TagLabel.LabelType.MANUAL, parent.getTags().get(0).getLabelType());
   }
 
   /** An asset that already carries the parent's tag keeps one copy, not two. */
   @Test
   void inheritTags_doesNotDuplicateATagTheAssetAlreadyHas() {
-    try (MockedStatic<TagPropagation> propagation = mockStatic(TagPropagation.class)) {
-      propagation.when(TagPropagation::isEnabled).thenReturn(true);
-      Table table = table();
-      table.setTags(new ArrayList<>(List.of(manual("PII.Sensitive"))));
+    Table table = table();
+    table.setTags(new ArrayList<>(List.of(manual("PII.Sensitive"))));
 
-      EntityRepository.applyInheritedTags(table, TAG_FIELDS, parentWithTags("PII.Sensitive"));
+    EntityRepository.applyInheritedTags(table, TAG_FIELDS, parentWithTags("PII.Sensitive"));
 
-      assertEquals(List.of("PII.Sensitive"), tagFqns(table));
-      assertEquals(
-          TagLabel.LabelType.MANUAL,
-          table.getTags().get(0).getLabelType(),
-          "the asset's own label wins over the inherited copy");
-    }
+    assertEquals(List.of("PII.Sensitive"), tagFqns(table));
+    assertEquals(
+        TagLabel.LabelType.MANUAL,
+        table.getTags().get(0).getLabelType(),
+        "the asset's own label wins over the inherited copy");
   }
 
   /** Nothing to inherit must not disturb what the asset already has. */
   @Test
   void inheritTags_leavesTheAssetAloneWhenTheParentHasNoTags() {
-    try (MockedStatic<TagPropagation> propagation = mockStatic(TagPropagation.class)) {
-      propagation.when(TagPropagation::isEnabled).thenReturn(true);
-      Table table = table();
-      table.setTags(new ArrayList<>(List.of(manual("Tier.Tier1"))));
+    Table table = table();
+    table.setTags(new ArrayList<>(List.of(manual("Tier.Tier1"))));
 
-      EntityRepository.applyInheritedTags(
-          table, TAG_FIELDS, new Database().withId(UUID.randomUUID()));
+    EntityRepository.applyInheritedTags(
+        table, TAG_FIELDS, new Database().withId(UUID.randomUUID()));
 
-      assertEquals(List.of("Tier.Tier1"), tagFqns(table));
-    }
+    assertEquals(List.of("Tier.Tier1"), tagFqns(table));
   }
 
   /** Only applies when the caller asked for tags; otherwise the field is not loaded at all. */
   @Test
   void inheritTags_isANoOp_whenTagsWereNotRequested() {
-    try (MockedStatic<TagPropagation> propagation = mockStatic(TagPropagation.class)) {
-      propagation.when(TagPropagation::isEnabled).thenReturn(true);
-      Table table = table();
+    Table table = table();
 
-      EntityRepository.applyInheritedTags(
-          table, Fields.EMPTY_FIELDS, parentWithTags("PII.Sensitive"));
+    EntityRepository.applyInheritedTags(
+        table, Fields.EMPTY_FIELDS, parentWithTags("PII.Sensitive"));
 
-      assertTrue(tagFqns(table).isEmpty());
-    }
+    assertTrue(tagFqns(table).isEmpty());
   }
 
   /**
@@ -145,9 +114,7 @@ class InheritTagsTest {
    */
   @Test
   void inheritTags_doesNotAddATagExcludedByTheAssetsOwnChoice() {
-    try (MockedStatic<TagPropagation> propagation = mockStatic(TagPropagation.class);
-        MockedStatic<TagLabelUtil> tagLabels = mockStatic(TagLabelUtil.class)) {
-      propagation.when(TagPropagation::isEnabled).thenReturn(true);
+    try (MockedStatic<TagLabelUtil> tagLabels = mockStatic(TagLabelUtil.class)) {
       tagLabels.when(() -> TagLabelUtil.mutuallyExclusive(any())).thenReturn(true);
       Table table = table();
       table.setTags(new ArrayList<>(List.of(manual("Tier.Tier2"))));
@@ -164,9 +131,7 @@ class InheritTagsTest {
   /** A different classification is not excluded by the asset's tier, so it still propagates. */
   @Test
   void inheritTags_stillAddsATagFromAnUnrelatedClassification() {
-    try (MockedStatic<TagPropagation> propagation = mockStatic(TagPropagation.class);
-        MockedStatic<TagLabelUtil> tagLabels = mockStatic(TagLabelUtil.class)) {
-      propagation.when(TagPropagation::isEnabled).thenReturn(true);
+    try (MockedStatic<TagLabelUtil> tagLabels = mockStatic(TagLabelUtil.class)) {
       tagLabels.when(() -> TagLabelUtil.mutuallyExclusive(any())).thenReturn(true);
       Table table = table();
       table.setTags(new ArrayList<>(List.of(manual("Tier.Tier2"))));
@@ -183,9 +148,7 @@ class InheritTagsTest {
    */
   @Test
   void inheritTags_mergesSiblingsOfANonExclusiveClassification() {
-    try (MockedStatic<TagPropagation> propagation = mockStatic(TagPropagation.class);
-        MockedStatic<TagLabelUtil> tagLabels = mockStatic(TagLabelUtil.class)) {
-      propagation.when(TagPropagation::isEnabled).thenReturn(true);
+    try (MockedStatic<TagLabelUtil> tagLabels = mockStatic(TagLabelUtil.class)) {
       tagLabels.when(() -> TagLabelUtil.mutuallyExclusive(any())).thenReturn(false);
       Table table = table();
       table.setTags(new ArrayList<>(List.of(manual("Environment.Staging"))));
@@ -198,28 +161,16 @@ class InheritTagsTest {
   }
 
   /**
-   * The search cascade must be gated on the same setting as the read-time inheritance. It carries a
-   * parent's OWN tags into child documents, so leaving it ungated would write tags into Explore
-   * that {@code GET /{entity}/{id}} does not report while propagation is off.
+   * The search cascade and the read-time inheritance are two halves of one behaviour: the cascade
+   * carries a parent's own tags into child documents, inheritance re-derives the same labels on
+   * read. Ship one without the other and Explore disagrees with {@code GET /{entity}/{id}}.
    */
   @Test
-  void searchPropagationDescriptors_carryTags_onlyWhilePropagationIsEnabled() {
+  void searchPropagationDescriptors_carryTags() {
     DatabaseRepository repository = mock(DatabaseRepository.class);
     when(repository.getSearchPropagationDescriptors()).thenCallRealMethod();
 
-    try (MockedStatic<TagPropagation> propagation = mockStatic(TagPropagation.class)) {
-      propagation.when(TagPropagation::isEnabled).thenReturn(false);
-
-      assertFalse(
-          propagatesField(repository.getSearchPropagationDescriptors(), Entity.FIELD_TAGS),
-          "with propagation off the cascade must not carry tags into child documents");
-
-      propagation.when(TagPropagation::isEnabled).thenReturn(true);
-
-      assertTrue(
-          propagatesField(repository.getSearchPropagationDescriptors(), Entity.FIELD_TAGS),
-          "with propagation on the cascade keeps search in step with the API");
-    }
+    assertTrue(propagatesField(repository.getSearchPropagationDescriptors(), Entity.FIELD_TAGS));
   }
 
   /**
