@@ -1233,7 +1233,9 @@
 
     /* BORDER COLORS */
     --color-border-primary: theme(--color-gray-700);
-    --color-border-secondary: theme(--color-gray-800);
+    /* Card edges / dividers are white-alpha, not a gray step — gray-800 was
+       invisible on gray-800 surfaces (per palette guideline + Collate #6491). */
+    --color-border-secondary: --alpha(theme(--color-white) / 8%);
     --color-border-secondary_alt: --alpha(theme(--color-white) / 8%);
     --color-border-subtle: --alpha(theme(--color-white) / 8%);
     --color-border-hover: theme(--color-gray-600);
@@ -1255,8 +1257,10 @@
     --color-fg-secondary: theme(--color-gray-300);
     --color-fg-tertiary: theme(--color-gray-400);
     --color-fg-tertiary_hover: theme(--color-gray-300);
-    --color-fg-quaternary: theme(--color-gray-600);
-    --color-fg-quaternary_hover: theme(--color-gray-500);
+    /* Quaternary icons follow text-tertiary (gray-400) — gray-600 fails the 3:1
+       icon floor on Card/Raised (per palette guideline + Collate #6491). */
+    --color-fg-quaternary: theme(--color-gray-400);
+    --color-fg-quaternary_hover: theme(--color-gray-300);
     --color-fg-error-primary: theme(--color-error-500);
     --color-fg-error-secondary: theme(--color-error-400);
     --color-fg-warning-primary: theme(--color-warning-500);
@@ -1297,18 +1301,21 @@
     --color-bg-active: --alpha(theme(--color-white) / 10%);
     --color-bg-disabled: theme(--color-gray-800);
     --color-bg-disabled_subtle: theme(--color-gray-900);
-    --color-bg-brand-primary: --alpha(theme(--color-brand-500) / 16%);
+    /* Brand tint (nav-active, brand count chip) = 14% per palette guideline + Collate #6491. */
+    --color-bg-brand-primary: --alpha(theme(--color-brand-500) / 14%);
     --color-bg-brand-primary_alt: theme(--color-bg-secondary);
     --color-bg-brand-secondary: theme(--color-brand-600);
     --color-bg-secondary_alt: theme(--color-bg-primary);
     --color-bg-brand-solid: theme(--color-brand-600);
     --color-bg-brand-solid_hover: theme(--color-brand-500);
-    --color-bg-overlay: theme(--color-gray-800);
+    /* Modal scrim reads as a near-black veil (bg-overlay/70), not a gray wash. */
+    --color-bg-overlay: theme(--color-gray-950);
     --color-bg-page: theme(--color-gray-950);
     --color-bg-canvas: theme(--color-gray-900);
     --color-bg-surface: theme(--color-gray-800);
     --color-bg-raised: theme(--color-gray-700);
-    --color-bg-overlay-surface: theme(--color-gray-800);
+    /* Modal panel sits on Raised (gray-700) per palette guideline, not gray-800. */
+    --color-bg-overlay-surface: theme(--color-gray-700);
     --color-bg-brand-section: theme(--color-bg-secondary);
     --color-bg-brand-section_subtle: theme(--color-bg-primary);
 
