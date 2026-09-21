@@ -13,6 +13,7 @@
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';
 import { SearchDropdownOption } from '../../../components/SearchDropdown/SearchDropdown.interface';
+import { DQ_FILTER_TYPES } from '../../../constants/DataQuality.constants';
 import { EntityReference } from '../../../generated/type/entityReference';
 import {
   getEndOfDayInMillis,
@@ -37,7 +38,8 @@ const option = (key: string): SearchDropdownOption => ({ key, label: key });
 
 const findSearch = (filters: DqFilterDescriptor[], searchKey: string) => {
   const descriptor = filters.find(
-    (filter) => filter.type === 'search' && filter.searchKey === searchKey
+    (filter) =>
+      filter.type === DQ_FILTER_TYPES.SEARCH && filter.searchKey === searchKey
   );
   if (descriptor?.type !== 'search') {
     throw new Error(`No search filter for ${searchKey}`);
@@ -47,7 +49,9 @@ const findSearch = (filters: DqFilterDescriptor[], searchKey: string) => {
 };
 
 const findGlossaryTerm = (filters: DqFilterDescriptor[]) => {
-  const descriptor = filters.find((filter) => filter.type === 'glossaryTerm');
+  const descriptor = filters.find(
+    (filter) => filter.type === DQ_FILTER_TYPES.GLOSSARY_TERM
+  );
   if (descriptor?.type !== 'glossaryTerm') {
     throw new Error('No glossary-term filter');
   }
@@ -56,7 +60,9 @@ const findGlossaryTerm = (filters: DqFilterDescriptor[]) => {
 };
 
 const findOwner = (filters: DqFilterDescriptor[]) => {
-  const descriptor = filters.find((filter) => filter.type === 'owner');
+  const descriptor = filters.find(
+    (filter) => filter.type === DQ_FILTER_TYPES.OWNER
+  );
   if (descriptor?.type !== 'owner') {
     throw new Error('No owner filter');
   }

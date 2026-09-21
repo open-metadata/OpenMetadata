@@ -17,7 +17,10 @@ import { useTranslation } from 'react-i18next';
 import { SearchDropdownOption } from '../../../components/SearchDropdown/SearchDropdown.interface';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_BASE } from '../../../constants/constants';
-import { DQ_FILTER_KEYS } from '../../../constants/DataQuality.constants';
+import {
+  DQ_FILTER_KEYS,
+  DQ_FILTER_TYPES,
+} from '../../../constants/DataQuality.constants';
 import { PROFILER_FILTER_RANGE } from '../../../constants/profiler.constant';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -74,7 +77,7 @@ export interface DqOwnerKey {
 export type DqFilterDescriptor =
   | {
       key: 'owner';
-      type: 'owner';
+      type: typeof DQ_FILTER_TYPES.OWNER;
       label: string;
       selectedOwners?: EntityReference[];
       selectedOwnerKeys: DqOwnerKey[];
@@ -82,7 +85,7 @@ export type DqFilterDescriptor =
     }
   | {
       key: DqSearchFilterKey;
-      type: 'search';
+      type: typeof DQ_FILTER_TYPES.SEARCH;
       label: string;
       /** The `searchKey` the OSS SearchDropdown expects (also used as test id). */
       searchKey: string;
@@ -91,7 +94,7 @@ export type DqFilterDescriptor =
   | {
       /** Glossary terms come from the shared tree picker, not a flat facet list. */
       key: DqSearchFilterKey;
-      type: 'glossaryTerm';
+      type: typeof DQ_FILTER_TYPES.GLOSSARY_TERM;
       label: string;
       searchKey: string;
       selectedFqns: string[];
@@ -812,7 +815,7 @@ export const useDataQualityDashboardFilters = ({
     if (showOwnerFilter) {
       descriptors.push({
         key: 'owner',
-        type: 'owner',
+        type: DQ_FILTER_TYPES.OWNER,
         label: t('label.owner'),
         selectedOwners: selectedOwnerFilter,
         selectedOwnerKeys,
@@ -822,7 +825,7 @@ export const useDataQualityDashboardFilters = ({
     if (showTierFilter) {
       descriptors.push({
         key: 'tier',
-        type: 'search',
+        type: DQ_FILTER_TYPES.SEARCH,
         label: t('label.tier'),
         searchKey: 'tier',
         searchProps: tierFilter,
@@ -831,7 +834,7 @@ export const useDataQualityDashboardFilters = ({
     if (showCertificationFilter) {
       descriptors.push({
         key: 'certification',
-        type: 'search',
+        type: DQ_FILTER_TYPES.SEARCH,
         label: t('label.certification'),
         searchKey: 'certification',
         searchProps: certificationFilter,
@@ -840,7 +843,7 @@ export const useDataQualityDashboardFilters = ({
     if (showTagsFilter) {
       descriptors.push({
         key: 'tag',
-        type: 'search',
+        type: DQ_FILTER_TYPES.SEARCH,
         label: t('label.tag'),
         searchKey: 'tag',
         searchProps: tags,
@@ -849,7 +852,7 @@ export const useDataQualityDashboardFilters = ({
     if (showGlossaryTermsFilter) {
       descriptors.push({
         key: 'glossaryTerm',
-        type: 'glossaryTerm',
+        type: DQ_FILTER_TYPES.GLOSSARY_TERM,
         label: t('label.glossary-term'),
         searchKey: 'glossaryTerms',
         selectedFqns: selectedGlossaryTermFilter.map((term) => term.key),
@@ -862,7 +865,7 @@ export const useDataQualityDashboardFilters = ({
     if (showDataProductsFilter) {
       descriptors.push({
         key: 'dataProduct',
-        type: 'search',
+        type: DQ_FILTER_TYPES.SEARCH,
         label: t('label.data-product'),
         searchKey: 'dataProduct',
         searchProps: dataProducts,

@@ -22,6 +22,7 @@ import { ReactComponent as DropDownIcon } from '../../../assets/svg/drop-down.sv
 import DatePickerMenu from '../../../components/common/DatePickerMenu/DatePickerMenu.component';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
+import { DQ_FILTER_TYPES } from '../../../constants/DataQuality.constants';
 import { getSelectedOptionLabelString } from '../../../utils/AdvancedSearchPureUtils';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
@@ -92,7 +93,7 @@ const DataQualityDashboard = ({
       {showFilterBar && hasVisibleFilters && (
         <div className="tw:flex tw:items-center tw:gap-4 tw:w-full">
           {filters.map((filter) => {
-            if (filter.type === 'owner') {
+            if (filter.type === DQ_FILTER_TYPES.OWNER) {
               return (
                 <Tooltip
                   isDisabled={filter.selectedOwnerKeys.length === 0}
@@ -136,7 +137,7 @@ const DataQualityDashboard = ({
               );
             }
 
-            if (filter.type === 'glossaryTerm') {
+            if (filter.type === DQ_FILTER_TYPES.GLOSSARY_TERM) {
               return (
                 <GlossaryTermPicker
                   commitMode="staged"

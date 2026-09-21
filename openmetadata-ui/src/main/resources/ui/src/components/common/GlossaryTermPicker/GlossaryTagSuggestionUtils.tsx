@@ -35,9 +35,13 @@ export const toTagLabel = ({
 
 // Filters and conditions store bare FQNs; the picker speaks TagLabel.
 export const fqnsToGlossaryTags = (fqns: string[]): TagLabel[] =>
-  fqns
-    .filter(Boolean)
-    .map((tagFQN) => ({ tagFQN, source: TagSource.Glossary } as TagLabel));
+  fqns.reduce<TagLabel[]>((acc, tagFQN) => {
+    if (tagFQN) {
+      acc.push({ tagFQN, source: TagSource.Glossary } as TagLabel);
+    }
+
+    return acc;
+  }, []);
 
 export const glossaryTagsToFqns = (tags: TagLabel[]): string[] =>
   tags.map((tag) => tag.tagFQN);

@@ -12,6 +12,7 @@
  */
 import { ChevronDown } from '@untitledui/icons';
 import classNames from 'classnames';
+import { DQ_FILTER_TYPES } from '../../../../constants/DataQuality.constants';
 import {
   fqnsToGlossaryTags,
   glossaryTagsToFqns,
@@ -35,7 +36,7 @@ const DqFilterChip = ({
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }) => {
-  if (filter.type === 'glossaryTerm') {
+  if (filter.type === DQ_FILTER_TYPES.GLOSSARY_TERM) {
     return (
       <GlossaryTermPicker
         commitMode="staged"
@@ -51,7 +52,7 @@ const DqFilterChip = ({
     );
   }
 
-  if (filter.type === 'owner') {
+  if (filter.type === DQ_FILTER_TYPES.OWNER) {
     return (
       <UserTeamSelectableList
         hasPermission
