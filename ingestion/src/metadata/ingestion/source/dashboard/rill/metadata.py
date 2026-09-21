@@ -364,8 +364,9 @@ class RillSource(DashboardServiceSource):
             return
 
         datamodel_name = datamodel.meta.name.name
-        if filter_by_datamodel(self.source_config.dataModelFilterPattern, datamodel_name):
-            self.status.filter(datamodel_name, "Data model filtered out.")
+        ingested_name = self._datamodel_name(datamodel.meta.name.kind, datamodel_name)
+        if filter_by_datamodel(self.source_config.dataModelFilterPattern, ingested_name):
+            self.status.filter(ingested_name, "Data model filtered out.")
             return
 
         try:
@@ -669,7 +670,9 @@ class RillSource(DashboardServiceSource):
             if reference.kind in {MODEL_KIND, METRICS_VIEW_KIND}
         )
         for kind, upstream_name in references:
-            if filter_by_datamodel(self.source_config.dataModelFilterPattern, upstream_name):
+            if filter_by_datamodel(
+                self.source_config.dataModelFilterPattern, self._datamodel_name(kind, upstream_name)
+            ):
                 continue
             edge_key = (
                 self._datamodel_edge_key(kind, upstream_name),
@@ -700,7 +703,8 @@ class RillSource(DashboardServiceSource):
         db_service_prefixes: list[str | None] = list(self.get_db_service_prefixes() or [None])
         for resource in [*self.models.values(), *self.metrics_views.values()]:
             datamodel_name = resource.meta.name.name
-            if filter_by_datamodel(self.source_config.dataModelFilterPattern, datamodel_name):
+            ingested_name = self._datamodel_name(resource.meta.name.kind, datamodel_name)
+            if filter_by_datamodel(self.source_config.dataModelFilterPattern, ingested_name):
                 continue
             try:
                 downstream = self._get_datamodel_entity(resource.meta.name.kind, datamodel_name)

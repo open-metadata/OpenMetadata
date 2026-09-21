@@ -32,6 +32,7 @@ from metadata.generated.schema.entity.services.connections.dashboard.rillConnect
     RillConnection,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.source.dashboard.rill.client import (
     COMPONENT_KIND,
@@ -1086,3 +1087,23 @@ class TestRillSource:
 
         for renderer, expected_type in expected_types.items():
             assert RillSource._get_chart_type(renderer).value == expected_type
+
+    def test_datamodel_filter_matches_the_ingested_name_not_the_rill_name(self):
+        """Models are ingested as `<name>_model`, so a pattern written against the name
+        the user sees in OpenMetadata has to be what the filter is tested against."""
+        source = make_source("http://localhost:9009")
+        source.source_config.dataModelFilterPattern = FilterPattern(excludes=[".*_model$"])
+
+        results = list(source.yield_bulk_datamodel(RillResource.model_validate(MODEL_RESOURCE)))
+
+        assert results == []
+        source.status.filter.assert_called_once_with("pull_requests_model", "Data model filtered out.")
+
+    def test_datamodel_filter_leaves_metrics_views_alone(self):
+        source = make_source("http://localhost:9009")
+        source.source_config.dataModelFilterPattern = FilterPattern(excludes=[".*_model$"])
+
+        results = list(source.yield_bulk_datamodel(RillResource.model_validate(METRICS_VIEW_RESOURCE)))
+
+        assert [result.right.name.root for result in results] == ["pull_request_metrics"]
+        source.status.filter.assert_not_called()
