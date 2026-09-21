@@ -23,7 +23,6 @@ import {
 } from '../../../interface/knowledge-center.interface';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../../utils/EntityPureUtils';
 import i18n, { t } from '../../../utils/i18next/LocalUtil';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 
 const SummaryPanelSkeleton = withSuspenseFallback(
@@ -68,7 +67,7 @@ const KnowledgePageSummary = ({
     return [
       {
         name: i18n.t('label.owner-plural'),
-        value: <Owner hasPermission={false} owners={toOwnerRefs(owners)} />,
+        value: <Owner hasPermission={false} owners={owners} />,
       },
     ];
   }, [entityDetails]);

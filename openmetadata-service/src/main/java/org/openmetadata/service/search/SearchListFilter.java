@@ -11,6 +11,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataQualityDimensionRepository;
 import org.openmetadata.service.jdbi3.Filter;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
 
 public class SearchListFilter extends Filter<SearchListFilter> {
   public SearchListFilter() {
@@ -307,7 +308,8 @@ public class SearchListFilter extends Filter<SearchListFilter> {
 
     if (dataQualityDimension != null)
       conditions.add(
-          getDataQualityDimensionCondition(dataQualityDimension, "dataQualityDimension"));
+          getDataQualityDimensionCondition(
+              dataQualityDimension, TestCaseRepository.DATA_QUALITY_DIMENSION_NAME_FIELD));
 
     if (dataProductFqn != null) {
       conditions.add(
@@ -366,7 +368,10 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (dataQualityDimension != null)
       conditions.add(
           getDataQualityDimensionCondition(
-              dataQualityDimension, "testDefinition.dataQualityDimension"));
+              dataQualityDimension,
+              TestCaseRepository.TEST_DEFINITION_FIELD
+                  + "."
+                  + TestCaseRepository.DATA_QUALITY_DIMENSION_NAME_FIELD));
     return addCondition(conditions);
   }
 

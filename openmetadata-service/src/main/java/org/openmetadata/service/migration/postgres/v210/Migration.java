@@ -14,13 +14,16 @@
 package org.openmetadata.service.migration.postgres.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
+import static org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration.rebuildDataContractEntityReferences;
 import static org.openmetadata.service.migration.utils.v210.DataQualityDimensionMigration.backfillTestCaseDimensions;
+import static org.openmetadata.service.migration.utils.v210.DottedServiceFqnMigration.repairDottedServiceChildFqns;
 import static org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil.backfillSourceConfigTypes;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addCreateConversationRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.alignHybridSearchWeightsWithDefaults;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.exemptQueryFromMultiDomainRules;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.refreshConversationNotificationTemplates;
 import static org.openmetadata.service.migration.utils.v210.OntologyMigration.migrateRelationshipTypes;
+import static org.openmetadata.service.migration.utils.v210.SearchAggregationFieldRepair.repairFieldNamesAggregations;
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
@@ -48,5 +51,19 @@ public class Migration extends MigrationProcessImpl {
     exemptQueryFromMultiDomainRules();
     backfillSourceConfigTypes(collectionDAO);
     backfillTestCaseDimensions(handle, POSTGRES);
+    // Retarget the stale `fieldsNames` topic/apiEndpoint aggregation field to the mapped keyword
+    // fields, and split the apiEndpoint `fieldNames` aggregation into request/response field-name
+    // aggregations. The seed default never reaches already-migrated clusters (per-asset
+    // aggregations are not re-merged), so existing installs only get the fix through this
+    // migration.
+    // Idempotent.
+    repairFieldNamesAggregations();
+    // Repair Dashboard/Chart/Pipeline/Topic/MlModel rows created under dotted-name services before
+    // 1.1.0 (the v1120 repair covered only their 7 sibling types). DB-agnostic, so also run on
+    // MySQL. Re-homed here so instances already past 1.12 heal on upgrade.
+    repairDottedServiceChildFqns(handle, collectionDAO);
+    // Data contracts stored their entity reference as sent, usually without a name or FQN.
+    // Runs after the FQN repair above so contracts copy the repaired FQNs. Idempotent.
+    rebuildDataContractEntityReferences(collectionDAO);
   }
 }

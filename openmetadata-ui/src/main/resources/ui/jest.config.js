@@ -96,6 +96,12 @@ module.exports = {
       '<rootDir>/src/test/unit/mocks/elkLayout.mock.js',
     '^.*/AppRouter/withSuspenseFallback$':
       '<rootDir>/src/test/unit/mocks/withSuspenseFallback.mock.tsx',
+    // `src/utils/isPlaywrightBuild.ts` reads `import.meta.env.PW_E2E_BUILD`,
+    // which ts-jest cannot parse under the default CJS transform. Redirect
+    // every consumer through the stub so the syntax stays out of the tree
+    // Jest walks. See the stub for how to flip the flag per-test.
+    '^.*/utils/isPlaywrightBuild$':
+      '<rootDir>/src/test/unit/mocks/isPlaywrightBuild.mock.ts',
     // Force every `require('react')` / `require('react-dom')` to resolve to the consumer's
     // copy. The `openmetadata-ui-core-components` package has its own `node_modules/react`
     // (for its own dev/test) — without these mappings the CJS bundle loaded from
