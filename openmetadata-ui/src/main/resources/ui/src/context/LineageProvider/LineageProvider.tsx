@@ -70,6 +70,7 @@ import {
   LineageNodeType,
   NodeData,
 } from '../../components/Lineage/Lineage.interface';
+import { getRealEntityRef } from '../../components/Lineage/LineageMap/LineageMapEdit.utils';
 import LineageNodeRemoveButton from '../../components/Lineage/LineageNodeRemoveButton';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import {
@@ -84,7 +85,6 @@ import { ELEMENT_DELETE_STATE } from '../../constants/Lineage.constants';
 import { EntityLineageNodeType, EntityType } from '../../enums/entity.enum';
 import { AddLineage } from '../../generated/api/lineage/addLineage';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
-import { getRealEntityRef } from '../../components/Lineage/LineageMap/LineageMapEdit.utils';
 import {
   LineageBand,
   LineageSceneNode,
