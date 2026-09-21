@@ -227,6 +227,11 @@ export default defineConfig({
     /* Self-signed cert in h2 mode — accept it. No effect on HTTP/1.1 runs. */
     ignoreHTTPSErrors: isH2Mode,
 
+    /* Emulate prefers-reduced-motion so CSS/react-aria transitions resolve
+     * instantly. Slow react-aria trigger/overlay animations are a source of
+     * flakiness when a click lands before the animation settles. */
+    reducedMotion: 'reduce',
+
     /* Collect trace and video on every failure (not just retries) for debugging */
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
