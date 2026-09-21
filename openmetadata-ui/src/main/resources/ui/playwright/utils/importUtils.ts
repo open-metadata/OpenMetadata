@@ -280,17 +280,27 @@ const selectActiveRowCellByColumn = async (page: Page, columnKey: string) => {
   throw new Error(`Unable to select grid column "${columnKey}"`);
 };
 
+const isGridEditorOpen = (cell: Locator) =>
+  cell.evaluate((element) =>
+    element.classList.contains('rdg-editor-container')
+  );
+
 const openSelectedGridEditor = async (page: Page) => {
   const cell = page.locator('.rdg-cell[aria-selected="true"]');
   await expect(cell).toHaveCount(1);
+
+  // Nothing to open if the editor is already up, and clicking anyway does not
+  // merely waste a step: the editor's content is not a descendant of the cell,
+  // so it intercepts the press and Playwright retries against
+  // `<p data-placeholder="Type "/" for commands...">` until the test times out.
+  if (await isGridEditorOpen(cell)) {
+    return;
+  }
+
   await cell.click({ position: { x: 5, y: 5 } });
   // Picker cells open on click and move focus into a portal. Text cells still
   // need Enter; focusing the cell again would close an already open picker.
-  if (
-    !(await cell.evaluate((element) =>
-      element.classList.contains('rdg-editor-container')
-    ))
-  ) {
+  if (!(await isGridEditorOpen(cell))) {
     await expect(cell).toBeFocused({ timeout: 5_000 });
     await page.keyboard.press('Enter');
   }

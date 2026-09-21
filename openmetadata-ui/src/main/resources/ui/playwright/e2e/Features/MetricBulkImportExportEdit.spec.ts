@@ -1426,8 +1426,13 @@ test.describe(
       const { metric: selectedMetric, row } =
         await getFirstVisibleFixtureMetricRow(page);
 
-      // eslint-disable-next-line playwright/no-force-option -- styled checkbox control intercepts the native input.
-      await row.getByRole('checkbox').check({ force: true });
+      // Click react-aria's own control rather than forcing the hidden input.
+      // `check({ force: true })` reaches the native <input>, but the handler
+      // lives on the wrapper, so the state never flips and Playwright reports
+      // "Clicking the checkbox did not change its state". The sibling test
+      // "clicking the row checkbox selects without navigating" already selects
+      // this way.
+      await row.locator('label[slot="selection"]').click();
       await expect(page.locator('.metric-list-selection-count')).toHaveText(
         '1'
       );
