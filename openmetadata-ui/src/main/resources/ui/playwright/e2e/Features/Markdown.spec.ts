@@ -131,21 +131,21 @@ test.describe('Markdown', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     const container = page.getByTestId('asset-description-container');
 
-    const readMoreButton = page.getByTestId('read-more-button');
-    if (await readMoreButton.isVisible()) {
-      await readMoreButton.click();
-    }
+    // Count the items first: the assertion retries until the description has
+    // rendered, so the text assertions below cannot pass against an empty
+    // container. Both read the DOM rather than the layout, which keeps them
+    // independent of whether the preview is clamped — no Read More click, and
+    // so no race against the button's own asynchronous overflow measurement.
+    await expect(container.locator('ol > li')).toHaveCount(3);
+    await expect(container.locator('ul > li')).toHaveCount(7);
 
     // Every list item must carry its own text. Before the fix only the first
     // ~11 hashed spans were restored and the rest rendered as `¨C45C`.
     await expect(container).not.toContainText(SHOWDOWN_SPAN_PLACEHOLDER);
 
-    await expect(container.locator('ol > li')).toHaveCount(3);
-    await expect(container.locator('ul > li')).toHaveCount(7);
-
-    await expect(container.getByText('VCR and Analog UEs')).toBeVisible();
-    await expect(container.getByText('AnalogCableOnlyWithPay')).toBeVisible();
-    await expect(container.getByText('Cable UE')).toBeVisible();
-    await expect(container.getByText('CableAndADS')).toBeVisible();
+    await expect(container).toContainText('VCR and Analog UEs');
+    await expect(container).toContainText('AnalogCableOnlyWithPay');
+    await expect(container).toContainText('Cable UE');
+    await expect(container).toContainText('CableAndADS');
   });
 });
