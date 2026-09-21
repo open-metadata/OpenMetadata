@@ -95,6 +95,43 @@ class DestinationValidationTest {
     assertTrue(refused.getMessage().contains("configuration is required"));
   }
 
+  // Nothing in this release writes the field, so a new alert can never carry it.
+  @Test
+  void channelCannotBeSetOnANewAlert() {
+    EventSubscription alert = alertWith(webhook(USABLE).withChannel("Webhook"));
+
+    assertThrows(BadRequestException.class, () -> DestinationValidation.ofANewAlert(alert));
+  }
+
+  @Test
+  void channelCannotBeSetOrChangedByAnUpdate() {
+    EventSubscription without = alertWith(webhook(USABLE));
+    EventSubscription with = copyOf(without);
+    with.getDestinations().getFirst().withChannel("Webhook");
+    EventSubscription changed = copyOf(with);
+    changed.getDestinations().getFirst().withChannel("Slack");
+
+    assertThrows(
+        BadRequestException.class, () -> DestinationValidation.ofWhatChanged(without, with));
+    assertThrows(
+        BadRequestException.class, () -> DestinationValidation.ofWhatChanged(with, changed));
+  }
+
+  // What the next release wrote must still be saveable here after a rollback.
+  @Test
+  void storedChannelMayBeSentBackOrLeftOut() {
+    EventSubscription stored = alertWith(webhook(USABLE).withChannel("Webhook"));
+    EventSubscription sentBack = copyOf(stored).withDisplayName("Renamed");
+    EventSubscription sentBackByPut = copyOf(stored);
+    sentBackByPut.getDestinations().getFirst().withId(UUID.randomUUID());
+    EventSubscription leftOut = copyOf(stored);
+    leftOut.getDestinations().getFirst().withChannel(null);
+
+    assertDoesNotThrow(() -> DestinationValidation.ofWhatChanged(stored, sentBack));
+    assertDoesNotThrow(() -> DestinationValidation.ofWhatChanged(stored, sentBackByPut));
+    assertDoesNotThrow(() -> DestinationValidation.ofWhatChanged(stored, leftOut));
+  }
+
   private static EventSubscription alertWith(SubscriptionDestination... destinations) {
     return new EventSubscription()
         .withId(UUID.randomUUID())

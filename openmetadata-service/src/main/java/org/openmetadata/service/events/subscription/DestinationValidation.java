@@ -39,6 +39,7 @@ public final class DestinationValidation {
   private DestinationValidation() {}
 
   public static void ofANewAlert(EventSubscription alert) {
+    listOrEmpty(alert.getDestinations()).forEach(DestinationValidation::refuseAChannel);
     Map<String, String> declared = AbstractEventConsumer.declaredChannelsOf(alert);
     listOrEmpty(alert.getDestinations()).forEach(destination -> validate(destination, declared));
   }
@@ -50,8 +51,36 @@ public final class DestinationValidation {
             .map(DestinationValidation::whatAUserConfigures)
             .toList();
     listOrEmpty(updated.getDestinations()).stream()
+        .filter(destination -> !carriesItsStoredChannel(destination, original))
+        .forEach(DestinationValidation::refuseAChannel);
+    listOrEmpty(updated.getDestinations()).stream()
         .filter(destination -> !stored.contains(whatAUserConfigures(destination)))
         .forEach(destination -> validate(destination, declared));
+  }
+
+  // The field is read only in this release. The next release writes it, and an alert it wrote
+  // must still be saveable here after a rollback, by a client that sends back what it read.
+  private static boolean carriesItsStoredChannel(
+      SubscriptionDestination destination, EventSubscription original) {
+    return destination.getChannel() == null
+        || listOrEmpty(original.getDestinations()).stream()
+            .anyMatch(stored -> isTheSameWithTheSameChannel(stored, destination));
+  }
+
+  private static boolean isTheSameWithTheSameChannel(
+      SubscriptionDestination stored, SubscriptionDestination sent) {
+    boolean sameDestination =
+        (sent.getId() != null && sent.getId().equals(stored.getId()))
+            || whatAUserConfigures(stored).equals(whatAUserConfigures(sent));
+    return sameDestination && sent.getChannel().equals(stored.getChannel());
+  }
+
+  private static void refuseAChannel(SubscriptionDestination destination) {
+    if (destination.getChannel() != null) {
+      throw new BadRequestException(
+          "The channel of a destination cannot be set or changed. Leave the field out, or send the"
+              + " value it is stored with.");
+    }
   }
 
   /** Throws a 400 that says what is wrong with the destination. */

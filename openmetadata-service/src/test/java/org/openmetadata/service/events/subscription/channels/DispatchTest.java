@@ -63,6 +63,30 @@ class DispatchTest {
     assertEquals(event.getId(), RecordingChannels.SENT.getFirst().getId());
   }
 
+  @Test
+  void destinationChannelWinsOverDeclarationAndType() {
+    SubscriptionDestination named =
+        BuiltInChannels.previewDestination()
+            .withId(UUID.randomUUID())
+            .withChannel(RecordingChannels.ID);
+    Map<String, String> declared = Map.of(type, "declared.by.the.consumer");
+
+    ChannelResolution served = ChannelResolution.of(named, declared);
+
+    assertEquals(RecordingChannels.ID, served.channelId());
+    assertTrue(served.channel().isPresent());
+  }
+
+  @Test
+  void namedChannelThatIsNotRegisteredIsNeverServedByItsType() {
+    SubscriptionDestination named =
+        BuiltInChannels.previewDestination()
+            .withId(UUID.randomUUID())
+            .withChannel("not.registered.here");
+
+    assertTrue(ChannelResolution.of(named, Map.of()).channel().isEmpty());
+  }
+
   // A destination meant for one channel must never go out through the channel of its type.
   @Test
   void declaredChannelThatIsNotRegisteredIsNotAttempted() throws EventPublisherException {

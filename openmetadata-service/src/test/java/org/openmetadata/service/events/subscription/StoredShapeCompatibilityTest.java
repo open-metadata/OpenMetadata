@@ -1,5 +1,6 @@
 package org.openmetadata.service.events.subscription;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -156,6 +157,23 @@ class StoredShapeCompatibilityTest {
     return String.format(
         "{\"currentOffset\":%d,\"startingOffset\":1,\"startingTimestamp\":1,\"timestamp\":1}",
         offset);
+  }
+
+  // The reason the channel field is read and never written in this release: the previous release
+  // refuses a row that carries a field it does not know.
+  @Test
+  void rowWithAChannelIsWhatThePreviousReleaseRefuses() {
+    EventSubscription written = storedAlert();
+    assertValid("events/eventSubscription.json", JsonUtils.pojoToJson(written));
+    assertFalse(JsonUtils.pojoToJson(written).contains("\"channel\""));
+
+    written.getDestinations().getFirst().withChannel("Webhook");
+
+    List<Error> errors =
+        REGISTRY
+            .getSchema(SchemaLocation.of(PREVIOUS_RELEASE + "events/eventSubscription.json"))
+            .validate(JsonUtils.readTree(JsonUtils.pojoToJson(written)));
+    assertTrue(errors.stream().anyMatch(error -> error.toString().contains("channel")));
   }
 
   private static void assertValid(String schemaOfThePreviousRelease, String written) {

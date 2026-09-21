@@ -21,10 +21,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 
 /**
- * Which channel serves a destination: the one its alert's consumer declares for the destination's
- * type, otherwise the one registered for that type. A declared channel that is not registered on
- * this server is never replaced by the type's channel, because a destination meant for one channel
- * must not be sent through another.
+ * Which channel serves a destination: the one its {@code channel} field names, otherwise the one
+ * its alert's consumer declares for the destination's type, otherwise the one registered for that
+ * type. A named or declared channel that is not registered on this server is never replaced by the
+ * type's channel, because a destination meant for one channel must not be sent through another.
  *
  * @param channelId the id the destination resolved to, registered or not
  * @param channel empty when that id is not registered on this server
@@ -41,11 +41,22 @@ public record ChannelResolution(String channelId, Optional<Channel> channel) {
   public static ChannelResolution of(
       SubscriptionDestination destination, Map<String, String> declaredByConsumer) {
     String type = destination.getType().value();
+    String named = destination.getChannel();
     String declared = declaredByConsumer.get(type);
-    String channelId = declared == null ? type : declared;
+    String channelId = firstNonNull(named, declared, type);
     ChannelResolution resolution = new ChannelResolution(channelId, Channels.of(channelId));
-    logOnce(destination, resolution, declared == null ? "its type" : "its alert's consumer");
+    logOnce(destination, resolution, resolvedBy(named, declared));
     return resolution;
+  }
+
+  private static String firstNonNull(String named, String declared, String type) {
+    String declaredOrType = declared == null ? type : declared;
+    return named == null ? declaredOrType : named;
+  }
+
+  private static String resolvedBy(String named, String declared) {
+    String declaredOrType = declared == null ? "its type" : "its alert's consumer";
+    return named == null ? declaredOrType : "its channel field";
   }
 
   private static void logOnce(
