@@ -12,51 +12,62 @@
  */
 import { render, screen } from '@testing-library/react';
 import { OMConfig } from './QueryBuilderOMConfig';
-import { GLOSSARY_TERM_FIELD_MARKER } from './queryBuilderWidgets/glossaryTermQueryField';
+import { withGlossaryTermField } from './queryBuilderWidgets/glossaryTermQueryField';
 
+// Boundary: the real picker mounts the glossary tree and fetches on open, which
+// jsdom cannot drive. The widgets below are the real ones.
 jest.mock('./queryBuilderWidgets/GlossaryTermQueryWidget', () => ({
   __esModule: true,
   default: () => <div data-testid="glossary-term-query-widget" />,
 }));
 
-jest.mock('./queryBuilderWidgets/OMSelectWidget', () => ({
-  __esModule: true,
-  default: () => <div data-testid="om-select-widget" />,
-}));
+// The settings a glossary field really carries, built by the production helper.
+const glossaryFieldSettings = withGlossaryTermField({
+  asyncFetch: jest.fn().mockResolvedValue({ values: [], hasMore: false }),
+  useAsyncSearch: true,
+});
 
-jest.mock('./queryBuilderWidgets/OMMultiSelectWidget', () => ({
-  __esModule: true,
-  default: () => <div data-testid="om-multi-select-widget" />,
-}));
-
-const props = (marked: boolean) =>
+const widgetProps = (fieldSettings: Record<string, unknown>) =>
   ({
+    // RAQB flattens fieldSettings into the props and passes fieldDefinition
+    // whole; both shapes are reproduced here.
+    ...fieldSettings,
+    fieldDefinition: { fieldSettings },
     value: null,
     setValue: jest.fn(),
     placeholder: '',
     readonly: false,
-    fieldDefinition: marked
-      ? { fieldSettings: { [GLOSSARY_TERM_FIELD_MARKER]: true } }
-      : {},
-    // A glossary field carries these too, so they must not decide the control.
-    asyncFetch: jest.fn(),
-    useAsyncSearch: true,
+    listValues: [],
   } as never);
+
+const plainFieldSettings = { useAsyncSearch: false };
 
 describe('OMConfig glossary-term widgets', () => {
   it.each([
-    ['select', 'om-select-widget'],
-    ['multiselect', 'om-multi-select-widget'],
-  ])('renders the tree for a marked %s field', (type, defaultTestId) => {
-    const { factory } = OMConfig.widgets[type as 'select'];
+    ['select', 'advanced-search-value-select'],
+    ['multiselect', 'advanced-search-value-multiselect'],
+  ])(
+    'renders the glossary tree for a marked %s field',
+    (type, defaultTestId) => {
+      const { factory } = OMConfig.widgets[type as 'select'];
 
-    const { unmount } = render(<>{factory?.(props(true))}</>);
+      const { unmount } = render(
+        <>{factory?.(widgetProps(glossaryFieldSettings))}</>
+      );
 
-    expect(screen.getByTestId('glossary-term-query-widget')).toBeInTheDocument();
-    unmount();
+      expect(
+        screen.getByTestId('glossary-term-query-widget')
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId(defaultTestId)).not.toBeInTheDocument();
 
-    render(<>{factory?.(props(false))}</>);
+      unmount();
 
-    expect(screen.getByTestId(defaultTestId)).toBeInTheDocument();
-  });
+      render(<>{factory?.(widgetProps(plainFieldSettings))}</>);
+
+      expect(screen.getByTestId(defaultTestId)).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('glossary-term-query-widget')
+      ).not.toBeInTheDocument();
+    }
+  );
 });

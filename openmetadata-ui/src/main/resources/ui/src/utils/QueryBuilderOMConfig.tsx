@@ -12,9 +12,9 @@
  */
 import type { BasicConfig } from '@react-awesome-query-builder/ui';
 import { BasicConfig as QbBasicConfig } from '@react-awesome-query-builder/ui';
-import OMBooleanWidget from './queryBuilderWidgets/OMBooleanWidget';
-import GlossaryTermQueryWidget from './queryBuilderWidgets/GlossaryTermQueryWidget';
 import { isGlossaryTermQueryField } from './queryBuilderWidgets/glossaryTermQueryField';
+import GlossaryTermQueryWidget from './queryBuilderWidgets/GlossaryTermQueryWidget';
+import OMBooleanWidget from './queryBuilderWidgets/OMBooleanWidget';
 import OMConjs from './queryBuilderWidgets/OMConjs';
 import OMDateWidget from './queryBuilderWidgets/OMDateWidget';
 import OMFieldSelect from './queryBuilderWidgets/OMFieldSelect';
