@@ -66,8 +66,14 @@ public abstract class PipelineServiceClient implements PipelineServiceClientInte
   protected static final String CONTENT_HEADER = "Content-Type";
   protected static final String CONTENT_TYPE = "application/json";
   private static final Integer MAX_ATTEMPTS = 3;
-  private static final long DEFAULT_BACKOFF_MILLIS = 5_000L;
+  // getServiceStatus() runs on the request thread of GET /services/ingestionPipelines/status, which
+  // the UI calls on every load, so the retry budget has to stay small. It exists to absorb a single
+  // blip, not to wait out a restart — the next poll covers that.
+  private static final long DEFAULT_BACKOFF_MILLIS = 1_000L;
   private static final String DISABLED_STATUS = "disabled";
+
+  /** Reported for a standing misconfiguration that no amount of retrying can clear. */
+  protected static final int CONFIGURATION_ERROR = 422;
 
   private volatile Retry serviceStatusRetry;
 
@@ -168,10 +174,18 @@ public abstract class PipelineServiceClient implements PipelineServiceClientInte
         .withPlatform(this.getPlatform());
   }
 
-  /** To build the response of getServiceStatus */
+  /**
+   * To build the response of getServiceStatus. 500 marks the failure as transient: {@link
+   * #getServiceStatus()} retries it. Use {@link #buildStatus} for a standing condition.
+   */
   protected PipelineServiceClientResponse buildUnhealthyStatus(String reason) {
+    return buildStatus(500, reason);
+  }
+
+  /** To build the response of getServiceStatus with an explicit, possibly non-retryable, code. */
+  protected PipelineServiceClientResponse buildStatus(int code, String reason) {
     return new PipelineServiceClientResponse()
-        .withCode(500)
+        .withCode(code)
         .withReason(reason)
         .withPlatform(this.getPlatform());
   }
@@ -243,7 +257,9 @@ public abstract class PipelineServiceClient implements PipelineServiceClientInte
               RetryConfig.<PipelineServiceClientResponse>custom()
                   .maxAttempts(MAX_ATTEMPTS)
                   .waitDuration(Duration.ofMillis(getRetryBackoffMillis()))
-                  .retryOnResult(response -> response == null || response.getCode() >= 500)
+                  // A null means the implementation does not report status (NoopClient), which
+                  // no amount of retrying changes; only a 5xx is worth another attempt.
+                  .retryOnResult(response -> response != null && response.getCode() >= 500)
                   .failAfterMaxAttempts(false)
                   .build();
           serviceStatusRetry = Retry.of("getServiceStatus", retryConfig);

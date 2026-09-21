@@ -955,7 +955,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
             String.format(
                 K8S_AVAILABLE_MISSING_CONFIGMAP_FORMAT, namespace, serviceAccount, e.getMessage());
         LOG.error(error);
-        return buildUnhealthyStatus(error);
+        return apiFailureStatus(e, error);
       }
 
       // Test Secret permissions (required for pipeline credentials)
@@ -966,7 +966,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
             String.format(
                 K8S_AVAILABLE_MISSING_SECRET_FORMAT, namespace, serviceAccount, e.getMessage());
         LOG.error(error);
-        return buildUnhealthyStatus(error);
+        return apiFailureStatus(e, error);
       }
 
       String message = String.format(K8S_AVAILABLE_FORMAT, namespace, serviceAccount);
@@ -982,7 +982,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
               "Failed to parse Kubernetes pod/job status (namespace: %s, service account: %s)",
               namespace, serviceAccount);
       LOG.error(error, e);
-      return buildUnhealthyStatus(error);
+      // A client/server model mismatch persists until one of them is upgraded, so don't retry it.
+      return buildStatus(CONFIGURATION_ERROR, error);
     } catch (ApiException e) {
       String error =
           String.format(
@@ -993,8 +994,19 @@ public class K8sPipelineClient extends PipelineServiceClient {
               e.getCode(),
               e.getResponseBody());
       LOG.error(error);
-      return buildUnhealthyStatus(error);
+      return apiFailureStatus(e, error);
     }
+  }
+
+  /**
+   * A 4xx from the API server is a standing RBAC or configuration problem that outlives a retry, so
+   * it keeps the API server's own code. Everything else stays on 500 for {@link
+   * #getServiceStatus()} to retry.
+   */
+  private PipelineServiceClientResponse apiFailureStatus(ApiException e, String reason) {
+    return e.getCode() >= 400 && e.getCode() < 500
+        ? buildStatus(e.getCode(), reason)
+        : buildUnhealthyStatus(reason);
   }
 
   @Override

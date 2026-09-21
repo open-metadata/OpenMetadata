@@ -14,6 +14,7 @@ package org.openmetadata.service.clients.pipeline.airflow;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -24,8 +25,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
+import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStoreException;
+import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -622,6 +625,52 @@ class AirflowRESTClientTest {
       // Only 2 requests: detection probe + single 401 (no retry)
       List<RequestRecord> healthRequests = server.requests("GET", healthPath);
       assertEquals(2, healthRequests.size());
+    }
+  }
+
+  @Test
+  void getServiceStatusRecoversFromTerminatedHttpClient() throws Exception {
+    try (AirflowTestServer server = new AirflowTestServer()) {
+      String basePath = "/airflow";
+      String healthPath = basePath + "/pluginsv2/api/v2/openmetadata/health-auth";
+      String version = PipelineServiceClient.getServerVersion();
+      String healthBody = "{\"version\":\"" + version + "\"}";
+      // Detection probe, the first status call, and the call made after the client dies.
+      server.enqueue("GET", healthPath, 200, healthBody);
+      server.enqueue("GET", healthPath, 200, healthBody);
+      server.enqueue("GET", healthPath, 200, healthBody);
+
+      AirflowRESTClient client = newClient(server, basePath);
+      assertEquals(200, client.getServiceStatus().getCode());
+
+      // Stand in for the JDK selector manager dying on a transient error: every send on this
+      // instance fails with "selector manager closed" from here on.
+      HttpClient dead = client.client();
+      dead.shutdownNow();
+      assertTrue(dead.awaitTermination(Duration.ofSeconds(10)));
+
+      PipelineServiceClientResponse status = client.getServiceStatus();
+
+      assertEquals(200, status.getCode());
+      assertEquals(version, status.getVersion());
+      assertNotSame(dead, client.client());
+      assertEquals(3, server.requests("GET", healthPath).size());
+    }
+  }
+
+  @Test
+  void getServiceStatusReportsUnhealthyWhenNoApiVersionResponds() throws Exception {
+    try (AirflowTestServer server = new AirflowTestServer()) {
+      String basePath = "/airflow";
+      // Nothing is enqueued, so every probe 404s and endpoint detection finds no API version.
+      AirflowRESTClient client = newClient(server, basePath);
+
+      PipelineServiceClientResponse status = client.getServiceStatus();
+
+      assertEquals(404, status.getCode());
+      assertTrue(status.getReason().contains("Unable to connect to Airflow APIs"));
+      // v3 + v2 + v1 probed once each: an unreachable Airflow is not retried on top of that.
+      assertEquals(3, server.requests.size());
     }
   }
 

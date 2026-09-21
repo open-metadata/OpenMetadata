@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import javax.net.ssl.SSLContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.utils.URIBuilder;
@@ -62,8 +63,13 @@ public class AirflowRESTClient extends PipelineServiceClient {
 
   protected final String username;
   protected final String password;
-  protected final HttpClient client;
   protected final URL serviceURL;
+  private final Supplier<HttpClient> httpClientFactory;
+  private final Object clientLock = new Object();
+
+  /** Never read directly — go through {@link #client()} so a dead client gets replaced. */
+  protected volatile HttpClient client;
+
   private volatile List<String> apiEndpointSegments;
   private static final String DAG_ID = "dag_id";
   private static final String CONF = "conf";
@@ -94,20 +100,47 @@ public class AirflowRESTClient extends PipelineServiceClient {
     this.serviceURL = validateServiceURL(config.getApiEndpoint());
 
     SSLContext sslContext = createAirflowSSLContext(config);
+    Duration connectTimeout = Duration.ofSeconds(getIntParam(params, TIMEOUT_KEY, 10));
 
-    HttpClient.Builder clientBuilder =
-        HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_1_1)
-            .connectTimeout(Duration.ofSeconds(getIntParam(params, TIMEOUT_KEY, 10)));
-
-    if (sslContext == null) {
-      this.client = clientBuilder.build();
-    } else {
-      this.client = clientBuilder.sslContext(sslContext).build();
-    }
+    this.httpClientFactory =
+        () -> {
+          HttpClient.Builder clientBuilder =
+              HttpClient.newBuilder()
+                  .version(HttpClient.Version.HTTP_1_1)
+                  .connectTimeout(connectTimeout);
+          return sslContext == null
+              ? clientBuilder.build()
+              : clientBuilder.sslContext(sslContext).build();
+        };
+    this.client = httpClientFactory.get();
 
     // Lazy initialization - will detect on first API call
     this.apiEndpointSegments = null;
+  }
+
+  /**
+   * Returns a live {@link HttpClient}, replacing the cached one when its selector manager has died.
+   *
+   * <p>A fatal error inside the JDK selector loop terminates that thread for good: every later
+   * {@code send} on the same instance fails with {@code IOException: selector manager closed}. The
+   * client is held for the lifetime of the process by {@code PipelineServiceClientFactory}, so
+   * without this the agent stays UNAVAILABLE until OpenMetadata is restarted, even once Airflow is
+   * healthy again.
+   */
+  protected HttpClient client() {
+    HttpClient current = client;
+    if (!current.isTerminated()) {
+      return current;
+    }
+    synchronized (clientLock) {
+      if (client.isTerminated()) {
+        LOG.warn(
+            "Airflow HTTP client at [{}] is no longer usable. Rebuilding it to recover.",
+            serviceURL);
+        client = httpClientFactory.get();
+      }
+      return client;
+    }
   }
 
   private static SSLContext createAirflowSSLContext(PipelineServiceClientConfiguration config)
@@ -163,7 +196,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
               .timeout(Duration.ofSeconds(5))
               .build();
 
-      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      HttpResponse<String> response = client().send(request, HttpResponse.BodyHandlers.ofString());
 
       if (response.statusCode() == 200) {
         try {
@@ -200,7 +233,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
               .timeout(Duration.ofSeconds(5))
               .build();
 
-      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      HttpResponse<String> response = client().send(request, HttpResponse.BodyHandlers.ofString());
 
       if (response.statusCode() == 200) {
         try {
@@ -236,7 +269,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
               .timeout(Duration.ofSeconds(5))
               .build();
 
-      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      HttpResponse<String> response = client().send(request, HttpResponse.BodyHandlers.ofString());
 
       if (response.statusCode() == 200) {
         try {
@@ -289,7 +322,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
     }
 
     HttpResponse<String> response =
-        client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+        client().send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
 
     // If we get a 400 with CSRF token expired error, clear the token and retry once
     if (authenticate
@@ -314,7 +347,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
         requestBuilder.header("Cookie", String.join("; ", sessionCookies));
       }
 
-      response = client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+      response = client().send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
     }
 
     return response;
@@ -490,90 +523,75 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   /**
-   * Scenarios handled here: 1. Failed to access Airflow APIs: No response from Airflow; APIs might not be installed 2.
-   * Auth failed when accessing Airflow APIs 3. Different versions between server and client
+   * {@link #getServiceStatus()} retries 5xx responses only, so every branch below that reports a
+   * standing condition rather than a blip carries a non-5xx code of its own.
+   *
+   * <p>Scenarios handled here: 1. Failed to access Airflow APIs: No response from Airflow; APIs
+   * might not be installed 2. Auth failed when accessing Airflow APIs 3. Different versions between
+   * server and client
    */
   @Override
   public PipelineServiceClientResponse getServiceStatusInternal() {
-    HttpResponse<String> response;
     try {
       String healthUrl = buildURI("health-auth").build().toString();
-      response = getRequestAuthenticatedForJsonContent(healthUrl);
-
-      // We can reach the APIs and get the status back from Airflow
-      if (response.statusCode() == 200) {
-        JSONObject responseJSON = new JSONObject(response.body());
-        String ingestionVersion = responseJSON.getString("version");
-        if (validServerClientVersions(ingestionVersion, SERVER_VERSION)) {
-          return buildHealthyStatus(ingestionVersion);
-        }
-        // Version mismatch is a config error, not transient — use 422 to skip retries
-        return new PipelineServiceClientResponse()
-            .withCode(422)
-            .withReason(buildVersionMismatchErrorMessage(ingestionVersion, SERVER_VERSION))
-            .withPlatform(this.getPlatform());
-      }
-
-      // Auth error when accessing the APIs — not retryable (use 401/403 code)
-      if (response.statusCode() == 401 || response.statusCode() == 403) {
-        return new PipelineServiceClientResponse()
-            .withCode(response.statusCode())
-            .withReason(
-                String.format(
-                    "Authentication failed for user [%s] trying to access the Airflow APIs at [%s]",
-                    this.username, serviceURL.toString()))
-            .withPlatform(this.getPlatform());
-      }
-
-      // APIs URL not found — not retryable (use 404 code)
-      if (response.statusCode() == 404) {
-        return new PipelineServiceClientResponse()
-            .withCode(response.statusCode())
-            .withReason(
-                String.format(
-                    "Airflow APIs not found at [%s]. Please validate if the OpenMetadata Airflow plugin is installed correctly. %s",
-                    serviceURL.toString(), DOCS_LINK))
-            .withPlatform(this.getPlatform());
-      }
-
-      return new PipelineServiceClientResponse()
-          .withCode(response.statusCode())
-          .withReason(
-              String.format(
-                  "Unexpected status response at [%s]: code [%s] - [%s]",
-                  serviceURL.toString(), response.statusCode(), response.body()))
-          .withPlatform(this.getPlatform());
-
+      return readHealthResponse(getRequestAuthenticatedForJsonContent(healthUrl));
     } catch (URISyntaxException e) {
-      // Malformed URL is a config error, not transient — use 422 to skip retries
-      return new PipelineServiceClientResponse()
-          .withCode(422)
-          .withReason(
-              String.format(
-                  "Invalid Airflow URL [%s]: %s %s",
-                  serviceURL.toString(), e.getMessage(), DOCS_LINK))
-          .withPlatform(this.getPlatform());
+      return buildStatus(
+          CONFIGURATION_ERROR,
+          String.format("Invalid Airflow URL [%s]: %s %s", serviceURL, e.getMessage(), DOCS_LINK));
     } catch (IOException e) {
-      String exceptionMsg;
-      if (e.getMessage() != null) {
-        exceptionMsg =
-            String.format(
-                "Failed to get Airflow status at [%s] due to [%s].",
-                serviceURL.toString(), e.getMessage());
-      } else {
-        exceptionMsg =
-            String.format(
-                "Failed to connect to Airflow due to %s. Is the host available at %s?",
-                e.getCause().toString(), serviceURL.toString());
-      }
-      return buildUnhealthyStatus(String.format("%s %s", exceptionMsg, DOCS_LINK));
+      // Transport failures are the transient case the retry exists for, so they stay on 500.
+      return buildUnhealthyStatus(String.format("%s %s", connectionFailureMessage(e), DOCS_LINK));
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       return buildUnhealthyStatus(
           String.format(
               "Failed to connect to Airflow due to %s. Is the host available at %s? %s.",
-              e.getMessage(), serviceURL.toString(), DOCS_LINK));
+              e.getMessage(), serviceURL, DOCS_LINK));
+    } catch (PipelineServiceClientException e) {
+      // buildURI throws when endpoint detection finds no reachable API version. Reported as 404
+      // rather than a 5xx because detection has already probed v3/v2/v1 — a retry would just
+      // repeat those three probes for the same answer.
+      return buildStatus(404, String.format("%s %s", e.getMessage(), DOCS_LINK));
     }
+  }
+
+  private PipelineServiceClientResponse readHealthResponse(HttpResponse<String> response) {
+    return switch (response.statusCode()) {
+      case 200 -> versionedStatus(new JSONObject(response.body()).getString("version"));
+      case 401, 403 -> buildStatus(
+          response.statusCode(),
+          String.format(
+              "Authentication failed for user [%s] trying to access the Airflow APIs at [%s]",
+              this.username, serviceURL));
+      case 404 -> buildStatus(
+          response.statusCode(),
+          String.format(
+              "Airflow APIs not found at [%s]. Please validate if the OpenMetadata Airflow plugin is installed correctly. %s",
+              serviceURL, DOCS_LINK));
+      default -> buildStatus(
+          response.statusCode(),
+          String.format(
+              "Unexpected status response at [%s]: code [%s] - [%s]",
+              serviceURL, response.statusCode(), response.body()));
+    };
+  }
+
+  private PipelineServiceClientResponse versionedStatus(String ingestionVersion) {
+    return validServerClientVersions(ingestionVersion, SERVER_VERSION)
+        ? buildHealthyStatus(ingestionVersion)
+        : buildStatus(
+            CONFIGURATION_ERROR,
+            buildVersionMismatchErrorMessage(ingestionVersion, SERVER_VERSION));
+  }
+
+  private String connectionFailureMessage(IOException e) {
+    return e.getMessage() != null
+        ? String.format(
+            "Failed to get Airflow status at [%s] due to [%s].", serviceURL, e.getMessage())
+        : String.format(
+            "Failed to connect to Airflow due to %s. Is the host available at %s?",
+            e.getCause(), serviceURL);
   }
 
   @Override
@@ -776,7 +794,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   private HttpResponse<String> getRequestAuthenticatedForJsonContent(String url)
       throws IOException, InterruptedException {
     HttpRequest request = authenticatedRequestBuilder(url).GET().build();
-    return client.send(request, HttpResponse.BodyHandlers.ofString());
+    return client().send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   private HttpResponse<String> deleteRequestAuthenticatedForJsonContent(String url)
@@ -784,7 +802,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
     // DELETE endpoints are protected by CSRF on Airflow 3.x
     fetchCsrfTokenIfNeeded();
     HttpRequest request = authenticatedRequestBuilder(url).DELETE().build();
-    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+    HttpResponse<String> response = client().send(request, HttpResponse.BodyHandlers.ofString());
 
     // If we get a 400 with CSRF token expired error, clear the token and retry once
     if (response.statusCode() == 400
@@ -794,7 +812,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       clearCsrfToken();
       fetchCsrfTokenIfNeeded();
       request = authenticatedRequestBuilder(url).DELETE().build();
-      response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      response = client().send(request, HttpResponse.BodyHandlers.ofString());
     }
 
     return response;
@@ -898,7 +916,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
             .header(AUTH_HEADER, getBasicAuthenticationHeader(username, password))
             .GET()
             .build();
-    return client.send(request, HttpResponse.BodyHandlers.ofString());
+    return client().send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   private void storeSessionCookies(HttpResponse<String> response) {
