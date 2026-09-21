@@ -22,6 +22,7 @@
  */
 import { SearchLg } from '@untitledui/icons';
 import type { HTMLAttributes } from 'react';
+import { Typography } from '@/components/foundations/typography';
 // Narrow wrapper so the icon prop's type doesn't widen to the raw
 // `@untitledui/icons` FC, whose `children` type clashes with consumers that
 // augment ReactNode globally (e.g. react-i18next).
@@ -30,9 +31,11 @@ export const SearchInputIcon = (props: HTMLAttributes<HTMLOrSVGElement>) => (
 );
 
 export const TriggerCountBadge = ({ count }: { count: number }) => (
-  <span
-    className="tw:ml-1.5 tw:inline-flex tw:h-[18px] tw:min-w-[18px] tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-utility-brand-50 tw:px-[5px] tw:tabular-nums tw:text-xs tw:font-medium tw:text-fg-brand-primary"
-    data-testid="filter-count-badge">
+  <Typography
+    className="not-prose tw:ml-1.5 tw:inline-flex tw:h-[18px] tw:min-w-[18px] tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-utility-brand-50 tw:px-[5px] tw:tabular-nums tw:text-fg-brand-primary"
+    data-testid="filter-count-badge"
+    size="text-xs"
+    weight="medium">
     {count}
-  </span>
+  </Typography>
 );

@@ -14,6 +14,7 @@ import { Button } from '@/components/base/buttons/button';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { Skeleton } from '@/components/base/skeleton/skeleton';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
+import { Typography } from '@/components/foundations/typography';
 import { SearchInputIcon, TriggerCountBadge } from './filter-select.shared';
 import { Input } from '@/components/base/input/input';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
@@ -189,7 +190,7 @@ const ChipsField = ({
           className="tw:flex tw:max-w-44 tw:items-center tw:gap-0.5 tw:rounded-md tw:border tw:border-secondary tw:bg-secondary tw:py-px tw:pr-0.5 tw:pl-2 tw:text-xs tw:font-medium tw:text-secondary"
           data-testid="filter-chip"
           key={chip.value}>
-          <span className="tw:truncate">{chip.label}</span>
+          <Typography className="tw:truncate">{chip.label}</Typography>
           <button
             aria-label={t('label.remove-filter')}
             className="tw:flex tw:cursor-pointer tw:rounded-xs tw:p-0.5 tw:text-placeholder tw:outline-brand tw:hover:text-secondary tw:focus-visible:outline-2"
@@ -207,9 +208,12 @@ const ChipsField = ({
         className="tw:flex tw:min-w-10 tw:flex-1 tw:cursor-pointer tw:items-center tw:justify-between tw:gap-2 tw:self-stretch tw:rounded-sm tw:pl-1.5 tw:outline-brand"
         data-testid={testId}>
         {chips.length === 0 ? (
-          <span className="tw:truncate tw:text-sm tw:font-normal tw:text-placeholder">
+          <Typography
+            className="not-prose tw:truncate tw:text-placeholder"
+            size="text-sm"
+            weight="regular">
             {placeholder}
-          </span>
+          </Typography>
         ) : (
           <span />
         )}
@@ -279,22 +283,24 @@ const OptionRow = ({
               {iconNode}
             </span>
           )}
-          <span className="tw:grow tw:truncate" title={optionText(option)}>
+          <Typography className="tw:grow tw:truncate" title={optionText(option)}>
             {option.label}
-          </span>
+          </Typography>
           {!hideCounts && option.count !== undefined && (
-            <span
+            <Typography
               className={cx(
-                'tw:shrink-0 tw:rounded-md tw:border tw:px-1.5 tw:text-xs tw:font-normal tw:tabular-nums',
+                'not-prose tw:shrink-0 tw:rounded-md tw:border tw:px-1.5 tw:tabular-nums',
                 !showCheckbox && state.isSelected
                   ? 'tw:border-utility-brand-200 tw:text-fg-brand-primary'
                   : 'tw:border-secondary',
                 showCheckbox && state.isSelected && 'tw:text-tertiary',
                 !state.isSelected && 'tw:text-placeholder'
               )}
-              data-testid="filter-count">
+              data-testid="filter-count"
+              size="text-xs"
+              weight="regular">
               {option.count.toLocaleString()}
-            </span>
+            </Typography>
           )}
         </span>
       )}
@@ -782,15 +788,17 @@ const FilterSelect = ({
 
           {isEmpty && (
             <div className="tw:px-4 tw:py-2 tw:text-center">
-              <span className="tw:text-xs tw:text-tertiary">
+              <Typography className="not-prose tw:text-tertiary" size="text-xs">
                 {emptyState ?? t('label.no-data-found')}
-              </span>
+              </Typography>
             </div>
           )}
 
           {helperText !== undefined && (
             <div className="tw:border-t tw:border-secondary tw:px-3 tw:py-2">
-              <span className="tw:text-xs tw:text-tertiary">{helperText}</span>
+              <Typography className="not-prose tw:text-tertiary" size="text-xs">
+                {helperText}
+              </Typography>
             </div>
           )}
 
@@ -830,13 +838,15 @@ const FilterSelect = ({
 
           {showStatusFooter && (
             <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-2 tw:pr-2 tw:pl-5">
-              <span
-                className="tw:text-xs tw:font-normal tw:text-tertiary"
-                data-testid="selected-count">
+              <Typography
+                className="not-prose tw:text-tertiary"
+                data-testid="selected-count"
+                size="text-xs"
+                weight="regular">
                 {selectedValues.length === 0
                   ? t('label.none-selected')
                   : t('label.count-selected', { count: selectedValues.length })}
-              </span>
+              </Typography>
               <Button
                 className="tw:py-1.5"
                 color="tertiary"
