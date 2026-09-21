@@ -420,7 +420,21 @@ public class PermissionsResourceIT {
         hasAllow(permission, MetadataOperation.DELETE),
         "non-admin has no DELETE on an admin-owned table");
 
+    // The sidecar describes the page; it must never decide what the page contains. A non-admin has
+    // to see the same rows either way, or opting in would silently change the collection.
+    TableListWrapper withoutPermissions =
+        listTables(nonAdminClient, schema.getFullyQualifiedName(), false);
+    assertNull(withoutPermissions.entityPermissions);
+    assertEquals(
+        idsOf(withoutPermissions),
+        idsOf(listed),
+        "includePermissions must not change which rows a non-admin sees");
+
     cleanupTable(adminClient, table);
+  }
+
+  private Set<String> idsOf(TableListWrapper page) {
+    return page.data.stream().map(table -> table.getId().toString()).collect(Collectors.toSet());
   }
 
   @Test
@@ -434,9 +448,9 @@ public class PermissionsResourceIT {
       created.add(createTableInSchema(client, ns, schema, "perm_page_" + i));
     }
 
-    // Walk the whole collection two rows at a time. Filtering must not drop, duplicate, or
-    // short-change a page: every authorized row appears exactly once and the cursor chain
-    // terminates on its own.
+    // Walk the whole collection two rows at a time. Opting into the sidecar must leave paging
+    // untouched: every row appears exactly once, the sidecar describes exactly the rows on its own
+    // page, and the cursor chain terminates on its own.
     Set<String> seen = new LinkedHashSet<>();
     String after = null;
     int pagesFetched = 0;
@@ -454,8 +468,7 @@ public class PermissionsResourceIT {
       pagesFetched++;
     } while (after != null && pagesFetched < 10);
 
-    assertEquals(
-        created.size(), seen.size(), "paging must surface every authorized row exactly once");
+    assertEquals(created.size(), seen.size(), "paging must surface every row exactly once");
 
     for (Table table : created) {
       cleanupTable(client, table);

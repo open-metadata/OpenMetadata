@@ -25,7 +25,7 @@ import {
 import { ChevronDown, DotsVertical, File02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isUndefined, sortBy, toLower } from 'lodash';
+import { isEmpty, isUndefined, sortBy, toLower } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Selection, SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +37,7 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SORT_ORDER } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import { ResourcePermission } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   TestCase,
@@ -45,7 +46,9 @@ import {
 } from '../../../../generated/tests/testCase';
 import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseResolutionStatus';
 import { TestSuite } from '../../../../generated/tests/testSuite';
+import { permissionQueryKeys } from '../../../../hooks/useEntityPermissions/permissionQueryKeys';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
+import { queryClient } from '../../../../queryClient';
 import { deleteEntity } from '../../../../rest/miscAPI';
 import {
   removeTestCaseFromTestSuite,
@@ -475,29 +478,75 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     }
   };
 
-  const applyInlinePermissions = () => {
-    const data = testCases.map((testCase) => {
-      const resourcePermission = testCase.id
-        ? entityPermissions?.[testCase.id]
-        : undefined;
+  /**
+   * Publish the inline permission under the same React Query key the per-entity
+   * fetch writes, so every other consumer of this test case (drawer, incident
+   * view, useEntityPermissions) reads it instead of re-requesting it.
+   */
+  const cacheInlinePermission = (
+    testCase: TestCase,
+    permission: ResourcePermission
+  ) => {
+    const operationPermissions = getOperationPermissions(permission);
+    if (testCase.fullyQualifiedName) {
+      queryClient.setQueryData(
+        permissionQueryKeys.entity(
+          ResourceEntity.TEST_CASE,
+          testCase.fullyQualifiedName
+        ),
+        operationPermissions
+      );
+    }
 
-      return {
-        ...(resourcePermission
-          ? getOperationPermissions(resourcePermission)
-          : DEFAULT_ENTITY_PERMISSION),
-        fullyQualifiedName: testCase.fullyQualifiedName,
-      };
-    });
-    setTestCasePermissions(data);
-    setIsPermissionLoading(false);
+    return operationPermissions;
+  };
+
+  const fetchPermissionByFqn = async (testCase: TestCase) => {
+    try {
+      return await getEntityPermissionByFqn(
+        ResourceEntity.TEST_CASE,
+        testCase.fullyQualifiedName ?? ''
+      );
+    } catch {
+      return DEFAULT_ENTITY_PERMISSION;
+    }
+  };
+
+  /**
+   * A row the list API described inline costs no request; a row it left out
+   * still falls back to its own fetch, so a partial map degrades to the old
+   * behaviour rather than silently rendering the row as unpermissioned.
+   */
+  const applyInlinePermissions = async () => {
+    setIsPermissionLoading(true);
+    try {
+      const data = await Promise.all(
+        testCases.map(async (testCase) => {
+          const inline = testCase.id
+            ? entityPermissions?.[testCase.id]
+            : undefined;
+
+          return {
+            ...(inline
+              ? cacheInlinePermission(testCase, inline)
+              : await fetchPermissionByFqn(testCase)),
+            fullyQualifiedName: testCase.fullyQualifiedName,
+          };
+        })
+      );
+      setTestCasePermissions(data);
+    } finally {
+      setIsPermissionLoading(false);
+    }
   };
 
   useEffect(() => {
     if (testCases.length) {
       collectInlineIncidentStatuses();
       // When the list API already returned permissions inline, use them instead
-      // of firing one permission call per listed test case.
-      if (entityPermissions) {
+      // of firing one permission call per listed test case. An empty map means
+      // the server said nothing, so it must not count as "already answered".
+      if (!isEmpty(entityPermissions)) {
         applyInlinePermissions();
       } else {
         fetchTestCasePermissions();

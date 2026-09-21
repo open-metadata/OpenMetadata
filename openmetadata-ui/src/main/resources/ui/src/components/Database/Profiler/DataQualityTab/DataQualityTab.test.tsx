@@ -546,6 +546,37 @@ describe('DataQualityTab test', () => {
     expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
   });
 
+  it('should fall back to per-row permission calls for rows the map omits', async () => {
+    const testCases = mockProps.testCases as TestCase[];
+    const [covered, ...omitted] = testCases;
+    const entityPermissions = {
+      [covered.id ?? '']: {
+        resource: 'testCase',
+        permissions: [{ operation: Operation.EditAll, access: Access.Allow }],
+      },
+    } as Record<string, ResourcePermission>;
+
+    await act(async () => {
+      render(
+        <DataQualityTab {...mockProps} entityPermissions={entityPermissions} />
+      );
+    });
+
+    expect(await screen.findByTestId('test-case-table')).toBeVisible();
+    // A partial map must not render the uncovered rows as unpermissioned — each
+    // one still fetches its own permission.
+    expect(mockGetEntityPermissionByFqn).toHaveBeenCalledTimes(omitted.length);
+  });
+
+  it('should fall back to per-row permission calls for an empty inline map', async () => {
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} entityPermissions={{}} />);
+    });
+
+    expect(await screen.findByTestId('test-case-table')).toBeVisible();
+    expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
+  });
+
   it('Table header should be visible', async () => {
     await act(async () => {
       render(<DataQualityTab {...mockProps} />);

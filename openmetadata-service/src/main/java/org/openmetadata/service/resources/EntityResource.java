@@ -44,7 +44,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -97,6 +96,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
+import org.openmetadata.service.security.PagePermissionsResolver;
 import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -218,7 +218,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public final ResultList<T> addPermissions(
       UriInfo uriInfo, SecurityContext securityContext, ResultList<T> list) {
     if (isPermissionsRequested(uriInfo) && !nullOrEmpty(list.getData())) {
-      list.setEntityPermissions(computeEntityPermissions(securityContext, list.getData()));
+      list.setEntityPermissions(
+          PagePermissionsResolver.resolve(
+              authorizer, securityContext, entityType, repository, list.getData()));
     }
     return list;
   }
@@ -227,101 +229,19 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return Boolean.parseBoolean(uriInfo.getQueryParameters().getFirst(INCLUDE_PERMISSIONS_PARAM));
   }
 
-  private Map<String, ResourcePermission> computeEntityPermissions(
-      SecurityContext securityContext, List<T> entities) {
-    return new ListPermissionEvaluator(securityContext).forPage(entities);
-  }
-
-  /** Operations that, when allowed, make an entity visible in a listing. */
-  private static final Set<MetadataOperation> VIEW_GRANTING_OPERATIONS =
-      Set.of(MetadataOperation.ALL, MetadataOperation.VIEW_ALL, MetadataOperation.VIEW_BASIC);
-
-  private static boolean allowsView(ResourcePermission permission) {
-    return listOrEmpty(permission.getPermissions()).stream()
-        .anyMatch(
-            p ->
-                VIEW_GRANTING_OPERATIONS.contains(p.getOperation())
-                    && p.getAccess() == Permission.Access.ALLOW);
-  }
-
-  /**
-   * Evaluates a listed entity's policy at most once per request and serves both consumers of that
-   * result: the row-visibility filter and the response sidecar. Without the memo a filtered page
-   * would evaluate every surviving row twice.
-   */
-  private final class ListPermissionEvaluator {
-    private final SecurityContext securityContext;
-    private final String user;
-    private final Map<String, ResourcePermission> evaluated = new LinkedHashMap<>();
-
-    private ListPermissionEvaluator(SecurityContext securityContext) {
-      this.securityContext = securityContext;
-      this.user = securityContext.getUserPrincipal().getName();
-    }
-
-    private ResourcePermission permissionOf(T entity) {
-      return evaluated.computeIfAbsent(
-          entity.getId().toString(),
-          id -> getEntityPermission(securityContext, user, entity.getId()));
-    }
-
-    private boolean canView(T entity) {
-      return entity.getId() != null && allowsView(permissionOf(entity));
-    }
-
-    private Map<String, ResourcePermission> forPage(List<T> page) {
-      Map<String, ResourcePermission> pagePermissions = new LinkedHashMap<>();
-      for (T entity : listOrEmpty(page)) {
-        if (entity.getId() != null) {
-          pagePermissions.put(entity.getId().toString(), permissionOf(entity));
-        }
-      }
-      return pagePermissions;
-    }
-  }
-
-  /** Cursor-paged list inputs, grouped so the paging helpers stay within the parameter limit. */
+  /** Cursor-paged list inputs, grouped so the paging helper stays within the parameter limit. */
   private record CursorPage(
       Fields fields, ListFilter filter, int limit, String before, String after) {}
 
-  /**
-   * Runs a cursor-paged list. With {@code ?includePermissions=true} the page is filtered to rows the
-   * caller may view — refilled so the page keeps its requested size — and the same evaluation
-   * populates the sidecar.
-   */
   private ResultList<T> listCursorPaged(
       UriInfo uriInfo, SecurityContext securityContext, CursorPage page) {
-    if (!isPermissionsRequested(uriInfo)) {
-      ResultList<T> unfiltered =
-          page.before() != null
-              ? repository.listBefore(
-                  uriInfo, page.fields(), page.filter(), page.limit(), page.before())
-              : repository.listAfter(
-                  uriInfo, page.fields(), page.filter(), page.limit(), page.after());
-      return addHref(uriInfo, unfiltered);
-    }
-    ListPermissionEvaluator evaluator = new ListPermissionEvaluator(securityContext);
-    EntityRepository.AuthorizedListRequest<T> request =
-        new EntityRepository.AuthorizedListRequest<>(
-            page.fields(), page.filter(), page.limit(), evaluator::canView);
-    ResultList<T> filtered =
-        page.before() != null
-            ? repository.listBeforeAuthorized(uriInfo, request, page.before())
-            : repository.listAfterAuthorized(uriInfo, request, page.after());
-    addHref(uriInfo, filtered);
-    filtered.setEntityPermissions(evaluator.forPage(filtered.getData()));
-    return filtered;
-  }
-
-  private ResourcePermission getEntityPermission(
-      SecurityContext securityContext, String user, UUID id) {
-    // ponytail: reuse the single-entity path (lazy get-by-id, repository-cached) so results match
-    // /permissions/{resource}/{id} exactly. If profiling flags the per-entity re-fetch, pass the
-    // already-loaded list entity via ResourceContext(resource, entity, repository) once its
-    // owners/tags/domains are guaranteed loaded — otherwise conditional (isOwner/matchTag) rules
-    // would evaluate against missing fields and hand back the wrong permission.
-    ResourceContext<T> resourceContext = new ResourceContext<>(entityType, id, null);
-    return authorizer.getPermission(securityContext, user, resourceContext);
+    ResultList<T> resultList =
+        page.before() != null // Reverse paging
+            ? repository.listBefore(
+                uriInfo, page.fields(), page.filter(), page.limit(), page.before())
+            : repository.listAfter(
+                uriInfo, page.fields(), page.filter(), page.limit(), page.after());
+    return addPermissions(uriInfo, securityContext, addHref(uriInfo, resultList));
   }
 
   public ResultList<T> listInternal(
