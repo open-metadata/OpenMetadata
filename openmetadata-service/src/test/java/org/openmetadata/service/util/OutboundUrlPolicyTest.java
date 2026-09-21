@@ -39,7 +39,12 @@ class OutboundUrlPolicyTest {
       return InetAddress.getAllByName(address);
     }
     String bare = host.startsWith("[") ? host.substring(1, host.length() - 1) : host;
-    if (InetAddresses.isInetAddress(bare)) {
+    String lastLabel = bare.substring(bare.lastIndexOf('.') + 1);
+    boolean numeric =
+        InetAddresses.isInetAddress(bare)
+            || (!lastLabel.isEmpty() && lastLabel.chars().allMatch(Character::isDigit));
+    if (numeric) {
+      // A numeric host never reaches DNS, so the real resolver is safe to use here.
       return InetAddress.getAllByName(host);
     }
     throw new UnknownHostException(host);
@@ -52,7 +57,7 @@ class OutboundUrlPolicyTest {
 
   @Test
   void hostnameStartingLikeAnIpv6PrefixIsAllowed() {
-    // The old text pattern rejected these outright; they are ordinary public hosts.
+    // Ordinary public hosts the old text pattern had to be hand-tuned not to catch.
     assertDoesNotThrow(() -> policy.checkForSave("https://fd123.okta.com/.well-known/config"));
     assertDoesNotThrow(() -> policy.checkForSave("https://fcdomain.com/api"));
     assertDoesNotThrow(() -> policy.checkForSave("https://fe80-test.com/api"));
@@ -123,5 +128,25 @@ class OutboundUrlPolicyTest {
     assertThrows(BadRequestException.class, () -> policy.checkForSave("http://10.0.0.1"));
     assertThrows(BadRequestException.class, () -> policy.checkForSave("http://192.168.1.1:3000"));
     assertThrows(BadRequestException.class, () -> policy.checkForSave("http://[fd00::1]"));
+  }
+
+  @Test
+  void abbreviatedAddressIsStillAnAddress() {
+    // The resolver expands these to 127.0.0.1, 10.0.0.1 and so on, so reading them as names would
+    // hand the address rule a way around itself.
+    assertThrows(BadRequestException.class, () -> policy.checkForSave("http://127.1"));
+    assertThrows(BadRequestException.class, () -> policy.checkForSave("http://127.0.1:8585"));
+    assertThrows(BadRequestException.class, () -> policy.checkForSave("http://10.1"));
+    assertThrows(BadRequestException.class, () -> policy.checkForSave("http://192.168.1"));
+    assertThrows(BadRequestException.class, () -> policy.checkForSave("http://172.16.1"));
+    assertThrows(BadRequestException.class, () -> policy.checkForSave("http://2130706433"));
+    assertThrows(BadRequestException.class, () -> policy.checkForSave("http://010.0.0.1"));
+  }
+
+  @Test
+  void aNameEndingInLettersIsStillAName() {
+    // The literal test keys on a trailing numeric label, so an ordinary host must not trip it.
+    assertDoesNotThrow(() -> policy.checkForSave("http://n8n.internal:5678/webhook"));
+    assertDoesNotThrow(() -> policy.checkForSave("https://receiver.example.com/hook"));
   }
 }

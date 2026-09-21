@@ -110,12 +110,27 @@ public class OutboundUrlPolicy {
     } catch (UnknownHostException e) {
       return rejectUnresolvable ? String.format("%s cannot be resolved", host) : null;
     }
-    boolean literal = InetAddresses.isInetAddress(stripBrackets(host));
+    boolean literal = isAddressLiteral(host);
     return Arrays.stream(addresses)
         .map(address -> addressRejection(host, address, literal))
         .filter(Objects::nonNull)
         .findFirst()
         .orElse(null);
+  }
+
+  /**
+   * True when the host is an address rather than a name. Guava recognises only the canonical
+   * spellings, but the resolver also parses abbreviated ones such as 127.1, which would otherwise be
+   * judged as names and escape the address rule. A final label of digits alone is what sends the
+   * resolver down that path, and RFC 1123 forbids it in a host name.
+   */
+  private static boolean isAddressLiteral(String host) {
+    String bare = stripBrackets(host);
+    if (InetAddresses.isInetAddress(bare)) {
+      return true;
+    }
+    String lastLabel = bare.substring(bare.lastIndexOf('.') + 1);
+    return !lastLabel.isEmpty() && lastLabel.chars().allMatch(Character::isDigit);
   }
 
   /**
