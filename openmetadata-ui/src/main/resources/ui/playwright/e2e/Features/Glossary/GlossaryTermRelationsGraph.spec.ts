@@ -359,7 +359,9 @@ const childTerm = new GlossaryTerm(nestedGlossary);
 
 test.describe('Glossary Term — Relations Graph (nested / parent-child)', () => {
   test.beforeAll('Seed test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     await nestedGlossary.create(apiContext);
     await parentTerm.create(apiContext);
@@ -371,7 +373,9 @@ test.describe('Glossary Term — Relations Graph (nested / parent-child)', () =>
   });
 
   test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     await childTerm.delete(apiContext);
     await parentTerm.delete(apiContext);
@@ -401,6 +405,24 @@ test.describe('Glossary Term — Relations Graph (nested / parent-child)', () =>
       positions[parentTerm.responseData.id],
       'the parent term must appear as a 1-hop neighbour of the child'
     ).toBeDefined();
+
+    // The parentOf edge must be rendered and correctly typed from the child perspective
+    const edges = await readGraphEdges(page);
+    const pId = parentTerm.responseData.id;
+    const cId = childTerm.responseData.id;
+
+    const edge = edges.find(
+      (e) =>
+        (e.from === pId && e.to === cId) || (e.from === cId && e.to === pId)
+    );
+
+    expect(
+      edge,
+      'a parentOf edge between childTerm and parentTerm must be rendered'
+    ).toBeDefined();
+    expect(edge?.relationType, 'edge relationType must be "parentOf"').toBe(
+      'parentOf'
+    );
   });
 
   test('viewing the parent term: child appears as a 1-hop neighbour via parentOf edge', async ({

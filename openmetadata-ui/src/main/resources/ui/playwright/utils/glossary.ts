@@ -2280,12 +2280,18 @@ export const expandToGlossaryTermChildren = async (
 ) => {
   const glossaryField = page.getByTestId('glossary-terms');
   await expect(glossaryField).toBeVisible();
-  await glossaryField.click();
 
-  // `display: contents` has no box, so wait on the tree inside it.
-  await expect(getTreeDropdownContent(page)).toBeVisible({
-    timeout: 10000,
-  });
+  // The first click can be swallowed while the drawer is still settling, which
+  // leaves the tree popover closed. Re-open until the treegrid actually renders
+  // (`display: contents` has no box, so wait on the tree inside it). Only click
+  // when the popover is closed, so we never toggle an already-open dropdown.
+  const treeContent = getTreeDropdownContent(page);
+  await expect(async () => {
+    if (!(await treeContent.isVisible())) {
+      await glossaryField.click();
+    }
+    await expect(treeContent).toBeVisible({ timeout: 3000 });
+  }).toPass({ timeout: 30000 });
 
   await expandTreeNodeByName(page, glossaryDisplayName, { search: false });
   if (parentTermDisplayName) {

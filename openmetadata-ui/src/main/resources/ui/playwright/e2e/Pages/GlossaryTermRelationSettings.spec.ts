@@ -386,5 +386,4 @@ test.describe('Glossary Term Relation Settings', () => {
       await ctxB.dispose();
     }
   });
-
 });

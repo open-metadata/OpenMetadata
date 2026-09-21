@@ -114,13 +114,20 @@ test.describe('Glossary Advanced Operations', () => {
 
       const meToggle = page.getByTestId('mutually-exclusive-button');
 
-      if (await meToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await meToggle.click();
-      }
+      // The toggle must exist and be turned ON for this test to be meaningful
+      await expect(meToggle).toBeVisible();
+      await meToggle.click();
+
+      // Alert is shown once mutually exclusive mode is enabled
+      await expect(page.getByTestId('form-item-alert')).toBeVisible();
 
       const createResponse = page.waitForResponse('/api/v1/glossaries');
       await page.click('[data-testid="save-glossary"]');
-      await createResponse;
+      const response = await createResponse;
+      const responseData = await response.json();
+
+      // Verify the persisted glossary actually has mutuallyExclusive enabled
+      expect(responseData.mutuallyExclusive).toBe(true);
 
       await expect(page).toHaveURL(/\/glossary\//, { timeout: 10000 });
 

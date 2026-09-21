@@ -457,7 +457,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
         `Search + Status pagination: verified ${initialCount} Approved terms`
       );
     });
-
   });
 
   // ==================== FILTER STATE MANAGEMENT TESTS ====================

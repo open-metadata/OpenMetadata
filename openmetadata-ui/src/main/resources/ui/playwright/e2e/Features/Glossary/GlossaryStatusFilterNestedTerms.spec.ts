@@ -619,32 +619,50 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
     }) => {
       test.slow();
 
-      await test.step('Apply Draft filter and expand all', async () => {
+      // All six fixture terms across both hierarchies must show once expanded,
+      // regardless of the active status filter.
+      const allFixtureTerms = [
+        'ApprovedParent',
+        'ApprovedChild1',
+        'ApprovedChild2',
+        'MixedStatusChild',
+        'DraftParent',
+        'DraftChild',
+      ];
+
+      const expectAllTermsVisible = async () => {
+        for (const term of allFixtureTerms) {
+          await expect(page.getByTestId(term)).toBeVisible();
+        }
+      };
+
+      await test.step('Apply Draft filter, expand all, verify every term shown', async () => {
         await applyStatusFilter(page, ['Draft']);
         await clickExpandAll(page);
+
+        // Expand All must ignore the Draft filter and reveal the full hierarchy,
+        // including the Approved parent chain and its non-matching children.
+        await expectAllTermsVisible();
       });
 
-      await test.step('Verify MixedStatusChild (Draft) appears under ApprovedParent', async () => {
-        await expect(page.getByTestId('ApprovedParent')).toBeVisible();
-        await expect(page.getByTestId('MixedStatusChild')).toBeVisible();
-      });
-
-      await test.step('Collapse all and verify filter re-applies', async () => {
+      await test.step('Collapse all and verify Draft filter re-applies', async () => {
         await clickCollapseAll(page);
 
         await expect(page.getByTestId('DraftParent')).toBeVisible();
       });
 
-      await test.step('Switch to Approved filter and expand again', async () => {
+      await test.step('Switch to Approved filter, expand all, verify every term shown', async () => {
         await applyStatusFilter(page, ['Approved']);
         await clickExpandAll(page);
 
-        await expect(page.getByTestId('ApprovedParent')).toBeVisible();
-        await expect(page.getByTestId('ApprovedChild1')).toBeVisible();
-        await expect(page.getByTestId('ApprovedChild2')).toBeVisible();
-        await expect(page.getByTestId('MixedStatusChild')).toBeVisible();
-        await expect(page.getByTestId('DraftParent')).toBeVisible();
-        await expect(page.getByTestId('DraftChild')).toBeVisible();
+        await expectAllTermsVisible();
+      });
+
+      await test.step('Reset to default (All) filter, expand all, verify every term shown', async () => {
+        await resetStatusFilter(page);
+        await clickExpandAll(page);
+
+        await expectAllTermsVisible();
       });
     });
   });

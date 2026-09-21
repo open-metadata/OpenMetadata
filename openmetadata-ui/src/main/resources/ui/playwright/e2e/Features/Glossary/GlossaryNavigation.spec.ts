@@ -317,5 +317,4 @@ test.describe('Glossary Navigation', () => {
       await afterAction();
     }
   });
-
 });
