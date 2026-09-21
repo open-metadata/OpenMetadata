@@ -218,6 +218,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {field.label}
       </div>
     ),
+    FilterSelect: ({
+      'data-testid': testId,
+    }: {
+      'data-testid'?: string;
+      [key: string]: unknown;
+    }) => <div data-testid={testId} />,
     Tooltip: ({ children }: { children: ReactNode }) => <>{children}</>,
     TooltipTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
   };
