@@ -44,6 +44,9 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   public static final String CONTEXT_FILE_ENTITY = "contextFile";
   private static final String DUPLICATE_FILE_NAME_MESSAGE =
       "A file named '%s' already exists in this folder.";
+  private static final String ARCHIVED_FILE_NAME_MESSAGE =
+      "A file named '%s' is in the Archive. Restore it, or permanently delete it from the Archive, "
+          + "before uploading a new one.";
   private final AssetRepository assetRepository;
   private final ContextFileContentRepository contentRepository;
   private final CollectionDAO.ContextFileDAO contextFileDAO;
@@ -340,6 +343,15 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
             fileName.trim(), folderId, excludedId, Relationship.CONTAINS.ordinal());
     if (count > 0) {
       throw new BadRequestException(String.format(DUPLICATE_FILE_NAME_MESSAGE, fileName.trim()));
+    }
+    // A soft-deleted (archived) file keeps its name reserved so it can still be restored, so a
+    // same-name create would otherwise fail the DB unique constraint with a generic "Entity already
+    // exists". Detect it here and tell the user where to resolve it instead.
+    int archivedCount =
+        contextFileDAO.countArchivedByFileNameInFolder(
+            fileName.trim(), folderId, excludedId, Relationship.CONTAINS.ordinal());
+    if (archivedCount > 0) {
+      throw new BadRequestException(String.format(ARCHIVED_FILE_NAME_MESSAGE, fileName.trim()));
     }
   }
 

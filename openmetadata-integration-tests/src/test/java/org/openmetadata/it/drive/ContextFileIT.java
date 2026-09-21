@@ -673,6 +673,48 @@ class ContextFileIT {
   }
 
   @Test
+  void testArchivedSameNameFileReturnsActionableError(TestNamespace ns)
+      throws HttpResponseException {
+    // A deleted file is archived (soft-deleted) and keeps its name reserved so it stays
+    // restorable. Adding a same-name file to that folder must fail with an actionable message
+    // pointing to the Archive, not the generic DB "Entity already exists" 409.
+    RestClient rest = RestClient.admin();
+    Folder archivedFolder =
+        createFolder(rest, new CreateFolder().withName(ns.prefix("archived-folder")));
+    Folder otherFolder = createFolder(rest, new CreateFolder().withName(ns.prefix("other-folder")));
+    String sharedName = ns.prefix("report");
+
+    ContextFile archived =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(sharedName)
+                .withFileType(ContextFileType.PDF)
+                .withFolder(archivedFolder.getFullyQualifiedName())
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    rest.delete(FILE_PATH, archived.getId()); // soft-delete -> archived, name still reserved
+
+    // A live same-name file lives elsewhere; moving it into the archived folder reuses the name.
+    ContextFile candidate =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(sharedName)
+                .withFileType(ContextFileType.PDF)
+                .withFolder(otherFolder.getFullyQualifiedName())
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+
+    HttpResponseException ex =
+        assertThrows(
+            HttpResponseException.class,
+            () -> moveFile(rest, candidate.getId(), archivedFolder.getEntityReference()));
+    assertEquals(400, ex.getStatusCode());
+    assertTrue(
+        ex.getMessage().contains("in the Archive"),
+        "Expected an actionable Archive message, got: " + ex.getMessage());
+  }
+
+  @Test
   void testMoveFilePermissions(TestNamespace ns) throws HttpResponseException {
     RestClient adminRest = RestClient.admin();
     User owner = DriveTestUsers.createUser(ns, "file-mover");
