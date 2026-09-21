@@ -179,7 +179,7 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
           @DefaultValue("non-deleted")
           Include include,
       @Parameter(
-              description = "Field to sort by. Supported: name, createdAt, updatedAt.",
+              description = "Field to sort by. Supported: name, displayName, createdAt, updatedAt.",
               schema =
                   @Schema(
                       type = "string",
@@ -307,9 +307,12 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
   private static String resolveSortField(String sortBy) {
     return switch (sortBy) {
       case "name" -> "name.keyword";
+      case "displayName" -> "displayName.keyword";
       case "createdAt", "updatedAt" -> "updatedAt";
       default -> throw new IllegalArgumentException(
-          "Unsupported sortBy value '" + sortBy + "'. Allowed: name, createdAt, updatedAt.");
+          "Unsupported sortBy value '"
+              + sortBy
+              + "'. Allowed: name, displayName, createdAt, updatedAt.");
     };
   }
 

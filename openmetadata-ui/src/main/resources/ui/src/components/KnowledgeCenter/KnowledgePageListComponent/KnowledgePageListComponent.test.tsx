@@ -13,6 +13,8 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
+import { searchQuery as fetchSearchResults } from '../../../rest/searchAPI';
 import KnowledgePageListComponent from './KnowledgePageListComponent';
 
 // KnowledgePageListComponent.tsx had ZERO existing test coverage before this conversion (Task
@@ -118,5 +120,95 @@ describe('KnowledgePageListComponent permissions', () => {
     expect(
       screen.queryByTestId('add-knowledge-page-btn')
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('KnowledgePageListComponent data path', () => {
+  const mockGetList = getListKnowledgePages as jest.Mock;
+  const mockSearch = fetchSearchResults as jest.Mock;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetList.mockResolvedValue({ data: [], paging: { total: 0 } });
+    mockSearch.mockResolvedValue({
+      hits: { hits: [], total: { value: 0 } },
+    });
+  });
+
+  it('uses the REST list path with the given sort when no filter is active', async () => {
+    render(
+      <KnowledgePageListComponent
+        permissions={{ ViewAll: true } as OperationPermission}
+        restSortField="displayName"
+        sortField="displayName.keyword"
+        sortOrder="asc"
+        onPageChange={jest.fn()}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    await waitFor(() => {
+      expect(mockGetList).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sortBy: 'displayName',
+          sortOrder: 'asc',
+        })
+      );
+    });
+
+    expect(mockSearch).not.toHaveBeenCalled();
+  });
+
+  it('routes through the search path with the queryFilter when a filter is active', async () => {
+    const quickFilterQuery = {
+      query: { bool: { must: [{ bool: { should: [{ term: {} }] } }] } },
+    };
+
+    render(
+      <KnowledgePageListComponent
+        permissions={{ ViewAll: true } as OperationPermission}
+        quickFilterQuery={quickFilterQuery}
+        sortField="updatedAt"
+        sortOrder="desc"
+        onPageChange={jest.fn()}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    await waitFor(() => {
+      expect(mockSearch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryFilter: quickFilterQuery,
+          searchIndex: 'page',
+          sortField: 'updatedAt',
+          sortOrder: 'desc',
+        })
+      );
+    });
+
+    expect(mockGetList).not.toHaveBeenCalled();
+  });
+
+  it('uses the search path for an ES-only sort even without a filter', async () => {
+    render(
+      <KnowledgePageListComponent
+        permissions={{ ViewAll: true } as OperationPermission}
+        sortField="page.publicationDate"
+        sortOrder="desc"
+        onPageChange={jest.fn()}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    await waitFor(() => {
+      expect(mockSearch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          searchIndex: 'page',
+          sortField: 'page.publicationDate',
+          sortOrder: 'desc',
+        })
+      );
+    });
+    expect(mockGetList).not.toHaveBeenCalled();
   });
 });

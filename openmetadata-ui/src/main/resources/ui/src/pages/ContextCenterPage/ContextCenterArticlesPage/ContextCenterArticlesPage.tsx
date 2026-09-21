@@ -46,7 +46,17 @@ import {
   QuickLinkFormModal,
   QuickLinkFormModalFormData,
 } from '../../../components/KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal';
+import ArticlesListToolbar from '../../../components/ContextCenter/ArticlesListToolbar/ArticlesListToolbar';
+import ExploreQuickFilters from '../../../components/Explore/ExploreQuickFilters';
+import {
+  ARTICLE_QUICK_FILTER_FIELDS,
+  ARTICLE_SORT_OPTIONS,
+  DEFAULT_ARTICLE_SORT_OPTION,
+} from '../../../constants/ContextCenter.constants';
 import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
+import { SearchIndex } from '../../../enums/search.enum';
+import { ExploreQuickFilterField } from '../../../interface/quickFilter.interface';
+import { getQuickFilterQuery } from '../../../utils/ExplorePureUtils';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -87,9 +97,16 @@ function getIsArticleListingUnfiltered(
   fqn: string,
   version: string | undefined,
   articleSearchQuery: string,
-  permissionFetchFailed: boolean
+  permissionFetchFailed: boolean,
+  hasActiveFilters: boolean
 ): boolean {
-  return !fqn && !version && !articleSearchQuery && !permissionFetchFailed;
+  return (
+    !fqn &&
+    !version &&
+    !articleSearchQuery &&
+    !permissionFetchFailed &&
+    !hasActiveFilters
+  );
 }
 
 const ContextCenterArticlesPage = () => {
@@ -121,6 +138,67 @@ const ContextCenterArticlesPage = () => {
     useState('');
   const [isArticlesListEmpty, setIsArticlesListEmpty] = useState(false);
   const [permissionFetchFailed, setPermissionFetchFailed] = useState(false);
+  const [selectedFilters, setSelectedFilters] = useState<
+    ExploreQuickFilterField[]
+  >(() =>
+    ARTICLE_QUICK_FILTER_FIELDS.map((field) => ({
+      ...field,
+      singleSelect: false,
+    }))
+  );
+  const [sortId, setSortId] = useState<string>(DEFAULT_ARTICLE_SORT_OPTION.id);
+
+  const handleQuickFilterSelect = useCallback(
+    (field: ExploreQuickFilterField) => {
+      setSelectedFilters((prev) =>
+        prev.map((prevField) =>
+          prevField.key === field.key ? field : prevField
+        )
+      );
+    },
+    []
+  );
+
+  const handleClearFilters = useCallback(() => {
+    setSelectedFilters(
+      ARTICLE_QUICK_FILTER_FIELDS.map((field) => ({
+        ...field,
+        singleSelect: false,
+      }))
+    );
+  }, []);
+
+  const quickFilterQuery = useMemo(
+    () => getQuickFilterQuery(selectedFilters),
+    [selectedFilters]
+  );
+
+  const hasActiveFilters = useMemo(
+    () => selectedFilters.some((field) => (field.value?.length ?? 0) > 0),
+    [selectedFilters]
+  );
+
+  const selectedSort = useMemo(
+    () =>
+      ARTICLE_SORT_OPTIONS.find((option) => option.id === sortId) ??
+      DEFAULT_ARTICLE_SORT_OPTION,
+    [sortId]
+  );
+
+  const articleQuickFiltersElement = useMemo(
+    () => (
+      <ExploreQuickFilters
+        bordered
+        showSelectedCounts
+        aggregations={{}}
+        fields={selectedFilters}
+        index={SearchIndex.KNOWLEDGE_PAGE_INDEX}
+        showDeleted={false}
+        onFieldValueSelect={handleQuickFilterSelect}
+      />
+    ),
+    [selectedFilters, handleQuickFilterSelect]
+  );
 
   const handleFetchKnowledgePageHierarchy = useCallback(
     (forceRefresh?: boolean) =>
@@ -375,11 +453,15 @@ const ContextCenterArticlesPage = () => {
         hideAddButton
         isPermissionsLoading={isPermissionsLoading}
         permissions={permissions}
+        quickFilterQuery={quickFilterQuery}
         ref={knowledgeCenterPageRef}
         rightPanelSlot={
           contextCenterClassBase.isEmbeddedMode() ? null : undefined
         }
+        restSortField={selectedSort.restSortBy}
         searchQuery={debouncedArticleSearchQuery}
+        sortField={selectedSort.esSortField}
+        sortOrder={selectedSort.sortOrder}
         onEmptyStateChange={setIsArticlesListEmpty}
         onPageChange={handlePageChange}
       />
@@ -391,6 +473,8 @@ const ContextCenterArticlesPage = () => {
     permissions,
     isPermissionsLoading,
     debouncedArticleSearchQuery,
+    quickFilterQuery,
+    selectedSort,
     handlePageChange,
     handleFetchKnowledgePageHierarchy,
     handleToggleRightPanel,
@@ -400,7 +484,8 @@ const ContextCenterArticlesPage = () => {
     fqn,
     version,
     articleSearchQuery,
-    permissionFetchFailed
+    permissionFetchFailed,
+    hasActiveFilters
   );
   const showArticlesEmptyState =
     isArticlesListEmpty && isArticleListingUnfiltered;
@@ -474,10 +559,20 @@ const ContextCenterArticlesPage = () => {
           </Card.Content>
         </Card>
       ) : (
-        <Box
-          className="tw:h-full tw:min-h-0 tw:overflow-auto tw:py-0.5"
-          direction="col">
-          {centerContent}
+        <Box className="tw:h-full tw:min-h-0" direction="col">
+          <ArticlesListToolbar
+            hasActiveFilters={hasActiveFilters}
+            quickFilters={articleQuickFiltersElement}
+            selectedSortId={sortId}
+            sortOptions={ARTICLE_SORT_OPTIONS}
+            onClearFilters={handleClearFilters}
+            onSortChange={setSortId}
+          />
+          <Box
+            className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:py-0.5"
+            direction="col">
+            {centerContent}
+          </Box>
         </Box>
       )}
     </ReflexElement>
