@@ -5136,3 +5136,36 @@ class TestDbtMetricGovernanceMetadata:
         assert request.domains is None
         assert request.unitOfMeasurement is None
         assert request.extension is None
+
+    def _request_for_unit(self, unit):
+        source = self._source()
+        source.get_dbt_owner = MagicMock(return_value=None)
+        source.get_dbt_domain = MagicMock(return_value=None)
+        source.process_dbt_meta = MagicMock(return_value=[])
+        source._extract_metric_tags = MagicMock(return_value=[])
+
+        meta = {"openmetadata": {"unit": unit}}
+        metric_requests = [
+            item
+            for item in DbtSource.yield_dbt_metrics(source, self._simple_metric(meta=meta))
+            if item.right is not None
+        ]
+        assert len(metric_requests) == 1
+        return metric_requests[0].right
+
+    def test_free_form_unit_is_sent_as_other_with_the_custom_unit(self):
+        """
+        MetricRepository.validateCustomUnitOfMeasurement nulls customUnitOfMeasurement unless
+        unitOfMeasurement is OTHER, so a free-form unit sent on its own is dropped server-side.
+        """
+        request = self._request_for_unit("basis points")
+
+        assert request.unitOfMeasurement.value == "OTHER"
+        assert request.customUnitOfMeasurement == "basis points"
+
+    def test_explicit_other_unit_still_carries_a_custom_unit(self):
+        """OTHER without a customUnitOfMeasurement is rejected by the server, losing the metric."""
+        request = self._request_for_unit("other")
+
+        assert request.unitOfMeasurement.value == "OTHER"
+        assert request.customUnitOfMeasurement == "other"

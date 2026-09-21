@@ -1447,9 +1447,13 @@ class DbtSource(DbtServiceSource):
             custom_unit = None
             if dbt_meta and dbt_meta.openmetadata and dbt_meta.openmetadata.unit:
                 unit_value = dbt_meta.openmetadata.unit.upper()
-                if unit_value in set(UnitOfMeasurement.__members__):
+                if unit_value in set(UnitOfMeasurement.__members__) and unit_value != UnitOfMeasurement.OTHER.value:
                     unit_of_measurement = UnitOfMeasurement(unit_value)
                 else:
+                    # MetricRepository.validateCustomUnitOfMeasurement nulls customUnitOfMeasurement
+                    # unless unitOfMeasurement is OTHER, and rejects OTHER without one - so a
+                    # free-form dbt unit only survives when both are sent together.
+                    unit_of_measurement = UnitOfMeasurement.OTHER
                     custom_unit = dbt_meta.openmetadata.unit
             extension = None
             if dbt_meta and dbt_meta.openmetadata and dbt_meta.openmetadata.customProperties:
