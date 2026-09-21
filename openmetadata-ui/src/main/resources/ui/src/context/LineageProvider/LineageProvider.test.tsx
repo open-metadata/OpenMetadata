@@ -13,10 +13,14 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useEffect } from 'react';
 import { Edge } from 'reactflow';
-import { LineageNodeType } from '../../components/Lineage/Lineage.interface';
+import {
+  EntityLineageResponse,
+  LineageNodeType,
+} from '../../components/Lineage/Lineage.interface';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/searchLineageRequest';
+import { useLineageStore } from '../../hooks/useLineageStore';
 import {
   getDataQualityLineage,
   getLineageDataByFQN,
@@ -42,53 +46,192 @@ const mockSetTracedNodes = jest.fn();
 const mockSetTracedColumns = jest.fn();
 const mockSetSelectedColumn = jest.fn();
 
-jest.mock('../../hooks/useLineageStore', () => ({
-  useLineageStore: jest.fn().mockImplementation(() => ({
+// The factory below is invoked at require-time (during this file's own imports), before
+// any of the `const mockXxx = jest.fn()` declarations above have run — Jest hoists
+// `jest.mock` calls above the rest of the file. Referencing those outer `mock*`
+// identifiers is only safe from inside a nested, not-yet-invoked closure (e.g.
+// `buildSnapshot` below); by the time that closure actually runs (a component calling
+// the hook, well after module load), the outer consts are long since initialized. All
+// other mock state below is intentionally local to this factory so nothing here relies
+// on top-level `const` initialization order.
+jest.mock('../../hooks/useLineageStore', () => {
+  // Mutable snapshot backing the mocked store. The bridge effects added in Task 6 call
+  // useLineageStore.getState()/setState() directly (outside the hook), so the mock needs
+  // real getState/setState statics — a bare jest.fn() hook mock isn't enough.
+  const state: Record<string, unknown> = {
     isEditMode: false,
     activeLayer: [],
     tracedNodes: new Set(),
     tracedColumns: new Set(),
-    toggleEditMode: mockToggleEditMode,
-    setActiveLayer: mockSetActiveLayer,
-    setTracedNodes: mockSetTracedNodes,
-    setTracedColumns: mockSetTracedColumns,
-    setSelectedColumn: mockSetSelectedColumn,
     lineageConfig: {
       upstreamDepth: 1,
       downstreamDepth: 1,
       nodesPerLayer: 50,
     },
-    setLineageConfig: jest.fn(),
-    addTracedColumns: jest.fn(),
-    addTracedNodes: jest.fn(),
     zoomValue: 1,
-    setZoomValue: jest.fn(),
     columnsHavingLineage: new Map(),
-    setColumnsHavingLineage: jest.fn(),
-    updateColumnsHavingLineageById: jest.fn(),
-    updateActiveLayer: jest.fn(),
     platformView: 'None',
-    setPlatformView: jest.fn(),
     isPlatformLineage: false,
-    setIsPlatformLineage: jest.fn(),
     activeNode: undefined,
-    setActiveNode: jest.fn(),
     selectedNode: undefined,
-    setSelectedNode: jest.fn(),
     selectedEdge: undefined,
-    setSelectedEdge: jest.fn(),
     isColumnLevelLineage: false,
     isDQEnabled: false,
     selectedColumn: undefined,
     isCreatingEdge: false,
+    columnsInCurrentPages: new Map(),
+    // Bridge fields mirrored by LineageProvider's Task 6 effects.
+    nodes: [],
+    edges: [],
+    columnEdges: [],
+    entityLineage: {},
+    updatedEntityLineage: undefined,
+    dataQualityLineage: undefined,
+    dqHighlightedEdges: new Set(),
+    status: 'initial',
+    init: false,
+    loading: false,
+    entity: undefined,
+    entityType: undefined,
+    entityFqn: '',
+    reactFlowInstance: undefined,
+    selectedQuickFilters: [],
+    timeFilter: {},
+    showAddEdgeModal: false,
+    showDeleteModal: false,
+    isDrawerOpen: false,
+    newAddedNode: undefined,
+    deletionState: { loading: false, status: 'initial' },
+  };
+
+  const setNodes = jest.fn((nodes: unknown) => {
+    state.nodes = nodes;
+  });
+  const setEdges = jest.fn((edges: unknown) => {
+    state.edges = edges;
+  });
+  const setColumnEdges = jest.fn((columnEdges: unknown) => {
+    state.columnEdges = columnEdges;
+  });
+  const setEntityContext = jest.fn(
+    (context: {
+      entity?: unknown;
+      entityType?: unknown;
+      entityFqn: unknown;
+    }) => {
+      state.entity = context.entity;
+      state.entityType = context.entityType;
+      state.entityFqn = context.entityFqn;
+    }
+  );
+  const setReactFlowInstance = jest.fn((reactFlowInstance: unknown) => {
+    state.reactFlowInstance = reactFlowInstance;
+  });
+  const setUpdatedEntityLineage = jest.fn((updatedEntityLineage: unknown) => {
+    state.updatedEntityLineage = updatedEntityLineage;
+  });
+  const setDQLineage = jest.fn((dataQualityLineage: unknown) => {
+    state.dataQualityLineage = dataQualityLineage;
+  });
+  const setDQHighlightedEdges = jest.fn((dqHighlightedEdges: unknown) => {
+    state.dqHighlightedEdges = dqHighlightedEdges;
+  });
+  const setSelectedQuickFilters = jest.fn((selectedQuickFilters: unknown) => {
+    state.selectedQuickFilters = selectedQuickFilters;
+  });
+  const setTimeFilter = jest.fn((timeFilter: unknown) => {
+    state.timeFilter = timeFilter;
+  });
+  const openAddEdgeModal = jest.fn(() => {
+    state.showAddEdgeModal = true;
+  });
+  const closeAddEdgeModal = jest.fn(() => {
+    state.showAddEdgeModal = false;
+  });
+  const openDeleteModal = jest.fn(() => {
+    state.showDeleteModal = true;
+  });
+  const closeDeleteModal = jest.fn(() => {
+    state.showDeleteModal = false;
+  });
+  const openDrawer = jest.fn(() => {
+    state.isDrawerOpen = true;
+  });
+  const closeDrawer = jest.fn(() => {
+    state.isDrawerOpen = false;
+  });
+  const setNewAddedNode = jest.fn((newAddedNode: unknown) => {
+    state.newAddedNode = newAddedNode;
+  });
+  const setDeletionState = jest.fn((deletionState: unknown) => {
+    state.deletionState = deletionState;
+  });
+
+  const buildSnapshot = () => ({
+    ...state,
+    toggleEditMode: mockToggleEditMode,
+    setActiveLayer: mockSetActiveLayer,
+    setTracedNodes: mockSetTracedNodes,
+    setTracedColumns: mockSetTracedColumns,
+    setSelectedColumn: mockSetSelectedColumn,
+    setLineageConfig: jest.fn(),
+    addTracedColumns: jest.fn(),
+    addTracedNodes: jest.fn(),
+    setZoomValue: jest.fn(),
+    setColumnsHavingLineage: jest.fn(),
+    updateColumnsHavingLineageById: jest.fn(),
+    updateActiveLayer: jest.fn(),
+    setPlatformView: jest.fn(),
+    setIsPlatformLineage: jest.fn(),
+    setActiveNode: jest.fn(),
+    setSelectedNode: jest.fn(),
+    setSelectedEdge: jest.fn(),
     setIsCreatingEdge: jest.fn(),
     setIsRepositioning: jest.fn(),
-    columnsInCurrentPages: new Map(),
     setColumnsInCurrentPages: jest.fn(),
     updateColumnsInCurrentPages: jest.fn(),
     reset: jest.fn(),
-  })),
-}));
+    setNodes,
+    setEdges,
+    setColumnEdges,
+    setEntityContext,
+    setReactFlowInstance,
+    setUpdatedEntityLineage,
+    setDQLineage,
+    setDQHighlightedEdges,
+    setSelectedQuickFilters,
+    setTimeFilter,
+    openAddEdgeModal,
+    closeAddEdgeModal,
+    openDeleteModal,
+    closeDeleteModal,
+    openDrawer,
+    closeDrawer,
+    setNewAddedNode,
+    setDeletionState,
+  });
+
+  const useLineageStoreMock = Object.assign(
+    jest.fn().mockImplementation(buildSnapshot),
+    {
+      getState: jest.fn(buildSnapshot),
+      setState: jest.fn(
+        (
+          partial:
+            | Record<string, unknown>
+            | ((s: Record<string, unknown>) => Record<string, unknown>)
+        ) => {
+          Object.assign(
+            state,
+            typeof partial === 'function' ? partial(state) : partial
+          );
+        }
+      ),
+    }
+  );
+
+  return { useLineageStore: useLineageStoreMock };
+});
 
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
@@ -275,6 +418,30 @@ describe('LineageProvider', () => {
     mockSetNodes.mockClear();
     mockSetEdges.mockClear();
     mockCenterNodePosition.mockClear();
+    // Bridge fields mirrored by Task 6's effects — reset so each test starts clean.
+    useLineageStore.setState({
+      nodes: [],
+      edges: [],
+      columnEdges: [],
+      entity: undefined,
+      entityType: undefined,
+      entityFqn: '',
+      reactFlowInstance: undefined,
+      entityLineage: {} as EntityLineageResponse,
+      updatedEntityLineage: undefined,
+      dataQualityLineage: undefined,
+      dqHighlightedEdges: new Set(),
+      status: 'initial',
+      init: false,
+      loading: false,
+      selectedQuickFilters: [],
+      timeFilter: {},
+      showAddEdgeModal: false,
+      showDeleteModal: false,
+      isDrawerOpen: false,
+      newAddedNode: undefined,
+      deletionState: { loading: false, status: 'initial' },
+    });
   });
 
   it('renders Lineage component and fetches data', async () => {
@@ -633,5 +800,31 @@ describe('LineageProvider', () => {
     await Promise.resolve();
 
     expect(getLineageDataByFQN).toHaveBeenCalledTimes(1);
+  });
+
+  it('writes nodes/edges into useLineageStore while mounted', async () => {
+    (getLineageDataByFQN as jest.Mock).mockResolvedValue({
+      nodes: {},
+      downstreamEdges: {},
+      upstreamEdges: {},
+    });
+
+    const TestConsumer = () => {
+      useLineageProvider();
+
+      return null;
+    };
+
+    render(
+      <LineageProvider>
+        <TestConsumer />
+      </LineageProvider>
+    );
+
+    await waitFor(() => {
+      expect(useLineageStore.getState().nodes).toEqual(expect.any(Array));
+    });
+
+    expect(useLineageStore.getState().entityFqn).toBeDefined();
   });
 });

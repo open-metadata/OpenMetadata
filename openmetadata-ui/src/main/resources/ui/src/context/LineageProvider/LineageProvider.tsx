@@ -2207,6 +2207,80 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     timeFilter.endTime,
   ]);
 
+  // Bridge effects: one-way mirror of provider-owned state into useLineageStore so
+  // consumers can migrate to store selectors ahead of the Phase E mount swap. These are
+  // pure side effects — they must not alter provider behavior, only publish snapshots.
+  useEffect(() => {
+    const s = useLineageStore.getState();
+    s.setNodes(nodes);
+    s.setEdges(edges);
+    s.setColumnEdges(columnEdges);
+  }, [nodes, edges, columnEdges]);
+
+  useEffect(() => {
+    useLineageStore
+      .getState()
+      .setEntityContext({ entity, entityType, entityFqn });
+  }, [entity, entityType, entityFqn]);
+
+  useEffect(() => {
+    useLineageStore.getState().setReactFlowInstance(reactFlowInstance);
+  }, [reactFlowInstance]);
+
+  useEffect(() => {
+    // Mirror entityLineage/status/init/loading directly rather than via setLineageData,
+    // which also forces init=true/loading=false/status='success' as a side effect — that
+    // would desync the store from the provider's own (independently tracked) loading state.
+    useLineageStore.setState({ entityLineage, status, init, loading });
+  }, [entityLineage, status, init, loading]);
+
+  useEffect(() => {
+    useLineageStore
+      .getState()
+      .setUpdatedEntityLineage(updatedEntityLineage ?? undefined);
+  }, [updatedEntityLineage]);
+
+  useEffect(() => {
+    useLineageStore.getState().setDQLineage(dataQualityLineage);
+  }, [dataQualityLineage]);
+
+  useEffect(() => {
+    useLineageStore
+      .getState()
+      .setDQHighlightedEdges(dqHighlightedEdges ?? new Set());
+  }, [dqHighlightedEdges]);
+
+  useEffect(() => {
+    useLineageStore.getState().setSelectedQuickFilters(selectedQuickFilters);
+  }, [selectedQuickFilters]);
+
+  useEffect(() => {
+    useLineageStore.getState().setTimeFilter(timeFilter);
+  }, [timeFilter]);
+
+  useEffect(() => {
+    const s = useLineageStore.getState();
+    showAddEdgeModal ? s.openAddEdgeModal() : s.closeAddEdgeModal();
+  }, [showAddEdgeModal]);
+
+  useEffect(() => {
+    const s = useLineageStore.getState();
+    showDeleteModal ? s.openDeleteModal() : s.closeDeleteModal();
+  }, [showDeleteModal]);
+
+  useEffect(() => {
+    const s = useLineageStore.getState();
+    isDrawerOpen ? s.openDrawer() : s.closeDrawer();
+  }, [isDrawerOpen]);
+
+  useEffect(() => {
+    useLineageStore.getState().setNewAddedNode(newAddedNode);
+  }, [newAddedNode]);
+
+  useEffect(() => {
+    useLineageStore.getState().setDeletionState(deletionState);
+  }, [deletionState]);
+
   const activityFeedContextValues: LineageContextType = useMemo(() => {
     return {
       nodes,
