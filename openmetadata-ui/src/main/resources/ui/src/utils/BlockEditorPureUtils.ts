@@ -69,6 +69,12 @@ export const convertMarkdownFormatToHtmlString = (markdown: string) => {
 // rendered output. Content carrying one is always treated as HTML.
 const STRUCTURAL_HTML_SELECTOR = 'ul, ol, table';
 
+// A fenced block or a code span holds a literal example. `DOMParser` has no
+// notion of either, so `<table>…` written inside one parses into a real
+// element — dropping these regions first keeps a code sample from being read
+// as rendered content.
+const MARKDOWN_CODE_REGION = /```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]+`/g;
+
 export const isHTMLString = (content: string) => {
   const commonHtmlTags =
     /<(p|div|span|a|ul|ol|li|table|h[1-6]|br|strong|em|code|pre)[>\s]/i;
@@ -85,9 +91,14 @@ export const isHTMLString = (content: string) => {
       (node) => node.nodeType === Node.ELEMENT_NODE
     );
 
+    const outsideCodeRegions = parser.parseFromString(
+      content.replace(MARKDOWN_CODE_REGION, ''),
+      'text/html'
+    );
+
     if (
       hasHtmlElements &&
-      parsedDocument.body.querySelector(STRUCTURAL_HTML_SELECTOR)
+      outsideCodeRegions.body.querySelector(STRUCTURAL_HTML_SELECTOR)
     ) {
       return true;
     }

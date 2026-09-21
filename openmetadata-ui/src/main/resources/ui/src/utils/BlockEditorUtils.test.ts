@@ -271,6 +271,37 @@ please contact the support team <test@test.com>.
     );
   });
 
+  it('should return false for a fenced HTML table example', () => {
+    // The fence holds a code sample. `DOMParser` parses the `<table>` inside
+    // it into a real element, so the structural check has to ignore code
+    // regions or the example renders as a table instead of as code.
+    const markdown = [
+      'Example:',
+      '',
+      '```html',
+      '<table><tr><td>Cell</td></tr></table>',
+      '```',
+    ].join('\n');
+
+    expect(isHTMLString(markdown)).toBe(false);
+  });
+
+  it('should return false for a fenced HTML list example', () => {
+    const markdown = ['```html', '<ul><li>one</li></ul>', '```'].join('\n');
+
+    expect(isHTMLString(markdown)).toBe(false);
+  });
+
+  it('should return false for a list inside a code span', () => {
+    expect(isHTMLString('Use `<ul><li>x</li></ul>` for a list')).toBe(false);
+  });
+
+  it('should return true for a real list beside a code example', () => {
+    const content = `<ul><li>real</li></ul> and \`<ol><li>sample</li></ol>\``;
+
+    expect(isHTMLString(content)).toBe(true);
+  });
+
   it('should not misread markdown characters in attributes as markdown', () => {
     expect(
       isHTMLString('<p><a href="https://x.dev/a__b__c">link</a></p>')
@@ -1312,6 +1343,24 @@ describe('isDescriptionContentEmpty', () => {
         expect(isDescriptionContentEmpty(content)).toBe(false);
       });
     });
+  });
+});
+
+describe('getHtmlStringFromMarkdownString: HTML code examples', () => {
+  it('should render a fenced HTML table example as code, not as a table', () => {
+    const markdown = [
+      'Example:',
+      '',
+      '```html',
+      '<table><tr><td>Cell</td></tr></table>',
+      '```',
+    ].join('\n');
+
+    const result = getHtmlStringFromMarkdownString(markdown);
+
+    expect(result).toContain('<pre>');
+    expect(result).toContain('&lt;table&gt;');
+    expect(result).not.toContain('<table>');
   });
 });
 
