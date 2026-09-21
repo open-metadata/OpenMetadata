@@ -14,14 +14,13 @@ import { Button } from '@/components/base/buttons/button';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { Skeleton } from '@/components/base/skeleton/skeleton';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
-import { Typography } from '@/components/foundations/typography';
 import { SearchInputIcon, TriggerCountBadge } from './filter-select.shared';
 import { Input } from '@/components/base/input/input';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { borderAfter } from '@/utils/tailwindClasses';
-import { ChevronDown, XClose } from '@untitledui/icons';
+import { ChevronDown, ChevronUp, XClose } from '@untitledui/icons';
 import {
   useEffect,
   useMemo,
@@ -45,6 +44,7 @@ const optionText = (option: FilterSelectOption): string =>
 
 export const TriggerButton = ({
   hasSelection,
+  isOpen,
   text,
   label,
   count,
@@ -56,6 +56,7 @@ export const TriggerButton = ({
   bordered,
 }: {
   hasSelection: boolean;
+  isOpen?: boolean;
   text: string;
   label: string;
   count?: number;
@@ -88,11 +89,9 @@ export const TriggerButton = ({
         color={bordered ? 'secondary' : 'tertiary'}
         data-testid={testId}
         iconLeading={icon}
-        iconTrailing={ChevronDown}
+        iconTrailing={isOpen ? ChevronUp : ChevronDown}
         size={bordered ? 'md' : 'sm'}>
-        <span data-testid={`search-dropdown-${label}`}>
-          <Typography>{text}</Typography>
-        </span>
+        <span data-testid={`search-dropdown-${label}`}>{text}</span>
         {countBadge}
       </Button>
     );
@@ -114,13 +113,13 @@ export const TriggerButton = ({
             hasSelection ? 'tw:text-secondary' : 'tw:text-placeholder'
           )}
           data-testid={`search-dropdown-${label}`}>
-          <Typography>{hasSelection ? text : placeholder ?? text}</Typography>
+          {hasSelection ? text : placeholder ?? text}
         </span>
         {countBadge}
         <ChevronDown
           className={cx(
-            'tw:size-5 tw:shrink-0',
-            hasSelection ? 'tw:text-fg-brand-primary' : 'tw:text-fg-quaternary'
+            'tw:size-5 tw:shrink-0 tw:text-fg-quaternary tw:transition-transform tw:duration-200',
+            isOpen && 'tw:rotate-180'
           )}
         />
       </AriaButton>
@@ -136,13 +135,12 @@ export const TriggerButton = ({
         className
       )}
       data-testid={testId}>
-      <span data-testid={`search-dropdown-${label}`}>
-        <Typography>{text}</Typography>
-      </span>
+      <span data-testid={`search-dropdown-${label}`}>{text}</span>
       {countBadge}
       <ChevronDown
         className={cx(
-          'tw:size-5 tw:shrink-0',
+          'tw:size-5 tw:shrink-0 tw:transition-transform tw:duration-200',
+          isOpen && 'tw:rotate-180',
           hasSelection ? 'tw:text-fg-brand-primary' : 'tw:text-fg-quaternary'
         )}
       />
@@ -162,6 +160,7 @@ export const TriggerButton = ({
  */
 const ChipsField = ({
   chips,
+  isOpen,
   placeholder,
   testId,
   className,
@@ -169,6 +168,7 @@ const ChipsField = ({
   onRemove,
 }: {
   chips: { value: string; label: ReactNode }[];
+  isOpen?: boolean;
   placeholder: string;
   testId?: string;
   className?: string;
@@ -189,7 +189,7 @@ const ChipsField = ({
           className="tw:flex tw:max-w-44 tw:items-center tw:gap-0.5 tw:rounded-md tw:border tw:border-secondary tw:bg-secondary tw:py-px tw:pr-0.5 tw:pl-2 tw:text-xs tw:font-medium tw:text-secondary"
           data-testid="filter-chip"
           key={chip.value}>
-          <Typography className="tw:truncate">{chip.label}</Typography>
+          <span className="tw:truncate">{chip.label}</span>
           <button
             aria-label={t('label.remove-filter')}
             className="tw:flex tw:cursor-pointer tw:rounded-xs tw:p-0.5 tw:text-placeholder tw:outline-brand tw:hover:text-secondary tw:focus-visible:outline-2"
@@ -207,16 +207,18 @@ const ChipsField = ({
         className="tw:flex tw:min-w-10 tw:flex-1 tw:cursor-pointer tw:items-center tw:justify-between tw:gap-2 tw:self-stretch tw:rounded-sm tw:pl-1.5 tw:outline-brand"
         data-testid={testId}>
         {chips.length === 0 ? (
-          <Typography
-            className="tw:truncate tw:text-placeholder"
-            size="text-sm"
-            weight="regular">
+          <span className="tw:truncate tw:text-sm tw:font-normal tw:text-placeholder">
             {placeholder}
-          </Typography>
+          </span>
         ) : (
           <span />
         )}
-        <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
+        <ChevronDown
+          className={cx(
+            'tw:size-5 tw:shrink-0 tw:text-fg-quaternary tw:transition-transform tw:duration-200',
+            isOpen && 'tw:rotate-180'
+          )}
+        />
       </AriaButton>
     </div>
   );
@@ -277,13 +279,11 @@ const OptionRow = ({
               {iconNode}
             </span>
           )}
-          <Typography
-            className="tw:grow tw:truncate"
-            title={optionText(option)}>
+          <span className="tw:grow tw:truncate" title={optionText(option)}>
             {option.label}
-          </Typography>
+          </span>
           {!hideCounts && option.count !== undefined && (
-            <Typography
+            <span
               className={cx(
                 'tw:shrink-0 tw:rounded-md tw:border tw:px-1.5 tw:text-xs tw:font-normal tw:tabular-nums',
                 !showCheckbox && state.isSelected
@@ -294,7 +294,7 @@ const OptionRow = ({
               )}
               data-testid="filter-count">
               {option.count.toLocaleString()}
-            </Typography>
+            </span>
           )}
         </span>
       )}
@@ -653,6 +653,7 @@ const FilterSelect = ({
             chips={chips}
             className={className}
             fieldRef={chipsFieldRef}
+            isOpen={isOpen}
             placeholder={placeholder ?? label}
             testId={testId}
             onRemove={(value) =>
@@ -669,6 +670,7 @@ const FilterSelect = ({
             count={isMulti ? selectedValues.length : undefined}
             hasSelection={selectedValues.length > 0}
             icon={triggerIcon}
+            isOpen={isOpen}
             label={label}
             placeholder={placeholder}
             testId={testId}
@@ -780,17 +782,15 @@ const FilterSelect = ({
 
           {isEmpty && (
             <div className="tw:px-4 tw:py-2 tw:text-center">
-              <Typography className="tw:text-tertiary" size="text-xs">
+              <span className="tw:text-xs tw:text-tertiary">
                 {emptyState ?? t('label.no-data-found')}
-              </Typography>
+              </span>
             </div>
           )}
 
           {helperText !== undefined && (
             <div className="tw:border-t tw:border-secondary tw:px-3 tw:py-2">
-              <Typography className="tw:text-tertiary" size="text-xs">
-                {helperText}
-              </Typography>
+              <span className="tw:text-xs tw:text-tertiary">{helperText}</span>
             </div>
           )}
 
@@ -830,15 +830,13 @@ const FilterSelect = ({
 
           {showStatusFooter && (
             <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-2 tw:pr-2 tw:pl-5">
-              <Typography
-                className="tw:text-tertiary"
-                data-testid="selected-count"
-                size="text-xs"
-                weight="regular">
+              <span
+                className="tw:text-xs tw:font-normal tw:text-tertiary"
+                data-testid="selected-count">
                 {selectedValues.length === 0
                   ? t('label.none-selected')
                   : t('label.count-selected', { count: selectedValues.length })}
-              </Typography>
+              </span>
               <Button
                 className="tw:py-1.5"
                 color="tertiary"
