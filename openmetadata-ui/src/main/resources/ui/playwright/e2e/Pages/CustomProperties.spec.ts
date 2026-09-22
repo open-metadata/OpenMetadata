@@ -3448,7 +3448,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await searchInput.fill(dashboardPropertyValue);
           await searchInput.press('Enter');
 
-          await page.getByTestId('dashboards-tab').waitFor({ state: 'visible' });
+          await page
+            .getByTestId('dashboards-tab')
+            .waitFor({ state: 'visible' });
           await page.getByTestId('dashboards-tab').click();
 
           await waitForAllLoadersToDisappear(page);
