@@ -108,8 +108,7 @@ export interface AirflowConnectionClass {
      * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
      * must expose columns compatible with the selected log path.
      */
-    queryHistoryTable?:       string;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    queryHistoryTable?: string;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -510,16 +509,6 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
-}
-
-/**
- * Storage config to store sample data
- */
-export interface SampleDataStorageConfig {
-    config?: OpenMetadataStorage;
-}
-
-export interface OpenMetadataStorage {
 }
 
 /**

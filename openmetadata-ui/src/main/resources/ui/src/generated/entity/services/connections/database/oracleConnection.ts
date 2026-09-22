@@ -56,8 +56,7 @@ export interface OracleConnection {
      * entities. If you must switch, soft-delete all previously ingested entities before
      * re-ingesting.
      */
-    preserveIdentifierCase?:  boolean;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    preserveIdentifierCase?: boolean;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -140,16 +139,6 @@ export interface OracleConnectionType {
      */
     oracleTNSConnection?: string;
     [property: string]: any;
-}
-
-/**
- * Storage config to store sample data
- */
-export interface SampleDataStorageConfig {
-    config?: OpenMetadataStorage;
-}
-
-export interface OpenMetadataStorage {
 }
 
 /**

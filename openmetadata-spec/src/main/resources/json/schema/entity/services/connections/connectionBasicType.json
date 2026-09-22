@@ -117,19 +117,6 @@
         }
       },
       "additionalProperties": false
-    },
-    "sampleDataStorageConfig": {
-      "description": "Storage config to store sample data",
-      "type": "object",
-      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-      "properties": {
-        "config": {
-          "title": "OpenMetadata Storage",
-          "type": "object",
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
     }
   }
 }

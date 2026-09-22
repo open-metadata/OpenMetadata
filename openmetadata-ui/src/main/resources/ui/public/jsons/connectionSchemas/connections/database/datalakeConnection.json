@@ -628,20 +628,6 @@
       "type": "boolean",
       "default": true
     },
-    "sampleDataStorageConfig": {
-      "title": "Storage Config for Sample Data",
-      "description": "Storage config to store sample data",
-      "type": "object",
-      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-      "properties": {
-        "config": {
-          "title": "OpenMetadata Storage",
-          "type": "object",
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
     "skipColdStorage": {
       "title": "Skip Cold Storage",
       "description": "Skip files in cold storage tiers (e.g., S3 Glacier, Azure Archive/Cool/Cold, GCS Coldline/Archive). When enabled, only files in hot/standard storage tiers will be processed.",

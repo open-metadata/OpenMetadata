@@ -23,8 +23,7 @@ export interface SapHanaConnection {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      */
-    databaseFilterPattern?:   FilterPattern;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    databaseFilterPattern?: FilterPattern;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -104,16 +103,6 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
-}
-
-/**
- * Storage config to store sample data
- */
-export interface SampleDataStorageConfig {
-    config?: OpenMetadataStorage;
-}
-
-export interface OpenMetadataStorage {
 }
 
 /**

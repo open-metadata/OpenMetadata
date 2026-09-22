@@ -151,10 +151,6 @@
         "supportsMaskedAccess": false
       }
     },
-    "sampleDataStorageConfig": {
-      "title": "Storage Config for Sample Data",
-      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
-    },
     "supportsIncrementalMetadataExtraction": {
       "title": "Supports Incremental Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsIncrementalMetadataExtraction"

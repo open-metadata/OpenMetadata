@@ -184,9 +184,6 @@ const openSnowflakeConnectionConfig = async (page: Page) => {
     await advancedSection.waitFor({ state: 'visible' });
   }
 
-  // Anchored on the advanced grid rather than on the sample-data storage selector: that
-  // widget is hidden through DEF_UI_SCHEMA now that external S3 storage is gone
-  // (collate#5995), so waiting for it to appear would never return.
   const advancedPrimaryGrid = advancedSection.locator(
     '.connection-advanced-primary-grid'
   );
@@ -281,9 +278,7 @@ test.describe('Connection config layout', () => {
       .toBeGreaterThan(0);
   });
 
-  test('should hide the fieldless sample data storage config and keep advanced fields aligned', async ({
-    page,
-  }) => {
+  test('should keep advanced fields aligned', async ({ page }) => {
     await openSnowflakeConnectionConfig(page);
 
     const scopeSection = page.getByTestId('connection-section-scope');
@@ -384,20 +379,6 @@ test.describe('Connection config layout', () => {
         '.core-wrap-if-additional-value .design-field-label'
       )
     ).toBeHidden();
-
-    // External S3 sample-data storage was removed (collate#5995). OpenMetadata-hosted
-    // storage has no settable fields, so the whole sampleDataStorageConfig group is
-    // hidden from every connection form (ServiceUISchema DEF_UI_SCHEMA) — no selector,
-    // no config panel, and none of the former bucket / prefix / file-path / overwrite /
-    // AWS credential fields render.
-    await expect(
-      page.locator(
-        '[data-testid^="select-widget-root/sampleDataStorageConfig/config__"]'
-      )
-    ).toHaveCount(0);
-    await expect(
-      page.locator('[data-field-id$="/sampleDataStorageConfig"]')
-    ).toHaveCount(0);
   });
 
   test('should clear inactive Snowflake auth fields before test connection and unlock ingestion filters', async ({

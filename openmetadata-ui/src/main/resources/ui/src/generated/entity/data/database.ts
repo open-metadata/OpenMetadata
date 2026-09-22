@@ -511,8 +511,7 @@ export interface DatabaseProfilerConfig {
     /**
      * Number of row of sample data to be generated
      */
-    sampleDataCount?:         number;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    sampleDataCount?: number;
     [property: string]: any;
 }
 
@@ -589,16 +588,6 @@ export interface Threshold {
 export enum SampleConfigType {
     Dynamic = "DYNAMIC",
     Static = "STATIC",
-}
-
-/**
- * Storage config to store sample data
- */
-export interface SampleDataStorageConfig {
-    config?: OpenMetadataStorage;
-}
-
-export interface OpenMetadataStorage {
 }
 
 /**

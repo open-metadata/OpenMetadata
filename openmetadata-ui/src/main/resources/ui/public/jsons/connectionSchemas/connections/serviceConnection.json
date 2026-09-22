@@ -2579,20 +2579,6 @@
                               "type": "boolean",
                               "default": true
                             },
-                            "sampleDataStorageConfig": {
-                              "title": "Storage Config for Sample Data",
-                              "description": "Storage config to store sample data",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                              "properties": {
-                                "config": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              },
-                              "additionalProperties": false
-                            },
                             "supportsDataDiff": {
                               "title": "Supports Data Diff Extraction.",
                               "description": "Supports the data diff data qualty specification.",
@@ -3366,20 +3352,6 @@
                               "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                               "type": "boolean",
                               "default": true
-                            },
-                            "sampleDataStorageConfig": {
-                              "title": "Storage Config for Sample Data",
-                              "description": "Storage config to store sample data",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                              "properties": {
-                                "config": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              },
-                              "additionalProperties": false
                             },
                             "supportsDataDiff": {
                               "title": "Supports Data Diff Extraction.",
@@ -7176,20 +7148,6 @@
                       "type": "boolean",
                       "default": false
                     },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    },
                     "supportsDataDiff": {
                       "title": "Supports Data Diff Extraction.",
                       "description": "Supports the data diff data qualty specification.",
@@ -7932,20 +7890,6 @@
                       "description": "Supports the data diff data qualty specification.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     }
                   },
                   "additionalProperties": false,
@@ -8184,20 +8128,6 @@
                       "description": "The source service supports the database concept in its hierarchy",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     }
                   },
                   "additionalProperties": false,
@@ -8418,20 +8348,6 @@
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     }
                   },
                   "additionalProperties": false,
@@ -8981,20 +8897,6 @@
                         }
                       },
                       "additionalProperties": false
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     }
                   },
                   "additionalProperties": false,
@@ -9268,20 +9170,6 @@
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
@@ -9860,20 +9748,6 @@
                       "description": "Supports DBT Extraction.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
@@ -10907,20 +10781,6 @@
                               "type": "boolean",
                               "default": true
                             },
-                            "sampleDataStorageConfig": {
-                              "title": "Storage Config for Sample Data",
-                              "description": "Storage config to store sample data",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                              "properties": {
-                                "config": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              },
-                              "additionalProperties": false
-                            },
                             "supportsDataDiff": {
                               "title": "Supports Data Diff Extraction.",
                               "description": "Supports the data diff data qualty specification.",
@@ -11695,20 +11555,6 @@
                               "type": "boolean",
                               "default": true
                             },
-                            "sampleDataStorageConfig": {
-                              "title": "Storage Config for Sample Data",
-                              "description": "Storage config to store sample data",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                              "properties": {
-                                "config": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              },
-                              "additionalProperties": false
-                            },
                             "supportsDataDiff": {
                               "title": "Supports Data Diff Extraction.",
                               "description": "Supports the data diff data qualty specification.",
@@ -11855,20 +11701,6 @@
                       "description": "Supports Profiler",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
@@ -12085,20 +11917,6 @@
                       "type": "boolean",
                       "default": true
                     },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
                       "type": "boolean",
@@ -12312,20 +12130,6 @@
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
@@ -12658,20 +12462,6 @@
                       "description": "Supports Lineage Extraction.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsQueryComment": {
                       "title": "Supports Query Comment",
@@ -13728,20 +13518,6 @@
                       "type": "boolean",
                       "default": true
                     },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    },
                     "supportsDataDiff": {
                       "title": "Supports Data Diff Extraction.",
                       "description": "Supports the data diff data qualty specification.",
@@ -13956,20 +13732,6 @@
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
@@ -14312,20 +14074,6 @@
                       "description": "Supports the data diff data qualty specification.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     }
                   },
                   "additionalProperties": false,
@@ -14788,20 +14536,6 @@
                       "type": "boolean",
                       "default": true
                     },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    },
                     "supportsDataDiff": {
                       "title": "Supports Data Diff Extraction.",
                       "description": "Supports the data diff data qualty specification.",
@@ -15246,20 +14980,6 @@
                       "type": "boolean",
                       "default": true
                     },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    },
                     "supportsDataDiff": {
                       "title": "Supports Data Diff Extraction.",
                       "description": "Supports the data diff data qualty specification.",
@@ -15469,20 +15189,6 @@
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     }
                   },
                   "additionalProperties": false,
@@ -15908,20 +15614,6 @@
                       "description": "The source database supports system profiles for tables such as last update.",
                       "type": "boolean",
                       "default": false
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsDataDiff": {
                       "title": "Supports Data Diff Extraction.",
@@ -16573,20 +16265,6 @@
                       "type": "boolean",
                       "default": true
                     },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
                       "type": "boolean",
@@ -16919,20 +16597,6 @@
                       "description": "The source database supports system profiles for tables such as last update.",
                       "type": "boolean",
                       "default": false
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsDataDiff": {
                       "title": "Supports Data Diff Extraction.",
@@ -17295,20 +16959,6 @@
                       "type": "boolean",
                       "default": true
                     },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    },
                     "supportsDataDiff": {
                       "title": "Supports Data Diff Extraction.",
                       "description": "Supports the data diff data qualty specification.",
@@ -17518,20 +17168,6 @@
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     }
                   },
                   "additionalProperties": false,
@@ -17723,20 +17359,6 @@
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
@@ -18380,20 +18002,6 @@
                       "type": "boolean",
                       "default": true
                     },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    },
                     "skipColdStorage": {
                       "title": "Skip Cold Storage",
                       "description": "Skip files in cold storage tiers (e.g., S3 Glacier, Azure Archive/Cool/Cold, GCS Coldline/Archive). When enabled, only files in hot/standard storage tiers will be processed.",
@@ -18890,20 +18498,6 @@
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsDataDiff": {
                       "title": "Supports Data Diff Extraction.",
@@ -19894,20 +19488,6 @@
                       "type": "boolean",
                       "default": true
                     },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
                       "type": "boolean",
@@ -20744,20 +20324,6 @@
                       },
                       "additionalProperties": false
                     },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    },
                     "supportsIncrementalMetadataExtraction": {
                       "title": "Supports Incremental Metadata Extraction",
                       "description": "Supports Incremental Metadata Extraction.",
@@ -21177,20 +20743,6 @@
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
@@ -21688,20 +21240,6 @@
                       "description": "Supports Lineage Extraction.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsQueryComment": {
                       "title": "Supports Query Comment",
@@ -22845,20 +22383,6 @@
                       "description": "The source service supports the database concept in its hierarchy",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     }
                   },
                   "additionalProperties": false,
@@ -23418,20 +22942,6 @@
                       "description": "Supports Profiler",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
@@ -26519,20 +26029,6 @@
                               "type": "boolean",
                               "default": true
                             },
-                            "sampleDataStorageConfig": {
-                              "title": "Storage Config for Sample Data",
-                              "description": "Storage config to store sample data",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                              "properties": {
-                                "config": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              },
-                              "additionalProperties": false
-                            },
                             "supportsDataDiff": {
                               "title": "Supports Data Diff Extraction.",
                               "description": "Supports the data diff data qualty specification.",
@@ -27306,20 +26802,6 @@
                               "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                               "type": "boolean",
                               "default": true
-                            },
-                            "sampleDataStorageConfig": {
-                              "title": "Storage Config for Sample Data",
-                              "description": "Storage config to store sample data",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                              "properties": {
-                                "config": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              },
-                              "additionalProperties": false
                             },
                             "supportsDataDiff": {
                               "title": "Supports Data Diff Extraction.",
@@ -29326,20 +28808,6 @@
                               "type": "boolean",
                               "default": true
                             },
-                            "sampleDataStorageConfig": {
-                              "title": "Storage Config for Sample Data",
-                              "description": "Storage config to store sample data",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                              "properties": {
-                                "config": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              },
-                              "additionalProperties": false
-                            },
                             "supportsDataDiff": {
                               "title": "Supports Data Diff Extraction.",
                               "description": "Supports the data diff data qualty specification.",
@@ -29828,20 +29296,6 @@
                               "type": "boolean",
                               "default": true
                             },
-                            "sampleDataStorageConfig": {
-                              "title": "Storage Config for Sample Data",
-                              "description": "Storage config to store sample data",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                              "properties": {
-                                "config": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              },
-                              "additionalProperties": false
-                            },
                             "supportsDataDiff": {
                               "title": "Supports Data Diff Extraction.",
                               "description": "Supports the data diff data qualty specification.",
@@ -30036,20 +29490,6 @@
                               "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                               "type": "boolean",
                               "default": true
-                            },
-                            "sampleDataStorageConfig": {
-                              "title": "Storage Config for Sample Data",
-                              "description": "Storage config to store sample data",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                              "properties": {
-                                "config": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              },
-                              "additionalProperties": false
                             },
                             "supportsViewLineageExtraction": {
                               "description": "Supports View Lineage Extraction.",
@@ -30453,20 +29893,6 @@
                               "type": "boolean",
                               "default": true
                             },
-                            "sampleDataStorageConfig": {
-                              "title": "Storage Config for Sample Data",
-                              "description": "Storage config to store sample data",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                              "properties": {
-                                "config": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              },
-                              "additionalProperties": false
-                            },
                             "supportsQueryComment": {
                               "title": "Supports Query Comment",
                               "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
@@ -30848,20 +30274,6 @@
                           "description": "Supports Lineage Extraction.",
                           "type": "boolean",
                           "default": true
-                        },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "description": "Storage config to store sample data",
-                          "type": "object",
-                          "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                          "properties": {
-                            "config": {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          },
-                          "additionalProperties": false
                         },
                         "supportsQueryComment": {
                           "title": "Supports Query Comment",
@@ -40464,20 +39876,6 @@
                               "type": "boolean",
                               "default": true
                             },
-                            "sampleDataStorageConfig": {
-                              "title": "Storage Config for Sample Data",
-                              "description": "Storage config to store sample data",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                              "properties": {
-                                "config": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              },
-                              "additionalProperties": false
-                            },
                             "supportsDataDiff": {
                               "title": "Supports Data Diff Extraction.",
                               "description": "Supports the data diff data qualty specification.",
@@ -41251,20 +40649,6 @@
                               "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                               "type": "boolean",
                               "default": true
-                            },
-                            "sampleDataStorageConfig": {
-                              "title": "Storage Config for Sample Data",
-                              "description": "Storage config to store sample data",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                              "properties": {
-                                "config": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              },
-                              "additionalProperties": false
                             },
                             "supportsDataDiff": {
                               "title": "Supports Data Diff Extraction.",
@@ -45061,20 +44445,6 @@
                       "type": "boolean",
                       "default": false
                     },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    },
                     "supportsDataDiff": {
                       "title": "Supports Data Diff Extraction.",
                       "description": "Supports the data diff data qualty specification.",
@@ -45817,20 +45187,6 @@
                       "description": "Supports the data diff data qualty specification.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     }
                   },
                   "additionalProperties": false,
@@ -46069,20 +45425,6 @@
                       "description": "The source service supports the database concept in its hierarchy",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     }
                   },
                   "additionalProperties": false,
@@ -46303,20 +45645,6 @@
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     }
                   },
                   "additionalProperties": false,
@@ -46866,20 +46194,6 @@
                         }
                       },
                       "additionalProperties": false
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     }
                   },
                   "additionalProperties": false,
@@ -47153,20 +46467,6 @@
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
@@ -47745,20 +47045,6 @@
                       "description": "Supports DBT Extraction.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
@@ -48792,20 +48078,6 @@
                               "type": "boolean",
                               "default": true
                             },
-                            "sampleDataStorageConfig": {
-                              "title": "Storage Config for Sample Data",
-                              "description": "Storage config to store sample data",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                              "properties": {
-                                "config": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              },
-                              "additionalProperties": false
-                            },
                             "supportsDataDiff": {
                               "title": "Supports Data Diff Extraction.",
                               "description": "Supports the data diff data qualty specification.",
@@ -49580,20 +48852,6 @@
                               "type": "boolean",
                               "default": true
                             },
-                            "sampleDataStorageConfig": {
-                              "title": "Storage Config for Sample Data",
-                              "description": "Storage config to store sample data",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                              "properties": {
-                                "config": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              },
-                              "additionalProperties": false
-                            },
                             "supportsDataDiff": {
                               "title": "Supports Data Diff Extraction.",
                               "description": "Supports the data diff data qualty specification.",
@@ -49740,20 +48998,6 @@
                       "description": "Supports Profiler",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
@@ -49970,20 +49214,6 @@
                       "type": "boolean",
                       "default": true
                     },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
                       "type": "boolean",
@@ -50197,20 +49427,6 @@
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
@@ -50543,20 +49759,6 @@
                       "description": "Supports Lineage Extraction.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsQueryComment": {
                       "title": "Supports Query Comment",
@@ -51613,20 +50815,6 @@
                       "type": "boolean",
                       "default": true
                     },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    },
                     "supportsDataDiff": {
                       "title": "Supports Data Diff Extraction.",
                       "description": "Supports the data diff data qualty specification.",
@@ -51841,20 +51029,6 @@
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
@@ -52197,20 +51371,6 @@
                       "description": "Supports the data diff data qualty specification.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     }
                   },
                   "additionalProperties": false,
@@ -52673,20 +51833,6 @@
                       "type": "boolean",
                       "default": true
                     },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    },
                     "supportsDataDiff": {
                       "title": "Supports Data Diff Extraction.",
                       "description": "Supports the data diff data qualty specification.",
@@ -53131,20 +52277,6 @@
                       "type": "boolean",
                       "default": true
                     },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    },
                     "supportsDataDiff": {
                       "title": "Supports Data Diff Extraction.",
                       "description": "Supports the data diff data qualty specification.",
@@ -53354,20 +52486,6 @@
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     }
                   },
                   "additionalProperties": false,
@@ -53793,20 +52911,6 @@
                       "description": "The source database supports system profiles for tables such as last update.",
                       "type": "boolean",
                       "default": false
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsDataDiff": {
                       "title": "Supports Data Diff Extraction.",
@@ -54458,20 +53562,6 @@
                       "type": "boolean",
                       "default": true
                     },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
                       "type": "boolean",
@@ -54804,20 +53894,6 @@
                       "description": "The source database supports system profiles for tables such as last update.",
                       "type": "boolean",
                       "default": false
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsDataDiff": {
                       "title": "Supports Data Diff Extraction.",
@@ -55180,20 +54256,6 @@
                       "type": "boolean",
                       "default": true
                     },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    },
                     "supportsDataDiff": {
                       "title": "Supports Data Diff Extraction.",
                       "description": "Supports the data diff data qualty specification.",
@@ -55403,20 +54465,6 @@
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     }
                   },
                   "additionalProperties": false,
@@ -55608,20 +54656,6 @@
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
@@ -56265,20 +55299,6 @@
                       "type": "boolean",
                       "default": true
                     },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    },
                     "skipColdStorage": {
                       "title": "Skip Cold Storage",
                       "description": "Skip files in cold storage tiers (e.g., S3 Glacier, Azure Archive/Cool/Cold, GCS Coldline/Archive). When enabled, only files in hot/standard storage tiers will be processed.",
@@ -56775,20 +55795,6 @@
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsDataDiff": {
                       "title": "Supports Data Diff Extraction.",
@@ -57779,20 +56785,6 @@
                       "type": "boolean",
                       "default": true
                     },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
                       "type": "boolean",
@@ -58629,20 +57621,6 @@
                       },
                       "additionalProperties": false
                     },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    },
                     "supportsIncrementalMetadataExtraction": {
                       "title": "Supports Incremental Metadata Extraction",
                       "description": "Supports Incremental Metadata Extraction.",
@@ -59062,20 +58040,6 @@
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
@@ -59573,20 +58537,6 @@
                       "description": "Supports Lineage Extraction.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsQueryComment": {
                       "title": "Supports Query Comment",
@@ -60730,20 +59680,6 @@
                       "description": "The source service supports the database concept in its hierarchy",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     }
                   },
                   "additionalProperties": false,
@@ -61303,20 +60239,6 @@
                       "description": "Supports Profiler",
                       "type": "boolean",
                       "default": true
-                    },
-                    "sampleDataStorageConfig": {
-                      "title": "Storage Config for Sample Data",
-                      "description": "Storage config to store sample data",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                      "properties": {
-                        "config": {
-                          "title": "OpenMetadata Storage",
-                          "type": "object",
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
                     },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
@@ -64404,20 +63326,6 @@
                               "type": "boolean",
                               "default": true
                             },
-                            "sampleDataStorageConfig": {
-                              "title": "Storage Config for Sample Data",
-                              "description": "Storage config to store sample data",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                              "properties": {
-                                "config": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              },
-                              "additionalProperties": false
-                            },
                             "supportsDataDiff": {
                               "title": "Supports Data Diff Extraction.",
                               "description": "Supports the data diff data qualty specification.",
@@ -65191,20 +64099,6 @@
                               "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                               "type": "boolean",
                               "default": true
-                            },
-                            "sampleDataStorageConfig": {
-                              "title": "Storage Config for Sample Data",
-                              "description": "Storage config to store sample data",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                              "properties": {
-                                "config": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              },
-                              "additionalProperties": false
                             },
                             "supportsDataDiff": {
                               "title": "Supports Data Diff Extraction.",
@@ -67211,20 +66105,6 @@
                               "type": "boolean",
                               "default": true
                             },
-                            "sampleDataStorageConfig": {
-                              "title": "Storage Config for Sample Data",
-                              "description": "Storage config to store sample data",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                              "properties": {
-                                "config": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              },
-                              "additionalProperties": false
-                            },
                             "supportsDataDiff": {
                               "title": "Supports Data Diff Extraction.",
                               "description": "Supports the data diff data qualty specification.",
@@ -67713,20 +66593,6 @@
                               "type": "boolean",
                               "default": true
                             },
-                            "sampleDataStorageConfig": {
-                              "title": "Storage Config for Sample Data",
-                              "description": "Storage config to store sample data",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                              "properties": {
-                                "config": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              },
-                              "additionalProperties": false
-                            },
                             "supportsDataDiff": {
                               "title": "Supports Data Diff Extraction.",
                               "description": "Supports the data diff data qualty specification.",
@@ -67921,20 +66787,6 @@
                               "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                               "type": "boolean",
                               "default": true
-                            },
-                            "sampleDataStorageConfig": {
-                              "title": "Storage Config for Sample Data",
-                              "description": "Storage config to store sample data",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                              "properties": {
-                                "config": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              },
-                              "additionalProperties": false
                             },
                             "supportsViewLineageExtraction": {
                               "description": "Supports View Lineage Extraction.",
@@ -68338,20 +67190,6 @@
                               "type": "boolean",
                               "default": true
                             },
-                            "sampleDataStorageConfig": {
-                              "title": "Storage Config for Sample Data",
-                              "description": "Storage config to store sample data",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                              "properties": {
-                                "config": {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              },
-                              "additionalProperties": false
-                            },
                             "supportsQueryComment": {
                               "title": "Supports Query Comment",
                               "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
@@ -68733,20 +67571,6 @@
                           "description": "Supports Lineage Extraction.",
                           "type": "boolean",
                           "default": true
-                        },
-                        "sampleDataStorageConfig": {
-                          "title": "Storage Config for Sample Data",
-                          "description": "Storage config to store sample data",
-                          "type": "object",
-                          "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-                          "properties": {
-                            "config": {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          },
-                          "additionalProperties": false
                         },
                         "supportsQueryComment": {
                           "title": "Supports Query Comment",

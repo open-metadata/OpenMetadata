@@ -501,14 +501,6 @@ describe('ConnectionConfigForm schema rendering', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('does not render the fieldless sample data storage group', async () => {
-    const { container } = await renderConnectionSchema('Snowflake');
-
-    expect(
-      container.querySelectorAll('[data-field-id$="/sampleDataStorageConfig"]')
-    ).toHaveLength(0);
-  });
-
   it('keeps Hive metastore connection details as a full-width schema choice', async () => {
     const { container } = await renderConnectionSchema('Hive');
     const scopeSection = getRequiredElement(

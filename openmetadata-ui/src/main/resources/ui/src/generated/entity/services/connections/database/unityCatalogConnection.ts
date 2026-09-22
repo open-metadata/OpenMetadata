@@ -53,8 +53,7 @@ export interface UnityCatalogConnection {
     /**
      * Policy agent configuration for access control extraction.
      */
-    policyAgentConfig?:       PolicyAgentConfig;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    policyAgentConfig?: PolicyAgentConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -162,16 +161,6 @@ export interface PolicyAgentConfig {
      * Supports masked access policy extraction.
      */
     supportsMaskedAccess?: boolean;
-}
-
-/**
- * Storage config to store sample data
- */
-export interface SampleDataStorageConfig {
-    config?: OpenMetadataStorage;
-}
-
-export interface OpenMetadataStorage {
 }
 
 /**

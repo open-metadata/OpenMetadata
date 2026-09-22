@@ -2,7 +2,6 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -31,23 +30,24 @@ import org.openmetadata.service.migration.utils.MigrationFile;
 /**
  * The 2.1.0 upgrade path for external S3 sample-data storage (collate#5995).
  *
- * <p>{@code sampleDataStorageConfig.config} used to hold a bucket name, prefix, file-path pattern,
- * overwrite flag and AWS credentials. The tightened schema admits an empty object and nothing else,
- * so every stored row still carrying the old shape stops deserializing on upgrade — {@code
- * UnrecognizedPropertyException} against the generated Java config class, {@code too_long} against
- * the generated Pydantic model on the ingestion side. The SQL migration is the only thing that
- * repairs those rows, and migration statements are checksummed as applied, so a backfill that
- * misses a table misses it permanently.
+ * <p>{@code sampleDataStorageConfig} used to hold a bucket name, prefix, file-path pattern,
+ * overwrite flag and AWS credentials. Removing external storage left it able to hold nothing at
+ * all, so the property itself was dropped from every connection and profiler schema. Connection
+ * schemas set {@code additionalProperties: false}, so every stored row still carrying the key —
+ * the legacy S3 shape and the empty OpenMetadata-hosted object alike — stops deserializing on
+ * upgrade with an {@code UnrecognizedPropertyException} against the generated Java config class.
+ * The SQL migration is the only thing that repairs those rows, and migration statements are
+ * checksummed as applied, so a backfill that misses a table misses it permanently.
  *
- * <p>The first test proves the surgery on a real service row. The second proves it on a version
- * snapshot, because version history is a second copy of the same JSON that {@code
- * EntityRepository.getVersion} deserializes into the same POJO — repairing only the live row leaves
- * {@code GET .../versions/{version}} broken.
+ * <p>The first test proves the surgery on real service rows, in both shapes, and proves it takes
+ * nothing else out of the connection with it. The second proves it on a version snapshot, because
+ * version history is a second copy of the same JSON that {@code EntityRepository.getVersion}
+ * deserializes into the same POJO — repairing only the live row leaves {@code GET
+ * .../versions/{version}} broken.
  *
- * <p>Which paths the backfill has to reach is a property of the schema graph, so that inventory is
- * derived from {@code openmetadata-spec} in {@code SampleDataStorageMigrationPathsTest} rather than
- * restated here. This class only pins the statement count, so a table cannot be dropped from the
- * migration without one of the two tests noticing.
+ * <p>Which paths the backfill has to reach is pinned in {@code SampleDataStorageMigrationPathsTest}
+ * rather than restated here. This class only pins the statement count, so a table cannot be dropped
+ * from the migration without one of the two tests noticing.
  *
  * <p>Isolated rather than concurrent: reproducing the pre-upgrade state means parking a row in
  * {@code dbservice_entity} that no longer deserializes, and until the migration runs any other test
@@ -63,7 +63,7 @@ public class SampleDataStorageMigrationIT {
           + "\"filePathPattern\":\"{service_name}/sample_data.parquet\","
           + "\"overwriteData\":true,\"storageConfig\":{\"awsRegion\":\"us-east-1\"}}";
 
-  /** Every table the legacy shape can reach; one backfill statement each. */
+  /** Every table the removed property can reach; one backfill statement each. */
   private static final List<String> BACKFILLED_TABLES =
       List.of(
           "dbservice_entity",
@@ -80,14 +80,16 @@ public class SampleDataStorageMigrationIT {
   private static final String STORAGE_CONFIG = "sampleDataStorageConfig";
   private static final String SERVICE_ENTITY_TYPE = "databaseService";
   private static final String VERSION_EXTENSION = "databaseService.version.0.1";
+  private static final String USERNAME = "username";
+  private static final String CONNECTION_USERNAME = "migration-user";
 
   @Test
-  void migrationStripsTheLegacyShapeAndLeavesOpenMetadataHostedStorageAlone(TestNamespace ns) {
+  void migrationRemovesEveryStoredShapeAndTakesNothingElseWithIt(TestNamespace ns) {
     DatabaseService legacy = createSnowflakeService(ns, "legacy");
     DatabaseService hosted = createSnowflakeService(ns, "hosted");
 
     // Direct SQL, because the API would reject the shape it no longer has a schema for — which is
-    // exactly how these rows came to exist: they were written before the schema was tightened.
+    // exactly how these rows came to exist: they were written before the property was removed.
     injectStorageConfig(legacy.getId(), LEGACY_CONFIG);
     injectStorageConfig(hosted.getId(), "{}");
 
@@ -95,25 +97,33 @@ public class SampleDataStorageMigrationIT {
         JsonParsingException.class,
         () -> readConnectionConfig(serviceJson(legacy.getId())),
         "precondition: the legacy row is what breaks on upgrade");
+    assertThrows(
+        JsonParsingException.class,
+        () -> readConnectionConfig(serviceJson(hosted.getId())),
+        "precondition: so is the empty hosted row, now that the property is gone");
 
     runSampleDataStorageStatements();
 
-    assertNull(
-        storageConfigNode(serviceJson(legacy.getId())), "the legacy node is removed outright");
+    assertRepaired(legacy.getId(), "the legacy node is removed outright");
+    assertRepaired(hosted.getId(), "so is the empty hosted node");
+
+    runSampleDataStorageStatements();
+
+    assertRepaired(legacy.getId(), "re-running the migration changes nothing");
+    assertRepaired(hosted.getId(), "re-running the migration changes nothing");
+  }
+
+  /** The holder is gone, the rest of the connection is not, and the row parses again. */
+  private void assertRepaired(UUID serviceId, String because) {
+    String json = serviceJson(serviceId);
+    assertNull(storageConfigNode(json), because);
+    assertEquals(
+        CONNECTION_USERNAME,
+        connectionField(json, USERNAME),
+        "only the holder is removed, not the connection around it");
     assertDoesNotThrow(
-        () -> readConnectionConfig(serviceJson(legacy.getId())),
+        () -> readConnectionConfig(json),
         "and the repaired row deserializes against the tightened schema");
-
-    JsonNode preserved = storageConfigNode(serviceJson(hosted.getId()));
-    assertNotNull(preserved, "OpenMetadata-hosted storage is valid and must survive");
-    assertEquals(0, preserved.size(), "untouched, not emptied by a blanket delete");
-
-    runSampleDataStorageStatements();
-
-    assertNull(
-        storageConfigNode(serviceJson(legacy.getId())), "re-running the migration changes nothing");
-    assertNotNull(
-        storageConfigNode(serviceJson(hosted.getId())), "re-running the migration changes nothing");
   }
 
   @Test
@@ -146,7 +156,7 @@ public class SampleDataStorageMigrationIT {
                     .withConfig(
                         new SnowflakeConnection()
                             .withAccount("migration-test")
-                            .withUsername("migration-user")
+                            .withUsername(CONNECTION_USERNAME)
                             .withWarehouse("migration-warehouse")));
     return SdkClients.adminClient().databaseServices().create(request);
   }
@@ -227,9 +237,11 @@ public class SampleDataStorageMigrationIT {
   }
 
   private static JsonNode storageConfigNode(String entityJson) {
-    JsonNode storage =
-        JsonUtils.readTree(entityJson).get(CONNECTION).get(CONFIG).get(STORAGE_CONFIG);
-    return storage == null ? null : storage.get(CONFIG);
+    return JsonUtils.readTree(entityJson).get(CONNECTION).get(CONFIG).get(STORAGE_CONFIG);
+  }
+
+  private static String connectionField(String entityJson, String field) {
+    return JsonUtils.readTree(entityJson).get(CONNECTION).get(CONFIG).get(field).asText();
   }
 
   /** Postgres stores the entity as JSONB, so the bound string needs an explicit cast. */
@@ -254,7 +266,7 @@ public class SampleDataStorageMigrationIT {
     assertEquals(
         BACKFILLED_TABLES.size(),
         statements.size(),
-        "one statement per table the legacy shape can reach");
+        "one statement per table the removed property can reach");
     TestSuiteBootstrap.getJdbi().useHandle(handle -> statements.forEach(handle::execute));
   }
 

@@ -40,8 +40,7 @@ export interface IometeConnection {
     /**
      * Password to connect to IOMETE.
      */
-    password:                 string;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    password: string;
     /**
      * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
      * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
@@ -63,16 +62,6 @@ export interface IometeConnection {
      * Username to connect to IOMETE.
      */
     username: string;
-}
-
-/**
- * Storage config to store sample data
- */
-export interface SampleDataStorageConfig {
-    config?: OpenMetadataStorage;
-}
-
-export interface OpenMetadataStorage {
 }
 
 /**

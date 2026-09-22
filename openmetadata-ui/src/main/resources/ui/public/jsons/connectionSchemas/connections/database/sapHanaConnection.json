@@ -218,20 +218,6 @@
       "type": "boolean",
       "default": true
     },
-    "sampleDataStorageConfig": {
-      "title": "Storage Config for Sample Data",
-      "description": "Storage config to store sample data",
-      "type": "object",
-      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
-      "properties": {
-        "config": {
-          "title": "OpenMetadata Storage",
-          "type": "object",
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
     "supportsDataDiff": {
       "title": "Supports Data Diff Extraction.",
       "description": "Supports the data diff data qualty specification.",

@@ -23,9 +23,6 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableData,
 )
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    SampleDataStorageConfig,
-)
 from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     ProfileSampleType,
@@ -81,8 +78,6 @@ class TableConfig(BaseProfileConfig):
 
 class DatabaseAndSchemaConfig(BaseProfileConfig):
     """schema profile config"""
-
-    sampleDataStorageConfig: SampleDataStorageConfig | None = None  # noqa: N815
 
 
 class SampleData(BaseModel):

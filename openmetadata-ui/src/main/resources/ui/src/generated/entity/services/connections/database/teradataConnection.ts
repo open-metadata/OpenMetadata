@@ -44,8 +44,7 @@ export interface TeradataConnection {
     /**
      * Password to connect to Teradata.
      */
-    password?:                string;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    password?: string;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -114,16 +113,6 @@ export enum Logmech {
     LDAP = "LDAP",
     Td2 = "TD2",
     Tdnego = "TDNEGO",
-}
-
-/**
- * Storage config to store sample data
- */
-export interface SampleDataStorageConfig {
-    config?: OpenMetadataStorage;
-}
-
-export interface OpenMetadataStorage {
 }
 
 /**

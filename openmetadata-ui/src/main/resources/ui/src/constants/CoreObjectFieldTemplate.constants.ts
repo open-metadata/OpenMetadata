@@ -13,7 +13,6 @@
 export const ADVANCED_PROPERTIES = new Set([
   'connectionArguments',
   'connectionOptions',
-  'sampleDataStorageConfig',
   'scheme',
   'sslConfig',
   'sslMode',

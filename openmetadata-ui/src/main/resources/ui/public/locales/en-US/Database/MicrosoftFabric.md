@@ -184,7 +184,3 @@ Examples:
 - Exclude temporary tables: `^(?!tmp_).*`
 $$
 
-$$section
-### Sample Data Storage Config $(id="sampleDataStorageConfig")
-Storage configuration for sample data. Sample data can be stored in a database or in S3.
-$$
