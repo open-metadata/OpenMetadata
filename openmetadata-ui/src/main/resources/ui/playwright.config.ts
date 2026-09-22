@@ -227,6 +227,15 @@ export default defineConfig({
     /* Self-signed cert in h2 mode — accept it. No effect on HTTP/1.1 runs. */
     ignoreHTTPSErrors: isH2Mode,
 
+    /* Emulate prefers-reduced-motion so CSS/react-aria trigger and overlay
+     * transitions resolve instantly — a click landing before the animation
+     * settles is a common flake source. Pixel/geometry-sensitive projects
+     * (visual-regression, Knowledge Graph, Ontology RDF) opt back out via
+     * reducedMotion: 'no-preference' below, because the graph's fit/centering
+     * geometry shifts under reduced motion and the snapshot/geometry
+     * assertions are calibrated for the default motion path. */
+    reducedMotion: 'reduce',
+
     /* Collect trace and video on every failure (not just retries) for debugging */
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
@@ -281,13 +290,17 @@ export default defineConfig({
       testIgnore: [
         '**/nightly/**',
         '**/Search/**',
+        // Every SSO spec lives under Auth/ and mutates the backend's
+        // authenticationConfiguration via applyProviderConfig — the main
+        // project must never pick them up, or entity/domain/search tests
+        // would race a mid-run auth swap. The `sso-auth` project owns
+        // these specs exclusively (fullyParallel:false, workers:1).
         '**/Auth/**',
         '**/Http2/**',
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
-        '**/SSOLogin.spec.ts',
         '**/IntakeForm.spec.ts',
         '**/AdvancedSearch.spec.ts',
         ...dedicatedStateTestIgnore,
@@ -303,6 +316,8 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 900 },
         storageState: 'playwright/.auth/admin.json',
+        // Snapshots are captured under the default motion path.
+        reducedMotion: 'no-preference',
       },
     },
     // Only register the h2 project when explicitly opted in. Always-on registration would force
@@ -319,12 +334,18 @@ export default defineConfig({
         ]
       : []),
     {
+      // Isolated from the main `chromium` project — the primary project's
+      // testIgnore excludes '**/Auth/**' so nothing here can race the
+      // entity/domain/search suites on global backend config mutations
+      // (each SSO fixture calls applyProviderConfig which swaps the
+      // authenticationConfiguration server-wide). Legacy per-provider
+      // specs listed here plus the new parametrized SsoScenarios file
+      // that runs 9 flows against every SsoProviderFixture in the matrix.
       name: 'sso-auth',
       testMatch: [
+        '**/SsoScenarios.spec.ts',
         '**/OktaSelfSignupClaims.spec.ts',
-        '**/OktaSessionRenewalPublic.spec.ts',
-        '**/SSOLogin.spec.ts',
-        '**/SSORenewal.spec.ts',
+        '**/SSOSelfSignup.spec.ts',
         '**/SSOSessionLimit.spec.ts',
       ],
       use: { ...devices['Desktop Chrome'], trace: 'retain-on-failure' },
@@ -359,14 +380,18 @@ export default defineConfig({
     },
     {
       name: 'Knowledge Graph',
-      use: { ...devices['Desktop Chrome'] },
+      // The graph's fit/centering geometry differs under reduced motion, so
+      // its boundingBox assertions run on the default motion path.
+      use: { ...devices['Desktop Chrome'], reducedMotion: 'no-preference' },
       dependencies: ['setup', 'entity-data-setup'],
       grep: /knowledge-graph/,
       teardown: 'entity-data-teardown',
     },
     {
       name: 'Ontology RDF',
-      use: { ...devices['Desktop Chrome'] },
+      // Same graph canvas as Knowledge Graph — keep the default motion path so
+      // fit/centering geometry matches the assertions.
+      use: { ...devices['Desktop Chrome'], reducedMotion: 'no-preference' },
       dependencies: ['ontology-rdf-setup'],
       grep: /ontology-rdf/,
       teardown: 'entity-data-teardown',
@@ -402,7 +427,20 @@ export default defineConfig({
     {
       name: 'Basic',
       grep: combineGrep(/@basic/),
-      testIgnore: dedicatedStateTestIgnore,
+      // The SSO scenario matrix (SsoScenarios.spec.ts) tags its Basic-provider
+      // row with `@basic` because each leg is labelled by its fixture slug.
+      // The `sso-auth` project already owns those specs via testMatch, but
+      // this project's `@basic` grep would otherwise pull them in and run
+      // them concurrently with real `@basic` feature tests — where the
+      // fixture's `beforeAll` (`configureBackend`) mutates
+      // `authenticationConfiguration` server-wide, so a co-scheduled test
+      // hitting `/api/v1/users/signup` sees Self Signup toggled off and
+      // fails with 501. Ignoring `**/Auth/**` here keeps the `Basic`
+      // project focused on feature specs and lets the `sso-auth` project
+      // (fullyParallel:false, workers:1) own auth-config mutations
+      // exclusively, mirroring the same guard the primary `chromium`
+      // project already has on its testIgnore.
+      testIgnore: [...dedicatedStateTestIgnore, '**/Auth/**'],
       use: { ...devices['Desktop Chrome'] },
       dependencies: entityDependencies,
       fullyParallel: true,

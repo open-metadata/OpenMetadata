@@ -20,7 +20,8 @@ import {
   useEffect,
   useImperativeHandle,
 } from 'react';
-import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
+import { authCoordinator } from '../../../utils/Auth/AuthCoordinator/AuthCoordinator';
+import type { Renewer } from '../../../utils/Auth/AuthCoordinator/types';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
@@ -39,20 +40,28 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
       logout,
     } = useAuth0();
 
-    const renewIdToken = useCallback(async (): Promise<string> => {
-      let idToken = '';
+    // Bridges to the AuthCoordinator Renewer contract (auth-coordinator-refactor
+    // Task 11). Kept alongside renewIdToken until every authenticator is
+    // migrated and the old TokenService path is deleted. Reads the raw
+    // IdToken claims directly instead of going through the setOidcToken side
+    // effect renewIdToken performs — the AuthCoordinator owns storage now.
+    const getRenewer = useCallback(
+      (): Renewer => async () => {
+        await getAccessTokenSilently();
 
-      // Need to emmit error if this fails
-      await getAccessTokenSilently();
+        const claims = await getIdTokenClaims();
 
-      const claims = await getIdTokenClaims();
-      if (claims) {
-        idToken = claims.__raw;
-        await setOidcToken(idToken);
-      }
+        if (!claims?.__raw) {
+          throw new Error('Auth0 renewal returned no idToken');
+        }
 
-      return idToken;
-    }, [getAccessTokenSilently, getIdTokenClaims]);
+        return {
+          idToken: claims.__raw,
+          expiresAt: (claims.exp ?? 0) * 1000,
+        };
+      },
+      [getAccessTokenSilently, getIdTokenClaims]
+    );
 
     useImperativeHandle(ref, () => ({
       invokeLogin() {
@@ -71,18 +80,29 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
           handleSuccessfulLogout();
         }
       },
-      renewIdToken,
+      async renewIdToken(): Promise<string> {
+        let idToken = '';
+
+        // Need to emmit error if this fails
+        await getAccessTokenSilently();
+
+        const claims = await getIdTokenClaims();
+        if (claims) {
+          idToken = claims.__raw;
+          await setOidcToken(idToken);
+        }
+
+        return idToken;
+      },
     }));
 
-    // Register the renewer with TokenService from this authenticator's own
-    // mount effect (see BasicAuthAuthenticator for the full rationale) —
-    // avoids the ref-deps race in the parent that hangs cold-load 401s on
-    // Auth0.
+    // Register the coordinator renewer directly from this authenticator's
+    // own mount effect (avoids the ref-based race in the parent).
     useEffect(() => {
-      TokenService.getInstance().updateRenewToken(renewIdToken);
+      authCoordinator.registerRenewer(getRenewer());
 
-      return () => TokenService.getInstance().updateRenewToken(null);
-    }, [renewIdToken]);
+      return () => authCoordinator.registerRenewer(null);
+    }, [getRenewer]);
 
     return <Fragment>{children}</Fragment>;
   }

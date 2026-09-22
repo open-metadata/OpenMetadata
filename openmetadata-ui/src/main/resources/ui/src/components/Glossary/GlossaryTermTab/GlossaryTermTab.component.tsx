@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -55,7 +55,6 @@ import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-dow
 import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
-  API_RES_MAX_SIZE,
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE_LARGE,
@@ -112,10 +111,8 @@ import { ownerTableObject } from '../../../utils/TableColumn.util';
 import { isTaskPendingFurtherApproval } from '../../../utils/TaskNavigationUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import {
-  NoFilteredResultsPlaceholder,
-  NoSearchResultsPlaceholder,
-} from '../../common/EmptyPlaceholder';
+import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -749,30 +746,36 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       setIsLoadingMoreTree(false);
     }
   };
+  const lastFetchedTaskFqnRef = useRef<string | undefined>(undefined);
+
   const fetchAllTasks = useCallback(async () => {
-    if (!activeGlossary?.fullyQualifiedName) {
+    const fqn = activeGlossary?.fullyQualifiedName;
+    if (!fqn || fqn === lastFetchedTaskFqnRef.current) {
       return;
     }
 
     try {
+      // aboutEntity uses server-side prefix matching (FQN LIKE 'glossary.%'), so
+      // only tasks for terms under this glossary are returned — no client-side
+      // prefix filter needed and the limit is now glossary-scoped, not platform-wide.
       const { data } = await listTasks({
         status: TaskEntityStatus.Open,
         category: TaskCategory.Approval,
         type: TaskEntityType.RequestApproval,
-        limit: API_RES_MAX_SIZE,
+        aboutEntity: fqn,
+        limit: PAGE_SIZE_LARGE,
         fields: 'about,assignees',
       });
+      lastFetchedTaskFqnRef.current = fqn;
 
       // Glossary approvals are now workflow-managed RequestApproval tasks created
       // for each glossary term, not legacy glossary-root tasks.
       const tasksByTerm = data.reduce(
         (acc: Record<string, Task[]>, task: Task) => {
           const termFQN = task.about?.fullyQualifiedName;
-          const isGlossaryTermTask =
-            task.about?.type === EntityType.GLOSSARY_TERM &&
-            termFQN?.startsWith(`${activeGlossary.fullyQualifiedName}.`);
-
-          if (isGlossaryTermTask && termFQN) {
+          // Keep only term tasks — the prefix filter also returns the root glossary
+          // entity exact-match, so guard against tasks on the glossary itself.
+          if (task.about?.type === EntityType.GLOSSARY_TERM && termFQN) {
             const entityLink = `<#E::${EntityType.GLOSSARY_TERM}::${termFQN}>`;
             if (!acc[entityLink]) {
               acc[entityLink] = [];

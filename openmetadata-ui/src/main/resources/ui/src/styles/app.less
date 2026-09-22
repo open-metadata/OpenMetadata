@@ -22,6 +22,20 @@ body {
   font-feature-settings: normal !important;
 }
 
+// Dark app background: the gray-blue-50 scale's dark step (#0d0f1c) is bluer
+// than the design recording's page base (#0c0e12). Override dark only to the
+// page token; light keeps the frozen gray-blue-50 (#f8f9fc).
+.dark-mode body {
+  background: var(--tw-background-color-primary);
+}
+
+// AI-mode shell background in dark: page-dark so the sidebar's margin doesn't
+// expose the gray-blue app body behind it (seamless with the canvas sidebar).
+// Dark only; light is unchanged (inherits the body as before).
+.dark-mode .assistant-layout {
+  background: var(--tw-color-bg-primary);
+}
+
 .main-container {
   display: flex;
   height: 100vh;
@@ -790,7 +804,7 @@ a[href].link-text-grey,
   /* Since CSS 2.1 */
 }
 
-.table-query-editor pre.CodeMirror-line {
+.table-query-editor .cm-line {
   padding-right: var(--om-space-60) !important;
 }
 
@@ -831,6 +845,51 @@ a[href].link-text-grey,
 
 .react-flow__attribution > a {
   color: @background-color !important;
+}
+
+// Dark-mode bridge for fixed-hex legacy LESS palette vars.
+// Each var in variables.less is `@x: var(--om-x, #originalHex)`, so light
+// mode resolves to the exact original hex (no drift) while dark mode picks up
+// the semantic/utility override below. This themes every consumer of these
+// legacy vars app-wide without per-file edits. Utility tokens auto-invert under
+// .dark-mode, so referencing them here yields the dark value. Categorical ramps
+// (severity, heatmap gradients) are intentionally excluded — they belong to the
+// token foundation.
+.dark-mode {
+  // Neutral surfaces / borders / muted text
+  --om-grey-26: var(--color-bg-secondary_subtle);
+  --om-grey-25: var(--color-bg-secondary_subtle);
+  --om-grey-9: var(--color-bg-secondary_subtle);
+  --om-grey-1: var(--color-bg-secondary);
+  --om-grey-2: var(--color-bg-secondary);
+  --om-grey-5: var(--color-bg-secondary);
+  --om-grey-50: var(--color-bg-secondary);
+  // @grey-15 (= @border-color / @global-border) is the primary neutral border
+  // across antd + legacy components (cards, tabs, tables, panels, dividers).
+  // In dark, map it to the subtle white-alpha border (rgba(255,255,255,0.08))
+  // so every antd surface reads consistently instead of a solid gray edge —
+  // one change themes all @border-color borders app-wide (OSS + Collate via
+  // submodule). Light keeps the frozen #eaecf5 fallback.
+  --om-grey-15: var(--color-border-subtle);
+  --om-grey-7: var(--color-text-quaternary);
+  // Status — utility tokens auto-invert to readable dark values
+  --om-blue-13: var(--tw-color-utility-blue-light-100);
+  --om-blue-22: var(--tw-color-utility-blue-light-50);
+  --om-blue-500: var(--tw-color-utility-blue-light-500);
+  --om-green-9: var(--tw-color-utility-success-50);
+  --om-green-10: var(--tw-color-utility-success-700);
+  --om-green-12: var(--tw-color-utility-success-100);
+  --om-green-100: var(--tw-color-utility-success-100);
+  --om-green-500: var(--tw-color-utility-success-500);
+  --om-red-9: var(--tw-color-utility-error-50);
+  --om-red-10: var(--tw-color-utility-error-700);
+  --om-red-22: var(--tw-color-utility-error-500);
+  --om-yellow-10: var(--tw-color-utility-warning-50);
+  --om-alert-error-icon-bg-1: var(--tw-color-utility-error-100);
+  --om-alert-warning-icon: var(--tw-color-utility-warning-600);
+  --om-alert-warning-icon-bg-1: var(--tw-color-utility-warning-100);
+  --om-warning-100: var(--tw-color-utility-warning-100);
+  --om-warning-400: var(--tw-color-utility-warning-400);
 }
 
 // Dark-mode canvas chrome for every reactflow surface (lineage, workflow,
@@ -915,7 +974,7 @@ a[href].link-text-grey,
 
 // **********  Sample Data  ***********
 
-.topic-sample-data > .CodeMirror {
+.topic-sample-data .cm-editor {
   height: auto !important;
 }
 
@@ -929,7 +988,7 @@ a[href].link-text-grey,
   -webkit-box-orient: vertical;
 }
 
-.custom-entity-schema > .CodeMirror {
+.custom-entity-schema .cm-editor {
   height: 70vh;
 }
 
