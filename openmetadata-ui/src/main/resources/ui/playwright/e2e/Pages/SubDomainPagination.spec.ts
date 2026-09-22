@@ -57,20 +57,6 @@ test.describe('SubDomain Pagination', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await Promise.all(createPromises);
 
-    // Wait for all subdomains to be indexed in ES before any test runs.
-    // createPromises fired in parallel so we poll all 60 concurrently — total
-    // wait is max(per-entity wait) rather than 60× sequential.
-    await Promise.all(
-      subDomains.map((sd) =>
-        waitForSearchIndexed(
-          apiContext,
-          sd.responseData.fullyQualifiedName,
-          'domain_search_index',
-          { timeout: 60_000 }
-        )
-      )
-    );
-
     await afterAction();
   });
 
