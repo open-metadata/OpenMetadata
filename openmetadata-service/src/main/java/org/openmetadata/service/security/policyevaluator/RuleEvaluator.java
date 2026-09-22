@@ -18,6 +18,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 
 /**
@@ -456,6 +457,87 @@ public class RuleEvaluator {
   @SuppressWarnings("unused")
   public boolean isBotUser() {
     return matchesUserResource(user -> Boolean.TRUE.equals(user.getIsBot()));
+  }
+
+  @Function(
+      name = "isImpersonated",
+      input = "none",
+      description =
+          "Returns true if the request is attributed to a bot acting on the logged in user's "
+              + "behalf - a bot impersonating the user through the X-Impersonate-User header, or an "
+              + "MCP/AI tool call. This is the same attribution recorded as 'impersonatedBy' in the "
+              + "audit log, not a check that an impersonation grant was authorized, so use it in "
+              + "deny rules. Put it before tag conditions: tags are loaded lazily and this check "
+              + "short circuits them for ordinary user requests.",
+      examples = {
+        "isImpersonated()",
+        "isImpersonated() && matchAnyTag('Sensitivity.Confidential')"
+      })
+  @SuppressWarnings("unused")
+  public boolean isImpersonated() {
+    if (expressionValidation) {
+      return false;
+    }
+    return ImpersonationContext.getImpersonatedBy() != null;
+  }
+
+  @Function(
+      name = "impersonatedBy",
+      input = "List of comma separated bot names",
+      description =
+          "Returns true if the request is attributed to any of the given bots. Names are matched "
+              + "case insensitively, because an application bot's entity name and its user name "
+              + "differ only in case (McpApplicationBot vs mcpapplicationbot) and either may reach "
+              + "the policy. Carries the same attribution semantics as isImpersonated().",
+      examples = {"impersonatedBy('McpApplicationBot')"})
+  @SuppressWarnings("unused")
+  public boolean impersonatedBy(String... botNames) {
+    if (expressionValidation) {
+      for (String botName : botNames) {
+        validateBotName(botName);
+      }
+      return false;
+    }
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    return impersonatedBy != null
+        && Arrays.stream(botNames).anyMatch(impersonatedBy::equalsIgnoreCase);
+  }
+
+  /**
+   * Bot attribution carries a Bot entity name on the MCP path and the bot's user name on the
+   * X-Impersonate-User path, and for an application bot the two differ, so accept either.
+   */
+  private void validateBotName(String botName) {
+    try {
+      Entity.getEntityByName(Entity.BOT, botName, "", NON_DELETED);
+    } catch (EntityNotFoundException botNotFound) {
+      validateBotUserName(botName);
+    }
+  }
+
+  /**
+   * Only a bot ever appears as the impersonating principal, so a human's name in this position
+   * would save a deny rule that can never fire. Reject it rather than let it look enforced.
+   */
+  private void validateBotUserName(String botName) {
+    User user;
+    try {
+      user = Entity.getEntityByName(Entity.USER, botName, "", NON_DELETED);
+    } catch (EntityNotFoundException userNotFound) {
+      if (!isUpdate) {
+        throw userNotFound;
+      }
+      LOG.warn(
+          "Stale reference in policy condition: bot '{}' not found. "
+              + "Consider updating the policy rule condition.",
+          botName);
+      return;
+    }
+    if (!Boolean.TRUE.equals(user.getIsBot())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "%s is a user, not a bot, and can never be the impersonating bot", botName));
+    }
   }
 
   private boolean matchesUserResource(Predicate<User> predicate) {
