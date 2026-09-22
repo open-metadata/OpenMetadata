@@ -46,64 +46,14 @@ const RENEWER_WAIT_TIMEOUT_MS = 5_000;
 // can force the sign-out path instead of spinning against a broken IdP.
 const MAX_RECOVERY_ATTEMPTS = 1;
 
-// Circuit-breaker limits on the interceptor's 401 → refresh → retry chain.
-// Two independent counters, both required — one alone doesn't cover
-// every runaway pattern:
-//
-//   * `MAX_PER_REQUEST_RETRIES` caps how many times a SINGLE request can
-//     be re-issued through the refresh path. A misbehaving endpoint that
-//     always returns 401 (permissions bug whose body happens to match
-//     `REFRESHABLE_AUTH_ERRORS`, cached response with a stale-header
-//     server-side, etc.) is thrown back to its caller after this many
-//     retries rather than being re-queued forever.
-//
-//   * `MAX_REFRESH_CYCLES_PER_WINDOW` / `REFRESH_WINDOW_MS` rate-limit
-//     refresh cycles regardless of whether other requests are
-//     succeeding. If more than N cycles fire within the window the
-//     auth chain is broken beyond auto-recovery — emit `refresh-failed`
-//     and let AuthProvider drive sign-out.
-//
-//     A previous shape reset a "consecutive cycles" counter on any 2xx
-//     response, but greptile (r4069833676) pointed out the flaw: a
-//     persistently-failing endpoint polled every few seconds triggers
-//     a refresh cycle each poll while unrelated background requests
-//     succeed — every 2xx reset the counter and the refresh chain
-//     spun forever. A sliding-window RATE limit that only looks at
-//     cycle timestamps (no reset path) catches the polling case,
-//     still permits a legitimate cold-load burst (a few stale-header
-//     401s in the first second), and doesn't depend on interleaved
-//     2xx timing.
-//
-//     Concurrent 401s during a single in-flight refresh share ONE
-//     timestamp (only "new cycle" pushes) so parallel requests during
-//     a legitimate refresh don't fill the window.
-//
-// Together: single bad endpoint → its caller fails deterministically.
-// Whole-app-persistent 401 → user lands on /signin in bounded time
-// instead of spinning ~2 req/s indefinitely. No request storm survives
-// either guard.
 const MAX_PER_REQUEST_RETRIES = 2;
 const MAX_REFRESH_CYCLES_PER_WINDOW = 3;
 const REFRESH_WINDOW_MS = 30_000;
-
-// Bus event name — extracted so the interceptor and refresh paths share
-// one literal (satisfies `no-duplicate-string`).
 const REFRESH_FAILED_EVENT: AuthCoordinatorEvent = 'refresh-failed';
 
 export class AuthCoordinator {
   private renewer: Renewer | null = null;
   private inflight: Promise<string> | null = null;
-  // Sliding-window timestamps of refresh cycles that have started. Only
-  // pushed when a new cycle begins (`inflight === null`), so concurrent
-  // 401s during one in-flight refresh share ONE entry. Entries older
-  // than `REFRESH_WINDOW_MS` are pruned on each push. If the surviving
-  // count exceeds `MAX_REFRESH_CYCLES_PER_WINDOW` the circuit breaker
-  // trips (emit `refresh-failed`, stop feeding the loop).
-  //
-  // Deliberately NOT reset on 2xx: a persistently-failing endpoint
-  // polled every few seconds while unrelated requests succeed in the
-  // background would otherwise never trip the breaker, since every 2xx
-  // would zero the counter (greptile r4069833676).
   private refreshCycleTimestamps: number[] = [];
   private readonly bus = new TypedEventBus();
   private readonly queue = new RefreshQueue();
@@ -153,13 +103,6 @@ export class AuthCoordinator {
           throw error;
         }
 
-        // Per-request cap. Attach an idempotent counter to the request
-        // config on each 401 that reaches us — after the cap we throw
-        // instead of enqueueing so a single bad endpoint (permissions
-        // bug whose body happens to match REFRESHABLE_AUTH_ERRORS, a
-        // cached response with a stale header, etc.) fails
-        // deterministically for its caller rather than spinning through
-        // the refresh path forever.
         const cfg = error.config as
           | { __omAuthRetries?: number }
           | undefined;
@@ -171,14 +114,8 @@ export class AuthCoordinator {
           throw error;
         }
 
-        // Sliding-window rate limit. Only record a timestamp on a NEW
-        // cycle (no in-flight refresh) so concurrent 401s piggyback on
-        // the running refresh without filling the window. Prune entries
-        // older than the window BEFORE recording so long-lived tabs
-        // don't accumulate stale timestamps. If the surviving count
-        // exceeds the cap the auth chain is broken beyond auto-recovery
-        // — emit `refresh-failed` (AuthProvider drives sign-out) and
-        // stop feeding the loop.
+        // Increment only on a NEW cycle so concurrent 401s during one
+        // in-flight refresh share the entry.
         if (!this.inflight) {
           const now = Date.now();
           this.refreshCycleTimestamps = this.refreshCycleTimestamps.filter(
@@ -200,11 +137,8 @@ export class AuthCoordinator {
         }
 
         const pending = this.queue.enqueue(error.config);
-        // Force past the storage-freshness fast-path: the 401 we're
-        // handling right now is the server telling us the current stored
-        // token is invalid, even if its `exp` claim is still in the
-        // future (signing-key rotation, session revoke, etc.). See the
-        // `ensureFreshToken({ force })` docblock.
+        // Force: a 401 IS proof the stored token is server-rejected
+        // regardless of its `exp` claim, so bypass the fast-path.
         this.pumpQueue(axios, { force: true }).catch(() => undefined);
 
         return pending;
@@ -227,29 +161,10 @@ export class AuthCoordinator {
     const force = options.force ?? false;
 
     if (!force) {
-      // Fast-path: another tab may have already refreshed and written the
-      // new token to shared storage between our stale-header 401 and this
-      // call — in that case the CrossTabLock would still funnel us through
-      // a redundant renewer() cycle (the lock guarantees exactly-one
-      // refresh across tabs, not exactly-one refresh across time), so we'd
-      // hit the IdP again for a token we already have. Read storage first
-      // and short-circuit when it already carries a token whose remaining
-      // lifetime is safely past the pre-expiry buffer. Opaque / non-JWT /
-      // Unlimited-bot tokens (exp missing or non-positive) are treated as
-      // usable — matches the guard in `onTabVisible` and
-      // `initializeAuthState`. Any storage read error falls through to the
-      // full refresh path.
-      //
-      // `force:true` callers (the axios 401 interceptor + the SSE stream's
-      // 401 handler) skip this path because a 401 IS proof that the stored
-      // token is server-rejected, regardless of what its `exp` claim says
-      // — the server may have rotated its signing key ("Token signing key
-      // not found in configured public keys") or revoked the session while
-      // the token is still time-fresh. Without `force:true` those callers
-      // hit the fast-path, get the same rejected token back, retry the
-      // request with it, receive another 401, and loop indefinitely — no
-      // `/auth/refresh` call is ever made because every attempt is
-      // short-circuited by the still-fresh `exp` claim.
+      // Fast-path: reuse a still-time-fresh stored token (another tab
+      // may have already refreshed it) instead of hitting the IdP again.
+      // `force:true` callers skip this because a 401 IS proof the stored
+      // token is server-rejected regardless of `exp`.
       try {
         const stored = await getOidcToken();
         if (stored) {
@@ -263,19 +178,12 @@ export class AuthCoordinator {
           }
         }
       } catch {
-        // Fall through to doRefresh() — storage might be transiently
-        // unavailable (SW not ready yet), and the full refresh path has
-        // its own retry semantics.
+        // Storage flaky (SW not ready). Fall through to doRefresh().
       }
     }
 
-    // De-dupe concurrent refresh requests. A `force:true` caller waits on
-    // an already-in-flight refresh rather than starting a new one — the
-    // in-flight refresh's result is at least as fresh as what a new call
-    // would produce, and racing two `doRefresh()` invocations against a
-    // rotating-refresh-token IdP would invalidate each other. Fast-path
-    // reads above are not deduped because they are effectively synchronous
-    // (a single storage lookup) and don't benefit from sharing.
+    // De-dupe concurrent refresh callers so rotating-refresh-token IdPs
+    // don't see two racing /auth/refresh calls.
     if (this.inflight) {
       return this.inflight;
     }

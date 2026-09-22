@@ -372,33 +372,11 @@ for (const fixture of FIXTURES) {
         });
       }
 
-      // Scenario 3b — persistent server-side 401 must NOT trigger an
-      // unbounded request storm. Fault-injects `/api/v1/users/*` (except
-      // `/auth/refresh` — leaving refresh alone lets the coordinator's
-      // real refresh path run one or two cycles before the circuit
-      // breaker trips) to always return 401 with the exact "Token
-      // signing key not found" body OM's JwtFilter emits after a
-      // signing-key rotation. Two things must hold:
-      //
-      //   1. The coordinator's axios interceptor calls
-      //      `ensureFreshToken({ force: true })` — otherwise the storage
-      //      fast-path short-circuits refresh (stored token's `exp` is
-      //      still in the future) and hands back the same rejected
-      //      token → interceptor retries → 401 → interceptor fires →
-      //      loop with no `/auth/refresh` ever going out.
-      //
-      //   2. `MAX_CONSECUTIVE_REFRESH_CYCLES` + `MAX_PER_REQUEST_RETRIES`
-      //      bound the request budget: after a small number of failed
-      //      cycles the coordinator emits `refresh-failed` and lands the
-      //      user on `/signin` instead of grinding the browser at ~2
-      //      req/s indefinitely (the shape observed in the HAR that
-      //      surfaced this class of bug).
-      //
-      // Only enrolled for backend-refresh fixtures — SDK-driven
-      // providers (MSAL/Auth0/Okta/OIDC-public) route silent refresh
-      // through their own client and don't hit `/api/v1/auth/refresh`,
-      // so the shape of "one refresh call, bounded 401s" doesn't
-      // translate to those legs cleanly.
+      // Scenario 3b — persistent server-side 401 recovers to /signin in
+      // bounded requests (regression: fast-path used to short-circuit
+      // refresh when the stored token's `exp` was still fresh, looping
+      // ~2 req/s without ever hitting /auth/refresh). SDK-driven
+      // providers don't use /api/v1/auth/refresh, so opt out.
       if (fixture.usesBackendRefresh) {
         test('persistent server-side 401 recovers to /signin within a bounded request budget', async ({
           page,
@@ -407,9 +385,6 @@ for (const fixture of FIXTURES) {
 
           await fixture.performLogin(page);
 
-          // Track raw request counts on the two endpoints that matter.
-          // Anything above single-digit `/loggedInUser` calls means the
-          // circuit breakers didn't fire in time.
           const loggedInUserCalls: string[] = [];
           const authRefreshCalls: string[] = [];
           page.on('request', (req) => {
@@ -421,11 +396,9 @@ for (const fixture of FIXTURES) {
             }
           });
 
-          // Fault inject: every `/loggedInUser` returns the exact
-          // server-rejected-token 401 shape. Leave `/auth/refresh`
-          // alone so the coordinator's refresh path runs for real —
-          // the bug we're guarding against is a loop that never even
-          // reaches `/auth/refresh`.
+          // Fault-inject the exact 401 body OM's JwtFilter emits after
+          // a signing-key rotation. Leave /auth/refresh alone so the
+          // coordinator's refresh path can actually run.
           await page.route('**/api/v1/users/loggedInUser', (route) =>
             route.fulfill({
               status: 401,
@@ -438,25 +411,12 @@ for (const fixture of FIXTURES) {
             })
           );
 
-          // Trigger a request that will 401. Waiting for
-          // `/loggedInUser` naturally happens because the app polls it
-          // (useApplicationStore + several components); explicit
-          // navigation is a defensive kick if the polling isn't
-          // aggressive on this page.
           await page.goto('/', { waitUntil: 'domcontentloaded' });
 
-          // Expected steady-state: user lands on /signin because the
-          // circuit breaker tripped OR the refresh chain gave up.
-          // Generous 30s ceiling — the breaker itself trips in
-          // milliseconds, this budget covers cross-tab lock timing.
           await expect(page).toHaveURL(/\/signin/, { timeout: 30_000 });
 
-          // Bounded requests. The exact numbers depend on
-          // `MAX_CONSECUTIVE_REFRESH_CYCLES` + `MAX_PER_REQUEST_RETRIES`;
-          // the assertion is intentionally loose (well under the ~150
-          // observed in the runaway HAR that surfaced this bug) so a
-          // future tune of either constant doesn't churn the test.
-          // What matters is that both counts are FINITE and small.
+          // Loose ceilings — well under the ~150 in the runaway HAR;
+          // what matters is that both counts are finite and small.
           expect(loggedInUserCalls.length).toBeLessThan(20);
           expect(authRefreshCalls.length).toBeLessThan(10);
         });

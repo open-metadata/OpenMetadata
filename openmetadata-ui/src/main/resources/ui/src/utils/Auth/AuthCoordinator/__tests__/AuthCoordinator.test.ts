@@ -101,9 +101,6 @@ const createMockAxios = () => {
   return {
     axios,
     triggerError: (error: unknown) => rejectedHandler?.(error),
-    // Exposed so a test can simulate a real success response landing
-    // between 401 cycles — used to prove the sliding-window rate
-    // limit does NOT reset on interleaved 2xx (greptile r4069833676).
     triggerSuccess: (response: unknown = { status: 200, data: {} }) =>
       fulfilledHandler?.(response),
   };
@@ -247,12 +244,7 @@ describe('AuthCoordinator', () => {
     await Promise.resolve();
   });
 
-  // Circuit-breaker layer 1: per-request retry cap. A single request that
-  // keeps 401'ing (permissions bug whose body happens to match a
-  // refreshable-error string, cached response with a stale header,
-  // etc.) fails deterministically for its caller rather than spinning
-  // through the refresh path forever.
-  it('caps per-request retries — a request that stays 401 after MAX_PER_REQUEST_RETRIES is thrown to its caller', async () => {
+  it('caps per-request retries — a request that stays 401 past MAX_PER_REQUEST_RETRIES is thrown to its caller', async () => {
     const renewer = jest.fn(async () => ({
       expiresAt: Date.now() + 300_000,
       idToken: 'fresh',
@@ -264,10 +256,6 @@ describe('AuthCoordinator', () => {
     const config = { url: '/api/v1/tables' };
     const error = { response: { status: 401, data: {} }, config };
 
-    // First hit enqueues + triggers refresh; second hit for the same
-    // config (after a refresh handed back a working token but the
-    // endpoint still 401s) enqueues again. The third one exceeds the
-    // per-request cap and rejects with the raw error.
     triggerError(error);
     await Promise.resolve();
     triggerError(error);
@@ -276,12 +264,6 @@ describe('AuthCoordinator', () => {
     await expect(triggerError(error)).rejects.toBe(error);
   });
 
-  // Circuit-breaker layer 2: sliding-window RATE limit on refresh cycles.
-  // If more than `MAX_REFRESH_CYCLES_PER_WINDOW` cycles fire inside
-  // `REFRESH_WINDOW_MS`, the auth state is broken beyond auto-recovery
-  // — emit `refresh-failed` (AuthProvider drives sign-out). Unlike the
-  // "consecutive cycles / reset on 2xx" shape it replaced, this doesn't
-  // reset on interleaved 2xx responses (greptile r4069833676).
   it('circuit-breaks when > MAX_REFRESH_CYCLES_PER_WINDOW cycles fire inside the sliding window', async () => {
     const renewer = jest.fn(async () => ({
       expiresAt: Date.now() + 300_000,
@@ -293,14 +275,12 @@ describe('AuthCoordinator', () => {
     const { axios, triggerError } = createMockAxios();
     coordinator.install(axios, () => true);
 
-    // Distinct config per error so the per-request retry cap doesn't
-    // fire first — this test exercises layer 2, not layer 1.
+    // Distinct config per error to avoid the per-request cap tripping first.
     const mkError = (path: string) => ({
       response: { status: 401, data: {} },
       config: { url: `/api/v1/${path}` },
     });
 
-    // MAX_REFRESH_CYCLES_PER_WINDOW=3: cycles 1..3 fit; cycle 4 trips.
     for (let i = 0; i < 3; i++) {
       await triggerError(mkError(`endpoint-${i}`));
     }
@@ -314,14 +294,9 @@ describe('AuthCoordinator', () => {
     });
   });
 
-  // Regression for greptile r4069833676. A persistently-failing
-  // endpoint polled every few seconds while unrelated requests
-  // succeed in the background used to slip past the "consecutive
-  // cycles / reset on 2xx" breaker: each poll started a cycle,
-  // each background 2xx reset the counter, and the refresh chain
-  // spun forever. The sliding-window rate limit doesn't reset on
-  // 2xx — interleaved successes have no effect on the cycle budget.
-  it('interleaved 2xx responses do NOT reset the rate-limit window (only cycle timestamps count)', async () => {
+  // Regression: a persistently-failing endpoint polled while unrelated
+  // requests succeed used to slip past the "reset on 2xx" breaker.
+  it('interleaved 2xx responses do NOT reset the rate-limit window', async () => {
     const renewer = jest.fn(async () => ({
       expiresAt: Date.now() + 300_000,
       idToken: 'fresh',
@@ -332,10 +307,6 @@ describe('AuthCoordinator', () => {
     const { axios, triggerError, triggerSuccess } = createMockAxios();
     coordinator.install(axios, () => true);
 
-    // 4 cycles interleaved with 2xx responses. Under the OLD design the
-    // 2xx would zero the counter each time and the breaker would never
-    // trip; under the new sliding-window design the 4th cycle trips
-    // regardless of interleaved successes.
     for (let i = 0; i < 3; i++) {
       await triggerError({
         response: { status: 401, data: {} },
@@ -355,11 +326,6 @@ describe('AuthCoordinator', () => {
     expect(failures).toHaveLength(1);
   });
 
-  // Concurrent 401s during a single in-flight refresh must share ONE
-  // cycle timestamp. Without this, a page that fires 5 API calls in
-  // parallel at cold-load and gets 5 stale-header 401s back would eat
-  // the whole cycle budget in one go — the breaker would trip on the
-  // very first refresh cycle even though the refresh is working fine.
   it('concurrent 401s during a single refresh cycle share one window entry', async () => {
     let resolveRenewer!: (r: { expiresAt: number; idToken: string }) => void;
     const renewer = jest.fn(
@@ -374,9 +340,6 @@ describe('AuthCoordinator', () => {
     const { axios, triggerError } = createMockAxios();
     coordinator.install(axios, () => true);
 
-    // Fire 5 concurrent 401s WHILE the renewer is still pending — none
-    // has been retried yet, so per-request caps don't fire; all should
-    // share the same in-flight refresh and count as one cycle.
     for (let i = 0; i < 5; i++) {
       triggerError({
         response: { status: 401, data: {} },
@@ -384,12 +347,10 @@ describe('AuthCoordinator', () => {
       });
     }
 
-    // Let the executor of the renewal promise run.
     await Promise.resolve();
     resolveRenewer({ expiresAt: Date.now() + 300_000, idToken: 'fresh' });
     await Promise.resolve();
 
-    // 5 parallel 401s share one cycle → breaker doesn't fire (cap is 3).
     expect(failures).toEqual([]);
   });
 
@@ -880,22 +841,15 @@ describe('AuthCoordinator', () => {
       expect(renewer).toHaveBeenCalledTimes(1);
     });
 
-    // Regression for the "endless 401 loop when the backend rotates its
-    // signing key" bug. The stored token's `exp` claim is still in the
-    // future, so the fast-path returned it — the axios 401 interceptor
-    // retried the request with the same rejected token, got the same
-    // 401 back, and looped forever without ever calling `/auth/refresh`.
-    // The interceptor now calls `ensureFreshToken({ force: true })`,
-    // which skips the fast-path even for time-fresh stored tokens.
-    it('force:true skips the storage-freshness fast-path and drives a real refresh even when the stored token is still time-fresh', async () => {
+    // Regression: server-rejected but time-fresh stored token — the
+    // interceptor's `force:true` must skip the fast-path, and an
+    // unforced call on the same shape must still short-circuit.
+    it('force:true skips the fast-path even when the stored token is time-fresh; unforced still short-circuits', async () => {
       const renewer = jest.fn(async () => ({
         expiresAt: Date.now() + 300_000,
         idToken: 'renewer-fresh',
       }));
       coordinator.registerRenewer(renewer);
-      // Stored token has a valid `exp` claim well past the 60s buffer,
-      // exactly the shape a signing-key-rotation 401 has: `exp` says
-      // fresh, backend says invalid.
       mockedGetOidcToken.mockResolvedValueOnce('server-rejected-but-time-fresh');
       mockedExtractDetailsFromToken.mockReturnValueOnce({
         exp: Math.floor(Date.now() / 1000) + 600,
@@ -908,11 +862,6 @@ describe('AuthCoordinator', () => {
       expect(token).toBe('renewer-fresh');
       expect(renewer).toHaveBeenCalledTimes(1);
 
-      // Sanity: the un-forced call on the same fixture returns the
-      // stored token without calling the renewer (that's the fast-path
-      // behaviour). Both call shapes coexist so the proactive-refresh
-      // callers (tab-visibility, resume, timer) still get the storage
-      // short-circuit they were designed for.
       mockedGetOidcToken.mockResolvedValueOnce('server-rejected-but-time-fresh');
       mockedExtractDetailsFromToken.mockReturnValueOnce({
         exp: Math.floor(Date.now() / 1000) + 600,

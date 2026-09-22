@@ -108,12 +108,8 @@ describe('createStreamOpenHandler', () => {
       createStreamOpenHandler(state, jest.fn())(response(401))
     ).rejects.toBeInstanceOf(RetriableStreamError);
 
-    // `{ force: true }` matters here — without it the coordinator's
-    // storage fast-path returns the stored (server-rejected) token
-    // for any request whose `exp` is still in the future, and the SSE
-    // stream loops against the same 401 forever. Assert the exact
-    // argument so a future edit that drops the option can't leave
-    // this test green (greptile r4069291989).
+    // Assert the exact `{ force: true }` — dropping it would silently
+    // restore the fast-path 401 loop.
     expect(mockEnsureFreshToken).toHaveBeenCalledTimes(1);
     expect(mockEnsureFreshToken).toHaveBeenCalledWith({ force: true });
     expect(state.consecutiveUnauthorized).toBe(1);
