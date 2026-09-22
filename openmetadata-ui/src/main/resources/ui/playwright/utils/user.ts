@@ -123,11 +123,22 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
   // yet; once the empty result renders nothing re-issues the query, so waiting
   // on the row cannot recover. The profile page reads the user from the API by
   // name, which is immediately consistent.
+  const encodedUserName = encodeURIComponent(userName);
   const userResponse = page.waitForResponse(
-    `/api/v1/users/name/${userName}?fields=*`
+    `/api/v1/users/name/${encodedUserName}?fields=*`
   );
-  await page.goto(`/users/${userName}`);
-  await userResponse;
+  await page.goto(`/users/${encodedUserName}`);
+
+  // A 404/5xx satisfies the wait just as a 200 does, and the page then drops
+  // its loader and renders an error state. Callers that guard their assertions
+  // on visibility would silently assert nothing, so fail here instead.
+  const response = await userResponse;
+
+  expect(
+    response.ok(),
+    `Profile for "${userName}" failed to load: HTTP ${response.status()}`
+  ).toBeTruthy();
+
   await waitForAllLoadersToDisappear(page);
 };
 
