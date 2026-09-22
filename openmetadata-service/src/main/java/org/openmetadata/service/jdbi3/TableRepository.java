@@ -2885,28 +2885,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     if (fieldsParam != null && fieldsParam.contains("extension")) {
-      List<ExtensionRecord> allColumnExtensions =
-          daoCollection
-              .entityExtensionDAO()
-              .getExtensionsByJsonSchema(table.getId(), COLUMN_EXTENSION_JSON_SCHEMA);
-      Map<String, Object> extensionByColumnHash = new HashMap<>();
-      for (ExtensionRecord record : allColumnExtensions) {
-        try {
-          extensionByColumnHash.put(
-              record.extensionName(), JsonUtils.readValue(record.extensionJson(), Object.class));
-        } catch (Exception e) {
-          LOG.warn(
-              "Failed to deserialize column extension for table {} extensionKey {}: {}",
-              table.getId(),
-              record.extensionName(),
-              e.getMessage());
-        }
-      }
-      for (Column column : paginatedColumns) {
-        column.setExtension(
-            extensionByColumnHash.get(
-                FullyQualifiedName.buildHash(column.getFullyQualifiedName())));
-      }
+      metadataLoader.loadColumnExtensions(table.getId(), paginatedColumns);
     }
 
     if (fieldsParam != null && fieldsParam.contains("profile")) {

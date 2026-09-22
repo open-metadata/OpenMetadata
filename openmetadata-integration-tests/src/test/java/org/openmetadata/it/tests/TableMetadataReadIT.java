@@ -136,6 +136,32 @@ class TableMetadataReadIT {
   }
 
   @Test
+  void paginatedColumnExtensionsPreserveLegacyKeys(TestNamespace ns) {
+    // The paginated endpoint used to filter on jsonschema = 'columnExtension', so a row written
+    // under an older schema name was returned by the entity read and the single-column read - both
+    // of which resolve by the persisted key - and silently dropped here. The three reads have to
+    // agree on what a column's extension is.
+    Table table = createTable(ns, 100);
+    String key =
+        FullyQualifiedName.buildHash(table.getColumns().getFirst().getFullyQualifiedName());
+    Entity.getCollectionDAO()
+        .entityExtensionDAO()
+        .insert(
+            table.getId(),
+            key,
+            "legacyColumnExtension",
+            JsonUtils.pojoToJson(Map.of("note", "legacy")));
+
+    try (var queries = SqlQueryCounter.forRequests(Entity.getJdbi(), "from entity_extension")) {
+      TableColumnList page = columnPage(table, "extension");
+      assertEquals(Map.of("note", "legacy"), page.getData().getFirst().getExtension());
+      assertNull(page.getData().getLast().getExtension());
+      // One query for the page's keys, not one for every extension row on the table.
+      assertEquals(1, queries.count());
+    }
+  }
+
+  @Test
   void metadataReadsJoinTheCallersTransaction(TestNamespace ns) {
     Table table = createTable(ns, 3);
     var loader = new TableMetadataLoader(() -> Entity.getCollectionDAO().entityExtensionDAO());
