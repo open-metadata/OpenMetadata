@@ -18,6 +18,9 @@ import {
   Table,
   Typography,
 } from '@openmetadata/ui-core-components';
+// The core-components icon barrel re-exports the design team's own SVG set
+// only; it carries no generic person glyph, so this one comes from the shared
+// `@untitledui/icons` both packages pin at the same range.
 import { User01 } from '@untitledui/icons';
 import { startCase } from 'lodash';
 import { ReactNode, useMemo } from 'react';
@@ -66,9 +69,8 @@ const CHIP_CLASS =
   'tw:inline-flex tw:max-w-max tw:items-center tw:whitespace-nowrap tw:rounded-full tw:px-2 tw:py-1 tw:text-xs tw:font-medium tw:leading-none';
 
 /**
- * Read-only severity/status pill. Both palettes are the ones the editable
- * incident chips already use, so a group reads the same as the incidents it
- * aggregates.
+ * Both palettes are the ones the editable incident chips already use, so a
+ * group reads the same as the incidents it aggregates.
  */
 const IncidentGroupChip = ({
   label,
@@ -87,7 +89,6 @@ const IncidentGroupChip = ({
   </span>
 );
 
-/** Two-line cell: a value with a muted caption under it. */
 const StackedCell = ({
   value,
   caption,
@@ -120,7 +121,6 @@ const StackedCell = ({
   </Box>
 );
 
-/** Avatars for the assignees the group carries, plus the ones it does not. */
 const AssigneesCell = ({ group }: { group: TestCaseIncidentGroup }) => {
   const { t } = useTranslation();
   const { visible, overflowCount } = getIncidentGroupAssignees(group);
@@ -159,7 +159,6 @@ const AssigneesCell = ({ group }: { group: TestCaseIncidentGroup }) => {
   );
 };
 
-/** Most critical severity across the group, or the absence of one. */
 const SeverityCell = ({ severity }: { severity?: Severities }) => {
   const { t } = useTranslation();
 
@@ -178,7 +177,6 @@ const SeverityCell = ({ severity }: { severity?: Severities }) => {
   );
 };
 
-/** Most actionable status across the group's open incidents. */
 const StatusCell = ({ status }: { status?: TestCaseResolutionStatusTypes }) => {
   const palette = status ? STATUS_COLORS[status] : undefined;
 
@@ -195,7 +193,6 @@ const StatusCell = ({ status }: { status?: TestCaseResolutionStatusTypes }) => {
   );
 };
 
-/** Last activity on the group, with the date it opened underneath. */
 const LastSeenCell = ({ group }: { group: TestCaseIncidentGroup }) => {
   const { t } = useTranslation();
 

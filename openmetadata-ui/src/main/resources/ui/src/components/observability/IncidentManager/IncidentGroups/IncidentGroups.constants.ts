@@ -57,7 +57,6 @@ export const INCIDENT_GROUP_BY_OPTIONS: IncidentGroupByOption[] = [
  */
 export const DEFAULT_INCIDENT_SORT_TYPE: IncidentSortType = 'desc';
 
-/** Column the sort control lives on — the only sortable one. */
 export const INCIDENT_GROUPS_SORT_COLUMN = 'incidentCount';
 
 /**
@@ -67,7 +66,6 @@ export const INCIDENT_GROUPS_SORT_COLUMN = 'incidentCount';
  */
 export const INCIDENT_GROUP_MAX_AVATARS = 3;
 
-/** Separator between the parts of the sub-line derived from the group's FQN. */
 export const INCIDENT_GROUP_FQN_SEPARATOR = ' · ';
 
 export const SPARKLINE_WIDTH = 72;

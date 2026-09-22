@@ -22,7 +22,6 @@ import { IncidentSortType } from '../../../../rest/incidentManagerAPI';
 
 export interface IncidentGroupByOption {
   key: IncidentGroupBy;
-  /** i18n key of the dimension label. */
   labelKey: string;
   icon: FC<{ className?: string }>;
 }
@@ -34,15 +33,12 @@ export interface IncidentGroupByDropdownProps {
 
 export interface IncidentGroupsTableProps {
   groups: TestCaseIncidentGroup[];
-  /** Dimension the groups were fetched with; names the first column. */
   groupBy: IncidentGroupBy;
-  /** Ordering of the incident count, as the endpoint's `sortType` takes it. */
   sortType: IncidentSortType;
   onSortTypeChange: (sortType: IncidentSortType) => void;
 }
 
 export interface IncidentTrendSparklineProps {
-  /** Incidents opened per bucket, as the server bucketed them. */
   trend?: number[];
   trendDirection?: IncidentTrendDirection;
   /** Grades a rising trend; a falling or steady one colours the same either way. */

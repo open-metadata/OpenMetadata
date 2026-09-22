@@ -160,11 +160,9 @@ describe('IncidentGroupsView', () => {
       renderView();
     });
 
-    // The group stat is the server's total, not the three groups loaded.
     expect(screen.getByTestId('incident-groups-count')).toHaveTextContent(
       'label.group-count:5'
     );
-    // Two of the three loaded groups are rising, so two are recurring.
     expect(
       screen.getByTestId('incident-groups-recurring-count')
     ).toHaveTextContent('label.recurring-count:2');

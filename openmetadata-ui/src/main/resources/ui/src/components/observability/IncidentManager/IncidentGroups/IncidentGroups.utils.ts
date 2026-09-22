@@ -34,14 +34,12 @@ export const parseIncidentGroupBy = (value: unknown): IncidentGroupBy =>
   Object.values(IncidentGroupBy).find((dimension) => dimension === value) ??
   DEFAULT_INCIDENT_GROUP_BY;
 
-/** The dimension's label and icon, falling back to the default dimension's. */
 export const getIncidentGroupByOption = (
   groupBy: IncidentGroupBy
 ): IncidentGroupByOption =>
   INCIDENT_GROUP_BY_OPTIONS.find((option) => option.key === groupBy) ??
   INCIDENT_GROUP_BY_OPTIONS[0];
 
-/** Name shown on the row, preferring the entity's display name. */
 export const getIncidentGroupName = (group: TestCaseIncidentGroup): string =>
   group.displayName || group.name;
 
