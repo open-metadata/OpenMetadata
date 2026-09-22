@@ -25,13 +25,13 @@ import {
   getEntityDisplayName,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { waitForOwnerIndexed } from '../../utils/polling';
 import { performUserLogin } from '../../utils/user';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import {
   RightPanelPageObject,
   RIGHT_PANEL_TAB,
 } from '../PageObject/Explore/RightPanelPageObject';
-import { waitForOwnerIndexed } from '../../utils/polling';
 import {
   addOwnerInKCPanel,
   navigateToKCEntity,

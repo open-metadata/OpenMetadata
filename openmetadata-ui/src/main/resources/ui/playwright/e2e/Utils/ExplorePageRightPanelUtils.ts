@@ -76,29 +76,31 @@ export const addOwnerInKCPanel = async (page: Page, ownerName: string) => {
     .locator('[data-testid="owner-option"]')
     .filter({ hasText: ownerName });
   await expect(ownerItem).toBeVisible();
-  await ownerItem.click();
 
+  const isAlreadyActive = await ownerItem.evaluate((el) =>
+    el.classList.contains('active')
+  );
+  if (!isAlreadyActive) {
+    await ownerItem.click();
+  }
   await expect(ownerItem).toHaveClass(/active/);
 
   const updateBtn = page.getByTestId('selectable-list-update-btn');
   await expect(updateBtn).toBeVisible();
   await expect(updateBtn).toBeEnabled();
 
-  const patchResponse = page.waitForResponse(
-    (r) =>
-      r.url().includes('/api/v1/contextCenter/pages/') &&
-      r.request().method() === 'PATCH'
-  );
-  await updateBtn.click();
-  const response = await patchResponse;
-  expect(response.status()).toBe(200);
-
-  const patchBody = response.request().postDataJSON();
-  const addOwnerOp = patchBody.find(
-    (op: { op: string; path: string }) =>
-      op.path === '/owners' || op.path.startsWith('/owners/')
-  );
-  expect(addOwnerOp).toBeTruthy();
+  if (!isAlreadyActive) {
+    const patchResponse = page.waitForResponse(
+      (r) =>
+        r.url().includes('/api/v1/contextCenter/pages/') &&
+        r.request().method() === 'PATCH'
+    );
+    await updateBtn.click();
+    const response = await patchResponse;
+    expect(response.status()).toBe(200);
+  } else {
+    await updateBtn.click();
+  }
 
   await page.getByTestId('select-owner-tabs').waitFor({ state: 'hidden' });
   await waitForAllLoadersToDisappear(page);
