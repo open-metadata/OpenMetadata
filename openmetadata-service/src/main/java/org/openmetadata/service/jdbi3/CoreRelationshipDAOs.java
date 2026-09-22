@@ -668,6 +668,12 @@ public interface CoreRelationshipDAOs {
                 + "(:fromId, :toId, :fromEntity, :toEntity, :relation, :relationType, (:json :: jsonb)) "
                 + "ON CONFLICT (fromId, toId, relation, relationType) DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, relationType, json) VALUES "
+                + "(:fromId, :toId, :fromEntity, :toEntity, :relation, :relationType, (:json :: jsonb)) "
+                + "ON CONFLICT (fromId, toId, relation, relationType) DO UPDATE SET json = EXCLUDED.json",
+        connectionType = POSTGRES)
     void insert(
         @BindUUID("fromId") UUID fromId,
         @BindUUID("toId") UUID toId,
@@ -676,6 +682,39 @@ public interface CoreRelationshipDAOs {
         @Bind("relation") int relation,
         @Bind("relationType") String relationType,
         @BindJson("json") String json);
+
+    /**
+     * Writes the edge only while {@code fromId} still has a row in its entity table, and reports
+     * whether the write actually happened. Concurrent {@code assets/add} racing a {@code DELETE} of
+     * the same entity otherwise re-creates the edge after the delete already tore the entity down,
+     * leaving an {@code entity_relationship} row whose {@code fromId} names nothing — a row that is
+     * reachable by neither {@code GET} nor {@code DELETE} and that poisons every later bulk operation
+     * touching the asset. The existence check runs inside the same statement (and therefore the same
+     * transaction and lock scope) as the insert, so a delete that commits in between is observed.
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, relationType, json) "
+                + "SELECT :fromId, :toId, :fromEntity, :toEntity, :relation, :relationType, :json "
+                + "FROM <fromTable> f WHERE f.id = :fromId "
+                + "ON DUPLICATE KEY UPDATE json = :json",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, relationType, json) "
+                + "SELECT :fromId, :toId, :fromEntity, :toEntity, :relation, :relationType, (:json :: jsonb) "
+                + "WHERE EXISTS (SELECT 1 FROM <fromTable> f WHERE f.id = :fromId) "
+                + "ON CONFLICT (fromId, toId, relation, relationType) DO UPDATE SET json = EXCLUDED.json",
+        connectionType = POSTGRES)
+    int insertIfFromEntityExists(
+        @BindUUID("fromId") UUID fromId,
+        @BindUUID("toId") UUID toId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation,
+        @Bind("relationType") String relationType,
+        @BindJson("json") String json,
+        @Define("fromTable") String fromTable);
 
     @ConnectionAwareSqlUpdate(
         value =

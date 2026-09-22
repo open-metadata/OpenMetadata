@@ -796,9 +796,15 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
           continue;
         }
 
-        if (isAdd) {
-          addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
-        } else {
+        if (isAdd && !addRelationshipIfFromEntityExists(
+            entityId, ref.getId(), fromEntity, ref.getType(), relationship)) {
+          // The from-side entity (this data product) was deleted while this request was in
+          // flight. Surface it as a plain not-found instead of persisting an edge that would
+          // point at nothing and poison later bulk operations over the same asset.
+          throw new EntityNotFoundException(
+              String.format("%s instance for %s not found", fromEntity, entityId));
+        }
+        if (!isAdd) {
           deleteRelationship(entityId, fromEntity, ref.getId(), ref.getType(), relationship);
         }
 

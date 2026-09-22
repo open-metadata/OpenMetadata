@@ -7622,6 +7622,56 @@ public abstract class EntityRepository<T extends EntityInterface> {
     invalidateCacheForEntity(toEntity, toId, null);
   }
 
+  /**
+   * Writes the edge only while the {@code fromId} entity still exists, and reports whether it was
+   * written. Callers that mutate an entity's relationship set race the entity's own {@code DELETE}:
+   * the delete tears the entity down and removes its edges, then the concurrent write re-creates an
+   * edge pointing at the now-missing {@code fromId} — a row reachable by neither {@code GET} nor
+   * {@code DELETE}, and one that turns every later bulk operation over the same asset into an opaque
+   * {@code not_found}. The existence check is part of the insert statement (same transaction, same
+   * lock scope as the delete), so the loser of the race observes the delete and skips the write
+   * instead of resurrecting the edge.
+   *
+   * @return {@code true} when the edge is persisted, {@code false} when the from-entity is already
+   *     gone and the write was dropped
+   */
+  @Transaction
+  public final boolean addRelationshipIfFromEntityExists(
+      UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship) {
+    int rowsWritten =
+        daoCollection
+            .relationshipDAO()
+            .insertIfFromEntityExists(
+                fromId,
+                toId,
+                fromEntity,
+                toEntity,
+                relationship.ordinal(),
+                "",
+                null,
+                EntityDAO.physicalTableName(fromEntity));
+    if (rowsWritten == 0) {
+      LOG.warn(
+          "Dropped relationship {} {} -> {} ({}) because the from-entity no longer exists; a concurrent delete won the race.",
+          relationship,
+          fromId,
+          toId,
+          toEntity);
+      invalidateCacheForEntity(fromEntity, fromId, null);
+      return false;
+    }
+    RdfUpdater.addRelationship(
+        new EntityRelationship()
+            .withFromId(fromId)
+            .withToId(toId)
+            .withFromEntity(fromEntity)
+            .withToEntity(toEntity)
+            .withRelationshipType(relationship));
+    invalidateCacheForEntity(fromEntity, fromId, null);
+    invalidateCacheForEntity(toEntity, toId, null);
+    return true;
+  }
+
   @Transaction
   public final void bulkAddToRelationship(
       UUID fromId, List<UUID> toId, String fromEntity, String toEntity, Relationship relationship) {
