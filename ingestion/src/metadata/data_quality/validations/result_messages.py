@@ -60,15 +60,17 @@ class SamplingStability(Enum):
     """Location statistics (mean, median, stddev, shares of rows) survive sampling."""
 
     SCALES_WITH_SAMPLE = (
-        "This metric scales with the number of rows read, so the value above is the sample's, not the table's."
+        "This test adds up rows, and only the sampled rows were read. The whole table adds up to "
+        "proportionally more."
     )
     """Sums and counts: a 10% sample gives roughly a tenth of the table's value."""
 
     BIASED_INWARD = (
-        "Extremes are biased toward the middle of the distribution on a sample: the table's own "
-        "min/max are at least as extreme as the value above."
+        "The sample may have left out the table's most extreme rows. If it did, the minimum "
+        "measured here is larger than the table's real minimum, and the maximum smaller than its "
+        "real maximum."
     )
-    """MIN/MAX: a sample can only miss the extreme rows, never invent more extreme ones."""
+    """MIN/MAX: the sample's extremes sit inside the table's, because the rows it skipped may have been more extreme."""
 
 
 def format_count(value: float | int | None) -> str:
