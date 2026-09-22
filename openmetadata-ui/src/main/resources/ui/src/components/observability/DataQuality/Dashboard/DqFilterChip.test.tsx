@@ -47,6 +47,17 @@ jest.mock(
   })
 );
 
+jest.mock('../../../common/GlossaryTermPicker/GlossaryTermPicker', () => ({
+  __esModule: true,
+  default: ({ label, bordered }: any) => (
+    <div
+      data-bordered={String(Boolean(bordered))}
+      data-testid="glossary-term-picker">
+      {label}
+    </div>
+  ),
+}));
+
 jest.mock('./DqSearchFilterChip', () => ({
   __esModule: true,
   default: ({ label, searchKey, isOpen }: any) => (
@@ -79,6 +90,29 @@ const buildSearchFilter = (overrides: Record<string, any> = {}) => ({
 });
 
 describe('DqFilterChip', () => {
+  it('should render the glossary chip with the bordered pill trigger', () => {
+    render(
+      <DqFilterChip
+        filter={
+          {
+            type: DQ_FILTER_TYPES.GLOSSARY_TERM,
+            key: 'glossaryTerms',
+            label: 'Glossary Term',
+            selectedFqns: [],
+            onChange: jest.fn(),
+          } as any
+        }
+        isOpen={false}
+        onOpenChange={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('glossary-term-picker')).toHaveAttribute(
+      'data-bordered',
+      'true'
+    );
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
