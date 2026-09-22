@@ -721,5 +721,51 @@ describe('AuthCoordinator', () => {
       expect(token).toBe('renewer-fresh');
       expect(renewer).toHaveBeenCalledTimes(1);
     });
+
+    // Regression for the "endless 401 loop when the backend rotates its
+    // signing key" bug. The stored token's `exp` claim is still in the
+    // future, so the fast-path returned it — the axios 401 interceptor
+    // retried the request with the same rejected token, got the same
+    // 401 back, and looped forever without ever calling `/auth/refresh`.
+    // The interceptor now calls `ensureFreshToken({ force: true })`,
+    // which skips the fast-path even for time-fresh stored tokens.
+    it('force:true skips the storage-freshness fast-path and drives a real refresh even when the stored token is still time-fresh', async () => {
+      const renewer = jest.fn(async () => ({
+        expiresAt: Date.now() + 300_000,
+        idToken: 'renewer-fresh',
+      }));
+      coordinator.registerRenewer(renewer);
+      // Stored token has a valid `exp` claim well past the 60s buffer,
+      // exactly the shape a signing-key-rotation 401 has: `exp` says
+      // fresh, backend says invalid.
+      mockedGetOidcToken.mockResolvedValueOnce('server-rejected-but-time-fresh');
+      mockedExtractDetailsFromToken.mockReturnValueOnce({
+        exp: Math.floor(Date.now() / 1000) + 600,
+        isExpired: false,
+        timeoutExpiry: 600_000,
+      });
+
+      const token = await coordinator.ensureFreshToken({ force: true });
+
+      expect(token).toBe('renewer-fresh');
+      expect(renewer).toHaveBeenCalledTimes(1);
+
+      // Sanity: the un-forced call on the same fixture returns the
+      // stored token without calling the renewer (that's the fast-path
+      // behaviour). Both call shapes coexist so the proactive-refresh
+      // callers (tab-visibility, resume, timer) still get the storage
+      // short-circuit they were designed for.
+      mockedGetOidcToken.mockResolvedValueOnce('server-rejected-but-time-fresh');
+      mockedExtractDetailsFromToken.mockReturnValueOnce({
+        exp: Math.floor(Date.now() / 1000) + 600,
+        isExpired: false,
+        timeoutExpiry: 600_000,
+      });
+      renewer.mockClear();
+      const unforced = await coordinator.ensureFreshToken();
+
+      expect(unforced).toBe('server-rejected-but-time-fresh');
+      expect(renewer).not.toHaveBeenCalled();
+    });
   });
 });

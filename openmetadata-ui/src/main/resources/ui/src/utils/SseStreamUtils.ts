@@ -102,7 +102,16 @@ export const createStreamOpenHandler =
       // promises. Swallow-and-fall-through: the next attempt will re-hit
       // the 401 with `consecutiveUnauthorized === 2` and escalate to
       // `FatalStreamError('down')` if the refresh really is broken.
-      await authCoordinator.ensureFreshToken().catch(() => undefined);
+      // `force:true` bypasses the storage-freshness fast-path in
+      // AuthCoordinator: the 401 we just observed IS proof that the
+      // stored token is server-rejected, so a plain `ensureFreshToken()`
+      // (which would short-circuit when the stored token's `exp` is
+      // still in the future) would hand us back the same rejected token
+      // and loop the stream against the same 401 forever. See
+      // `AuthCoordinator.ensureFreshToken({ force })`.
+      await authCoordinator
+        .ensureFreshToken({ force: true })
+        .catch(() => undefined);
     }
 
     throw new RetriableStreamError();

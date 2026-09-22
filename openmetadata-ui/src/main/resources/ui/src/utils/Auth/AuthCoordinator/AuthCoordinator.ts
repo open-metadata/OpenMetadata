@@ -104,7 +104,12 @@ export class AuthCoordinator {
           onRefreshStart();
         }
         const pending = this.queue.enqueue(error.config);
-        this.pumpQueue(axios).catch(() => undefined);
+        // Force past the storage-freshness fast-path: the 401 we're
+        // handling right now is the server telling us the current stored
+        // token is invalid, even if its `exp` claim is still in the
+        // future (signing-key rotation, session revoke, etc.). See the
+        // `ensureFreshToken({ force })` docblock.
+        this.pumpQueue(axios, { force: true }).catch(() => undefined);
 
         return pending;
       }
@@ -122,54 +127,68 @@ export class AuthCoordinator {
     };
   }
 
-  async ensureFreshToken(): Promise<string> {
+  async ensureFreshToken(options: { force?: boolean } = {}): Promise<string> {
+    const force = options.force ?? false;
+
+    if (!force) {
+      // Fast-path: another tab may have already refreshed and written the
+      // new token to shared storage between our stale-header 401 and this
+      // call — in that case the CrossTabLock would still funnel us through
+      // a redundant renewer() cycle (the lock guarantees exactly-one
+      // refresh across tabs, not exactly-one refresh across time), so we'd
+      // hit the IdP again for a token we already have. Read storage first
+      // and short-circuit when it already carries a token whose remaining
+      // lifetime is safely past the pre-expiry buffer. Opaque / non-JWT /
+      // Unlimited-bot tokens (exp missing or non-positive) are treated as
+      // usable — matches the guard in `onTabVisible` and
+      // `initializeAuthState`. Any storage read error falls through to the
+      // full refresh path.
+      //
+      // `force:true` callers (the axios 401 interceptor + the SSE stream's
+      // 401 handler) skip this path because a 401 IS proof that the stored
+      // token is server-rejected, regardless of what its `exp` claim says
+      // — the server may have rotated its signing key ("Token signing key
+      // not found in configured public keys") or revoked the session while
+      // the token is still time-fresh. Without `force:true` those callers
+      // hit the fast-path, get the same rejected token back, retry the
+      // request with it, receive another 401, and loop indefinitely — no
+      // `/auth/refresh` call is ever made because every attempt is
+      // short-circuited by the still-fresh `exp` claim.
+      try {
+        const stored = await getOidcToken();
+        if (stored) {
+          const { exp } = extractDetailsFromToken(stored);
+          if (typeof exp !== 'number' || exp <= 0) {
+            return stored;
+          }
+          const msRemaining = exp * 1000 - Date.now();
+          if (msRemaining > EXPIRY_THRESHOLD_MILLES) {
+            return stored;
+          }
+        }
+      } catch {
+        // Fall through to doRefresh() — storage might be transiently
+        // unavailable (SW not ready yet), and the full refresh path has
+        // its own retry semantics.
+      }
+    }
+
+    // De-dupe concurrent refresh requests. A `force:true` caller waits on
+    // an already-in-flight refresh rather than starting a new one — the
+    // in-flight refresh's result is at least as fresh as what a new call
+    // would produce, and racing two `doRefresh()` invocations against a
+    // rotating-refresh-token IdP would invalidate each other. Fast-path
+    // reads above are not deduped because they are effectively synchronous
+    // (a single storage lookup) and don't benefit from sharing.
     if (this.inflight) {
       return this.inflight;
     }
-    // Assign `this.inflight` synchronously (no await between the read
-    // above and this write) so concurrent callers in the same tick share
-    // a single in-flight promise — the storage read + full refresh both
-    // live inside `runEnsureFreshToken`.
-    this.inflight = this.runEnsureFreshToken();
+    this.inflight = this.doRefresh();
     try {
       return await this.inflight;
     } finally {
       this.inflight = null;
     }
-  }
-
-  private async runEnsureFreshToken(): Promise<string> {
-    // Fast-path: another tab may have already refreshed and written the
-    // new token to shared storage between our stale-header 401 and this
-    // call — in that case the CrossTabLock would still funnel us through
-    // a redundant renewer() cycle (the lock guarantees exactly-one
-    // refresh across tabs, not exactly-one refresh across time), so we'd
-    // hit the IdP again for a token we already have. Read storage first
-    // and short-circuit when it already carries a token whose remaining
-    // lifetime is safely past the pre-expiry buffer. Opaque / non-JWT /
-    // Unlimited-bot tokens (exp missing or non-positive) are treated as
-    // usable — matches the guard in `onTabVisible` and
-    // `initializeAuthState`. Any storage read error falls through to the
-    // full refresh path.
-    try {
-      const stored = await getOidcToken();
-      if (stored) {
-        const { exp } = extractDetailsFromToken(stored);
-        if (typeof exp !== 'number' || exp <= 0) {
-          return stored;
-        }
-        const msRemaining = exp * 1000 - Date.now();
-        if (msRemaining > EXPIRY_THRESHOLD_MILLES) {
-          return stored;
-        }
-      }
-    } catch {
-      // Fall through to doRefresh() — storage might be transiently
-      // unavailable (SW not ready yet), and the full refresh path has
-      // its own retry semantics.
-    }
-
-    return this.doRefresh();
   }
 
   pause(): void {
@@ -411,9 +430,12 @@ export class AuthCoordinator {
     );
   }
 
-  private async pumpQueue(axios: AxiosInstance): Promise<void> {
+  private async pumpQueue(
+    axios: AxiosInstance,
+    options: { force?: boolean } = {}
+  ): Promise<void> {
     try {
-      const token = await this.ensureFreshToken();
+      const token = await this.ensureFreshToken(options);
       await this.queue.drain(token, axios);
     } catch {
       await this.queue.drain(null, axios);
