@@ -57,12 +57,9 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
 
         try:
             column: SQALikeColumn | Column = self.get_column()
-            res = self._run_results(Metrics.countInSet, column, values=test_params[self.FORBIDDEN_VALUES])
-
-            metric_values = {Metrics.countInSet.name: res}
-
-            if self._needs_row_count():
-                metric_values[Metrics.rowCount.name] = self.get_row_count()
+            metric_values = self._run_results_with_row_count(
+                Metrics.countInSet, column, values=test_params[self.FORBIDDEN_VALUES]
+            )
 
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.name} for {get_table_fqn(self.test_case.entityLink.root)}: {exc}"

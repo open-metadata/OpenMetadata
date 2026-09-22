@@ -62,6 +62,26 @@ class ColumnValuesToNotMatchRegexValidator(
             logger.warning(f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`")
             return self.run_query_results(self.runner, Metrics.notLikeCount, column, **kwargs)
 
+    def _run_results_and_row_count(self, metric: Metrics, column: Column, **kwargs) -> dict:
+        """Compute the violation count and its row count denominator in a single query
+
+        The `LIKE` fallback reports under the metric the test case asked for, the same way
+        `_run_results` does, so the evaluation reads one key whichever query ran.
+
+        Args:
+            metric: metric
+            column: column
+        """
+        try:
+            return self.run_query_results_with_row_count(self.runner, metric, column, **kwargs)
+        except (CompileError, SQLAlchemyError) as err:
+            logger.warning(f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`")
+            results = self.run_query_results_with_row_count(self.runner, Metrics.notLikeCount, column, **kwargs)
+            return {
+                metric.name: results[Metrics.notLikeCount.name],
+                Metrics.rowCount.name: results[Metrics.rowCount.name],
+            }
+
     def _execute_dimensional_validation(
         self,
         column: Column,

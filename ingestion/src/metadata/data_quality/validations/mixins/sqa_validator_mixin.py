@@ -138,12 +138,59 @@ class SQAValidatorMixin:
         metric_obj = add_props(**kwargs)(metric.value) if kwargs else metric.value
         metric_fn = metric_obj(column).fn() if column is not None else metric_obj().fn()
 
+        values = self._select_metrics(runner, metric_fn)
+
+        return self._read_metric(values, metric, column)
+
+    def run_query_results_with_row_count(
+        self,
+        runner: QueryRunner,
+        metric: Metrics,
+        column: Column,
+        **kwargs: Any | None,
+    ) -> dict[str, int | None]:
+        """Run `metric` and the row count denominator as a single query
+
+        A PERCENTAGE failure threshold needs the row count to divide the violation count
+        by, whether or not the test case asks for row level results. Both are aggregates
+        over the same dataset, so the denominator costs one more column rather than one
+        more round trip.
+
+        Args:
+            runner (QueryRunner): runner object with sqlalchemy session object
+            metric (Metrics): metric counting the violating rows
+            column (Column): column object
+            **kwargs: props to pass to the violation metric at runtime
+
+        Returns:
+            dict[str, int | None]: both values, keyed by `Metrics` enum name
+        """
+        metric_obj = add_props(**kwargs)(metric.value) if kwargs else metric.value
+
+        values = self._select_metrics(
+            runner,
+            metric_obj(column).fn(),
+            Metrics.rowCount(column).fn(),
+        )
+
+        return {
+            metric.name: self._read_metric(values, metric, column),
+            Metrics.rowCount.name: self._read_metric(values, Metrics.rowCount, column),
+        }
+
+    @staticmethod
+    def _select_metrics(runner: QueryRunner, *metric_fns: Any) -> dict[str, Any]:
+        """Run the metric expressions against the dataset in a single query"""
         try:
-            row = runner.dispatch_query_select_first(metric_fn)  # type: ignore
-            value = dict(row._mapping)
-            res = value.get(metric.name)
+            row = runner.dispatch_query_select_first(*metric_fns)  # type: ignore
+            return dict(row._mapping)
         except Exception as exc:
             raise SQLAlchemyError(exc)  # noqa: B904
+
+    @staticmethod
+    def _read_metric(values: dict[str, Any], metric: Metrics, column: Column | None) -> int | None:
+        """Read one metric out of a query result, rejecting the empty answer"""
+        res = values.get(metric.name)
 
         if res is None:
             raise ValueError(

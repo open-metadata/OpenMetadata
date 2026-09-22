@@ -58,6 +58,15 @@ class ColumnValuesToBeNotInSetValidator(
         """
         return self.run_query_results(self.runner, metric, column, **kwargs)
 
+    def _run_results_and_row_count(self, metric: Metrics, column: Column, **kwargs) -> dict:
+        """Compute the violation count and its row count denominator in a single query
+
+        Args:
+            metric: metric
+            column: column
+        """
+        return self.run_query_results_with_row_count(self.runner, metric, column, **kwargs)
+
     def _execute_dimensional_validation(
         self,
         column: Column,

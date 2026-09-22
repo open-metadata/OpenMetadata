@@ -50,6 +50,7 @@ from metadata.generated.schema.tests.basic import (
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue  # noqa: TC001
 from metadata.generated.schema.type.basic import Timestamp  # noqa: TC001
+from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.runner import PandasRunner, QueryRunner  # noqa: TC001
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_like_column import SQALikeColumn  # noqa: TC001
@@ -425,6 +426,44 @@ class BaseTestValidator(ABC):
         if self.test_case.computePassedFailedRowCount:
             return True
         return self.get_failure_threshold().unit is ThresholdUnit.PERCENTAGE
+
+    def _run_results_with_row_count(self, metric: Metrics, column, **kwargs) -> dict:
+        """Compute a violation count, and the row count denominator when one is needed
+
+        The denominator is only computed when `_needs_row_count()` asks for it, so an
+        ABSOLUTE threshold never pays for a metric its verdict does not read.
+
+        Args:
+            metric: metric counting the rows that break the test condition
+            column: column the test runs against
+            **kwargs: props to pass to the violation metric at runtime
+
+        Returns:
+            dict: metric values keyed by `Metrics` enum name, ready to be evaluated
+        """
+        if not self._needs_row_count():
+            return {metric.name: self._run_results(metric, column, **kwargs)}  # type: ignore
+
+        return self._run_results_and_row_count(metric, column, **kwargs)
+
+    def _run_results_and_row_count(self, metric: Metrics, column, **kwargs) -> dict:
+        """Compute the violation count and the row count denominator together
+
+        Two passes over the dataset by default. Validators whose runner can compute both
+        at once - SQA folds them into a single `SELECT` - override this.
+
+        Args:
+            metric: metric counting the rows that break the test condition
+            column: column the test runs against
+            **kwargs: props to pass to the violation metric at runtime
+
+        Returns:
+            dict: metric values keyed by `Metrics` enum name
+        """
+        return {
+            metric.name: self._run_results(metric, column, **kwargs),  # type: ignore
+            Metrics.rowCount.name: self.get_row_count(),  # type: ignore
+        }
 
     def _apply_row_threshold(self, violations: int | None, denominator: int | None) -> bool:
         """Check a violation count against the test case failure threshold

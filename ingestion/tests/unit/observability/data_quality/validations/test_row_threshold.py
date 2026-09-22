@@ -12,11 +12,14 @@
 Validate the shared row tolerance threshold against the validators that count rows.
 """
 
+from contextlib import contextmanager
 from datetime import datetime
 from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import event
+from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.data_quality.validations.base_test_handler import FailureThreshold, ThresholdUnit
 from metadata.data_quality.validations.column.sqlalchemy.columnValuesToBeInSet import (
@@ -44,19 +47,43 @@ from metadata.profiler.metrics.registry import Metrics
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
 ENTITY_LINK = "<#E::table::service.db.users::columns::nickname>"
+ENTITY_LINK_AGE = "<#E::table::service.db.users::columns::age>"
+ENTITY_LINK_NAME = "<#E::table::service.db.users::columns::name>"
 
 
-def build_validator(validator_class, parameter_values, compute_passed_failed_row_count=False):
-    """Build a validator whose only live dependency is its test case"""
-    test_case = TestCase(
+def build_test_case(parameter_values, compute_passed_failed_row_count=False, entity_link=ENTITY_LINK):
+    """Build a test case carrying the given parameters"""
+    return TestCase(
         name="my_test_case",
-        entityLink=ENTITY_LINK,
+        entityLink=entity_link,
         testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=parameter_values,
         computePassedFailedRowCount=compute_passed_failed_row_count,
     )  # type: ignore
-    return validator_class(MagicMock(), test_case, EXECUTION_DATE)
+
+
+def build_validator(validator_class, parameter_values, compute_passed_failed_row_count=False):
+    """Build a validator whose only live dependency is its test case"""
+    return validator_class(
+        MagicMock(), build_test_case(parameter_values, compute_passed_failed_row_count), EXECUTION_DATE
+    )
+
+
+@contextmanager
+def executed_statements(runner):
+    """Record the SQL actually sent to the database while the block runs"""
+    engine = runner.session.get_bind()
+    statements: list[str] = []
+
+    def record(conn, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        yield statements
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
 
 
 def threshold_params(threshold=None, unit=None):
@@ -253,16 +280,12 @@ def test_get_failure_threshold_is_read_once(monkeypatch):
 )
 def test_percentage_threshold_computes_its_denominator(create_sqlite_table, threshold, expected_status):
     """The row count denominator is queried even when the test case does not ask for row counts"""
-    test_case = TestCase(
-        name="my_test_case",
-        entityLink="<#E::table::service.db.users::columns::age>",
-        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
-        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
-        parameterValues=threshold_params(threshold, ThresholdUnit.PERCENTAGE.value),
-        computePassedFailedRowCount=False,
-    )  # type: ignore
     validator = ColumnValuesToBeNotNullValidator(
-        create_sqlite_table, test_case=test_case, execution_date=EXECUTION_DATE.timestamp()
+        create_sqlite_table,
+        test_case=build_test_case(
+            threshold_params(threshold, ThresholdUnit.PERCENTAGE.value), entity_link=ENTITY_LINK_AGE
+        ),
+        execution_date=EXECUTION_DATE.timestamp(),
     )
 
     result = validator.run_validation()
@@ -270,6 +293,93 @@ def test_percentage_threshold_computes_its_denominator(create_sqlite_table, thre
     assert result.testCaseStatus == expected_status
     assert result.failedRows == 20
     assert result.passedRows == 60
+
+
+# The validators whose denominator is the table row count, and the metric counting their violations.
+# columnValuesToNotMatchRegex is left out: SQLite has no `REGEXP`, so it always falls back to `LIKE`
+# and the statement count would measure the fallback rather than the folding.
+FOLDED_VALIDATORS = [
+    pytest.param(
+        ColumnValuesToBeNotNullValidator,
+        ENTITY_LINK_AGE,
+        [],
+        Metrics.nullCount.name,
+        id="columnValuesToBeNotNull",
+    ),
+    pytest.param(
+        ColumnValuesToBeNotInSetValidator,
+        ENTITY_LINK_NAME,
+        [TestCaseParameterValue(name="forbiddenValues", value="['John']")],
+        Metrics.countInSet.name,
+        id="columnValuesToBeNotInSet",
+    ),
+]
+
+
+@pytest.mark.parametrize("validator_class,entity_link,test_params,violation_metric", FOLDED_VALIDATORS)
+def test_percentage_threshold_folds_its_denominator_into_one_query(
+    create_sqlite_table, validator_class, entity_link, test_params, violation_metric
+):
+    """The denominator is an aggregate over the same dataset: one more column, not one more query"""
+    validator = validator_class(
+        create_sqlite_table,
+        test_case=build_test_case(
+            test_params + threshold_params(10, ThresholdUnit.PERCENTAGE.value), entity_link=entity_link
+        ),
+        execution_date=EXECUTION_DATE.timestamp(),
+    )
+
+    with executed_statements(create_sqlite_table) as statements:
+        validator.run_validation()
+
+    assert len(statements) == 1
+    assert violation_metric in statements[0]
+    assert Metrics.rowCount.name in statements[0]
+
+
+@pytest.mark.parametrize("validator_class,entity_link,test_params,violation_metric", FOLDED_VALIDATORS)
+def test_absolute_threshold_does_not_query_a_denominator(
+    create_sqlite_table, validator_class, entity_link, test_params, violation_metric
+):
+    """An ABSOLUTE threshold counts rows, not shares, so it never asks for the extra metric"""
+    validator = validator_class(
+        create_sqlite_table,
+        test_case=build_test_case(
+            test_params + threshold_params(10, ThresholdUnit.ABSOLUTE.value), entity_link=entity_link
+        ),
+        execution_date=EXECUTION_DATE.timestamp(),
+    )
+
+    with executed_statements(create_sqlite_table) as statements:
+        validator.run_validation()
+
+    assert len(statements) == 1
+    assert violation_metric in statements[0]
+    assert Metrics.rowCount.name not in statements[0]
+
+
+def test_not_match_regex_folds_its_denominator_into_the_like_fallback(monkeypatch):
+    """`LIKE` stands in for an unsupported `REGEXP`, still reporting under the asked for metric"""
+    validator = build_validator(
+        ColumnValuesToNotMatchRegexValidator,
+        [TestCaseParameterValue(name="forbiddenRegex", value="^[a-z]+$")]
+        + threshold_params(10, ThresholdUnit.PERCENTAGE.value),
+    )
+
+    queried = []
+
+    def run_query_results_with_row_count(runner, metric, column, **kwargs):
+        queried.append(metric)
+        if metric is Metrics.notRegexCount:
+            raise SQLAlchemyError("no such function: REGEXP")
+        return {metric.name: 5, Metrics.rowCount.name: 100}
+
+    monkeypatch.setattr(validator, "run_query_results_with_row_count", run_query_results_with_row_count)
+
+    metric_values = validator._run_results_and_row_count(Metrics.notRegexCount, MagicMock())
+
+    assert queried == [Metrics.notRegexCount, Metrics.notLikeCount]
+    assert metric_values == {Metrics.notRegexCount.name: 5, Metrics.rowCount.name: 100}
 
 
 @pytest.mark.parametrize(
