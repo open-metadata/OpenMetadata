@@ -1057,6 +1057,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           }
           validateParameterRule(parameter, values);
         }
+        TestCaseThresholdValidator.validate(testDefinition, values).forEach(LOG::warn);
       }
     }
   }
@@ -1511,6 +1512,60 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     testCase.setTestSuite(updatedTestCase.getTestSuite());
     testCase.setTestSuites(updatedTestCase.getTestSuites());
     return new RestUtil.DeleteResponse<>(testCase, ENTITY_DELETED);
+  }
+
+  public RestUtil.DeleteResponse<TestSuite> deleteTestCasesFromLogicalTestSuite(
+      TestSuite testSuite, List<UUID> testCaseIds) {
+    AtomicReference<LogicalSuiteRelationshipChange> relationshipChange =
+        new AtomicReference<>(LogicalSuiteRelationshipChange.empty());
+    flushInOneTransaction(
+        () ->
+            relationshipChange.set(
+                deleteTestCasesFromLogicalTestSuiteFlush(testSuite.getId(), testCaseIds)));
+
+    postLogicalSuiteRelationshipUpdate(relationshipChange.get());
+    updateLogicalTestSuite(relationshipChange.get());
+    return new RestUtil.DeleteResponse<>(testSuite, ENTITY_DELETED);
+  }
+
+  /**
+   * The ids among {@code testCaseIds} that the logical test suite currently contains, in suite
+   * order and without duplicates. Callers use this to narrow a bulk request down to the
+   * memberships that are actually going to change before they authorize it.
+   */
+  public List<UUID> getLogicalTestSuiteMemberIds(UUID testSuiteId, List<UUID> testCaseIds) {
+    if (nullOrEmpty(testCaseIds)) {
+      return List.of();
+    }
+    return logicalTestSuiteMembers(testSuiteId, testCaseIds).stream()
+        .map(EntityReference::getId)
+        .toList();
+  }
+
+  private List<EntityReference> logicalTestSuiteMembers(UUID testSuiteId, List<UUID> testCaseIds) {
+    Set<UUID> requestedIds = new HashSet<>(testCaseIds);
+    return findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE).stream()
+        .filter(ref -> requestedIds.contains(ref.getId()))
+        .toList();
+  }
+
+  private LogicalSuiteRelationshipChange deleteTestCasesFromLogicalTestSuiteFlush(
+      UUID testSuiteId, List<UUID> testCaseIds) {
+    // Only the test cases the suite actually contains are removed, so that the relationship change
+    // published afterwards describes what really changed
+    List<EntityReference> removedTestCaseReferences =
+        logicalTestSuiteMembers(testSuiteId, testCaseIds);
+    if (removedTestCaseReferences.isEmpty()) {
+      return LogicalSuiteRelationshipChange.empty();
+    }
+
+    // Removed one by one, as the single test case removal does, so that the RDF store and the
+    // caches on both sides of every relationship are kept in step
+    removedTestCaseReferences.forEach(
+        ref ->
+            deleteRelationship(
+                testSuiteId, TEST_SUITE, ref.getId(), TEST_CASE, Relationship.CONTAINS));
+    return prepareLogicalSuiteRelationshipChange(testSuiteId, removedTestCaseReferences);
   }
 
   private List<TestCase> getLogicalSuiteUpdatedTestCase(List<EntityReference> testCaseReferences) {

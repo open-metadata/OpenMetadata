@@ -56,7 +56,7 @@ const DataQualityDashboard = () => {
   } = useDataQualityDashboardFilters({});
 
   return (
-    <Box direction="col" gap={6}>
+    <Box className="data-quality-dashboard" direction="col" gap={6}>
       <DqFilterBar
         clearAll={clearAll}
         dateRange={dateRange}

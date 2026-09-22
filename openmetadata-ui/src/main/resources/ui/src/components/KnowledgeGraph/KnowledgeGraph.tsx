@@ -455,6 +455,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                   aria-busy={result.loading}
                   aria-label={t('label.knowledge-graph')}
                   className="knowledge-graph-canvas"
+                  data-graph-origin={canvas.viewportOrigin}
                   data-ready={canvas.ready}
                   data-testid="knowledge-graph-canvas"
                   ref={canvas.containerRef}
