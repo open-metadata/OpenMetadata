@@ -633,9 +633,15 @@ public class SystemResource {
                   mergedSettings.getGlobalSettings().getKeywordWeight(),
                   mergedSettings.getGlobalSettings().getSemanticWeight());
         } catch (Exception e) {
-          LOG.error("Failed to update hybrid search pipeline", e);
-          throw new SystemSettingsException(
-              "Failed to update hybrid search pipeline: " + e.getMessage());
+          // Refreshing the named pipeline is a cluster-scoped write, so it fails outright on a
+          // deployment whose search role is confined to its own <clusterAlias>* prefix. Failing
+          // the whole settings save on that made search settings unsaveable there. The weights
+          // being saved here are the ones hybrid search reads per query, so they take effect
+          // regardless of whether the stored pipeline could be refreshed.
+          LOG.warn(
+              "Saved search settings but could not refresh the named hybrid search pipeline; "
+                  + "the new weights still apply to hybrid queries",
+              e);
         }
       }
     }
