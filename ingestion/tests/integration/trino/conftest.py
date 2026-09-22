@@ -30,6 +30,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 
 from ..conftest import ingestion_config as base_ingestion_config
+from ..containers import MinioContainerConfigs
 
 HIVE_METASTORE_IMAGE = (
     "bitsondatadev/hive-metastore@sha256:"
@@ -195,7 +196,9 @@ def hive_metastore_container(mysql_container, minio_container, docker_network):
 @pytest.fixture(scope="package")
 def minio_container(docker_network):
     container = (
-        MinioContainer().with_network(docker_network).with_network_aliases("minio")
+        MinioContainer(MinioContainerConfigs.image)
+        .with_network(docker_network)
+        .with_network_aliases("minio")
     )
     with try_bind(container, container.port, container.port) as minio:
         client = minio.get_client()
