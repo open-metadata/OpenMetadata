@@ -353,9 +353,12 @@ export class OverviewPageObject extends RightPanelBase {
       .isVisible();
 
     if (!alreadyAssigned) {
+      // Settle any page loader and bring the trigger into view before clicking,
+      // so the open click is not swallowed by a re-render on slower panels.
+      await this.loader.waitFor({ state: 'detached' });
+      await this.addDomainIcon.scrollIntoViewIfNeeded();
       await this.addDomainIcon.click();
 
-      await this.loader.waitFor({ state: 'detached' });
       await this.domainSearchBar.waitFor({ state: 'visible' });
       await this.domainSearchBar.scrollIntoViewIfNeeded();
       await this.domainSearchBar.fill(domainName);
