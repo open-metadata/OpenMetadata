@@ -109,12 +109,10 @@ export class AuthCoordinator {
           cfg.__omAuthRetries = retries;
         }
         if (retries > MAX_PER_REQUEST_RETRIES) {
-          // Refreshes clearly aren't helping this request — force
-          // sign-out so the user isn't left grinding the same endpoint.
-          this.bus.emit(REFRESH_FAILED_EVENT, {
-            reason: `Auth per-request retry cap tripped for ${url}`,
-          });
-
+          // A single endpoint that keeps 401'ing after refreshes should
+          // fail its own request, not sign the whole app out — the rest
+          // of the session may be perfectly healthy. Global recovery
+          // still runs via the sliding-window cycle circuit-breaker.
           throw error;
         }
 

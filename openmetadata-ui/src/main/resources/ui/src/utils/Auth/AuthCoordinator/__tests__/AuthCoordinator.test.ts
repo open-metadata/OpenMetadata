@@ -244,7 +244,7 @@ describe('AuthCoordinator', () => {
     await Promise.resolve();
   });
 
-  it('caps per-request retries — a request that stays 401 past MAX_PER_REQUEST_RETRIES throws AND emits refresh-failed', async () => {
+  it('caps per-request retries — a single endpoint that stays 401 past MAX_PER_REQUEST_RETRIES throws without signing out', async () => {
     const renewer = jest.fn(async () => ({
       expiresAt: Date.now() + 300_000,
       idToken: 'fresh',
@@ -263,10 +263,9 @@ describe('AuthCoordinator', () => {
     await Promise.resolve();
 
     await expect(triggerError(error)).rejects.toBe(error);
-    expect(failures).toHaveLength(1);
-    expect(failures[0]).toEqual({
-      reason: expect.stringMatching(/per-request retry cap/),
-    });
+    // A single misbehaving endpoint must not sign the whole app out —
+    // that's the sliding-window breaker's job when the storm is global.
+    expect(failures).toHaveLength(0);
   });
 
   it('circuit-breaks when > MAX_REFRESH_CYCLES_PER_WINDOW cycles fire inside the sliding window', async () => {
