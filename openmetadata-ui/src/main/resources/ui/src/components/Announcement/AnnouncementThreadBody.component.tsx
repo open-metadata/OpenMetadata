@@ -32,6 +32,39 @@ import {
 } from './Announcement.interface';
 import AnnouncementThreads from './AnnouncementThreads';
 
+const PAGE_SIZE = 100;
+
+// The server pages announcements ordered by name, not status, so a status tab
+// filtering a single page would hide matches sitting on later pages — and show
+// an empty tab when every match happens to live past the first 100. Filtering
+// has to happen in the browser (the stored `status` is only a snapshot of the
+// last write), so every page is pulled first. Capped so a runaway cursor cannot
+// loop forever; an entity with more announcements than this truncates, which is
+// the behaviour a single page already had.
+const MAX_PAGES = 20;
+
+const fetchAllAnnouncements = async (entityLink: string) => {
+  const collected: AnnouncementEntity[] = [];
+  let after: string | undefined;
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const res = await listAnnouncements({
+      entityLink,
+      limit: PAGE_SIZE,
+      after,
+    });
+
+    collected.push(...(res.data ?? []));
+    after = res.paging?.after;
+
+    if (!after) {
+      break;
+    }
+  }
+
+  return collected;
+};
+
 const AnnouncementThreadBody = ({
   threadLink,
   refetchThread,
@@ -43,7 +76,7 @@ const AnnouncementThreadBody = ({
   const { t } = useTranslation();
   const [announcements, setAnnouncements] = useState<AnnouncementEntity[]>([]);
   const [confirmationState, setConfirmationState] = useState<ConfirmState>(
-    confirmStateInitialValue
+    confirmStateInitialValue,
   );
   const [isThreadLoading, setIsThreadLoading] = useState(true);
 
@@ -52,29 +85,23 @@ const AnnouncementThreadBody = ({
       statusFilter
         ? announcements.filter(
             (announcement) =>
-              getAnnouncementStatus(announcement) === statusFilter
+              getAnnouncementStatus(announcement) === statusFilter,
           )
         : announcements,
-    [announcements, statusFilter]
+    [announcements, statusFilter],
   );
 
-  const getThreads = async (after?: string) => {
+  const getThreads = async () => {
     setIsThreadLoading(true);
 
     try {
-      const res = await listAnnouncements({
-        entityLink: threadLink,
-        limit: 100,
-        after,
-      });
-
-      setAnnouncements(res.data ?? []);
+      setAnnouncements(await fetchAllAnnouncements(threadLink));
     } catch (error) {
       showErrorToast(
         error as AxiosError,
         t('server.entity-fetch-error', {
           entity: t('label.thread-plural-lowercase'),
-        })
+        }),
       );
     } finally {
       setIsThreadLoading(false);
@@ -105,7 +132,7 @@ const AnnouncementThreadBody = ({
 
   const onUpdateAnnouncement = async (
     announcementId: string,
-    data: Operation[]
+    data: Operation[],
   ): Promise<void> => {
     await updateAnnouncementHandler(announcementId, data);
     loadNewThreads();

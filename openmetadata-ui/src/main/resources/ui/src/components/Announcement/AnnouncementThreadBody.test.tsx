@@ -59,8 +59,8 @@ jest.mock('./AnnouncementThreads', () =>
             UpdateAnnouncementButton
           </button>
         </>
-      )
-    )
+      ),
+    ),
 );
 
 jest.mock('../Modals/ConfirmationModal/ConfirmationModal', () =>
@@ -70,11 +70,11 @@ jest.mock('../Modals/ConfirmationModal/ConfirmationModal', () =>
       <button onClick={onConfirm}>Confirm Confirmation Modal</button>
       <button onClick={onCancel}>Cancel Confirmation Modal</button>
     </>
-  ))
+  )),
 );
 
 jest.mock('../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>)
+  jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>),
 );
 
 jest.mock('../../utils/ToastUtils', () => ({
@@ -116,7 +116,7 @@ describe('AnnouncementThreadBody', () => {
 
   it('should render announcement list and confirmation modal', async () => {
     (listAnnouncements as jest.Mock).mockResolvedValueOnce(
-      MOCK_ANNOUNCEMENT_DATA
+      MOCK_ANNOUNCEMENT_DATA,
     );
 
     await act(async () => {
@@ -130,7 +130,7 @@ describe('AnnouncementThreadBody', () => {
 
   it('should confirm delete with announcement id', async () => {
     (listAnnouncements as jest.Mock).mockResolvedValueOnce(
-      MOCK_ANNOUNCEMENT_DATA
+      MOCK_ANNOUNCEMENT_DATA,
     );
 
     await act(async () => {
@@ -141,13 +141,13 @@ describe('AnnouncementThreadBody', () => {
     fireEvent.click(screen.getByText('Confirm Confirmation Modal'));
 
     expect(mockProps.deleteAnnouncementHandler).toHaveBeenCalledWith(
-      'threadId'
+      'threadId',
     );
   });
 
   it('should trigger updateAnnouncementHandler', async () => {
     (listAnnouncements as jest.Mock).mockResolvedValueOnce(
-      MOCK_ANNOUNCEMENT_DATA
+      MOCK_ANNOUNCEMENT_DATA,
     );
 
     await act(async () => {
@@ -158,7 +158,7 @@ describe('AnnouncementThreadBody', () => {
 
     expect(mockProps.updateAnnouncementHandler).toHaveBeenCalledWith(
       'threadId',
-      []
+      [],
     );
   });
 
@@ -192,10 +192,53 @@ describe('AnnouncementThreadBody', () => {
         <AnnouncementThreadBody
           {...mockProps}
           statusFilter={AnnouncementStatus.Scheduled}
-        />
+        />,
       );
     });
 
     expect(screen.getByTestId('rendered-ids')).toHaveTextContent('scheduled');
+  });
+
+  it('should follow the paging cursor so later pages are filtered too', async () => {
+    const now = Date.now();
+    const scheduled = {
+      ...baseAnnouncement,
+      id: 'scheduled-page-2',
+      startTime: now + 1000,
+      endTime: now + 2000,
+    };
+
+    (listAnnouncements as jest.Mock)
+      .mockResolvedValueOnce({
+        data: [
+          {
+            ...baseAnnouncement,
+            id: 'active-page-1',
+            startTime: now - 1000,
+            endTime: now + 1000,
+          },
+        ],
+        paging: { after: 'cursor-2' },
+      })
+      .mockResolvedValueOnce({ data: [scheduled], paging: {} });
+
+    await act(async () => {
+      render(
+        <AnnouncementThreadBody
+          {...mockProps}
+          statusFilter={AnnouncementStatus.Scheduled}
+        />,
+      );
+    });
+
+    expect(listAnnouncements).toHaveBeenCalledTimes(2);
+    expect(listAnnouncements).toHaveBeenLastCalledWith(
+      expect.objectContaining({ after: 'cursor-2' }),
+    );
+    // The only Scheduled announcement lives on the second page — filtering the
+    // first page alone would have rendered an empty tab.
+    expect(screen.getByTestId('rendered-ids')).toHaveTextContent(
+      'scheduled-page-2',
+    );
   });
 });
