@@ -207,6 +207,7 @@ export const DomainLabelV2 = <
     return (
       <DomainSelect
         hasPermission
+        data-testid="domain-selectable-tree"
         isClearable={props.isClearable}
         multiple={props.multiple}
         renderTrigger={renderTrigger}
