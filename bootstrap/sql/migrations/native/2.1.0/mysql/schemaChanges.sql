@@ -369,3 +369,40 @@ SET @ddl = (
 PREPARE stmt FROM @ddl;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+-- Direct-child container listings (issue #22530). "Children of <fqn>" was expressed as
+-- `fqnHash LIKE '<parent>.%' AND fqnHash NOT LIKE '<parent>.%.%'`. Neither predicate is an
+-- indexable equality, so with the listing's `ORDER BY name, id LIMIT n` the optimizer prefers
+-- idx_storage_container_entity_deleted_name_id -- which already delivers that order -- and
+-- scans container rows until the page fills. A container near the root of a deep tree has few
+-- direct children, so the scan runs to completion: cost is O(containers in the deployment),
+-- not O(direct children). Measured on a 14-level, 10k-container S3 tree whose root has one
+-- direct child: 10,376 rows scanned / 90ms, rising to 50,376 rows / 169ms once unrelated
+-- containers were added -- while the answer stayed a single row.
+--
+-- parentFqnHash materialises the fqnHash prefix above the last segment, turning the listing
+-- into an index equality. Derived by stripping the final '.'-separated segment rather than a
+-- fixed 33-character suffix, so it holds regardless of hash width. VIRTUAL keeps the ALTER
+-- metadata-only (no table rebuild); the index below materialises the value.
+ALTER TABLE storage_container_entity
+  ADD COLUMN parentFqnHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin
+  GENERATED ALWAYS AS (
+    CASE
+      WHEN LOCATE('.', REVERSE(fqnHash)) = 0 THEN ''
+      ELSE LEFT(fqnHash, CHAR_LENGTH(fqnHash) - LOCATE('.', REVERSE(fqnHash)))
+    END
+  ) VIRTUAL;
+
+-- (parentFqnHash, deleted) answers the filter; (name, id) supplies the listing's sort order,
+-- so the common non-deleted page needs neither a filesort nor a row lookup per candidate.
+-- Column order deviates from the table_entity/stored_procedure_entity precedent in 1.10.0,
+-- which leads with `deleted`: the container listing's `include` is tri-state, and on
+-- include=ALL there is no `deleted` predicate at all, which would strand a deleted-leading
+-- index. Leading with parentFqnHash keeps the equality usable in all three include modes.
+--
+-- No CONCURRENTLY equivalent is needed here (and MySQL has none): InnoDB builds a secondary
+-- index with ALGORITHM=INPLACE and permits concurrent DML, and the VIRTUAL column add above
+-- is metadata-only, so neither statement blocks traffic. The PostgreSQL companion has to
+-- build CONCURRENTLY and still pays an ACCESS EXCLUSIVE table rewrite for its STORED column.
+CREATE INDEX idx_storage_container_entity_parent_children
+  ON storage_container_entity (parentFqnHash, deleted, name, id);
