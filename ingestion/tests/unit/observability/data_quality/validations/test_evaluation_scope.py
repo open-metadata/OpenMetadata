@@ -51,6 +51,7 @@ ENTITY_LINK = "<#E::table::service.db.users::columns::amount>"
 TEN_PERCENT = EvaluationScopeRuntimeParameters(
     profile_sample=10.0,
     profile_sample_type=ProfileSampleType.PERCENTAGE,
+    sampling_applied=True,
 )
 FULL_TABLE = EvaluationScopeRuntimeParameters()
 
@@ -104,19 +105,36 @@ class TestScopeSentence:
         scope = EvaluationScopeRuntimeParameters(
             profile_sample=1000,
             profile_sample_type=ProfileSampleType.ROWS,
+            sampling_applied=True,
         )
         assert result_messages.scope_sentence(scope) == "Evaluated on a sample of 1,000 rows of the table."
 
     def test_sample_query(self):
-        scope = EvaluationScopeRuntimeParameters(sample_query="SELECT * FROM users LIMIT 10")
+        scope = EvaluationScopeRuntimeParameters(
+            sample_query="SELECT * FROM users LIMIT 10",
+            sampling_applied=True,
+        )
         assert result_messages.scope_sentence(scope) == (
             "Evaluated on the rows returned by the configured sample query."
         )
+
+    def test_a_configured_sample_the_sampler_did_not_apply_is_the_full_table(self):
+        """A 100% percentage that is not randomized reads every row, caveats and all"""
+        scope = EvaluationScopeRuntimeParameters(
+            profile_sample=100.0,
+            profile_sample_type=ProfileSampleType.PERCENTAGE,
+            sampling_applied=False,
+        )
+
+        sentence = result_messages.scope_sentence(scope, stability=SamplingStability.SCALES_WITH_SAMPLE)
+
+        assert sentence == "Evaluated on the full table."
 
     def test_compiled_partition_predicate_is_rendered_verbatim(self):
         scope = EvaluationScopeRuntimeParameters(
             profile_sample=10.0,
             profile_sample_type=ProfileSampleType.PERCENTAGE,
+            sampling_applied=True,
             partition_details=PartitionProfilerConfig(enablePartitioning=True, partitionColumnName="event_date"),
             partition_predicate="event_date >= '2026-09-10'",
         )
@@ -167,9 +185,27 @@ class TestScopeSentence:
     def test_rule_library_sql_says_it_bypasses_the_sampler(self):
         sentence = result_messages.scope_sentence(TEN_PERCENT, bypasses_sampler=True)
         assert sentence == (
-            "Evaluated on the full table. The test's own SQL runs against the full table, "
-            "bypassing a 10% sample of the table."
+            "Evaluated on the full table. The test's own SQL runs as written, so the configured "
+            "sample did not apply to it."
         )
+
+    def test_a_bypassing_test_never_claims_the_partition_restricted_it(self):
+        """The partition predicate is the sampler's; SQL that runs as written never sees it"""
+        scope = EvaluationScopeRuntimeParameters(
+            partition_details=PartitionProfilerConfig(enablePartitioning=True, partitionColumnName="event_date"),
+            partition_predicate="event_date >= '2026-09-10'",
+        )
+
+        sentence = result_messages.scope_sentence(scope, bypasses_sampler=True)
+
+        assert "partitioned on" not in sentence
+        assert sentence == (
+            "Evaluated on the full table. The test's own SQL runs as written, so the configured "
+            "partition filter did not apply to it."
+        )
+
+    def test_a_bypassing_test_on_an_unsampled_table_says_only_what_it_read(self):
+        assert result_messages.scope_sentence(FULL_TABLE, bypasses_sampler=True) == "Evaluated on the full table."
 
 
 class TestResultMessages:
@@ -299,6 +335,7 @@ class TestEvaluationScopeParamsSetter:
             profileSample=10.0,
             profileSampleType=ProfileSampleType.PERCENTAGE,
         )
+        sampler.applies_sampling = True
         sampler.partition_details = PartitionProfilerConfig(
             enablePartitioning=True,
             partitionColumnName="event_date",
@@ -316,6 +353,7 @@ class TestEvaluationScopeParamsSetter:
     def test_an_unsampled_table_is_the_full_table(self):
         sampler = MagicMock()
         sampler._resolve_sample_config = None
+        sampler.applies_sampling = False
         sampler.partition_details = None
         sampler.sample_query = None
 
@@ -323,9 +361,27 @@ class TestEvaluationScopeParamsSetter:
 
         assert scope.is_full_table
 
+    def test_a_sample_the_sampler_does_not_apply_is_not_reported_as_one(self):
+        """A 100% percentage that is not randomized resolves to the table itself"""
+        sampler = MagicMock()
+        sampler._resolve_sample_config = StaticSamplingConfig(
+            profileSample=100.0,
+            profileSampleType=ProfileSampleType.PERCENTAGE,
+        )
+        sampler.applies_sampling = False
+        sampler.partition_details = None
+        sampler.sample_query = None
+
+        scope = self.build_setter(sampler).get_parameters(MagicMock())
+
+        assert scope.profile_sample == 100.0
+        assert not scope.is_sampled
+        assert scope.is_full_table
+
     def test_a_sampler_that_cannot_resolve_its_config_does_not_fail_the_test_case(self):
         sampler = MagicMock()
         type(sampler)._resolve_sample_config = property(lambda _: (_ for _ in ()).throw(RuntimeError("boom")))
+        sampler.applies_sampling = False
         sampler.partition_details = None
         sampler.sample_query = None
 

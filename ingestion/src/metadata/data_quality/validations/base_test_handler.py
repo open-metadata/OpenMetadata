@@ -114,10 +114,10 @@ class BaseTestValidator(ABC):
     # validators overriding __init__ without calling super() still get the default.
     _failure_threshold: FailureThreshold | None = None
 
-    # Memoized reading of the evaluation scope, and the bounds each widened pair came from.
-    # Declared on the class for the same reason.
+    # Memoized reading of the evaluation scope, and the last widening the threshold produced as
+    # `(effective bounds, configured bounds)`. Declared on the class for the same reason.
     _evaluation_scope: EvaluationScopeRuntimeParameters | None = None
-    _configured_bounds: dict[tuple, tuple] | None = None
+    _bound_widening: tuple[tuple, tuple] | None = None
 
     # How this validator's metric behaves once only part of the table is read. Overridden by
     # validators whose metric a sample distorts, so the result message can say so.
@@ -170,7 +170,8 @@ class BaseTestValidator(ABC):
         """
         # Execute the main validation logic (overall results)
         test_result = self._run_validation()
-        test_result.result = self.with_evaluation_scope(test_result.result, test_result.testCaseStatus)
+        if test_result.result:
+            test_result.result = self.with_evaluation_scope(test_result.result, test_result.testCaseStatus)
 
         # Add dimensional results if configured
         if self.is_dimensional_test():
@@ -502,7 +503,7 @@ class BaseTestValidator(ABC):
             threshold=self.get_failure_threshold(),
         )
 
-    def with_evaluation_scope(self, message: str | None, status: TestCaseStatus) -> str | None:
+    def with_evaluation_scope(self, message: str, status: TestCaseStatus | None) -> str:
         """Append the sampling and partition provenance to a result message
 
         An aborted test case computed nothing, so there is no population to qualify: its message
@@ -531,7 +532,7 @@ class BaseTestValidator(ABC):
         whether the test passed leaves the reader to work it out from the numbers. Re-evaluating
         is free: `_evaluate_test_condition` is arithmetic on metrics that are already computed.
         """
-        return bool(self._evaluate_test_condition(metric_values, test_params)["matched"])
+        return bool(self._evaluate_test_condition(metric_values, test_params).get("matched"))
 
     def format_violation_message(
         self,
@@ -745,6 +746,7 @@ class BaseTestValidator(ABC):
             DimensionResult: Formatted dimension result
         """
         dimension_value = self._extract_dimension_value(row)
+        status = self.get_test_case_status(bool(evaluation.get("matched")))
 
         result_message = self.with_evaluation_scope(
             self._format_result_message(
@@ -755,7 +757,7 @@ class BaseTestValidator(ABC):
                 ),
                 test_params=test_params,
             ),
-            self.get_test_case_status(evaluation["matched"]),
+            status,
         )
 
         test_result_values = self._get_test_result_values(metric_values)
@@ -763,7 +765,7 @@ class BaseTestValidator(ABC):
 
         return self.get_dimension_result_object(
             dimension_values={dimension_col_name: dimension_value},
-            test_case_status=self.get_test_case_status(evaluation["matched"]),
+            test_case_status=status,
             result=result_message,
             test_result_value=test_result_values,
             total_rows=evaluation["total_rows"],
@@ -1014,9 +1016,10 @@ class BaseTestValidator(ABC):
     ) -> tuple[float | None, float | None]:
         """Widen already resolved bounds by the failure threshold.
 
-        The bounds the test case asked for are kept, keyed by what they widened into, so that
+        The bounds the test case asked for are kept alongside what they widened into, so that
         the result message can report both: a reader has to see the tolerance that was applied,
-        not only the window it produced.
+        not only the window it produced. A validator resolves its bounds once per run and hands
+        the same pair to the message, so only the latest widening is worth keeping.
 
         Args:
             min_bound: resolved lower bound
@@ -1027,9 +1030,7 @@ class BaseTestValidator(ABC):
         """
         threshold = self.get_failure_threshold()
         effective = thresholds.apply_bound_tolerance(min_bound, max_bound, threshold.value, threshold.unit)
-        if self._configured_bounds is None:
-            self._configured_bounds = {}
-        self._configured_bounds[effective] = (min_bound, max_bound)
+        self._bound_widening = (effective, (min_bound, max_bound))
         return effective
 
     def configured_bounds(
@@ -1038,9 +1039,13 @@ class BaseTestValidator(ABC):
         """The bounds the test case asked for, before the threshold widened them
 
         Falls back to the effective bounds for a validator that never went through
-        `apply_bound_tolerance`: without a recorded widening there is none to report.
+        `apply_bound_tolerance`, or that widened a different pair: without a recorded widening
+        for these bounds there is none to report.
         """
-        return (self._configured_bounds or {}).get(effective_bounds, effective_bounds)
+        widening = self._bound_widening
+        if widening and widening[0] == effective_bounds:
+            return widening[1]
+        return effective_bounds
 
     def matches_expected(
         self, observed: float | None, expected: float | None, label: str = "the expected value"

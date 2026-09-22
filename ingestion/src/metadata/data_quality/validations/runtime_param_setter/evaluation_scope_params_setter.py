@@ -37,6 +37,7 @@ class EvaluationScopeParamsSetter(RuntimeParameterSetter):
         return EvaluationScopeRuntimeParameters(
             profile_sample=sample_config.profileSample if sample_config else None,
             profile_sample_type=sample_config.profileSampleType if sample_config else None,
+            sampling_applied=self._sampling_applied(),
             partition_details=partition_details,
             partition_predicate=self._compile_partition_predicate(partition_details),
             sample_query=getattr(self.sampler, "sample_query", None),
@@ -52,9 +53,26 @@ class EvaluationScopeParamsSetter(RuntimeParameterSetter):
             return self.sampler._resolve_sample_config
         except Exception as exc:
             logger.debug(
-                f"Could not resolve the sample configuration for {self.table_entity.fullyQualifiedName}: {exc}"
+                "Could not resolve the sample configuration for %s: %s", self.table_entity.fullyQualifiedName, exc
             )
             return None
+
+    def _sampling_applied(self) -> bool:
+        """Whether the sampler actually reads a subset, not just whether one is configured.
+
+        A configured amount is not enough to tell: a 100% percentage that is not randomized
+        resolves to the asset itself, and reporting that verdict as a sample's would invite
+        sampling caveats on a run that read every row. Only the sampler knows, so ask it.
+        """
+        try:
+            return bool(self.sampler.applies_sampling)
+        except Exception as exc:
+            logger.debug(
+                "Could not tell whether %s was sampled: %s. Reporting the full table.",
+                self.table_entity.fullyQualifiedName,
+                exc,
+            )
+            return False
 
     def _compile_partition_predicate(self, partition_details) -> str | None:
         """Render the partition filter as SQL, the way `TableDiffParamsSetter` does.
@@ -69,5 +87,7 @@ class EvaluationScopeParamsSetter(RuntimeParameterSetter):
             where_clause = self.sampler.get_partitioned_query().whereclause
             return str(where_clause.compile(compile_kwargs={"literal_binds": True}))
         except Exception as exc:
-            logger.debug(f"Could not compile the partition predicate for {self.table_entity.fullyQualifiedName}: {exc}")
+            logger.debug(
+                "Could not compile the partition predicate for %s: %s", self.table_entity.fullyQualifiedName, exc
+            )
             return None

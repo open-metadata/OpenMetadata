@@ -204,8 +204,9 @@ def statistic_sentence(
             f", widened by a {format_threshold(threshold)} tolerance to {_bounds_phrase(*effective_bounds, lead=False)}"
         )
     else:
-        # A threshold that widened nothing: there was no finite bound to widen.
-        tolerance = f", with a {format_threshold(threshold)} tolerance"
+        # A threshold that widened nothing: no finite bound to widen, or bounds a numeric
+        # tolerance does not apply to, such as the datetime window of a between test.
+        tolerance = f", which a {format_threshold(threshold)} tolerance did not widen"
 
     return f"{statistic} is {format_value(value)}. {expected}{tolerance}, {verdict(passed)}."
 
@@ -267,7 +268,10 @@ def describe_partition(
 
 
 def _describe_sample(scope: EvaluationScopeRuntimeParameters) -> str | None:
-    """Name the sample the rows were read from"""
+    """Name the sample the rows were read from, when one was actually read from"""
+    if not scope.is_sampled:
+        return None
+
     if scope.sample_query:
         return "the rows returned by the configured sample query"
 
@@ -306,15 +310,19 @@ def scope_sentence(
     partition = describe_partition(scope.partition_details, scope.partition_predicate)
 
     if bypasses_sampler:
-        bypass = (
-            f"The test's own SQL runs against the full table, bypassing {sample}."
-            if sample
-            else "The test's own SQL runs against the full table, bypassing the sampler."
-        )
+        # The test's SQL is executed as written, so neither the sample nor the partition
+        # predicate reaches it. Naming what was configured but not applied is the point: the
+        # verdict is the full table's, whatever the table is configured with.
+        ignored = [
+            label
+            for label, configured in (("sample", bool(sample)), ("partition filter", bool(partition)))
+            if configured
+        ]
+        if not ignored:
+            return "Evaluated on the full table."
         return (
-            f"Evaluated on the full table. {bypass}"
-            if not partition
-            else f"Evaluated on the full table, {partition}. {bypass}"
+            "Evaluated on the full table. The test's own SQL runs as written, so the configured "
+            f"{' and '.join(ignored)} did not apply to it."
         )
 
     if not sample and not partition:
