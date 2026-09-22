@@ -158,11 +158,11 @@ class TestScopeSentence:
     def test_a_sample_that_scales_says_so(self):
         sentence = result_messages.scope_sentence(TEN_PERCENT, stability=SamplingStability.SCALES_WITH_SAMPLE)
         assert sentence.startswith("Evaluated on a 10% sample of the table.")
-        assert "scales with the number of rows read" in sentence
+        assert "The whole table adds up to proportionally more" in sentence
 
     def test_a_sample_that_biases_extremes_says_so(self):
         sentence = result_messages.scope_sentence(TEN_PERCENT, stability=SamplingStability.BIASED_INWARD)
-        assert "biased toward the middle of the distribution" in sentence
+        assert "may have left out the table's most extreme rows" in sentence
 
     def test_no_sampling_caveat_without_a_sample(self):
         sentence = result_messages.scope_sentence(FULL_TABLE, stability=SamplingStability.SCALES_WITH_SAMPLE)
