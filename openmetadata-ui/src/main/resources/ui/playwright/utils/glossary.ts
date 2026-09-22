@@ -2238,25 +2238,44 @@ export const expandTreeNodeByName = async (
   // (the full glossary tree is virtualized, so a plain scroll can miss an
   // off-screen glossary); nested lookups rely on the parent's already-loaded
   // subtree instead.
+  const popover = getTreeDropdown(page);
+
   if (search) {
-    const searchResponse = page.waitForResponse(
-      /\/api\/v1\/search\/query\?q=.*index=glossaryTerm.*/
-    );
-    await page.getByTestId('glossary-terms').locator('input').fill(displayName);
-    await searchResponse;
-    await waitForAllLoadersToDisappear(page);
+    const input = page.getByTestId('glossary-terms').locator('input');
+    // ES indexing can lag after entity creation; retry the search until the node appears.
+    await expect(async () => {
+      const searchDone = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=glossaryTerm')
+      );
+      // Clear resets to the glossary list (doesn't match the listener); fill triggers a fresh query.
+      await input.clear();
+      await input.fill(displayName);
+      await searchDone;
+      await expect(popover.getByText(displayName, { exact: true })).toBeVisible(
+        { timeout: 2000 }
+      );
+    }).toPass({ timeout: 30000 });
   }
 
-  const popover = getTreeDropdown(page);
-  const nodeText = popover.getByText(displayName, { exact: true });
-  await expect(nodeText).toBeVisible({ timeout: 10000 });
-  await nodeText.scrollIntoViewIfNeeded();
+  // Locate the row by its ARIA role + accessible name — no XPath, no positional
+  // predicate. React-aria renders each TreeGrid item as role="row" and derives
+  // the accessible name from its text content, so this is stable to DOM refactors.
+  const treeItem = popover.getByRole('row', { name: displayName, exact: true });
 
-  const treeItem = nodeText.locator('xpath=ancestor::*[@role="row"][1]');
-  const expandButton = treeItem.locator('button').first();
-  await expect(expandButton).toBeVisible({ timeout: 5000 });
-  await expandButton.click();
-  await waitForAllLoadersToDisappear(page);
+  await expect(treeItem).toBeVisible({ timeout: 10000 });
+  await treeItem.scrollIntoViewIfNeeded();
+
+  const alreadyExpanded =
+    (await treeItem.getAttribute('aria-expanded')) === 'true';
+
+  if (!alreadyExpanded) {
+    const expandButton = treeItem.getByTestId('tree-expand-btn');
+    await expect(expandButton).toBeVisible({ timeout: 5000 });
+    await expandButton.click();
+    await waitForAllLoadersToDisappear(page);
+  }
 };
 
 export const expandToGlossaryTermChildren = async (
@@ -2266,16 +2285,21 @@ export const expandToGlossaryTermChildren = async (
 ) => {
   const glossaryField = page.getByTestId('glossary-terms');
   await expect(glossaryField).toBeVisible();
-  await glossaryField.click();
 
-  // `display: contents` has no box, so wait on the tree inside it.
-  await expect(getTreeDropdownContent(page)).toBeVisible({
-    timeout: 10000,
-  });
+  // The first click can be swallowed while the drawer is still settling, which
+  // leaves the tree popover closed. Re-open until the treegrid actually renders
+  // (`display: contents` has no box, so wait on the tree inside it). Only click
+  // when the popover is closed, so we never toggle an already-open dropdown.
+  const treeContent = getTreeDropdownContent(page);
+  await expect(async () => {
+    if (!(await treeContent.isVisible())) {
+      await glossaryField.click();
+    }
+    await expect(treeContent).toBeVisible({ timeout: 3000 });
+  }).toPass({ timeout: 30000 });
 
-  await expandTreeNodeByName(page, glossaryDisplayName, { search: false });
+  await expandTreeNodeByName(page, glossaryDisplayName);
   if (parentTermDisplayName) {
-    // Not searched: a nested search returns a leaf, whose chevron stays hidden.
     await expandTreeNodeByName(page, parentTermDisplayName, { search: false });
   }
 };

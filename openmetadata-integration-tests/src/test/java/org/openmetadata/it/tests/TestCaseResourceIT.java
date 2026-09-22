@@ -1136,6 +1136,133 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void test_bulkRemoveTestCasesFromLogicalTestSuite(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase1 =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("bulk_remove_1"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    TestCase testCase2 =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("bulk_remove_2"))
+            .forTable(table)
+            .testDefinition("tableColumnCountToEqual")
+            .parameter("columnCount", "2")
+            .create();
+
+    CreateTestSuite suiteReq = new CreateTestSuite();
+    suiteReq.setName(ns.prefix("logical_bulk_remove"));
+    TestSuite logicalSuite = client.testSuites().create(suiteReq);
+
+    addTestCasesToLogicalTestSuite(
+        client, logicalSuite.getId(), List.of(testCase1.getId(), testCase2.getId()));
+
+    bulkRemoveFromLogicalTestSuite(client, logicalSuite.getId(), List.of(testCase1.getId()));
+
+    TestSuite suiteWithTests = client.testSuites().get(logicalSuite.getId().toString(), "tests");
+    assertNotNull(suiteWithTests.getTests());
+    assertEquals(1, suiteWithTests.getTests().size());
+    assertEquals(testCase2.getId(), suiteWithTests.getTests().get(0).getId());
+
+    TestCase removed = client.testCases().get(testCase1.getId().toString(), "testSuites");
+    assertTrue(
+        removed.getTestSuites().stream().noneMatch(ts -> ts.getId().equals(logicalSuite.getId())),
+        "testCase1 should no longer belong to the logical suite");
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("test case removed from the logical suite is reindexed")
+          .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .untilAsserted(
+              () -> {
+                assertSearchDocContainsTestSuite(
+                    queryTestCaseSearchSource(searchClient, testCase2.getId()),
+                    logicalSuite.getId());
+                JsonNode removedSource = queryTestCaseSearchSource(searchClient, testCase1.getId());
+                assertFalse(
+                    searchDocContainsTestSuite(removedSource, logicalSuite.getId()),
+                    "removed test case should not list the logical suite in search");
+              });
+    }
+  }
+
+  @Test
+  void test_bulkRemoveIgnoresIdsTheLogicalSuiteDoesNotContain(TestNamespace ns) {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+
+    // USER2 has no roles, so its only delete permission on these test cases comes from owning the
+    // table they hang off. It cannot edit the logical suite, which is what makes this exercise the
+    // per test case branch of the authorization check rather than the suite-wide one.
+    Table ownedTable = createTable(ns);
+    Table foreignTable = createTable(ns);
+    Table fetchedOwnedTable = adminClient.tables().get(ownedTable.getId().toString(), "owners");
+    fetchedOwnedTable.setOwners(List.of(shared.USER2_REF));
+    adminClient.tables().update(fetchedOwnedTable.getId().toString(), fetchedOwnedTable);
+
+    TestCase memberToRemove =
+        TestCaseBuilder.create(adminClient)
+            .name(ns.prefix("bulk_remove_member"))
+            .forTable(ownedTable)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    TestCase memberToKeep =
+        TestCaseBuilder.create(adminClient)
+            .name(ns.prefix("bulk_remove_keep"))
+            .forTable(ownedTable)
+            .testDefinition("tableColumnCountToEqual")
+            .parameter("columnCount", "2")
+            .create();
+
+    // Never added to the suite, and owned by nobody, so USER2 cannot delete it either
+    TestCase nonMember =
+        TestCaseBuilder.create(adminClient)
+            .name(ns.prefix("bulk_remove_non_member"))
+            .forTable(foreignTable)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    CreateTestSuite suiteReq = new CreateTestSuite();
+    suiteReq.setName(ns.prefix("logical_bulk_remove_partial"));
+    TestSuite logicalSuite = adminClient.testSuites().create(suiteReq);
+    addTestCasesToLogicalTestSuite(
+        adminClient, logicalSuite.getId(), List.of(memberToRemove.getId(), memberToKeep.getId()));
+
+    // A member USER2 may remove, a test case the suite does not contain, and an id that does not
+    // resolve at all. The last two are ignored instead of failing the whole request.
+    bulkRemoveFromLogicalTestSuite(
+        SdkClients.user2Client(),
+        logicalSuite.getId(),
+        List.of(memberToRemove.getId(), nonMember.getId(), UUID.randomUUID()));
+
+    TestSuite suiteWithTests =
+        adminClient.testSuites().get(logicalSuite.getId().toString(), "tests");
+    assertNotNull(suiteWithTests.getTests());
+    assertEquals(1, suiteWithTests.getTests().size());
+    assertEquals(memberToKeep.getId(), suiteWithTests.getTests().get(0).getId());
+
+    // A member USER2 cannot delete still fails, so the ids above were skipped because the suite
+    // does not contain them and not because the authorization check stopped being applied
+    addTestCasesToLogicalTestSuite(adminClient, logicalSuite.getId(), List.of(nonMember.getId()));
+    assertThrows(
+        Exception.class,
+        () ->
+            bulkRemoveFromLogicalTestSuite(
+                SdkClients.user2Client(), logicalSuite.getId(), List.of(nonMember.getId())),
+        "USER2 should not be able to remove a test case it has no delete permission on");
+  }
+
+  @Test
   void test_concurrentLogicalSuiteAddsPreserveEverySearchMembership(TestNamespace ns)
       throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -3861,6 +3988,142 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void post_testWithInvalidFailureThreshold_4xx(TestNamespace ns) {
+    Table table = createTable(ns);
+    String columnLink =
+        String.format("<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "id");
+
+    InvalidRequestException negative =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                createEntity(
+                    thresholdRequest(
+                        ns,
+                        "negative_threshold",
+                        columnLink,
+                        "columnValuesToBeNotNull",
+                        new TestCaseParameterValue().withName("threshold").withValue("-1"))));
+    assertTrue(
+        negative.getMessage().contains("threshold")
+            && negative.getMessage().contains("must not be negative"),
+        "The error must explain the negative threshold but was: " + negative.getMessage());
+
+    // A percentage of the failing rows cannot go past 100 for a row-countable test.
+    InvalidRequestException overHundred =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                createEntity(
+                    thresholdRequest(
+                        ns,
+                        "percentage_over_100",
+                        columnLink,
+                        "columnValuesToBeNotNull",
+                        new TestCaseParameterValue().withName("threshold").withValue("150"),
+                        new TestCaseParameterValue()
+                            .withName("thresholdUnit")
+                            .withValue("PERCENTAGE"))));
+    assertTrue(
+        overHundred.getMessage().contains("cannot exceed 100"),
+        "The error must explain the 100% cap but was: " + overHundred.getMessage());
+
+    // A row tolerance means nothing on the `matchEnum: false` branch.
+    InvalidRequestException withoutMatchEnum =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                createEntity(
+                    thresholdRequest(
+                        ns,
+                        "in_set_without_match_enum",
+                        columnLink,
+                        "columnValuesToBeInSet",
+                        new TestCaseParameterValue().withName("allowedValues").withValue("[1,2]"),
+                        new TestCaseParameterValue().withName("matchEnum").withValue("false"),
+                        new TestCaseParameterValue().withName("threshold").withValue("10"))));
+    assertTrue(
+        withoutMatchEnum.getMessage().contains("matchEnum"),
+        "The error must name matchEnum but was: " + withoutMatchEnum.getMessage());
+  }
+
+  @Test
+  void post_testWithStatisticalPercentageThresholdOver100_200(TestNamespace ns) {
+    Table table = createTable(ns);
+    String columnLink =
+        String.format("<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "id");
+
+    // The threshold is a deviation from the bounds here, not a share of the rows, so tolerating the
+    // mean being 200% off is loose but coherent — the cap is class-aware, not a blanket range
+    // check.
+    TestCase testCase =
+        createEntity(
+            thresholdRequest(
+                ns,
+                "mean_percentage_over_100",
+                columnLink,
+                "columnValueMeanToBeBetween",
+                new TestCaseParameterValue().withName("minValueForMeanInCol").withValue("10"),
+                new TestCaseParameterValue().withName("maxValueForMeanInCol").withValue("20"),
+                new TestCaseParameterValue().withName("threshold").withValue("200"),
+                new TestCaseParameterValue().withName("thresholdUnit").withValue("PERCENTAGE")));
+
+    assertNotNull(testCase.getId());
+  }
+
+  @Test
+  void post_and_put_testWithNegativeCustomSqlComparisonBound_200(TestNamespace ns) {
+    Table table = createTable(ns);
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    // `tableCustomSQLQuery` declares `thresholdUnit`, but its `threshold` is the bound the SQL
+    // result is compared against through `operator` rather than a failure tolerance, so a signed
+    // delta compared with `>=` legitimately carries a negative one.
+    TestCase testCase =
+        createEntity(
+            thresholdRequest(
+                ns,
+                "custom_sql_negative_bound",
+                tableLink,
+                "tableCustomSQLQuery",
+                new TestCaseParameterValue()
+                    .withName("sqlExpression")
+                    .withValue("SELECT SUM(c1) - SUM(c2) FROM t"),
+                new TestCaseParameterValue().withName("operator").withValue(">="),
+                new TestCaseParameterValue().withName("threshold").withValue("-25")));
+    assertNotNull(testCase.getId());
+
+    // `validateTestParameters` runs on update too, so the bound must also survive a PUT.
+    CreateTestCase update =
+        thresholdRequest(
+            ns,
+            "custom_sql_negative_bound",
+            tableLink,
+            "tableCustomSQLQuery",
+            new TestCaseParameterValue()
+                .withName("sqlExpression")
+                .withValue("SELECT SUM(c1) - SUM(c2) FROM t"),
+            new TestCaseParameterValue().withName("operator").withValue(">="),
+            new TestCaseParameterValue().withName("threshold").withValue("-50"));
+    update.setDescription("Tolerating a wider negative delta");
+    assertNotNull(updateEntity(testCase.getId().toString(), update).getId());
+  }
+
+  private CreateTestCase thresholdRequest(
+      TestNamespace ns,
+      String name,
+      String entityLink,
+      String testDefinition,
+      TestCaseParameterValue... parameterValues) {
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix(name));
+    request.setEntityLink(entityLink);
+    request.setTestDefinition(testDefinition);
+    request.setParameterValues(List.of(parameterValues));
+    return request;
+  }
+
+  @Test
   void post_testWithWrongCaseColumnName_4xx(TestNamespace ns) {
     // Note: The original test uses "C1" literal against column "c'_+# 1" - completely different
     // strings
@@ -5735,6 +5998,21 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             RequestOptions.builder().build());
   }
 
+  private void bulkRemoveFromLogicalTestSuite(
+      OpenMetadataClient client, UUID testSuiteId, List<UUID> testCaseIds) {
+    Map<String, Object> request = new HashMap<>();
+    request.put("testSuiteId", testSuiteId.toString());
+    request.put("testCaseIds", testCaseIds.stream().map(UUID::toString).toList());
+
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            "/v1/dataQuality/testCases/logicalTestCases/bulk/remove",
+            request,
+            RequestOptions.builder().build());
+  }
+
   private JsonNode queryTestCaseSearchSource(Rest5Client searchClient, UUID testCaseId)
       throws Exception {
     return querySearchSource(searchClient, getTestCaseSearchIndexName(), testCaseId);
@@ -5777,16 +6055,23 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
   private void assertSearchDocContainsTestSuite(JsonNode source, UUID testSuiteId) {
     assertNotNull(source);
-    JsonNode testSuites = source.path("testSuites");
-    assertTrue(testSuites.isArray(), "testSuites should be indexed in the search document");
-    boolean found = false;
-    for (JsonNode suite : testSuites) {
+    assertTrue(
+        source.path("testSuites").isArray(), "testSuites should be indexed in the search document");
+    assertTrue(
+        searchDocContainsTestSuite(source, testSuiteId),
+        "search document testSuites should contain " + testSuiteId);
+  }
+
+  private boolean searchDocContainsTestSuite(JsonNode source, UUID testSuiteId) {
+    if (source == null) {
+      return false;
+    }
+    for (JsonNode suite : source.path("testSuites")) {
       if (testSuiteId.toString().equals(suite.path("id").asText())) {
-        found = true;
-        break;
+        return true;
       }
     }
-    assertTrue(found, "search document testSuites should contain " + testSuiteId);
+    return false;
   }
 
   private void assertSearchDocContainsTestCase(JsonNode source, UUID testCaseId) {

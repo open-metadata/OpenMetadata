@@ -57,6 +57,7 @@ logs
 *.ipr
 *.iws
 .idea/
+.run/
 # Package Files
 *.jar
 *.war

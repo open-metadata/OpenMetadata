@@ -1078,32 +1078,36 @@
     --color-utility-gray-800: theme(--color-gray-200);
     --color-utility-gray-900: theme(--color-gray-100);
 
-    --color-utility-error-50: theme(--color-error-950);
-    --color-utility-error-100: theme(--color-error-900);
-    --color-utility-error-200: theme(--color-error-800);
+    /* Status chips: 16% tint bg + 35% border + 400-step text (never dark-on-dark)
+       per palette guideline + Collate #6491. */
+    --color-utility-error-50: --alpha(theme(--color-error-500) / 16%);
+    --color-utility-error-100: --alpha(theme(--color-error-500) / 16%);
+    --color-utility-error-200: --alpha(theme(--color-error-500) / 35%);
     --color-utility-error-300: theme(--color-error-700);
     --color-utility-error-400: theme(--color-error-600);
-    --color-utility-error-500: theme(--color-error-500);
+    --color-utility-error-500: theme(--color-error-400);
     --color-utility-error-600: theme(--color-error-400);
-    --color-utility-error-700: theme(--color-error-300);
+    --color-utility-error-700: theme(--color-error-400);
 
-    --color-utility-warning-50: theme(--color-warning-950);
-    --color-utility-warning-100: theme(--color-warning-900);
-    --color-utility-warning-200: theme(--color-warning-800);
+    --color-utility-warning-50: --alpha(theme(--color-warning-500) / 16%);
+    --color-utility-warning-100: --alpha(theme(--color-warning-500) / 16%);
+    --color-utility-warning-200: --alpha(theme(--color-warning-500) / 35%);
     --color-utility-warning-300: theme(--color-warning-700);
     --color-utility-warning-400: theme(--color-warning-600);
-    --color-utility-warning-500: theme(--color-warning-500);
+    --color-utility-warning-500: theme(--color-warning-400);
     --color-utility-warning-600: theme(--color-warning-400);
-    --color-utility-warning-700: theme(--color-warning-300);
+    --color-utility-warning-700: theme(--color-warning-400);
 
-    --color-utility-success-50: theme(--color-success-950);
-    --color-utility-success-100: theme(--color-success-900);
-    --color-utility-success-200: theme(--color-success-800);
+    /* Status chips: 16% tint bg + 35% border + 400-step text (never dark-on-dark)
+       per palette guideline + Collate #6491. */
+    --color-utility-success-50: --alpha(theme(--color-success-500) / 16%);
+    --color-utility-success-100: --alpha(theme(--color-success-500) / 16%);
+    --color-utility-success-200: --alpha(theme(--color-success-500) / 35%);
     --color-utility-success-300: theme(--color-success-700);
     --color-utility-success-400: theme(--color-success-600);
-    --color-utility-success-500: theme(--color-success-500);
+    --color-utility-success-500: theme(--color-success-400);
     --color-utility-success-600: theme(--color-success-400);
-    --color-utility-success-700: theme(--color-success-300);
+    --color-utility-success-700: theme(--color-success-400);
 
     --color-utility-orange-50: theme(--color-orange-950);
     --color-utility-orange-100: theme(--color-orange-900);
@@ -1216,8 +1220,10 @@
     --color-text-warning-primary: theme(--color-warning-400);
     --color-text-success-primary: theme(--color-success-400);
     --color-text-disabled: theme(--color-gray-500);
-    --color-text-brand-primary: theme(--color-gray-50);
-    --color-text-brand-secondary: theme(--color-gray-300);
+    /* Brand text = blue-300 link tone in dark (palette guideline + Collate #6491
+       --ai-link); regular text stays on the gray ramp. */
+    --color-text-brand-primary: theme(--color-brand-300);
+    --color-text-brand-secondary: theme(--color-brand-300);
     --color-text-brand-tertiary: theme(--color-gray-400);
     --color-text-placeholder: theme(--color-gray-400);
     --color-text-placeholder_subtle: theme(--color-gray-700);
@@ -1227,7 +1233,7 @@
     --color-text-secondary_on-brand: theme(--color-gray-300);
     --color-text-tertiary_on-brand: theme(--color-gray-400);
     --color-text-quaternary_on-brand: theme(--color-gray-400);
-    --color-text-brand-secondary_hover: theme(--color-gray-200);
+    --color-text-brand-secondary_hover: theme(--color-brand-200);
     --color-text-brand-tertiary_alt: theme(--color-gray-50);
     --color-text-error-primary_hover: theme(--color-error-300);
 
@@ -1270,11 +1276,13 @@
     --color-fg-secondary_hover: theme(--color-gray-200);
     --color-fg-disabled: theme(--color-gray-500);
     --color-fg-disabled_subtle: theme(--color-gray-600);
-    --color-fg-brand-primary: theme(--color-brand-500);
-    --color-fg-brand-secondary: theme(--color-brand-500);
-    --color-fg-brand-primary_alt: theme(--color-gray-300);
-    --color-fg-brand-secondary_alt: theme(--color-gray-600);
-    --color-fg-brand-secondary_hover: theme(--color-gray-500);
+    /* Brand foreground (icons, tab underline, active accents) = blue-300 link
+       tone in dark (palette guideline + Collate #6491 --ai-link). */
+    --color-fg-brand-primary: theme(--color-brand-300);
+    --color-fg-brand-secondary: theme(--color-brand-300);
+    --color-fg-brand-primary_alt: theme(--color-brand-300);
+    --color-fg-brand-secondary_alt: theme(--color-brand-300);
+    --color-fg-brand-secondary_hover: theme(--color-brand-200);
 
     /* BACKGROUND COLORS */
     --color-bg-primary: theme(--color-gray-950);
