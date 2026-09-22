@@ -21,6 +21,7 @@ import GlossaryTermPicker from '../../../common/GlossaryTermPicker/GlossaryTermP
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { DqFilterDescriptor } from '../../../DataQuality/DataQualityDashboard/useDataQualityDashboardFilters';
 import {
+  chipChevronClassName,
   chipCountBadgeClassName,
   chipTriggerClassName,
   chipTriggerSelectedClassName,
@@ -83,7 +84,11 @@ const DqFilterChip = ({
               {filter.selectedOwnerKeys.length}
             </span>
           )}
-          <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
+          <ChevronDown
+            className={chipChevronClassName(
+              filter.selectedOwnerKeys.length > 0
+            )}
+          />
         </button>
       </UserTeamSelectableList>
     );

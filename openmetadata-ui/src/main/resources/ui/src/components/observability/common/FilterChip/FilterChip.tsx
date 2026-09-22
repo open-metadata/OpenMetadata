@@ -24,6 +24,7 @@ import {
 } from '../../../DataQuality/TestCases/FilterChip.interface';
 import DqDateRangeFilter from '../../DataQuality/Dashboard/DqDateRangeFilter';
 import {
+  chipChevronClassName,
   chipCountBadgeClassName,
   chipTriggerClassName,
   chipTriggerSelectedClassName,
@@ -196,7 +197,7 @@ const UserChipInputTrigger = ({
       )}>
       {hasSelection ? displayText : label}
     </span>
-    <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
+    <ChevronDown className={chipChevronClassName(hasSelection)} />
   </button>
 );
 

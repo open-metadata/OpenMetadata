@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  chipChevronClassName,
   chipCountBadgeClassName,
   chipTriggerClassName,
   chipTriggerSelectedClassName,
@@ -40,6 +41,16 @@ describe('dqFilterChip utils', () => {
         'tw:text-fg-brand-primary'
       );
       expect(chipTriggerSelectedClassName).toContain('tw:after:outline-brand');
+    });
+  });
+
+  describe('chipChevronClassName', () => {
+    it('should brand the chevron once a value is picked, like FilterSelect does', () => {
+      // A chevron left grey beside a branded label is the drift this guards
+      // against; the two colours are one Tailwind group, so it is either/or.
+      expect(chipChevronClassName(true)).toContain('tw:text-fg-brand-primary');
+      expect(chipChevronClassName(true)).not.toContain('tw:text-fg-quaternary');
+      expect(chipChevronClassName(false)).toContain('tw:text-fg-quaternary');
     });
   });
 

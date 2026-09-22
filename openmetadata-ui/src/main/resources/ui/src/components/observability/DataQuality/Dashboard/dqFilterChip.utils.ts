@@ -37,6 +37,17 @@ export const chipTriggerSelectedClassName = classNames(
   'tw:after:outline-brand'
 );
 
+/**
+ * Chevron colour for a trigger built by hand: `FilterSelect` brands its trigger
+ * icon on selection, and these two utilities are the same Tailwind group, so the
+ * state has to pick one rather than stack both.
+ */
+export const chipChevronClassName = (hasSelection: boolean) =>
+  classNames(
+    'tw:size-5 tw:shrink-0',
+    hasSelection ? 'tw:text-fg-brand-primary' : 'tw:text-fg-quaternary'
+  );
+
 /** Matches the count badge `FilterSelect` renders on its own trigger. */
 export const chipCountBadgeClassName = classNames(
   'tw:ml-1.5 tw:inline-flex tw:h-[18px] tw:min-w-[18px] tw:shrink-0',
