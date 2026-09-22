@@ -12,52 +12,89 @@
  */
 @import '../variables.less';
 
-.table-query-editor > .CodeMirror {
+// CodeMirror 5 shipped `height: 300px` in its own stylesheet, and every rule
+// below either inherited that default or overrode it. CodeMirror 6 has no
+// stylesheet and grows with its content instead, so keep the old default here
+// and let the more specific overrides win as they always did.
+.cm-editor {
+  height: 300px;
+
+  // A fixed-height editor needs its viewport to scroll in CodeMirror 6.
+  .cm-scroller {
+    overflow: auto;
+  }
+
+  // Ant Design injects a global `::selection { color: #fff }`. CodeMirror 5 never
+  // felt it — its visible text is display-only, with the real selection in an
+  // offscreen textarea — but CodeMirror 6 selects the content element itself, so
+  // the white text landed on v6's pale drawn selection band and became
+  // unreadable. The band stays; the text colour is pinned to the editor's own.
+  // (`inherit` cannot be used: browsers chain ::selection inheritance through
+  // the ancestors' ::selection colour, which is the white we are overriding.)
+  ::selection {
+    background: transparent;
+    color: var(--tw-color-text-primary);
+  }
+
+  // CodeMirror 6 draws a dotted focus outline of its own. The editor is what
+  // keyboard users land on, so recolour it rather than removing it.
+  &.cm-focused {
+    outline: 1px solid var(--tw-color-border-brand);
+  }
+}
+
+// These are descendant selectors, not `> .cm-editor`: @uiw/react-codemirror
+// renders a wrapper div (.cm-theme-*) around the editor, and the class can land
+// either on that wrapper (editorClass) or on .schema-editor-container
+// (className), so the editor is a child in one case and a grandchild in the
+// other. CodeMirror 5 needed two selectors for the same reason.
+.table-query-editor .cm-editor {
   height: auto !important;
 }
 .custom-query-editor {
   border: @global-border;
   border-radius: @border-rad-base;
-  .CodeMirror {
+  .cm-editor {
     border-radius: @border-rad-base;
     height: 200px;
   }
 }
 .query-editor-h-200 {
-  .CodeMirror {
+  .cm-editor {
     height: 200px;
   }
 }
 
 .query-editor-min-h-60 {
-  .CodeMirror {
+  .cm-editor {
     min-height: 60px;
   }
 }
-.full-screen-editor-height > .CodeMirror,
-.full-screen-editor-height > .react-codemirror2 > .CodeMirror {
+.full-screen-editor-height .cm-editor {
   height: calc(100vh - 250px) !important;
 }
 
-.CodeMirror-wrap pre.CodeMirror-line {
+// Was scoped to wrapped editors (.CodeMirror-wrap) in v5; CodeMirror 6 has no
+// equivalent marker class, and the padding is harmless when not wrapping.
+.cm-editor .cm-line {
   padding-right: var(--om-space-100);
 }
 
 .custom-code-mirror-theme {
-  .CodeMirror {
+  .cm-editor {
     background: var(--om-legacy-color-f4f7f9);
   }
-  .CodeMirror-gutters {
+  .cm-gutters {
     background-color: var(--tw-color-bg-primary);
   }
-  .CodeMirror-linenumber {
+  .cm-lineNumbers .cm-gutterElement {
     color: @text-color;
   }
 }
 
 .code-editor-new-style {
   border-radius: @border-rad-sm;
-  .CodeMirror-gutters {
+  .cm-gutters {
     display: none;
   }
 
@@ -74,80 +111,73 @@
   }
 }
 
-// Dark-mode editor theming for every CodeMirror instance (SchemaEditor, query
-// cards, JSON/manifest widgets, query console). CodeMirror 5 ships a light theme,
-// so without this the editor surface, gutter, line numbers, cursor, selection,
-// active line, and syntax tokens stay tuned for a light background in dark mode.
-// Appended last so it wins over the light `.custom-code-mirror-theme`.
-.dark-mode {
-  .CodeMirror {
-    background: var(--color-bg-surface);
-    color: var(--color-text-primary);
+// Syntax hues for every editor (SchemaEditor, query cards, JSON/manifest
+// widgets, query console). CodeMirror 6 generates its own class names for
+// highlighted tokens, so these are consumed by THEMED_HIGHLIGHT_STYLE in
+// CodeMirror.utils rather than by selectors here. Light values keep the hues
+// CodeMirror shipped; the dark block below retunes them for a dark surface,
+// where the saturated originals fail contrast.
+.cm-editor {
+  --cm-token-keyword: #708;
+  --cm-token-def: #00c;
+  --cm-token-property: #05a;
+  --cm-token-number: #164;
+  --cm-token-string: #a11;
+  --cm-token-type: #085;
+  --cm-token-operator: var(--color-text-secondary);
+  --cm-token-comment: #940;
+  --cm-token-error: var(--color-error-600);
+}
 
-    // CodeMirror 5's default syntax hues (keyword #708, string #a11, number
-    // #164, atom #219, …) are dark, saturated colors meant for a light
-    // background and fail contrast on the dark surface. Remap them to light
-    // hues; nesting under .CodeMirror outranks the default
-    // `.cm-s-default .cm-<token>` rules regardless of stylesheet order.
-    .cm-keyword {
-      color: var(--color-purple-300);
-    }
-    .cm-def,
-    .cm-builtin {
-      color: var(--color-blue-400);
-    }
-    .cm-variable-2,
-    .cm-property {
-      color: var(--color-blue-300);
-    }
-    .cm-number,
-    .cm-atom,
-    .cm-attribute {
-      color: var(--color-orange-300);
-    }
-    .cm-string,
-    .cm-string-2 {
-      color: var(--color-green-300);
-    }
-    .cm-type,
-    .cm-variable-3 {
-      color: var(--color-success-400);
-    }
-    .cm-operator,
-    .cm-meta {
-      color: var(--color-text-secondary);
-    }
-    .cm-comment {
-      color: var(--color-text-tertiary);
-    }
-    .cm-error {
-      color: var(--color-error-400);
-    }
+// Dark mode. CodeMirror ships a light theme, so without this the editor
+// surface, gutter, line numbers, cursor, selection and active line stay tuned
+// for a light background. Appended last so it wins over the light
+// `.custom-code-mirror-theme`.
+//
+// The hues are literals rather than `--color-*` tokens: those are not defined
+// on the document in every app that mounts these editors, and an undefined
+// var makes the whole custom property invalid, which drops syntax colouring
+// altogether instead of falling back.
+.dark-mode {
+  .cm-editor {
+    background: var(--color-bg-surface, #22262f);
+    color: var(--color-text-primary, #f7f7f7);
+
+    --cm-token-keyword: #bdb4fe;
+    --cm-token-def: #53b1fd;
+    --cm-token-property: #84caff;
+    --cm-token-number: #feb273;
+    --cm-token-string: #73e2a3;
+    --cm-token-type: #47cd89;
+    --cm-token-operator: var(--color-text-secondary, #cecfd2);
+    --cm-token-comment: var(--color-text-tertiary, #94979c);
+    --cm-token-error: #f97066;
   }
-  .custom-code-mirror-theme .CodeMirror {
-    background: var(--color-bg-surface);
+  .custom-code-mirror-theme .cm-editor {
+    background: var(--color-bg-surface, #22262f);
   }
-  .CodeMirror-gutters {
-    background-color: var(--color-bg-canvas);
-    border-right-color: var(--color-border-subtle);
+  .cm-gutters {
+    background-color: var(--color-bg-canvas, #16181d);
+    border-right-color: var(--color-border-subtle, #333741);
+    color: var(--color-text-tertiary, #94979c);
   }
-  .CodeMirror-linenumber,
-  .CodeMirror-foldgutter-open,
-  .CodeMirror-foldgutter-folded {
-    color: var(--color-text-tertiary);
+  .cm-cursor,
+  .cm-dropCursor {
+    border-left-color: var(--color-text-primary, #f7f7f7);
   }
-  .CodeMirror-cursor {
-    border-left-color: var(--color-text-primary);
+  // CodeMirror's focused-selection rule is
+  // `.<generated>.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground`,
+  // which ties on specificity with a shorter selector and wins on order because
+  // its stylesheet is injected at runtime. Match that depth to take the tie.
+  .cm-editor .cm-selectionLayer .cm-selectionBackground,
+  .cm-editor.cm-focused
+    > .cm-scroller
+    > .cm-selectionLayer
+    .cm-selectionBackground {
+    background: #3e4456;
   }
-  // Include the focused state: CodeMirror's own
-  // `.CodeMirror-focused .CodeMirror-selected` (light lavender) has equal
-  // specificity and loads with the editor CSS, so it would otherwise win during
-  // active editing.
-  .CodeMirror-selected,
-  .CodeMirror-focused .CodeMirror-selected {
-    background: var(--color-bg-secondary_hover);
-  }
-  .CodeMirror-activeline-background {
-    background: var(--color-bg-secondary);
+  .cm-activeLine,
+  .cm-activeLineGutter {
+    background: var(--color-bg-secondary, #1f242f);
   }
 }
