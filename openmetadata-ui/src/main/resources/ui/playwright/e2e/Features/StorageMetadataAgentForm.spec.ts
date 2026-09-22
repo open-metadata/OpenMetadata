@@ -14,7 +14,12 @@ import { Page } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
 import { expect, test } from '../../support/fixtures/base';
-import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  createNewPage,
+  redirectToHomePage,
+  uuid,
+  waitForToastStackToClear,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
@@ -291,6 +296,9 @@ test.describe(
       await confidenceField.clear();
       await confidenceField.fill('1000');
 
+      // Background async-delete toasts from parallel workers stack at
+      // bottom-center over next-button and intercept the click; drain first.
+      await waitForToastStackToClear(page);
       await page.getByTestId('next-button').click();
 
       await test.step('Error message is shown for out-of-range confidence', async () => {
@@ -309,6 +317,7 @@ test.describe(
       await test.step('Wizard advances after correcting the value', async () => {
         await confidenceField.clear();
         await confidenceField.fill('80');
+        await waitForToastStackToClear(page);
         await page.getByTestId('next-button').click();
         await expect(
           page.locator('[data-testid="schedular-schedule"]')
@@ -326,6 +335,9 @@ test.describe(
       await sampleCountField.clear();
       await sampleCountField.fill('-1');
 
+      // Background async-delete toasts from parallel workers stack at
+      // bottom-center over next-button and intercept the click; drain first.
+      await waitForToastStackToClear(page);
       await page.getByTestId('next-button').click();
 
       await test.step('Error message is shown for negative sample count', async () => {
@@ -347,6 +359,7 @@ test.describe(
       await test.step('Wizard advances after correcting the value', async () => {
         await sampleCountField.clear();
         await sampleCountField.fill('50');
+        await waitForToastStackToClear(page);
         await page.getByTestId('next-button').click();
         await expect(
           page.locator('[data-testid="schedular-schedule"]')
