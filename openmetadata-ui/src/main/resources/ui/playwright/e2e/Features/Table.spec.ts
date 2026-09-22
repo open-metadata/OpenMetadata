@@ -621,16 +621,17 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
         .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
     ).toBeVisible();
 
-    await page.click(
-      `[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid="classification-tags-0"] [data-testid="edit-button"]`
+    await openClassificationTagPicker(
+      page,
+      page.locator(
+        `[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid="classification-tags-0"] [data-testid="edit-button"]`
+      )
     );
 
-    await expect(
-      page.getByTestId('classification-tag-picker-search')
-    ).toBeVisible();
-
     const removeSearchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${encodeURIComponent(testTag.data.name)}*`
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        escapeESReservedCharacters(testTag.data.name)
+      )}*`
     );
     await page
       .getByTestId('classification-tag-picker-search')

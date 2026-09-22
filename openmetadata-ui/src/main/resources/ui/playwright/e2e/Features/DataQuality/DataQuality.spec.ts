@@ -219,10 +219,16 @@ test.describe(
           .fill(NEW_TABLE_TEST_CASE.description);
 
         // Add tags to test case
+        await expect
+          .poll(async () => {
+            await page.getByTestId('tags-input').click();
+
+            return page.getByTestId('search-input').isVisible();
+          })
+          .toBeTruthy();
         const tagsSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=tag*`
         );
-        await page.getByTestId('tags-input').click();
         await page.getByTestId('search-input').fill(testTag1.data.name);
         await tagsSearchResponse;
         await page
@@ -272,10 +278,16 @@ test.describe(
           .getByRole('button')
           .click();
 
+        await expect
+          .poll(async () => {
+            await page.getByTestId('tags-input').click();
+
+            return page.getByTestId('search-input').isVisible();
+          })
+          .toBeTruthy();
         const newTagsSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=tag*`
         );
-        await page.getByTestId('tags-input').click();
         await page.getByTestId('search-input').fill(testTag2.data.name);
         await newTagsSearchResponse;
         await page
@@ -413,10 +425,16 @@ test.describe(
           .fill(NEW_COLUMN_TEST_CASE.description);
 
         // Add tags to column test case
+        await expect
+          .poll(async () => {
+            await page.getByTestId('tags-input').click();
+
+            return page.getByTestId('search-input').isVisible();
+          })
+          .toBeTruthy();
         const columnTagsSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=tag*`
         );
-        await page.getByTestId('tags-input').click();
         await page.getByTestId('search-input').fill(testTag1.data.name);
         await columnTagsSearchResponse;
         await page
@@ -460,10 +478,16 @@ test.describe(
           .getByRole('button')
           .click();
 
+        await expect
+          .poll(async () => {
+            await page.getByTestId('tags-input').click();
+
+            return page.getByTestId('search-input').isVisible();
+          })
+          .toBeTruthy();
         const columnNewTagsSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=tag*`
         );
-        await page.getByTestId('tags-input').click();
         await page.getByTestId('search-input').fill(testTag2.data.name);
         await columnNewTagsSearchResponse;
         await page
