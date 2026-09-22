@@ -87,7 +87,11 @@ const addRule = async (
   // Type the condition to filter the list. The options are built from every policy function's
   // examples and the dropdown is virtualized, so an option far enough down the list is not in the
   // DOM to be clicked - which is what happens whenever a new function is added.
-  await page.locator('[data-testid="condition"]').fill(RULE_DETAILS.condition);
+  await page
+    .locator(
+      '[data-testid="condition"] > .ant-select-selector .ant-select-selection-search-input'
+    )
+    .fill(RULE_DETAILS.condition);
   await page.locator(`[title="${RULE_DETAILS.condition}"]`).click();
   await conditionResponse;
 
