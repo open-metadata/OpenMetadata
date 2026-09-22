@@ -18,6 +18,7 @@ import {
   parseResponseJson,
   searchAndGetDocumentRow,
   uploadDocument as uploadDocumentToApi,
+  waitForDocumentProcessingComplete,
 } from '../../utils/ContextCenterUtil';
 import { test } from '../fixtures/pages';
 
@@ -149,12 +150,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 // ─── Suite ────────────────────────────────────────────────────────────────────
 
-// TODO(context-center-file-preview): skipped pending live-stack validation.
-// In CI the shared openFilePreviewModal helper asserts the /drive/files/{id}/download
-// response is 200, but the freshly uploaded fixture has no ready asset/content at click
-// time (404 "No current content found"). Needs a poll-for-content step before preview,
-// verified against a running stack, before re-enabling.
-test.describe.skip('Context Center - Document File Preview', () => {
+test.describe('Context Center - Document File Preview', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -170,6 +166,7 @@ test.describe.skip('Context Center - Document File Preview', () => {
       fileName,
       Buffer.from(MARKDOWN_CONTENT)
     );
+    await waitForDocumentProcessingComplete(apiContext, document.id);
     await mockSearchHitWithOverride(page, apiContext, document.id, {
       fileType: 'Text',
       fileExtension: 'md',
@@ -201,6 +198,7 @@ test.describe.skip('Context Center - Document File Preview', () => {
       fileName,
       Buffer.from(TEXT_CONTENT)
     );
+    await waitForDocumentProcessingComplete(apiContext, document.id);
     await mockSearchHitWithOverride(page, apiContext, document.id, {
       fileType: 'Text',
       fileExtension: 'txt',
@@ -231,6 +229,7 @@ test.describe.skip('Context Center - Document File Preview', () => {
       fileName,
       buildMinimalPdfBuffer()
     );
+    await waitForDocumentProcessingComplete(apiContext, document.id);
     await mockSearchHitWithOverride(page, apiContext, document.id, {
       fileType: 'PDF',
       fileExtension: 'pdf',
@@ -259,6 +258,7 @@ test.describe.skip('Context Center - Document File Preview', () => {
       fileName,
       Buffer.from(ONE_PIXEL_PNG_BASE64, 'base64')
     );
+    await waitForDocumentProcessingComplete(apiContext, document.id);
     await mockSearchHitWithOverride(page, apiContext, document.id, {
       fileType: 'Image',
       fileExtension: 'png',
@@ -289,6 +289,7 @@ test.describe.skip('Context Center - Document File Preview', () => {
       fileName,
       Buffer.from('unsupported preview fallback test content')
     );
+    await waitForDocumentProcessingComplete(apiContext, document.id);
     // A `fileType` with no dedicated renderer (Document/Spreadsheet/
     // Presentation/Archive/Other) is the real-world source of this path —
     // resolveRenderer's default case, not a size or processing-status guard.
@@ -325,6 +326,7 @@ test.describe.skip('Context Center - Document File Preview', () => {
       fileName,
       Buffer.from(TEXT_CONTENT)
     );
+    await waitForDocumentProcessingComplete(apiContext, document.id);
     await mockSearchHitWithOverride(page, apiContext, document.id, {
       fileType: 'Text',
       fileExtension: 'txt',
@@ -358,6 +360,7 @@ test.describe.skip('Context Center - Document File Preview', () => {
       fileName,
       Buffer.from(TEXT_CONTENT)
     );
+    await waitForDocumentProcessingComplete(apiContext, document.id);
     await mockSearchHitWithOverride(page, apiContext, document.id, {
       fileType: 'Text',
       fileExtension: 'txt',
