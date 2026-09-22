@@ -75,6 +75,9 @@ public abstract class PipelineServiceClient implements PipelineServiceClientInte
   /** Reported for a standing misconfiguration that no amount of retrying can clear. */
   protected static final int CONFIGURATION_ERROR = 422;
 
+  /** Reported when the caller's thread was interrupted, so the check never reached the runner. */
+  protected static final int REQUEST_CANCELLED = 499;
+
   private volatile Retry serviceStatusRetry;
 
   protected static final String SERVER_VERSION;
@@ -249,6 +252,18 @@ public abstract class PipelineServiceClient implements PipelineServiceClientInte
     return DEFAULT_BACKOFF_MILLIS;
   }
 
+  /**
+   * Only a 5xx is worth another attempt: a null means the implementation does not report status
+   * (NoopClient) and a 4xx is a standing condition, neither of which a retry changes.
+   *
+   * <p>An interrupted thread is never retried either. The backoff sleeps on the calling thread, so
+   * with the interrupt flag set it fails instantly — and Resilience4j rethrows its (unset)
+   * {@code lastRuntimeException}, surfacing a NullPointerException instead of the status.
+   */
+  private boolean isRetryableStatus(PipelineServiceClientResponse response) {
+    return response != null && response.getCode() >= 500 && !Thread.currentThread().isInterrupted();
+  }
+
   private Retry retryForServiceStatus() {
     if (serviceStatusRetry == null) {
       synchronized (this) {
@@ -257,9 +272,7 @@ public abstract class PipelineServiceClient implements PipelineServiceClientInte
               RetryConfig.<PipelineServiceClientResponse>custom()
                   .maxAttempts(MAX_ATTEMPTS)
                   .waitDuration(Duration.ofMillis(getRetryBackoffMillis()))
-                  // A null means the implementation does not report status (NoopClient), which
-                  // no amount of retrying changes; only a 5xx is worth another attempt.
-                  .retryOnResult(response -> response != null && response.getCode() >= 500)
+                  .retryOnResult(this::isRetryableStatus)
                   .failAfterMaxAttempts(false)
                   .build();
           serviceStatusRetry = Retry.of("getServiceStatus", retryConfig);

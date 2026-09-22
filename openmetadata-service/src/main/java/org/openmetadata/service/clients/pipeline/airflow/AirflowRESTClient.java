@@ -544,10 +544,11 @@ public class AirflowRESTClient extends PipelineServiceClient {
       return buildUnhealthyStatus(String.format("%s %s", connectionFailureMessage(e), DOCS_LINK));
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      return buildUnhealthyStatus(
-          String.format(
-              "Failed to connect to Airflow due to %s. Is the host available at %s? %s.",
-              e.getMessage(), serviceURL, DOCS_LINK));
+      // The check was cancelled before it could reach Airflow, so this says nothing about Airflow's
+      // health. Non-retryable: the backoff would sleep on a thread whose interrupt flag is set.
+      return buildStatus(
+          REQUEST_CANCELLED,
+          String.format("Interrupted while checking the Airflow status at [%s].", serviceURL));
     } catch (PipelineServiceClientException e) {
       // buildURI throws when endpoint detection finds no reachable API version. Reported as 404
       // rather than a 5xx because detection has already probed v3/v2/v1 — a retry would just

@@ -14,6 +14,7 @@ package org.openmetadata.service.clients.pipeline.airflow;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -671,6 +672,35 @@ class AirflowRESTClientTest {
       assertTrue(status.getReason().contains("Unable to connect to Airflow APIs"));
       // v3 + v2 + v1 probed once each: an unreachable Airflow is not retried on top of that.
       assertEquals(3, server.requests.size());
+    }
+  }
+
+  @Test
+  void getServiceStatusDoesNotRetryWhenCallerThreadIsInterrupted() throws Exception {
+    try (AirflowTestServer server = new AirflowTestServer()) {
+      String basePath = "/airflow";
+      String healthPath = basePath + "/pluginsv2/api/v2/openmetadata/health-auth";
+      server.enqueue(
+          "GET",
+          healthPath,
+          200,
+          "{\"version\":\"" + PipelineServiceClient.getServerVersion() + "\"}");
+
+      AirflowRESTClient client = newClient(server, basePath);
+      client.getApiVersion(); // detect up front so the status call is a single request
+
+      Thread.currentThread().interrupt();
+      try {
+        PipelineServiceClientResponse status = client.getServiceStatus();
+
+        assertNotEquals(200, status.getCode());
+        assertTrue(status.getReason().contains("Interrupted while checking"));
+        // Retrying would sleep on a thread whose interrupt flag is set, which fails immediately.
+        assertEquals(1, server.requests("GET", healthPath).size());
+        assertTrue(Thread.currentThread().isInterrupted(), "interrupt flag must be preserved");
+      } finally {
+        Thread.interrupted(); // don't leak the flag into the next test on this thread
+      }
     }
   }
 
