@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { borderAfter, FilterSelect } from '@openmetadata/ui-core-components';
+import { FilterSelect } from '@openmetadata/ui-core-components';
 import { ChevronDown, Columns01, LayoutAlt04, Table } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isString } from 'lodash';
@@ -23,8 +23,19 @@ import {
   FilterValue,
 } from '../../../DataQuality/TestCases/FilterChip.interface';
 import DqDateRangeFilter from '../../DataQuality/Dashboard/DqDateRangeFilter';
+import {
+  chipChevronClassName,
+  chipCountBadgeClassName,
+  chipTriggerClassName,
+  chipTriggerSelectedClassName,
+} from '../../DataQuality/Dashboard/dqFilterChip.utils';
 
 const TEXT_SECONDARY_CLASS = 'tw:text-secondary';
+
+// The core input trigger is 32px tall and takes its width from its container.
+// The labelled filter row wants the fixed-width, 38px box the user chip beside
+// it renders, so the size comes from here — the layer that owns the row.
+const INPUT_TRIGGER_CLASS = 'tw:h-auto tw:w-44 tw:py-2';
 
 // Leading icons for single-select filter options, per the 2.0 mock. Keyed by
 // option value so it naturally extends to other filters (e.g. status).
@@ -70,6 +81,8 @@ const SelectChip = ({
   const dropdown = (
     <FilterSelect
       hideCounts
+      bordered={variant !== 'input'}
+      className={variant === 'input' ? INPUT_TRIGGER_CLASS : undefined}
       commitMode={isMulti ? 'staged' : 'immediate'}
       data-testid={`search-dropdown-${key}`}
       isOpen={isOpen}
@@ -184,7 +197,7 @@ const UserChipInputTrigger = ({
       )}>
       {hasSelection ? displayText : label}
     </span>
-    <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
+    <ChevronDown className={chipChevronClassName(hasSelection)} />
   </button>
 );
 
@@ -198,16 +211,19 @@ const UserChipPillTrigger = ({
   testId: string;
 }) => (
   <button
-    className={classNames(
-      'tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:gap-1 tw:whitespace-nowrap',
-      'tw:rounded-lg tw:bg-primary tw:px-3.5 tw:py-2.5 tw:text-sm tw:font-medium tw:text-secondary',
-      'tw:relative tw:shadow-xs-skeuomorphic tw:outline-brand',
-      borderAfter,
-      'tw:after:outline-primary'
-    )}
+    className={classNames(chipTriggerClassName, {
+      [chipTriggerSelectedClassName]: hasSelection,
+    })}
     data-testid={testId}
     type="button">
-    {hasSelection ? `${label} · 1` : label}
+    {label}
+    {hasSelection && (
+      <span
+        className={chipCountBadgeClassName}
+        data-testid="filter-count-badge">
+        1
+      </span>
+    )}
     <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
   </button>
 );
