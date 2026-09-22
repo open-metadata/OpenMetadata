@@ -118,25 +118,17 @@ export const deletedUserChecks = async (page: Page) => {
 };
 
 export const visitUserProfilePage = async (page: Page, userName: string) => {
-  await settingClick(page, GlobalSettingOptions.USERS);
-
-  const listLoader = page
-    .getByTestId('user-list-v1-component')
-    .getByTestId('loader');
-  const userRow = page.getByTestId(userName);
-
-  await listLoader.waitFor({ state: 'detached' });
-
-  const searchResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=user&from=0&size=*'
+  // Deliberately not routed through the user-list search box. That list is
+  // Elasticsearch-backed and a user created seconds earlier may not be indexed
+  // yet; once the empty result renders nothing re-issues the query, so waiting
+  // on the row cannot recover. The profile page reads the user from the API by
+  // name, which is immediately consistent.
+  const userResponse = page.waitForResponse(
+    `/api/v1/users/name/${userName}?fields=*`
   );
-  await page.getByTestId('searchbar').fill(userName);
-  await searchResponse;
-  await listLoader.waitFor({ state: 'detached' });
-
-  await expect(userRow).toBeVisible();
-
-  await userRow.click();
+  await page.goto(`/users/${userName}`);
+  await userResponse;
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const softDeleteUserProfilePage = async (
