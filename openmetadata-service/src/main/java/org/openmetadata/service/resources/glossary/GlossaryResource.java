@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.glossary;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -58,6 +60,7 @@ import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -168,12 +171,10 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
-    if (domain != null) {
-      filter.addQueryParam(
-          "domainId",
-          Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED)
-              .getId()
-              .toString());
+    if (!nullOrEmpty(domain)) {
+      EntityReference domainReference =
+          Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED);
+      filter.addQueryParam("domainId", String.format("'%s'", domainReference.getId()));
     }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);

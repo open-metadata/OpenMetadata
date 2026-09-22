@@ -34,8 +34,10 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -1844,5 +1846,65 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
           imported.getReviewers().size(),
           "Glossary reviewer count should match");
     }
+  }
+
+  // ===================================================================
+  // Domain filter (#31173) — GET /glossaries?domain=<fqn> must scope the list
+  // ===================================================================
+
+  @Test
+  void test_listGlossaries_domainFilter(TestNamespace ns) {
+    Domain domainA =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("domain-a"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Domain A"));
+    Domain domainB =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("domain-b"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Domain B"));
+
+    Glossary glossaryA =
+        createEntity(
+            createRequest(ns.prefix("glossary-a"), ns)
+                .withDomains(List.of(domainA.getFullyQualifiedName())));
+    Glossary glossaryB =
+        createEntity(
+            createRequest(ns.prefix("glossary-b"), ns)
+                .withDomains(List.of(domainB.getFullyQualifiedName())));
+
+    // Scoped to domain A: only glossary A is returned, glossary B is filtered out.
+    List<Glossary> inDomainA =
+        listEntities(new ListParams().setDomain(domainA.getFullyQualifiedName())).getData();
+    assertTrue(
+        inDomainA.stream().anyMatch(g -> g.getId().equals(glossaryA.getId())),
+        "Glossary in domain A must be listed when filtering by domain A");
+    assertFalse(
+        inDomainA.stream().anyMatch(g -> g.getId().equals(glossaryB.getId())),
+        "Glossary in domain B must not be listed when filtering by domain A");
+
+    // Scoped to domain B: only glossary B is returned.
+    List<Glossary> inDomainB =
+        listEntities(new ListParams().setDomain(domainB.getFullyQualifiedName())).getData();
+    assertTrue(
+        inDomainB.stream().anyMatch(g -> g.getId().equals(glossaryB.getId())),
+        "Glossary in domain B must be listed when filtering by domain B");
+    assertFalse(
+        inDomainB.stream().anyMatch(g -> g.getId().equals(glossaryA.getId())),
+        "Glossary in domain A must not be listed when filtering by domain B");
+
+    // Empty domain param must behave like no filter (regression: must not 404).
+    List<Glossary> emptyFilter = listEntities(new ListParams().setDomain("")).getData();
+    assertTrue(
+        emptyFilter.stream().anyMatch(g -> g.getId().equals(glossaryA.getId()))
+            && emptyFilter.stream().anyMatch(g -> g.getId().equals(glossaryB.getId())),
+        "Empty domain filter must return glossaries from all domains");
   }
 }
