@@ -15,14 +15,12 @@
  * and end time and is displayed to users viewing the asset during that period.
  */
 export interface Announcement {
-    /**
-     * Severity/category of the announcement. Drives the colour and icon it is rendered with.
-     */
     announcementType?: AnnouncementType;
     /**
      * Change that lead to this version of the announcement.
      */
     changeDescription?: ChangeDescription;
+    color?:             AnnouncementColor;
     /**
      * Timestamp when the announcement was created.
      */
@@ -31,11 +29,6 @@ export interface Announcement {
      * User who created the announcement.
      */
     createdBy?: string;
-    /**
-     * Palette family the announcement is rendered with. Only meaningful when announcementType
-     * is `Custom`; for every other type the colour is derived from the type.
-     */
-    color?: AnnouncementColor;
     /**
      * When true indicates the entity has been soft deleted.
      */
@@ -95,6 +88,17 @@ export interface Announcement {
      * Metadata version of the entity.
      */
     version?: number;
+}
+
+/**
+ * Severity/category of the announcement. Drives the colour and icon it is rendered with.
+ */
+export enum AnnouncementType {
+    Critical = "Critical",
+    Custom = "Custom",
+    Deprecation = "Deprecation",
+    Notice = "Notice",
+    Warning = "Warning",
 }
 
 /**
@@ -160,6 +164,26 @@ export interface FieldChange {
      * field type to deserialize it.
      */
     oldValue?: any;
+}
+
+/**
+ * Palette family the announcement is rendered with. Only meaningful when announcementType
+ * is `Custom`; for every other type the colour is derived from the type.
+ */
+export enum AnnouncementColor {
+    Blue = "blue",
+    BlueDark = "blue-dark",
+    BlueLight = "blue-light",
+    Brand = "brand",
+    Error = "error",
+    Gray = "gray",
+    GrayBlue = "gray-blue",
+    Indigo = "indigo",
+    Orange = "orange",
+    Pink = "pink",
+    Purple = "purple",
+    Success = "success",
+    Warning = "warning",
 }
 
 /**
@@ -245,37 +269,6 @@ export enum ReactionType {
     Rocket = "rocket",
     ThumbsDown = "thumbsDown",
     ThumbsUp = "thumbsUp",
-}
-
-/**
- * Palette family the announcement is rendered with. Only meaningful when announcementType
- * is `Custom`; for every other type the colour is derived from the type.
- */
-export enum AnnouncementColor {
-    Blue = "blue",
-    BlueDark = "blue-dark",
-    BlueLight = "blue-light",
-    Brand = "brand",
-    Error = "error",
-    Gray = "gray",
-    GrayBlue = "gray-blue",
-    Indigo = "indigo",
-    Orange = "orange",
-    Pink = "pink",
-    Purple = "purple",
-    Success = "success",
-    Warning = "warning",
-}
-
-/**
- * Severity/category of the announcement. Drives the colour and icon it is rendered with.
- */
-export enum AnnouncementType {
-    Critical = "Critical",
-    Custom = "Custom",
-    Deprecation = "Deprecation",
-    Notice = "Notice",
-    Warning = "Warning",
 }
 
 /**

@@ -14,15 +14,8 @@
  * Request to create a new Announcement.
  */
 export interface CreateAnnouncement {
-    /**
-     * Severity/category of the announcement. Drives the colour and icon it is rendered with.
-     */
     announcementType?: AnnouncementType;
-    /**
-     * Palette family the announcement is rendered with. Only meaningful when announcementType
-     * is `Custom`; for every other type the colour is derived from the type.
-     */
-    color?: AnnouncementColor;
+    color?:            AnnouncementColor;
     /**
      * Announcement content in Markdown format.
      */
@@ -54,6 +47,17 @@ export interface CreateAnnouncement {
 }
 
 /**
+ * Severity/category of the announcement. Drives the colour and icon it is rendered with.
+ */
+export enum AnnouncementType {
+    Critical = "Critical",
+    Custom = "Custom",
+    Deprecation = "Deprecation",
+    Notice = "Notice",
+    Warning = "Warning",
+}
+
+/**
  * Palette family the announcement is rendered with. Only meaningful when announcementType
  * is `Custom`; for every other type the colour is derived from the type.
  */
@@ -71,15 +75,4 @@ export enum AnnouncementColor {
     Purple = "purple",
     Success = "success",
     Warning = "warning",
-}
-
-/**
- * Severity/category of the announcement. Drives the colour and icon it is rendered with.
- */
-export enum AnnouncementType {
-    Critical = "Critical",
-    Custom = "Custom",
-    Deprecation = "Deprecation",
-    Notice = "Notice",
-    Warning = "Warning",
 }
