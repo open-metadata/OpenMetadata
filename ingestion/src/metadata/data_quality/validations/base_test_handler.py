@@ -29,11 +29,13 @@ from uuid import uuid4
 from pydantic import BaseModel
 
 from metadata.data_quality.api.models import TestCaseResultResponse  # noqa: TC001
-from metadata.data_quality.validations import thresholds, utils
+from metadata.data_quality.validations import result_messages, thresholds, utils
 from metadata.data_quality.validations.impact_score import (
     DEFAULT_TOP_DIMENSIONS,
     MAX_TOP_DIMENSIONS,
 )
+from metadata.data_quality.validations.models import EvaluationScopeRuntimeParameters
+from metadata.data_quality.validations.result_messages import SamplingStability
 from metadata.data_quality.validations.thresholds import (
     THRESHOLD_PARAM,
     THRESHOLD_UNIT_PARAM,
@@ -51,6 +53,7 @@ from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue  # noqa: TC001
 from metadata.generated.schema.type.basic import Timestamp  # noqa: TC001
 from metadata.profiler.processor.runner import PandasRunner, QueryRunner  # noqa: TC001
+from metadata.utils import entity_link
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_like_column import SQALikeColumn  # noqa: TC001
 
@@ -111,6 +114,19 @@ class BaseTestValidator(ABC):
     # validators overriding __init__ without calling super() still get the default.
     _failure_threshold: FailureThreshold | None = None
 
+    # Memoized reading of the evaluation scope, and the bounds each widened pair came from.
+    # Declared on the class for the same reason.
+    _evaluation_scope: EvaluationScopeRuntimeParameters | None = None
+    _configured_bounds: dict[tuple, tuple] | None = None
+
+    # How this validator's metric behaves once only part of the table is read. Overridden by
+    # validators whose metric a sample distorts, so the result message can say so.
+    SAMPLING_STABILITY: SamplingStability = SamplingStability.STABLE
+
+    # Whether the test runs its own SQL against the table rather than reading the sampled
+    # dataset. Rule-library and custom SQL tests do, and the message has to say so.
+    BYPASSES_SAMPLER: bool = False
+
     def __init__(
         self,
         runner: QueryRunner | PandasRunner,
@@ -154,6 +170,7 @@ class BaseTestValidator(ABC):
         """
         # Execute the main validation logic (overall results)
         test_result = self._run_validation()
+        test_result.result = self.with_evaluation_scope(test_result.result, test_result.testCaseStatus)
 
         # Add dimensional results if configured
         if self.is_dimensional_test():
@@ -452,6 +469,166 @@ class BaseTestValidator(ABC):
 
         return violations <= threshold.value
 
+    def get_evaluation_scope(self) -> EvaluationScopeRuntimeParameters:
+        """What this test case was actually measured against
+
+        Injected by `EvaluationScopeParamsSetter`, like every other runtime parameter. A test
+        case run without it -- a unit test building a validator by hand, or a caller that does
+        not go through the test suite interface -- falls back to the full table, which is the
+        scope a table with no sampling and no partitioning has.
+
+        Returns:
+            EvaluationScopeRuntimeParameters: the resolved sample and partition
+        """
+        scope = self._evaluation_scope
+        if scope is None:
+            try:
+                scope = self.get_runtime_parameters(EvaluationScopeRuntimeParameters)
+            except ValueError:
+                logger.debug(
+                    "No evaluation scope for %s. Reporting the result as measured on the full table.",
+                    self.test_case.fullyQualifiedName,
+                )
+                scope = EvaluationScopeRuntimeParameters()
+            self._evaluation_scope = scope
+        return scope
+
+    def evaluation_scope_sentence(self) -> str:
+        """The sentence every result message ends with: which rows the verdict was measured on"""
+        return result_messages.scope_sentence(
+            self.get_evaluation_scope(),
+            stability=self.SAMPLING_STABILITY,
+            bypasses_sampler=self.BYPASSES_SAMPLER,
+            threshold=self.get_failure_threshold(),
+        )
+
+    def with_evaluation_scope(self, message: str | None, status: TestCaseStatus) -> str | None:
+        """Append the sampling and partition provenance to a result message
+
+        An aborted test case computed nothing, so there is no population to qualify: its message
+        is the error and is left alone. Provenance is reporting, never a verdict, so a scope
+        that cannot be rendered leaves the message as it was rather than failing the run.
+        """
+        if not message or status is TestCaseStatus.Aborted:
+            return message
+        try:
+            return f"{message} {self.evaluation_scope_sentence()}"
+        except Exception as exc:
+            logger.debug("Could not describe the evaluation scope of %s: %s", self.test_case, exc)
+            return message
+
+    @staticmethod
+    def _dimension_prefix(dimension_info: DimensionInfo | None) -> str:
+        """`Dimension country=Spain: ` for a dimensional row, nothing for the overall result"""
+        if not dimension_info:
+            return ""
+        return f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
+
+    def _matched(self, metric_values: dict, test_params: dict | None = None) -> bool:
+        """Re-evaluate the verdict so a message can state it
+
+        `_format_result_message` is only handed the metrics, but a message that does not say
+        whether the test passed leaves the reader to work it out from the numbers. Re-evaluating
+        is free: `_evaluate_test_condition` is arithmetic on metrics that are already computed.
+        """
+        return bool(self._evaluate_test_condition(metric_values, test_params)["matched"])
+
+    def format_violation_message(
+        self,
+        violations: int | None,
+        population: int | None,
+        violation_noun: str,
+        matched: bool,
+        dimension_info: DimensionInfo | None = None,
+    ) -> str:
+        """Message for a row-tolerance test: violations, population, threshold, verdict
+
+        Args:
+            violations: rows that broke the test condition
+            population: rows they were counted against, None when the validator did not count it
+            violation_noun: what the violating rows are, e.g. "null rows"
+            matched: the verdict
+            dimension_info: dimension details, for a dimensional row
+
+        Returns:
+            str: e.g. "Found 120 null rows out of 9,981 evaluated (1.20%). Threshold is 1.00%,
+                 so this test failed."
+        """
+        return self._dimension_prefix(dimension_info) + result_messages.violation_sentence(
+            violations,
+            population,
+            violation_noun,
+            self.get_failure_threshold(),
+            matched,
+        )
+
+    def format_statistic_message(
+        self,
+        statistic: str,
+        value,
+        effective_bounds: tuple[float | None, float | None],
+        matched: bool,
+        dimension_info: DimensionInfo | None = None,
+    ) -> str:
+        """Message for a deviation test against bounds: statistic, bounds, widening, verdict
+
+        Args:
+            statistic: what was measured, e.g. "Mean of `amount`"
+            value: the observed value
+            effective_bounds: the bounds the value was evaluated against, threshold included
+            matched: the verdict
+            dimension_info: dimension details, for a dimensional row
+
+        Returns:
+            str: e.g. "Mean of `amount` is 87.4. Expected between 90 and 110, widened by a 5%
+                 tolerance to 85.5 and 115.5, so this test passed."
+        """
+        return self._dimension_prefix(dimension_info) + result_messages.statistic_sentence(
+            statistic,
+            value,
+            self.configured_bounds(effective_bounds),
+            effective_bounds,
+            self.get_failure_threshold(),
+            matched,
+        )
+
+    def format_expected_value_message(
+        self,
+        statistic: str,
+        value,
+        expected,
+        matched: bool,
+        dimension_info: DimensionInfo | None = None,
+    ) -> str:
+        """Message for a deviation test against an exact value: statistic, expectation, verdict
+
+        Args:
+            statistic: what was measured, e.g. "Row count"
+            value: the observed value
+            expected: the value the test case expects
+            matched: the verdict
+            dimension_info: dimension details, for a dimensional row
+
+        Returns:
+            str: e.g. "Row count is 9,981. Expected 10,000, with a 1.00% tolerance, so this test
+                 passed."
+        """
+        return self._dimension_prefix(dimension_info) + result_messages.expected_value_sentence(
+            statistic,
+            value,
+            expected,
+            self.get_failure_threshold(),
+            matched,
+        )
+
+    def column_label(self, fallback: str = "the column") -> str:
+        """The column under test, backticked, for a result message"""
+        try:
+            column_name = entity_link.get_column_name_or_none(self.test_case.entityLink.root)
+        except Exception:  # pragma: no cover - a malformed entity link is not worth failing a test case for
+            column_name = None
+        return f"`{column_name}`" if column_name else fallback
+
     def _format_result_message(
         self,
         metric_values: dict,
@@ -569,13 +746,16 @@ class BaseTestValidator(ABC):
         """
         dimension_value = self._extract_dimension_value(row)
 
-        result_message = self._format_result_message(
-            metric_values,
-            dimension_info=DimensionInfo(
-                dimension_name=dimension_col_name,
-                dimension_value=dimension_value,
+        result_message = self.with_evaluation_scope(
+            self._format_result_message(
+                metric_values,
+                dimension_info=DimensionInfo(
+                    dimension_name=dimension_col_name,
+                    dimension_value=dimension_value,
+                ),
+                test_params=test_params,
             ),
-            test_params=test_params,
+            self.get_test_case_status(evaluation["matched"]),
         )
 
         test_result_values = self._get_test_result_values(metric_values)
@@ -834,6 +1014,10 @@ class BaseTestValidator(ABC):
     ) -> tuple[float | None, float | None]:
         """Widen already resolved bounds by the failure threshold.
 
+        The bounds the test case asked for are kept, keyed by what they widened into, so that
+        the result message can report both: a reader has to see the tolerance that was applied,
+        not only the window it produced.
+
         Args:
             min_bound: resolved lower bound
             max_bound: resolved upper bound
@@ -842,7 +1026,21 @@ class BaseTestValidator(ABC):
             tuple[float | None, float | None]: the effective bounds
         """
         threshold = self.get_failure_threshold()
-        return thresholds.apply_bound_tolerance(min_bound, max_bound, threshold.value, threshold.unit)
+        effective = thresholds.apply_bound_tolerance(min_bound, max_bound, threshold.value, threshold.unit)
+        if self._configured_bounds is None:
+            self._configured_bounds = {}
+        self._configured_bounds[effective] = (min_bound, max_bound)
+        return effective
+
+    def configured_bounds(
+        self, effective_bounds: tuple[float | None, float | None]
+    ) -> tuple[float | None, float | None]:
+        """The bounds the test case asked for, before the threshold widened them
+
+        Falls back to the effective bounds for a validator that never went through
+        `apply_bound_tolerance`: without a recorded widening there is none to report.
+        """
+        return (self._configured_bounds or {}).get(effective_bounds, effective_bounds)
 
     def matches_expected(
         self, observed: float | None, expected: float | None, label: str = "the expected value"

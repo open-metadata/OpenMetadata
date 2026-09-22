@@ -19,6 +19,7 @@ from datetime import date, datetime, time
 
 from sqlalchemy import Column
 
+from metadata.data_quality.validations import result_messages
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
     DIMENSION_TOTAL_COUNT_KEY,
@@ -30,6 +31,7 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.checkers.between_bounds_checker import (
     BetweenBoundsChecker,
 )
+from metadata.data_quality.validations.result_messages import SamplingStability
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
@@ -49,6 +51,8 @@ MAX = "max"
 
 class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
     """Validator for column values to be between test case"""
+
+    SAMPLING_STABILITY = SamplingStability.BIASED_INWARD
 
     MIN_BOUND = "minValue"
     MAX_BOUND = "maxValue"
@@ -210,13 +214,18 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
         min_bound = test_params[self.MIN_BOUND]
         max_bound = test_params[self.MAX_BOUND]
 
-        if dimension_info:
-            return (
-                f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
-                f"Found min={min_value}, max={max_value} vs. the expected min={min_bound}, max={max_bound}"
-            )
-        else:  # noqa: RET505
-            return f"Found min={min_value}, max={max_value} vs. the expected min={min_bound}, max={max_bound}."
+        matched = self._matched(metric_values, test_params)
+        column = self.column_label()
+
+        # Both extremes are checked against the same window, so the message reports both and
+        # states the verdict once, on the pair.
+        return self.format_statistic_message(
+            f"Minimum of {column} is {result_messages.format_value(min_value)} and its maximum",
+            max_value,
+            (min_bound, max_bound),
+            matched,
+            dimension_info,
+        )
 
     def _get_test_result_values(self, metric_values: dict) -> list[TestResultValue]:
         """Get test result values for values-to-be-between test

@@ -15,9 +15,13 @@ based on the test case.
 """
 
 import sys
+from typing import ClassVar
 
 from metadata.data_quality.validations.column.base.columnRuleLibrarySqlExpressionValidator import (
     ColumnRuleLibrarySqlExpressionValidator,
+)
+from metadata.data_quality.validations.runtime_param_setter.evaluation_scope_params_setter import (
+    EvaluationScopeParamsSetter,
 )
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,
@@ -73,6 +77,11 @@ def validator_name(test_case_class: type) -> str:
 class RuntimeParameterSetterFactory:
     """runtime parameter setter factory class"""
 
+    # Setters that run for every test case, whatever it tests. The evaluation scope is a
+    # property of the run rather than of one test definition: every result message has to say
+    # which rows it was measured on.
+    _universal_setters: ClassVar[set[type[RuntimeParameterSetter]]] = {EvaluationScopeParamsSetter}
+
     def __init__(self) -> None:
         """Set"""
         # Map test definition FQN to param setters (for built-in validators)
@@ -122,5 +131,5 @@ class RuntimeParameterSetterFactory:
                 table_entity,
                 sampler,
             )
-            for setter in setter_classes
+            for setter in setter_classes | self._universal_setters
         }
