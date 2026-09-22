@@ -37,6 +37,7 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SORT_ORDER } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import { ResourcePermission } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   TestCase,
@@ -57,7 +58,11 @@ import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
-import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getOperationPermissions,
+  getPrioritizedEditPermission,
+} from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { replacePlus } from '../../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
@@ -133,6 +138,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   editVariant = getDefaultTestCaseFormVariant(),
   hasActiveFilters = false,
   emptyStateAction,
+  entityPermissions,
   deletionMode = TEST_CASE_DELETION_MODE.HARD,
 }: DataQualityTabProps) => {
   const { t } = useTranslation();
@@ -447,14 +453,37 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     }
   };
 
+  const applyInlinePermissions = (
+    permissions: Record<string, ResourcePermission>
+  ) => {
+    const data = testCases.map((testCase) => {
+      const inline = testCase.id ? permissions[testCase.id] : undefined;
+
+      return {
+        ...(inline
+          ? getOperationPermissions(inline)
+          : DEFAULT_ENTITY_PERMISSION),
+        fullyQualifiedName: testCase.fullyQualifiedName,
+      };
+    });
+    setTestCasePermissions(data);
+    setIsPermissionLoading(false);
+  };
+
   useEffect(() => {
     if (testCases.length) {
       collectInlineIncidentStatuses();
-      fetchTestCasePermissions();
+      // Callers that list with includePermissions=true pass the inline map;
+      // the others (e.g. TestSuiteDetailsPage) keep the per-row fetch.
+      if (entityPermissions) {
+        applyInlinePermissions(entityPermissions);
+      } else {
+        void fetchTestCasePermissions();
+      }
     } else {
       setIsStatusLoading(false);
     }
-  }, [testCases]);
+  }, [testCases, entityPermissions]);
 
   const handleOpenBundleSuiteForm = (cases: TestCase[]) => {
     setBundleSuiteFormInitialCases(cases);
