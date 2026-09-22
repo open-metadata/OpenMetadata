@@ -699,11 +699,9 @@ test.describe('Glossary P3 Tests', () => {
           response.request().method() === 'GET'
       );
 
-      // Navigate directly to a non-existent glossary
       await page.goto(`/glossary/NonExistentGlossary_${Date.now()}`);
       await page.waitForLoadState('domcontentloaded');
 
-      // Assert the API returned 404 for the non-existent glossary
       const apiResponse = await glossaryApiResponse;
 
       expect(apiResponse.status()).toBe(404);
