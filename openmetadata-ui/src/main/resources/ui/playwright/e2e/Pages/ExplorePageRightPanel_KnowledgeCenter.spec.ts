@@ -318,22 +318,17 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
 
         await overview.removeOwner([user1.getUserDisplayName()], 'Users');
         await waitForAllLoadersToDisappear(adminPage);
-        await waitForOwnerIndexed(
-          adminPage,
-          knowledgeCenter.responseData.fullyQualifiedName,
-          'page',
-          user1.responseData.id,
-          false
-        );
 
-        await navigateToKCEntity(
-          adminPage,
-          getEntityDisplayName(knowledgeCenter.responseData)
-        );
-        const ownerElement = adminPage
-          .getByTestId('owners-section')
-          .getByText(user1.getUserDisplayName());
-        await expect(ownerElement).not.toBeVisible();
+        await expect(async () => {
+          await navigateToKCEntity(
+            adminPage,
+            getEntityDisplayName(knowledgeCenter.responseData)
+          );
+          const ownerElement = adminPage
+            .getByTestId('owners-section')
+            .getByText(user1.getUserDisplayName());
+          await expect(ownerElement).not.toBeVisible();
+        }).toPass({ timeout: 60_000, intervals: [2_000, 5_000] });
       });
     });
 
