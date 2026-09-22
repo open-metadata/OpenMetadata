@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/serviceType.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Service Type",
   "description": "This schema defines the service types entities which requires a connection.",
   "type": "string",

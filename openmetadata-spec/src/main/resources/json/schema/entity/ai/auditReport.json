@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/ai/auditReport.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AuditReport",
   "$comment": "@om-entity-type",
   "description": "An asynchronously-generated evidence pack scoped to a framework, domain, or single AI asset. Bundles compliance records, control coverage, workflow history, remediation snapshot, and per-asset documents into machine-readable JSON (and optionally PDF) for auditors and regulators.",
