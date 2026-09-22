@@ -16,11 +16,11 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import org.openmetadata.it.server.SearchTestImages;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import org.opensearch.testcontainers.OpensearchContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch.generic.Requests;
@@ -48,10 +48,16 @@ import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class FieldNamesAggregationIT {
 
+  // Vanilla image on purpose. This suite exercises the English mappings only, and those declare
+  // just om_analyzer / om_ngram / om_compound_analyzer — all built from stock tokenizers and
+  // filters, so no plugin is needed. SearchTestImages.openSearchWithAnalysisPlugins exists for the
+  // one suite that creates jp/zh indexes (see its javadoc); using it here put a third-party CDN
+  // download on the merge-queue critical path. On 2026-09-22 release.infinilabs.com stalled long
+  // enough (curl exit 28 on all 4 attempts, ~500s) to fail this class at <clinit> and block the
+  // queue — for a plugin none of these tests use.
   @Container
   static OpensearchContainer<?> opensearch =
-      new OpensearchContainer<>(
-              SearchTestImages.openSearchWithAnalysisPlugins("opensearchproject/opensearch:3.4.0"))
+      new OpensearchContainer<>(DockerImageName.parse("opensearchproject/opensearch:3.4.0"))
           .withStartupTimeout(Duration.ofMinutes(5))
           .withEnv("discovery.type", "single-node")
           .withEnv("OPENSEARCH_INITIAL_ADMIN_PASSWORD", "Test@12345")

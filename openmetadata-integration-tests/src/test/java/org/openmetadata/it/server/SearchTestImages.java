@@ -12,42 +12,45 @@ import org.testcontainers.utility.DockerImageName;
  * {@code jp}/{@code zh} indexes whose text fields reference those analyzers, which is what lets it
  * catch per-language mapping/analyzer drift (the jp mappings referencing undefined analyzers went
  * unnoticed because CI only ever ran English on a vanilla image). The rest of the IT suite is pinned
- * to the English mappings, so it stays on the vanilla base image with no plugin-download dependency.
+ * to the English mappings, so it stays on the vanilla base image with no plugin dependency at all.
  *
- * <p>{@code analysis-ik} is third-party and ships only as a version-matched release URL; the URL is
- * derived from the base image tag so it always matches the OpenSearch version being tested. Because
- * the image build downloads the plugin from {@code release.infinilabs.com}, scoping it to this single
- * suite keeps that network dependency off the critical path of every other OpenSearch IT.
+ * <p>{@code analysis-ik} is third-party and ships only as a version-matched release archive. It is
+ * <b>vendored</b> under {@code src/test/resources/search-plugins/} and {@code COPY}'d into the build
+ * context rather than downloaded during the build. It used to be fetched from
+ * {@code release.infinilabs.com} at image-build time, and that CDN intermittently accepts the
+ * connection and then stalls mid-body: every curl attempt burned its full {@code --max-time 120},
+ * the four attempts totalled ~500s, and the class's static initializer failed with
+ * {@code ExceptionInInitializerError} — blocking the merge queue for a network problem no product
+ * code caused (#33822). Bundling the 4.4 MB Apache-2.0 archive makes the build hermetic; this image
+ * can now only fail for product reasons.
  *
- * <p>Both install steps are explicitly time-bounded. A docker {@code RUN} has no time budget of its
- * own and {@code opensearch-plugin install <url>} fetches over a {@code URLConnection} with no read
- * timeout, so a CDN that accepts the connection and then stalls hangs the build forever. That is not
- * hypothetical: when release.infinilabs.com stalled, the build wedged until the lane's own 65-minute
- * {@code timeout} killed maven (exit 124) and a third-party CDN took out the entire suite rather
- * than this one test.
+ * <p>Bumping the OpenSearch base image: download the matching archive from {@link
+ * #IK_PLUGIN_URL_TEMPLATE}, check its {@code plugin-descriptor.properties} carries the same
+ * {@code opensearch.version}, and commit it alongside the old one is removed. There is deliberately
+ * no fallback to the CDN when the vendored file is missing — a bump that forgets the archive should
+ * fail immediately with the message below, not rediscover the stall in CI.
+ *
+ * <p>{@code analysis-kuromoji} is an official OpenSearch plugin resolved by name from the project's
+ * own artifact host, which has not shown this behaviour; it stays as a bounded install. Vendor it too
+ * if it ever does.
  */
 public final class SearchTestImages {
 
   private static final String OPENSEARCH_BASE_REFERENCE = "opensearchproject/opensearch";
   private static final String PLUGIN_INSTALL =
       "/usr/share/opensearch/bin/opensearch-plugin install --batch ";
+
+  /** Provenance only — where the vendored archive comes from. Never fetched at build time. */
   private static final String IK_PLUGIN_URL_TEMPLATE =
       "https://release.infinilabs.com/analysis-ik/stable/opensearch-analysis-ik-%s.zip";
-  private static final String IK_ARCHIVE = "/tmp/opensearch-analysis-ik.zip";
 
-  /** Bounds the one step that resolves an official artifact by name rather than by URL. */
+  private static final String IK_PLUGIN_RESOURCE_TEMPLATE =
+      "search-plugins/opensearch-analysis-ik-%s.zip";
+  private static final String IK_CONTEXT_FILE = "opensearch-analysis-ik.zip";
+  private static final String IK_ARCHIVE = "/tmp/" + IK_CONTEXT_FILE;
+
+  /** Bounds the one step that still resolves an artifact by name rather than from disk. */
   private static final String KUROMOJI_INSTALL_TIMEOUT_SECONDS = "300";
-
-  /**
-   * Caps a single attempt at two minutes and rides out transient CDN errors. {@code
-   * --retry-all-errors} is what makes the retry cover connection resets and 5xx, not just curl's
-   * default transient set. Worst case is roughly 6 minutes, then the build fails with the HTTP
-   * status instead of hanging.
-   */
-  private static final String IK_DOWNLOAD =
-      "curl --fail --silent --show-error --location"
-          + " --connect-timeout 15 --max-time 120"
-          + " --retry 3 --retry-delay 5 --retry-all-errors";
 
   private SearchTestImages() {}
 
@@ -55,19 +58,36 @@ public final class SearchTestImages {
    * Returns a {@link DockerImageName} for {@code baseImage} with the analysis plugins installed. The
    * image is built once per run and reused via Docker's layer cache.
    */
-  public static DockerImageName openSearchWithAnalysisPlugins(String baseImage) {
-    String version = baseImage.substring(baseImage.lastIndexOf(':') + 1);
-    String builtImage =
+  public static DockerImageName openSearchWithAnalysisPlugins(final String baseImage) {
+    final String version = baseImage.substring(baseImage.lastIndexOf(':') + 1);
+    final String resource = requireVendoredIkPlugin(version);
+    final String builtImage =
         new ImageFromDockerfile()
+            .withFileFromClasspath(IK_CONTEXT_FILE, resource)
             .withDockerfileFromBuilder(
                 builder ->
                     builder
                         .from(baseImage)
                         .run(kuromojiInstallCommand())
-                        .run(ikInstallCommand(version))
+                        .copy(IK_CONTEXT_FILE, IK_ARCHIVE)
+                        .run(ikInstallCommand())
                         .build())
             .get();
     return DockerImageName.parse(builtImage).asCompatibleSubstituteFor(OPENSEARCH_BASE_REFERENCE);
+  }
+
+  /** Fails fast, with the fix spelled out, when the archive for this OpenSearch version is absent. */
+  private static String requireVendoredIkPlugin(final String version) {
+    final String resource = String.format(IK_PLUGIN_RESOURCE_TEMPLATE, version);
+    if (SearchTestImages.class.getClassLoader().getResource(resource) == null) {
+      throw new IllegalStateException(
+          String.format(
+              "No vendored analysis-ik plugin for OpenSearch %s at src/test/resources/%s. Download %s,"
+                  + " confirm plugin-descriptor.properties says opensearch.version=%s, and commit it."
+                  + " The image build is hermetic on purpose (#33822) — there is no CDN fallback.",
+              version, resource, String.format(IK_PLUGIN_URL_TEMPLATE, version), version));
+    }
+    return resource;
   }
 
   private static String kuromojiInstallCommand() {
@@ -79,21 +99,15 @@ public final class SearchTestImages {
   }
 
   /**
-   * Downloads the version-matched archive under curl's timeout and retry budget, then installs it
-   * from disk so the unbounded fetch inside {@code opensearch-plugin} is never used.
+   * Installs from the copied archive, so nothing inside the build reaches out to a third party.
+   *
+   * <p>No {@code rm -f} afterwards, deliberately. {@code COPY} writes the file as root while the base
+   * image runs its {@code RUN} steps as {@code opensearch} (uid 1000), and {@code /tmp} carries the
+   * sticky bit, so a non-owner cannot delete it — {@code rm: cannot remove ... Operation not
+   * permitted}. Chained with {@code &&}, that turned a successful install into a failed build. The
+   * 4.4 MB left behind sits in a throwaway test image; not worth a {@code --chown} and a hardcoded uid.
    */
-  private static String ikInstallCommand(String version) {
-    String pluginUrl = String.format(IK_PLUGIN_URL_TEMPLATE, version);
-    return IK_DOWNLOAD
-        + " --output "
-        + IK_ARCHIVE
-        + " "
-        + pluginUrl
-        + " && "
-        + PLUGIN_INSTALL
-        + "file://"
-        + IK_ARCHIVE
-        + " && rm -f "
-        + IK_ARCHIVE;
+  private static String ikInstallCommand() {
+    return PLUGIN_INSTALL + "file://" + IK_ARCHIVE;
   }
 }
