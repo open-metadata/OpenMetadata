@@ -11,12 +11,17 @@
  *  limitations under the License.
  */
 
-import { InfiniteData, useInfiniteQuery } from '@tanstack/react-query';
-import { useRef } from 'react';
+import {
+  InfiniteData,
+  useInfiniteQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
 import { Include } from '../../../generated/type/include';
 import { getTableColumnsById } from '../../../rest/tableAPI';
 
 const COLUMN_PAGE_SIZE = 1000;
+const KNOWLEDGE_GRAPH_COLUMNS_KEY = ['knowledge-graph', 'columns'] as const;
 
 type ColumnPage = Awaited<ReturnType<typeof getTableColumnsById>>;
 
@@ -34,8 +39,26 @@ export const useKnowledgeGraphColumns = (
   refresh: number
 ) => {
   const queryEnabled = enabled && Boolean(entityId);
+  const queryClient = useQueryClient();
+
+  // Refresh means "user asked for fresh data" — invalidate the entity's
+  // infinite chain rather than baking `refresh` into the key. Invalidation
+  // refetches in place, letting React Query's built-in keep-previous-data-on-
+  // refetch semantics hold the loaded pages on screen; baking `refresh` into
+  // the key would create a brand-new observer and drop every loaded page.
+  const previousRefresh = useRef(refresh);
+  useEffect(() => {
+    if (previousRefresh.current === refresh) {
+      return;
+    }
+    previousRefresh.current = refresh;
+    void queryClient.invalidateQueries({
+      queryKey: [...KNOWLEDGE_GRAPH_COLUMNS_KEY, entityId],
+    });
+  }, [refresh, entityId, queryClient]);
+
   const query = useInfiniteQuery({
-    queryKey: ['knowledge-graph', 'columns', entityId, refresh],
+    queryKey: [...KNOWLEDGE_GRAPH_COLUMNS_KEY, entityId],
     queryFn: async ({ signal, pageParam }) =>
       getTableColumnsById(
         entityId,
@@ -66,6 +89,12 @@ export const useKnowledgeGraphColumns = (
   // Retain the last successful pages so the panel doesn't blank while a
   // refresh is in flight — or after that refresh rejects. Reset when the
   // entity changes so we never show one table's columns under another.
+  //
+  // Writing in render (rather than useEffect) is deliberate: the retained
+  // value must be readable on the SAME render that observes the new pages —
+  // a useEffect would land one render later and briefly flash an empty list.
+  // The write is idempotent (same query.data → same ref), safe under strict
+  // mode's double-invoke.
   const previousEntity = useRef(entityId);
   const lastData = useRef<InfiniteData<ColumnPage> | null>(null);
   if (previousEntity.current !== entityId) {

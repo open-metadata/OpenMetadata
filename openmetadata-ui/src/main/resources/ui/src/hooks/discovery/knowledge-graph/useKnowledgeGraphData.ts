@@ -55,6 +55,12 @@ const buildKeys = (
  * Keeps a ref pointing at the last non-null value seen. When the identity key
  * (usually `entityId`) changes the ref is cleared so a stale value from one
  * entity never leaks into the next.
+ *
+ * The write happens in render on purpose: the retained value must be readable
+ * on the SAME render that observes the new query result — a `useEffect` write
+ * would land one render later and briefly flash a blank pane. The write is
+ * idempotent (same input → same ref content) so React 18 strict-mode's
+ * double-invoke and any future concurrent-render discard are both safe.
  */
 const useRetainedValue = <T>(value: T | undefined | null, resetKey: string) => {
   const previousResetKey = useRef(resetKey);
