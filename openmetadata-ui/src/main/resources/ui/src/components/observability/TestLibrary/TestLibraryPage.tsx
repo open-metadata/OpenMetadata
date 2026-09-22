@@ -46,6 +46,8 @@ const TestLibraryPage = () => {
     showPagination,
     urlFilters,
     searchQuery,
+    sortDescriptor,
+    handleSortChange,
     setSingleFilter,
     handleSearchChange,
     clearAllFilters,
@@ -138,12 +140,14 @@ const TestLibraryPage = () => {
             pagingData={pagingData}
             permissionLoading={permissionLoading}
             showPagination={showPagination}
+            sortDescriptor={sortDescriptor}
             testDefinitionPermissions={testDefinitionPermissions}
             testDefinitions={testDefinitions}
             onClearFilters={clearAllFilters}
             onDelete={handleDeleteClick}
             onEdit={handleEdit}
             onEnableToggle={handleEnableToggle}
+            onSortChange={handleSortChange}
           />
         </div>
       </ObservabilityPageShell>

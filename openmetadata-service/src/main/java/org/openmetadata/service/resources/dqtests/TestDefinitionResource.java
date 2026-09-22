@@ -15,6 +15,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -48,6 +49,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestDefinitionRepository;
+import org.openmetadata.service.jdbi3.TimeSeriesDAOs.TestDefinitionDAO.SortField;
+import org.openmetadata.service.jdbi3.TimeSeriesDAOs.TestDefinitionDAO.SortOrder;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
@@ -182,9 +185,28 @@ public class TestDefinitionResource
                       + "filters above.",
               schema = @Schema(type = "string"))
           @QueryParam("q")
-          String searchQuery) {
+          String searchQuery,
+      @Parameter(
+              description =
+                  "Column to order the listing by. Defaults to displayName, which falls back to "
+                      + "the name for definitions that have no display name.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"displayName", "entityType", "testPlatforms"}))
+          @QueryParam("sortField")
+          String sortFieldParam,
+      @Parameter(
+              description = "Direction to order the listing in. Defaults to asc.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          String sortOrderParam) {
     ListFilter filter = new ListFilter(include);
     TestDefinitionRepository.addEntityTypeFilter(filter, entityType);
+    addSortParams(filter, sortFieldParam, sortOrderParam);
     if (!nullOrEmpty(searchQuery)) {
       // Not the generic `nameFilter`, which only spans name and display name: the Test Library
       // search box has to reach the rest of what the listing shows (description, entity type,
@@ -205,6 +227,24 @@ public class TestDefinitionResource
     }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+  }
+
+  /**
+   * Resolves the sort choice here so an unknown column fails as a 400 naming the allowed values.
+   * Left to the DAO it would surface as an {@link IllegalArgumentException} from inside the query
+   * path and map to a 500, and a caller that mistyped {@code sortField} would learn nothing.
+   *
+   * <p>The canonical enum spellings are stored rather than the raw strings, so a request that
+   * asked for {@code DisplayName} pages against the same cursors as one that asked for
+   * {@code displayName}.
+   */
+  private static void addSortParams(ListFilter filter, String sortField, String sortOrder) {
+    try {
+      filter.withSort(
+          SortField.fromParam(sortField).param(), SortOrder.fromParam(sortOrder).param());
+    } catch (IllegalArgumentException e) {
+      throw new BadRequestException(e.getMessage(), e);
+    }
   }
 
   @GET

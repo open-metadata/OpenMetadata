@@ -22,6 +22,7 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -52,6 +53,7 @@ import org.openmetadata.schema.tests.type.IncidentGroupBy;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
@@ -158,6 +160,140 @@ public interface TimeSeriesDAOs {
 
     String POSTGRES_LIST_SORT_KEY =
         "LOWER(COALESCE(NULLIF(json->>'displayName', ''), json->>'name'))";
+
+    String MYSQL_ENTITY_TYPE_SORT_KEY = "LOWER(entityType)";
+
+    String POSTGRES_ENTITY_TYPE_SORT_KEY = "LOWER(entityType)";
+
+    /**
+     * A definition can declare several platforms, so the order follows the first one it lists —
+     * the same value the Test Library renders first in the column. Ordering on the serialized
+     * array instead would sort on its leading {@code ["} and read as arbitrary. Missing and empty
+     * arrays collapse to the empty string so they group together at the ascending end rather than
+     * scattering on NULL ordering, which MySQL and Postgres disagree about.
+     */
+    String MYSQL_TEST_PLATFORM_SORT_KEY =
+        "LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.testPlatforms[0]')), ''))";
+
+    String POSTGRES_TEST_PLATFORM_SORT_KEY = "LOWER(COALESCE(json->'testPlatforms'->>0, ''))";
+
+    /**
+     * The columns the Test Library lets a reviewer sort by, each paired with the SQL that orders
+     * it. Closed on purpose: the chosen expression is interpolated into the query template by
+     * {@code @Define}, which is raw substitution and not a bind, so only values that originate
+     * here may ever reach it. {@link #fromParam} is the single door in, and it rejects anything
+     * unrecognised rather than falling back to a default — a typo'd {@code sortField} that
+     * silently returned display-name order would read as the sort being broken.
+     */
+    enum SortField {
+      DISPLAY_NAME("displayName", MYSQL_LIST_SORT_KEY, POSTGRES_LIST_SORT_KEY),
+      ENTITY_TYPE("entityType", MYSQL_ENTITY_TYPE_SORT_KEY, POSTGRES_ENTITY_TYPE_SORT_KEY),
+      TEST_PLATFORMS(
+          "testPlatforms", MYSQL_TEST_PLATFORM_SORT_KEY, POSTGRES_TEST_PLATFORM_SORT_KEY);
+
+      private final String param;
+      private final String mysqlKey;
+      private final String postgresKey;
+
+      SortField(String param, String mysqlKey, String postgresKey) {
+        this.param = param;
+        this.mysqlKey = mysqlKey;
+        this.postgresKey = postgresKey;
+      }
+
+      public String param() {
+        return param;
+      }
+
+      public String mysqlKey() {
+        return mysqlKey;
+      }
+
+      public String postgresKey() {
+        return postgresKey;
+      }
+
+      public static SortField fromParam(String value) {
+        if (nullOrEmpty(value)) {
+          return DISPLAY_NAME;
+        }
+        for (SortField field : values()) {
+          if (field.param.equalsIgnoreCase(value)) {
+            return field;
+          }
+        }
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.invalidTestDefinitionSortField(value, sortFieldParams()));
+      }
+
+      public static List<String> sortFieldParams() {
+        return Arrays.stream(values()).map(SortField::param).toList();
+      }
+    }
+
+    /**
+     * Sort direction. Ascending is the default so an unset {@code sortOrder} keeps the listing in
+     * the display-name order issue #27257 asked for.
+     */
+    enum SortOrder {
+      ASC("asc"),
+      DESC("desc");
+
+      private final String param;
+
+      SortOrder(String param) {
+        this.param = param;
+      }
+
+      public String param() {
+        return param;
+      }
+
+      public static SortOrder fromParam(String value) {
+        if (nullOrEmpty(value)) {
+          return ASC;
+        }
+        for (SortOrder order : values()) {
+          if (order.param.equalsIgnoreCase(value)) {
+            return order;
+          }
+        }
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.invalidTestDefinitionSortOrder(value, sortOrderParams()));
+      }
+
+      public static List<String> sortOrderParams() {
+        return Arrays.stream(values()).map(SortOrder::param).toList();
+      }
+    }
+
+    /**
+     * The SQL fragments one (field, order) choice expands to. The id tiebreaker always runs
+     * ascending, in both directions and at both ends: it exists only to make the key total, and
+     * flipping it with the sort key would make a descending page disagree with the cursor that
+     * {@link TestDefinitionRepository} built from the previous one.
+     *
+     * @param sortKey the ordering expression for the active dialect
+     * @param afterCmp comparison that walks forward past an after-cursor
+     * @param beforeCmp comparison that walks backward past a before-cursor
+     * @param pageOrder direction the page is returned in
+     * @param scanOrder direction {@code listBefore} scans in before re-reversing
+     */
+    record SortSql(
+        String sortKey, String afterCmp, String beforeCmp, String pageOrder, String scanOrder) {}
+
+    default SortSql resolveSortSql(ListFilter filter) {
+      SortField field = SortField.fromParam(filter.getSortField());
+      SortOrder order = SortOrder.fromParam(filter.getSortOrder());
+      String sortKey =
+          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+              ? field.mysqlKey()
+              : field.postgresKey();
+
+      return order == SortOrder.ASC
+          ? new SortSql(sortKey, ">", "<", "ASC", "DESC")
+          : new SortSql(sortKey, "<", ">", "DESC", "ASC");
+    }
 
     /**
      * Free-text search over everything the Test Library puts on screen: the name and display name
@@ -334,12 +470,17 @@ public interface TimeSeriesDAOs {
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
       ListConditions conditions = buildListConditions(filter);
+      SortSql sort = resolveSortSql(filter);
 
       return listBefore(
           getTableName(),
           filter.getQueryParams(),
           conditions.mysql(),
           conditions.psql(),
+          sort.sortKey(),
+          sort.beforeCmp(),
+          sort.pageOrder(),
+          sort.scanOrder(),
           limit,
           beforeName,
           beforeId);
@@ -348,12 +489,16 @@ public interface TimeSeriesDAOs {
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
       ListConditions conditions = buildListConditions(filter);
+      SortSql sort = resolveSortSql(filter);
 
       return listAfter(
           getTableName(),
           filter.getQueryParams(),
           conditions.mysql(),
           conditions.psql(),
+          sort.sortKey(),
+          sort.afterCmp(),
+          sort.pageOrder(),
           limit,
           afterName,
           afterId);
@@ -371,70 +516,67 @@ public interface TimeSeriesDAOs {
           conditions.psql());
     }
 
+    /**
+     * Reverse keyset scan: take the {@code limit} rows nearest the before-cursor by scanning away
+     * from it, then re-reverse the subquery into page order. The id tiebreaker is {@code DESC}
+     * inside — that is what "nearest" means when several rows share a sort key — and ascending
+     * outside, matching {@link #listAfter} and the cursor {@link TestDefinitionRepository} builds.
+     */
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM ("
-                + "SELECT "
-                + MYSQL_LIST_SORT_KEY
-                + " AS sort_key, id, json FROM <table> <mysqlCond> AND "
-                + "("
-                + MYSQL_LIST_SORT_KEY
-                + " < :beforeName OR ("
-                + MYSQL_LIST_SORT_KEY
-                + " = :beforeName AND <table>.id < :beforeId))  "
-                + "ORDER BY sort_key DESC,id DESC  "
+                + "SELECT <sortKey> AS sort_key, id, json FROM <table> <mysqlCond> AND "
+                + "(<sortKey> <keysetCmp> :beforeName OR "
+                + "(<sortKey> = :beforeName AND <table>.id < :beforeId))  "
+                + "ORDER BY sort_key <scanOrder>,id DESC  "
                 + "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY sort_key,id",
+                + ") last_rows_subquery ORDER BY sort_key <pageOrder>,id",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM ("
-                + "SELECT "
-                + POSTGRES_LIST_SORT_KEY
-                + " AS sort_key, id, json FROM <table> <psqlCond> AND "
-                + "("
-                + POSTGRES_LIST_SORT_KEY
-                + " < :beforeName OR ("
-                + POSTGRES_LIST_SORT_KEY
-                + " = :beforeName AND <table>.id < :beforeId))  "
-                + "ORDER BY sort_key DESC,id DESC "
+                + "SELECT <sortKey> AS sort_key, id, json FROM <table> <psqlCond> AND "
+                + "(<sortKey> <keysetCmp> :beforeName OR "
+                + "(<sortKey> = :beforeName AND <table>.id < :beforeId))  "
+                + "ORDER BY sort_key <scanOrder>,id DESC "
                 + "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY sort_key,id",
+                + ") last_rows_subquery ORDER BY sort_key <pageOrder>,id",
         connectionType = POSTGRES)
     List<String> listBefore(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
         @Define("mysqlCond") String mysqlCond,
         @Define("psqlCond") String psqlCond,
+        @Define("sortKey") String sortKey,
+        @Define("keysetCmp") String keysetCmp,
+        @Define("pageOrder") String pageOrder,
+        @Define("scanOrder") String scanOrder,
         @Bind("limit") int limit,
         @Bind("beforeName") String beforeName,
         @Bind("beforeId") String beforeId);
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM <table> <mysqlCond> AND ("
-                + MYSQL_LIST_SORT_KEY
-                + " > :afterName OR ("
-                + MYSQL_LIST_SORT_KEY
-                + " = :afterName AND <table>.id > :afterId))  ORDER BY "
-                + MYSQL_LIST_SORT_KEY
-                + ",id LIMIT :limit",
+            "SELECT json FROM <table> <mysqlCond> AND "
+                + "(<sortKey> <keysetCmp> :afterName OR "
+                + "(<sortKey> = :afterName AND <table>.id > :afterId))  "
+                + "ORDER BY <sortKey> <pageOrder>,id LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM <table> <psqlCond> AND ("
-                + POSTGRES_LIST_SORT_KEY
-                + " > :afterName OR ("
-                + POSTGRES_LIST_SORT_KEY
-                + " = :afterName AND <table>.id > :afterId))  ORDER BY "
-                + POSTGRES_LIST_SORT_KEY
-                + ",id LIMIT :limit",
+            "SELECT json FROM <table> <psqlCond> AND "
+                + "(<sortKey> <keysetCmp> :afterName OR "
+                + "(<sortKey> = :afterName AND <table>.id > :afterId))  "
+                + "ORDER BY <sortKey> <pageOrder>,id LIMIT :limit",
         connectionType = POSTGRES)
     List<String> listAfter(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
         @Define("mysqlCond") String mysqlCond,
         @Define("psqlCond") String psqlCond,
+        @Define("sortKey") String sortKey,
+        @Define("keysetCmp") String keysetCmp,
+        @Define("pageOrder") String pageOrder,
         @Bind("limit") int limit,
         @Bind("afterName") String afterName,
         @Bind("afterId") String afterId);
@@ -442,33 +584,40 @@ public interface TimeSeriesDAOs {
     /**
      * Keyset partitioning (the distributed indexers) seeds itself with the cursor at an absolute
      * offset and then pages forward through {@link #listAfter}. The inherited lookup walks {@code
-     * ORDER BY name, id}, so it has to be re-pointed at the display-name order above — otherwise
+     * ORDER BY name, id}, so it has to be re-pointed at whichever sort key is active — otherwise
      * the seed cursor names a row from a different position in the sequence and the partition
      * silently skips or repeats definitions.
      */
     @Override
     default CursorRow getCursorAtOffset(ListFilter filter, int offset) {
-      return getCursorAtOffsetByDisplayName(
-          getTableName(), filter.getQueryParams(), filter.getCondition(), offset);
+      SortSql sort = resolveSortSql(filter);
+
+      return getCursorAtOffsetBySortKey(
+          getTableName(),
+          filter.getQueryParams(),
+          filter.getCondition(),
+          sort.sortKey(),
+          sort.pageOrder(),
+          offset);
     }
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT "
-                + MYSQL_LIST_SORT_KEY
-                + " AS name, id FROM <table> <cond> ORDER BY 1,2 LIMIT 1 OFFSET :offset",
+            "SELECT <sortKey> AS name, id FROM <table> <cond> "
+                + "ORDER BY 1 <pageOrder>,2 LIMIT 1 OFFSET :offset",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT "
-                + POSTGRES_LIST_SORT_KEY
-                + " AS name, id FROM <table> <cond> ORDER BY 1,2 LIMIT 1 OFFSET :offset",
+            "SELECT <sortKey> AS name, id FROM <table> <cond> "
+                + "ORDER BY 1 <pageOrder>,2 LIMIT 1 OFFSET :offset",
         connectionType = POSTGRES)
     @RegisterRowMapper(EntityDAO.CursorRowMapper.class)
-    CursorRow getCursorAtOffsetByDisplayName(
+    CursorRow getCursorAtOffsetBySortKey(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
         @Define("cond") String cond,
+        @Define("sortKey") String sortKey,
+        @Define("pageOrder") String pageOrder,
         @Bind("offset") int offset);
 
     @ConnectionAwareSqlQuery(

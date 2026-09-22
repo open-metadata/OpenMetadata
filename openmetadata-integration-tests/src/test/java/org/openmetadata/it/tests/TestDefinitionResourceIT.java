@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -453,6 +454,207 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
             + entityTypeParam
             + " must not return the TABLE test definition "
             + tableDefinition.getFullyQualifiedName());
+  }
+
+  /**
+   * The listing is sorted server-side across the whole table, so these tests isolate their own
+   * rows with the {@code q} search on the namespace prefix rather than asserting absolute
+   * positions among the seeded system definitions.
+   */
+  @Test
+  void list_sortsByDisplayNameAscendingByDefault_200_OK(TestNamespace ns) {
+    String marker = createSortFixtures(ns, "sortasc");
+
+    assertEquals(
+        List.of("Alpha rule", "Mike rule", "Zulu rule"),
+        displayNamesOf(listSorted(marker, null, null)),
+        "An unspecified sortField must keep the display-name ascending order");
+  }
+
+  @Test
+  void list_sortsByDisplayNameDescending_200_OK(TestNamespace ns) {
+    String marker = createSortFixtures(ns, "sortdesc");
+
+    assertEquals(
+        List.of("Zulu rule", "Mike rule", "Alpha rule"),
+        displayNamesOf(listSorted(marker, "displayName", "desc")),
+        "sortOrder=desc must reverse the display-name order");
+  }
+
+  @Test
+  void list_sortsByEntityType_200_OK(TestNamespace ns) {
+    String marker = createSortFixtures(ns, "sortentity");
+
+    List<TestDefinitionEntityType> ascending =
+        entityTypesOf(listSorted(marker, "entityType", null));
+    List<TestDefinitionEntityType> descending =
+        entityTypesOf(listSorted(marker, "entityType", "desc"));
+
+    assertEquals(
+        List.of(
+            TestDefinitionEntityType.COLUMN,
+            TestDefinitionEntityType.TABLE,
+            TestDefinitionEntityType.TABLE),
+        ascending,
+        "sortField=entityType must group COLUMN before TABLE");
+    assertEquals(
+        List.of(
+            TestDefinitionEntityType.TABLE,
+            TestDefinitionEntityType.TABLE,
+            TestDefinitionEntityType.COLUMN),
+        descending,
+        "sortField=entityType with sortOrder=desc must group TABLE first");
+  }
+
+  @Test
+  void list_sortsByTestPlatforms_200_OK(TestNamespace ns) {
+    String marker = createSortFixtures(ns, "sortplatform");
+
+    assertEquals(
+        List.of("Mike rule", "Alpha rule", "Zulu rule"),
+        displayNamesOf(listSorted(marker, "testPlatforms", null)),
+        "sortField=testPlatforms must order on the first platform each rule declares: "
+            + "dbt before the two OpenMetadata rules");
+  }
+
+  /**
+   * The keyset cursor is built from the active sort key, so a page boundary is where a mismatch
+   * between the SQL ordering and the Java-side cursor shows up — rows repeat or vanish. Walking
+   * every ordering one row at a time is the only assertion that catches it.
+   */
+  @Test
+  void list_pagesAcrossBoundariesInEverySortOrder_200_OK(TestNamespace ns) {
+    String marker = createSortFixtures(ns, "sortpaging");
+
+    for (String sortField : Arrays.asList(null, "displayName", "entityType", "testPlatforms")) {
+      for (String sortOrder : Arrays.asList(null, "asc", "desc")) {
+        List<String> singlePage =
+            fullyQualifiedNamesInOrder(listSorted(marker, sortField, sortOrder));
+        List<String> paged = pageThrough(marker, sortField, sortOrder);
+
+        assertEquals(
+            singlePage,
+            paged,
+            "Paging one row at a time must reproduce the single-page order for sortField="
+                + sortField
+                + " sortOrder="
+                + sortOrder);
+      }
+    }
+  }
+
+  @Test
+  void list_rejectsUnknownSortField_400() {
+    InvalidRequestException exception =
+        assertThrows(InvalidRequestException.class, () -> listSorted("anything", "banana", null));
+
+    assertEquals(400, exception.getStatusCode());
+    assertTrue(
+        exception.getMessage().contains("banana") && exception.getMessage().contains("displayName"),
+        "Error must name the rejected value and the allowed ones, was: " + exception.getMessage());
+  }
+
+  @Test
+  void list_rejectsUnknownSortOrder_400() {
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class, () -> listSorted("anything", "displayName", "sideways"));
+
+    assertEquals(400, exception.getStatusCode());
+    assertTrue(
+        exception.getMessage().contains("sideways"),
+        "Error must name the rejected value, was: " + exception.getMessage());
+  }
+
+  /**
+   * Three definitions whose display names sort differently from their internal names, so an
+   * ordering that silently fell back to the {@code name} column would fail rather than pass by
+   * coincidence. Returns the marker every fixture name embeds, for the {@code q} search to
+   * isolate them.
+   */
+  private String createSortFixtures(TestNamespace ns, String marker) {
+    String scopedMarker = ns.prefix(marker);
+    createSortFixture(
+        scopedMarker,
+        "zzz",
+        "Alpha rule",
+        TestDefinitionEntityType.COLUMN,
+        List.of(TestPlatform.OPEN_METADATA));
+    createSortFixture(
+        scopedMarker,
+        "aaa",
+        "Zulu rule",
+        TestDefinitionEntityType.TABLE,
+        List.of(TestPlatform.OPEN_METADATA));
+    createSortFixture(
+        scopedMarker,
+        "mmm",
+        "Mike rule",
+        TestDefinitionEntityType.TABLE,
+        List.of(TestPlatform.DBT));
+
+    return scopedMarker;
+  }
+
+  private void createSortFixture(
+      String scopedMarker,
+      String nameSuffix,
+      String displayName,
+      TestDefinitionEntityType entityType,
+      List<TestPlatform> platforms) {
+    CreateTestDefinition request = new CreateTestDefinition();
+    request.setName(scopedMarker + "_" + nameSuffix);
+    request.setDisplayName(displayName);
+    request.setDescription("Test definition for sort ordering");
+    request.setEntityType(entityType);
+    request.setTestPlatforms(platforms);
+
+    createEntity(request);
+  }
+
+  private static ListResponse<TestDefinition> listSorted(
+      String marker, String sortField, String sortOrder) {
+    return SdkClients.adminClient()
+        .testDefinitions()
+        .list(sortParams(marker, sortField, sortOrder));
+  }
+
+  private static ListParams sortParams(String marker, String sortField, String sortOrder) {
+    ListParams params = new ListParams().setLimit(ENTITY_TYPE_FILTER_LIMIT).addFilter("q", marker);
+    if (sortField != null) {
+      params.addFilter("sortField", sortField);
+    }
+    if (sortOrder != null) {
+      params.addFilter("sortOrder", sortOrder);
+    }
+
+    return params;
+  }
+
+  private static List<String> pageThrough(String marker, String sortField, String sortOrder) {
+    List<String> fullyQualifiedNames = new ArrayList<>();
+    String after = null;
+    do {
+      ListParams params = sortParams(marker, sortField, sortOrder).setLimit(1).setAfter(after);
+      ListResponse<TestDefinition> page = SdkClients.adminClient().testDefinitions().list(params);
+      fullyQualifiedNames.addAll(fullyQualifiedNamesInOrder(page));
+      after = page.getPaging() == null ? null : page.getPaging().getAfter();
+    } while (after != null);
+
+    return fullyQualifiedNames;
+  }
+
+  private static List<String> displayNamesOf(ListResponse<TestDefinition> response) {
+    return response.getData().stream().map(TestDefinition::getDisplayName).toList();
+  }
+
+  private static List<TestDefinitionEntityType> entityTypesOf(
+      ListResponse<TestDefinition> response) {
+    return response.getData().stream().map(TestDefinition::getEntityType).toList();
+  }
+
+  private static List<String> fullyQualifiedNamesInOrder(ListResponse<TestDefinition> response) {
+    return response.getData().stream().map(TestDefinition::getFullyQualifiedName).toList();
   }
 
   private static ListResponse<TestDefinition> listByEntityType(

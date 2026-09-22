@@ -100,6 +100,9 @@ export type ListTestDefinitionsParams = ListParams & {
   supportedService?: string;
   /** Free-text match against the test definition name and display name. */
   q?: string;
+  /** One of `displayName`, `entityType`, `testPlatforms`. */
+  sortField?: string;
+  sortOrder?: 'asc' | 'desc';
 };
 
 export type ListTestCaseResultsParams = Omit<

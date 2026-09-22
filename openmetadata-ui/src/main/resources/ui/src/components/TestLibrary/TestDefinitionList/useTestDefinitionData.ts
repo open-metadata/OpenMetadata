@@ -33,6 +33,9 @@ export interface UseTestDefinitionDataProps {
   pagingCursor: UsePagingInterface['pagingCursor'];
   urlFilters: Record<string, string[]>;
   urlParams: { entityType?: string; testPlatforms?: string; q?: string };
+  /** Already validated against the sortable columns by useTestDefinitionFilters. */
+  sortField: string;
+  sortOrder: 'asc' | 'desc';
   fetchTestDefinitionPermissions: (
     definitions: TestDefinition[]
   ) => Promise<void>;
@@ -52,6 +55,8 @@ export const useTestDefinitionData = ({
   pagingCursor,
   urlFilters,
   urlParams,
+  sortField,
+  sortOrder,
   fetchTestDefinitionPermissions,
 }: UseTestDefinitionDataProps) => {
   const { t } = useTranslation();
@@ -87,6 +92,8 @@ export const useTestDefinitionData = ({
           entityType: entityTypeFilter,
           testPlatform: testPlatformFilter,
           q: searchQuery || undefined,
+          sortField,
+          sortOrder,
         });
         if (requestId !== latestRequestRef.current) {
           return;
@@ -116,6 +123,8 @@ export const useTestDefinitionData = ({
       fetchTestDefinitionPermissions,
       urlFilters,
       urlParams.q,
+      sortField,
+      sortOrder,
     ]
   );
 
@@ -133,6 +142,8 @@ export const useTestDefinitionData = ({
     urlParams.entityType,
     urlParams.testPlatforms,
     urlParams.q,
+    sortField,
+    sortOrder,
   ]);
 
   const handleEnableToggle = async (

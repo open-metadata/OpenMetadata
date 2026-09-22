@@ -49,6 +49,8 @@ const TestDefinitionList = () => {
     urlFilters,
     parsedFilters,
     searchQuery,
+    sortDescriptor,
+    handleSortChange,
     handleFilterChange,
     handleSearchChange,
     isFormVisible,
@@ -167,12 +169,14 @@ const TestDefinitionList = () => {
               pagingData={pagingData}
               permissionLoading={permissionLoading}
               showPagination={showPagination}
+              sortDescriptor={sortDescriptor}
               testDefinitionPermissions={testDefinitionPermissions}
               testDefinitions={testDefinitions}
               onClearFilters={clearAllFilters}
               onDelete={handleDeleteClick}
               onEdit={handleEdit}
               onEnableToggle={handleEnableToggle}
+              onSortChange={handleSortChange}
             />
           </Card>
         </Col>

@@ -391,6 +391,11 @@ describe('TestDefinitionList Component', () => {
         after: undefined,
         before: undefined,
         limit: 15,
+        entityType: undefined,
+        testPlatform: undefined,
+        q: undefined,
+        sortField: 'displayName',
+        sortOrder: 'asc',
       });
     });
   });

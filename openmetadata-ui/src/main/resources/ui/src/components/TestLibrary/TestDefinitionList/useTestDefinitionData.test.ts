@@ -65,6 +65,8 @@ const makeProps = (
   pagingCursor: {},
   urlFilters: {},
   urlParams: {},
+  sortField: 'displayName',
+  sortOrder: 'asc',
   fetchTestDefinitionPermissions: mockFetchPermissions,
   ...overrides,
 });
@@ -129,6 +131,8 @@ describe('useTestDefinitionData', () => {
         limit: 15,
         entityType: undefined,
         testPlatform: undefined,
+        sortField: 'displayName',
+        sortOrder: 'asc',
       });
       expect(result.current.testDefinitions).toEqual(MOCK_TEST_DEFINITIONS);
       expect(mockHandlePagingChange).toHaveBeenCalledWith(MOCK_PAGING);
@@ -157,6 +161,9 @@ describe('useTestDefinitionData', () => {
         limit: 15,
         entityType: 'table',
         testPlatform: 'OpenMetadata',
+        q: undefined,
+        sortField: 'displayName',
+        sortOrder: 'asc',
       });
     });
 
@@ -188,6 +195,33 @@ describe('useTestDefinitionData', () => {
       await waitFor(() => {
         expect(getListTestDefinitions).toHaveBeenCalledWith(
           expect.objectContaining({ q: 'rows' })
+        );
+      });
+    });
+
+    it('should forward the sort field and order to the listing endpoint', async () => {
+      await renderAndSettle(
+        makeProps({ sortField: 'entityType', sortOrder: 'desc' })
+      );
+
+      expect(getListTestDefinitions).toHaveBeenCalledWith(
+        expect.objectContaining({ sortField: 'entityType', sortOrder: 'desc' })
+      );
+    });
+
+    it('should refetch when the sort changes', async () => {
+      const { rerender } = await renderAndSettle();
+
+      (getListTestDefinitions as jest.Mock).mockClear();
+
+      rerender(makeProps({ sortField: 'testPlatforms', sortOrder: 'desc' }));
+
+      await waitFor(() => {
+        expect(getListTestDefinitions).toHaveBeenCalledWith(
+          expect.objectContaining({
+            sortField: 'testPlatforms',
+            sortOrder: 'desc',
+          })
         );
       });
     });
@@ -302,6 +336,8 @@ describe('useTestDefinitionData', () => {
           limit: 15,
           entityType: undefined,
           testPlatform: undefined,
+          sortField: 'displayName',
+          sortOrder: 'asc',
         });
       });
     });
@@ -327,6 +363,8 @@ describe('useTestDefinitionData', () => {
           limit: 15,
           entityType: undefined,
           testPlatform: undefined,
+          sortField: 'displayName',
+          sortOrder: 'asc',
         });
       });
     });

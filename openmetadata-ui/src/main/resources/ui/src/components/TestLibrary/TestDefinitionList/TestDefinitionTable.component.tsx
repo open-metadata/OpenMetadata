@@ -19,7 +19,8 @@ import {
 } from '@openmetadata/ui-core-components';
 import { FileShield02 } from '@untitledui/icons';
 import { Button, Space, Switch, Tooltip, Typography } from 'antd';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
+import { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
@@ -45,6 +46,8 @@ const TestDefinitionTable = ({
   showPagination,
   testDefinitionPermissions,
   permissionLoading,
+  sortDescriptor,
+  onSortChange,
   onEnableToggle,
   onEdit,
   onDelete,
@@ -53,9 +56,27 @@ const TestDefinitionTable = ({
 }: TestDefinitionTableProps) => {
   const { t } = useTranslation();
 
+  // react-aria reports the new descriptor; the listing state upstream is keyed
+  // by column id and asc/desc, so translate here rather than teaching every
+  // caller react-aria's vocabulary.
+  const handleSortChange = useCallback(
+    (descriptor: SortDescriptor) => {
+      onSortChange(
+        String(descriptor.column),
+        descriptor.direction === 'descending' ? 'desc' : 'asc'
+      );
+    },
+    [onSortChange]
+  );
+
   const columns = useMemo(
     () => [
-      { id: 'name', label: t('label.name'), className: 'tw:w-[30%]' },
+      {
+        id: 'name',
+        label: t('label.name'),
+        className: 'tw:w-[30%]',
+        allowsSorting: true,
+      },
       {
         id: 'description',
         label: t('label.description'),
@@ -65,11 +86,13 @@ const TestDefinitionTable = ({
         id: 'entityType',
         label: t('label.entity-type'),
         className: 'tw:w-[12%]',
+        allowsSorting: true,
       },
       {
         id: 'testPlatforms',
         label: t('label.test-platform-plural'),
         className: 'tw:w-[12%]',
+        allowsSorting: true,
       },
       { id: 'enabled', label: t('label.enabled'), className: 'tw:w-[5%]' },
       {
@@ -214,10 +237,13 @@ const TestDefinitionTable = ({
       <Table
         aria-label={t('label.data-quality-rule-plural')}
         data-testid="test-definition-table"
-        size="sm">
+        size="sm"
+        sortDescriptor={sortDescriptor}
+        onSortChange={handleSortChange}>
         <Table.Header columns={columns}>
           {(col) => (
             <Table.Head
+              allowsSorting={col.allowsSorting}
               className={col.className}
               id={col.id}
               isRowHeader={col.id === 'name'}

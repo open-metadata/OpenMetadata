@@ -20,6 +20,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.TimeSeriesDAOs.TestDefinitionDAO.SortField;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
@@ -48,19 +49,45 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
   }
 
   /**
-   * Paging follows the display-name order that {@code CollectionDAO.TestDefinitionDAO} lists in,
-   * so the cursor has to carry the same key — the default {@code entity.getName()} cursor would be
-   * compared against a display name in SQL and land on the wrong row. Lower-cased to match the
-   * {@code LOWER(...)} in that ordering expression.
+   * Paging follows whichever order {@code TestDefinitionDAO} was asked to list in, so the cursor
+   * has to carry that same key — the default {@code entity.getName()} cursor would be compared
+   * against a display name or an entity type in SQL and land on the wrong row. Lower-cased to
+   * match the {@code LOWER(...)} wrapping every sort expression there.
+   */
+  @Override
+  public String getCursorValue(TestDefinition entity, ListFilter filter) {
+    String sortValue = sortValueOf(entity, SortField.fromParam(filter.getSortField()));
+    return getCursorValue(
+        sortValue == null ? "" : sortValue.toLowerCase(Locale.ROOT),
+        String.valueOf(entity.getId()));
+  }
+
+  /**
+   * The Java mirror of the SQL sort expressions on {@link SortField}. The two have to agree
+   * exactly: the value returned here is what the keyset comparison in {@code listAfter} tests the
+   * next page against, so any divergence makes the cursor name a row the database does not
+   * consider the boundary, and the page silently skips or repeats.
+   */
+  private String sortValueOf(TestDefinition entity, SortField sortField) {
+    return switch (sortField) {
+      case DISPLAY_NAME -> CommonUtil.nullOrEmpty(entity.getDisplayName())
+          ? entity.getName()
+          : entity.getDisplayName();
+      case ENTITY_TYPE -> entity.getEntityType() == null ? "" : entity.getEntityType().value();
+      case TEST_PLATFORMS -> CommonUtil.nullOrEmpty(entity.getTestPlatforms())
+          ? ""
+          : entity.getTestPlatforms().getFirst().value();
+    };
+  }
+
+  /**
+   * Cursors are still built from the display-name key when nobody names a sort field, which is the
+   * default listing order. Kept so callers that hold only the entity — the search indexers — do
+   * not have to synthesise a {@link ListFilter} to ask for it.
    */
   @Override
   public String getCursorValue(TestDefinition entity) {
-    String label =
-        CommonUtil.nullOrEmpty(entity.getDisplayName())
-            ? entity.getName()
-            : entity.getDisplayName();
-    return getCursorValue(
-        label == null ? "" : label.toLowerCase(Locale.ROOT), String.valueOf(entity.getId()));
+    return getCursorValue(entity, new ListFilter());
   }
 
   /**
