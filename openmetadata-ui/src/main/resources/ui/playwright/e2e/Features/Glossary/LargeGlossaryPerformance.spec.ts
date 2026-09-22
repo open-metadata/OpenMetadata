@@ -13,7 +13,10 @@
 import test, { expect, Page } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { createNewPage } from '../../../utils/common';
+import {
+  createNewPage,
+  waitForToastStackToClear,
+} from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   confirmationDragAndDropGlossary,
@@ -177,6 +180,9 @@ test.describe('Large Glossary Performance Tests', () => {
         response.url().includes('after=')
     );
 
+    // Background async notifications stack at bottom-center over the
+    // pagination controls and intercept the click; drain the toast stack first.
+    await waitForToastStackToClear(page);
     await pagination.getByTestId('next').click();
 
     const nextPageResponse = await nextPageRequest;
@@ -195,6 +201,7 @@ test.describe('Large Glossary Performance Tests', () => {
     await expect(pagination.getByTestId('previous')).toBeEnabled();
 
     // Going back returns to the first page.
+    await waitForToastStackToClear(page);
     await pagination.getByTestId('previous').click();
     await page
       .locator(
