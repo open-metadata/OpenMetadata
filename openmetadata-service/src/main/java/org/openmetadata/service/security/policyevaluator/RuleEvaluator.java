@@ -505,17 +505,39 @@ public class RuleEvaluator {
 
   /**
    * Bot attribution carries a Bot entity name on the MCP path and the bot's user name on the
-   * X-Impersonate-User path. Both names are the same for system bots and application bots, but a
-   * hand created Bot may name its user differently, so accept either.
+   * X-Impersonate-User path, and for an application bot the two differ, so accept either.
    */
   private void validateBotName(String botName) {
     try {
       Entity.getEntityByName(Entity.BOT, botName, "", NON_DELETED);
-      return;
-    } catch (EntityNotFoundException ignored) {
-      // Fall through to the bot user lookup
+    } catch (EntityNotFoundException botNotFound) {
+      validateBotUserName(botName);
     }
-    validateEntityByName(Entity.USER, botName);
+  }
+
+  /**
+   * Only a bot ever appears as the impersonating principal, so a human's name in this position
+   * would save a deny rule that can never fire. Reject it rather than let it look enforced.
+   */
+  private void validateBotUserName(String botName) {
+    User user;
+    try {
+      user = Entity.getEntityByName(Entity.USER, botName, "", NON_DELETED);
+    } catch (EntityNotFoundException userNotFound) {
+      if (!isUpdate) {
+        throw userNotFound;
+      }
+      LOG.warn(
+          "Stale reference in policy condition: bot '{}' not found. "
+              + "Consider updating the policy rule condition.",
+          botName);
+      return;
+    }
+    if (!Boolean.TRUE.equals(user.getIsBot())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "%s is a user, not a bot, and can never be the impersonating bot", botName));
+    }
   }
 
   private boolean matchesUserResource(Predicate<User> predicate) {
