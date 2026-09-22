@@ -301,8 +301,8 @@ test.describe(
           )
         ).not.toBeVisible();
 
-        // Verify no domain count button (only single domain, not multiple)
-        await expect(page.getByTestId('domain-count-button')).not.toBeVisible();
+        // Verify no domain overflow button (only single domain, not multiple)
+        await expect(page.getByTestId('show-all-domains')).not.toBeVisible();
       } finally {
         await testGlossaryTerm.delete(apiContext);
         await testGlossary.delete(apiContext);
