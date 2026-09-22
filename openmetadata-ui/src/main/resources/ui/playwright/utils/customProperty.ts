@@ -37,6 +37,7 @@ import {
   getDescriptionBox,
   selectOptionWithRetry,
   uuid,
+  waitForToastStackToClear,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import {
@@ -143,6 +144,10 @@ export const setValueForProperty = async (data: {
 
   const editButton = container.getByTestId('edit-icon');
   await editButton.scrollIntoViewIfNeeded();
+  // Background async-delete notifications stack as toasts at bottom-center and
+  // intercept the click; force skips the actionability check but the event
+  // still lands on the toast, so drain the stack before clicking.
+  await waitForToastStackToClear(page);
   // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
   await editButton.click({ force: true });
 
