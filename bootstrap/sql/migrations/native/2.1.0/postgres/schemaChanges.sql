@@ -332,3 +332,32 @@ CREATE INDEX IF NOT EXISTS idx_automations_workflow_updated_at
 -- constraints already bound each lowercased value to one row.
 CREATE INDEX IF NOT EXISTS idx_user_entity_email_lower ON user_entity (LOWER(email));
 CREATE INDEX IF NOT EXISTS idx_user_entity_name_lower ON user_entity (LOWER(name));
+
+-- Direct-child container listings (issue #22530). See the MySQL companion for the measured
+-- numbers; PostgreSQL picks the same losing plan for the same reason -- the listing's
+-- `ORDER BY name, id LIMIT n` makes idx_storage_container_entity_deleted_name_id look free,
+-- and idx_storage_container_entity_fqnhash_pattern (which can serve the prefix LIKE as a
+-- range) is never chosen. On the same 50k-container fixture the children page read 19,995
+-- shared buffers to return one row, and the count query fell back to a Seq Scan.
+--
+-- parentFqnHash materialises the fqnHash prefix above the last segment, turning the listing
+-- into an index equality. Derived by stripping the final '.'-separated segment rather than a
+-- fixed 33-character suffix, so it holds regardless of hash width. STORED because PostgreSQL
+-- has no VIRTUAL generated columns; strpos/reverse/left are immutable, as generation requires.
+ALTER TABLE storage_container_entity
+  ADD COLUMN IF NOT EXISTS parentFqnHash VARCHAR(768)
+  GENERATED ALWAYS AS (
+    CASE
+      WHEN strpos(fqnHash, '.') = 0 THEN ''
+      ELSE left(fqnHash, length(fqnHash) - strpos(reverse(fqnHash), '.'))
+    END
+  ) STORED;
+
+-- (parentFqnHash, deleted) answers the filter; (name, id) supplies the listing's sort order,
+-- so the common non-deleted page needs neither a sort nor a heap fetch per candidate.
+-- Column order deviates from the table_entity/stored_procedure_entity precedent in 1.10.0,
+-- which leads with `deleted`: the container listing's `include` is tri-state, and on
+-- include=ALL there is no `deleted` predicate at all, which would strand a deleted-leading
+-- index. Leading with parentFqnHash keeps the equality usable in all three include modes.
+CREATE INDEX IF NOT EXISTS idx_storage_container_entity_parent_children
+  ON storage_container_entity (parentFqnHash, deleted, name, id);
