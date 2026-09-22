@@ -29,6 +29,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
@@ -53,6 +54,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.service.resources.policies.PolicyResource;
@@ -278,24 +280,37 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
    */
   @Test
   void test_referencesBehindAShortCircuitAreValidated(TestNamespace ns) {
-    assertThrows(
-        Exception.class,
+    assertMissingReferenceRejected(
         () -> createEntity(conditionPolicy(ns, "badTag", "matchAnyTag('NoSuch.Tag')")),
+        "NoSuch.Tag",
         "a condition naming a tag that does not exist must be rejected");
 
-    assertThrows(
-        Exception.class,
+    assertMissingReferenceRejected(
         () ->
             createEntity(
                 conditionPolicy(ns, "guardedBadTag", "noOwner() && matchAnyTag('NoSuch.Tag')")),
+        "NoSuch.Tag",
         "the tag must still be checked when a guard short-circuits it away");
 
-    assertThrows(
-        Exception.class,
+    assertMissingReferenceRejected(
         () ->
             createEntity(
                 conditionPolicy(ns, "guardedBadTeam", "isOwner() || inAnyTeam('no-such-team')")),
+        "no-such-team",
         "|| short-circuits the same way as &&");
+  }
+
+  /**
+   * Asserts the save failed as a validation error naming the reference that could not be resolved,
+   * so an unrelated client or fixture failure cannot make the case pass by accident.
+   */
+  private void assertMissingReferenceRejected(
+      Executable create, String missingReference, String message) {
+    InvalidRequestException error = assertThrows(InvalidRequestException.class, create, message);
+    assertEquals(400, error.getStatusCode(), message);
+    assertTrue(
+        error.getMessage() != null && error.getMessage().contains(missingReference),
+        message + " - error did not name " + missingReference + ": " + error.getMessage());
   }
 
   private CreatePolicy conditionPolicy(TestNamespace ns, String name, String condition) {
