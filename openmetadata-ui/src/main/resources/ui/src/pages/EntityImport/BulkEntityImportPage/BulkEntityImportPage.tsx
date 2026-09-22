@@ -1166,6 +1166,17 @@ const BulkEntityImportPage = () => {
         return;
       }
 
+      // A terminal frame can reach us from both the websocket and the REST poll; drop the
+      // active-job ref up front so a duplicate delivery is ignored by the guards above
+      // instead of repeating the log/refresh/parse side effects. State is left intact so
+      // the UI still reflects the terminal status.
+      if (
+        websocketResponse.status === 'COMPLETED' ||
+        websocketResponse.status === 'FAILED'
+      ) {
+        activeAsyncImportJobRef.current = undefined;
+      }
+
       appendActiveImportLogLine(websocketResponse.message);
       setActiveAsyncImportJob((job) => {
         if (!job) {
