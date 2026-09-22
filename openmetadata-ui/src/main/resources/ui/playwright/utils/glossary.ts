@@ -2245,10 +2245,12 @@ export const expandTreeNodeByName = async (
     // ES indexing can lag after entity creation; retry the search until the node appears.
     await expect(async () => {
       const searchDone = page.waitForResponse(
-        /\/api\/v1\/search\/query\?q=.*index=glossaryTerm.*/
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=glossaryTerm')
       );
       // Clear resets to the glossary list (doesn't match the listener); fill triggers a fresh query.
-      await input.fill('');
+      await input.clear();
       await input.fill(displayName);
       await searchDone;
       await expect(popover.getByText(displayName, { exact: true })).toBeVisible(
@@ -2262,9 +2264,7 @@ export const expandTreeNodeByName = async (
   // the accessible name from its text content, so this is stable to DOM refactors.
   const treeItem = popover.getByRole('row', { name: displayName, exact: true });
 
-  if (!search) {
-    await expect(treeItem).toBeVisible({ timeout: 10000 });
-  }
+  await expect(treeItem).toBeVisible({ timeout: 10000 });
   await treeItem.scrollIntoViewIfNeeded();
 
   const alreadyExpanded =
