@@ -24,6 +24,10 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.policyevaluator.CompiledRule;
+import org.openmetadata.service.security.policyevaluator.RuleEvaluator;
+import org.springframework.expression.Expression;
+import org.springframework.expression.spel.support.SimpleEvaluationContext;
 
 /**
  * Tests that MCP tool execution correctly sets ImpersonationContext on the execution thread.
@@ -83,6 +87,57 @@ public class McpImpersonationTest {
     assertThat(capturedImpersonation.get())
         .as("ImpersonationContext must be set to MCP bot name on the tool execution thread")
         .isEqualTo("McpApplicationBot");
+  }
+
+  /**
+   * The point of setting the attribution on the execution thread: a policy condition evaluated
+   * while a tool runs must see the MCP bot, so a deny rule can close AI access to sensitive assets.
+   */
+  @Test
+  void policyConditionSeesTheMcpBotDuringToolExecution() {
+    AtomicReference<Boolean> conditionResult = new AtomicReference<>();
+
+    JwtFilter jwtFilter = mock(JwtFilter.class);
+    CatalogSecurityContext securityContext = mock(CatalogSecurityContext.class);
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("admin");
+    when(securityContext.getUserPrincipal()).thenReturn(principal);
+    when(jwtFilter.getCatalogSecurityContext(anyString())).thenReturn(securityContext);
+
+    DefaultToolContext toolContext = mock(DefaultToolContext.class);
+    doAnswer(
+            invocation -> {
+              Expression expression =
+                  CompiledRule.parseExpression(
+                      "isImpersonated() && impersonatedBy('McpApplicationBot')");
+              SimpleEvaluationContext evaluationContext =
+                  SimpleEvaluationContext.forReadOnlyDataBinding()
+                      .withInstanceMethods()
+                      .withRootObject(new RuleEvaluator(null, null, null))
+                      .build();
+              conditionResult.set(expression.getValue(evaluationContext, Boolean.class));
+              return new DefaultToolContext.CallToolOutcome(
+                  McpSchema.CallToolResult.builder()
+                      .content(List.of(new McpSchema.TextContent("{}")))
+                      .isError(false)
+                      .build(),
+                  0L,
+                  null);
+            })
+        .when(toolContext)
+        .callToolWithMetadata(any(), any(), anyString(), any(), any());
+
+    TestMcpServer server =
+        new TestMcpServer(toolContext, jwtFilter, mock(Authorizer.class), mock(Limits.class));
+    McpSchema.Tool tool = McpSchema.Tool.builder().name("test_tool").description("desc").build();
+
+    McpTransportContext context =
+        McpTransportContext.create(Map.of("Authorization", "Bearer test-token"));
+    server.buildToolSpec(tool).callHandler().apply(context, mock(McpSchema.CallToolRequest.class));
+
+    assertThat(conditionResult.get())
+        .as("A policy condition evaluated during an MCP tool call must see the MCP bot")
+        .isTrue();
   }
 
   @Test
