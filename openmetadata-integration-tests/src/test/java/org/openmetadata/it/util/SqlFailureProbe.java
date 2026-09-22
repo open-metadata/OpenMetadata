@@ -61,16 +61,30 @@ public final class SqlFailureProbe implements SqlLogger, AutoCloseable {
   }
 
   /**
-   * Injects a deadlock (SQLSTATE 40001 / MySQL 1213) after the first matching statement, the shape
-   * {@code DeadlockRetry} is expected to replay.
+   * The failure shape {@code DeadlockRetry} replays — SQLSTATE 40001, vendor code 1213 — for use as
+   * the {@code failure} argument of any constructor here.
+   *
+   * <p>Deliberately a supplier rather than a pre-built probe. A {@code deadlockOnce(jdbi, fragment)}
+   * convenience would have to pick a scope, and picking the wrong one fails silently: a
+   * calling-thread probe never fires for a statement a REST call runs on a Jetty worker, so the test
+   * passes without ever exercising the replay. Composing the failure with an explicit scope makes
+   * that mistake impossible to make by accident:
+   *
+   * <pre>{@code
+   * // statement issued on this thread
+   * new SqlFailureProbe(jdbi, "update chart_entity", deadlock())
+   *
+   * // statement issued while serving a request the caller identifies
+   * SqlFailureProbe.forRequests(jdbi, "update chart_entity", deadlock(), mine::matches)
+   * }</pre>
+   *
+   * <p>To both count statements and inject, nest a {@link SqlQueryCounter} around the probe — each
+   * decorator delegates to the logger it replaced, so the two compose.
    */
-  public static SqlFailureProbe deadlockOnce(final Jdbi jdbi, final String fragment) {
-    return new SqlFailureProbe(
-        jdbi,
-        fragment,
-        () ->
-            new RuntimeException(
-                "Injected deadlock after SQL write", new SQLException("Deadlock", "40001", 1213)));
+  public static Supplier<RuntimeException> deadlock() {
+    return () ->
+        new RuntimeException(
+            "Injected deadlock after SQL write", new SQLException("Deadlock", "40001", 1213));
   }
 
   SqlFailureProbe(
