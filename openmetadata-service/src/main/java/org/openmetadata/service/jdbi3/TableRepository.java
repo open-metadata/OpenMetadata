@@ -126,6 +126,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -1456,8 +1457,11 @@ public class TableRepository extends EntityRepository<Table> {
     dao.update(table.getId(), table.getFullyQualifiedName(), JsonUtils.pojoToJson(table));
     // addDataModel bypasses the EntityRepository.update() path, so invalidateCachesAfterStore
     // never runs. Drop every cached variant manually so the next GET rebuilds with the freshly
-    // merged tags/dataModel instead of stale pre-merge JSON.
+    // merged tags/dataModel instead of stale pre-merge JSON. It also bypasses postUpdate, which is
+    // normally what triggers the RDF snapshot write — trigger it explicitly so the tags merged
+    // above (entity- and column-level) actually reach RDF.
     invalidateCacheForEntity(entityType, table.getId(), table.getFullyQualifiedName());
+    RdfUpdater.updateEntity(table);
     setFieldsInternal(table, new Fields(Set.of(FIELD_OWNERS), FIELD_OWNERS));
     setFieldsInternal(table, new Fields(Set.of(FIELD_TAGS), FIELD_TAGS));
     return table;
@@ -1714,7 +1718,7 @@ public class TableRepository extends EntityRepository<Table> {
     for (Table table : entities) {
       collectColumnTags(table.getColumns(), columnTagsByTarget);
     }
-    applyTagsBatchWithRdf(columnTagsByTarget);
+    applyTagsBatch(columnTagsByTarget);
   }
 
   @Override
