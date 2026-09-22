@@ -2251,9 +2251,9 @@ export const expandTreeNodeByName = async (
       await input.fill('');
       await input.fill(displayName);
       await searchDone;
-      await expect(
-        popover.getByText(displayName, { exact: true })
-      ).toBeVisible({ timeout: 2000 });
+      await expect(popover.getByText(displayName, { exact: true })).toBeVisible(
+        { timeout: 2000 }
+      );
     }).toPass({ timeout: 30000 });
   }
 
