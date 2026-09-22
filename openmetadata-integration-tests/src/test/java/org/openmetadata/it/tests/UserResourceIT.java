@@ -28,11 +28,13 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.CustomPropertyTestSupport;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.CreateBot;
@@ -2982,6 +2984,43 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertTrue(
         allTime.getData().stream().noneMatch(u -> Boolean.TRUE.equals(u.getIsBot())),
         "Online users response must exclude bots");
+  }
+
+  @Test
+  void test_customPropertyValueSurvivesCreatePatchAndRead(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = ns.prefix("userDeskLocation");
+    CustomPropertyTestSupport.registerStringProperty(client, "user", property);
+    try {
+      String name = ns.prefix("cpUser").replaceAll("[^a-zA-Z0-9._-]", "");
+      User user =
+          client
+              .users()
+              .create(
+                  new CreateUser()
+                      .withName(name)
+                      .withEmail(name + "@open-metadata.org")
+                      .withDescription("User carrying a custom property")
+                      .withExtension(Map.of(property, "desk-7")));
+      String id = user.getId().toString();
+
+      User created = client.users().get(id, "extension");
+      assertEquals(
+          "desk-7",
+          CustomPropertyTestSupport.extensionValue(created.getExtension(), property),
+          "extension supplied on create must survive the round trip");
+
+      created.setExtension(Map.of(property, "desk-9"));
+      client.users().update(id, created);
+
+      assertEquals(
+          "desk-9",
+          CustomPropertyTestSupport.extensionValue(
+              client.users().get(id, "extension").getExtension(), property),
+          "PATCHing the extension must replace the stored value");
+    } finally {
+      CustomPropertyTestSupport.removeProperty(client, "user", property);
+    }
   }
 
   private ResultList<User> listOnlineUsers(int timeWindow, int limit) {
