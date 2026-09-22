@@ -29,9 +29,9 @@ import { Domain } from '../../../support/domain/Domain';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import { selectDomain } from '../../../utils/domain';
 import {
-  createAnnouncement,
-  deleteAnnouncement,
-  editAnnouncement,
+    createAnnouncement,
+    deleteAnnouncement,
+    editAnnouncement
 } from '../../../utils/entity';
 import { sidebarClick } from '../../../utils/sidebar';
 
