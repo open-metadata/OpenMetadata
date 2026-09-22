@@ -36,11 +36,10 @@ import {
   visitOwnProfilePage,
 } from './common';
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
-import { getEncodedFqn, waitForAllLoadersToDisappear } from './entity';
+import { waitForAllLoadersToDisappear } from './entity';
 import { clickUpdateButtonIfVisible } from './explore';
 import { getCellByName } from './scopedLocators';
 import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
-import { waitForResponseWithStatus } from './waitHelpers';
 
 export const visitUserListPage = async (page: Page) => {
   const fetchUsers = page.waitForResponse('/api/v1/users?*');
@@ -119,19 +118,30 @@ export const deletedUserChecks = async (page: Page) => {
 };
 
 export const visitUserProfilePage = async (page: Page, userName: string) => {
-  const profileResponse = waitForResponseWithStatus(
-    page,
-    (response) =>
-      response.request().method() === 'GET' &&
-      new URL(response.url()).pathname ===
-        `/api/v1/users/name/${getEncodedFqn(userName)}`,
-    200
+  // Deliberately not routed through the user-list search box. That list is
+  // Elasticsearch-backed and a user created seconds earlier may not be indexed
+  // yet; once the empty result renders nothing re-issues the query, so waiting
+  // on the row cannot recover. The profile page reads the user from the API by
+  // name, which is immediately consistent.
+  const encodedUserName = encodeURIComponent(userName);
+  const userResponse = page.waitForResponse(
+    `/api/v1/users/name/${encodedUserName}?fields=*`
   );
-
-  await page.goto(`/users/${getEncodedFqn(userName)}`, {
+  await page.goto(`/users/${encodedUserName}`, {
     waitUntil: 'domcontentloaded',
   });
-  expect((await (await profileResponse).json()).name).toBe(userName);
+
+  // A 404/5xx satisfies the wait just as a 200 does, and the page then drops
+  // its loader and renders an error state. Callers that guard their assertions
+  // on visibility would silently assert nothing, so fail here instead.
+  const response = await userResponse;
+
+  expect(
+    response.ok(),
+    `Profile for "${userName}" failed to load: HTTP ${response.status()}`
+  ).toBeTruthy();
+
+  await waitForAllLoadersToDisappear(page);
   await expect(page.getByTestId('user-email-value')).toBeVisible();
 };
 

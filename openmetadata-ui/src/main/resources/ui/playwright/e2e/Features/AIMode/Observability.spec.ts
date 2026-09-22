@@ -34,6 +34,7 @@ test.describe('AI mode Observability', () => {
     // Wait for React to mount and process the <Navigate> redirect
     await page.waitForURL('**/observability/data-quality**', {
       timeout: 15000,
+      waitUntil: 'domcontentloaded',
     });
 
     await expect(page).toHaveURL(/\/observability\/data-quality/);

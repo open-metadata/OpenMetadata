@@ -182,14 +182,13 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
     const expandButton = page.getByTestId('expand-collapse-all-button');
     await expect(expandButton).toBeEnabled();
 
-    const termRes = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/glossaryTerms') &&
-        response.status() === 200
+    const termRes = waitForResponseWithStatus(
+      page,
+      (response) => response.url().includes('/api/v1/glossaryTerms'),
+      200
     );
     await expandButton.click();
-    const response = await termRes;
-    expect(response.status()).toBe(200);
+    await termRes;
 
     await waitForAllLoadersToDisappear(page);
   };
