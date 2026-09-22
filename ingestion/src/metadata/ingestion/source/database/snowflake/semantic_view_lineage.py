@@ -28,18 +28,10 @@ from sqlalchemy import text
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.type.entityLineage import (
-    EntitiesEdge,
-    LineageDetails,
-)
-from metadata.generated.schema.type.entityLineage import (
-    Source as LineageSource,
-)
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.database.semantic_metric_lineage import (
     column_lineage,
-    table_reference,
+    metric_lineage_request,
     view_lineage_request,
 )
 from metadata.ingestion.source.database.snowflake.queries import (
@@ -315,19 +307,7 @@ class SnowflakeSemanticViewLineage:
             name = build_metric_name(self.service_name, database, schema, view, logical_table, metric_name)
             metric = self.resolve_metric_by_name(name)
             if metric is not None:
-                requests.append(
-                    Either(  # pyright: ignore[reportCallIssue]
-                        right=AddLineageRequest(
-                            edge=EntitiesEdge(
-                                fromEntity=table_reference(view_entity),
-                                toEntity=EntityReference(id=metric.id, type="metric"),  # pyright: ignore[reportCallIssue]
-                                lineageDetails=LineageDetails(  # pyright: ignore[reportCallIssue]
-                                    source=LineageSource.ViewLineage,
-                                ),
-                            )
-                        )
-                    )
-                )
+                requests.append(metric_lineage_request(view_entity, metric))
         return requests
 
     def _build_view_lineage(

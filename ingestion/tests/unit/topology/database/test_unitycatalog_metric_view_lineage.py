@@ -179,6 +179,14 @@ def _metric_edges(extractor):
         # really can have a column called MONTH.
         ("DATE_TRUNC('MONTH', o_orderdate)", [(None, "o_orderdate")]),
         ("SUM(o_totalprice) FILTER (WHERE o_orderstatus = 'F')", [(None, "o_totalprice"), (None, "o_orderstatus")]),
+        # A struct column referenced both bare and field-qualified: the shorter chain
+        # must not blank its own prefix inside the longer one and leave ``city``
+        # behind as an unqualified candidate, which would resolve against the primary
+        # source and invent a column-lineage pair.
+        (
+            "CONCAT(source.address, source.address.city)",
+            [("source", "address"), ("source.address", "city")],
+        ),
     ],
 )
 def test_extract_column_refs(expression, expected):

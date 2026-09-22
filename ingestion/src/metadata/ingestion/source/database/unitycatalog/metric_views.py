@@ -356,9 +356,13 @@ def extract_column_refs(expression: str | None) -> list[tuple[str | None, str]]:
     text = _STRING_LITERAL_RE.sub(" ", expression or "")
     function_heads = {head.strip("`").lower() for head in _FUNCTION_CALL_RE.findall(text)}
     refs: list[tuple[str | None, str]] = []
-    remainder = text
+    # One substitution over the whole text, not a replace() per chain: one chain can
+    # be a prefix of another (``source.address`` and ``source.address.city``), and
+    # replacing the shorter one by text would blank it inside the longer one and
+    # leave ``city`` behind as a bare identifier that then resolves against the
+    # primary source.
+    remainder = _DOTTED_CHAIN_RE.sub(" ", text)
     for chain in _DOTTED_CHAIN_RE.findall(text):
-        remainder = remainder.replace(chain, " ")
         segments = split_table_reference(chain)
         if len(segments) >= 2:
             refs.append((".".join(segments[:-1]), segments[-1]))
