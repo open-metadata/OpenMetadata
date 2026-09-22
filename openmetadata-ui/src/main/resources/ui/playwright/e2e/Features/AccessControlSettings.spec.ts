@@ -68,36 +68,42 @@ test.describe(
       });
 
       await test.step('Roles card navigates to roles list', async () => {
+        const rolesResponse = page.waitForResponse('/api/v1/roles*');
         await page.getByTestId('access-control-card-roles').click();
+        expect((await rolesResponse).status()).toBe(200);
         await waitForAllLoadersToDisappear(page);
         await expect(page.getByTestId('roles-list-container')).toBeVisible();
       });
 
       await test.step('Policies card navigates to policies list', async () => {
+        const landingVisible = page
+          .getByTestId('access-control-landing')
+          .waitFor({ state: 'visible' });
         await page
           .getByTestId('profile-content-header')
           .getByLabel('Breadcrumb')
           .getByText('Access Control', { exact: true })
           .click();
+        await landingVisible;
         await waitForAllLoadersToDisappear(page);
-        await page
-          .getByTestId('access-control-landing')
-          .waitFor({ state: 'visible' });
+        const policiesResponse = page.waitForResponse('/api/v1/policies*');
         await page.getByTestId('access-control-card-policies').click();
+        expect((await policiesResponse).status()).toBe(200);
         await waitForAllLoadersToDisappear(page);
         await expect(page.getByTestId('policies-list-container')).toBeVisible();
       });
 
       await test.step('Permission Debugger card navigates to debugger panel', async () => {
+        const landingVisible = page
+          .getByTestId('access-control-landing')
+          .waitFor({ state: 'visible' });
         await page
           .getByTestId('profile-content-header')
           .getByLabel('Breadcrumb')
           .getByText('Access Control', { exact: true })
           .click();
+        await landingVisible;
         await waitForAllLoadersToDisappear(page);
-        await page
-          .getByTestId('access-control-landing')
-          .waitFor({ state: 'visible' });
         await page
           .getByTestId('access-control-card-permission-debugger')
           .click();
@@ -108,16 +114,19 @@ test.describe(
       });
 
       await test.step('Audit Logs card navigates to audit logs panel', async () => {
+        const landingVisible = page
+          .getByTestId('access-control-landing')
+          .waitFor({ state: 'visible' });
         await page
           .getByTestId('profile-content-header')
           .getByLabel('Breadcrumb')
           .getByText('Access Control', { exact: true })
           .click();
+        await landingVisible;
         await waitForAllLoadersToDisappear(page);
-        await page
-          .getByTestId('access-control-landing')
-          .waitFor({ state: 'visible' });
+        const auditResponse = page.waitForResponse('/api/v1/audit/logs*');
         await page.getByTestId('access-control-card-audit-logs').click();
+        expect((await auditResponse).status()).toBe(200);
         await waitForAllLoadersToDisappear(page);
         await expect(page.getByTestId('audit-logs-page')).toBeVisible();
       });
@@ -484,7 +493,8 @@ test.describe(
 
       try {
         await test.step('Click remove button for the policy', async () => {
-          await page.getByTestId(`remove-${policyDisplayName}`).click();
+          await page.getByTestId(`remove-action-${policyDisplayName}`).waitFor({ state: 'visible' });
+          await page.getByTestId(`remove-action-${policyDisplayName}`).click();
           await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
         });
 

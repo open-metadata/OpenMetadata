@@ -3355,9 +3355,11 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await page.getByTestId('custom_properties').click();
           await customPropertyResponse;
 
-          await page.locator('.ant-skeleton-active').waitFor({
-            state: 'detached',
-          });
+          await page
+            .locator('.ant-skeleton-active')
+            .waitFor({ state: 'detached' })
+            .catch(() => {});
+          await waitForAllLoadersToDisappear(page);
 
           await setValueForProperty({
             page,
@@ -3368,6 +3370,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           });
 
           await page.reload();
+          await waitForAllLoadersToDisappear(page);
 
           const customPropertiesTab = page.getByTestId('custom_properties');
           await customPropertiesTab.click();
@@ -3445,6 +3448,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await searchInput.fill(dashboardPropertyValue);
           await searchInput.press('Enter');
 
+          await page.getByTestId('dashboards-tab').waitFor({ state: 'visible' });
           await page.getByTestId('dashboards-tab').click();
 
           await waitForAllLoadersToDisappear(page);
@@ -3501,9 +3505,11 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await page.getByTestId('custom_properties').click();
           await customPropertyResponse;
 
-          await page.locator('.ant-skeleton-active').waitFor({
-            state: 'detached',
-          });
+          await page
+            .locator('.ant-skeleton-active')
+            .waitFor({ state: 'detached' })
+            .catch(() => {});
+          await waitForAllLoadersToDisappear(page);
 
           await setValueForProperty({
             page,

@@ -83,4 +83,6 @@ export const addOwnerInKCPanel = async (page: Page, ownerName: string) => {
     .click();
   await page.getByTestId('selectable-list-update-btn').click();
   await patchResponse;
+  await page.getByTestId('select-owner-tabs').waitFor({ state: 'hidden' });
+  await waitForAllLoadersToDisappear(page);
 };

@@ -88,9 +88,10 @@ async function expectOwnerInPanel(
   );
   await navigateToKCEntity(page, entityName);
 
-  const ownerChip = page
-    .locator('[data-testid="entity-summary-panel-container"]')
-    .getByTestId(owner.getUserDisplayName());
+  const panel = page.locator('[data-testid="entity-summary-panel-container"]');
+  await panel.getByTestId('KnowledgePageSummary').waitFor({ state: 'visible' });
+
+  const ownerChip = panel.getByTestId(owner.getUserDisplayName());
 
   await expect(ownerChip).toBeVisible();
 }

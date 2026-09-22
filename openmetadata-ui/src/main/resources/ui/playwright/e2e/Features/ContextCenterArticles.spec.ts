@@ -1745,6 +1745,7 @@ test.describe('Context Center Articles', () => {
       await test.step('Navigate to draft article A and type new content without saving', async () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await page.fill('.om-block-editor', newDescription);
+        await waitForDraftPersisted(page, draftArticleA.id, newDescription);
       });
 
       await test.step('Navigate to draft article B via left hierarchy', async () => {

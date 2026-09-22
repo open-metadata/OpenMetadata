@@ -384,7 +384,9 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     const res = await patchResponse;
     expect(res.status()).toBe(200);
 
-    // The property row must no longer appear.
+    await page.getByTestId('delete-modal').waitFor({ state: 'hidden' });
+    await waitForAllLoadersToDisappear(page);
+
     await expect(
       page.locator('tr').filter({ hasText: name })
     ).not.toBeVisible();
