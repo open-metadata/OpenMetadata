@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SQLiteConnection",
   "description": "SQLite Database Connection Config",
   "type": "object",
@@ -226,7 +225,6 @@
                   "oneOf": [
                     {
                       "title": "AWS S3 Storage Config",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "description": "AWS credentials configs.",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",

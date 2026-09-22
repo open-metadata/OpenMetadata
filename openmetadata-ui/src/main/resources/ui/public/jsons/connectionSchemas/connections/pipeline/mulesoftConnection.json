@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MulesoftConnection",
   "description": "MuleSoft Anypoint Platform Connection Config",
   "type": "object",
@@ -38,7 +37,6 @@
       "oneOf": [
         {
           "title": "Basic Authentication",
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "Basic Auth Credentials",
           "type": "object",
           "javaType": "org.openmetadata.schema.security.credentials.BasicAuth",
@@ -63,7 +61,6 @@
         },
         {
           "title": "OAuth 2.0 Client Credentials (Connected App)",
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "OAuth 2.0 client credentials authentication for Airbyte Cloud",
           "type": "object",
           "javaType": "org.openmetadata.schema.services.connections.pipeline.airbyte.OAuthClientAuth",
