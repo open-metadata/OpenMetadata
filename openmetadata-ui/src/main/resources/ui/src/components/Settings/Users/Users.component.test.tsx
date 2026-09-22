@@ -79,6 +79,12 @@ jest.mock(
   })
 );
 
+jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
+  CustomPropertyTable: jest
+    .fn()
+    .mockReturnValue(<div>CustomPropertyTable</div>),
+}));
+
 jest.mock('../../Glossary/GlossaryTerms/tabs/AssetsTabs.component', () => {
   return jest.fn().mockImplementation((props) => {
     React.useEffect(() => {
@@ -314,6 +320,18 @@ describe('Test User Component', () => {
     const assetComponent = await screen.findByText('AssetsTabs');
 
     expect(assetComponent).toBeInTheDocument();
+  });
+
+  it('Custom Properties tab should render the custom property table', async () => {
+    mockParams.tab = UserPageTabs.CUSTOM_PROPERTIES;
+
+    await act(async () => {
+      render(<Users userData={mockUserData} {...mockProp} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(await screen.findByText('CustomPropertyTable')).toBeInTheDocument();
   });
 
   it('Access Token tab should show user access component', async () => {

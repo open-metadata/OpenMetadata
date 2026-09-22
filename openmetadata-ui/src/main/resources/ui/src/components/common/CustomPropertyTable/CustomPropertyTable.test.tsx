@@ -19,8 +19,11 @@ import {
 import { act } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
+import { Team } from '../../../generated/entity/teams/team';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { CustomPropertyTable } from './CustomPropertyTable';
+import { PropertyValue } from './PropertyValue';
 
 const mockCustomProperties = [
   {
@@ -231,5 +234,81 @@ describe('Test CustomProperty Table Component', () => {
     const tableRowValue = await screen.findByText('PropertyValue');
 
     expect(tableRowValue).toBeInTheDocument();
+  });
+});
+
+describe('Test CustomProperty Table entity source', () => {
+  // Team and user detail pages sit outside the customizable-page system, so they hand the
+  // entity in as a prop instead of through a GenericProvider.
+  const teamFromProp = {
+    id: 'team-id',
+    name: 'engineering',
+    fullyQualifiedName: 'engineering',
+    extension: { xName: 'from-prop' },
+  } as Team;
+
+  const contextOnUpdate = jest.fn();
+
+  // jest.config sets clearMocks, so only the context override has to be re-applied here.
+  beforeEach(() => {
+    (useGenericContext as jest.Mock).mockReturnValue({
+      data: { extension: { xName: 'from-context' } },
+      onUpdate: contextOnUpdate,
+      filterWidgets: jest.fn(),
+    });
+  });
+
+  const renderWithProps = async (
+    props: Partial<Parameters<typeof CustomPropertyTable>[0]> = {}
+  ) => {
+    await act(async () => {
+      render(
+        <CustomPropertyTable
+          hasEditAccess
+          hasPermission
+          entityType={EntityType.TEAM}
+          {...props}
+        />
+      );
+    });
+  };
+
+  it('reads the entity from the entityDetails prop when one is given', async () => {
+    await renderWithProps({ entityDetails: teamFromProp });
+
+    expect(
+      (PropertyValue as unknown as jest.Mock).mock.calls[0][0].extension
+    ).toEqual({ xName: 'from-prop' });
+  });
+
+  it('falls back to the generic context when no entityDetails prop is given', async () => {
+    await renderWithProps();
+
+    expect(
+      (PropertyValue as unknown as jest.Mock).mock.calls[0][0].extension
+    ).toEqual({ xName: 'from-context' });
+  });
+
+  it('sends extension edits to onEntityUpdate instead of the context handler', async () => {
+    const onEntityUpdate = jest.fn();
+    await renderWithProps({ entityDetails: teamFromProp, onEntityUpdate });
+
+    const { onExtensionUpdate } = (PropertyValue as unknown as jest.Mock).mock
+      .calls[0][0];
+    await act(async () => {
+      await onExtensionUpdate({ xName: 'edited' });
+    });
+
+    expect(onEntityUpdate).toHaveBeenCalledWith(
+      { ...teamFromProp, extension: { xName: 'edited' } },
+      'extension'
+    );
+    expect(contextOnUpdate).not.toHaveBeenCalled();
+  });
+
+  it('looks up the property definitions for the team entity type', async () => {
+    await renderWithProps({ entityDetails: teamFromProp });
+
+    expect(getTypeByFQN).toHaveBeenCalledWith(EntityType.TEAM);
   });
 });
