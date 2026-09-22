@@ -2983,6 +2983,21 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/codeEditor.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
+        "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts",
+        "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
+        "playwright/e2e/Features/Permission.spec.ts",
+        "playwright/e2e/Features/QueryEntity.spec.ts",
+        "playwright/e2e/Features/SchemaDefinition.spec.ts",
+        "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts",
+        "playwright/e2e/Pages/CustomProperties.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/utils/common.ts"
       ],
       "specs": [
