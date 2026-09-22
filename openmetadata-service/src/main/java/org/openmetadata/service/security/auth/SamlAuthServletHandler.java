@@ -48,6 +48,7 @@ import org.openmetadata.service.security.AuthServeletHandler;
 import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.EmailFirstUserProvisioner;
 import org.openmetadata.service.security.SamlIdentityResolver;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
@@ -61,6 +62,7 @@ import org.openmetadata.service.util.UserUtil;
 @Slf4j
 public class SamlAuthServletHandler implements AuthServeletHandler {
   private static final String AUTH_CALLBACK_PATH = "/auth/callback";
+  private static final String MCP_RELAY_STATE_PREFIX = "mcp:";
   final AuthenticationConfiguration authConfig;
   final AuthorizerConfiguration authorizerConfig;
   final SessionService sessionService;
@@ -174,12 +176,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       if (callbackUrl == null) {
         callbackUrl = req.getParameter("redirectUri");
       }
-      if (callbackUrl == null) {
-        callbackUrl = defaultSamlRedirectUri();
-      }
-      callbackUrl =
-          org.openmetadata.service.security.SecurityUtil.validateRedirectUri(
-              callbackUrl, trustedSamlRedirects());
+      callbackUrl = requireSamlRedirectUri(callbackUrl);
       UserSession pendingSession =
           sessionService.createPendingSession(
               req, resp, authConfig.getProvider().value(), callbackUrl, null, null, null);
@@ -231,10 +228,13 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
    * flow and has been handled (the caller must stop processing); false for normal web SAML logins.
    */
   private boolean tryHandleMcpSamlCallback(
-      HttpServletRequest req, HttpServletResponse resp, String username, String email)
+      HttpServletRequest req,
+      HttpServletResponse resp,
+      String username,
+      String email,
+      String relayState)
       throws Exception {
-    String relayState = req.getParameter("RelayState");
-    if (relayState == null || !relayState.startsWith("mcp:")) {
+    if (!isMcpSamlCallback(relayState)) {
       return false; // normal web SAML login — not an MCP OAuth flow
     }
     // This IS an MCP OAuth login. If the MCP bridge is not registered (MCP disabled, init failure,
@@ -259,6 +259,16 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
   @Override
   public void handleCallback(HttpServletRequest req, HttpServletResponse resp) {
     try {
+      String relayState = req.getParameter("RelayState");
+      boolean mcpCallback = isMcpSamlCallback(relayState);
+      UserSession pendingSession = mcpCallback ? null : resolvePendingSession(req, resp);
+      if (!mcpCallback && pendingSession == null) {
+        sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "No pending session");
+        return;
+      }
+      String callbackUrl =
+          mcpCallback ? null : requireSamlRedirectUri(pendingSession.getRedirectUri());
+
       // This handles the SAML response from IDP (ACS - Assertion Consumer Service)
       javax.servlet.http.HttpServletRequest wrappedRequest = new HttpServletRequestWrapper(req);
       javax.servlet.http.HttpServletResponse wrappedResponse = new HttpServletResponseWrapper(resp);
@@ -291,13 +301,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       // hand the authenticated identity to the MCP flow instead of the normal web JWT redirect.
       // This fires before getOrCreateUser so MCP keeps the deny-unknown-user semantics of the
       // OIDC MCP path (handleSSOCallbackWithDbState serves the "Access Denied" page).
-      if (tryHandleMcpSamlCallback(req, resp, username, email)) {
-        return;
-      }
-
-      UserSession pendingSession = resolvePendingSession(req, resp);
-      if (pendingSession == null) {
-        sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "No pending session");
+      if (tryHandleMcpSamlCallback(req, resp, username, email, relayState)) {
         return;
       }
 
@@ -352,20 +356,15 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
             .writeAuthEvent(AuditLogRepository.AUTH_EVENT_LOGIN, user.getName(), user.getId());
       }
 
-      String redirectUri = pendingSession.getRedirectUri();
-      LOG.debug("SAML Callback - redirectUri from session: {}", redirectUri);
+      LOG.debug("SAML Callback - redirectUri from session: {}", callbackUrl);
       JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user, activeSession);
 
-      String callbackUrl =
-          org.openmetadata.service.security.SecurityUtil.validateRedirectUri(
-              redirectUri == null ? defaultSamlRedirectUri() : redirectUri, trustedSamlRedirects());
-      callbackUrl =
-          org.openmetadata.service.security.SecurityUtil.buildRedirectWithToken(
-              callbackUrl,
-              jwtAuthMechanism.getJWTToken(),
-              email,
-              displayName == null ? "" : displayName);
-      resp.sendRedirect(callbackUrl);
+      SecurityUtil.sendRedirectWithToken(
+          resp,
+          callbackUrl,
+          jwtAuthMechanism.getJWTToken(),
+          email,
+          displayName == null ? "" : displayName);
 
     } catch (IllegalArgumentException e) {
       LOG.error("Invalid SAML redirect URI in callback", e);
@@ -394,6 +393,10 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       pendingSession = sessionService.getPendingSession(req, resp).orElse(null);
     }
     return pendingSession;
+  }
+
+  private boolean isMcpSamlCallback(String relayState) {
+    return relayState != null && relayState.startsWith(MCP_RELAY_STATE_PREFIX);
   }
 
   @Override
@@ -692,10 +695,15 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
 
   private Set<String> trustedSamlRedirects() {
     Set<String> trusted =
-        org.openmetadata.service.security.SecurityUtil.trustedRedirects(
+        SecurityUtil.trustedRedirects(
             authConfig.getCallbackUrl(), samlSpCallback(), samlAuthCallback());
     trusted.addAll(listOrEmpty(authConfig.getAdditionalTrustedRedirectUris()));
     return trusted;
+  }
+
+  private String requireSamlRedirectUri(String redirectUri) {
+    String targetRedirectUri = nullOrEmpty(redirectUri) ? defaultSamlRedirectUri() : redirectUri;
+    return SecurityUtil.validateRedirectUri(targetRedirectUri, trustedSamlRedirects());
   }
 
   private ServiceProviderConfig samlSp() {
