@@ -418,14 +418,15 @@ public class LineageRepository {
       return true;
     }
 
-    EntityReference priorPipelineService = resolvePriorPipelineService(priorDetails);
+    EntityReference priorPipelineService = resolveAnnotatorPipelineService(priorDetails);
     if (priorPipelineService == null) {
-      // The prior edge did route through a pipeline, but that pipeline is gone so its hops can no
-      // longer be named. Releasing anything here would fall through to the direct edge, which is
-      // owned by other child edges entirely — leave the stale hops to the service lineage repair.
-      // The edge has still moved onto its current shape and must be counted into it: a hop shared
-      // with another child would otherwise stay one contributor short and be deleted while this
-      // edge still needs it. Over-counting merely keeps a redundant hop alive a little longer.
+      // Neither the prior pipeline nor the service its FQN names survives, so the hops it fed
+      // cannot be identified. Releasing with a null service would fall through to the direct edge,
+      // which other child edges own, so the stale hops are left to the 2.0.3 repair. The edge has
+      // still moved onto its current shape and is counted into it: a hop shared with another child
+      // would otherwise stay one contributor short and be deleted while this edge still needs it.
+      // That can overcount a hop when the replacement happens to share the vanished service, but a
+      // redundant hop outliving its use is recoverable where a prematurely deleted one is not.
       return true;
     }
     if (pipelineService != null
@@ -436,12 +437,32 @@ public class LineageRepository {
     return true;
   }
 
-  /** A pipeline deleted since the edge was written can no longer identify the hops it fed. */
-  private EntityReference resolvePriorPipelineService(LineageDetails priorDetails) {
+  /**
+   * Resolves the service whose hops an annotated edge feeds, tolerating a pipeline deleted since
+   * the edge was written. Hops are keyed by the pipeline's service rather than the pipeline, and
+   * the reference stored on the edge still carries the FQN that names that service, so a missing
+   * pipeline does not by itself make the shape unknowable.
+   */
+  private EntityReference resolveAnnotatorPipelineService(LineageDetails details) {
     try {
-      return getPipelineService(priorDetails);
+      return getPipelineService(details);
     } catch (EntityNotFoundException e) {
-      LOG.debug("Prior pipeline is gone, skipping service edge release: {}", e.getMessage());
+      return pipelineServiceFromFqn(details.getPipeline());
+    }
+  }
+
+  private EntityReference pipelineServiceFromFqn(EntityReference pipelineRef) {
+    if (pipelineRef == null || nullOrEmpty(pipelineRef.getFullyQualifiedName())) {
+      return null;
+    }
+    String serviceName = FullyQualifiedName.getRoot(pipelineRef.getFullyQualifiedName());
+    if (serviceName == null) {
+      return null;
+    }
+    try {
+      return Entity.getEntityReferenceByName(Entity.PIPELINE_SERVICE, serviceName, Include.ALL);
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Pipeline service {} is gone as well: {}", serviceName, e.getMessage());
       return null;
     }
   }
@@ -1407,8 +1428,19 @@ public class LineageRepository {
     if (!shouldAddServiceLineage(fromEntity, toEntity)) {
       return;
     }
-    releaseServiceShape(
-        fromEntity.getService(), toEntity.getService(), getPipelineService(entityLineageDetails));
+    if (entityLineageDetails == null || nullOrEmpty(entityLineageDetails.getPipeline())) {
+      releaseServiceShape(fromEntity.getService(), toEntity.getService(), null);
+      return;
+    }
+    EntityReference pipelineService = resolveAnnotatorPipelineService(entityLineageDetails);
+    if (pipelineService == null) {
+      // Both the annotator and its service are gone, so the hops can no longer be named. Releasing
+      // with a null service would fall through to the direct edge, which other child edges own, and
+      // letting the lookup throw would abort the whole delete. Leave the hops to the 2.0.3 repair.
+      LOG.debug("Annotator pipeline is gone, skipping service edge release for this delete");
+      return;
+    }
+    releaseServiceShape(fromEntity.getService(), toEntity.getService(), pipelineService);
   }
 
   /** Mirror of the insert branches in {@link #addServiceLineage}, for one child edge. */

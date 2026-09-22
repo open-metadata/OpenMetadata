@@ -267,6 +267,69 @@ public class ServiceLineagePipelineRoutingMigrationIT {
         JsonUtils.pojoToJson(new LineageDetails().withSource(LineageDetails.Source.MANUAL)));
   }
 
+  /**
+   * The hops an annotated edge feeds are keyed by the pipeline's service, and the reference stored
+   * on the edge still names that service by FQN. A replacement pipeline in the same service is
+   * therefore the same shape, so the child must not be counted into hops it already contributes to.
+   */
+  @Test
+  void movingToAReplacementPipelineInTheSameServiceDoesNotRecountTheHops() {
+    CollectionDAO collectionDAO = Entity.getCollectionDAO();
+    UUID sourceId = sourceService.getId();
+    UUID targetId = targetService.getId();
+    UUID pipelineServiceId = pipelineService.getId();
+
+    int before = assetEdges(directEdge(collectionDAO, sourceId, pipelineServiceId));
+    pointChildEdgeAtMissingPipelineIn(collectionDAO, annotatedSource, annotatedTarget, pipeline);
+    addLineage(annotatedSource, annotatedTarget, pipeline);
+
+    assertEquals(
+        before,
+        assetEdges(directEdge(collectionDAO, sourceId, pipelineServiceId)),
+        "a replacement pipeline in the same service leaves the source -> pipeline hop count alone");
+    assertEquals(
+        before,
+        assetEdges(directEdge(collectionDAO, pipelineServiceId, targetId)),
+        "a replacement pipeline in the same service leaves the pipeline -> target hop count alone");
+  }
+
+  /**
+   * Deleting an edge whose annotator was hard-deleted must not abort the delete. The lookup throws
+   * {@code EntityNotFoundException}, which would propagate out of the transactional delete and
+   * strand both the child edge and its service hops.
+   */
+  @Test
+  void deletingAnEdgeWhoseAnnotatorIsGoneStillRemovesTheChildEdge() {
+    CollectionDAO collectionDAO = Entity.getCollectionDAO();
+
+    pointChildEdgeAtMissingPipeline(collectionDAO, plainSource, plainTarget);
+
+    client.lineage().deleteLineage("table:" + plainSource.getId(), "table:" + plainTarget.getId());
+
+    assertNull(
+        collectionDAO
+            .relationshipDAO()
+            .getRecord(plainSource.getId(), plainTarget.getId(), Relationship.UPSTREAM.ordinal()),
+        "the child edge must be deleted even though its annotator pipeline is gone");
+
+    addLineage(plainSource, plainTarget, null);
+  }
+
+  /** Points the child edge at a missing pipeline that still names {@code sibling}'s service. */
+  private void pointChildEdgeAtMissingPipelineIn(
+      CollectionDAO collectionDAO, Table from, Table to, Pipeline sibling) {
+    String serviceName = sibling.getFullyQualifiedName().split("\\.")[0];
+    LineageDetails details =
+        new LineageDetails()
+            .withSource(LineageDetails.Source.PIPELINE_LINEAGE)
+            .withPipeline(
+                new EntityReference()
+                    .withId(UUID.randomUUID())
+                    .withType(Entity.PIPELINE)
+                    .withFullyQualifiedName(serviceName + ".vanished_pipeline"));
+    replaceChildEdgeJson(collectionDAO, from, to, JsonUtils.pojoToJson(details));
+  }
+
   /** Rewrites the child edge to reference a pipeline id that no entity holds. */
   private void pointChildEdgeAtMissingPipeline(CollectionDAO collectionDAO, Table from, Table to) {
     LineageDetails details =
