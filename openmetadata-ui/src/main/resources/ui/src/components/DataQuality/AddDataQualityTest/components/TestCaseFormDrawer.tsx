@@ -35,7 +35,6 @@ import { EntityType as EntityTypeEnum } from '../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestDefinition } from '../../../../generated/tests/testDefinition';
-import { TestSuite } from '../../../../generated/tests/testSuite';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import {
@@ -215,8 +214,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
 
   const createTestCasePipeline = useCallback(
     async (values: FormValues, created: TestCase) => {
-      const pipelineTestSuite =
-        (created.testSuite as TestSuite | undefined) ?? testSuite;
+      const pipelineTestSuite = created.testSuite ?? testSuite;
       if (!formContext?.canCreatePipeline || !pipelineTestSuite) {
         return;
       }
