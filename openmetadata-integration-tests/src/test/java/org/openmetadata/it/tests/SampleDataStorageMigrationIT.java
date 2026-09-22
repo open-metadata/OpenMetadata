@@ -5,16 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,10 +39,15 @@ import org.openmetadata.service.migration.utils.MigrationFile;
  * repairs those rows, and migration statements are checksummed as applied, so a backfill that
  * misses a table misses it permanently.
  *
- * <p>The first test proves the surgery on a real service row. The second pins the statement
- * inventory, because the shape hides at four different depths across seven tables and the paths
- * that are easiest to forget — Hive's {@code metastoreConnection}, SSIS/Wherescape's {@code
- * databaseConnection} — belong to connectors nobody thinks of as "a database service".
+ * <p>The first test proves the surgery on a real service row. The second proves it on a version
+ * snapshot, because version history is a second copy of the same JSON that {@code
+ * EntityRepository.getVersion} deserializes into the same POJO — repairing only the live row leaves
+ * {@code GET .../versions/{version}} broken.
+ *
+ * <p>Which paths the backfill has to reach is a property of the schema graph, so that inventory is
+ * derived from {@code openmetadata-spec} in {@code SampleDataStorageMigrationPathsTest} rather than
+ * restated here. This class only pins the statement count, so a table cannot be dropped from the
+ * migration without one of the two tests noticing.
  *
  * <p>Isolated rather than concurrent: reproducing the pre-upgrade state means parking a row in
  * {@code dbservice_entity} that no longer deserializes, and until the migration runs any other test
@@ -62,29 +63,23 @@ public class SampleDataStorageMigrationIT {
           + "\"filePathPattern\":\"{service_name}/sample_data.parquet\","
           + "\"overwriteData\":true,\"storageConfig\":{\"awsRegion\":\"us-east-1\"}}";
 
-  /** Every (table, JSON path) pair the legacy shape can reach, derived from the schema graph. */
-  private static final Map<String, List<String>> COVERED_PATHS = coveredPaths();
+  /** Every table the legacy shape can reach; one backfill statement each. */
+  private static final List<String> BACKFILLED_TABLES =
+      List.of(
+          "dbservice_entity",
+          "dashboard_service_entity",
+          "pipeline_service_entity",
+          "metadata_service_entity",
+          "automations_workflow",
+          "database_entity",
+          "database_schema_entity",
+          "entity_extension");
 
-  private static Map<String, List<String>> coveredPaths() {
-    Map<String, List<String>> paths = new LinkedHashMap<>();
-    paths.put(
-        "dbservice_entity", List.of("connection.config", "connection.config.metastoreConnection"));
-    paths.put("dashboard_service_entity", List.of("connection.config.connection"));
-    paths.put(
-        "pipeline_service_entity",
-        List.of("connection.config.connection", "connection.config.databaseConnection"));
-    paths.put("metadata_service_entity", List.of("connection.config.connection"));
-    paths.put(
-        "automations_workflow",
-        List.of(
-            "request.connection.config",
-            "request.connection.config.connection",
-            "request.connection.config.metastoreConnection",
-            "request.connection.config.databaseConnection"));
-    paths.put("database_entity", List.of("databaseProfilerConfig"));
-    paths.put("database_schema_entity", List.of("databaseSchemaProfilerConfig"));
-    return paths;
-  }
+  private static final String CONNECTION = "connection";
+  private static final String CONFIG = "config";
+  private static final String STORAGE_CONFIG = "sampleDataStorageConfig";
+  private static final String SERVICE_ENTITY_TYPE = "databaseService";
+  private static final String VERSION_EXTENSION = "databaseService.version.0.1";
 
   @Test
   void migrationStripsTheLegacyShapeAndLeavesOpenMetadataHostedStorageAlone(TestNamespace ns) {
@@ -98,55 +93,47 @@ public class SampleDataStorageMigrationIT {
 
     assertThrows(
         JsonParsingException.class,
-        () ->
-            JsonUtils.readValue(storedConnectionConfig(legacy.getId()), SnowflakeConnection.class),
+        () -> readConnectionConfig(serviceJson(legacy.getId())),
         "precondition: the legacy row is what breaks on upgrade");
 
     runSampleDataStorageStatements();
 
-    assertNull(storageConfigNode(legacy.getId()), "the legacy node is removed outright");
+    assertNull(
+        storageConfigNode(serviceJson(legacy.getId())), "the legacy node is removed outright");
     assertDoesNotThrow(
-        () ->
-            JsonUtils.readValue(storedConnectionConfig(legacy.getId()), SnowflakeConnection.class),
+        () -> readConnectionConfig(serviceJson(legacy.getId())),
         "and the repaired row deserializes against the tightened schema");
 
-    JsonNode preserved = storageConfigNode(hosted.getId());
+    JsonNode preserved = storageConfigNode(serviceJson(hosted.getId()));
     assertNotNull(preserved, "OpenMetadata-hosted storage is valid and must survive");
     assertEquals(0, preserved.size(), "untouched, not emptied by a blanket delete");
 
     runSampleDataStorageStatements();
 
-    assertNull(storageConfigNode(legacy.getId()), "re-running the migration changes nothing");
-    assertNotNull(storageConfigNode(hosted.getId()), "re-running the migration changes nothing");
+    assertNull(
+        storageConfigNode(serviceJson(legacy.getId())), "re-running the migration changes nothing");
+    assertNotNull(
+        storageConfigNode(serviceJson(hosted.getId())), "re-running the migration changes nothing");
   }
 
   @Test
-  void everyPathTheLegacyShapeCanReachIsCoveredInBothDialects() {
-    String mysql = readMigration("mysql");
-    String postgres = readMigration("postgres");
+  void migrationRepairsVersionSnapshotsAndNotOnlyLiveRows(TestNamespace ns) {
+    DatabaseService service = createSnowflakeService(ns, "versioned");
+    insertLegacyVersionSnapshot(service.getId());
 
-    COVERED_PATHS.forEach(
-        (table, prefixes) ->
-            prefixes.forEach(
-                prefix -> {
-                  String mysqlPath = "'$." + prefix + ".sampleDataStorageConfig'";
-                  String postgresPath =
-                      "'{" + prefix.replace('.', ',') + ",sampleDataStorageConfig}'";
-                  assertTrue(
-                      mysql.contains(mysqlPath),
-                      table + " is not stripped at " + prefix + " by the MySQL migration");
-                  assertTrue(
-                      postgres.contains(postgresPath),
-                      table + " is not stripped at " + prefix + " by the Postgres migration");
-                }));
+    assertThrows(
+        JsonParsingException.class,
+        () -> readConnectionConfig(snapshotJson(service.getId())),
+        "precondition: the snapshot is what breaks GET .../versions/{version}");
 
-    COVERED_PATHS
-        .keySet()
-        .forEach(
-            table -> {
-              assertTrue(mysql.contains("UPDATE " + table), "MySQL migration skips " + table);
-              assertTrue(postgres.contains("UPDATE " + table), "Postgres migration skips " + table);
-            });
+    runSampleDataStorageStatements();
+
+    assertNull(
+        storageConfigNode(snapshotJson(service.getId())),
+        "version history is repaired, not just the live row");
+    assertDoesNotThrow(
+        () -> readConnectionConfig(snapshotJson(service.getId())),
+        "and the repaired snapshot deserializes against the tightened schema");
   }
 
   private DatabaseService createSnowflakeService(TestNamespace ns, String suffix) {
@@ -165,26 +152,51 @@ public class SampleDataStorageMigrationIT {
   }
 
   private void injectStorageConfig(UUID serviceId, String config) {
+    String json = JsonUtils.pojoToJson(withStorageConfig(serviceJson(serviceId), config));
     TestSuiteBootstrap.getJdbi()
         .useHandle(
-            handle -> {
-              ObjectNode root = (ObjectNode) JsonUtils.readTree(readServiceJson(serviceId));
-              ObjectNode connectionConfig = (ObjectNode) root.get("connection").get("config");
-              connectionConfig.set(
-                  "sampleDataStorageConfig",
-                  JsonUtils.getObjectNode("config", JsonUtils.readTree(config)));
-              handle
-                  .createUpdate(
-                      "UPDATE dbservice_entity SET json = "
-                          + jsonBindExpression()
-                          + " WHERE id = :id")
-                  .bind("json", JsonUtils.pojoToJson(root))
-                  .bind("id", serviceId.toString())
-                  .execute();
-            });
+            handle ->
+                handle
+                    .createUpdate(
+                        "UPDATE dbservice_entity SET json = "
+                            + jsonBindExpression()
+                            + " WHERE id = :id")
+                    .bind("json", json)
+                    .bind("id", serviceId.toString())
+                    .execute());
   }
 
-  private String readServiceJson(UUID serviceId) {
+  /**
+   * A snapshot can only hold the legacy shape because it was written before the schema was
+   * tightened, so it goes in the same way the upgrade finds it: as a row, not through the API.
+   */
+  private void insertLegacyVersionSnapshot(UUID serviceId) {
+    String json = JsonUtils.pojoToJson(withStorageConfig(serviceJson(serviceId), LEGACY_CONFIG));
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle ->
+                handle
+                    .createUpdate(
+                        "INSERT INTO entity_extension (id, extension, jsonSchema, json) "
+                            + "VALUES (:id, :extension, :jsonSchema, "
+                            + jsonBindExpression()
+                            + ")")
+                    .bind("id", serviceId.toString())
+                    .bind("extension", VERSION_EXTENSION)
+                    .bind("jsonSchema", SERVICE_ENTITY_TYPE)
+                    .bind("json", json)
+                    .execute());
+  }
+
+  private static ObjectNode withStorageConfig(String entityJson, String config) {
+    ObjectNode root = (ObjectNode) JsonUtils.readTree(entityJson);
+    ObjectNode connectionConfig = (ObjectNode) root.get(CONNECTION).get(CONFIG);
+    connectionConfig.set(
+        STORAGE_CONFIG, JsonUtils.getObjectNode(CONFIG, JsonUtils.readTree(config)));
+    return root;
+  }
+
+  private String serviceJson(UUID serviceId) {
     return TestSuiteBootstrap.getJdbi()
         .withHandle(
             handle ->
@@ -195,16 +207,29 @@ public class SampleDataStorageMigrationIT {
                     .one());
   }
 
-  private String storedConnectionConfig(UUID serviceId) {
-    return JsonUtils.pojoToJson(
-        JsonUtils.readTree(readServiceJson(serviceId)).get("connection").get("config"));
+  private String snapshotJson(UUID serviceId) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery(
+                        "SELECT json FROM entity_extension "
+                            + "WHERE id = :id AND extension = :extension")
+                    .bind("id", serviceId.toString())
+                    .bind("extension", VERSION_EXTENSION)
+                    .mapTo(String.class)
+                    .one());
   }
 
-  private JsonNode storageConfigNode(UUID serviceId) {
-    JsonNode connectionConfig =
-        JsonUtils.readTree(readServiceJson(serviceId)).get("connection").get("config");
-    JsonNode storage = connectionConfig.get("sampleDataStorageConfig");
-    return storage == null ? null : storage.get("config");
+  private static SnowflakeConnection readConnectionConfig(String entityJson) {
+    JsonNode config = JsonUtils.readTree(entityJson).get(CONNECTION).get(CONFIG);
+    return JsonUtils.readValue(JsonUtils.pojoToJson(config), SnowflakeConnection.class);
+  }
+
+  private static JsonNode storageConfigNode(String entityJson) {
+    JsonNode storage =
+        JsonUtils.readTree(entityJson).get(CONNECTION).get(CONFIG).get(STORAGE_CONFIG);
+    return storage == null ? null : storage.get(CONFIG);
   }
 
   /** Postgres stores the entity as JSONB, so the bound string needs an explicit cast. */
@@ -224,21 +249,13 @@ public class SampleDataStorageMigrationIT {
                     .toFile(),
                 TestSuiteBootstrap.getConnectionType())
             .stream()
-            .filter(sql -> sql.contains("sampleDataStorageConfig"))
+            .filter(sql -> sql.contains(STORAGE_CONFIG))
             .toList();
     assertEquals(
-        COVERED_PATHS.size(),
+        BACKFILLED_TABLES.size(),
         statements.size(),
         "one statement per table the legacy shape can reach");
     TestSuiteBootstrap.getJdbi().useHandle(handle -> statements.forEach(handle::execute));
-  }
-
-  private String readMigration(String dialect) {
-    try {
-      return Files.readString(migrationFile(dialect));
-    } catch (IOException e) {
-      throw new IllegalStateException("Cannot read the 2.1.0 " + dialect + " migration", e);
-    }
   }
 
   private Path migrationFile(String dialect) {

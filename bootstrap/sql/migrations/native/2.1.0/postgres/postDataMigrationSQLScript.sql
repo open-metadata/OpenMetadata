@@ -357,3 +357,44 @@ WHERE json::jsonb #> '{databaseProfilerConfig,sampleDataStorageConfig,config}' <
 UPDATE database_schema_entity
 SET json = json::jsonb #- '{databaseSchemaProfilerConfig,sampleDataStorageConfig}'
 WHERE json::jsonb #> '{databaseSchemaProfilerConfig,sampleDataStorageConfig,config}' <> '{}'::jsonb;
+
+-- Version history keeps a second copy of the same JSON. `EntityRepository.getVersion`
+-- deserializes an entity_extension row straight into the generated POJO, so a snapshot
+-- still carrying the legacy shape fails GET .../versions/{version} -- 400 for a service
+-- connection (the secrets-manager decrypt rejects the unrecognized field) and 500 for a
+-- profiler config (raw Jackson). The live rows above are only half the copies.
+--
+-- One statement covers every versioned entity the shape can reach: the four service
+-- types, database, databaseSchema, and the automations workflow (Test Connection
+-- requests are versioned too). A path a snapshot does not have is a no-op, so the paths
+-- apply uniformly; the extension prefixes stay explicit so the scan can use
+-- `extension_index` instead of a leading wildcard.
+UPDATE entity_extension
+SET json = json::jsonb
+      #- '{connection,config,sampleDataStorageConfig}'
+      #- '{connection,config,metastoreConnection,sampleDataStorageConfig}'
+      #- '{connection,config,connection,sampleDataStorageConfig}'
+      #- '{connection,config,databaseConnection,sampleDataStorageConfig}'
+      #- '{request,connection,config,sampleDataStorageConfig}'
+      #- '{request,connection,config,connection,sampleDataStorageConfig}'
+      #- '{request,connection,config,metastoreConnection,sampleDataStorageConfig}'
+      #- '{request,connection,config,databaseConnection,sampleDataStorageConfig}'
+      #- '{databaseProfilerConfig,sampleDataStorageConfig}'
+      #- '{databaseSchemaProfilerConfig,sampleDataStorageConfig}'
+WHERE (extension LIKE 'databaseService.version.%'
+    OR extension LIKE 'dashboardService.version.%'
+    OR extension LIKE 'pipelineService.version.%'
+    OR extension LIKE 'metadataService.version.%'
+    OR extension LIKE 'database.version.%'
+    OR extension LIKE 'databaseSchema.version.%'
+    OR extension LIKE 'workflow.version.%')
+  AND (json::jsonb #> '{connection,config,sampleDataStorageConfig,config}' <> '{}'::jsonb
+    OR json::jsonb #> '{connection,config,metastoreConnection,sampleDataStorageConfig,config}' <> '{}'::jsonb
+    OR json::jsonb #> '{connection,config,connection,sampleDataStorageConfig,config}' <> '{}'::jsonb
+    OR json::jsonb #> '{connection,config,databaseConnection,sampleDataStorageConfig,config}' <> '{}'::jsonb
+    OR json::jsonb #> '{request,connection,config,sampleDataStorageConfig,config}' <> '{}'::jsonb
+    OR json::jsonb #> '{request,connection,config,connection,sampleDataStorageConfig,config}' <> '{}'::jsonb
+    OR json::jsonb #> '{request,connection,config,metastoreConnection,sampleDataStorageConfig,config}' <> '{}'::jsonb
+    OR json::jsonb #> '{request,connection,config,databaseConnection,sampleDataStorageConfig,config}' <> '{}'::jsonb
+    OR json::jsonb #> '{databaseProfilerConfig,sampleDataStorageConfig,config}' <> '{}'::jsonb
+    OR json::jsonb #> '{databaseSchemaProfilerConfig,sampleDataStorageConfig,config}' <> '{}'::jsonb);
