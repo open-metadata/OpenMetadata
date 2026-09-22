@@ -928,7 +928,8 @@ export const verifyArticleSearch = async (page: Page, searchTerm: string) => {
     return (
       url.pathname.includes('/api/v1/search/query') &&
       url.searchParams.get('index') === 'page' &&
-      url.searchParams.get('q') === searchTerm
+      url.searchParams.get('q') ===
+        searchTerm.replaceAll(/["']/g, String.raw`\$&`)
     );
   });
 

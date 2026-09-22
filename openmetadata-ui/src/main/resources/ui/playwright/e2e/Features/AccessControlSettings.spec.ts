@@ -493,8 +493,8 @@ test.describe(
 
       try {
         await test.step('Click remove button for the policy', async () => {
-          await page.getByTestId(`remove-action-${policyDisplayName}`).waitFor({ state: 'visible' });
-          await page.getByTestId(`remove-action-${policyDisplayName}`).click();
+          await page.getByTestId(`remove-${policyDisplayName}`).waitFor({ state: 'visible' });
+          await page.getByTestId(`remove-${policyDisplayName}`).click();
           await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
         });
 
