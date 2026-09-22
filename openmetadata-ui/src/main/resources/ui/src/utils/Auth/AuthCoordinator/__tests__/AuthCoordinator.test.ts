@@ -101,9 +101,9 @@ const createMockAxios = () => {
   return {
     axios,
     triggerError: (error: unknown) => rejectedHandler?.(error),
-    // The circuit-breaker's cycle counter resets on any 2xx that passes
-    // through the fulfilled interceptor; expose it so tests can simulate
-    // a real success landing between two 401 cycles.
+    // Exposed so a test can simulate a real success response landing
+    // between 401 cycles — used to prove the sliding-window rate
+    // limit does NOT reset on interleaved 2xx (greptile r4069833676).
     triggerSuccess: (response: unknown = { status: 200, data: {} }) =>
       fulfilledHandler?.(response),
   };
@@ -276,13 +276,13 @@ describe('AuthCoordinator', () => {
     await expect(triggerError(error)).rejects.toBe(error);
   });
 
-  // Circuit-breaker layer 2: consecutive-cycle cap. If N refresh cycles
-  // fire back-to-back with no 2xx interleaved, the auth state is broken
-  // beyond auto-recovery — emit `refresh-failed` (AuthProvider drives
-  // sign-out) instead of continuing to spin. Every 2xx resets the
-  // counter so a normal burst of stale-header 401s at cold-load doesn't
-  // consume the budget a real recovery would need later.
-  it('circuit-breaks after MAX_CONSECUTIVE_REFRESH_CYCLES cycles without an intervening 2xx and emits refresh-failed', async () => {
+  // Circuit-breaker layer 2: sliding-window RATE limit on refresh cycles.
+  // If more than `MAX_REFRESH_CYCLES_PER_WINDOW` cycles fire inside
+  // `REFRESH_WINDOW_MS`, the auth state is broken beyond auto-recovery
+  // — emit `refresh-failed` (AuthProvider drives sign-out). Unlike the
+  // "consecutive cycles / reset on 2xx" shape it replaced, this doesn't
+  // reset on interleaved 2xx responses (greptile r4069833676).
+  it('circuit-breaks when > MAX_REFRESH_CYCLES_PER_WINDOW cycles fire inside the sliding window', async () => {
     const renewer = jest.fn(async () => ({
       expiresAt: Date.now() + 300_000,
       idToken: 'fresh',
@@ -293,22 +293,14 @@ describe('AuthCoordinator', () => {
     const { axios, triggerError } = createMockAxios();
     coordinator.install(axios, () => true);
 
-    // Each pair here uses a distinct config so the per-request retry
-    // cap doesn't fire first — this test exercises layer 2, not layer 1.
+    // Distinct config per error so the per-request retry cap doesn't
+    // fire first — this test exercises layer 2, not layer 1.
     const mkError = (path: string) => ({
       response: { status: 401, data: {} },
       config: { url: `/api/v1/${path}` },
     });
 
-    // Awaiting the pending returned by `triggerError` ensures the full
-    // cycle has completed (ensureFreshToken → drain), so `inflight` is
-    // back to null before the next trigger. The mock's `axios.request`
-    // is a plain jest.fn (not a real axios), so drain "succeeds" from
-    // its perspective but the fulfilled interceptor is never actually
-    // invoked — meaning the cycle counter is NOT reset between iters,
-    // which is what this test needs.
-    // MAX_CONSECUTIVE_REFRESH_CYCLES=3: cycles 1..3 are tolerated;
-    // cycle 4 trips the breaker → emits `refresh-failed` and throws.
+    // MAX_REFRESH_CYCLES_PER_WINDOW=3: cycles 1..3 fit; cycle 4 trips.
     for (let i = 0; i < 3; i++) {
       await triggerError(mkError(`endpoint-${i}`));
     }
@@ -322,12 +314,53 @@ describe('AuthCoordinator', () => {
     });
   });
 
-  // Concurrent 401s during a single in-flight refresh must share one
-  // cycle-counter increment. Without this, a page that fires 5 API calls
-  // in parallel at cold-load and gets 5 stale-header 401s back would eat
+  // Regression for greptile r4069833676. A persistently-failing
+  // endpoint polled every few seconds while unrelated requests
+  // succeed in the background used to slip past the "consecutive
+  // cycles / reset on 2xx" breaker: each poll started a cycle,
+  // each background 2xx reset the counter, and the refresh chain
+  // spun forever. The sliding-window rate limit doesn't reset on
+  // 2xx — interleaved successes have no effect on the cycle budget.
+  it('interleaved 2xx responses do NOT reset the rate-limit window (only cycle timestamps count)', async () => {
+    const renewer = jest.fn(async () => ({
+      expiresAt: Date.now() + 300_000,
+      idToken: 'fresh',
+    }));
+    coordinator.registerRenewer(renewer);
+    const failures: unknown[] = [];
+    coordinator.on('refresh-failed', (p) => failures.push(p));
+    const { axios, triggerError, triggerSuccess } = createMockAxios();
+    coordinator.install(axios, () => true);
+
+    // 4 cycles interleaved with 2xx responses. Under the OLD design the
+    // 2xx would zero the counter each time and the breaker would never
+    // trip; under the new sliding-window design the 4th cycle trips
+    // regardless of interleaved successes.
+    for (let i = 0; i < 3; i++) {
+      await triggerError({
+        response: { status: 401, data: {} },
+        config: { url: `/api/v1/poll-${i}` },
+      });
+      triggerSuccess();
+    }
+
+    expect(failures).toEqual([]);
+
+    await expect(
+      triggerError({
+        response: { status: 401, data: {} },
+        config: { url: '/api/v1/poll-4' },
+      })
+    ).rejects.toBeDefined();
+    expect(failures).toHaveLength(1);
+  });
+
+  // Concurrent 401s during a single in-flight refresh must share ONE
+  // cycle timestamp. Without this, a page that fires 5 API calls in
+  // parallel at cold-load and gets 5 stale-header 401s back would eat
   // the whole cycle budget in one go — the breaker would trip on the
   // very first refresh cycle even though the refresh is working fine.
-  it('concurrent 401s during a single refresh cycle share one counter increment', async () => {
+  it('concurrent 401s during a single refresh cycle share one window entry', async () => {
     let resolveRenewer!: (r: { expiresAt: number; idToken: string }) => void;
     const renewer = jest.fn(
       () =>
@@ -357,36 +390,6 @@ describe('AuthCoordinator', () => {
     await Promise.resolve();
 
     // 5 parallel 401s share one cycle → breaker doesn't fire (cap is 3).
-    expect(failures).toEqual([]);
-  });
-
-  // Any successful 2xx on the shared axios instance resets the
-  // consecutive-cycle counter — a legitimate cycle earlier in the
-  // session must not eat into the budget of a real recovery later.
-  it('a successful 2xx response resets the consecutive-cycle counter', async () => {
-    const renewer = jest.fn(async () => ({
-      expiresAt: Date.now() + 300_000,
-      idToken: 'fresh',
-    }));
-    coordinator.registerRenewer(renewer);
-    const failures: unknown[] = [];
-    coordinator.on('refresh-failed', (p) => failures.push(p));
-    const { axios, triggerError, triggerSuccess } = createMockAxios();
-    coordinator.install(axios, () => true);
-
-    for (let i = 0; i < 5; i++) {
-      triggerError({
-        response: { status: 401, data: {} },
-        config: { url: `/api/v1/endpoint-${i}` },
-      });
-      await Promise.resolve();
-      await Promise.resolve();
-      // Simulate a real success response landing between refresh cycles.
-      triggerSuccess();
-    }
-
-    // 5 cycles > 3 cap, but each was reset by a 2xx immediately after —
-    // no circuit-break should fire.
     expect(failures).toEqual([]);
   });
 

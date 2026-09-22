@@ -57,25 +57,34 @@ const MAX_RECOVERY_ATTEMPTS = 1;
 //     server-side, etc.) is thrown back to its caller after this many
 //     retries rather than being re-queued forever.
 //
-//   * `MAX_CONSECUTIVE_REFRESH_CYCLES` caps how many refresh cycles can
-//     fire in a row across the WHOLE app without any authenticated 2xx
-//     landing in between. Every 2xx resolves the counter to 0. If we hit
-//     the cap the auth state is broken beyond auto-recovery (server
-//     rotated its signing key and the refresh path returns tokens still
-//     signed with the old kid, IdP is handing back an unverifiable
-//     token, session was hard-revoked, etc.) — emit `refresh-failed`
-//     and let the AuthProvider's subscription drive the sign-out path.
-//     Concurrent 401s during the same cycle share the inflight refresh
-//     and don't increment (only "new cycle" increments), so a burst of
-//     parallel requests during a legitimate refresh doesn't trip the
-//     breaker.
+//   * `MAX_REFRESH_CYCLES_PER_WINDOW` / `REFRESH_WINDOW_MS` rate-limit
+//     refresh cycles regardless of whether other requests are
+//     succeeding. If more than N cycles fire within the window the
+//     auth chain is broken beyond auto-recovery — emit `refresh-failed`
+//     and let AuthProvider drive sign-out.
+//
+//     A previous shape reset a "consecutive cycles" counter on any 2xx
+//     response, but greptile (r4069833676) pointed out the flaw: a
+//     persistently-failing endpoint polled every few seconds triggers
+//     a refresh cycle each poll while unrelated background requests
+//     succeed — every 2xx reset the counter and the refresh chain
+//     spun forever. A sliding-window RATE limit that only looks at
+//     cycle timestamps (no reset path) catches the polling case,
+//     still permits a legitimate cold-load burst (a few stale-header
+//     401s in the first second), and doesn't depend on interleaved
+//     2xx timing.
+//
+//     Concurrent 401s during a single in-flight refresh share ONE
+//     timestamp (only "new cycle" pushes) so parallel requests during
+//     a legitimate refresh don't fill the window.
 //
 // Together: single bad endpoint → its caller fails deterministically.
 // Whole-app-persistent 401 → user lands on /signin in bounded time
 // instead of spinning ~2 req/s indefinitely. No request storm survives
 // either guard.
 const MAX_PER_REQUEST_RETRIES = 2;
-const MAX_CONSECUTIVE_REFRESH_CYCLES = 3;
+const MAX_REFRESH_CYCLES_PER_WINDOW = 3;
+const REFRESH_WINDOW_MS = 30_000;
 
 // Bus event name — extracted so the interceptor and refresh paths share
 // one literal (satisfies `no-duplicate-string`).
@@ -84,12 +93,18 @@ const REFRESH_FAILED_EVENT: AuthCoordinatorEvent = 'refresh-failed';
 export class AuthCoordinator {
   private renewer: Renewer | null = null;
   private inflight: Promise<string> | null = null;
-  // Counts refresh cycles that fired since the last authenticated 2xx.
-  // Reset on any success interceptor firing. Incremented ONLY when a new
-  // cycle starts (`inflight === null`), so concurrent 401s during a
-  // single in-flight refresh share one increment. See
-  // `MAX_CONSECUTIVE_REFRESH_CYCLES`.
-  private consecutiveRefreshCycles = 0;
+  // Sliding-window timestamps of refresh cycles that have started. Only
+  // pushed when a new cycle begins (`inflight === null`), so concurrent
+  // 401s during one in-flight refresh share ONE entry. Entries older
+  // than `REFRESH_WINDOW_MS` are pruned on each push. If the surviving
+  // count exceeds `MAX_REFRESH_CYCLES_PER_WINDOW` the circuit breaker
+  // trips (emit `refresh-failed`, stop feeding the loop).
+  //
+  // Deliberately NOT reset on 2xx: a persistently-failing endpoint
+  // polled every few seconds while unrelated requests succeed in the
+  // background would otherwise never trip the breaker, since every 2xx
+  // would zero the counter (greptile r4069833676).
+  private refreshCycleTimestamps: number[] = [];
   private readonly bus = new TypedEventBus();
   private readonly queue = new RefreshQueue();
   private readonly timer = new ProactiveTimer();
@@ -129,15 +144,7 @@ export class AuthCoordinator {
     onRefreshStart?: () => void
   ): Unsubscribe {
     const id = axios.interceptors.response.use(
-      (response) => {
-        // Any authenticated 2xx proves the refresh chain is healthy end
-        // to end — reset the circuit-breaker counter so a genuine burst
-        // of stale-header 401s at cold-load doesn't consume the budget
-        // that a real recovery would need later.
-        this.consecutiveRefreshCycles = 0;
-
-        return response;
-      },
+      (response) => response,
       async (error) => {
         const status = error?.response?.status;
         const url = error?.config?.url ?? '';
@@ -164,17 +171,25 @@ export class AuthCoordinator {
           throw error;
         }
 
-        // Consecutive-cycle circuit breaker. Only increment on a new
+        // Sliding-window rate limit. Only record a timestamp on a NEW
         // cycle (no in-flight refresh) so concurrent 401s piggyback on
-        // the running refresh without inflating the counter. Once we
-        // hit the cap the auth state is broken beyond auto-recovery —
-        // emit `refresh-failed` (AuthProvider's subscription drives
-        // sign-out) and stop feeding the loop.
+        // the running refresh without filling the window. Prune entries
+        // older than the window BEFORE recording so long-lived tabs
+        // don't accumulate stale timestamps. If the surviving count
+        // exceeds the cap the auth chain is broken beyond auto-recovery
+        // — emit `refresh-failed` (AuthProvider drives sign-out) and
+        // stop feeding the loop.
         if (!this.inflight) {
-          this.consecutiveRefreshCycles += 1;
-          if (this.consecutiveRefreshCycles > MAX_CONSECUTIVE_REFRESH_CYCLES) {
+          const now = Date.now();
+          this.refreshCycleTimestamps = this.refreshCycleTimestamps.filter(
+            (t) => now - t < REFRESH_WINDOW_MS
+          );
+          this.refreshCycleTimestamps.push(now);
+          if (
+            this.refreshCycleTimestamps.length > MAX_REFRESH_CYCLES_PER_WINDOW
+          ) {
             this.bus.emit(REFRESH_FAILED_EVENT, {
-              reason: `Auth refresh loop circuit-breaker tripped after ${MAX_CONSECUTIVE_REFRESH_CYCLES} consecutive cycles without a 2xx`,
+              reason: `Auth refresh loop circuit-breaker tripped: > ${MAX_REFRESH_CYCLES_PER_WINDOW} cycles in ${REFRESH_WINDOW_MS}ms`,
             });
 
             throw error;
