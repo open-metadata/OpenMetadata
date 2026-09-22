@@ -122,7 +122,8 @@ export class AuthCoordinator {
           throw error;
         }
 
-        if (this.shouldCountNewCycle(error.config)) {
+        const countCycle = this.shouldCountNewCycle(error.config);
+        if (countCycle) {
           if (this.recordCycleAndCheckBreaker()) {
             throw error;
           }
@@ -132,9 +133,13 @@ export class AuthCoordinator {
         }
 
         const pending = this.queue.enqueue(error.config);
-        // Force: a 401 IS proof the stored token is server-rejected
-        // regardless of its `exp` claim, so bypass the fast-path.
-        this.pumpQueue(axios, { force: true }).catch(() => undefined);
+        // Force refresh only for cycles we counted (the failing token
+        // IS the current stored one, so the fast-path would just hand
+        // it back). Stragglers carrying a pre-refresh token retry
+        // through the fast-path, which returns the already-minted
+        // fresh token without hitting the IdP — one refresh per burst
+        // instead of one per straggler (Greptile P1 r4072893165).
+        this.pumpQueue(axios, { force: countCycle }).catch(() => undefined);
 
         return pending;
       }

@@ -320,6 +320,20 @@ describe('AuthCoordinator', () => {
     const { axios, triggerError } = createMockAxios();
     coordinator.install(axios, () => true);
 
+    // Straggler pump takes the fast-path (force:false) and reads the
+    // stored token — seed one fast-path pair per straggler so it
+    // short-circuits with the already-minted 'fresh' token without
+    // calling the renewer. Scoped with `Once` so the file-level mock
+    // defaults are restored for later tests.
+    for (let i = 0; i < 6; i++) {
+      mockedGetOidcToken.mockResolvedValueOnce('fresh');
+      mockedExtractDetailsFromToken.mockReturnValueOnce({
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        isExpired: false,
+        timeoutExpiry: 3600 * 1000,
+      });
+    }
+
     // First 401 seeds lastMintedToken via its refresh. It has no
     // Authorization yet (nothing to compare against), so it counts as
     // the first cycle.
@@ -343,6 +357,11 @@ describe('AuthCoordinator', () => {
     }
 
     expect(failures).toEqual([]);
+    // Greptile P1 r4072893165: stragglers must also not force a
+    // redundant IdP refresh each — they retry through the fast-path
+    // with the already-minted fresh token. Only the first legitimate
+    // 401 should have hit the renewer.
+    expect(renewer).toHaveBeenCalledTimes(1);
   });
 
   // Regression: a persistently-failing endpoint polled while unrelated
