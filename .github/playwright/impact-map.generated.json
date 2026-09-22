@@ -5220,6 +5220,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/DataAssets/AssetHealthWidget/AssetHealthWidget.component.tsx"
       ],
       "specs": [
