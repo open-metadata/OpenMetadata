@@ -28,6 +28,12 @@ import {
   ResponseDataWithServiceType,
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import { SharedInfra } from './SharedInfra';
+
+/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false. */
+export type DirectoryClassOptions = {
+  createFullHierarchy?: boolean;
+};
 
 export class DirectoryClass extends EntityClass {
   private directoryName = `pw-directory-${uuid()}`;
@@ -71,22 +77,30 @@ export class DirectoryClass extends EntityClass {
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
   entityResponseData: ResponseDataWithServiceType =
     {} as ResponseDataWithServiceType;
+  createFullHierarchy: boolean;
 
-  constructor(name?: string) {
+  constructor(name?: string, options?: DirectoryClassOptions) {
     super(EntityTypeEndpoint.Directory);
     this.service.name = name ?? this.service.name;
     this.type = 'Directory';
     this.serviceCategory = SERVICE_TYPE.DriveService;
     this.serviceType = ServiceTypes.DRIVE_SERVICES;
+    this.createFullHierarchy = options?.createFullHierarchy ?? false;
   }
 
   async create(apiContext: APIRequestContext) {
-    this.serviceResponseData = await createOrFetch(apiContext, {
-      label: 'DirectoryClass.create service',
-      createPath: '/api/v1/services/driveServices',
-      fqnSegments: [this.service.name],
-      data: this.service,
-    });
+    if (this.createFullHierarchy) {
+      this.serviceResponseData = await createOrFetch(apiContext, {
+        label: 'DirectoryClass.create service',
+        createPath: '/api/v1/services/driveServices',
+        fqnSegments: [this.service.name],
+        data: this.service,
+      });
+    } else {
+      this.serviceResponseData = await SharedInfra.driveService(apiContext);
+      this.service.name = this.serviceResponseData.name;
+      this.entity.service = this.serviceResponseData.name;
+    }
 
     // Create directories
     this.entityResponseData = await createOrFetch(apiContext, {
@@ -155,6 +169,18 @@ export class DirectoryClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
+    if (!this.createFullHierarchy) {
+      const directoryResponse = await deleteFixtureEntity(
+        apiContext,
+        `/api/v1/${EntityTypeEndpoint.Directory}/${this.entityResponseData?.id}?recursive=true&hardDelete=true`
+      );
+
+      return {
+        service: undefined,
+        entity: directoryResponse.body,
+      };
+    }
+
     const serviceResponse = await deleteFixtureEntity(
       apiContext,
       `/api/v1/services/driveServices/name/${encodeURIComponent(

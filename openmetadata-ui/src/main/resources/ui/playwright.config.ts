@@ -48,7 +48,7 @@ const hasPreseededState = process.env.PW_PRESEEDED_STATE === 'true';
 const authDependencies = hasPreseededState ? [] : ['setup'];
 const entityDependencies = hasPreseededState
   ? []
-  : ['setup', 'entity-data-setup'];
+  : ['setup', 'entity-data-setup', 'lineage-data-setup'];
 const entityTeardown = hasPreseededState ? undefined : 'entity-data-teardown';
 const shardGrep = shardPlan?.grep ? new RegExp(shardPlan.grep) : undefined;
 // SearchIndexApplication.spec.ts triggers a full reindex, which swaps the shared search indexes
@@ -271,6 +271,14 @@ export default defineConfig({
       name: 'entity-data-setup',
       testMatch: '**/entity-data.setup.ts',
       dependencies: ['setup'],
+    },
+    {
+      // Creates the Lineage-specific entity graph (16 entities + 15
+      // edges + 2 column edges) once per shard. See
+      // `playwright/support/entity/LineageDataClass.ts` for the design.
+      name: 'lineage-data-setup',
+      testMatch: '**/lineage-data.setup.ts',
+      dependencies: ['setup', 'entity-data-setup'],
     },
     {
       name: 'ontology-rdf-setup',

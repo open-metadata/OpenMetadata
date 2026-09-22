@@ -28,6 +28,12 @@ import {
   ResponseDataWithServiceType,
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import { SharedInfra } from './SharedInfra';
+
+/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false. */
+export type DashboardClassOptions = {
+  createFullHierarchy?: boolean;
+};
 
 export interface DataModelType extends ResponseDataWithServiceType {
   columns?: unknown[];
@@ -68,16 +74,19 @@ export class DashboardClass extends EntityClass {
     {} as ResponseDataWithServiceType;
   dataModelResponseData: DataModelType = {} as DataModelType;
   chartsResponseData: ResponseDataType = {} as ResponseDataType;
+  createFullHierarchy: boolean;
 
   constructor(
     name?: string,
     dataModelType = 'SupersetDataModel',
-    service?: Partial<DashboardServiceConfig>
+    service?: Partial<DashboardServiceConfig>,
+    options?: DashboardClassOptions
   ) {
     super(EntityTypeEndpoint.Dashboard);
     this.type = 'Dashboard';
     this.serviceCategory = SERVICE_TYPE.Dashboard;
     this.serviceType = ServiceTypes.DASHBOARD_SERVICES;
+    this.createFullHierarchy = options?.createFullHierarchy ?? false;
 
     const serviceName = service?.name ?? `pw-dashboard-service-${uuid()}`;
     this.dashboardName = `pw-dashboard-${uuid()}`;
@@ -151,12 +160,23 @@ export class DashboardClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    this.serviceResponseData = await createOrFetch(apiContext, {
-      label: 'DashboardClass.create service',
-      createPath: '/api/v1/services/dashboardServices',
-      fqnSegments: [this.service.name],
-      data: this.service,
-    });
+    if (this.createFullHierarchy) {
+      this.serviceResponseData = await createOrFetch(apiContext, {
+        label: 'DashboardClass.create service',
+        createPath: '/api/v1/services/dashboardServices',
+        fqnSegments: [this.service.name],
+        data: this.service,
+      });
+    } else {
+      // Shared per-worker Superset DashboardService from SharedInfra.
+      this.serviceResponseData = await SharedInfra.dashboardService(apiContext);
+      const sharedName = this.serviceResponseData.name;
+      this.service = { ...this.service, name: sharedName };
+      this.charts = { ...this.charts, service: sharedName };
+      this.entity = { ...this.entity, service: sharedName };
+      this.dataModel = { ...this.dataModel, service: sharedName };
+      this.childrenSelectorId = `${sharedName}.${this.charts.name}`;
+    }
 
     this.chartsResponseData = await createOrFetch(apiContext, {
       label: 'DashboardClass.create chart',
@@ -256,6 +276,26 @@ export class DashboardClass extends EntityClass {
         this.chartsResponseData?.['fullyQualifiedName']
       )}?recursive=true&hardDelete=true`
     );
+
+    // Shared-hierarchy dashboards must not cascade to the DashboardService —
+    // other dashboards in the same worker still reference it.
+    if (!this.createFullHierarchy) {
+      const dashboardResponse = await deleteFixtureEntity(
+        apiContext,
+        `/api/v1/dashboards/${this.entityResponseData?.id}?recursive=true&hardDelete=true`
+      );
+      const dataModelResponse = await deleteFixtureEntity(
+        apiContext,
+        `/api/v1/dashboard/datamodels/${this.dataModelResponseData?.id}?recursive=true&hardDelete=true`
+      );
+
+      return {
+        service: undefined,
+        entity: dashboardResponse.body,
+        chart: chartResponse.body,
+        dataModel: dataModelResponse.body,
+      };
+    }
 
     const serviceResponse = await deleteFixtureEntity(
       apiContext,

@@ -29,10 +29,16 @@ import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import { SharedInfra } from './SharedInfra';
+
+/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false. */
+export type FileClassOptions = {
+  createFullHierarchy?: boolean;
+};
 
 export class FileClass extends EntityClass {
   private readonly fileName = `pw-file-${uuid()}`;
-  private readonly directoryName = `pw-directory-${uuid()}`;
+  private directoryName = `pw-directory-${uuid()}`;
   private readonly serviceName = `pw-directory-service-${uuid()}`;
 
   service = {
@@ -75,13 +81,15 @@ export class FileClass extends EntityClass {
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
   directoryResponseData: ResponseDataType = {} as ResponseDataType;
   entityResponseData: File = {} as File;
+  createFullHierarchy: boolean;
 
-  constructor(name?: string) {
+  constructor(name?: string, options?: FileClassOptions) {
     super(EntityTypeEndpoint.File);
     this.service.name = name ?? this.service.name;
     this.type = 'File';
     this.serviceCategory = SERVICE_TYPE.DriveService;
     this.serviceType = ServiceTypes.DRIVE_SERVICES;
+    this.createFullHierarchy = options?.createFullHierarchy ?? false;
     this.childrenSelectorId = `${this.service.name}.${this.fileName}`;
     this.children = [
       {
@@ -130,23 +138,33 @@ export class FileClass extends EntityClass {
   // file with it. Treating the conflict as success and fetching the entity
   // makes create idempotent, which is what a retry needs it to be.
   async create(apiContext: APIRequestContext) {
-    this.serviceResponseData = await createOrFetch(apiContext, {
-      label: 'FileClass.create service',
-      createPath: '/api/v1/services/driveServices',
-      fqnSegments: [this.service.name],
-      data: this.service,
-    });
+    if (this.createFullHierarchy) {
+      this.serviceResponseData = await createOrFetch(apiContext, {
+        label: 'FileClass.create service',
+        createPath: '/api/v1/services/driveServices',
+        fqnSegments: [this.service.name],
+        data: this.service,
+      });
 
-    // Create directory
-    this.directoryResponseData = await createOrFetch(apiContext, {
-      label: 'FileClass.create directory',
-      createPath: '/api/v1/drives/directories',
-      fqnSegments: [this.service.name, this.directoryName],
-      data: {
-        name: this.directoryName,
-        service: this.serviceResponseData.fullyQualifiedName,
-      },
-    });
+      // Create directory
+      this.directoryResponseData = await createOrFetch(apiContext, {
+        label: 'FileClass.create directory',
+        createPath: '/api/v1/drives/directories',
+        fqnSegments: [this.service.name, this.directoryName],
+        data: {
+          name: this.directoryName,
+          service: this.serviceResponseData.fullyQualifiedName,
+        },
+      });
+    } else {
+      // Shared driveService + shared directory. Only the file is new.
+      const hierarchy = await SharedInfra.driveDirectory(apiContext);
+      this.serviceResponseData = hierarchy.service;
+      this.directoryResponseData = hierarchy.directory;
+      this.service.name = hierarchy.service.name;
+      this.directoryName = hierarchy.directory.name;
+      this.entity.service = hierarchy.service.name;
+    }
 
     // Create file in directory. `columns` has to be requested explicitly: it is
     // in FileResource.FIELDS, so the POST returns it but a by-name lookup does
@@ -226,6 +244,18 @@ export class FileClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
+    if (!this.createFullHierarchy) {
+      const fileResponse = await deleteFixtureEntity(
+        apiContext,
+        `/api/v1/${EntityTypeEndpoint.File}/${this.entityResponseData?.id}?recursive=true&hardDelete=true`
+      );
+
+      return {
+        service: undefined,
+        entity: fileResponse.body,
+      };
+    }
+
     const serviceResponse = await deleteFixtureEntity(
       apiContext,
       `/api/v1/services/driveServices/name/${encodeURIComponent(

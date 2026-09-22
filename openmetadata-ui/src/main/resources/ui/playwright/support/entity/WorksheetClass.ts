@@ -28,9 +28,15 @@ import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import { SharedInfra } from './SharedInfra';
+
+/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false. */
+export type WorksheetClassOptions = {
+  createFullHierarchy?: boolean;
+};
 
 export class WorksheetClass extends EntityClass {
-  private readonly spreadsheetName = `pw-spreadsheet-${uuid()}`;
+  private spreadsheetName = `pw-spreadsheet-${uuid()}`;
   private readonly worksheetName = `pw-worksheet-${uuid()}`;
   private readonly serviceName = `pw-worksheet-service-${uuid()}`;
 
@@ -74,13 +80,15 @@ export class WorksheetClass extends EntityClass {
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
   entityResponseData: Worksheet = {} as Worksheet;
   spreadsheetResponseData: ResponseDataType = {} as ResponseDataType;
+  createFullHierarchy: boolean;
 
-  constructor(name?: string) {
+  constructor(name?: string, options?: WorksheetClassOptions) {
     super(EntityTypeEndpoint.Worksheet);
     this.service.name = name ?? this.service.name;
     this.type = 'Worksheet';
     this.serviceCategory = SERVICE_TYPE.DriveService;
     this.serviceType = ServiceTypes.DRIVE_SERVICES;
+    this.createFullHierarchy = options?.createFullHierarchy ?? false;
 
     this.children = [
       {
@@ -134,23 +142,33 @@ export class WorksheetClass extends EntityClass {
   // createOrFetch, not a bare POST — see FileClass.create for why: the names are
   // fixed at construction, so a retried beforeAll re-creates them and 409s.
   async create(apiContext: APIRequestContext) {
-    this.serviceResponseData = await createOrFetch(apiContext, {
-      label: 'WorksheetClass.create service',
-      createPath: '/api/v1/services/driveServices',
-      fqnSegments: [this.service.name],
-      data: this.service,
-    });
+    if (this.createFullHierarchy) {
+      this.serviceResponseData = await createOrFetch(apiContext, {
+        label: 'WorksheetClass.create service',
+        createPath: '/api/v1/services/driveServices',
+        fqnSegments: [this.service.name],
+        data: this.service,
+      });
 
-    // Create spreadsheet
-    this.spreadsheetResponseData = await createOrFetch(apiContext, {
-      label: 'WorksheetClass.create spreadsheet',
-      createPath: `/api/v1/${EntityTypeEndpoint.Spreadsheet}`,
-      fqnSegments: [this.service.name, this.spreadsheetName],
-      data: {
-        name: this.spreadsheetName,
-        service: this.serviceResponseData.fullyQualifiedName,
-      },
-    });
+      // Create spreadsheet
+      this.spreadsheetResponseData = await createOrFetch(apiContext, {
+        label: 'WorksheetClass.create spreadsheet',
+        createPath: `/api/v1/${EntityTypeEndpoint.Spreadsheet}`,
+        fqnSegments: [this.service.name, this.spreadsheetName],
+        data: {
+          name: this.spreadsheetName,
+          service: this.serviceResponseData.fullyQualifiedName,
+        },
+      });
+    } else {
+      // Shared driveService + shared spreadsheet — only the worksheet is new.
+      const hierarchy = await SharedInfra.driveSpreadsheet(apiContext);
+      this.serviceResponseData = hierarchy.service;
+      this.spreadsheetResponseData = hierarchy.spreadsheet;
+      this.service.name = hierarchy.service.name;
+      this.spreadsheetName = hierarchy.spreadsheet.name;
+      this.entity.service = hierarchy.service.name;
+    }
 
     // Create worksheet in spreadsheet. `columns` is in WorksheetResource.FIELDS,
     // so a by-name lookup omits it unless asked — and childrenSelectorId below
@@ -233,6 +251,17 @@ export class WorksheetClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
+    if (!this.createFullHierarchy) {
+      const worksheetResponse = await apiContext.delete(
+        `/api/v1/${EntityTypeEndpoint.Worksheet}/${this.entityResponseData?.id}?recursive=true&hardDelete=true`
+      );
+
+      return {
+        service: undefined,
+        entity: worksheetResponse.body,
+      };
+    }
+
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/driveServices/name/${encodeURIComponent(
         this.serviceResponseData?.fullyQualifiedName ?? ''

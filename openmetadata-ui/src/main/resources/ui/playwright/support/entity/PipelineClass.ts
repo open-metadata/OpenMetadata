@@ -29,6 +29,12 @@ import {
   ResponseDataWithServiceType,
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import { SharedInfra } from './SharedInfra';
+
+/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false. */
+export type PipelineClassOptions = {
+  createFullHierarchy?: boolean;
+};
 
 export interface PipelineType extends ResponseDataWithServiceType {
   tasks?: Array<EntityReference>;
@@ -60,16 +66,19 @@ export class PipelineClass extends EntityClass {
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
   entityResponseData: PipelineType = {} as PipelineType;
   ingestionPipelineResponseData: ResponseDataType = {} as ResponseDataType;
+  createFullHierarchy: boolean;
 
   constructor(
     name?: string,
-    tasks?: Array<{ name: string; displayName: string }>
+    tasks?: Array<{ name: string; displayName: string }>,
+    options?: PipelineClassOptions
   ) {
     super(EntityTypeEndpoint.Pipeline);
     this.type = 'Pipeline';
     this.childrenTabId = 'tasks';
     this.serviceCategory = SERVICE_TYPE.Pipeline;
     this.serviceType = ServiceTypes.PIPELINE_SERVICES;
+    this.createFullHierarchy = options?.createFullHierarchy ?? false;
 
     const serviceName = name ?? `pw-pipeline-service-${uuid()}`;
     this.pipelineName = `pw-pipeline-${uuid()}`;
@@ -105,12 +114,18 @@ export class PipelineClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    this.serviceResponseData = await createOrFetch(apiContext, {
-      label: 'PipelineClass.create service',
-      createPath: '/api/v1/services/pipelineServices',
-      fqnSegments: [this.service.name],
-      data: this.service,
-    });
+    if (this.createFullHierarchy) {
+      this.serviceResponseData = await createOrFetch(apiContext, {
+        label: 'PipelineClass.create service',
+        createPath: '/api/v1/services/pipelineServices',
+        fqnSegments: [this.service.name],
+        data: this.service,
+      });
+    } else {
+      this.serviceResponseData = await SharedInfra.pipelineService(apiContext);
+      this.service = { ...this.service, name: this.serviceResponseData.name };
+      this.entity.service = this.serviceResponseData.name;
+    }
 
     this.entityResponseData = await createOrFetch(apiContext, {
       label: 'PipelineClass.create pipeline',
@@ -209,6 +224,18 @@ export class PipelineClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
+    if (!this.createFullHierarchy) {
+      const pipelineResponse = await deleteFixtureEntity(
+        apiContext,
+        `/api/v1/pipelines/${this.entityResponseData?.id}?recursive=true&hardDelete=true`
+      );
+
+      return {
+        service: undefined,
+        entity: pipelineResponse.body,
+      };
+    }
+
     const serviceResponse = await deleteFixtureEntity(
       apiContext,
       `/api/v1/services/pipelineServices/name/${encodeURIComponent(

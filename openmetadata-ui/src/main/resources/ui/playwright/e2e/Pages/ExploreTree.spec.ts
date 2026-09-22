@@ -61,12 +61,22 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // (ElasticSearchAggregationManager orders by _key ASC), so a name starting
     // with a digit guarantees these services land within that bucket
     // regardless of how many other `pw-*` services have accumulated.
-    table1 = new TableClass(undefined, undefined, {
-      name: `0-pw-database-service-${uuid()}`,
-    });
-    table2 = new TableClass(undefined, undefined, {
-      name: `0-pw-database-service-${uuid()}`,
-    });
+    // Explicitly opt out of SharedInfra: this suite pins its own service
+    // name (leading digit) so it lands in the alphabetically-capped
+    // Explore-tree bucket; shared mode would replace it with the shared
+    // service's name.
+    table1 = new TableClass(
+      undefined,
+      undefined,
+      { name: `0-pw-database-service-${uuid()}` },
+      { createFullHierarchy: true }
+    );
+    table2 = new TableClass(
+      undefined,
+      undefined,
+      { name: `0-pw-database-service-${uuid()}` },
+      { createFullHierarchy: true }
+    );
 
     await table1.create(apiContext);
     await table2.create(apiContext);
@@ -388,14 +398,29 @@ test.describe('Explore page', () => {
     // (ElasticSearchAggregationManager orders by _key ASC), so a name starting
     // with a digit guarantees these services land within that bucket
     // regardless of how many other `pw-*` services have accumulated.
-    table = new TableClass(undefined, undefined, {
-      name: `0-pw-database-service-${uuid()}`,
-    });
-    dashboard = new DashboardClass(undefined, undefined, {
-      name: `0-pw-dashboard-service-${uuid()}`,
-    });
-    apiEndpoint = new ApiEndpointClass(`0-pw-api-endpoint-service-${uuid()}`);
-    searchIndex = new SearchIndexClass(`0-pw-search-index-service-${uuid()}`);
+    // See ExploreTree beforeAll: services pinned by name for tree-bucket
+    // sorting must opt out of SharedInfra.
+    table = new TableClass(
+      undefined,
+      undefined,
+      { name: `0-pw-database-service-${uuid()}` },
+      { createFullHierarchy: true }
+    );
+    dashboard = new DashboardClass(
+      undefined,
+      undefined,
+      { name: `0-pw-dashboard-service-${uuid()}` },
+      { createFullHierarchy: true }
+    );
+    apiEndpoint = new ApiEndpointClass(
+      `0-pw-api-endpoint-service-${uuid()}`,
+      undefined,
+      { createFullHierarchy: true }
+    );
+    searchIndex = new SearchIndexClass(
+      `0-pw-search-index-service-${uuid()}`,
+      { createFullHierarchy: true }
+    );
 
     await table.create(apiContext);
     await dashboard.create(apiContext);

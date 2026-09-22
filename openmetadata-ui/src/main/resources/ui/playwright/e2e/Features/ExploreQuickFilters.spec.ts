@@ -38,7 +38,11 @@ test.describe.configure({ mode: 'default' });
 
 const domain = new Domain();
 const dataProduct = new DataProduct([domain]);
-const table = new TableClass();
+// Quick-filter assertions read table.serviceResponseData.name to
+// resolve the service the filter selects — needs a unique service.
+const table = new TableClass(undefined, undefined, undefined, {
+  createFullHierarchy: true,
+});
 const tier = new TagClass({
   classification: 'Tier',
 });

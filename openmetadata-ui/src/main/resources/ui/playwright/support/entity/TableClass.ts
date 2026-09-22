@@ -36,6 +36,20 @@ import {
   TestSuiteData,
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import { SharedInfra } from './SharedInfra';
+
+/**
+ * Options for TableClass construction.
+ *
+ * `createFullHierarchy` defaults to `false` — a new Table shares the
+ * per-worker database/service/schema created by SharedInfra so that N tables
+ * in one worker cost 1 service + 1 database + 1 schema + N tables, instead
+ * of 4×N. Pass `true` for tests that assert on unique service names,
+ * navigate the service page, or exercise service-level cascade delete.
+ */
+export type TableClassOptions = {
+  createFullHierarchy?: boolean;
+};
 
 /**
  * Database service shape used when creating tables in tests. `connection.config` is intentionally
@@ -77,17 +91,26 @@ export class TableClass extends EntityClass {
   queryResponseData: ResponseDataType[] = [];
   additionalEntityTableResponseData: ResponseDataType[] = [];
 
+  createFullHierarchy: boolean;
+
   constructor(
     name?: string,
     tableType?: string,
-    service?: Partial<TableServiceConfig>
+    service?: Partial<TableServiceConfig>,
+    options?: TableClassOptions
   ) {
     super(EntityTypeEndpoint.Table);
     this.serviceCategory = SERVICE_TYPE.Database;
     this.serviceType = ServiceTypes.DATABASE_SERVICES;
     this.type = 'Table';
     this.childrenTabId = 'schema';
+    this.createFullHierarchy = options?.createFullHierarchy ?? false;
 
+    // Names are still generated eagerly so full-hierarchy mode (opt-in via
+    // createFullHierarchy: true, plus every existing caller that constructs
+    // without options) keeps its current shape. In shared mode create()
+    // overwrites this.service, this.database, this.schema with the
+    // SharedInfra parents' actual names before POSTing the table.
     const serviceName = service?.name ?? `pw-database-service-${uuid()}`;
     const databaseName = `pw-database-${uuid()}`;
     const schemaName = `pw-database-schema-${uuid()}`;
@@ -271,6 +294,14 @@ export class TableClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
+    if (this.createFullHierarchy) {
+      return this.createWithFullHierarchy(apiContext);
+    }
+
+    return this.createInSharedHierarchy(apiContext);
+  }
+
+  private async createWithFullHierarchy(apiContext: APIRequestContext) {
     const service = await this.createOrFetch<ResponseDataType>(
       apiContext,
       '/api/v1/services/databaseServices',
@@ -310,6 +341,68 @@ export class TableClass extends EntityClass {
         this.service.name,
         this.database.name,
         this.schema.name,
+        this.entity.name
+      ),
+      'table',
+      {
+        ...this.entity,
+        databaseSchema: schema.fullyQualifiedName,
+      }
+    );
+
+    this.serviceResponseData = service;
+    this.databaseResponseData = database;
+    this.schemaResponseData = schema;
+    this.entityResponseData = entity;
+
+    this.childrenSelectorId =
+      this.entityResponseData.columns?.[0].fullyQualifiedName ?? '';
+
+    return {
+      service,
+      database,
+      schema,
+      entity,
+    };
+  }
+
+  private async createInSharedHierarchy(apiContext: APIRequestContext) {
+    // Parents (databaseService, database, databaseSchema) come from
+    // SharedInfra — created lazily once per worker, cached. Only the table
+    // itself is POSTed here.
+    const hierarchy = await SharedInfra.databaseHierarchy(apiContext);
+    const service = hierarchy.service;
+    // SharedInfra returns plain ResponseDataType; upcast to the with-service
+    // shape TableClass records for the database/schema slots. The extra
+    // `service` reference is read only by full-hierarchy consumers.
+    const database = {
+      ...hierarchy.database,
+      service,
+    } as ResponseDataWithServiceType;
+    const schema = {
+      ...hierarchy.schema,
+      service,
+    } as ResponseDataWithServiceType;
+
+    // Rebind local naming to the shared parents so the table's FQN, the
+    // databaseSchema slot on the POST body, and downstream helpers (e.g.
+    // additional-table creation) all use real shared names.
+    this.service = { ...this.service, name: service.name };
+    this.database = { name: database.name, service: service.name };
+    this.schema = {
+      name: schema.name,
+      database: `${service.name}.${database.name}`,
+    };
+    this.entity.databaseSchema = schema.fullyQualifiedName;
+
+    const entity = await this.createOrFetch<Table>(
+      apiContext,
+      '/api/v1/tables',
+      '/api/v1/tables/name',
+      buildFqn(
+        service.name,
+        database.name,
+        schema.name,
         this.entity.name
       ),
       'table',
@@ -641,6 +734,21 @@ export class TableClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext, hardDelete = true) {
+    // Shared-hierarchy tables must not cascade to the service — the parents
+    // are owned by SharedInfra and other tables in the same worker still
+    // reference them. Delete only the table itself.
+    if (!this.createFullHierarchy) {
+      const tableResponse = await deleteFixtureEntity(
+        apiContext,
+        `/api/v1/tables/${this.entityResponseData?.id}?recursive=true&hardDelete=${hardDelete}`
+      );
+
+      return {
+        service: undefined,
+        entity: tableResponse.body,
+      };
+    }
+
     const serviceResponse = await deleteFixtureEntity(
       apiContext,
       `/api/v1/services/databaseServices/name/${encodeURIComponent(

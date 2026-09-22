@@ -31,6 +31,12 @@ import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import { SharedInfra } from './SharedInfra';
+
+/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false. */
+export type ContainerClassOptions = {
+  createFullHierarchy?: boolean;
+};
 
 export class ContainerClass extends EntityClass {
   private readonly containerName: string;
@@ -71,9 +77,11 @@ export class ContainerClass extends EntityClass {
   entityResponseData: Container = {} as Container;
   childResponseData: ResponseDataType = {} as ResponseDataType;
   childArrayResponseData: ResponseDataType[] = [];
+  createFullHierarchy: boolean;
 
-  constructor(name?: string) {
+  constructor(name?: string, options?: ContainerClassOptions) {
     super(EntityTypeEndpoint.Container);
+    this.createFullHierarchy = options?.createFullHierarchy ?? false;
 
     this.containerName = `pw-container-${uuid()}`;
     this.childContainerName = `pw-container-${uuid()}`;
@@ -177,12 +185,24 @@ export class ContainerClass extends EntityClass {
     apiContext: APIRequestContext,
     customChildContainer?: { name: string; displayName: string }[]
   ) {
-    this.serviceResponseData = await createOrFetch(apiContext, {
-      label: 'ContainerClass.create service',
-      createPath: '/api/v1/services/storageServices',
-      fqnSegments: [this.service.name],
-      data: this.service,
-    });
+    if (this.createFullHierarchy) {
+      this.serviceResponseData = await createOrFetch(apiContext, {
+        label: 'ContainerClass.create service',
+        createPath: '/api/v1/services/storageServices',
+        fqnSegments: [this.service.name],
+        data: this.service,
+      });
+    } else {
+      this.serviceResponseData = await SharedInfra.storageService(apiContext);
+      this.service = { ...this.service, name: this.serviceResponseData.name };
+      this.entity.service = this.serviceResponseData.name;
+      // Propagate the shared service name to the child-container payload
+      // too; it was captured at constructor time from the now-stale name.
+      this.childContainer = {
+        ...this.childContainer,
+        service: this.serviceResponseData.name,
+      };
+    }
 
     // `dataModel` is in ContainerResource.FIELDS, so a by-name lookup omits it
     // unless asked — and childrenSelectorId below reads dataModel.columns[0].
@@ -291,6 +311,18 @@ export class ContainerClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
+    if (!this.createFullHierarchy) {
+      const containerResponse = await deleteFixtureEntity(
+        apiContext,
+        `/api/v1/containers/${this.entityResponseData?.id}?recursive=true&hardDelete=true`
+      );
+
+      return {
+        service: undefined,
+        entity: containerResponse.body,
+      };
+    }
+
     const serviceResponse = await deleteFixtureEntity(
       apiContext,
       `/api/v1/services/storageServices/name/${encodeURIComponent(

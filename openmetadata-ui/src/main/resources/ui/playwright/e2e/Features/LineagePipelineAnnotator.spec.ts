@@ -54,7 +54,11 @@ test.describe('Lineage Pipeline Annotator', () => {
     const apiContext = await getAuthContext(token);
 
     try {
-      table = new TableClass();
+      // Reads serviceResponseData.fqn to drive dbService filtering — needs
+      // its own service so the filter narrows to this test's table alone.
+      table = new TableClass(undefined, undefined, undefined, {
+        createFullHierarchy: true,
+      });
       await table.create(apiContext);
       dbServiceFqn = table.serviceResponseData.fullyQualifiedName ?? '';
 
