@@ -673,6 +673,41 @@ class ContextFileIT {
   }
 
   @Test
+  void testCreateSameNameAsArchivedFileReturnsActionableError(TestNamespace ns)
+      throws HttpResponseException {
+    // A deleted file is archived (soft-deleted) and keeps its name reserved so it stays
+    // restorable. Re-adding a same-name file to the same folder must fail with an actionable
+    // message pointing to the Archive, not the generic DB "Entity already exists" 409. Enforced
+    // at the create chokepoint, so it holds for the direct create path too (not just upload/move).
+    RestClient rest = RestClient.admin();
+    Folder folder = createFolder(rest, new CreateFolder().withName(ns.prefix("archive-folder")));
+    String sharedName = ns.prefix("report");
+
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(sharedName)
+                .withFileType(ContextFileType.PDF)
+                .withFolder(folder.getFullyQualifiedName())
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    rest.delete(FILE_PATH, file.getId()); // soft-delete -> archived, name still reserved
+
+    CreateContextFile duplicate =
+        new CreateContextFile()
+            .withName(sharedName)
+            .withFileType(ContextFileType.PDF)
+            .withFolder(folder.getFullyQualifiedName())
+            .withProcessingStatus(ProcessingStatus.Uploaded);
+    HttpResponseException ex =
+        assertThrows(HttpResponseException.class, () -> createFile(rest, duplicate));
+    assertEquals(400, ex.getStatusCode());
+    assertTrue(
+        ex.getMessage().contains("in the Archive"),
+        "Expected an actionable Archive message, got: " + ex.getMessage());
+  }
+
+  @Test
   void testMoveFilePermissions(TestNamespace ns) throws HttpResponseException {
     RestClient adminRest = RestClient.admin();
     User owner = DriveTestUsers.createUser(ns, "file-mover");

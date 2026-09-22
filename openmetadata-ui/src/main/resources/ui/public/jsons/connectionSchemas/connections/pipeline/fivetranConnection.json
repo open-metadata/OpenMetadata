@@ -26,7 +26,8 @@
     "apiKey": {
       "title": "Fivetran API Key",
       "description": "Fivetran API Key.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "hostPort": {
       "expose": true,
