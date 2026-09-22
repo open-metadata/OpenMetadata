@@ -103,14 +103,18 @@ export class AuthCoordinator {
           throw error;
         }
 
-        const cfg = error.config as
-          | { __omAuthRetries?: number }
-          | undefined;
+        const cfg = error.config as { __omAuthRetries?: number } | undefined;
         const retries = (cfg?.__omAuthRetries ?? 0) + 1;
         if (cfg) {
           cfg.__omAuthRetries = retries;
         }
         if (retries > MAX_PER_REQUEST_RETRIES) {
+          // Refreshes clearly aren't helping this request — force
+          // sign-out so the user isn't left grinding the same endpoint.
+          this.bus.emit(REFRESH_FAILED_EVENT, {
+            reason: `Auth per-request retry cap tripped for ${url}`,
+          });
+
           throw error;
         }
 

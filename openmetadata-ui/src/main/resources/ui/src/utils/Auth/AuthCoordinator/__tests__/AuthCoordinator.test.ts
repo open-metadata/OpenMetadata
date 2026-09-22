@@ -244,15 +244,16 @@ describe('AuthCoordinator', () => {
     await Promise.resolve();
   });
 
-  it('caps per-request retries — a request that stays 401 past MAX_PER_REQUEST_RETRIES is thrown to its caller', async () => {
+  it('caps per-request retries — a request that stays 401 past MAX_PER_REQUEST_RETRIES throws AND emits refresh-failed', async () => {
     const renewer = jest.fn(async () => ({
       expiresAt: Date.now() + 300_000,
       idToken: 'fresh',
     }));
     coordinator.registerRenewer(renewer);
+    const failures: unknown[] = [];
+    coordinator.on('refresh-failed', (p) => failures.push(p));
     const { axios, triggerError } = createMockAxios();
-    const isRefreshable = jest.fn(() => true);
-    coordinator.install(axios, isRefreshable);
+    coordinator.install(axios, () => true);
     const config = { url: '/api/v1/tables' };
     const error = { response: { status: 401, data: {} }, config };
 
@@ -262,6 +263,10 @@ describe('AuthCoordinator', () => {
     await Promise.resolve();
 
     await expect(triggerError(error)).rejects.toBe(error);
+    expect(failures).toHaveLength(1);
+    expect(failures[0]).toEqual({
+      reason: expect.stringMatching(/per-request retry cap/),
+    });
   });
 
   it('circuit-breaks when > MAX_REFRESH_CYCLES_PER_WINDOW cycles fire inside the sliding window', async () => {
@@ -850,7 +855,9 @@ describe('AuthCoordinator', () => {
         idToken: 'renewer-fresh',
       }));
       coordinator.registerRenewer(renewer);
-      mockedGetOidcToken.mockResolvedValueOnce('server-rejected-but-time-fresh');
+      mockedGetOidcToken.mockResolvedValueOnce(
+        'server-rejected-but-time-fresh'
+      );
       mockedExtractDetailsFromToken.mockReturnValueOnce({
         exp: Math.floor(Date.now() / 1000) + 600,
         isExpired: false,
@@ -862,7 +869,9 @@ describe('AuthCoordinator', () => {
       expect(token).toBe('renewer-fresh');
       expect(renewer).toHaveBeenCalledTimes(1);
 
-      mockedGetOidcToken.mockResolvedValueOnce('server-rejected-but-time-fresh');
+      mockedGetOidcToken.mockResolvedValueOnce(
+        'server-rejected-but-time-fresh'
+      );
       mockedExtractDetailsFromToken.mockReturnValueOnce({
         exp: Math.floor(Date.now() / 1000) + 600,
         isExpired: false,
