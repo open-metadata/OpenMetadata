@@ -653,6 +653,12 @@ export const assignSingleSelectDomain = async (
   await patchReq;
   await waitForAllLoadersToDisappear(page);
 
+  // Selecting commits and closes the picker; wait for it to fully detach so a
+  // subsequent reopen (e.g. removeSingleSelectDomain) does not race the close.
+  await page
+    .getByTestId('domain-selectable-tree-search')
+    .waitFor({ state: 'detached' });
+
   await expect(
     page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
   ).toContainText(domain.displayName);
@@ -757,6 +763,12 @@ export const removeSingleSelectDomain = async (
 
   await patchReq;
   await waitForAllLoadersToDisappear(page);
+
+  // Deselecting commits and closes the picker; wait for it to fully detach so a
+  // subsequent reopen does not race the close animation.
+  await page
+    .getByTestId('domain-selectable-tree-search')
+    .waitFor({ state: 'detached' });
 
   await expect(page.getByTestId('no-domain-text')).toContainText(
     showDashPlaceholder ? '--' : 'No Domains'
