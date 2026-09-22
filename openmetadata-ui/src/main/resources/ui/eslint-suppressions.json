@@ -950,7 +950,7 @@
   },
   "playwright/utils/domain.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 2
     }
   },
   "playwright/utils/entity.ts": {
@@ -975,7 +975,7 @@
   },
   "playwright/utils/glossary.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 13
+      "count": 12
     },
     "playwright/no-wait-for-selector": {
       "count": 1

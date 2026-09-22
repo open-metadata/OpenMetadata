@@ -303,7 +303,7 @@ const IncidentManagerDetailPage = ({
         direction="col"
         gap={5}>
         <Box
-          className="tw:relative tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:p-5 data-assets-header-container"
+          className="tw:relative tw:rounded-xl tw:border tw:border-border-secondary tw:bg-surface tw:p-5 data-assets-header-container"
           data-testid="test-case-header-container"
           direction="col"
           gap={5}>
