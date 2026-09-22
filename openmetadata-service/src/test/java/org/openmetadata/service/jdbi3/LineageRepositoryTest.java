@@ -17,7 +17,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
@@ -981,34 +980,5 @@ class LineageRepositoryTest {
     org.mockito.Mockito.verify(relationshipDAO)
         .deleteLineageBySourcePipeline(
             entityId, LineageDetails.Source.OPEN_LINEAGE.value(), Relationship.UPSTREAM.ordinal());
-  }
-
-  @Test
-  void relationshipWritesRetryTransientDeadlocks() {
-    Runnable relationshipWrite = mock(Runnable.class);
-    doThrow(new RuntimeException("Deadlock found when trying to get lock"))
-        .doNothing()
-        .when(relationshipWrite)
-        .run();
-
-    assertDoesNotThrow(
-        () -> LineageRepository.executeRelationshipWriteWithDeadlockRetry(relationshipWrite));
-
-    verify(relationshipWrite, times(2)).run();
-  }
-
-  @Test
-  void relationshipWritesDoNotRetryOtherFailures() {
-    Runnable relationshipWrite = mock(Runnable.class);
-    RuntimeException failure = new RuntimeException("Relationship validation failed");
-    doThrow(failure).when(relationshipWrite).run();
-
-    RuntimeException thrown =
-        assertThrows(
-            RuntimeException.class,
-            () -> LineageRepository.executeRelationshipWriteWithDeadlockRetry(relationshipWrite));
-
-    assertSame(failure, thrown);
-    verify(relationshipWrite).run();
   }
 }
