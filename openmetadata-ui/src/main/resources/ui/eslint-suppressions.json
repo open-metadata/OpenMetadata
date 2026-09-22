@@ -66,7 +66,7 @@
   },
   "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 2
     }
   },
   "playwright/e2e/Features/Container.spec.ts": {
@@ -149,7 +149,7 @@
   },
   "playwright/e2e/Features/DataQuality/DataQuality.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 7
+      "count": 5
     }
   },
   "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts": {
@@ -232,27 +232,14 @@
       "count": 6
     }
   },
-  "playwright/e2e/Features/Glossary/GlossaryBulkOperations.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
-    }
-  },
-  "playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 12
-    }
-  },
   "playwright/e2e/Features/Glossary/GlossaryMiscOperations.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
     }
   },
   "playwright/e2e/Features/Glossary/GlossaryMutualExclusivity.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 12
-    },
     "playwright/no-wait-for-selector": {
-      "count": 11
+      "count": 1
     }
   },
   "playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts": {
@@ -267,7 +254,7 @@
   },
   "playwright/e2e/Features/Glossary/GlossaryStatusFilterNestedTerms.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 6
+      "count": 5
     }
   },
   "playwright/e2e/Features/Glossary/GlossaryTermDetails.spec.ts": {
@@ -437,7 +424,7 @@
   },
   "playwright/e2e/Features/Table.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 10
+      "count": 8
     }
   },
   "playwright/e2e/Features/Tasks.spec.ts": {
@@ -983,7 +970,7 @@
   },
   "playwright/utils/entityPanel.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 2
     }
   },
   "playwright/utils/entityPermissionUtils.ts": {
@@ -1011,7 +998,7 @@
   },
   "playwright/utils/importUtils.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 38
+      "count": 37
     }
   },
   "playwright/utils/incidentManager.ts": {
