@@ -5049,7 +5049,7 @@ class TestDbtDataProducts:
 class TestDbtMetricGovernanceMetadata:
     """yield_dbt_metrics must propagate node-level meta governance metadata to the metric."""
 
-    def _source(self):
+    def _source(self, metric_custom_properties=None):
         source = DbtSource.__new__(DbtSource)
         source.metadata = MagicMock()
         source.status = MagicMock()
@@ -5057,6 +5057,7 @@ class TestDbtMetricGovernanceMetadata:
         source.config.serviceName = "my_svc"
         source.source_config = MagicMock()
         source.source_config.includeTags = False
+        source.omd_metric_custom_properties = metric_custom_properties or {}
         return source
 
     def _simple_metric(self, meta=None):
@@ -5080,7 +5081,9 @@ class TestDbtMetricGovernanceMetadata:
     def test_metric_governance_metadata_is_propagated(self):
         from metadata.generated.schema.entity.data.metric import MetricType
 
-        source = self._source()
+        source = self._source(
+            metric_custom_properties={"steward": {"name": "steward", "propertyType": {"name": "string"}}}
+        )
         source.get_dbt_owner = MagicMock(return_value=MOCK_OWNER)
         source.get_dbt_domain = MagicMock(
             return_value=EntityReference(
@@ -5169,3 +5172,50 @@ class TestDbtMetricGovernanceMetadata:
 
         assert request.unitOfMeasurement.value == "OTHER"
         assert request.customUnitOfMeasurement == "other"
+
+    def test_custom_properties_undefined_for_metrics_are_dropped(self):
+        """
+        EntityRepository.validateExtension rejects the whole create request on an unknown field,
+        so a property defined only for tables must not reach the metric extension.
+        """
+        source = self._source(
+            metric_custom_properties={"steward": {"name": "steward", "propertyType": {"name": "string"}}}
+        )
+        source.get_dbt_owner = MagicMock(return_value=MOCK_OWNER)
+        source.get_dbt_domain = MagicMock(return_value=None)
+        source.process_dbt_meta = MagicMock(return_value=[])
+        source._extract_metric_tags = MagicMock(return_value=[])
+
+        meta = {
+            "openmetadata": {
+                "owner": "data_analytics",
+                "customProperties": {"steward": "some.user", "tableOnlyProperty": "value"},
+            }
+        }
+        metric_requests = [
+            item
+            for item in DbtSource.yield_dbt_metrics(source, self._simple_metric(meta=meta))
+            if item.right is not None
+        ]
+        assert len(metric_requests) == 1
+        request = metric_requests[0].right
+
+        assert request.extension.root == {"steward": "some.user"}
+        # the metric itself and the rest of its governance metadata survive
+        assert request.owners == MOCK_OWNER
+
+    def test_metric_with_only_unknown_custom_properties_sends_no_extension(self):
+        source = self._source()
+        source.get_dbt_owner = MagicMock(return_value=None)
+        source.get_dbt_domain = MagicMock(return_value=None)
+        source.process_dbt_meta = MagicMock(return_value=[])
+        source._extract_metric_tags = MagicMock(return_value=[])
+
+        meta = {"openmetadata": {"customProperties": {"tableOnlyProperty": "value"}}}
+        metric_requests = [
+            item
+            for item in DbtSource.yield_dbt_metrics(source, self._simple_metric(meta=meta))
+            if item.right is not None
+        ]
+        assert len(metric_requests) == 1
+        assert metric_requests[0].right.extension is None
