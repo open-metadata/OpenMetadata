@@ -1772,8 +1772,20 @@ export const deleteAnnouncement = async (page: Page) => {
   );
 
   await expect(drawerAnnouncementCard).toBeVisible();
-  await drawerAnnouncementCard.getByTestId('announcement-actions').click();
-  await page.getByTestId('announcement-delete-action').click();
+
+  // A late announcements refetch can re-render the card list and close the antd
+  // Dropdown just after it opens, detaching the delete action so a single click
+  // hangs until the test timeout. Reopen the menu when the action isn't visible
+  // and retry until the click lands. Gate on the action's own visibility rather
+  // than aria-expanded, which antd's Dropdown does not set.
+  const deleteAction = page.getByTestId('announcement-delete-action');
+  await expect(async () => {
+    if (!(await deleteAction.isVisible())) {
+      await drawerAnnouncementCard.getByTestId('announcement-actions').click();
+    }
+    await deleteAction.click({ timeout: 2000 });
+  }).toPass({ timeout: 30000 });
+
   const modalText = await page.textContent('.ant-modal-body');
 
   expect(modalText).toContain(
@@ -1820,9 +1832,18 @@ export const editAnnouncement = async (
 
   await expect(drawerAnnouncementCard).toBeVisible();
 
-  // Open the announcement actions menu and choose edit
-  await drawerAnnouncementCard.getByTestId('announcement-actions').click();
-  await page.getByTestId('announcement-edit-action').click();
+  // A late announcements refetch can re-render the card list and close the antd
+  // Dropdown just after it opens, detaching the edit action so a single click
+  // hangs until the test timeout. Reopen the menu when the action isn't visible
+  // and retry until the click lands. Gate on the action's own visibility rather
+  // than aria-expanded, which antd's Dropdown does not set.
+  const editAction = page.getByTestId('announcement-edit-action');
+  await expect(async () => {
+    if (!(await editAction.isVisible())) {
+      await drawerAnnouncementCard.getByTestId('announcement-actions').click();
+    }
+    await editAction.click({ timeout: 2000 });
+  }).toPass({ timeout: 30000 });
 
   // Wait for the edit announcement modal to open
   await expect(page.locator('.ant-modal-header')).toContainText(

@@ -45,6 +45,7 @@ import {
   fillTableColumnInputDetails,
 } from './customProperty';
 import { waitForAllLoadersToDisappear } from './entity';
+import { searchGlossaryPicker } from './glossaryPicker';
 import { settingClick, SettingOptionsType } from './sidebar';
 import { waitForResponseWithStatus } from './waitHelpers';
 
@@ -603,24 +604,21 @@ export const fillGlossaryTermDetails = async (
 
   await waitForAllLoadersToDisappear(page);
 
-  await page
-    .locator('.async-tree-select-list-dropdown')
-    .waitFor({ state: 'visible' });
+  const picker = page.getByTestId('csv-glossary-terms-picker');
+  await expect(picker).toBeVisible();
 
-  const tagSelectorInput = page
-    .locator('[data-testid="tag-selector"] input')
-    .first();
-  await tagSelectorInput.waitFor({ state: 'visible' });
+  // Filling focuses the trigger's input, and its onFocus opens the tree — a
+  // click here would instead close the grid's cell editor.
+  await searchGlossaryPicker(page, glossary.name, picker);
 
-  const searchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=**&index=glossaryTerm&**`
+  const row = page.getByTestId(
+    `tree-node-"${glossary.parent}"."${glossary.name}"`
   );
-  await page.keyboard.type(glossary.name);
-  await searchResponse;
+  await expect(row).toBeVisible();
+  await row.click();
 
-  await waitForAllLoadersToDisappear(page);
-  await page.getByTestId(`tag-"${glossary.parent}"."${glossary.name}"`).click();
-  await clickAssociatedTagSave(page);
+  // Same commit affordance as the tag cell beside it.
+  await clickInlineSave(page);
 };
 
 export const fillDomainDetails = async (
@@ -913,6 +911,10 @@ export const fillGlossaryRowDetails = async (
   propertyListName?: Record<string, string>,
   isBulkEdit?: boolean
 ) => {
+  // csvAsyncJobs is per-user and every worker is admin, so another worker's job
+  // finishing re-expands the tray over this grid mid-fill.
+  await suppressCsvJobsTray(page);
+
   await selectActiveRowCellByColumn(page, 'name');
   if (isBulkEdit) {
     await expect(

@@ -42,15 +42,20 @@ public class EntityLifecycleEventDispatcher {
 
   private static volatile EntityLifecycleEventDispatcher instance;
 
-  // Immutable snapshot swapped under the registration lock. Readers dispatch on
-  // request threads without synchronizing, so a mutable list here lets a
-  // registration racing a dispatch surface as ConcurrentModificationException
-  // out of getApplicableHandlers -- a 500 on whatever entity was being written.
-  private volatile List<EntityLifecycleEventHandler> handlers;
+  /**
+   * Immutable, priority-sorted snapshot replaced wholesale by the synchronized mutators below.
+   * Dispatch reads it unsynchronized on the request thread, so it must never be mutated in place:
+   * {@code ArrayList#removeIf} shrinks {@code size} and then nulls the vacated tail slot, which a
+   * concurrent dispatch — whose stream fence is already bound to the pre-removal size — reads back
+   * as a null handler and NPEs on. Registration is not startup-only (a {@code SearchRepository}
+   * rebuild and vector-service (re)init both re-register handlers while requests are in flight),
+   * so that race is reachable in production, not just under parallel CI.
+   */
+  private volatile List<EntityLifecycleEventHandler> handlers = List.of();
+
   private final OrderedLaneExecutor orderedLaneExecutor;
 
   private EntityLifecycleEventDispatcher() {
-    this.handlers = List.of();
     this.orderedLaneExecutor = new OrderedLaneExecutor(this::enqueueLaneFailureRetry);
   }
 
@@ -89,14 +94,45 @@ public class EntityLifecycleEventDispatcher {
     // an intermediate append or a partially sorted array.
     List<EntityLifecycleEventHandler> updated = new ArrayList<>(handlers);
     updated.add(handler);
-    // Sort handlers by priority (lower priority values first)
-    updated.sort(Comparator.comparingInt(EntityLifecycleEventHandler::getPriority));
-    handlers = List.copyOf(updated);
+    publishSorted(updated);
 
     LOG.info(
         "Registered entity lifecycle handler: {} with priority {}",
         handler.getHandlerName(),
         handler.getPriority());
+  }
+
+  /**
+   * Swap a handler in under its own name as a single snapshot publish. A {@code SearchRepository}
+   * rebuild and a vector-service re-init both need the fresh instance to take over from the stale
+   * one; expressing that as unregister-then-register leaves a window with no handler of that name
+   * registered, so an entity write landing in it is silently never indexed.
+   */
+  public synchronized void replaceHandler(EntityLifecycleEventHandler handler) {
+    if (handler == null) {
+      LOG.warn("Attempted to replace an entity lifecycle handler with null");
+      return;
+    }
+
+    List<EntityLifecycleEventHandler> updated = new ArrayList<>(handlers);
+    boolean replaced = updated.removeIf(h -> h.getHandlerName().equals(handler.getHandlerName()));
+    updated.add(handler);
+    publishSorted(updated);
+
+    LOG.info(
+        "{} entity lifecycle handler: {} with priority {}",
+        replaced ? "Replaced" : "Registered",
+        handler.getHandlerName(),
+        handler.getPriority());
+  }
+
+  /**
+   * Publish add/remove plus the priority sort as one snapshot, so a concurrent dispatch never walks
+   * a list that is momentarily out of priority order.
+   */
+  private void publishSorted(List<EntityLifecycleEventHandler> updated) {
+    updated.sort(Comparator.comparingInt(EntityLifecycleEventHandler::getPriority));
+    handlers = List.copyOf(updated);
   }
 
   /**
@@ -106,10 +142,15 @@ public class EntityLifecycleEventDispatcher {
     List<EntityLifecycleEventHandler> updated = new ArrayList<>(handlers);
     boolean removed = updated.removeIf(h -> h.getHandlerName().equals(handlerName));
     if (removed) {
-      handlers = List.copyOf(updated);
+      publishSorted(updated);
       LOG.info("Unregistered entity lifecycle handler: {}", handlerName);
     }
     return removed;
+  }
+
+  /** Drop every registered handler. Visible for testing. */
+  synchronized void clearHandlers() {
+    handlers = List.of();
   }
 
   /**

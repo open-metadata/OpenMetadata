@@ -20,6 +20,7 @@ import {
   selectActiveGlossary,
   selectActiveGlossaryTerm,
 } from '../../../utils/glossary';
+import { pickGlossaryTermInField } from '../../../utils/glossaryPicker';
 import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({
@@ -52,32 +53,33 @@ test.describe('Glossary Term — Related Terms', () => {
       await page.getByTestId('related-term-add-button').click();
 
       const firstRow = page.locator('[data-testid^="relation-row-"]').first();
-      const firstInput = firstRow
-        .locator('[data-testid^="term-autocomplete-"]')
-        .locator('input');
 
       const termBName =
         termB.responseData?.displayName ?? termB.data.displayName;
-      const searchResB = page.waitForResponse(
-        '**/api/v1/glossaryTerms/search*'
+      await pickGlossaryTermInField(
+        page,
+        firstRow.locator('[data-testid^="term-picker-"]'),
+        {
+          name: termB.data.name,
+          displayName: termBName,
+          fullyQualifiedName: termB.responseData?.fullyQualifiedName ?? '',
+        }
       );
-      await firstInput.fill(termBName);
-      await searchResB;
-      await page.getByRole('option', { exact: true, name: termBName }).click();
+
       await page.getByTestId('add-row-button').click();
       const secondRow = page.locator('[data-testid^="relation-row-"]').last();
-      const secondInput = secondRow
-        .locator('[data-testid^="term-autocomplete-"]')
-        .locator('input');
 
       const termCName =
         termC.responseData?.displayName ?? termC.data.displayName;
-      const searchResC = page.waitForResponse(
-        '**/api/v1/glossaryTerms/search*'
+      await pickGlossaryTermInField(
+        page,
+        secondRow.locator('[data-testid^="term-picker-"]'),
+        {
+          name: termC.data.name,
+          displayName: termCName,
+          fullyQualifiedName: termC.responseData?.fullyQualifiedName ?? '',
+        }
       );
-      await secondInput.fill(termCName);
-      await searchResC;
-      await page.getByRole('option', { exact: true, name: termCName }).click();
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.getByTestId('save-related-terms').click();

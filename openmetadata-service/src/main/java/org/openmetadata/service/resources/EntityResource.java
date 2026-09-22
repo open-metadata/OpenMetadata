@@ -702,6 +702,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response.toResponse();
   }
 
+  /**
+   * Variant for resources that need a resource-specific authorization decision. It must plumb
+   * If-Match and the impersonation actor exactly as the standard overload does: dropping them
+   * silently disables optimistic locking (a stale ETag overwrites a concurrent update instead of
+   * failing the precondition) and loses impersonation attribution in the change record.
+   */
   public Response patchInternal(
       UriInfo uriInfo,
       SecurityContext securityContext,
@@ -710,8 +716,18 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       UUID id,
       JsonPatch patch) {
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+    String ifMatchHeader =
+        org.openmetadata.service.resources.filters.ETagRequestFilter.getIfMatchHeader();
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     PatchResponse<T> response =
-        repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
+        repository.patch(
+            uriInfo,
+            id,
+            securityContext.getUserPrincipal().getName(),
+            patch,
+            null,
+            ifMatchHeader,
+            impersonatedBy);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }

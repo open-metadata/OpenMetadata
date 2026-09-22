@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByRole, fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
 import { PageType } from '../../../generated/system/ui/page';
 import { mockedGlossaryTerms } from '../../../mocks/Glossary.mock';
@@ -74,24 +73,13 @@ describe('Test ChangeParentHierarchy modal component', () => {
     jest.clearAllMocks();
   });
 
-  it('should render glossary selection dropdown', async () => {
+  it('should render the parent picker', async () => {
     await act(async () => {
       render(<ChangeParent {...mockProps} />);
     });
 
-    const selectInput = await findByRole(
-      screen.getByTestId('change-parent-select'),
-      'combobox'
-    );
-
-    expect(selectInput).toBeInTheDocument();
-
-    await act(async () => {
-      userEvent.click(selectInput);
-    });
-
-    // TreeAsyncSelectList will load glossaries and handle term filtering internally
-    expect(selectInput).toBeInTheDocument();
+    // The picker loads glossaries and their terms itself.
+    expect(screen.getByTestId('change-parent-select')).toBeInTheDocument();
   });
 
   it('should trigger onCancel button', async () => {

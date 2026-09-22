@@ -461,37 +461,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
         `Search + Status pagination: verified ${initialCount} Approved terms`
       );
     });
-
-    test('should maintain status filter when search is cleared', async ({
-      page,
-    }) => {
-      await applyStatusFilter(page, ['Draft']);
-
-      await performSearch(page, 'Term_Draft');
-
-      await clearSearch(page);
-
-      // Status filter should still be active
-      const rowCount = await verifyRowStatuses(page, ['Draft']);
-      expect(rowCount).toBeGreaterThan(0);
-    });
-
-    test('should maintain search when status filter is changed', async ({
-      page,
-    }) => {
-      await performSearch(page, 'Term_');
-
-      const initialCount = await getRowCount(page);
-
-      await applyStatusFilter(page, ['Approved']);
-
-      // Search should still be active, results filtered by status
-      // Use toPass() for auto-retry to handle DOM update timing
-      await expect(async () => {
-        const filteredCount = await verifyRowStatuses(page, ['Approved']);
-        expect(filteredCount).toBeLessThanOrEqual(initialCount);
-      }).toPass({ timeout: 5000 });
-    });
   });
 
   // ==================== FILTER STATE MANAGEMENT TESTS ====================

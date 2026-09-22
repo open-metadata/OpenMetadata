@@ -91,6 +91,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
+import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner;
 import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.apps.bundles.searchIndex.SlackWebApiClient;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
@@ -1299,6 +1300,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       searchRepository.updateIndexes();
       LOG.info("Update Index Templates.");
       searchRepository.createOrUpdateIndexTemplates();
+      detachOrphanedIndexes();
       printChangeLog();
       // update entities secrets if required
       new SecretsManagerUpdateService(secretsManager, config.getClusterName()).updateEntities();
@@ -1307,6 +1309,24 @@ public class OpenMetadataOperations implements Callable<Integer> {
     } catch (Exception e) {
       LOG.error("Failed to db migration due to ", e);
       return 1;
+    }
+  }
+
+  /**
+   * An upgrade that renames or drops an entity type leaves its index attached to the parent aliases
+   * the old release gave it, so {@code index=all} keeps querying it with this release's clauses.
+   * SearchIndexApp sweeps this on every reindex, but an upgrade is not obliged to reindex —
+   * {@code executeSearchReindexApp} returns before launching the app when no mapping changed — so
+   * migrate does it too. This is the ops CLI, not server start, so it costs no boot time.
+   */
+  private void detachOrphanedIndexes() {
+    try {
+      int detached = new OrphanedIndexCleaner().detachOrphanedIndexesFromAliases(searchRepository);
+      if (detached > 0) {
+        LOG.info("Detached {} orphaned index-to-alias links", detached);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to detach orphaned indexes from aliases: {}", e.getMessage());
     }
   }
 

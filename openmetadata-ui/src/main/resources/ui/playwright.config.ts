@@ -231,6 +231,15 @@ export default defineConfig({
     /* Self-signed cert in h2 mode — accept it. No effect on HTTP/1.1 runs. */
     ignoreHTTPSErrors: isH2Mode,
 
+    /* Emulate prefers-reduced-motion so CSS/react-aria trigger and overlay
+     * transitions resolve instantly — a click landing before the animation
+     * settles is a common flake source. Pixel/geometry-sensitive projects
+     * (visual-regression, Knowledge Graph, Ontology RDF) opt back out via
+     * reducedMotion: 'no-preference' below, because the graph's fit/centering
+     * geometry shifts under reduced motion and the snapshot/geometry
+     * assertions are calibrated for the default motion path. */
+    reducedMotion: 'reduce',
+
     /* Both are failure-only, so they cost nothing on a green run and exist
      * exactly when something has to be explained. That matters most in the
      * merge queue, which rebases onto a moving target: a local rerun is a
@@ -327,6 +336,8 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 900 },
         storageState: 'playwright/.auth/admin.json',
+        // Snapshots are captured under the default motion path.
+        reducedMotion: 'no-preference',
       },
     },
     // Only register the h2 project when explicitly opted in. Always-on registration would force
@@ -392,7 +403,9 @@ export default defineConfig({
     },
     {
       name: 'Knowledge Graph',
-      use: { ...devices['Desktop Chrome'] },
+      // The graph's fit/centering geometry differs under reduced motion, so
+      // its boundingBox assertions run on the default motion path.
+      use: { ...devices['Desktop Chrome'], reducedMotion: 'no-preference' },
       // ontology-rdf-setup is the only gate that proves the live projection is
       // really writing — it round-trips a probe entity through SPARQL before
       // letting dependents start. Without it this project builds its fixture
@@ -405,7 +418,9 @@ export default defineConfig({
     },
     {
       name: 'Ontology RDF',
-      use: { ...devices['Desktop Chrome'] },
+      // Same graph canvas as Knowledge Graph — keep the default motion path so
+      // fit/centering geometry matches the assertions.
+      use: { ...devices['Desktop Chrome'], reducedMotion: 'no-preference' },
       dependencies: ['ontology-rdf-setup'],
       grep: /ontology-rdf/,
       teardown: 'entity-data-teardown',

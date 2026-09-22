@@ -38,45 +38,48 @@ test.describe('Glossary P3 Tests', () => {
     await redirectToHomePage(page);
   });
 
-  // G-C11: Create glossary with unicode/emoji in name
-  test('should create glossary with unicode characters in name', async ({
-    page,
-  }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-    const unicodeName = `Glossary_日本語_${Date.now()}`;
+  // G-C10 / G-C11: Create glossary with special and unicode characters in name
+  const glossaryNameCases = [
+    { label: 'special characters', name: `Test_Glossary-${Date.now()}` },
+    { label: 'unicode characters', name: `Glossary_日本語_${Date.now()}` },
+  ];
 
-    try {
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+  glossaryNameCases.forEach(({ label, name }) => {
+    test(`should create glossary with ${label} in name`, async ({ page }) => {
+      const { apiContext, afterAction } = await getApiContext(page);
+      const glossary = new Glossary();
 
-      await page.click('[data-testid="add-glossary"]');
-      await page.getByTestId('form-heading').waitFor();
+      try {
+        await sidebarClick(page, SidebarItem.GLOSSARY);
 
-      // Use name with unicode characters
-      await page.fill('[data-testid="name"]', unicodeName);
-      await fillDescriptionBox(page, 'Glossary with unicode characters');
+        await page.click('[data-testid="add-glossary"]');
+        await page.getByTestId('form-heading').waitFor();
 
-      const [response] = await Promise.all([
-        page.waitForResponse(
-          (res) =>
-            res.url().endsWith('/api/v1/glossaries') &&
-            res.request().method() === 'POST'
-        ),
-        // A stale navigation toast can overlap this centered button. Keyboard
-        // activation exercises the same form submission without a pointer race.
-        page.getByTestId('save-glossary').press('Enter'),
-      ]);
-      glossary.responseData = await response.json();
-      expect(response.ok()).toBe(true);
+        await page.fill('[data-testid="name"]', name);
+        await fillDescriptionBox(page, `Glossary with ${label}`);
 
-      // Verify glossary was created
-      await expect(page.getByTestId('entity-header-name')).toBeVisible();
-    } finally {
-      if (glossary.responseData) {
-        await glossary.delete(apiContext);
+        const [response] = await Promise.all([
+          page.waitForResponse(
+            (res) =>
+              res.url().endsWith('/api/v1/glossaries') &&
+              res.request().method() === 'POST'
+          ),
+          // A stale navigation toast can overlap this centered button. Keyboard
+          // activation exercises the same form submission without a pointer race.
+          page.getByTestId('save-glossary').press('Enter'),
+        ]);
+        glossary.responseData = await response.json();
+        expect(response.ok()).toBe(true);
+
+        // Verify glossary was created with the exact name
+        await expect(page.getByTestId('entity-header-name')).toHaveText(name);
+      } finally {
+        if (glossary.responseData) {
+          await glossary.delete(apiContext);
+        }
+        await afterAction();
       }
-      await afterAction();
-    }
+    });
   });
 
   for (const [field, value] of [
