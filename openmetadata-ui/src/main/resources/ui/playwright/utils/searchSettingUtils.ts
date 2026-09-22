@@ -91,25 +91,17 @@ export async function setSliderValue(
   min = 0,
   max = 100
 ) {
-  const sliderHandle = page.getByTestId(testId).locator('.ant-slider-handle');
-  const sliderTrack = page.getByTestId(testId).locator('.ant-slider-step');
+  const slider = page.getByTestId(testId);
+  const rail = slider.locator('.ant-slider-rail');
 
-  // Get slider track dimensions
-  const box = await sliderTrack.boundingBox();
+  const box = await rail.boundingBox();
   if (!box) {
     throw new Error('Slider track not found');
   }
 
-  const { x, width } = box;
-
-  // Calculate the exact x-position for the value
-  const valuePosition = x + ((value - min) / (max - min)) * width;
-
-  // Move the slider handle to the calculated position
-  await sliderHandle.hover(); // Ensure visibility
-  await page.mouse.down();
-  await page.mouse.move(valuePosition, box.y);
-  await page.mouse.up();
+  const targetX = box.x + ((value - min) / (max - min)) * box.width;
+  const targetY = box.y + box.height / 2;
+  await page.mouse.click(targetX, targetY);
 }
 
 // The entity search settings page opens with the "Ranking Details" accordion
