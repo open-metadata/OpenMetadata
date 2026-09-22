@@ -64,6 +64,7 @@ public final class SecurityUtil {
 
   private static final String FORWARDED_PROTO_HEADER = "X-Forwarded-Proto";
   private static final String FORWARDED_HOST_HEADER = "X-Forwarded-Host";
+  private static final String HOST_HEADER = "Host";
   private static final Set<String> WEB_SCHEMES = Set.of("http", "https");
 
   private SecurityUtil() {}
@@ -767,19 +768,38 @@ public final class SecurityUtil {
     if (request == null) {
       return null;
     }
-    String forwardedHost = firstHeaderValue(request, FORWARDED_HOST_HEADER);
-    return nullOrEmpty(forwardedHost)
-        ? connectorOrigin(request)
-        : forwardedOrigin(request, forwardedHost);
-  }
-
-  private static String forwardedOrigin(HttpServletRequest request, String forwardedHost) {
-    String forwardedProto = firstHeaderValue(request, FORWARDED_PROTO_HEADER);
-    String scheme = nullOrEmpty(forwardedProto) ? request.getScheme() : forwardedProto;
-    if (!isWebScheme(scheme)) {
+    String scheme = requestScheme(request);
+    String authority = requestAuthority(request, scheme);
+    if (!isWebScheme(scheme) || nullOrEmpty(authority)) {
       return null;
     }
-    return validOrigin(scheme.toLowerCase(Locale.ROOT) + "://" + forwardedHost);
+    return validOrigin(scheme.toLowerCase(Locale.ROOT) + "://" + authority);
+  }
+
+  /**
+   * Scheme and authority are resolved independently because load balancers disagree about which
+   * headers they send. AWS ALB, for one, sets {@code X-Forwarded-Proto} but no
+   * {@code X-Forwarded-Host}, passing the client's {@code Host} through untouched — reading the
+   * scheme only alongside a forwarded host would resolve that deployment to the internal {@code
+   * http} hop and reject its own login.
+   */
+  private static String requestScheme(HttpServletRequest request) {
+    String forwardedProto = closestProxyHeaderValue(request, FORWARDED_PROTO_HEADER);
+    return nullOrEmpty(forwardedProto) ? request.getScheme() : forwardedProto;
+  }
+
+  /**
+   * {@code Host} is preferred over the connector's view because {@code getServerPort()} reports the
+   * local listener when the header carries no explicit port, which would graft {@code :8585} onto a
+   * public origin.
+   */
+  private static String requestAuthority(HttpServletRequest request, String scheme) {
+    String forwardedHost = closestProxyHeaderValue(request, FORWARDED_HOST_HEADER);
+    if (!nullOrEmpty(forwardedHost)) {
+      return forwardedHost;
+    }
+    String host = closestProxyHeaderValue(request, HOST_HEADER);
+    return nullOrEmpty(host) ? connectorAuthority(request, scheme) : host;
   }
 
   /**
@@ -790,9 +810,14 @@ public final class SecurityUtil {
     return !nullOrEmpty(scheme) && WEB_SCHEMES.contains(scheme.toLowerCase(Locale.ROOT));
   }
 
-  private static String connectorOrigin(HttpServletRequest request) {
-    String scheme = request.getScheme();
-    if (!isWebScheme(scheme) || nullOrEmpty(request.getServerName())) {
+  /**
+   * The default port is dropped because {@link #validateRedirectUri} returns the matched
+   * <em>trusted</em> entry verbatim as the {@code Location} header, so leaving {@code :443} on would
+   * put it in front of users even though the comparison itself normalizes ports.
+   */
+  private static String connectorAuthority(HttpServletRequest request, String scheme) {
+    String serverName = request.getServerName();
+    if (nullOrEmpty(serverName)) {
       return null;
     }
     int port = request.getServerPort();
@@ -800,9 +825,7 @@ public final class SecurityUtil {
         port <= 0
             || ("https".equalsIgnoreCase(scheme) && port == 443)
             || ("http".equalsIgnoreCase(scheme) && port == 80);
-    String authority =
-        isDefaultPort ? request.getServerName() : request.getServerName() + ":" + port;
-    return validOrigin(scheme + "://" + authority);
+    return isDefaultPort ? serverName : serverName + ":" + port;
   }
 
   /**
@@ -828,14 +851,24 @@ public final class SecurityUtil {
     }
   }
 
-  private static String firstHeaderValue(HttpServletRequest request, String header) {
+  /**
+   * The right-most entry of a proxy header, i.e. the value written by the hop closest to this
+   * server.
+   *
+   * <p>Deliberately not the left-most. These headers are normally replaced rather than appended, but
+   * a proxy that appends leaves the <em>client's</em> own value left-most — so reading from the left
+   * lets a caller sending {@code X-Forwarded-Host: evil.example.com, om.example.org} choose the
+   * origin. Each further hop appends to the right, so the right-most value is the one written by the
+   * most trusted proxy. (This is the opposite of {@code X-Forwarded-For}, where the left-most entry
+   * is the one identifying the original client.)
+   */
+  private static String closestProxyHeaderValue(HttpServletRequest request, String header) {
     String value = request.getHeader(header);
     if (nullOrEmpty(value)) {
       return null;
     }
-    // A chain of proxies appends to these headers; the left-most entry is the original client hop.
-    int comma = value.indexOf(',');
-    return (comma < 0 ? value : value.substring(0, comma)).trim();
+    int comma = value.lastIndexOf(',');
+    return (comma < 0 ? value : value.substring(comma + 1)).trim();
   }
 
   private static URI parseTrustedRedirectUri(String value) {

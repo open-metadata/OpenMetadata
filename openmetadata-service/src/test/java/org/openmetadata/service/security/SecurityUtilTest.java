@@ -1316,7 +1316,7 @@ class SecurityUtilTest {
   }
 
   @Test
-  void requestOrigin_omitsDefaultPortFromConnectorOrigin() {
+  void requestOrigin_fallsBackToConnectorAuthorityWhenNoHostHeader() {
     HttpServletRequest request = mock(HttpServletRequest.class);
     when(request.getScheme()).thenReturn("https");
     when(request.getServerName()).thenReturn("om.example.org");
@@ -1373,6 +1373,52 @@ class SecurityUtilTest {
   void requestOrigin_returnsNullWhenNothingIdentifiesTheOrigin() {
     assertNull(SecurityUtil.requestOrigin(null));
     assertNull(SecurityUtil.requestOrigin(mock(HttpServletRequest.class)));
+  }
+
+  /** AWS ALB sets X-Forwarded-Proto and passes Host through, but never sets X-Forwarded-Host. */
+  @Test
+  void requestOrigin_honoursForwardedProtoWhenOnlyHostIsPassedThrough() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("X-Forwarded-Proto")).thenReturn("https");
+    when(request.getHeader("Host")).thenReturn("om.example.org");
+    when(request.getScheme()).thenReturn("http");
+    when(request.getServerName()).thenReturn("om.example.org");
+    when(request.getServerPort()).thenReturn(8585);
+
+    assertEquals("https://om.example.org", SecurityUtil.requestOrigin(request));
+  }
+
+  @Test
+  void requestOrigin_prefersHostHeaderOverConnectorPort() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("Host")).thenReturn("om.example.org");
+    when(request.getScheme()).thenReturn("https");
+    when(request.getServerName()).thenReturn("om.example.org");
+    when(request.getServerPort()).thenReturn(8585);
+
+    assertEquals("https://om.example.org", SecurityUtil.requestOrigin(request));
+  }
+
+  /**
+   * A proxy that appends rather than replaces leaves the caller's own value left-most, so the
+   * right-most entry - written by the hop closest to this server - is the one to trust.
+   */
+  @Test
+  void requestOrigin_ignoresCallerSuppliedValuePrependedToForwardedHost() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("X-Forwarded-Proto")).thenReturn("https");
+    when(request.getHeader("X-Forwarded-Host")).thenReturn("evil.example.com, om.example.org");
+
+    assertEquals("https://om.example.org", SecurityUtil.requestOrigin(request));
+  }
+
+  @Test
+  void requestOrigin_ignoresCallerSuppliedValuePrependedToForwardedProto() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("X-Forwarded-Proto")).thenReturn("javascript, https");
+    when(request.getHeader("X-Forwarded-Host")).thenReturn("om.example.org");
+
+    assertEquals("https://om.example.org", SecurityUtil.requestOrigin(request));
   }
 
   private static Map<String, Claim> jwtClaims(Map<String, Object> values) {

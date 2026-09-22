@@ -599,15 +599,33 @@ class AuthenticationCodeFlowHandlerTest {
         invokeRequireRedirectUri(handler, req, "https://om.example.org/auth/callback"));
   }
 
+  /**
+   * The right-most hop is the one written by the proxy closest to this server. Reading from the left
+   * would let a caller prepend its own value and pick the origin.
+   */
   @Test
-  void requireRedirectUri_usesLeftmostHopOfForwardedHeaderChain() throws Exception {
+  void requireRedirectUri_usesClosestProxyHopOfForwardedHeaderChain() throws Exception {
     AuthenticationCodeFlowHandler handler =
         createRedirectHandler("http://localhost:8585", "", List.of());
-    HttpServletRequest req = proxiedRequest("https, http", "om.example.org, internal.svc");
+    HttpServletRequest req = proxiedRequest("http, https", "evil.example.com, om.example.org");
 
     assertEquals(
         "https://om.example.org/auth/callback",
         invokeRequireRedirectUri(handler, req, "https://om.example.org/auth/callback"));
+  }
+
+  @Test
+  void requireRedirectUri_rejectsOriginPrependedToForwardedHostByCaller() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("http://localhost:8585", "", List.of());
+    HttpServletRequest req = proxiedRequest("https", "evil.example.com, om.example.org");
+
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> invokeRequireRedirectUri(handler, req, "https://evil.example.com/auth/callback"));
+
+    assertEquals("Redirect URI must exactly match a trusted redirect URI", thrown.getMessage());
   }
 
   private AuthenticationCodeFlowHandler createRedirectHandler(
