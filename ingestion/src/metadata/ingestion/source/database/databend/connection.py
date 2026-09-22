@@ -115,36 +115,7 @@ class DatabendConnection(BaseConnection[DatabendConnectionConfig, Engine]):
             if self.service_connection.catalog:
                 test_query(base_engine, "SELECT current_catalog()")
                 return
-
-            with base_engine.connect() as connection:
-                catalogs = connection.execute(text("SHOW CATALOGS")).fetchall()
-            if not catalogs:
-                raise RuntimeError("No accessible Databend catalogs found")
-
-            failures = []
-            for catalog_row in catalogs:
-                if not catalog_row or not catalog_row[0]:
-                    continue
-                catalog = catalog_row[0]
-                if filter_by_database(self.service_connection.databaseFilterPattern, catalog):
-                    continue
-                connection_config = deepcopy(self.service_connection)
-                connection_config.catalog = catalog
-                candidate_connection = DatabendConnection(connection_config)
-                try:
-                    candidate_engine = candidate_connection.client
-                    inspect(candidate_engine).get_schema_names()
-                except Exception as exc:
-                    candidate_connection.close()
-                    failures.append(f"{catalog}: {exc}")
-                    continue
-
-                catalog_connection = candidate_connection
-                catalog_engine = candidate_engine
-                return
-
-            details = f": {'; '.join(failures)}" if failures else ""
-            raise RuntimeError(f"No accessible Databend catalogs found{details}")
+            catalog_connection, catalog_engine = self._select_accessible_catalog(base_engine)
 
         def get_catalog_engine() -> Engine:
             if not self.service_connection.catalog and catalog_connection is None:
@@ -156,23 +127,7 @@ class DatabendConnection(BaseConnection[DatabendConnectionConfig, Engine]):
 
         def inspect_catalog_entities(inspector_method: str) -> None:
             inspector = inspect(get_catalog_engine())
-            schema_name = self.service_connection.databaseSchema
-            if not schema_name:
-                schema_name = next(
-                    (
-                        name
-                        for name in inspector.get_schema_names()
-                        if name.lower() not in SYSTEM_DATABASES
-                        and not filter_by_schema(self.service_connection.schemaFilterPattern, name)
-                    ),
-                    None,
-                )
-            if not schema_name:
-                raise RuntimeError(
-                    "No accessible Databend database is available to validate table metadata "
-                    "after applying the Schema Filter Pattern"
-                )
-            getattr(inspector, inspector_method)(schema_name)
+            getattr(inspector, inspector_method)(self._pick_user_schema(inspector))
 
         test_fn = {
             "CheckAccess": partial(check_connection_access, base_engine),
@@ -193,3 +148,60 @@ class DatabendConnection(BaseConnection[DatabendConnectionConfig, Engine]):
         finally:
             if catalog_connection is not None:
                 catalog_connection.close()
+
+    def _select_accessible_catalog(self, base_engine: Engine) -> tuple["DatabendConnection", Engine]:
+        """Return the first non-filtered catalog whose schemas can be listed.
+
+        The caller owns the returned connection and must close it.
+        """
+        catalogs = self._list_catalogs(base_engine)
+        if not catalogs:
+            raise RuntimeError("No accessible Databend catalogs found")
+
+        failures = []
+        for catalog in catalogs:
+            if filter_by_database(self.service_connection.databaseFilterPattern, catalog):
+                continue
+            try:
+                return self._open_catalog(catalog)
+            except Exception as exc:  # pylint: disable=broad-except
+                failures.append(f"{catalog}: {exc}")
+
+        details = f": {'; '.join(failures)}" if failures else ""
+        raise RuntimeError(f"No accessible Databend catalogs found{details}")
+
+    @staticmethod
+    def _list_catalogs(engine: Engine) -> list[str]:
+        with engine.connect() as connection:
+            rows = connection.execute(text("SHOW CATALOGS")).fetchall()
+        return [row[0] for row in rows if row and row[0]]
+
+    def _open_catalog(self, catalog: str) -> tuple["DatabendConnection", Engine]:
+        connection_config = deepcopy(self.service_connection)
+        connection_config.catalog = catalog
+        candidate = DatabendConnection(connection_config)
+        try:
+            engine = candidate.client
+            inspect(engine).get_schema_names()
+        except Exception:
+            candidate.close()
+            raise
+        return candidate, engine
+
+    def _pick_user_schema(self, inspector: Any) -> str:
+        """Resolve the schema used to validate table metadata, honouring the filter pattern."""
+        schema_name = self.service_connection.databaseSchema or next(
+            (
+                name
+                for name in inspector.get_schema_names()
+                if name.lower() not in SYSTEM_DATABASES
+                and not filter_by_schema(self.service_connection.schemaFilterPattern, name)
+            ),
+            None,
+        )
+        if not schema_name:
+            raise RuntimeError(
+                "No accessible Databend database is available to validate table metadata "
+                "after applying the Schema Filter Pattern"
+            )
+        return schema_name
