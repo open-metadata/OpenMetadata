@@ -77,19 +77,33 @@ def service_supports_database(metadata: OpenMetadata, service_name: str) -> bool
 
 def table_fqn_candidates(details: TableDetails, supports_database: bool | None) -> list[TableDetails]:
     """
-    The FQN shapes to try for a table, most specific first.
+    The FQN shapes to try for a table, most specific first. Mirrors kafkaconnect's
+    ``KafkaconnectSource._table_fqn_candidates``, which solves the same problem.
 
-    Airbyte reports one "database" value whose OpenMetadata level depends on the target
-    service class, so a single-database service needs that value in the schema slot. An
-    undecided service tries both rather than guessing.
+    A single-database service (MySQL, ClickHouse, Oracle) ingests under a synthetic
+    ``default`` database (see ``common_db_source.get_database_names``), so what Airbyte calls
+    the "database" is really the OpenMetadata schema. Which of the two reported levels holds
+    it depends on the connector: relational *sources* put it on the stream namespace while
+    *destinations* put it on the config, and the two normally agree. Both are tried rather
+    than assumed, so the shape this connector used before the resolver rewrite (config
+    database in the schema slot) still resolves if a connector ever reports them differently.
+
+    An *undecided* service additionally needs a schema before the database-qualified shape is
+    worth trying: ``*.<database>.*.<table>`` cannot match a single-database service, whose FQN
+    is ``service.default.<database>.<table>``, and would instead match an unrelated service
+    that happens to hold a database of that name. A service known to be multi-database keeps
+    the shape even without a schema, since a relational source that reported no stream
+    namespace still resolves through it.
     """
-    candidates = []
-    if supports_database is not False and details.database:
+    candidates: list[TableDetails] = []
+    if details.database and (supports_database is True or (supports_database is None and details.schema)):
         candidates.append(details)
     if supports_database is not True:
-        # Never a duplicate of the shape above: that one is only added when it carries a
-        # database, and this one drops the level entirely.
-        candidates.append(_table_details(details.name, details.schema or details.database, None))
+        seen: set[str] = set()
+        for level in (details.schema, details.database):
+            if level and level not in seen:
+                seen.add(level)
+                candidates.append(_table_details(details.name, level, None))
     return candidates
 
 

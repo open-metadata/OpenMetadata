@@ -42,6 +42,13 @@ class AirbyteSyncCatalog(BaseModel):
     streams: list[AirbyteSyncCatalogEntry] | None = None
 
 
+def _stream_name(item: object) -> str | None:
+    """The ``name`` of a raw response entry or of an already-built stream, if it has one."""
+    if isinstance(item, AirbyteStream):
+        return item.name
+    return item.get("name") if isinstance(item, dict) else None
+
+
 class AirbyteConnectionConfigurations(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -53,11 +60,15 @@ class AirbyteConnectionConfigurations(BaseModel):
         """Drop malformed entries before validation instead of failing the whole connection.
 
         The public API is not guaranteed to omit a stray nameless entry; one bad stream
-        must not block lineage for every other stream on the connection.
+        must not block lineage for every other stream on the connection. An entry that is
+        already an ``AirbyteStream`` is kept, so building this model in code behaves the same
+        as parsing it from a response -- a plain ``isinstance(item, dict)`` test dropped every
+        such entry and left ``streams`` empty with no error, the same silent-loss failure this
+        validator exists to contain.
         """
         if not isinstance(value, list):
             return value
-        return [item for item in value if isinstance(item, dict) and item.get("name")]
+        return [item for item in value if _stream_name(item)]
 
 
 class AirbyteConnectionModel(BaseModel):

@@ -101,6 +101,14 @@ STREAM_NAME = "pokemon"
 CONNECTION_ID = "5f2b1f1e-0d3a-4a2e-9d64-1b1d0c7d1f01"
 CONTAINER_FULL_PATH = f"s3://{BUCKET}/{BUCKET_PATH}/{STREAM_NAME}"
 
+# A second bucket, used only by the cross-service ambiguity test. It needs a path no other test
+# has searched: `OpenMetadata._search_es_entity` is `@lru_cache`d on the query string, so reusing
+# BUCKET would serve this test the single-container answer cached earlier in the module and hide
+# the duplicate.
+DUPLICATE_STORAGE_SERVICES = ("airbyte_integration_storage_dup_a", "airbyte_integration_storage_dup_b")
+DUPLICATE_BUCKET = "airbyte-integration-duplicate-bucket"
+DUPLICATE_FULL_PATH = f"s3://{DUPLICATE_BUCKET}/{BUCKET_PATH}/{STREAM_NAME}"
+
 AIRBYTE_WORKFLOW_CONFIG = {
     "source": {
         "type": "airbyte",
@@ -188,6 +196,30 @@ def container_entity(metadata):
     yield container
 
     metadata.delete(entity=StorageService, entity_id=str(service.id.root), recursive=True, hard_delete=True)
+
+
+@pytest.fixture
+def duplicated_container_entities(metadata):
+    """One bucket and prefix ingested under two storage services, as a re-ingest would leave it."""
+    services = [
+        metadata.create_or_update(CreateStorageServiceRequest(name=name, serviceType=StorageServiceType.S3))
+        for name in DUPLICATE_STORAGE_SERVICES
+    ]
+    containers = [
+        metadata.create_or_update(
+            CreateContainerRequest(
+                name=f"{BUCKET_PATH}/{STREAM_NAME}",
+                service=service.fullyQualifiedName,
+                fullPath=DUPLICATE_FULL_PATH,
+            )
+        )
+        for service in services
+    ]
+
+    yield containers
+
+    for service in services:
+        metadata.delete(entity=StorageService, entity_id=str(service.id.root), recursive=True, hard_delete=True)
 
 
 @pytest.fixture(scope="module")
@@ -323,3 +355,43 @@ def test_api_collection_resolves_from_the_real_search_index(metadata, api_collec
         ]
     )
     assert collections, f"apiCollection *.{STREAM_NAME} was never indexed"
+
+
+def test_a_path_in_two_storage_services_yields_no_edge(metadata, airbyte_source, duplicated_container_entities):
+    """
+    Regression: the same `fullPath` registered under two storage services has no single right
+    answer. The connector used to skip its ambiguity check whenever `storageServiceNames` was
+    configured, so naming both services made it emit whichever container Elasticsearch ranked
+    first. Proven against the real index rather than a mocked hit list, because the duplicate
+    only exists once both services are really ingested.
+    """
+    airbyte_source.source_config.lineageInformation.storageServiceNames = list(DUPLICATE_STORAGE_SERVICES)
+    airbyte_source.client.get_destination.return_value = AirbyteDestinationResponse(
+        destinationType="s3",
+        configuration={"s3_bucket_name": DUPLICATE_BUCKET, "s3_bucket_path": BUCKET_PATH},
+    )
+
+    def _both_indexed():
+        hits = metadata.es_search_container_by_path(full_path=DUPLICATE_FULL_PATH, size=100) or []
+        return hits if len(hits) >= 2 else None
+
+    both_indexed = _wait_for(_both_indexed)
+    assert both_indexed, f"{DUPLICATE_FULL_PATH} was never indexed under both storage services"
+    assert {str(container.service.name) for container in both_indexed} == set(DUPLICATE_STORAGE_SERVICES)
+
+    edges = list(
+        airbyte_source.yield_pipeline_lineage_details(
+            AirbytePipelineDetails(
+                workspace=AirbyteWorkspace(workspaceId="ws-integration"),
+                connection=AirbyteConnectionModel(
+                    connectionId=CONNECTION_ID,
+                    name="airbyte-integration-connection",
+                    sourceId="src-1",
+                    destinationId="dst-1",
+                    configurations={"streams": [{"name": STREAM_NAME}]},
+                ),
+            )
+        )
+    )
+
+    assert edges == []

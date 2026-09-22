@@ -24,7 +24,9 @@ source side only, because a downstream ``apiCollection`` edge returned HTTP 500;
 bug #33448 in the ADD_UPDATE_LINEAGE script, fixed in 1465ab330af, not a rule about apiCollection.
 """
 
+import logging
 from types import SimpleNamespace
+from typing import ClassVar
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -68,6 +70,7 @@ from metadata.ingestion.source.pipeline.airbyte.metadata import (
     AirbyteSource,
 )
 from metadata.ingestion.source.pipeline.airbyte.models import (
+    AirbyteConnectionConfigurations,
     AirbyteConnectionModel,
     AirbyteDestinationResponse,
     AirbyteSourceResponse,
@@ -774,16 +777,38 @@ class TestTableFqnCandidates:
         assert table_fqn_candidates(self.DETAILS, True) == [self.DETAILS]
 
     def test_single_database_service_moves_the_database_into_the_schema_slot(self):
-        assert table_fqn_candidates(self.DETAILS, False) == [TableDetails(name="users", schema="public", database=None)]
+        """Schema first, then the database — a single-database service can hold the real
+        schema in either level, so neither is discarded."""
+        assert table_fqn_candidates(self.DETAILS, False) == [
+            TableDetails(name="users", schema="public", database=None),
+            TableDetails(name="users", schema="app_db", database=None),
+        ]
 
     def test_single_database_service_without_a_schema_falls_back_to_the_database(self):
         details = TableDetails(name="users", schema=None, database="app_db")
         assert table_fqn_candidates(details, False) == [TableDetails(name="users", schema="app_db", database=None)]
 
+    def test_matching_levels_are_not_tried_twice(self):
+        """The normal single-database shape: a MySQL source reports the same value as the
+        stream namespace and as the config database."""
+        details = TableDetails(name="users", schema="mydb", database="mydb")
+        assert table_fqn_candidates(details, False) == [TableDetails(name="users", schema="mydb", database=None)]
+
+    def test_config_database_is_still_tried_when_it_differs_from_the_namespace(self):
+        """Regression guard for the pre-resolver behaviour, which put the *config* database in
+        the schema slot for MySQL and ignored the stream namespace. The namespace is tried
+        first now, but dropping the config database would lose lineage that used to resolve."""
+        details = TableDetails(name="users", schema="stream_ns", database="mydb")
+        assert table_fqn_candidates(details, False) == [
+            TableDetails(name="users", schema="stream_ns", database=None),
+            TableDetails(name="users", schema="mydb", database=None),
+        ]
+
     def test_undecided_service_tries_multi_then_single(self):
         assert table_fqn_candidates(self.DETAILS, None) == [
             self.DETAILS,
             TableDetails(name="users", schema="public", database=None),
+            TableDetails(name="users", schema="app_db", database=None),
         ]
 
     def test_no_database_never_duplicates_the_same_shape(self):
@@ -794,6 +819,19 @@ class TestTableFqnCandidates:
         """A declared multi-database service whose connector reported no database cannot be
         qualified — no candidate, rather than a half-qualified guess."""
         assert table_fqn_candidates(TableDetails(name="users", schema=None, database=None), True) == []
+
+    def test_undecided_service_needs_a_schema_for_the_database_qualified_shape(self):
+        """`*.<database>.*.<table>` cannot match a single-database service (its FQN is
+        `service.default.<database>.<table>`) and, against an undecided service, would instead
+        match an unrelated service holding a database of that name."""
+        details = TableDetails(name="users", schema=None, database="mydb")
+        assert table_fqn_candidates(details, None) == [TableDetails(name="users", schema="mydb", database=None)]
+
+    def test_known_multi_database_service_keeps_the_shape_without_a_schema(self):
+        """A relational source that reported no stream namespace still resolves through
+        `service.<database>.*.<table>` once the service is known to be multi-database."""
+        details = TableDetails(name="users", schema=None, database="app_db")
+        assert table_fqn_candidates(details, True) == [details]
 
 
 class TestUnderQualifiedGuard:
@@ -987,3 +1025,182 @@ class TestTruncatedSearchGuards:
         airbyte_source.metadata.es_search_container_by_path.return_value = [MOCK_CONTAINER] * ES_MATCH_LIMIT
 
         assert self._lineage(airbyte_source) == []
+
+
+MOCK_SECOND_STORAGE_SERVICE_REF = EntityReference(
+    id="7c7c7c7c-3333-4444-8555-666677778888",
+    type="storageService",
+    name="om28591-minio-storage-replica",
+)
+
+# The same bucket and prefix ingested a second time under a different storage service.
+MOCK_DUPLICATE_CONTAINER = Container(
+    id="5b5b5b5b-4444-4555-8666-777788889999",
+    name="api_data/pokemon",
+    fullyQualifiedName="om28591-minio-storage-replica.om28591-airbyte-dest.api_data/pokemon",
+    service=MOCK_SECOND_STORAGE_SERVICE_REF,
+)
+
+
+class TestContainerServiceAmbiguity:
+    """
+    One S3 path can exist in more than one storage service. Neither candidate is more correct
+    than the other, so the connector must emit nothing — including when storageServiceNames is
+    set and lists both of them, which narrows the candidates without deciding between them.
+    """
+
+    def _lineage(self, airbyte_source):
+        return list(
+            airbyte_source.yield_pipeline_lineage_details(
+                AirbytePipelineDetails(workspace=AirbyteWorkspace(workspaceId="ws-1"), connection=PUBLIC_API_CONNECTION)
+            )
+        )
+
+    def test_unscoped_ambiguous_path_yields_no_edge(self, airbyte_source):
+        airbyte_source.metadata.es_search_container_by_path.return_value = [
+            MOCK_CONTAINER,
+            MOCK_DUPLICATE_CONTAINER,
+        ]
+
+        assert self._lineage(airbyte_source) == []
+
+    def test_scoped_ambiguous_path_yields_no_edge(self, airbyte_source):
+        """Regression: the guard used to be skipped whenever storageServiceNames was set, so a
+        bucket registered under two configured services resolved to whichever one ES returned
+        first."""
+        airbyte_source.source_config.lineageInformation = LineageInformation(
+            storageServiceNames=["om28591-minio-storage", "om28591-minio-storage-replica"]
+        )
+        airbyte_source.metadata.es_search_container_by_path.return_value = [
+            MOCK_CONTAINER,
+            MOCK_DUPLICATE_CONTAINER,
+        ]
+
+        assert self._lineage(airbyte_source) == []
+
+    def test_scoping_to_one_service_resolves_the_ambiguity(self, airbyte_source):
+        """The documented way out: name a single service and the surviving candidate is unique."""
+        airbyte_source.source_config.lineageInformation = LineageInformation(
+            storageServiceNames=["om28591-minio-storage"]
+        )
+        airbyte_source.metadata.es_search_container_by_path.return_value = [
+            MOCK_CONTAINER,
+            MOCK_DUPLICATE_CONTAINER,
+        ]
+
+        edges = [either.right for either in self._lineage(airbyte_source)]
+
+        assert len(edges) == 1
+        assert edges[0].edge.toEntity.type == "container"
+        assert str(edges[0].edge.toEntity.id.root) == CONTAINER_ID
+
+
+class TestStreamParsingRobustness:
+    """
+    `configurations.streams` is filtered before validation so one malformed entry cannot fail
+    the whole connection. The filter must not also discard well-formed ones.
+    """
+
+    def test_response_dicts_are_parsed(self):
+        configurations = AirbyteConnectionConfigurations(streams=[{"name": "pokemon", "namespace": "ns"}])
+        assert configurations.streams == [AirbyteStream(name="pokemon", namespace="ns")]
+
+    @pytest.mark.parametrize("entry", [{}, {"namespace": "ns"}, {"name": ""}, {"name": None}, None, "junk", 7])
+    def test_entries_without_a_name_are_dropped(self, entry):
+        assert AirbyteConnectionConfigurations(streams=[entry]).streams == []
+
+    def test_already_built_streams_survive(self):
+        """Regression: the filter tested `isinstance(item, dict)`, so an `AirbyteStream` — the
+        one shape guaranteed to be valid — was dropped and `streams` came back empty with no
+        error, the same silent loss this connector was fixed for."""
+        stream = AirbyteStream(name="pokemon", namespace="ns")
+        assert AirbyteConnectionConfigurations(streams=[stream]).streams == [stream]
+
+    def test_a_malformed_entry_does_not_take_the_good_ones_with_it(self):
+        configurations = AirbyteConnectionConfigurations(
+            streams=[{"name": "users"}, {"name": ""}, AirbyteStream(name="orders"), None]
+        )
+        assert [stream.name for stream in configurations.streams] == ["users", "orders"]
+
+    def test_resolved_streams_agree_across_both_input_shapes(self):
+        def model(streams):
+            return AirbyteConnectionModel(connectionId="c1", configurations={"streams": streams}).resolved_streams
+
+        assert model([{"name": "pokemon"}]) == model([AirbyteStream(name="pokemon")])
+
+
+class TestUnresolvedSideWarning:
+    """
+    A connection side that no resolver claims is reported once, after the streams have been
+    tried — never once per stream, and never at all when the API resolver did claim it.
+    """
+
+    STREAMS: ClassVar[dict] = {
+        "streams": [{"name": name} for name in ("users", "orders", "payments", "refunds", "carts")]
+    }
+
+    def _run(self, airbyte_source, caplog):
+        connection = AirbyteConnectionModel(
+            connectionId="c1", name="conn", sourceId="s1", destinationId="d1", configurations=self.STREAMS
+        )
+        with caplog.at_level(logging.WARNING, logger="metadata.Ingestion"):
+            edges = list(
+                airbyte_source.yield_pipeline_lineage_details(
+                    AirbytePipelineDetails(workspace=AirbyteWorkspace(workspaceId="ws-1"), connection=connection)
+                )
+            )
+        return edges, [record.getMessage() for record in caplog.records if record.levelname == "WARNING"]
+
+    def _unknown_both_sides(self, airbyte_source):
+        airbyte_source.client.get_source.return_value = AirbyteSourceResponse(sourceType="dynamodb", configuration={})
+        airbyte_source.client.get_destination.return_value = AirbyteDestinationResponse(
+            destinationType="dynamodb", configuration={}
+        )
+
+    def test_one_warning_per_side_not_per_stream(self, airbyte_source, caplog):
+        self._unknown_both_sides(airbyte_source)
+
+        edges, warnings = self._run(airbyte_source, caplog)
+
+        assert edges == []
+        assert len(warnings) == 2
+        assert all("is not supported yet" in warning for warning in warnings)
+
+    def test_with_api_service_names_the_count_does_not_grow_with_streams(self, airbyte_source, caplog):
+        """Regression: the once-per-connection warning used to be skipped whenever
+        apiServiceNames was set, leaving one `matched 0 API collections` warning per stream per
+        side — five streams produced ten — none of which said the connector was unsupported."""
+        airbyte_source.source_config.lineageInformation = LineageInformation(apiServiceNames=["om28591-pokeapi"])
+        self._unknown_both_sides(airbyte_source)
+        airbyte_source.metadata.es_search_from_fqn.return_value = []
+
+        edges, warnings = self._run(airbyte_source, caplog)
+
+        assert edges == []
+        assert len(warnings) == 2
+        assert all("matched no API collection" in warning for warning in warnings)
+
+    def test_a_side_the_api_resolver_claims_is_not_reported(self, airbyte_source, caplog):
+        """The source is an unmapped connector type, but apiServiceNames resolves it — calling
+        that side unsupported would be wrong."""
+        airbyte_source.source_config.lineageInformation = LineageInformation(apiServiceNames=["om28591-pokeapi"])
+        airbyte_source.metadata.es_search_from_fqn.return_value = [MOCK_API_COLLECTION]
+        airbyte_source.metadata.es_search_container_by_path.return_value = [MOCK_CONTAINER]
+
+        edges, warnings = self._run(airbyte_source, caplog)
+
+        assert len(edges) == 5
+        assert warnings == []
+
+    def test_an_ambiguous_stream_is_still_reported_per_stream(self, airbyte_source, caplog):
+        """Ambiguity is a property of the individual stream name, so it stays per stream — only
+        the `no match` case collapses to one line per side."""
+        airbyte_source.source_config.lineageInformation = LineageInformation(
+            apiServiceNames=["om28591-pokeapi", "unrelated_api_service"]
+        )
+        airbyte_source.metadata.es_search_from_fqn.return_value = [MOCK_API_COLLECTION, MOCK_OTHER_API_COLLECTION]
+        airbyte_source.metadata.es_search_container_by_path.return_value = [MOCK_CONTAINER]
+
+        _, warnings = self._run(airbyte_source, caplog)
+
+        assert len([w for w in warnings if "matched 2 API collections" in w]) == 5

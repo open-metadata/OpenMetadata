@@ -59,9 +59,9 @@ SOURCE_TYPE_LOOKUP = {
     AirbyteSource.CLICKHOUSE.value: AirbyteSource.CLICKHOUSE,
     "clickhouse": AirbyteSource.CLICKHOUSE,
     # Mainstream warehouses are mapped so they resolve as tables (or safely yield no
-    # lineage) instead of falling through to the API resolver. ponytail: BigQuery/Oracle
-    # use the default database+namespace parse; add per-connector field mapping (BigQuery
-    # project_id) when there is a live connection to verify against.
+    # lineage) instead of falling through to the API resolver. BigQuery/Oracle use the
+    # default database+namespace parse; per-connector field mapping (BigQuery project_id)
+    # is deliberately left until there is a live connection to verify it against.
     AirbyteSource.SNOWFLAKE.value: AirbyteSource.SNOWFLAKE,
     "snowflake": AirbyteSource.SNOWFLAKE,
     AirbyteSource.BIGQUERY.value: AirbyteSource.BIGQUERY,
@@ -102,8 +102,8 @@ TABLE_KEY_ALIASES = {
 # Object-store connectors map to a Container, not a Table, so they are resolved by path
 # rather than through the TYPE_LOOKUP maps. Holds the connector display name ("S3", as
 # the internal API reports it) and the public-API slug ("s3").
-# ponytail: S3 only — GCS/Azure use different config keys and URI schemes, add them
-# alongside a scheme lookup when there is a real connection to test against.
+# S3 only — GCS/Azure use different config keys and URI schemes; they are deliberately left
+# out until there is a real connection to test a scheme lookup against.
 S3_CONNECTOR_TYPES = frozenset({"S3", "s3"})
 
 # The S3 source and destination connectors name their bucket/prefix fields differently.

@@ -307,13 +307,24 @@ class ApiResolver(EntityResolver):
             for collection in hits
             if collection.service and model_str(collection.service.name) in api_services
         ]
-        if len(collections) != 1:
+        if len(collections) > 1:
             logger.warning(
-                "While extracting lineage: [%s], stream [%s] matched %d API collections;"
-                " skipping. Set lineageInformation.apiServiceNames to disambiguate.",
+                "While extracting lineage: [%s], stream [%s] matched %d API collections in the"
+                " configured services; skipping. Narrow lineageInformation.apiServiceNames to"
+                " disambiguate.",
                 pipeline_name,
                 stream.name,
                 len(collections),
+            )
+            return None
+        if not collections:
+            # Not an ambiguity and usually not an API connector at all. The caller reports the
+            # whole side once, instead of one warning per stream saying the same thing.
+            logger.debug(
+                "While extracting lineage: [%s], stream [%s] matched no API collection in %s",
+                pipeline_name,
+                stream.name,
+                api_services,
             )
             return None
         return collections[0]

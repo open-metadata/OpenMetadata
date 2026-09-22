@@ -407,26 +407,23 @@ class AirbyteSource(PipelineServiceSource):
             return
         pipeline_reference = EntityReference(id=pipeline_entity.id.root, type="pipeline")
 
-        # The connector type belongs to the connection, not the stream, so resolve both sides
-        # once and warn once — per-stream selection re-derived the same answer and, when it was
-        # "unsupported", either spammed the log or (since the mid-cascade demotion to debug)
-        # said nothing at all about a connection that produced no lineage.
+        # The connector type belongs to the connection, not the stream, so both sides are
+        # resolved once here rather than re-derived per stream.
         source_resolver = get_resolver(source_connection.resolved_type, SOURCE)
         destination_resolver = get_resolver(destination_connection.resolved_type, DESTINATION)
-        if not self.get_api_service_names():
+
+        # A side with no resolver is only ever claimed by the opt-in API resolver, and whether
+        # that worked is not known until a stream has been tried. Collect the unclaimed sides
+        # here, drop each one as soon as any stream resolves it, and report what is left once —
+        # a per-stream warning would repeat itself for every stream on the connection.
+        unresolved_sides = {
+            direction: connection.resolved_type
             for direction, connection, resolver in (
                 (SOURCE, source_connection, source_resolver),
                 (DESTINATION, destination_connection, destination_resolver),
-            ):
-                if resolver is None:
-                    logger.warning(
-                        "Airbyte lineage [%s]: %s connector [%s] is not supported yet; lineage on that"
-                        " side is anchored on the pipeline. Set lineageInformation.apiServiceNames if"
-                        " it is an API service.",
-                        pipeline_name,
-                        direction,
-                        connection.resolved_type,
-                    )
+            )
+            if resolver is None
+        }
 
         for stream in streams:
             from_reference, from_supported = self._resolve_entity(
@@ -435,6 +432,10 @@ class AirbyteSource(PipelineServiceSource):
             to_reference, to_supported = self._resolve_entity(
                 destination_resolver, stream, destination_connection, DESTINATION, pipeline_name
             )
+            if from_reference is not None:
+                unresolved_sides.pop(SOURCE, None)
+            if to_reference is not None:
+                unresolved_sides.pop(DESTINATION, None)
 
             # A supported connector whose entity is merely not ingested yet drops the edge — never
             # imply the pipeline is a terminal source/sink for an ordinary table/container/topic.
@@ -459,8 +460,9 @@ class AirbyteSource(PipelineServiceSource):
                 )
 
             # Both sides are resolved by construction: the two guards above already dropped
-            # every case where either side stays None after the anchoring step.
-            assert from_reference is not None
+            # every case where either side stays None after the anchoring step. The type
+            # checker follows that for `from_reference` (the if/elif/else narrows it) but not
+            # for `to_reference`, whose non-Noneness comes from the `and` in the second guard.
             assert to_reference is not None
 
             yield Either(
@@ -472,6 +474,31 @@ class AirbyteSource(PipelineServiceSource):
                     )
                 )
             )
+
+        self._warn_unresolved_sides(unresolved_sides, pipeline_name)
+
+    def _warn_unresolved_sides(self, unresolved_sides: dict[str, str | None], pipeline_name: str) -> None:
+        """Report each connection side that no resolver could claim, once per connection."""
+        api_services = self.get_api_service_names()
+        for direction, resolved_type in unresolved_sides.items():
+            if api_services:
+                logger.warning(
+                    "Airbyte lineage [%s]: %s connector [%s] matched no API collection in %s;"
+                    " lineage on that side is anchored on the pipeline.",
+                    pipeline_name,
+                    direction,
+                    resolved_type,
+                    api_services,
+                )
+            else:
+                logger.warning(
+                    "Airbyte lineage [%s]: %s connector [%s] is not supported yet; lineage on that"
+                    " side is anchored on the pipeline. Set lineageInformation.apiServiceNames if"
+                    " it is an API service.",
+                    pipeline_name,
+                    direction,
+                    resolved_type,
+                )
 
     def _resolve_entity(
         self,
@@ -524,7 +551,7 @@ class AirbyteSource(PipelineServiceSource):
                 )
                 return None
 
-            containers = [container for container in hits if container]
+            containers = hits
             if storage_services:
                 containers = [
                     container
@@ -535,13 +562,18 @@ class AirbyteSource(PipelineServiceSource):
                 continue
 
             # One path can exist in several storage services (the same bucket ingested twice).
-            # With no storageServiceNames to choose between them the answer is arbitrary and the
-            # user has no way to correct it, so emit nothing rather than a coin-flip edge.
+            # Whichever one is picked is arbitrary, so emit nothing rather than a coin-flip edge.
+            # This holds whether or not storageServiceNames is set: scoping the search to two
+            # services that both hold the bucket narrows the candidates without deciding between
+            # them. `fullPath` is unique inside a service (the server matches it with an
+            # unglobbed wildcard query), so more than one surviving service is the only way this
+            # can happen.
             services = {model_str(container.service.name) for container in containers if container.service}
-            if not storage_services and len(services) > 1:
+            if len(services) > 1:
                 logger.warning(
                     "While extracting lineage: [%s], path [%s] matches containers in storage services %s;"
-                    " skipping. Set lineageInformation.storageServiceNames to disambiguate.",
+                    " skipping. Set lineageInformation.storageServiceNames to a single service to"
+                    " disambiguate.",
                     pipeline_name,
                     candidate,
                     sorted(services),
