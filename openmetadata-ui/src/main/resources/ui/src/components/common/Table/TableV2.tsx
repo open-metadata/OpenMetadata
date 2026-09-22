@@ -326,6 +326,22 @@ const toAriaDirection = (order: 'ascend' | 'descend') =>
 // it (jsdom's synthetic click hides both). Owning the press and anchoring the
 // Popover through triggerRef, with propagation stopped at the boundary, keeps
 // the column's press machinery out of the loop.
+// A plain-text header must never overflow its fixed-width cell into the next
+// column, so string titles always truncate — independent of the column's
+// `ellipsis` flag, which only governs body cells. Custom (non-string) titles
+// are left untouched: wrapping arbitrary header JSX (icons, sort affordances)
+// in `truncate` would clip it. Kept out of the header render so it does not add
+// to that function's cyclomatic complexity.
+const renderColumnHeaderTitle = <T,>(
+  col: ColumnType<T>,
+  propsColumns: ColumnsType<T>
+): ReactNode =>
+  typeof col.title === 'string' ? (
+    <span className="tw:min-w-0 tw:truncate">{col.title}</span>
+  ) : (
+    resolveColumnTitle(col, propsColumns)
+  );
+
 const HeaderFilterTrigger = ({
   icon,
   isOpen,
@@ -1870,6 +1886,14 @@ const TableV2 = <T extends object>(
                         // The same rule covers `th`: a header sits on the first
                         // line of a row its own cells may wrap past.
                         'tw:align-top tw:text-sm tw:text-tertiary',
+                        // The core Table.Head wraps the label in its own flex
+                        // group (`& > div`); it needs min-w-0 too, or the inner
+                        // truncating title has no shrinkable ancestor and a long
+                        // header still overflows the fixed-width cell.
+                        {
+                          'tw:[&>div]:min-w-0':
+                            typeof colType.title === 'string',
+                        },
                         getAlignClass(colType.align),
                         getHeaderAlignClass(colType.align),
                         pingShadowClass(
@@ -1901,9 +1925,14 @@ const TableV2 = <T extends object>(
                         stickyStyle
                       )}>
                       <div
-                        className="tw:flex tw:items-center tw:gap-1"
+                        className={classNames(
+                          'tw:flex tw:items-center tw:gap-1',
+                          // min-w-0 lets the truncating title shrink instead of
+                          // overflowing the fixed-width cell into its neighbour.
+                          { 'tw:min-w-0': typeof colType.title === 'string' }
+                        )}
                         data-testid="column-header-content">
-                        {resolveColumnTitle(colType, propsColumns)}
+                        {renderColumnHeaderTitle(colType, propsColumns)}
                         {Boolean(colType.filters || colType.filterDropdown) && (
                           <HeaderFilterTrigger
                             icon={
