@@ -46,11 +46,13 @@ jest.mock('./AnnouncementForm.component', () => ({
   default: ({
     open,
     title,
+    form,
     onCancel,
     onSubmit,
   }: {
     open: boolean;
     title: string;
+    form: { getValues: () => AnnouncementFormValues };
     onCancel: () => void;
     onSubmit: (values: AnnouncementFormValues) => void;
   }) =>
@@ -59,6 +61,11 @@ jest.mock('./AnnouncementForm.component', () => ({
         <span>{title}</span>
         <button data-testid="submit" onClick={() => onSubmit(submittedValues)}>
           submit
+        </button>
+        <button
+          data-testid="submit-defaults"
+          onClick={() => onSubmit(form.getValues())}>
+          submit defaults
         </button>
         <button data-testid="cancel" onClick={onCancel}>
           cancel
@@ -194,5 +201,26 @@ describe('AddAnnouncementModal', () => {
     });
 
     expect(onCancelMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('should default to a valid date range so the first submit is not rejected', async () => {
+    mockCreateAnnouncement.mockResolvedValueOnce({
+      id: '1',
+      name: 'announcement-1',
+      description: '',
+      startTime: START,
+      endTime: END,
+    });
+
+    render(<AddAnnouncementModal {...defaultProps} />);
+
+    // Submits the component's own defaults — an end equal to the start would
+    // fail the start-before-end check on the very first attempt.
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit-defaults'));
+    });
+
+    expect(mockShowErrorToast).not.toHaveBeenCalled();
+    expect(mockCreateAnnouncement).toHaveBeenCalledTimes(1);
   });
 });

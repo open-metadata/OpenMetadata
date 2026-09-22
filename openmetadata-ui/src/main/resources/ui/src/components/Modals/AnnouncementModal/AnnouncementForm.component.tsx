@@ -119,8 +119,9 @@ const AnnouncementForm = ({
   );
 
   return (
+    // Not dismissable: a stray click on the backdrop would throw away a
+    // half-written announcement. Escape and the close button still exit.
     <ModalOverlay
-      isDismissable
       isOpen={open}
       onOpenChange={(isOpen) => !isOpen && onCancel()}>
       <Modal>
@@ -165,21 +166,40 @@ const AnnouncementForm = ({
                     <Label>{t('label.announcement-type')}</Label>
                     <AnnouncementTypeSelect
                       value={field.value}
-                      onChange={field.onChange}
+                      onChange={(value) => {
+                        field.onChange(value);
+                        if (value !== AnnouncementType.Custom) {
+                          form.clearErrors('color');
+                        }
+                      }}
                     />
                   </div>
                 )}
               </FormField>
 
               {announcementType === AnnouncementType.Custom && (
-                <FormField control={form.control} name="color">
-                  {({ field }) => (
+                <FormField
+                  control={form.control}
+                  name="color"
+                  rules={{
+                    required: t('message.field-text-is-required', {
+                      fieldText: t('label.color'),
+                    }),
+                  }}>
+                  {({ field, fieldState }) => (
                     <div className="tw:flex tw:flex-col tw:gap-1.5">
-                      <Label>{t('label.color')}</Label>
+                      <Label isRequired>{t('label.color')}</Label>
                       <AnnouncementColorSelect
                         value={field.value}
                         onChange={field.onChange}
                       />
+                      {fieldState.error && (
+                        <span
+                          className="tw:text-sm tw:text-text-error-primary"
+                          data-testid="color-error">
+                          {fieldState.error.message}
+                        </span>
+                      )}
                     </div>
                   )}
                 </FormField>

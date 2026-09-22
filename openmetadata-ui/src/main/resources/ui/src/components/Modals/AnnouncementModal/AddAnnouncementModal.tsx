@@ -22,6 +22,8 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AnnouncementForm from './AnnouncementForm.component';
 import { AnnouncementFormValues } from './AnnouncementModal.interface';
 
+const DEFAULT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
 interface Props {
   open: boolean;
   entityType: string;
@@ -46,7 +48,9 @@ const AddAnnouncementModal: FC<Props> = ({
       description: '',
       announcementType: AnnouncementType.Notice,
       startTime: Date.now(),
-      endTime: Date.now(),
+      // A day's window by default: an end equal to the start fails the
+      // start-before-end check, so the first submit would always toast.
+      endTime: Date.now() + DEFAULT_WINDOW_MS,
     },
   });
 

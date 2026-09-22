@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useForm } from 'react-hook-form';
-import { AnnouncementType } from '../../../generated/entity/feed/announcement';
+import {
+  AnnouncementColor,
+  AnnouncementType,
+} from '../../../generated/entity/feed/announcement';
 import AnnouncementForm from './AnnouncementForm.component';
 import { toDateInputValue } from './announcementFormUtils';
 import { AnnouncementFormValues } from './AnnouncementModal.interface';
@@ -107,5 +110,62 @@ describe('AnnouncementForm', () => {
 
     // An empty input must not write a NaN timestamp into the form.
     expect(startInput).toHaveValue(toDateInputValue(START));
+  });
+
+  it('should block submit until a Custom announcement has a colour', async () => {
+    const onSubmit = jest.fn();
+    render(<Harness onSubmit={onSubmit} />);
+
+    fireEvent.click(
+      screen.getByTestId(`announcement-type-${AnnouncementType.Custom}`)
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('announcement-submit'));
+    });
+
+    expect(screen.getByTestId('color-error')).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByTestId(`announcement-color-${AnnouncementColor.Pink}`)
+      );
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('announcement-submit'));
+    });
+
+    expect(onSubmit.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        announcementType: AnnouncementType.Custom,
+        color: AnnouncementColor.Pink,
+      })
+    );
+  });
+
+  it('should not keep a colour error after switching away from Custom', async () => {
+    const onSubmit = jest.fn();
+    render(<Harness onSubmit={onSubmit} />);
+
+    fireEvent.click(
+      screen.getByTestId(`announcement-type-${AnnouncementType.Custom}`)
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('announcement-submit'));
+    });
+
+    expect(screen.getByTestId('color-error')).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByTestId(`announcement-type-${AnnouncementType.Warning}`)
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('announcement-submit'));
+    });
+
+    expect(onSubmit.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ announcementType: AnnouncementType.Warning })
+    );
   });
 });
