@@ -26,6 +26,7 @@ from collections.abc import Callable
 from contextlib import suppress
 from typing import Any
 
+from cachetools import LRUCache
 from sqlalchemy.engine import Connection
 from sqlalchemy.sql import text
 
@@ -45,6 +46,9 @@ logger = ingestion_logger()
 # Every other `database_type` - `shared`, `auto mounted catalog` - is a database
 # the cluster does not hold locally and therefore may refuse a connection to.
 LOCAL_DATABASE_TYPE = "local"
+
+# One entry per walking thread, each holding a single schema's columns.
+SCHEMA_CACHE_SIZE = 128
 
 
 def _table_type(raw_table_type: str | None) -> TableType:
@@ -106,32 +110,49 @@ class RedshiftDatashareCatalog:
     def __init__(self, connection_provider: Callable[[], Connection]) -> None:
         self._connection_provider = connection_provider
         self._database_types: dict[str, str] | None = None
+        self._database_types_are_an_inventory = False
         self._fetched_database_types = False
-        # Per thread: the schema node runs threaded, so one shared slot would let
-        # two schemas evict each other back into a query per table.
-        self._schema_columns: dict[int, tuple[tuple[str, str], dict[str, list]]] = {}
+        # Per thread, because the schema node runs threaded and one shared slot
+        # would let two schemas evict each other back into a query per table.
+        # Capped so rotating worker threads cannot retain schemas indefinitely;
+        # an eviction costs one re-query, not correctness.
+        self._schema_columns: LRUCache = LRUCache(maxsize=SCHEMA_CACHE_SIZE)
 
     @property
     def database_types(self) -> dict[str, str] | None:
         """``{database_name: database_type}`` for every database the cluster
         reports, or None when neither source can be read.
 
-        ``SHOW DATABASES`` answers both "which databases are there" and "which of
-        them are local" in one call, so the walk does not need a separate
-        enumeration. It is also the only source that reports a catalog database
-        mounted from Glue, and unlike ``pg_database`` it omits the system
-        databases. ``SVV_REDSHIFT_DATABASES`` is the fallback for clusters that
-        predate it; it sees only datashares from remote clusters.
+        ``SHOW DATABASES`` is the preferred source: it is the only one that
+        reports a catalog database mounted from Glue, and unlike ``pg_database``
+        it omits the system databases. ``SVV_REDSHIFT_DATABASES`` is the fallback
+        for clusters that predate it.
         """
         if not self._fetched_database_types:
             self._fetched_database_types = True
             self._database_types = self._fetch_database_types()
         return self._database_types
 
+    @property
+    def database_inventory(self) -> list[str] | None:
+        """Every database on the cluster, or None when no source can be trusted
+        to list them all.
+
+        Only ``SHOW DATABASES`` qualifies. ``SVV_REDSHIFT_DATABASES`` answers
+        "which of these are shared", not "which exist": it is scoped to the
+        databases the user has access to, and on a cluster carrying a Glue
+        catalog it omits it. Walking that list would silently drop databases -
+        and with `markDeletedDatabases` on, drop them recursively from the
+        catalog as deleted.
+        """
+        if self.database_types is None or not self._database_types_are_an_inventory:
+            return None
+        return list(self.database_types)
+
     def _fetch_database_types(self) -> dict[str, str] | None:
-        for query, source in (
-            (REDSHIFT_SHOW_DATABASES, "SHOW DATABASES"),
-            (REDSHIFT_GET_DATABASE_TYPES, "SVV_REDSHIFT_DATABASES"),
+        for query, source, is_inventory in (
+            (REDSHIFT_SHOW_DATABASES, "SHOW DATABASES", True),
+            (REDSHIFT_GET_DATABASE_TYPES, "SVV_REDSHIFT_DATABASES", False),
         ):
             connection = self._connection_provider()
             try:
@@ -145,6 +166,7 @@ class RedshiftDatashareCatalog:
                 with suppress(Exception):
                     connection.rollback()
                 continue
+            self._database_types_are_an_inventory = is_inventory
             return {
                 str(row.database_name): str(row.database_type or "").strip().lower()
                 for row in rows

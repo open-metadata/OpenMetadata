@@ -228,9 +228,12 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         # unlike `pg_database` it leaves out template0/template1/padb_harvest -
         # system databases the walk would otherwise try to connect to. Falls back
         # to `pg_database` on a cluster or role that cannot run it.
-        database_types = self.datashare.database_types
-        if database_types is not None:
-            yield from database_types
+        # Only a source that lists *every* database may drive the walk. The
+        # classifier fallback is not one, and a short list here would have
+        # `markDeletedDatabases` mark live databases and their contents deleted.
+        inventory = self.datashare.database_inventory
+        if inventory is not None:
+            yield from inventory
         else:
             yield from self._execute_database_query(REDSHIFT_GET_DATABASE_NAMES)
 
@@ -398,7 +401,13 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         # Claim the database only when the catalog views can actually see inside
         # it, so a database we cannot read is skipped with an explanation instead
         # of being registered with no schemas.
-        schema_names = self.datashare.get_schema_names(database_name)
+        # This runs inside the walk's `except` branch, so an exception here
+        # escapes the producer and every database after this one is skipped.
+        try:
+            schema_names = self.datashare.get_schema_names(database_name)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning("Could not read the catalog views for [%s]: %s", database_name, exc)
+            return None
         if not schema_names:
             logger.warning(
                 "Database [%s] did not accept a connection (%s) and the catalog views report no "

@@ -163,6 +163,8 @@ class RedshiftSourceFixture:
             return MagicMock(fetchall=lambda: DATABASE_ROWS)
         if "SVV_ALL_SCHEMAS" in query:
             self.assertEqual(params["database"], SHARED_DATABASE)
+            if isinstance(self.schema_rows, Exception):
+                raise self.schema_rows
             return self.schema_rows
         if "SVV_ALL_TABLES" in query:
             self.assertEqual(params["database"], SHARED_DATABASE)
@@ -175,15 +177,16 @@ class RedshiftSourceFixture:
             return MagicMock(all=lambda: STORED_PROCEDURE_ROWS)
         raise AssertionError(f"Unexpected query on the local connection: {statement}")
 
-    def _database_names(self, unreachable_databases):
+    def _database_names(self, unreachable_databases, databases=None):
         """Walk the databases, failing to connect to the given ones"""
+        databases = databases or [LOCAL_DATABASE, SHARED_DATABASE]
 
         def set_inspector(database_name: str):
             if database_name in unreachable_databases:
                 raise ConnectionError(f'Cannot connect to shared database "{database_name}"')
 
         with (
-            patch.object(RedshiftSource, "get_database_names_raw", return_value=[LOCAL_DATABASE, SHARED_DATABASE]),
+            patch.object(RedshiftSource, "get_database_names_raw", return_value=databases),
             patch.object(RedshiftSource, "set_inspector", side_effect=set_inspector),
             patch.object(RedshiftSource, "_set_incremental_table_processor"),
             patch.object(RedshiftSource, "set_external_location_map"),
@@ -271,6 +274,17 @@ class RedshiftDatashareTest(RedshiftSourceFixture, unittest.TestCase):
         self.show_databases_error = RuntimeError('syntax error at or near "DATABASES"')
         self.assertEqual(self._database_names({SHARED_DATABASE}), [LOCAL_DATABASE, SHARED_DATABASE])
         self.assertDatashareStrategy(SHARED_DATABASE)
+
+    def test_a_failing_catalog_read_does_not_abort_the_walk(self):
+        """The catalog read runs inside the walk's `except` branch, so an
+        exception there escapes the producer and every later database is lost."""
+        self.schema_rows = RuntimeError("permission denied for view svv_all_schemas")
+        # The datashare database sits between two reachable ones
+        walked = self._database_names(
+            {SHARED_DATABASE},
+            databases=[LOCAL_DATABASE, SHARED_DATABASE, "another_db"],
+        )
+        self.assertEqual(walked, [LOCAL_DATABASE, "another_db"])
 
     def test_shared_database_with_no_readable_schemas_is_skipped(self):
         """A database the catalog cannot see into is skipped, not registered empty.
@@ -447,6 +461,20 @@ class RedshiftDatabaseListingTest(RedshiftSourceFixture, unittest.TestCase):
         self.show_databases_error = RuntimeError('unrecognized configuration parameter "databases"')
         self.assertEqual(self.redshift_source.datashare.shared_database_names, {SHARED_DATABASE})
         self.connection.rollback.assert_called_once()
+
+    def test_the_classifier_never_becomes_the_database_listing(self):
+        """SVV_REDSHIFT_DATABASES answers "which are shared", not "which exist" -
+        it is scoped to what the user can access and omits a Glue catalog. Walking
+        it would drop databases, and `markDeletedDatabases` would then mark those
+        live databases and their contents deleted."""
+        self.show_databases_error = RuntimeError('syntax error at or near "DATABASES"')
+        # The listing still comes from pg_database, system databases and all
+        self.assertEqual(
+            list(self.redshift_source.get_database_names_raw()),
+            [LOCAL_DATABASE, SHARED_DATABASE, "template0", "padb_harvest"],
+        )
+        # ...while SVV still does the job it is good for
+        self.assertEqual(self.redshift_source.datashare.shared_database_names, {SHARED_DATABASE})
 
     def test_falls_back_to_pg_database_when_show_is_unavailable(self):
         """A cluster or role that cannot run either classifier keeps the old listing"""

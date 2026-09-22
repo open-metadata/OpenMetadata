@@ -26,6 +26,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, cast
 
+from cachetools import LRUCache
 from sqlalchemy import sql
 from sqlalchemy.engine.reflection import Inspector
 
@@ -50,6 +51,10 @@ if TYPE_CHECKING:
         RedshiftIncrementalTableProcessor,
     )
     from metadata.ingestion.source.database.redshift.metadata import RedshiftSource
+
+# Descriptions are read back per table right after the schema is listed, so the
+# working set is one schema's tables; the cap only bites on a very large one.
+TABLE_REMARKS_CACHE_SIZE = 1000
 
 STANDARD_TABLE_TYPES = {
     "r": TableType.Regular,
@@ -205,8 +210,10 @@ class DatashareStrategy(RedshiftMetadataStrategy):
         self._schema_names = schema_names
         self.catalog = catalog
         # Keyed by schema as well, so that tables of another schema being
-        # processed in parallel keep their own remarks.
-        self._table_remarks: dict[tuple[str, str], str | None] = {}
+        # processed in parallel keep their own remarks. Capped so a database with
+        # a very large catalog cannot retain a remark per table for the whole
+        # walk; an eviction costs one table its description, nothing else.
+        self._table_remarks: LRUCache = LRUCache(maxsize=TABLE_REMARKS_CACHE_SIZE)
 
     def schema_names(self) -> Iterable[str]:
         return self._schema_names
