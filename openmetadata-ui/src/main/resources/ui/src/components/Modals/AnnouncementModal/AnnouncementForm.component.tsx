@@ -14,21 +14,18 @@
 import {
   Button,
   Dialog,
-  FieldProp,
-  FieldTypes,
   FormField,
-  getField,
   HookForm,
   Input,
   Label,
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
-import { useMemo } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
+import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import { fromDateInputValue, toDateInputValue } from './announcementFormUtils';
 import { AnnouncementFormValues } from './AnnouncementModal.interface';
 import {
@@ -102,21 +99,6 @@ const AnnouncementForm = ({
 }: AnnouncementFormProps) => {
   const { t } = useTranslation();
   const announcementType = form.watch('announcementType');
-
-  const descriptionField: FieldProp = useMemo(
-    () => ({
-      name: 'description',
-      id: 'description',
-      label: t('label.description'),
-      required: false,
-      type: FieldTypes.DESCRIPTION,
-      props: {
-        'data-testid': 'description',
-        placeHolder: t('message.write-your-announcement-lowercase'),
-      },
-    }),
-    [t]
-  );
 
   return (
     // Not dismissable: a stray click on the backdrop would throw away a
@@ -233,7 +215,25 @@ const AnnouncementForm = ({
                 </FormField>
               </div>
 
-              {getField(descriptionField)}
+              <FormField control={form.control} name="description">
+                {({ field }) => (
+                  <div className="tw:flex tw:flex-col tw:gap-1.5">
+                    <Label>{t('label.description')}</Label>
+                    {/* The block editor, not core's DESCRIPTION field: that one
+                        renders a plain TextArea, and an announcement's
+                        description is markdown that the banner and drawer both
+                        render through RichTextEditorPreviewerV1. */}
+                    <RichTextEditor
+                      data-testid="description"
+                      initialValue={field.value}
+                      placeHolder={t(
+                        'message.write-your-announcement-lowercase'
+                      )}
+                      onTextChange={field.onChange}
+                    />
+                  </div>
+                )}
+              </FormField>
             </HookForm>
           </Dialog.Content>
 

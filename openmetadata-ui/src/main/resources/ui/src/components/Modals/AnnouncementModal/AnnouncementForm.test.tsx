@@ -30,12 +30,11 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   getTimeZone: () => 'UTC',
 }));
 
-// The rich-text description field pulls the block editor, which is irrelevant
-// to what this form owns.
-jest.mock('@openmetadata/ui-core-components', () => ({
-  ...jest.requireActual('@openmetadata/ui-core-components'),
-  getField: ({ name }: { name: string }) => (
-    <div data-testid={`field-${name}`} />
+// The block editor is heavy and irrelevant to what this form owns.
+jest.mock('../../common/RichTextEditor/RichTextEditor', () => ({
+  __esModule: true,
+  default: ({ initialValue }: { initialValue?: string }) => (
+    <div data-testid="description">{initialValue}</div>
   ),
 }));
 
