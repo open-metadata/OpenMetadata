@@ -42,9 +42,9 @@ test('the suppressions baseline matches its recorded state exactly', () => {
   const EXPECTED = {
     'om-playwright/justified-rule-disable': 10,
     'om-playwright/no-blanket-test-slow': 1,
-    // 1202 on main, less the six positional locators the CodeMirror 6 selectors
+    // main's count, less the six positional locators the CodeMirror 6 selectors
     // replaced (MetricCustomUnitFlow, CustomProperties, customProperty, metric).
-    'om-playwright/no-positional-locator': 1196,
+    'om-playwright/no-positional-locator': 1177,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 2,
     'playwright/no-wait-for-selector': 25,

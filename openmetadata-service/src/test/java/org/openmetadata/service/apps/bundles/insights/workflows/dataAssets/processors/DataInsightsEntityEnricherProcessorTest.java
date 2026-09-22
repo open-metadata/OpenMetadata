@@ -15,6 +15,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.END_TIMESTAMP_KEY;
+import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
+import static org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow.ENTITY_TYPE_FIELDS_KEY;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 
 import java.lang.reflect.Method;
 import java.net.URI;
@@ -31,6 +36,7 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -41,6 +47,8 @@ import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proce
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentContext;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentTarget;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.VersionShape;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.SearchIndexUtils;
 
 /**
@@ -73,6 +81,38 @@ class DataInsightsEntityEnricherProcessorTest {
   @BeforeEach
   void setUp() {
     processor = new DataInsightsEntityEnricherProcessor(100);
+  }
+
+  @Test
+  void skipsEntityDeletedMidRunInsteadOfFailingSource() throws Exception {
+    // An asset hard-deleted mid-run (e.g. a concurrent recursive service delete) must be skipped,
+    // not fail the whole Data Insights source — otherwise dependent extensions such as completeness
+    // scoring are aborted for every asset in the run. Regression for the MetadataCompleteness AUT.
+    Table deleted =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withFullyQualifiedName("svc.db.schema.orders")
+            .withVersion(0.1)
+            // Within the window, so version resolution takes the walk path (not the N+1 fast path).
+            .withUpdatedAt(WINDOW_END);
+
+    Map<String, Object> contextData = new HashMap<>();
+    contextData.put(ENTITY_TYPE_KEY, Entity.TABLE);
+    contextData.put(ENTITY_TYPE_FIELDS_KEY, PROJECTION_FIELDS);
+    contextData.put(START_TIMESTAMP_KEY, WINDOW_START);
+    contextData.put(END_TIMESTAMP_KEY, WINDOW_END);
+
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      EntityRepository<?> repository = Mockito.mock(EntityRepository.class);
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
+      Mockito.when(repository.listVersionsWithOffset(any(UUID.class), anyInt(), anyInt()))
+          .thenThrow(new EntityNotFoundException("Entity not found: table " + deleted.getId()));
+
+      List<Map<String, Object>> snapshots = processor.enrichSingle(deleted, contextData);
+
+      assertTrue(snapshots.isEmpty(), "a deleted asset should produce no snapshots and not throw");
+    }
   }
 
   @Test
