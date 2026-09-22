@@ -4869,6 +4869,7 @@
     "test-case-insight-description": "Accede a una vista centralizada de la salud de tu conjunto de datos basada en las validaciones de prueba configuradas.",
     "test-case-name-validation": "El nombre no puede contener dos puntos dobles (::), comillas (\") o símbolos de mayor que (>).",
     "test-case-not-run-yet": "Esta prueba aún no se ha ejecutado. Añádala a un pipeline para empezar a recopilar resultados.",
+    "test-case-run-already-in-progress": "Ya hay una ejecución en curso del pipeline de la suite de este caso de prueba. Ejecutarlo de nuevo iniciará otra.",
     "test-case-run-queued": "Ejecución en cola — esperando a que se inicie el pipeline de ingesta.",
     "test-case-schedule-description": "Los tests de calidad de datos pueden ser programados para ser ejecutados a la frecuencia deseada. El timezone es en UTC.",
     "test-case-status-sub-header": "Visualice la salud de sus pruebas de validación de datos con un desglose de casos exitosos, fallidos y abortados.",

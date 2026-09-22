@@ -86,6 +86,7 @@
         "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
+        "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts",
         "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
@@ -219,6 +220,14 @@
       "specs": [
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Pages/DataInsight.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/constant/dataQuality.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts"
       ]
     },
     {
@@ -669,6 +678,7 @@
         "playwright/e2e/Features/AppMode/AppModePreferenceRoundTrip.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeResolver.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeRouteIsolation.spec.ts",
+        "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts"
       ]
     },
@@ -703,6 +713,7 @@
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
         "playwright/e2e/Features/DataQuality/ProfilerIngestionForm.spec.ts",
+        "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
@@ -1550,6 +1561,7 @@
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
         "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts",
+        "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts",
         "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseCrudAfterReindex.spec.ts",
@@ -2747,6 +2759,7 @@
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
         "playwright/e2e/Features/DataQuality/ProfilerIngestionForm.spec.ts",
+        "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
@@ -3078,6 +3091,7 @@
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
         "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts",
+        "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts",
         "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseCrudAfterReindex.spec.ts",
@@ -4513,6 +4527,7 @@
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
+        "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts",
         "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseCrudAfterReindex.spec.ts",
@@ -10180,6 +10195,7 @@
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
         "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts",
+        "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts",
         "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseCrudAfterReindex.spec.ts",
