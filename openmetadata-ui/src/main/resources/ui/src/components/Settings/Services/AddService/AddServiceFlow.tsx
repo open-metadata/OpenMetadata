@@ -437,7 +437,7 @@ const AddServiceFlow = ({ embedded = false }: AddServiceFlowProps) => {
         config: {},
       },
     });
-  }, [resetNameValidation]);
+  }, [resetActiveField, resetNameValidation]);
 
   const slashedBreadcrumb = useMemo(
     () => getAddServiceEntityBreadcrumb(serviceCategory),
@@ -659,7 +659,7 @@ const AddServiceFlow = ({ embedded = false }: AddServiceFlowProps) => {
 
   useEffect(() => {
     resetActiveField(activeServiceStep === 2 ? 'serviceName' : '');
-  }, [activeServiceStep]);
+  }, [activeServiceStep, resetActiveField]);
 
   const hideSecondPanel = useMemo(
     () =>
