@@ -98,3 +98,17 @@ describe('RichTextEditorPreviewerV1: markdown entity rendering', () => {
     expect(container.querySelector('script')).toBeNull();
   });
 });
+
+describe('RichTextEditorPreviewerV1: markdown link rendering', () => {
+  it('should render a legacy bare URL as a clickable link', async () => {
+    const url = 'https://example.com/docs';
+
+    render(
+      <RichTextEditorPreviewerV1 enableSeeMoreVariant={false} markdown={url} />
+    );
+
+    const link = await screen.findByRole('link', { name: url }, RENDER_TIMEOUT);
+
+    expect(link).toHaveAttribute('href', url);
+  });
+});

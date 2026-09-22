@@ -53,13 +53,18 @@ const buildConfigPayload = (): ProviderConfigOverride => {
       jwtPrincipalClaims: ['email', 'preferred_username', 'sub'],
       enableSelfSignup: true,
       oidcConfiguration: {
-        // Mirror clientId into oidcConfiguration so the broken variant has
-        // a nested handle to drop without touching the top-level field
-        // (which the server rejects at ingest before the client sees it).
         id: OKTA_TENANT.clientId,
-        clientId: OKTA_TENANT.clientId,
         type: 'okta',
+        // Server-side schema (oidcClientConfig.json) requires `secret`,
+        // `tenant`, and `discoveryUri` on every entry — even for public
+        // clients that never exchange them in the browser flow. `PUT
+        // /system/security/config` fails deserialization (Jackson
+        // FAIL_ON_UNKNOWN_PROPERTIES / missing required) without them.
+        // Matches the auth0 fixture's rationale (auth0.ts).
+        secret: 'unused-public-client',
+        tenant: 'okta',
         scope: 'openid email profile',
+        discoveryUri: `${authority}/.well-known/openid-configuration`,
         callbackUrl: `${OM_BASE_URL}/callback`,
         serverUrl: OM_BASE_URL,
         responseType: 'code',
@@ -115,6 +120,7 @@ export const oktaProviderFixture: SsoProviderFixture = {
   supportsSelfSignup: true,
   supportsSilentCallback: false,
   usesBackendRefresh: false,
+  supportsColdLoadRefresh: true,
 
   signInButtonPattern: /(sign in|log in) with Okta/i,
 

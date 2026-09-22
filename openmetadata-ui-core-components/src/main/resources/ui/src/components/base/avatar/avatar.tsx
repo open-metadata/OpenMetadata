@@ -2,6 +2,7 @@ import { cx } from '@/utils/cx';
 import { User01 } from '@untitledui/icons';
 import { type CSSProperties, type FC, type ReactNode, useState } from 'react';
 import { AvatarOnlineIndicator, VerifiedTick } from './base-components';
+import { getAvatarColorClasses } from './utils';
 
 type AvatarSize = 'xxs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
@@ -33,6 +34,17 @@ export interface AvatarProps {
    * The initials of the user to display if no image is available.
    */
   initials?: string;
+  /**
+   * How initials are colored when no image is available:
+   * - `auto` (default): a consistent tinted `utility-*` color derived from the
+   *   name (`alt` ?? `initials`) that adapts to light/dark.
+   * - `solid`: a solid `utility-*` fill with white initials.
+   * - `neutral`: the plain gray surface with muted initials (e.g. the "+N"
+   *   overflow bubble).
+   *
+   * @default 'auto'
+   */
+  colorVariant?: 'auto' | 'solid' | 'neutral';
   /**
    * An icon to display if no image is available.
    */
@@ -97,6 +109,7 @@ export const Avatar = ({
   src,
   alt,
   initials,
+  colorVariant = 'auto',
   placeholder,
   placeholderIcon: PlaceholderIcon,
   badge,
@@ -108,6 +121,18 @@ export const Avatar = ({
   'data-testid': dataTestId,
 }: AvatarProps) => {
   const [isFailed, setIsFailed] = useState(false);
+
+  // Color the initials only when we actually fall back to them (no usable
+  // image). `auto`/`solid` derive a theme-adapting utility color from the name;
+  // `neutral` keeps the plain gray surface.
+  const showingInitials = Boolean(initials) && !(src && !isFailed);
+  const initialsColor =
+    showingInitials && colorVariant !== 'neutral'
+      ? getAvatarColorClasses(
+          alt || initials || '',
+          colorVariant === 'solid' ? 'solid' : 'outlined'
+        )
+      : undefined;
 
   const renderMainContent = () => {
     if (src && !isFailed) {
@@ -124,6 +149,8 @@ export const Avatar = ({
 
     if (initials) {
       return (
+        // Color is inherited from the root (see className above) so a caller can
+        // override it; the span only carries sizing.
         <span className={cx('tw:text-current', styles[size].initials)}>
           {initials}
         </span>
@@ -172,10 +199,18 @@ export const Avatar = ({
     <div
       data-avatar
       className={cx(
-        'tw:relative tw:inline-flex tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-tertiary tw:outline-transparent',
+        'tw:relative tw:inline-flex tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:outline-transparent',
+        // Colored initials bring their own tinted surface (+ border for the
+        // outlined variant); otherwise fall back to the neutral gray surface.
+        initialsColor ? initialsColor.container : 'tw:bg-tertiary',
+        // Initials text color lives on the root (the span inherits it) so a
+        // caller's `className` — applied last — can still override it.
+        showingInitials && (initialsColor?.text ?? 'tw:text-quaternary'),
         // Focus styles
         focusable &&
           'tw:group-outline-focus-ring tw:group-focus-visible:outline-2 tw:group-focus-visible:outline-offset-2',
+        // Honor the contrast outline regardless of the initials color treatment
+        // — AvatarGroup relies on it to separate negatively-overlapped avatars.
         contrastBorder && 'tw:outline tw:outline-avatar-contrast-border',
         styles[size].root,
         className

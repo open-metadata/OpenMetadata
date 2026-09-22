@@ -27,9 +27,10 @@ coverage, a retried one looks green.
 
 ## Entries
 
-1 entry. Most evidence is failures observed across 11 merge_group runs sampled on
-2026-09-04; the threshold for quarantining is **2 or more**, counted per
-generated variant rather than per source line.
+1 entry. The threshold for quarantining is **2 or more** failures, counted per
+generated variant rather than per source line. The 11 merge_group runs sampled
+on 2026-09-04 that seeded this list are all released now; the entry below was
+tagged separately, on 2026-09-11.
 
 | Spec | Test | Seen | Symptom |
 |---|---|---|---|
@@ -60,14 +61,10 @@ entity seeding still happen — a project-level `grep` *is* applied to dependenc
 projects, so filtering them would make every quarantined test fail for want of
 `admin.json` instead of for its flake.
 
-Re-run `npx playwright test --list` after changing this file and update the
-default-lane count here. It is **4603 of 4619**; the quarantined lane lists
-23, which is 16 quarantined tests plus the 7 fixture projects above. The 16 are the
-DataContracts entry in the table and the whole
-`e2e/Pages/Lineage/LineageFilters.spec.ts` describe (15 tests), tagged in #33357
-without an entry here yet. (It was 4601 of 4618 with 2 entries plus
-LineageFilters, 4586 of 4605 with 4 entries plus LineageFilters, 4575 of 4580
-with 5 entries, 4576 of 4580 with 4, and 4543 of 4555 when the list held 13.)
+To see what quarantine currently costs, run `npx playwright test --list` with and
+without `PLAYWRIGHT_RUN_QUARANTINED=true` and compare the totals. That pair of
+numbers used to be written out here; nothing checks them, so they went stale on
+every release — derive them when you need them instead.
 
 ## Not quarantined — fixed instead
 
@@ -99,6 +96,7 @@ entry.
 | `e2e/Features/Glossary/GlossaryHierarchy.spec.ts` | should cancel drag and drop operation | `dragAndDropTerm` pressed at coordinates computed before the glossary page finished hydrating — the description block lands last and pushes every row down about a row height — and `force: true` skipped the actionability check that would have waited. It now holds both rows still before pressing. |
 | `e2e/Features/Glossary/GlossaryHierarchy.spec.ts` | should move term to root of different glossary | `changeTermHierarchyFromModal` calls the `moveAsync` API, which returns 200 immediately while the actual move is processed asynchronously. The test navigated to glossary2 and asserted the moved term without waiting for the async move to complete — a race the test lost 9/11 times. Added an `expect.poll` that waits for the term's `glossary.fullyQualifiedName` to update (same pattern as the passing H-M05 test). The misleading "Drag-and-drop" symptom label was from the quarantine entry; this test uses the modal, not drag-and-drop. |
 | `e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts` | Should remove user owner for knowledgeCenter | Released in #33395. The Explore summary panel renders owners from the search document, which is refreshed asynchronously after the owner PATCH, so polling the DOM and re-navigating raced the index refresh in both the add and remove steps. The test now gates on `/api/v1/search/query` through `waitForOwnerIndexed` (a nested `owners.id` query filter, since `owners` is nested in `knowledge_page_search_index`; removal waits on a `must_not` of the same clause), then navigates once and asserts. |
+| `e2e/Pages/Lineage/LineageFilters.spec.ts` | the whole describe (15 tests) | Tagged in #33357 on 2026-09-15 without an entry here, released in #33336 on 2026-09-18. A product bug: `LineageMap` cleared its `loading` state as soon as the scene response arrived, before ELK had positioned the nodes, so `waitForAllLoadersToDisappear` returned on a graph that was not on screen yet. `setLoading(false)` now runs in the layout's `.then()`, and a `pendingFetchRef` tracks an in-flight fetch so a cache hit racing that fetch cannot leave the loader stuck instead. The lineage export test was fixed in the same PR (`ExportUtils`). |
 | `e2e/Features/DataQuality/TableLevelTests.spec.ts` | Table Difference | A test-side race, not a product bug. The key-column selects sit in the Add Test Case drawer's scroll container; when a trigger is partly clipped by it, Playwright's click scrolls it just before `pointerdown`. The browser delivers that `scroll` event a frame later, after react-aria has opened the non-modal popover, and react-aria closes a popover when an ancestor of its trigger scrolls — so the option click timed out against a list that had already gone. A trace from a local repro showed the list open with the wanted option, then closed 160ms later with no click in between. `selectOptionWithRetry` now centres the trigger and lets two frames run before clicking (`scrollIntoViewAndSettle` in `utils/common.ts`; `scrollIntoViewIfNeeded` reveals only the minimum and could leave the click point clipped), and every key- and use-column pick in the test goes through one of the two. Before table 2's pick the test waits for every listbox to detach with `toHaveCount(0)`: table 1's popover and table 2's search popover can both still be exiting, and `not.toBeVisible` fails on strict mode with two matches rather than waiting. The evidence is thinner than for the rows above. The flake reproduced locally only at 4 workers (about 1 run in 12-20), which also runs the local stack out of memory; at 1 worker the unfixed test passed 20/20, and 10/10 under 4x CPU throttling, so there is no local A/B. The fixed test passed 20/20 at 1 worker and 10/10 throttled. Run it with tracing off: tracing slows each action enough to hide the strict-mode failure above, which failed 17/20 untraced and 0/10 traced. CI is the soak — if it fails at a column pick again, re-quarantine it with the trace. |
 
 ## Left running deliberately
