@@ -54,7 +54,6 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [activeDomains, setActiveDomains] = useState<EntityReference[]>([]);
-  const [popoverOpen, setPopoverOpen] = useState(false);
   const { entityRules } = useEntityRules(entityType);
 
   // Sync activeDomains with domains prop, similar to DomainLabel
@@ -138,7 +137,6 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
         // Only proceed if there are changes
         if (jsonPatch.length === 0) {
           setIsLoading(false);
-          setPopoverOpen(false);
 
           return;
         }
@@ -164,10 +162,8 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
         }
 
         setIsLoading(false);
-        setPopoverOpen(false);
       } catch (error) {
         setIsLoading(false);
-        setPopoverOpen(false);
         showErrorToast(
           error as AxiosError,
           t('server.entity-updating-error', {
@@ -198,26 +194,13 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
           hasPermission={hasPermission}
           multiple={entityRules.canAddMultipleDomains}
           overlayClassName="domain-popover"
-          popoverProps={{
-            open: popoverOpen,
-            onOpenChange: setPopoverOpen,
-          }}
           selectedDomain={activeDomains}
           wrapInButton={false}
-          onCancel={() => {
-            setPopoverOpen(false);
-          }}
           onUpdate={handleDomainSave}
         />
       )
     );
-  }, [
-    showEditButton,
-    hasPermission,
-    activeDomains,
-    handleDomainSave,
-    popoverOpen,
-  ]);
+  }, [showEditButton, hasPermission, activeDomains, handleDomainSave]);
 
   if (isLoading) {
     return (
