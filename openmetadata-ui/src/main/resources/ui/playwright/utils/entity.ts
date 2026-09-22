@@ -14,44 +14,44 @@ import { expect, Locator, Page, type Response } from '@playwright/test';
 import { JSDOM } from 'jsdom';
 import { isEmpty, lowerCase } from 'lodash';
 import {
-    BIG_ENTITY_DELETE_TIMEOUT,
-    ENTITIES_WITHOUT_FOLLOWING_BUTTON,
-    LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT,
-    LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED
+  BIG_ENTITY_DELETE_TIMEOUT,
+  ENTITIES_WITHOUT_FOLLOWING_BUTTON,
+  LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT,
+  LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED,
 } from '../constant/delete';
 import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { SidebarItem } from '../constant/sidebar';
 import {
-    EntityTypeEndpoint,
-    ENTITY_PATH
+  EntityTypeEndpoint,
+  ENTITY_PATH,
 } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
 import { EntityType } from '../support/entity/EntityDataClass.interface';
 import { TableClass } from '../support/entity/TableClass';
 import { TagClass } from '../support/tag/TagClass';
 import {
-    clickOutside,
-    closeFirstPopupAlert,
-    descriptionBox,
-    getEntityTypeSearchIndexMapping,
-    readElementInListWithScroll,
-    redirectToHomePage,
-    resolveDescriptionBox,
-    toastNotification,
-    uuid
+  clickOutside,
+  closeFirstPopupAlert,
+  descriptionBox,
+  getEntityTypeSearchIndexMapping,
+  readElementInListWithScroll,
+  redirectToHomePage,
+  resolveDescriptionBox,
+  toastNotification,
+  uuid,
 } from './common';
 import {
-    customFormatDateTime,
-    getCurrentMillis,
-    getEpochMillisForFutureDays
+  customFormatDateTime,
+  getCurrentMillis,
+  getEpochMillisForFutureDays,
 } from './dateTime';
 import { searchAndClickOnOption } from './explore';
 import {
-    applyGlossaryPicker,
-    glossaryWidgetTrigger,
-    openGlossaryPicker,
-    pickGlossaryTerm,
-    toggleGlossaryTermInPicker
+  applyGlossaryPicker,
+  glossaryWidgetTrigger,
+  openGlossaryPicker,
+  pickGlossaryTerm,
+  toggleGlossaryTermInPicker,
 } from './glossaryPicker';
 import { sidebarClick } from './sidebar';
 
