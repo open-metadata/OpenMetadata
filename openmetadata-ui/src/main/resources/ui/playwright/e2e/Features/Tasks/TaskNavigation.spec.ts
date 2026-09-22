@@ -473,7 +473,7 @@ test.describe('Task Navigation - URL Validation', () => {
     // because TASK-00001 is a task ID, not a table FQN
     const tableNotFound = page.waitForResponse(
       (r) =>
-        r.url().includes('/api/v1/tables/name/TASK-00001')
+        r.url().includes('/api/v1/tables/name/TASK-00001'),
       { timeout: 30000 }
     );
     await page.goto('/table/TASK-00001');
