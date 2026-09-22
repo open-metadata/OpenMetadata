@@ -25,7 +25,7 @@ import {
   getEntityDisplayName,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
-
+import { waitForOwnerIndexed } from '../../utils/polling';
 import { performUserLogin } from '../../utils/user';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import {
@@ -75,19 +75,20 @@ async function expectOwnerInPanel(
   entityName: string,
   owner: UserClass
 ) {
-  await expect(async () => {
-    await navigateToKCEntity(page, entityName);
+  await waitForOwnerIndexed(
+    page,
+    knowledgeCenter.responseData.fullyQualifiedName,
+    'page',
+    owner.responseData.id,
+    true
+  );
+  await navigateToKCEntity(page, entityName);
 
-    const panel = page.locator(
-      '[data-testid="entity-summary-panel-container"]'
-    );
-    await panel
-      .getByTestId('KnowledgePageSummary')
-      .waitFor({ state: 'attached' });
+  const ownerChip = page
+    .locator('[data-testid="entity-summary-panel-container"]')
+    .getByTestId(owner.getUserDisplayName());
 
-    const ownerChip = panel.getByTestId(owner.getUserDisplayName());
-    await expect(ownerChip).toBeVisible();
-  }).toPass({ timeout: 60_000, intervals: [2_000, 5_000] });
+  await expect(ownerChip).toBeVisible();
 }
 
 test.describe('Knowledge Center Right Panel Test Suite', () => {
