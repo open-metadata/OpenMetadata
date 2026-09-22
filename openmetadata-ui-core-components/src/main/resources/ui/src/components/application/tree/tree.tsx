@@ -174,7 +174,6 @@ const TreeExpandButton = ({ className, ...props }: TreeExpandButtonProps) => {
   return (
     <AriaButton
       {...props}
-      data-testid="tree-expand-btn"
       className={(state) =>
         cx(
           'tw:flex tw:items-center tw:justify-center tw:w-4 tw:h-4 tw:shrink-0',
@@ -185,6 +184,7 @@ const TreeExpandButton = ({ className, ...props }: TreeExpandButtonProps) => {
           className
         )
       }
+      data-testid="tree-expand-btn"
       slot="chevron">
       <ChevronRight
         aria-hidden="true"
