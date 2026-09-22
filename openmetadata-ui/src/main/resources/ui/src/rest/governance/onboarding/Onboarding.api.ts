@@ -26,7 +26,7 @@ import { OnboardingBoard } from '../../../generated/governance/onboarding/onboar
 import { OnboardingProgress } from '../../../generated/governance/onboarding/onboardingProgress';
 import { OnboardingSummary } from '../../../generated/governance/onboarding/onboardingSummary';
 import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
-import APIClient from '../../index';
+import APIClient from '../../axiosClient';
 
 const BASE = '/governance/onboarding';
 

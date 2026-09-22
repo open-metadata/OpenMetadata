@@ -15,7 +15,7 @@ import { PagingResponse } from 'Models';
 import { CreateOnboardingPlaybook } from '../../../generated/api/governance/createOnboardingPlaybook';
 import { OnboardingPlaybook } from '../../../generated/entity/governance/onboardingPlaybook';
 import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
-import APIClient from '../../index';
+import APIClient from '../../axiosClient';
 
 const BASE = '/governance/onboardingPlaybooks';
 const FIELDS = 'owners,entityType,onboarding,intakeForm';
