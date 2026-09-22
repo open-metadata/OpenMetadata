@@ -168,6 +168,15 @@ const Sidebar: React.FC = () => {
       .flatMap((section) => section.items)
       .flatMap((item) => {
         const icon = item.railIcon ?? item.icon;
+        // Intent-only items with no rail-specific icon would fall back to the
+        // full-size icon (e.g. two identical "+" glyphs) with no label to tell
+        // them apart in the collapsed rail, so they stay in the expanded
+        // SubPanel's Quick Actions. An item that defines its own railIcon is
+        // exempt — a pathless rail item is a supported contract (SubRail
+        // renders it as a button and handleSubRailItemClick emits its intent).
+        if (!item.path && !item.railIcon) {
+          return [];
+        }
         if (!icon) {
           return [];
         }
