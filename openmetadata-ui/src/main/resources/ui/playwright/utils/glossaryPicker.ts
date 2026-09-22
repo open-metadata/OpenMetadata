@@ -55,23 +55,39 @@ export const searchGlossaryPicker = async (page: Page, term: string) => {
   await searchResponse;
 };
 
-// Retry once: on slow CI the first click can precede the trigger being ready.
+// Opens the picker and waits for the treegrid to render.
+//
+// The picker uses TreeSelect's custom-trigger path (renderTrigger + onClick={toggle}),
+// so the trigger never carries `aria-expanded` — the popover's open state is only
+// observable via the treegrid appearing. Both attempts have a bounded timeout so a
+// genuine failure surfaces as "treegrid never rendered" instead of "browser closed"
+// from the enclosing 180s test timeout (which is what the old retry — an unbounded
+// waitFor after `force: true` — produced under merge-group shard load).
+//
+// Issue: https://github.com/open-metadata/OpenMetadata/issues/33640
 export const openGlossaryPicker = async (
   page: Page,
   trigger: Locator,
   options?: { force?: boolean }
 ) => {
   await expect(trigger).toBeVisible();
-  await trigger.click({ force: options?.force });
+  await expect(trigger).toBeEnabled();
 
   const treeLocator = tree(page);
 
+  const clickAndAwaitOpen = async (clickOptions?: { force?: boolean }) => {
+    await trigger.click(clickOptions);
+    await treeLocator.waitFor({ state: 'visible', timeout: 5_000 });
+  };
+
   try {
-    await treeLocator.waitFor({ state: 'visible', timeout: 10_000 });
+    await clickAndAwaitOpen({ force: options?.force });
   } catch {
-    // eslint-disable-next-line playwright/no-force-option -- retry: first click may not have registered on the react-aria trigger
-    await trigger.click({ force: true });
-    await treeLocator.waitFor({ state: 'visible' });
+    // Retry: first click didn't open the popover (react-aria trigger race on
+    // slow shards); force is the last resort before we give up. The
+    // `no-force-option` rule pattern-matches literal `click({ force: true })`
+    // call sites — this one hides behind `clickAndAwaitOpen`, so no suppress.
+    await clickAndAwaitOpen({ force: true });
   }
 };
 

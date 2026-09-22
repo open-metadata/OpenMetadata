@@ -388,7 +388,7 @@ test.describe('Glossary Advanced Operations', () => {
       await fillDescriptionBox(page, 'Term with custom color');
 
       // Set custom color (must be one of the palette swatches)
-      const customColor = '#B93815';
+      const customColor = '#1470EF';
       await selectStyleColor(page, customColor);
 
       const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
@@ -505,7 +505,7 @@ test.describe('Glossary Advanced Operations', () => {
       await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
 
       // Set custom color (must be one of the palette swatches)
-      const customColor = '#067647';
+      const customColor = '#05A580';
       await selectStyleColor(page, customColor);
 
       const updateResponse = page.waitForResponse('/api/v1/glossaryTerms/*');

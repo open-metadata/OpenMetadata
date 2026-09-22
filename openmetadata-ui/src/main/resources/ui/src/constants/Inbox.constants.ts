@@ -11,11 +11,8 @@
  *  limitations under the License.
  */
 
-/**
- * @deprecated Import `FilterSelectDropdown` directly. This module only exists
- * so Collate `main` keeps building against this branch: it still imports this
- * path, and Collate cannot be fixed first because its own migration
- * (openmetadata-collate#6487) pins this branch as its submodule. Delete this
- * file once #6487 has merged — nothing in OpenMetadata imports it.
- */
-export { default } from '../common/FilterSelectDropdown/FilterSelectDropdown';
+// Query key for the sidebar inbox badge's unread count. Lives in constants so
+// the hook that reads it does not have to import the Inbox page.
+export const INBOX_UNREAD_ACTIVITY_COUNT_QUERY_KEY = [
+  'inbox-unread-activity-count',
+] as const;
