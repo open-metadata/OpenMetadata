@@ -471,21 +471,22 @@ test.describe('Task Navigation - URL Validation', () => {
 
     // This is a regression test - /table/TASK-00001 is an invalid URL
     // because TASK-00001 is a task ID, not a table FQN
+    const tableNotFound = page.waitForResponse(
+      (r) => r.url().includes('/api/v1/tables/name/TASK-00001'),
+      { timeout: 30000 }
+    );
     await page.goto('/table/TASK-00001');
+    const response = await tableNotFound;
+
+    expect(response.status()).toBe(404);
     await waitForPageLoaded(page);
 
-    // Should show 404 or "No data available"
-    const noData = page.getByText('No data available');
-    const notFound = page.getByText('404');
-    const pageNotFound = page.getByText('Page not found', { exact: false });
-
-    const isError =
-      (await noData.isVisible()) ||
-      (await notFound.isVisible()) ||
-      (await pageNotFound.isVisible());
-
-    // This URL pattern should result in an error/404
-    expect(isError).toBe(true);
+    await expect(
+      page
+        .getByText('No data available')
+        .or(page.getByText('404'))
+        .or(page.getByText('Page not found', { exact: false }))
+    ).toBeVisible();
   });
 
   test('task detail page with valid task ID should work', async ({

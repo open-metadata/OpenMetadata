@@ -15,6 +15,7 @@ package org.openmetadata.service.clients.pipeline.airflow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -37,7 +38,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
@@ -47,6 +50,9 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
+import org.openmetadata.sdk.RunOptions;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
@@ -727,6 +733,95 @@ class AirflowRESTClientTest {
         return 0L;
       }
     };
+  }
+
+  @Test
+  void runPipelineSendsTheRunsTestCaseScopeInTheTriggerConf() throws Exception {
+    try (AirflowTestServer server = new AirflowTestServer()) {
+      String basePath = "/airflow";
+      String prefix = basePath + "/pluginsv2/api/v2/openmetadata";
+      enqueueTriggerHandshake(server, prefix, "scoped");
+
+      AirflowRESTClient client = newClient(server, basePath);
+      IngestionPipeline pipeline = testSuitePipeline("orders_suite", null);
+      RunOptions options =
+          RunOptions.withSourceConfigOverride(Map.of("testCases", List.of("table_row_count")));
+
+      assertEquals(200, client.runPipelineWithOptions(pipeline, null, options).getCode());
+
+      JSONObject conf = triggerConf(server, prefix);
+      assertEquals(
+          List.of("table_row_count"),
+          conf.getJSONObject("sourceConfigOverride").getJSONArray("testCases").toList());
+      assertFalse(conf.has("appConfigOverride"));
+    }
+  }
+
+  /**
+   * Test cases a pipeline is configured with are part of its deployed DAG, so only a scope given for
+   * the run belongs in the conf.
+   */
+  @Test
+  void runPipelineDoesNotResendThePipelinesConfiguredTestCases() throws Exception {
+    try (AirflowTestServer server = new AirflowTestServer()) {
+      String basePath = "/airflow";
+      String prefix = basePath + "/pluginsv2/api/v2/openmetadata";
+      enqueueTriggerHandshake(server, prefix, "unscoped");
+
+      AirflowRESTClient client = newClient(server, basePath);
+      IngestionPipeline pipeline = testSuitePipeline("orders_suite", List.of("table_row_count"));
+
+      assertEquals(200, client.runPipeline(pipeline, null).getCode());
+
+      assertEquals(Set.of("pipelineRunId"), triggerConf(server, prefix).keySet());
+    }
+  }
+
+  @Test
+  void runPipelineReturnsTheRunIdItSendsToAirflow() throws Exception {
+    try (AirflowTestServer server = new AirflowTestServer()) {
+      String basePath = "/airflow";
+      String prefix = basePath + "/pluginsv2/api/v2/openmetadata";
+      enqueueTriggerHandshake(server, prefix, "runid");
+
+      AirflowRESTClient client = newClient(server, basePath);
+      PipelineServiceClientResponse response =
+          client.runPipeline(testSuitePipeline("orders_suite", null), null);
+
+      // The server records the returned id as queued; the worker reports under the one in conf.
+      assertNotNull(response.getRunId());
+      assertEquals(response.getRunId(), triggerConf(server, prefix).getString("pipelineRunId"));
+    }
+  }
+
+  private static JSONObject triggerConf(AirflowTestServer server, String prefix) {
+    RequestRecord trigger = server.requests("POST", prefix + "/trigger").get(0);
+    return new JSONObject(trigger.body()).getJSONObject("conf");
+  }
+
+  private static void enqueueTriggerHandshake(AirflowTestServer server, String prefix, String token)
+      throws IOException {
+    server.enqueue(
+        "GET",
+        prefix + "/health-auth",
+        200,
+        "{\"version\":\"" + PipelineServiceClient.getServerVersion() + "\"}");
+    server.enqueue(
+        "GET",
+        prefix + "/csrf-token",
+        200,
+        "{\"csrf_token\":\"" + token + "-token\"}",
+        cookieHeaders("session=" + token + "; Path=/", "csrf_token=cookie-" + token + "; Path=/"));
+    server.enqueue("POST", prefix + "/trigger", 200, "{\"status\":\"triggered\"}");
+  }
+
+  private static IngestionPipeline testSuitePipeline(String name, List<String> testCases) {
+    return new IngestionPipeline()
+        .withName(name)
+        .withEnabled(true)
+        .withPipelineType(PipelineType.TEST_SUITE)
+        .withSourceConfig(
+            new SourceConfig().withConfig(new TestSuitePipeline().withTestCases(testCases)));
   }
 
   private static IngestionPipeline ingestionPipeline(String name, boolean enabled) {

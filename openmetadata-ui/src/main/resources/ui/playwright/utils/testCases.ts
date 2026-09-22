@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page, Response } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
+  RUN_TEST_CASE_BUTTON_TEST_ID,
   TEST_CASE_LAST_RUN_BANNER_TEST_IDS,
   type TestCaseLastRunBannerStatus,
 } from '../constant/dataQuality';
@@ -931,4 +932,88 @@ export const openTestCaseDetailsPage = async (
   await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('test-case-detail-page')).toBeVisible();
+};
+
+export const createTableWithTestCase = async (
+  apiContext: APIRequestContext
+) => {
+  const table = new TableClass();
+  await table.create(apiContext);
+  await table.createTestCase(apiContext);
+
+  return table;
+};
+
+/**
+ * Unscheduled on purpose: a scheduled DAG can start a run of its own as soon as
+ * it is deployed, which would disable Run now before the test clicks it.
+ */
+export const createUnscheduledTestSuitePipeline = async (
+  apiContext: APIRequestContext,
+  table: TableClass
+) => {
+  const createResponse = await apiContext.post(
+    '/api/v1/services/ingestionPipelines',
+    {
+      data: {
+        name: `pw-run-test-case-pipeline-${uuid()}`,
+        pipelineType: 'TestSuite',
+        airflowConfig: {},
+        service: { id: table.testSuiteResponseData.id, type: 'testSuite' },
+        sourceConfig: {
+          config: {
+            type: 'TestSuite',
+            entityFullyQualifiedName:
+              table.entityResponseData.fullyQualifiedName,
+          },
+        },
+      },
+    }
+  );
+  expect(createResponse.status()).toBe(201);
+  const { id, name } = await createResponse.json();
+
+  return { id: id as string, name: name as string };
+};
+
+export const patchIngestionPipeline = async (
+  apiContext: APIRequestContext,
+  pipelineId: string,
+  path: string,
+  value: unknown
+) => {
+  const patchResponse = await apiContext.patch(
+    `/api/v1/services/ingestionPipelines/${pipelineId}`,
+    {
+      data: [{ op: 'add', path, value }],
+      headers: { 'Content-Type': 'application/json-patch+json' },
+    }
+  );
+  expect(patchResponse.status()).toBe(200);
+};
+
+export const isPipelinePermissionResponse =
+  (pipelineName: string) => (response: Response) =>
+    response.url().includes('/api/v1/permissions/ingestionPipeline/name/') &&
+    response.url().includes(pipelineName);
+
+export const isRunTestCaseResponse = (response: Response) =>
+  response.url().endsWith('/api/v1/services/ingestionPipelines/run') &&
+  response.request().method() === 'POST';
+
+export const expectRunTestCaseDisabledWithReason = async (
+  page: Page,
+  reason: string
+) => {
+  const reasonTrigger = page.getByRole('group', { name: reason });
+
+  await expect(page.getByTestId(RUN_TEST_CASE_BUTTON_TEST_ID)).toBeDisabled();
+  await expect(reasonTrigger).toBeVisible();
+
+  // React Aria opens a tooltip on hover only once a pointer press has happened on
+  // the page, which a freshly loaded page has not seen; keyboard focus opens it
+  // regardless, and reaching the reason by keyboard is what the wrapper is for.
+  await reasonTrigger.focus();
+
+  await expect(page.getByRole('tooltip')).toHaveText(reason);
 };

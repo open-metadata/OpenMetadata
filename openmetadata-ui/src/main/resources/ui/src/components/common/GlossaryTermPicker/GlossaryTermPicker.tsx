@@ -36,6 +36,8 @@ type InheritedTreeSelectProps = Pick<
   | 'isOpen'
   | 'onOpenChange'
   | 'renderTrigger'
+  | 'triggerVariant'
+  | 'bordered'
   | 'label'
   | 'placeholder'
   | 'required'
@@ -64,6 +66,8 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
   isOpen,
   onOpenChange,
   renderTrigger,
+  triggerVariant,
+  bordered,
   label,
   placeholder,
   required = false,
@@ -125,12 +129,14 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
         value.map((tag) => [tag.tagFQN, tag])
       );
 
-      const selected = nodes
-        .map((node) => applied.get(node.value) ?? node.data)
-        .filter(
-          (tag): tag is GlossaryPickerValue =>
-            Boolean(tag) && (selectGlossaries || !tag?.isGlossaryRoot)
-        );
+      const selected = nodes.reduce<GlossaryPickerValue[]>((acc, node) => {
+        const tag = applied.get(node.value) ?? node.data;
+        if (tag && (selectGlossaries || !tag.isGlossaryRoot)) {
+          acc.push(tag);
+        }
+
+        return acc;
+      }, []);
 
       onChange?.(selected.map(toTagLabel), selected);
     },
@@ -147,6 +153,7 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
       searchable
       // eslint-disable-next-line jsx-a11y/no-autofocus -- opt-in, for a picker opened without a click
       autoFocus={autoFocus}
+      bordered={bordered}
       commitMode={commitMode}
       data-testid={dataTestId}
       disabled={disabled}
@@ -170,6 +177,7 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
       searchPlaceholder={t('label.search-entity', {
         entity: t('label.glossary-term-plural'),
       })}
+      triggerVariant={triggerVariant}
       value={selectedValue}
       onChange={handleChange}
       onOpenChange={onOpenChange}
