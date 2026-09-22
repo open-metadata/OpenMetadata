@@ -4870,6 +4870,7 @@
     "test-case-insight-description": "基于配置的测试验证，访问数据集健康状况的集中视图。",
     "test-case-name-validation": "名称不能包含双冒号(::)、引号(\")或大于符号(>)。",
     "test-case-not-run-yet": "此测试尚未运行。请将其添加到管道以开始收集结果。",
+    "test-case-run-already-in-progress": "此测试用例所属套件的管道已在运行中。再次运行将启动另一次运行。",
     "test-case-run-queued": "运行已排队 — 正在等待摄取管道启动。",
     "test-case-schedule-description": "数据质控测试可按所需频率安排运行, 时区为 UTC",
     "test-case-status-sub-header": "通过成功、失败和中止用例的明细分解，可视化您的数据验证测试的健康状况。",
