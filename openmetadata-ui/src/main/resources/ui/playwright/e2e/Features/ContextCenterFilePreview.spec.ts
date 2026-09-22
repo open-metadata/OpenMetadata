@@ -308,7 +308,9 @@ test.describe('Context Center - Document File Preview', () => {
     await expect(row).toBeVisible();
     await row.scrollIntoViewIfNeeded();
 
-    await expect(row.getByTestId('preview-btn')).toHaveCount(0);
+    // The preview button keeps its slot (rendered invisible) so the status
+    // badge and action icons stay column-aligned with previewable rows.
+    await expect(row.getByTestId('preview-btn')).toBeHidden();
     await expect(row.getByTestId('download-btn')).toBeVisible();
   });
 

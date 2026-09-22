@@ -19,17 +19,12 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@untitledui/icons';
-import { FC, useMemo, useState } from 'react';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
-import { useFilePreviewContent } from '../../../hooks/useFilePreviewContent';
 import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import FilePreviewer from '../../common/FilePreviewer/FilePreviewer';
-import { PreviewRendererId } from '../../common/FilePreviewer/FilePreviewer.types';
-import { resolveRenderer } from '../../common/FilePreviewer/FilePreviewer.utils';
-import Loader from '../../common/Loader/Loader';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
 import ExtractedMemoriesCard from '../ExtractedMemoriesCard/ExtractedMemoriesCard.component';
@@ -37,7 +32,6 @@ import {
   DocumentPreviewPanelProps,
   MetaRowProps,
 } from './DocumentsView.interface';
-import FilePreviewModal from './FilePreviewModal/FilePreviewModal';
 
 const MetaRow: FC<MetaRowProps> = ({ label, value }) => (
   <Box align="center" className="tw:py-1.5" justify="between">
@@ -57,80 +51,13 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
-
-  const { folderName, fileName, formattedFileSize, isPreviewSupported } =
-    useMemo(() => {
-      return {
-        folderName: getEntityName(file.folder),
-        fileName: getEntityName(file),
-        formattedFileSize: formatBytes(file.fileSize),
-        isPreviewSupported:
-          resolveRenderer({
-            fileExtension: file.fileExtension,
-            fileType: file.fileType,
-            mimeType: file.contentType,
-          }) !== PreviewRendererId.Unsupported,
-      };
-    }, [file]);
-
-  const { status, blob } = useFilePreviewContent(file, {
-    enabled: isPreviewSupported,
-  });
-
-  const renderPlaceholder = (message: string) => (
-    <Box
-      align="center"
-      className="tw:h-full tw:p-4"
-      direction="col"
-      gap={2}
-      justify="center">
-      <FileIcon
-        className="tw:size-10"
-        theme="light"
-        type={file.fileExtension ?? ''}
-        variant="default"
-      />
-      <Typography className="tw:text-quaternary tw:text-center" size="text-xs">
-        {message}
-      </Typography>
-    </Box>
-  );
-
-  const renderMiniature = () => {
-    if (!isPreviewSupported) {
-      return renderPlaceholder(t('message.preview-not-supported'));
-    }
-    if (status === 'too-large') {
-      return renderPlaceholder(t('message.file-too-large-to-preview'));
-    }
-    if (status === 'error') {
-      return renderPlaceholder(t('message.file-preview-render-failed'));
-    }
-    if (status !== 'ready' || !blob) {
-      return <Loader />;
-    }
-
-    return (
-      <button
-        aria-label={t('label.preview')}
-        className="tw:block tw:w-full tw:h-full tw:overflow-hidden tw:cursor-pointer tw:bg-secondary_subtle"
-        data-testid="preview-miniature"
-        type="button"
-        onClick={() => setIsPreviewModalOpen(true)}>
-        <div className="tw:pointer-events-none tw:h-full tw:overflow-hidden tw:flex tw:items-center tw:justify-center">
-          <FilePreviewer
-            compact
-            content={blob}
-            fileExtension={file.fileExtension}
-            fileName={fileName}
-            fileType={file.fileType}
-            mimeType={file.contentType}
-          />
-        </div>
-      </button>
-    );
-  };
+  const { folderName, fileName, formattedFileSize } = useMemo(() => {
+    return {
+      folderName: getEntityName(file.folder),
+      fileName: getEntityName(file),
+      formattedFileSize: formatBytes(file.fileSize),
+    };
+  }, [file]);
 
   return (
     <Box
@@ -183,12 +110,6 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
         className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:p-4 tw:bg-gray-50"
         direction="col"
         gap={4}>
-        <div
-          className="tw:shrink-0 tw:h-60 tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:overflow-hidden"
-          data-testid="document-preview-miniature">
-          {renderMiniature()}
-        </div>
-
         <Card className="tw:p-4 tw:shrink-0">
           <div className="tw:mb-3">
             <Typography
@@ -241,12 +162,6 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
           titleClassName="tw:uppercase"
         />
       </Box>
-
-      <FilePreviewModal
-        file={file}
-        isOpen={isPreviewModalOpen}
-        onClose={() => setIsPreviewModalOpen(false)}
-      />
     </Box>
   );
 };

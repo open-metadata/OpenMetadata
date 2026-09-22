@@ -588,16 +588,18 @@ const FileRow: FC<FileRowProps> = ({
           stats={file.extractionStats}
           status={file.processingStatus}
         />
-        {isPreviewSupported && (
-          <ButtonUtility
-            className="tw:ml-1.5"
-            color="tertiary"
-            data-testid="preview-btn"
-            icon={<Eye height={20} width={20} />}
-            tooltip={t('label.preview')}
-            onClick={() => onOpenPreview?.(file)}
-          />
-        )}
+        <ButtonUtility
+          className={`tw:ml-1.5${
+            isPreviewSupported ? '' : ' tw:invisible tw:pointer-events-none'
+          }`}
+          color="tertiary"
+          data-testid="preview-btn"
+          icon={<Eye height={20} width={20} />}
+          tooltip={t('label.preview')}
+          onClick={
+            isPreviewSupported ? () => onOpenPreview?.(file) : undefined
+          }
+        />
         <ButtonUtility
           color="tertiary"
           data-testid="download-btn"

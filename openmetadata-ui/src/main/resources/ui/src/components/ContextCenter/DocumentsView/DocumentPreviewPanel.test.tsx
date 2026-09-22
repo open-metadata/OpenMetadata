@@ -14,7 +14,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import {
   ContextFile,
-  FileType,
   ProcessingStatus,
 } from '../../../generated/entity/data/contextFile';
 import DocumentPreviewPanel from './DocumentPreviewPanel.component';
@@ -91,25 +90,10 @@ jest.mock('../ExtractedMemoriesCard/ExtractedMemoriesCard.component', () =>
   ))
 );
 
-jest.mock('../../common/FilePreviewer/FilePreviewer', () => ({
-  __esModule: true,
-  default: () => <div data-testid="file-previewer" />,
-}));
-
-jest.mock('./FilePreviewModal/FilePreviewModal', () => ({
-  __esModule: true,
-  default: () => <div data-testid="file-preview-modal" />,
-}));
-
-jest.mock('../../../hooks/useFilePreviewContent', () => ({
-  useFilePreviewContent: () => ({ status: 'ready', blob: new Blob() }),
-}));
-
 const baseFile: ContextFile = {
   id: 'file-1',
   name: 'report.pdf',
   fileExtension: 'pdf',
-  fileType: FileType.PDF,
   fileSize: 2097152,
 };
 
