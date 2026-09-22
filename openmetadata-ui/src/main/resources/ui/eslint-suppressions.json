@@ -232,16 +232,6 @@
       "count": 6
     }
   },
-  "playwright/e2e/Features/Glossary/GlossaryBulkOperations.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
-    }
-  },
-  "playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 12
-    }
-  },
   "playwright/e2e/Features/Glossary/GlossaryMiscOperations.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
@@ -264,7 +254,7 @@
   },
   "playwright/e2e/Features/Glossary/GlossaryStatusFilterNestedTerms.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 6
+      "count": 5
     }
   },
   "playwright/e2e/Features/Glossary/GlossaryTermDetails.spec.ts": {
@@ -593,11 +583,6 @@
   "playwright/e2e/Pages/ClassificationConditionalRendering.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 2
-    }
-  },
-  "playwright/e2e/Pages/CustomProperties.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
     }
   },
   "playwright/e2e/Pages/DataContractInheritance.spec.ts": {
@@ -935,7 +920,7 @@
   },
   "playwright/utils/customProperty.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 15
+      "count": 13
     }
   },
   "playwright/utils/customPropertyAdvancedSearchUtils.ts": {

@@ -701,9 +701,10 @@ class LineageRepositoryTest {
             EntityReference.class,
             EntityReference.class,
             LineageDetails.class,
+            LineageDetails.class,
             boolean.class);
     buildExtendedLineage.setAccessible(true);
-    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, false);
+    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, null, false);
 
     verify(relDAO)
         .insert(eq(fromServiceId), eq(toServiceId), any(), any(), anyInt(), jsonCaptor.capture());
@@ -781,9 +782,10 @@ class LineageRepositoryTest {
             EntityReference.class,
             EntityReference.class,
             LineageDetails.class,
+            LineageDetails.class,
             boolean.class);
     buildExtendedLineage.setAccessible(true);
-    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, false);
+    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, null, false);
 
     verify(relDAO)
         .insert(eq(fromServiceId), eq(toServiceId), any(), any(), anyInt(), jsonCaptor.capture());
@@ -799,8 +801,14 @@ class LineageRepositoryTest {
    * toService, three service-level edges must be created: fromService→toService,
    * fromService→pipelineService, and pipelineService→toService.
    */
+  /**
+   * A pipeline-annotated edge is projected as fromService → pipelineService → toService only. The
+   * direct fromService → toService edge must not also be created, or the service graph draws two
+   * parallel paths for the same flow of data.
+   */
   @Test
-  void testPipelineServiceEdges_WithDistinctPipelineService_CreatesBothEdges() throws Exception {
+  void testPipelineServiceEdges_WithDistinctPipelineService_RoutesThroughPipelineOnly()
+      throws Exception {
     UUID fromEntityId = UUID.randomUUID();
     UUID toEntityId = UUID.randomUUID();
     UUID fromServiceId = UUID.randomUUID();
@@ -862,25 +870,26 @@ class LineageRepositoryTest {
             EntityReference.class,
             EntityReference.class,
             LineageDetails.class,
+            LineageDetails.class,
             boolean.class);
     buildExtendedLineage.setAccessible(true);
-    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, false);
+    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, null, false);
 
-    verify(relDAO, times(3))
+    verify(relDAO, times(2))
         .insert(fromCaptor.capture(), toCaptor.capture(), any(), any(), anyInt(), any());
 
     List<UUID> insertedFromIds = fromCaptor.getAllValues();
     List<UUID> insertedToIds = toCaptor.getAllValues();
 
     assertTrue(
-        edgePairExists(insertedFromIds, insertedToIds, fromServiceId, toServiceId),
-        "fromService→toService edge must be created");
-    assertTrue(
         edgePairExists(insertedFromIds, insertedToIds, fromServiceId, pipelineServiceId),
         "fromService→pipelineService edge must be created");
     assertTrue(
         edgePairExists(insertedFromIds, insertedToIds, pipelineServiceId, toServiceId),
         "pipelineService→toService edge must be created");
+    assertFalse(
+        edgePairExists(insertedFromIds, insertedToIds, fromServiceId, toServiceId),
+        "direct fromService→toService edge must NOT be created alongside the pipeline hops");
   }
 
   /**
@@ -935,9 +944,10 @@ class LineageRepositoryTest {
             EntityReference.class,
             EntityReference.class,
             LineageDetails.class,
+            LineageDetails.class,
             boolean.class);
     buildExtendedLineage.setAccessible(true);
-    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, false);
+    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, null, false);
 
     verify(relDAO, times(1)).insert(any(), any(), any(), any(), anyInt(), any());
   }

@@ -12,6 +12,12 @@
  */
 import { ChevronDown } from '@untitledui/icons';
 import classNames from 'classnames';
+import { DQ_FILTER_TYPES } from '../../../../constants/DataQuality.constants';
+import {
+  fqnsToGlossaryTags,
+  glossaryTagsToFqns,
+} from '../../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import GlossaryTermPicker from '../../../common/GlossaryTermPicker/GlossaryTermPicker';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { DqFilterDescriptor } from '../../../DataQuality/DataQualityDashboard/useDataQualityDashboardFilters';
 import {
@@ -30,7 +36,23 @@ const DqFilterChip = ({
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }) => {
-  if (filter.type === 'owner') {
+  if (filter.type === DQ_FILTER_TYPES.GLOSSARY_TERM) {
+    return (
+      <GlossaryTermPicker
+        commitMode="staged"
+        data-testid={`search-dropdown-${filter.label}`}
+        // The bar owns which chip is open, so it can close this one.
+        isOpen={isOpen}
+        label={filter.label}
+        triggerVariant="button"
+        value={fqnsToGlossaryTags(filter.selectedFqns)}
+        onChange={(terms) => filter.onChange(glossaryTagsToFqns(terms))}
+        onOpenChange={onOpenChange}
+      />
+    );
+  }
+
+  if (filter.type === DQ_FILTER_TYPES.OWNER) {
     return (
       <UserTeamSelectableList
         hasPermission
