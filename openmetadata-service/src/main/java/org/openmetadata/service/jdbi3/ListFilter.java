@@ -111,7 +111,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getWorkflowDefinitionIdCondition());
     conditions.add(getEntityLinkCondition());
     conditions.add(getActiveCondition(tableName));
-    conditions.add(getAnnouncementStatusCondition(tableName));
+    conditions.add(getAnnouncementStatusCondition());
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
     conditions.add(getExcludeProviderCondition(tableName));
@@ -430,9 +430,15 @@ public class ListFilter extends Filter<ListFilter> {
     return entityLinkStr == null ? "" : "entityLink = :entityLink";
   }
 
+  /**
+   * Both announcement conditions key off their query parameter alone rather than the table name:
+   * the generic list and count paths call {@link Filter#getCondition()}, which passes a null table
+   * name, so a name-based guard silently drops the predicate. Only {@code AnnouncementResource}
+   * sets these parameters, and {@code startTime}/{@code endTime} exist only on that table.
+   */
   private String getActiveCondition(String tableName) {
     String active = queryParams.get("active");
-    if (active == null || !"announcement_entity".equals(tableName)) {
+    if (active == null) {
       return "";
     }
 
@@ -450,10 +456,13 @@ public class ListFilter extends Filter<ListFilter> {
    * {@code status} column still reads {@code Active} once the window has closed. Deriving the
    * status from the window instead keeps the filter honest, and both {@code startTime} and {@code
    * endTime} are indexed.
+   *
+   * <p>Read from {@code announcementStatus} rather than {@code status} so the generic status
+   * condition, which four other resources share, keeps matching the column it means.
    */
-  private String getAnnouncementStatusCondition(String tableName) {
-    String status = queryParams.get("status");
-    if (status == null || !"announcement_entity".equals(tableName)) {
+  private String getAnnouncementStatusCondition() {
+    String status = queryParams.get("announcementStatus");
+    if (status == null) {
       return "";
     }
 

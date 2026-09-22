@@ -132,7 +132,7 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       filter.addQueryParam("entityLink", entityLink);
     }
     if (status != null) {
-      filter.addQueryParam("status", status.value());
+      filter.addQueryParam("announcementStatus", status.value());
     }
     if (active != null) {
       filter.addQueryParam("active", String.valueOf(active));
