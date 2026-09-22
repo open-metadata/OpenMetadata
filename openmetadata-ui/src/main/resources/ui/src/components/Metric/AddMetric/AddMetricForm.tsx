@@ -47,7 +47,7 @@ import {
   AddMetricFormProps,
   MetricFormSelectItem,
   MetricFormValues,
-} from './AddMetricForm.interface';
+} from './AddMetricForm.types';
 
 export const METRIC_FORM_DEFAULTS: MetricFormValues = {
   name: '',

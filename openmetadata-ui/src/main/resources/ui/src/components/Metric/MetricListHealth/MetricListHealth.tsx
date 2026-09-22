@@ -16,7 +16,7 @@ import { FC, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Health } from '../../../generated/api/data/metricObservability';
 import { useMetricObservability } from '../../../hooks/useMetricObservability';
-import MetricHealthPill from '../MetricObservability/MetricHealthPill.component';
+import MetricHealthPill from '../MetricObservability/MetricHealthPill';
 
 export interface MetricListHealthProps {
   metricId: string;

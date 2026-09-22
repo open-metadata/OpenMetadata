@@ -18,7 +18,7 @@ import {
   UnitOfMeasurement,
 } from '../../../generated/api/data/createMetric';
 import type { EntityReference } from '../../../generated/entity/type';
-import { MetricFormValues } from './AddMetricForm.interface';
+import { MetricFormValues } from './AddMetricForm.types';
 
 const optionalProperty = <K extends string, V>(
   key: K,

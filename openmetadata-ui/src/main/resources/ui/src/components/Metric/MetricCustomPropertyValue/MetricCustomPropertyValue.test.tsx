@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import MetricCustomPropertyValue from './MetricCustomPropertyValue.component';
+import MetricCustomPropertyValue from './MetricCustomPropertyValue';
 
 describe('MetricCustomPropertyValue', () => {
   it.each([null, undefined, '', []])(

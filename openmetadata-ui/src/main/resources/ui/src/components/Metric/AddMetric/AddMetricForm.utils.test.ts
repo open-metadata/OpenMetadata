@@ -17,10 +17,7 @@ import {
   UnitOfMeasurement,
 } from '../../../generated/api/data/createMetric';
 import type { EntityReference } from '../../../generated/entity/type';
-import {
-  MetricFormSelectItem,
-  MetricFormValues,
-} from './AddMetricForm.interface';
+import { MetricFormSelectItem, MetricFormValues } from './AddMetricForm.types';
 import { transformMetricFormData } from './AddMetricForm.utils';
 
 const reference = (

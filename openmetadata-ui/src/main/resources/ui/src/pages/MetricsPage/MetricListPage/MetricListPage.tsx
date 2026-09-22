@@ -69,8 +69,8 @@ import {
   markCsvJobOwned,
 } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import { useMetricCreateDrawer } from '../../../components/Metric/AddMetric/useMetricCreateDrawer';
-import MetricListHealth from '../../../components/Metric/MetricListHealth/MetricListHealth.component';
-import MetricStatusPill from '../../../components/Metric/MetricStatusPill/MetricStatusPill.component';
+import MetricListHealth from '../../../components/Metric/MetricListHealth/MetricListHealth';
+import MetricStatusPill from '../../../components/Metric/MetricStatusPill/MetricStatusPill';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';

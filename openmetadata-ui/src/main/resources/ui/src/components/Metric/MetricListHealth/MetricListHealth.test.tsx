@@ -13,7 +13,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Health } from '../../../generated/api/data/metricObservability';
 import { useMetricObservability } from '../../../hooks/useMetricObservability';
-import MetricListHealth from './MetricListHealth.component';
+import MetricListHealth from './MetricListHealth';
 
 jest.mock('../../../hooks/useMetricObservability');
 

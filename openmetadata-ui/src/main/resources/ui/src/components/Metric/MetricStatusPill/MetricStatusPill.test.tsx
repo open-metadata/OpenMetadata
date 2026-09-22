@@ -12,7 +12,7 @@
  */
 import { render, screen } from '@testing-library/react';
 import { EntityStatus } from '../../../generated/entity/data/metric';
-import MetricStatusPill from './MetricStatusPill.component';
+import MetricStatusPill from './MetricStatusPill';
 
 const translations: Record<string, string> = {
   'label.approved': 'Approved',

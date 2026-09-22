@@ -21,8 +21,8 @@ import { submitAndClose } from '../../../utils/FormDrawerUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
-import AddMetricForm, { METRIC_FORM_DEFAULTS } from './AddMetricForm.component';
-import { MetricFormValues } from './AddMetricForm.interface';
+import AddMetricForm, { METRIC_FORM_DEFAULTS } from './AddMetricForm';
+import { MetricFormValues } from './AddMetricForm.types';
 import { transformMetricFormData } from './AddMetricForm.utils';
 
 /**

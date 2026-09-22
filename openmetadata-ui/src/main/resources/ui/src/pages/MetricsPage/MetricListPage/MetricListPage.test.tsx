@@ -441,7 +441,7 @@ jest.mock('../../../hoc/LimitWrapper', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 jest.mock(
-  '../../../components/Metric/MetricListHealth/MetricListHealth.component',
+  '../../../components/Metric/MetricListHealth/MetricListHealth',
   () => ({
     __esModule: true,
     default: ({ metricId }: { metricId: string }) => (

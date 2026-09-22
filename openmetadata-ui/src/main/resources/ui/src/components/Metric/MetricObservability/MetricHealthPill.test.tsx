@@ -12,7 +12,7 @@
  */
 import { render, screen } from '@testing-library/react';
 import { Health } from '../../../generated/api/data/metricObservability';
-import MetricHealthPill from './MetricHealthPill.component';
+import MetricHealthPill from './MetricHealthPill';
 
 describe('MetricHealthPill', () => {
   it.each([
