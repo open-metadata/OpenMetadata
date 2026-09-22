@@ -141,12 +141,10 @@ public class MigrationUtil {
     } catch (EntityNotFoundException ex) {
       LOG.warn("{} not found, skipping CreateTask rule backfill", DATA_CONSUMER_POLICY);
     } catch (Exception ex) {
-      LOG.error(
-          "Failed to add {} to {}: {}",
-          CREATE_TASK_RULE_NAME,
-          DATA_CONSUMER_POLICY,
-          ex.getMessage(),
-          ex);
+      // Let unexpected read/write/cache failures propagate: swallowing them would record the
+      // migration as applied and skip the repair on later runs, leaving the policy unrepaired.
+      throw new RuntimeException(
+          String.format("Failed to add %s to %s", CREATE_TASK_RULE_NAME, DATA_CONSUMER_POLICY), ex);
     }
   }
 
@@ -183,8 +181,10 @@ public class MigrationUtil {
     } catch (EntityNotFoundException ex) {
       LOG.warn("{} not found, skipping TaskRule backfill", DATA_CONSUMER_POLICY);
     } catch (Exception ex) {
-      LOG.error(
-          "Failed to add {} to {}: {}", TASK_RULE_NAME, DATA_CONSUMER_POLICY, ex.getMessage(), ex);
+      // Let unexpected read/write/cache failures propagate: swallowing them would record the
+      // migration as applied and skip the repair on later runs, leaving the policy unrepaired.
+      throw new RuntimeException(
+          String.format("Failed to add %s to %s", TASK_RULE_NAME, DATA_CONSUMER_POLICY), ex);
     }
   }
 
