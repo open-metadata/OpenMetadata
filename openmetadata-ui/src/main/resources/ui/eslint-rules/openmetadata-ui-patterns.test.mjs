@@ -58,6 +58,10 @@ ruleTester.run(
       { code: "const a = 'tw:bg-primary';" },
       { code: "const a = 'flex items-center';" },
       { code: 'const a = `tw:bg-utility-blue-50`;' },
+      // Semantic tokens (no numeric shade) are fine.
+      { code: "const a = 'tw:bg-error-primary tw:text-brand-secondary';" },
+      // Non-color utilities with a numeric segment must not false-positive.
+      { code: "const a = 'tw:divide-x-2 tw:ring-offset-2 tw:border-t-2';" },
     ],
     invalid: [
       {
@@ -78,6 +82,16 @@ ruleTester.run(
       },
       {
         code: 'const a = `tw:bg-blue-50 ${x}`;',
+        errors: [{ messageId: 'rawPalette' }],
+      },
+      // Non-utility family (no utility- ramp) — still flagged, report-only.
+      {
+        code: "const a = 'tw:bg-cyan-50 tw:text-teal-600';",
+        errors: [{ messageId: 'rawPalette' }],
+      },
+      // Opacity modifier must not evade detection.
+      {
+        code: "const a = 'tw:bg-brand-900/20';",
         errors: [{ messageId: 'rawPalette' }],
       },
     ],

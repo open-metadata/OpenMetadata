@@ -101,49 +101,83 @@ const noRawTitleAttribute = {
  * backlog is cleared) can re-add a shade-restricted fixer.
  */
 
-// Families that have a `--color-utility-<family>-*` ramp — used to build the
-// migration hint in the message. Longest-first so the alternation matches
-// `gray-blue` before `gray`, etc.
-const UTILITY_FAMILIES = [
+// Every raw Tailwind palette family defined in globals.css (`--color-<family>-<shade>`).
+// Listed longest-first so the alternation matches a multi-word family
+// (`gray-blue`) before its prefix (`gray`).
+const PALETTE_FAMILIES = [
+  'visualization-blue',
+  'visualization-gray',
+  'gray-neutral',
+  'gray-modern',
+  'green-light',
+  'orange-dark',
   'blue-light',
   'blue-dark',
   'gray-blue',
-  'orange-dark',
+  'gray-cool',
+  'gray-iron',
+  'gray-true',
+  'gray-warm',
   'blue',
   'brand',
+  'cyan',
   'error',
   'fuchsia',
   'gray',
   'green',
   'indigo',
+  'moss',
   'orange',
+  'pink',
+  'purple',
+  'rose',
+  'success',
+  'teal',
+  'violet',
+  'warning',
+  'yellow',
+];
+
+// The subset with a `--color-utility-<family>-*` ramp, so the migration is a
+// straight `utility-` swap; the rest must move to a semantic token.
+const UTILITY_FAMILIES = new Set([
+  'blue',
+  'blue-light',
+  'blue-dark',
+  'brand',
+  'error',
+  'fuchsia',
+  'gray',
+  'gray-blue',
+  'green',
+  'indigo',
+  'orange',
+  'orange-dark',
   'pink',
   'purple',
   'success',
   'warning',
   'yellow',
-];
+]);
 
 const COLOR_PROP =
   '(?:bg|text|border|border-[trblxyse]|outline|ring|divide|from|via|to|fill|stroke|placeholder|caret|accent|decoration|shadow)';
 const SHADE = '(?:25|50|100|200|300|400|500|600|700|800|900|950)';
-// Matches the `<prop>-<family>-<shade>` core of a raw palette utility.
+// Trailing `(?:/\\d{1,3})?` tolerates a Tailwind opacity modifier (`.../20`).
 const PALETTE_CORE = new RegExp(
-  `^(${COLOR_PROP})-(${UTILITY_FAMILIES.join('|')})-(${SHADE})$`
+  `^(${COLOR_PROP})-(${PALETTE_FAMILIES.join('|')})-(${SHADE})(?:/\\d{1,3})?$`
 );
 
 const noNonAdaptivePalette = {
   meta: {
     messages: {
       rawPalette:
-        'Raw palette class "{{cls}}" is static — it does not flip in dark mode. Use the theme-adapting "utility-" variant (tw:{{prop}}-utility-{{family}}-{{shade}}) or a semantic token (bg-surface, text-tertiary, …). See docs/colors.md.',
+        'Raw palette class "{{cls}}" is static — it does not flip in dark mode. {{suggestion}} See docs/colors.md.',
     },
     schema: [],
     type: 'problem',
   },
   create(context) {
-    // Classify one whitespace-delimited class token: return its parts if it is
-    // a raw non-adaptive palette class, else null.
     const classify = (token) => {
       if (!token.startsWith('tw:')) {
         return null;
@@ -151,7 +185,8 @@ const noNonAdaptivePalette = {
       const segments = token.slice(3).split(':');
       const utility = segments[segments.length - 1];
       const variants = segments.slice(0, -1);
-      // Deliberate dark-only override, or already adaptive — leave it.
+      // A `dark:` override is a deliberate dark-only value; a `utility-` class
+      // already adapts. Neither is a bug.
       if (variants.includes('dark') || utility.includes('utility-')) {
         return null;
       }
@@ -160,7 +195,11 @@ const noNonAdaptivePalette = {
         return null;
       }
       const [, prop, family, shade] = m;
-      return { token, prop, family, shade };
+      const suggestion = UTILITY_FAMILIES.has(family)
+        ? `Use the theme-adapting "utility-" variant (tw:${prop}-utility-${family}-${shade}) or a semantic token (bg-surface, text-tertiary, …).`
+        : 'Use a semantic token (bg-surface, text-tertiary, …); this family has no utility- ramp.';
+
+      return { token, suggestion };
     };
 
     const checkString = (node, raw) => {
@@ -168,15 +207,12 @@ const noNonAdaptivePalette = {
       if (offenders.length === 0) {
         return;
       }
-      const { prop, family, shade } = offenders[0];
       context.report({
         node,
         messageId: 'rawPalette',
         data: {
           cls: offenders.map((o) => o.token).join(', '),
-          prop,
-          family,
-          shade,
+          suggestion: offenders[0].suggestion,
         },
       });
     };
