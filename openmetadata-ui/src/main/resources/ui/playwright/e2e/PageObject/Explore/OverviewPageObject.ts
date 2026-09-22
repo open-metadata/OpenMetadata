@@ -367,6 +367,14 @@ export class OverviewPageObject extends RightPanelBase {
         .waitFor({ state: 'visible' });
       const domainPatchPromise = this.waitForPatchResponse();
       await this.domainTreeNode.filter({ hasText: domainName }).click();
+
+      // Multi-select pickers stage the toggle and commit on Apply; single-select
+      // pickers commit immediately (no Apply button rendered).
+      const applyButton = this.page.getByTestId('update-btn');
+      if (await applyButton.isVisible()) {
+        await applyButton.click();
+      }
+
       await domainPatchPromise;
     }
 
@@ -631,6 +639,13 @@ export class OverviewPageObject extends RightPanelBase {
     const patchPromise = this.waitForPatchResponse();
 
     await domainItem.click();
+
+    // Multi-select pickers stage the toggle and commit on Apply; single-select
+    // pickers commit immediately (no Apply button rendered).
+    const applyButton = this.page.getByTestId('update-btn');
+    if (await applyButton.isVisible()) {
+      await applyButton.click();
+    }
 
     await patchPromise;
     return this;
