@@ -838,3 +838,54 @@ describe('ui slice', () => {
     });
   });
 });
+
+describe('graph slice (extra setters)', () => {
+  beforeEach(() => useLineageStore.getState().reset());
+
+  it('setEdges replaces the edges array', () => {
+    const e: Edge[] = [{ id: 'e1', source: 'a', target: 'b' }];
+    useLineageStore.getState().setEdges(e);
+
+    expect(useLineageStore.getState().edges).toBe(e);
+  });
+
+  it('setColumnEdges replaces the columnEdges array', () => {
+    const e: Edge[] = [{ id: 'ce1', source: 'a', target: 'b' }];
+    useLineageStore.getState().setColumnEdges(e);
+
+    expect(useLineageStore.getState().columnEdges).toBe(e);
+  });
+
+  it('applyEdgesChange applies reactflow edge changes', () => {
+    useLineageStore
+      .getState()
+      .setEdges([{ id: 'e1', source: 'a', target: 'b' }]);
+    useLineageStore.getState().applyEdgesChange([{ id: 'e1', type: 'remove' }]);
+
+    expect(useLineageStore.getState().edges).toHaveLength(0);
+  });
+});
+
+describe('data slice (extra actions)', () => {
+  beforeEach(() => useLineageStore.getState().reset());
+
+  it('resetData clears data slice and preserves other slices', () => {
+    useLineageStore
+      .getState()
+      .setLineageData({
+        entity: { id: 'e' },
+      } as unknown as EntityLineageResponse);
+    useLineageStore
+      .getState()
+      .setNodes([{ id: 'n1', position: { x: 0, y: 0 }, data: {} }]);
+    useLineageStore.getState().resetData();
+    const s = useLineageStore.getState();
+
+    expect(s.entityLineage).toEqual({});
+    expect(s.init).toBe(false);
+    expect(s.loading).toBe(false);
+    expect(s.status).toBe('initial');
+    // graph slice untouched
+    expect(s.nodes).toHaveLength(1);
+  });
+});

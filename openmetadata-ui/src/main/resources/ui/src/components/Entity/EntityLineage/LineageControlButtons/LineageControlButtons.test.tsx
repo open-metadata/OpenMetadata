@@ -21,7 +21,6 @@ const mockZoomOut = jest.fn();
 const mockFitView = jest.fn();
 const mockSetCenter = jest.fn();
 const mockGetNodes = jest.fn();
-const mockRedraw = jest.fn();
 const mockReactFlowInstance = {
   zoomIn: mockZoomIn,
   zoomOut: mockZoomOut,
@@ -39,7 +38,6 @@ const mockLineageState = {
   reactFlowInstance: mockReactFlowInstance as
     | typeof mockReactFlowInstance
     | undefined,
-  redraw: mockRedraw,
 };
 
 jest.mock('react-router-dom', () => ({
@@ -245,7 +243,21 @@ describe('LineageControlButtons', () => {
       });
     });
 
-    it('should call redraw when "Rearrange nodes" is clicked', () => {
+    it('should call onRearrange when "Rearrange nodes" is clicked', () => {
+      const mockOnRearrange = jest.fn();
+      render(
+        <MemoryRouter>
+          <LineageControlButtons {...mockProps} onRearrange={mockOnRearrange} />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByTestId('fit-screen'));
+      fireEvent.click(screen.getByText('label.rearrange-nodes'));
+
+      expect(mockOnRearrange).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not throw when "Rearrange nodes" is clicked without onRearrange', () => {
       render(
         <MemoryRouter>
           <LineageControlButtons {...mockProps} />
@@ -253,9 +265,10 @@ describe('LineageControlButtons', () => {
       );
 
       fireEvent.click(screen.getByTestId('fit-screen'));
-      fireEvent.click(screen.getByText('label.rearrange-nodes'));
 
-      expect(mockRedraw).toHaveBeenCalledTimes(1);
+      expect(() =>
+        fireEvent.click(screen.getByText('label.rearrange-nodes'))
+      ).not.toThrow();
     });
 
     it('should call setCenter when "Refocus to home" is clicked', () => {

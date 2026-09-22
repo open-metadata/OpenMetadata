@@ -55,7 +55,6 @@ const LineageControlButtons: FC<{
 }) => {
   const { t } = useTranslation();
   const providerReactFlowInstance = useLineageStore((s) => s.reactFlowInstance);
-  const redraw = useLineageStore((s) => s.redraw);
   const reactFlowInstance =
     controlledReactFlowInstance ?? providerReactFlowInstance;
   const navigate = useNavigate();
@@ -93,13 +92,8 @@ const LineageControlButtons: FC<{
   }, [onFitView, reactFlowInstance]);
 
   const handleRearrange = useCallback(() => {
-    if (onRearrange) {
-      onRearrange();
-
-      return;
-    }
-    redraw?.();
-  }, [onRearrange, redraw]);
+    onRearrange?.();
+  }, [onRearrange]);
 
   const handleRefocusSelected = useCallback(() => {
     if (onRefocusSelected) {

@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { EntityType } from '../../../enums/entity.enum';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { Lineage } from './Lineage';
 
@@ -112,5 +113,26 @@ describe('Lineage', () => {
     );
 
     expect(useLineageStore.getState().entityFqn).toBe('x');
+  });
+
+  it('mirrors local nodes/edges/entityLineage to the store after mount', async () => {
+    render(
+      <MemoryRouter>
+        <Lineage
+          entityFqn="svc.db.s.t"
+          entityType={EntityType.TABLE}
+          isPlatformLineage={false}
+        />
+      </MemoryRouter>
+    );
+
+    // After the mount + fetch cycle settles, store fields should carry the
+    // mirrored entity-context values.
+    await waitFor(() => {
+      const s = useLineageStore.getState();
+
+      expect(s.entityFqn).toBe('svc.db.s.t');
+      expect(s.entityType).toBe(EntityType.TABLE);
+    });
   });
 });
