@@ -673,41 +673,34 @@ class ContextFileIT {
   }
 
   @Test
-  void testArchivedSameNameFileReturnsActionableError(TestNamespace ns)
+  void testCreateSameNameAsArchivedFileReturnsActionableError(TestNamespace ns)
       throws HttpResponseException {
     // A deleted file is archived (soft-deleted) and keeps its name reserved so it stays
-    // restorable. Adding a same-name file to that folder must fail with an actionable message
-    // pointing to the Archive, not the generic DB "Entity already exists" 409.
+    // restorable. Re-adding a same-name file to the same folder must fail with an actionable
+    // message pointing to the Archive, not the generic DB "Entity already exists" 409. Enforced
+    // at the create chokepoint, so it holds for the direct create path too (not just upload/move).
     RestClient rest = RestClient.admin();
-    Folder archivedFolder =
-        createFolder(rest, new CreateFolder().withName(ns.prefix("archived-folder")));
-    Folder otherFolder = createFolder(rest, new CreateFolder().withName(ns.prefix("other-folder")));
+    Folder folder = createFolder(rest, new CreateFolder().withName(ns.prefix("archive-folder")));
     String sharedName = ns.prefix("report");
 
-    ContextFile archived =
+    ContextFile file =
         createFile(
             rest,
             new CreateContextFile()
                 .withName(sharedName)
                 .withFileType(ContextFileType.PDF)
-                .withFolder(archivedFolder.getFullyQualifiedName())
+                .withFolder(folder.getFullyQualifiedName())
                 .withProcessingStatus(ProcessingStatus.Uploaded));
-    rest.delete(FILE_PATH, archived.getId()); // soft-delete -> archived, name still reserved
+    rest.delete(FILE_PATH, file.getId()); // soft-delete -> archived, name still reserved
 
-    // A live same-name file lives elsewhere; moving it into the archived folder reuses the name.
-    ContextFile candidate =
-        createFile(
-            rest,
-            new CreateContextFile()
-                .withName(sharedName)
-                .withFileType(ContextFileType.PDF)
-                .withFolder(otherFolder.getFullyQualifiedName())
-                .withProcessingStatus(ProcessingStatus.Uploaded));
-
+    CreateContextFile duplicate =
+        new CreateContextFile()
+            .withName(sharedName)
+            .withFileType(ContextFileType.PDF)
+            .withFolder(folder.getFullyQualifiedName())
+            .withProcessingStatus(ProcessingStatus.Uploaded);
     HttpResponseException ex =
-        assertThrows(
-            HttpResponseException.class,
-            () -> moveFile(rest, candidate.getId(), archivedFolder.getEntityReference()));
+        assertThrows(HttpResponseException.class, () -> createFile(rest, duplicate));
     assertEquals(400, ex.getStatusCode());
     assertTrue(
         ex.getMessage().contains("in the Archive"),
