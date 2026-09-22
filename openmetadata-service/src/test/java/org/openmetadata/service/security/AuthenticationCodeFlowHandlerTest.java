@@ -508,6 +508,108 @@ class AuthenticationCodeFlowHandlerTest {
     assertEquals("Redirect URI must exactly match a trusted redirect URI", thrown.getMessage());
   }
 
+  /**
+   * Issue #26311: the deployment is served at https://om.example.org but oidcConfiguration.serverUrl
+   * still holds the default localhost value, which used to make every SSO login fail with "Redirect
+   * URI must exactly match a trusted redirect URI" and had no config-only remedy.
+   */
+  @Test
+  void requireRedirectUri_allowsAuthCallbackOnProxiedOriginWhenServerUrlIsStale() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("http://localhost:8585", "", List.of());
+    HttpServletRequest req = proxiedRequest("https", "om.example.org");
+
+    assertEquals(
+        "https://om.example.org/auth/callback",
+        invokeRequireRedirectUri(handler, req, "https://om.example.org/auth/callback"));
+  }
+
+  @Test
+  void requireRedirectUri_allowsMcpCallbackOnProxiedOrigin() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("http://localhost:8585", "", List.of());
+    HttpServletRequest req = proxiedRequest("https", "om.example.org");
+
+    assertEquals(
+        "https://om.example.org" + MCP_CALLBACK,
+        invokeRequireRedirectUri(handler, req, "https://om.example.org" + MCP_CALLBACK));
+  }
+
+  @Test
+  void requireRedirectUri_derivesOriginFromConnectorWhenNoProxyHeaders() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("http://localhost:8585", "", List.of());
+    HttpServletRequest req = directRequest("https", "om.example.org", 443);
+
+    assertEquals(
+        "https://om.example.org/auth/callback",
+        invokeRequireRedirectUri(handler, req, "https://om.example.org/auth/callback"));
+  }
+
+  @Test
+  void requireRedirectUri_keepsNonDefaultPortFromConnectorOrigin() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("http://localhost:8585", "", List.of());
+    HttpServletRequest req = directRequest("http", "om.example.org", 8080);
+
+    assertEquals(
+        "http://om.example.org:8080/auth/callback",
+        invokeRequireRedirectUri(handler, req, "http://om.example.org:8080/auth/callback"));
+  }
+
+  /** The request origin is client-influenced, so it must only ever widen OM's own fixed paths. */
+  @Test
+  void requireRedirectUri_rejectsArbitraryPathOnProxiedOrigin() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("http://localhost:8585", "", List.of());
+    HttpServletRequest req = proxiedRequest("https", "om.example.org");
+
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                invokeRequireRedirectUri(handler, req, "https://om.example.org/steal?token=leak"));
+
+    assertEquals("Redirect URI must exactly match a trusted redirect URI", thrown.getMessage());
+  }
+
+  @Test
+  void requireRedirectUri_rejectsForeignOriginEvenWhenForwardedHostIsSpoofed() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("https://om.example.org", "", List.of());
+    HttpServletRequest req = proxiedRequest("https", "evil.example.com");
+
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> invokeRequireRedirectUri(handler, req, "https://attacker.test/auth/callback"));
+
+    assertEquals("Redirect URI must exactly match a trusted redirect URI", thrown.getMessage());
+  }
+
+  /** A malformed proxy header must not abort validation of an otherwise trusted candidate. */
+  @Test
+  void requireRedirectUri_ignoresUnparseableForwardedHost() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("https://om.example.org", "", List.of());
+    HttpServletRequest req = proxiedRequest("https", "not a host");
+
+    assertEquals(
+        "https://om.example.org/auth/callback",
+        invokeRequireRedirectUri(handler, req, "https://om.example.org/auth/callback"));
+  }
+
+  @Test
+  void requireRedirectUri_usesLeftmostHopOfForwardedHeaderChain() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("http://localhost:8585", "", List.of());
+    HttpServletRequest req = proxiedRequest("https, http", "om.example.org, internal.svc");
+
+    assertEquals(
+        "https://om.example.org/auth/callback",
+        invokeRequireRedirectUri(handler, req, "https://om.example.org/auth/callback"));
+  }
+
   private AuthenticationCodeFlowHandler createRedirectHandler(
       String serverUrl, String callbackUrl, List<String> additionalTrustedRedirectUris)
       throws Exception {
@@ -525,12 +627,39 @@ class AuthenticationCodeFlowHandlerTest {
 
   private String invokeRequireRedirectUri(AuthenticationCodeFlowHandler handler, String redirectUri)
       throws Exception {
+    return invokeRequireRedirectUri(handler, originlessRequest(), redirectUri);
+  }
+
+  /** A request no origin can be derived from, so only configured entries are trusted. */
+  private HttpServletRequest originlessRequest() {
+    return mock(HttpServletRequest.class);
+  }
+
+  private HttpServletRequest proxiedRequest(String forwardedProto, String forwardedHost) {
+    HttpServletRequest req = mock(HttpServletRequest.class);
+    when(req.getHeader("X-Forwarded-Proto")).thenReturn(forwardedProto);
+    when(req.getHeader("X-Forwarded-Host")).thenReturn(forwardedHost);
+    return req;
+  }
+
+  private HttpServletRequest directRequest(String scheme, String host, int port) {
+    HttpServletRequest req = mock(HttpServletRequest.class);
+    when(req.getScheme()).thenReturn(scheme);
+    when(req.getServerName()).thenReturn(host);
+    when(req.getServerPort()).thenReturn(port);
+    return req;
+  }
+
+  private String invokeRequireRedirectUri(
+      AuthenticationCodeFlowHandler handler, HttpServletRequest req, String redirectUri)
+      throws Exception {
     Method method =
-        AuthenticationCodeFlowHandler.class.getDeclaredMethod("requireRedirectUri", String.class);
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "requireRedirectUri", HttpServletRequest.class, String.class);
     method.setAccessible(true);
     String result;
     try {
-      result = (String) method.invoke(handler, redirectUri);
+      result = (String) method.invoke(handler, req, redirectUri);
     } catch (InvocationTargetException e) {
       Throwable cause = e.getCause();
       if (cause instanceof RuntimeException runtimeException) {
