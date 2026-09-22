@@ -1992,9 +1992,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
         subDomain
       );
 
-      // Navigate to domain
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await selectDomain(page, domain.data);
+      // Navigate to domain directly by URL. Going through the sidebar +
+      // search-backed listing is flaky: the just-created domain can be missing
+      // from the eventually-consistent search index when the row is clicked.
+      const domainFqn =
+        domain.responseData.fullyQualifiedName ?? domain.responseData.name;
+      await page.goto(`/domain/${encodeURIComponent(domainFqn)}`);
+      await waitForAllLoadersToDisappear(page);
 
       // Verify data products count before rename
       await verifyDataProductsCount(page, 2);
