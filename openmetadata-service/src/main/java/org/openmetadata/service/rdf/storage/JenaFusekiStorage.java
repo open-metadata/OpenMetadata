@@ -300,21 +300,27 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       addBasicAuth(request, username, password, info.userInfo());
       final HttpResponse<Void> response =
           streamingHttpClient.send(request.build(), HttpResponse.BodyHandlers.discarding());
-      if (response.statusCode() / 100 != 2) {
-        throw new IllegalStateException(
-            "Provision the RDF dataset from the OpenMetadata Fuseki assembler before indexing: "
-                + maskUserInfo(datasetEndpoint)
-                + " (HTTP "
-                + response.statusCode()
-                + ")");
-      }
-      return FusekiWriteCapabilities.require(response.headers());
+      final FusekiWriteCapabilities capabilities =
+          FusekiWriteCapabilities.negotiate(
+              response.statusCode(), response.headers(), info.serverBaseUrl(), info.datasetName());
+      warnAboutMissingGuarantees(datasetEndpoint, capabilities);
+      return capabilities;
     } catch (IOException exception) {
       throw new IllegalStateException("Could not verify Fuseki dataset configuration", exception);
     } catch (InterruptedException exception) {
       Thread.currentThread().interrupt();
       throw new IllegalStateException(
           "Interrupted while verifying Fuseki dataset configuration", exception);
+    }
+  }
+
+  private static void warnAboutMissingGuarantees(
+      final String datasetEndpoint, final FusekiWriteCapabilities capabilities) {
+    if (!nullOrEmpty(capabilities.missingGuarantees())) {
+      LOG.warn(
+          "RDF dataset {} lacks guarantees OpenMetadata relies on at scale; indexing continues: {}",
+          maskUserInfo(datasetEndpoint),
+          String.join("; ", capabilities.missingGuarantees()));
     }
   }
 

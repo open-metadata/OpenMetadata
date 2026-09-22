@@ -12,6 +12,7 @@
  */
 package org.openmetadata.service.rdf.storage;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -44,11 +45,19 @@ import org.openmetadata.service.rdf.inference.InferenceDirtyMarker;
 class JenaFusekiDatasetAdminTest {
 
   private static final String DATASET_PATH = "/openmetadata";
+  private static final Map<String, String> EXTENSION_HEADERS =
+      Map.of(
+          FusekiWriteCapabilities.DEADLINE, "50000",
+          FusekiWriteCapabilities.LIMIT, "67108864",
+          FusekiWriteCapabilities.UNION, "true",
+          FusekiWriteCapabilities.QUERY, "50000",
+          FusekiWriteCapabilities.UPDATE, "50000");
 
   private HttpServer server;
   private final List<String> requests = new CopyOnWriteArrayList<>();
   private final Map<String, Integer> statusByPath = new ConcurrentHashMap<>();
   private volatile BiFunction<String, String, String> bodyForPath = (method, path) -> "";
+  private volatile Map<String, String> optionsHeaders = EXTENSION_HEADERS;
 
   @BeforeEach
   void startStub() throws Exception {
@@ -66,11 +75,7 @@ class JenaFusekiDatasetAdminTest {
         statusByPath.getOrDefault(method + " " + path, statusByPath.getOrDefault(path, 200));
     byte[] body = bodyForPath.apply(method, path).getBytes(StandardCharsets.UTF_8);
     if (method.equals("OPTIONS")) {
-      exchange.getResponseHeaders().set(FusekiWriteCapabilities.DEADLINE, "50000");
-      exchange.getResponseHeaders().set(FusekiWriteCapabilities.LIMIT, "67108864");
-      exchange.getResponseHeaders().set(FusekiWriteCapabilities.UNION, "true");
-      exchange.getResponseHeaders().set(FusekiWriteCapabilities.QUERY, "50000");
-      exchange.getResponseHeaders().set(FusekiWriteCapabilities.UPDATE, "50000");
+      optionsHeaders.forEach(exchange.getResponseHeaders()::set);
     }
     exchange.sendResponseHeaders(status, body.length == 0 ? -1 : body.length);
     if (body.length > 0) {
@@ -152,6 +157,27 @@ class JenaFusekiDatasetAdminTest {
       requests.clear();
       assertThrows(IllegalStateException.class, () -> storage.createDatasetIfMissing("build_b"));
       assertFalse(requests.contains("POST /$/datasets"));
+    }
+  }
+
+  @Test
+  @DisplayName("a dataset on Fuseki without the OpenMetadata extension is usable")
+  void datasetWithoutTheExtensionIsUsable() {
+    optionsHeaders = Map.of(FusekiWriteCapabilities.REQUEST_ID, "1");
+    try (JenaFusekiStorage storage = storage()) {
+      assertDoesNotThrow(() -> storage.createDatasetIfMissing("build_a"));
+    }
+  }
+
+  @Test
+  @DisplayName("a path answered without a Fuseki request id names the dataset that was probed")
+  void pathWithoutADatasetIsReportedAsMissing() {
+    optionsHeaders = Map.of();
+    try (JenaFusekiStorage storage = storage()) {
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class, () -> storage.createDatasetIfMissing("build_a"));
+      assertTrue(failure.getMessage().contains("'build_a' does not exist"), failure.getMessage());
     }
   }
 
