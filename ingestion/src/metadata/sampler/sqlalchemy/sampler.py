@@ -14,6 +14,7 @@ for the profiler
 """
 
 import hashlib
+import re
 from typing import cast
 
 from sqlalchemy import Column, inspect, select, text
@@ -383,12 +384,51 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         Build the CTE using Core select() so it does not require an active Session.
         """
         self.partition_details = cast(PartitionProfilerConfig, self.partition_details)  # noqa: TC006
+        raw_table = self.raw_dataset.__table__
         partition_filter = build_partition_predicate(
             self.partition_details,
-            self.raw_dataset.__table__.c,
+            raw_table.c,
         )
-        stmt = select(self.raw_dataset).where(partition_filter)
-        return stmt.cte(f"{self.get_sampler_table_name()}_partitioned")
+        cte_name = f"{self.get_sampler_table_name()}_partitioned"
+
+        # Some dialects rewrite labels while compiling a CTE. BigQuery, for
+        # example, prefixes an underscore to labels that start with a digit.
+        # Explicitly label those columns in the inner CTE and project them
+        # back through the CTE column collection so outer references use the
+        # names that actually exist in the CTE.
+        dialect_name = getattr(getattr(self.connection, "dialect", None), "name", "")
+        column_names = [column.name for column in raw_table.c]
+        safe_names = [
+            self._partition_cte_column_name(name, dialect_name) for name in column_names
+        ]
+        if column_names == safe_names:
+            stmt = select(self.raw_dataset).where(partition_filter)
+            return stmt.cte(cte_name)
+
+        inner_columns = []
+        for column, safe_name in zip(raw_table.c, safe_names, strict=True):
+            if column.name == safe_name:
+                inner_columns.append(column)
+                continue
+
+            safe_column = column.label(safe_name)
+            # Keep the logical column key used by the profiler while making
+            # the SQL alias valid for BigQuery. The CTE proxy then compiles
+            # references to this key using the emitted safe alias.
+            safe_column.key = column.key
+            inner_columns.append(safe_column)
+
+        return select(*inner_columns).where(partition_filter).cte(cte_name)
+
+    @staticmethod
+    def _partition_cte_column_name(column_name: str, dialect_name: str) -> str:
+        """Return the label emitted by dialects that sanitize column names."""
+        if dialect_name != "bigquery":
+            return column_name
+        safe_name = re.sub(r"[^A-Za-z0-9_]", "_", column_name)
+        if not safe_name or not (safe_name[0].isalpha() or safe_name[0] == "_"):
+            safe_name = f"_{safe_name}"
+        return safe_name
 
     def get_partitioned_query(self, query=None) -> Query:
         """Return the partitioned query"""

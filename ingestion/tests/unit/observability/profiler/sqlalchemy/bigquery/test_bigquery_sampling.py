@@ -1,10 +1,12 @@
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
-from sqlalchemy import Column, Integer
+from sqlalchemy import Column, Integer, select
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.sql.selectable import CTE  # noqa: TC002
+from sqlalchemy_bigquery import dialect as bigquery_dialect
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import (
@@ -60,6 +62,14 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
+
+
+class DigitLeadingColumns(Base):
+    __tablename__ = "digit_leading_columns"
+    id = Column(Integer, primary_key=True)
+    revenue = Column("2024_revenue", Integer)
+    external_id = Column("123_id", Integer)
+    normal = Column(Integer)
 
 
 @patch.object(SQASampler, "build_table_orm", return_value=User)
@@ -254,3 +264,31 @@ class SampleTest(TestCase):
             "SELECT users_1.id \nFROM users AS users_1 TABLESAMPLE system(50.0 PERCENT) \nWHERE id IN ('1', '2')"
         )
         assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
+
+    def test_partitioned_sampling_uses_emitted_bigquery_cte_column_names(self, sampler_mock):
+        """Digit-leading columns must be referenced using BigQuery's CTE labels."""
+        sampler = object.__new__(SQASampler)
+        sampler._table = DigitLeadingColumns
+        sampler.connection = SimpleNamespace(dialect=bigquery_dialect())
+        sampler.partition_details = PartitionProfilerConfig(
+            enablePartitioning=True,
+            partitionColumnName="normal",
+            partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
+            partitionValues=["1"],
+        )
+
+        query = sampler._partitioned_table()
+        compiled = str(
+            select(*query.c).compile(
+                dialect=bigquery_dialect(), compile_kwargs={"literal_binds": True}
+            )
+        )
+        outer_sql = compiled.rsplit(")\n SELECT", 1)[-1]
+
+        assert "2024_revenue" in query.c
+        assert "123_id" in query.c
+        assert "AS `_2024_revenue`" in compiled
+        assert "AS `_123_id`" in compiled
+        assert "`_2024_revenue`" in outer_sql
+        assert "`2024_revenue`" not in outer_sql
+        assert "`normal` IN ('1')" in compiled
