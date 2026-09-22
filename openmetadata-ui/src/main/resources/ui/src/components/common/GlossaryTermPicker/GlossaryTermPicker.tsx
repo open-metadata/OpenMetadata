@@ -37,6 +37,7 @@ type InheritedTreeSelectProps = Pick<
   | 'onOpenChange'
   | 'renderTrigger'
   | 'triggerVariant'
+  | 'bordered'
   | 'label'
   | 'placeholder'
   | 'required'
@@ -66,6 +67,7 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
   onOpenChange,
   renderTrigger,
   triggerVariant,
+  bordered,
   label,
   placeholder,
   required = false,
@@ -151,6 +153,7 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
       searchable
       // eslint-disable-next-line jsx-a11y/no-autofocus -- opt-in, for a picker opened without a click
       autoFocus={autoFocus}
+      bordered={bordered}
       commitMode={commitMode}
       data-testid={dataTestId}
       disabled={disabled}

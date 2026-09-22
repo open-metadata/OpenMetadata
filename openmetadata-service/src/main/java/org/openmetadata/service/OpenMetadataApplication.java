@@ -371,7 +371,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Instantiate JWT Token Generator
     JWTTokenGenerator.getInstance()
         .init(
-            SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
+            SecurityConfigurationManager.getCurrentAuthConfig(),
             catalogConfig.getJwtTokenConfiguration());
 
     initializeWebsockets(catalogConfig, environment);
@@ -959,7 +959,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       // Update JWT configuration first
       JWTTokenGenerator.getInstance()
           .init(
-              SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
+              SecurityConfigurationManager.getCurrentAuthConfig(),
               config.getJwtTokenConfiguration());
 
       // Re-register authenticator with new config

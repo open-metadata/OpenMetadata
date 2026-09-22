@@ -9687,6 +9687,16 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/common/FilterChip/FilterChip.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
+        "playwright/e2e/Features/ExploreQuickFilters.spec.ts",
+        "playwright/e2e/Features/RTL.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/platform/ai-shell/Sidebar/Sidebar.tsx"
       ],
       "specs": [
