@@ -39,6 +39,7 @@ test.describe('Glossary Hierarchy', () => {
   test('should move nested term to root level of same glossary', async ({
     page,
   }) => {
+    test.slow(true);
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
     const parentTerm = new GlossaryTerm(glossary);
@@ -61,6 +62,22 @@ test.describe('Glossary Hierarchy', () => {
         glossary.responseData.displayName,
         glossary.responseData.fullyQualifiedName
       );
+
+      // moveAsync returns 200 immediately; the actual hierarchy change is
+      // processed asynchronously. Poll until the term's parent is cleared.
+      await expect
+        .poll(
+          async () => {
+            const res = await apiContext.get(
+              `/api/v1/glossaryTerms/${childTerm.responseData.id}`
+            );
+            const term = await res.json();
+
+            return term.parent;
+          },
+          { timeout: 60_000, intervals: [1000, 2000, 5000] }
+        )
+        .toBeFalsy();
 
       // Refresh responseData so cleanup uses the post-move FQN.
       // Moving to root rewrites the term's fullyQualifiedName in the DB, and
