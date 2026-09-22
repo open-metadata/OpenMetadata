@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page, Response } from '@playwright/test';
+import { clickOutside } from './common';
 
 // Drives the picker popover: portaled, and nothing is saved until Apply.
 
@@ -20,21 +21,29 @@ export type GlossaryTermRef = {
   fullyQualifiedName: string;
 };
 
-const POPOVER = 'glossary-term-picker-popover';
+// The popover's testid varies per instance; this class is set by the component.
+const POPOVER = '.glossary-term-picker-popover';
 
-// Scoped to the popover rather than a placeholder, which is translated.
-const searchBox = (page: Page) => page.getByTestId(POPOVER).locator('input');
+// Only the button and custom-trigger variants put a search box in the popover.
+const popoverSearchBox = (page: Page) => page.locator(POPOVER).locator('input');
 
-const tree = (page: Page) =>
-  page.getByTestId(POPOVER).locator('[role="treegrid"]');
+const tree = (page: Page) => page.locator(POPOVER).locator('[role="treegrid"]');
 
+// Terms are keyed by FQN, glossary roots by bare `name` — accept both spellings.
 const termRow = (page: Page, term: GlossaryTermRef) =>
-  page.getByTestId(`tree-node-${term.fullyQualifiedName}`);
+  page
+    .getByTestId(`tree-node-${term.fullyQualifiedName}`)
+    .or(
+      page.getByTestId(
+        `tree-node-${term.fullyQualifiedName.replace(/^"|"$/g, '')}`
+      )
+    )
+    .or(page.getByTestId(`tree-node-${term.name}`));
 
 // Rows are keyed by FQN; callers that only know a display name match on text.
 export const glossaryPickerRow = (page: Page, name: string) =>
   page
-    .getByTestId(POPOVER)
+    .locator(POPOVER)
     .locator('[data-testid^="tree-node-"]')
     .filter({ hasText: name });
 
@@ -45,33 +54,54 @@ export const isGlossaryTermSelected = (row: Locator) =>
     .count()
     .then((n) => n > 0);
 
-export const searchGlossaryPicker = async (page: Page, term: string) => {
-  const searchResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes('glossary')
-  );
-  await searchBox(page).fill(term);
-  await searchResponse;
+// The tree debounces and may skip the call, so the caller's row assertion is the wait.
+export const searchGlossaryPicker = async (
+  page: Page,
+  term: string,
+  trigger?: Locator
+) => {
+  const inPopover = popoverSearchBox(page);
+  // The input variant's own trigger is the search box; prefer it over `:focus`.
+  const box = (await inPopover.count())
+    ? inPopover
+    : trigger?.locator('input') ?? page.locator('input:focus');
+
+  await box.fill(term);
 };
 
-// Retry once: on slow CI the first click can precede the trigger being ready.
+// Opens the picker and waits for the treegrid to render.
+//
+// The picker uses TreeSelect's custom-trigger path (renderTrigger + onClick={toggle}),
+// so the trigger never carries `aria-expanded` — the popover's open state is only
+// observable via the treegrid appearing. Both attempts have a bounded timeout so a
+// genuine failure surfaces as "treegrid never rendered" instead of "browser closed"
+// from the enclosing 180s test timeout (which is what the old retry — an unbounded
+// waitFor after `force: true` — produced under merge-group shard load).
+//
+// Issue: https://github.com/open-metadata/OpenMetadata/issues/33640
 export const openGlossaryPicker = async (
   page: Page,
   trigger: Locator,
   options?: { force?: boolean }
 ) => {
   await expect(trigger).toBeVisible();
-  await trigger.click({ force: options?.force });
+  await expect(trigger).toBeEnabled();
 
   const treeLocator = tree(page);
 
+  const clickAndAwaitOpen = async (clickOptions?: { force?: boolean }) => {
+    await trigger.click(clickOptions);
+    await treeLocator.waitFor({ state: 'visible', timeout: 5_000 });
+  };
+
   try {
-    await treeLocator.waitFor({ state: 'visible', timeout: 10_000 });
+    await clickAndAwaitOpen({ force: options?.force });
   } catch {
-    // eslint-disable-next-line playwright/no-force-option -- retry: first click may not have registered on the react-aria trigger
-    await trigger.click({ force: true });
-    await treeLocator.waitFor({ state: 'visible' });
+    // Retry: first click didn't open the popover (react-aria trigger race on
+    // slow shards); force is the last resort before we give up. The
+    // `no-force-option` rule pattern-matches literal `click({ force: true })`
+    // call sites — this one hides behind `clickAndAwaitOpen`, so no suppress.
+    await clickAndAwaitOpen({ force: true });
   }
 };
 
@@ -123,6 +153,32 @@ export const applyGlossaryPicker = async (
   await patchRequest;
 
   await expect(page.getByTestId('update-btn')).not.toBeVisible();
+};
+
+// The trigger of a form picker, which renders its selection inline.
+export const glossaryFieldTrigger = (scope: Page | Locator, testId: string) =>
+  scope.getByTestId(testId);
+
+// Chips live on the trigger; each carries an aria-label remove button.
+export const removeGlossaryTermChip = async (
+  trigger: Locator,
+  label: string
+) => {
+  await trigger.getByRole('button', { name: `Remove ${label}` }).click();
+};
+
+// A form picker commits on click, so there is no Apply step to wait on.
+export const pickGlossaryTermInField = async (
+  page: Page,
+  trigger: Locator,
+  term: GlossaryTermRef
+) => {
+  await openGlossaryPicker(page, trigger);
+  await toggleGlossaryTermInPicker(page, term);
+
+  // Not Escape: these pickers sit in editors and drawers that close on it too.
+  await clickOutside(page);
+  await expect(page.locator(POPOVER)).not.toBeVisible();
 };
 
 // Open, pick one term, apply — the whole flow for a single-term assignment.

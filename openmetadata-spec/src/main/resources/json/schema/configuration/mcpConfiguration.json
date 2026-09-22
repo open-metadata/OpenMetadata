@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/configuration/mcpConfiguration.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "MCPConfiguration",
   "description": "This schema defines the Model Context Protocol (MCP) Server configuration",
   "type": "object",

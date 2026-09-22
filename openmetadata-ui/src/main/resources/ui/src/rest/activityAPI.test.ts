@@ -26,9 +26,9 @@ import {
   listActivityReplies,
   removeActivityReaction,
 } from './activityAPI';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
-jest.mock('./index', () => ({
+jest.mock('./axiosClient', () => ({
   delete: jest.fn(),
   get: jest.fn(),
   post: jest.fn(),

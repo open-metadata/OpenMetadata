@@ -96,7 +96,7 @@ describe('GlossaryTermPicker', () => {
       },
     ]);
 
-    expect(onChange).toHaveBeenCalledWith([APPLIED_TERM]);
+    expect(onChange).toHaveBeenCalledWith([APPLIED_TERM], expect.anything());
   });
 
   it('reports a newly picked term from its node data', () => {
@@ -117,7 +117,38 @@ describe('GlossaryTermPicker', () => {
       },
     ]);
 
-    expect(onChange).toHaveBeenCalledWith([newTerm]);
+    expect(onChange).toHaveBeenCalledWith([newTerm], expect.anything());
+  });
+
+  // A stray UI-only field makes the server reject the whole PATCH.
+  it('keeps the picker-only fields out of the reported tag', () => {
+    const onChange = jest.fn();
+    render(<GlossaryTermPicker value={[]} onChange={onChange} />);
+
+    emit([
+      {
+        id: 'Finance.ARR',
+        label: 'ARR',
+        value: 'Finance.ARR',
+        data: {
+          tagFQN: 'Finance.ARR',
+          name: 'ARR',
+          source: TagSource.Glossary,
+          entity: { id: 'uuid-1', name: 'ARR' },
+          isGlossaryRoot: false,
+        },
+      },
+    ]);
+
+    const [tags, nodes] = onChange.mock.calls[0];
+
+    expect(tags).toEqual([
+      { tagFQN: 'Finance.ARR', name: 'ARR', source: TagSource.Glossary },
+    ]);
+    expect(tags[0]).not.toHaveProperty('entity');
+    expect(tags[0]).not.toHaveProperty('isGlossaryRoot');
+    // The entity stays available to callers that resolve ids from it.
+    expect(nodes[0].entity).toEqual({ id: 'uuid-1', name: 'ARR' });
   });
 
   it('drops glossary rows, which are containers rather than terms', () => {
@@ -134,7 +165,7 @@ describe('GlossaryTermPicker', () => {
       },
     ]);
 
-    expect(onChange).toHaveBeenCalledWith([]);
+    expect(onChange).toHaveBeenCalledWith([], expect.anything());
   });
 
   it('normalises a single-select pick into an array', () => {
@@ -155,7 +186,7 @@ describe('GlossaryTermPicker', () => {
       data: term,
     });
 
-    expect(onChange).toHaveBeenCalledWith([term]);
+    expect(onChange).toHaveBeenCalledWith([term], expect.anything());
     expect(lastProps().multiple).toBe(false);
   });
 
@@ -165,7 +196,17 @@ describe('GlossaryTermPicker', () => {
 
     emit(null);
 
-    expect(onChange).toHaveBeenCalledWith([]);
+    expect(onChange).toHaveBeenCalledWith([], expect.anything());
+  });
+
+  // A programmatically opened picker is never clicked, so nothing else focuses it.
+  it('forwards autoFocus so an already-open picker can be typed into', () => {
+    render(
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- the prop under test
+      <GlossaryTermPicker autoFocus value={[]} />
+    );
+
+    expect(lastProps().autoFocus).toBe(true);
   });
 
   it('forwards the popover controls to the tree', () => {
