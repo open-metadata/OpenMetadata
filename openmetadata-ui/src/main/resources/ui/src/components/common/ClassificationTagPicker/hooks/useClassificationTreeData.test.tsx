@@ -13,7 +13,11 @@
 
 import { act, renderHook } from '@testing-library/react';
 import axios from 'axios';
-import { LabelType, State, TagSource } from '../../../../generated/type/tagLabel';
+import {
+  LabelType,
+  State,
+  TagSource,
+} from '../../../../generated/type/tagLabel';
 import tagClassBase from '../../../../utils/TagClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { RawTagResult } from '../../../Tag/TagSelector/TagSelector.utils';
