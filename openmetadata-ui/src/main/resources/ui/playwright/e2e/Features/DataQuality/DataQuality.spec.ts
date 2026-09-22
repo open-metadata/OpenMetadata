@@ -221,10 +221,9 @@ test.describe(
         // Add tags to test case
         await page.getByTestId('tags-input').click();
         await expect
-          .poll(
-            async () => page.getByTestId('search-input').isVisible(),
-            { timeout: 5_000 }
-          )
+          .poll(async () => page.getByTestId('search-input').isVisible(), {
+            timeout: 5_000,
+          })
           .toBe(true);
         const tagsSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=tag*`
@@ -280,10 +279,9 @@ test.describe(
 
         await page.getByTestId('tags-input').click();
         await expect
-          .poll(
-            async () => page.getByTestId('search-input').isVisible(),
-            { timeout: 5_000 }
-          )
+          .poll(async () => page.getByTestId('search-input').isVisible(), {
+            timeout: 5_000,
+          })
           .toBe(true);
         const newTagsSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=tag*`
@@ -427,10 +425,9 @@ test.describe(
         // Add tags to column test case
         await page.getByTestId('tags-input').click();
         await expect
-          .poll(
-            async () => page.getByTestId('search-input').isVisible(),
-            { timeout: 5_000 }
-          )
+          .poll(async () => page.getByTestId('search-input').isVisible(), {
+            timeout: 5_000,
+          })
           .toBe(true);
         const columnTagsSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=tag*`
@@ -480,10 +477,9 @@ test.describe(
 
         await page.getByTestId('tags-input').click();
         await expect
-          .poll(
-            async () => page.getByTestId('search-input').isVisible(),
-            { timeout: 5_000 }
-          )
+          .poll(async () => page.getByTestId('search-input').isVisible(), {
+            timeout: 5_000,
+          })
           .toBe(true);
         const columnNewTagsSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=tag*`
