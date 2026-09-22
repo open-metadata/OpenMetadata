@@ -12,10 +12,8 @@
  */
 
 import { renderHook, waitFor } from '@testing-library/react';
-import { ComponentType } from 'react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { getAllNotificationTemplates } from '../../../rest/notificationtemplateAPI';
-import { AddAlertFormWidgetProps } from '../AddObservabilityPage.interface';
 import { useObservabilityAlertTemplates } from './useObservabilityAlertTemplates';
 
 jest.mock('../../../rest/notificationtemplateAPI', () => ({
@@ -32,8 +30,10 @@ const mockGetAllNotificationTemplates =
   >;
 
 const extraFormWidgets = {
-  template: jest.fn() as unknown as ComponentType<AddAlertFormWidgetProps>,
-};
+  template: jest.fn(),
+} as unknown as Parameters<
+  typeof useObservabilityAlertTemplates
+>[0]['extraFormWidgets'];
 
 const renderTemplates = (permission: OperationPermission) =>
   renderHook(() =>
