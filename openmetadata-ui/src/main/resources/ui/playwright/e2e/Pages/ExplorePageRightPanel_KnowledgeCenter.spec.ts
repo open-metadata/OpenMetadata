@@ -25,7 +25,6 @@ import {
   getEntityDisplayName,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
-import { waitForOwnerIndexed } from '../../utils/polling';
 import { performUserLogin } from '../../utils/user';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import {
@@ -70,25 +69,24 @@ export const test = baseTest.extend<{
   },
 });
 
+/**
+ * Wait for the search index to carry the owner (the panel renders owners from
+ * the search document), then re-open the entity and assert the chip.
+ */
 async function expectOwnerInPanel(
   page: Page,
   entityName: string,
   owner: UserClass
 ) {
-  await waitForOwnerIndexed(
-    page,
-    knowledgeCenter.responseData.fullyQualifiedName,
-    'page',
-    owner.responseData.id,
-    true
-  );
-  await navigateToKCEntity(page, entityName);
+  await expect(async () => {
+    await navigateToKCEntity(page, entityName);
 
-  const ownerChip = page
-    .locator('[data-testid="entity-summary-panel-container"]')
-    .getByTestId(owner.getUserDisplayName());
+    const ownerChip = page
+      .locator('[data-testid="entity-summary-panel-container"]')
+      .getByTestId(owner.getUserDisplayName());
 
-  await expect(ownerChip).toBeVisible();
+    await expect(ownerChip).toBeVisible();
+  }).toPass({ timeout: 60_000, intervals: [2_000, 5_000] });
 }
 
 test.describe('Knowledge Center Right Panel Test Suite', () => {
