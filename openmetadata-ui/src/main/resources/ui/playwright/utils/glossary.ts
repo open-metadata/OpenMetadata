@@ -2238,18 +2238,29 @@ export const expandTreeNodeByName = async (
   // (the full glossary tree is virtualized, so a plain scroll can miss an
   // off-screen glossary); nested lookups rely on the parent's already-loaded
   // subtree instead.
+  const popover = getTreeDropdown(page);
+
   if (search) {
-    const searchResponse = page.waitForResponse(
-      /\/api\/v1\/search\/query\?q=.*index=glossaryTerm.*/
-    );
-    await page.getByTestId('glossary-terms').locator('input').fill(displayName);
-    await searchResponse;
-    await waitForAllLoadersToDisappear(page);
+    const input = page.getByTestId('glossary-terms').locator('input');
+    // ES indexing can lag after entity creation; retry the search until the node appears.
+    await expect(async () => {
+      const searchDone = page.waitForResponse(
+        /\/api\/v1\/search\/query\?q=.*index=glossaryTerm.*/
+      );
+      // Clear resets to the glossary list (doesn't match the listener); fill triggers a fresh query.
+      await input.fill('');
+      await input.fill(displayName);
+      await searchDone;
+      await expect(
+        popover.getByText(displayName, { exact: true })
+      ).toBeVisible({ timeout: 2000 });
+    }).toPass({ timeout: 30000 });
   }
 
-  const popover = getTreeDropdown(page);
   const nodeText = popover.getByText(displayName, { exact: true });
-  await expect(nodeText).toBeVisible({ timeout: 10000 });
+  if (!search) {
+    await expect(nodeText).toBeVisible({ timeout: 10000 });
+  }
   await nodeText.scrollIntoViewIfNeeded();
 
   const treeItem = nodeText.locator('xpath=ancestor::*[@role="row"][1]');
@@ -2257,7 +2268,7 @@ export const expandTreeNodeByName = async (
     (await treeItem.getAttribute('aria-expanded')) === 'true';
 
   if (!alreadyExpanded) {
-    const expandButton = treeItem.locator('button').first();
+    const expandButton = treeItem.getByTestId('tree-expand-btn');
     await expect(expandButton).toBeVisible({ timeout: 5000 });
     await expandButton.click();
     await waitForAllLoadersToDisappear(page);

@@ -174,6 +174,7 @@ const TreeExpandButton = ({ className, ...props }: TreeExpandButtonProps) => {
   return (
     <AriaButton
       {...props}
+      data-testid="tree-expand-btn"
       className={(state) =>
         cx(
           'tw:flex tw:items-center tw:justify-center tw:w-4 tw:h-4 tw:shrink-0',
