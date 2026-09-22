@@ -10,10 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { MoreOutlined } from '@ant-design/icons';
-import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Box,
+  Dropdown,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Calendar } from '@untitledui/icons';
-import { Button, Dropdown } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -63,23 +66,16 @@ const AnnouncementFeedCardBody = ({
       editPermission
         ? [
             {
-              key: 'edit',
-              label: (
-                <span data-testid="announcement-edit-action">
-                  {t('label.edit')}
-                </span>
-              ),
-              onClick: () => setIsEditAnnouncement(true),
+              id: 'edit',
+              label: t('label.edit'),
+              testId: 'announcement-edit-action',
+              onAction: () => setIsEditAnnouncement(true),
             },
             {
-              key: 'delete',
-              label: (
-                <span data-testid="announcement-delete-action">
-                  {t('label.delete')}
-                </span>
-              ),
-              danger: true,
-              onClick: () =>
+              id: 'delete',
+              label: t('label.delete'),
+              testId: 'announcement-delete-action',
+              onAction: () =>
                 onConfirmation({
                   state: true,
                   threadId: announcement.id,
@@ -148,13 +144,26 @@ const AnnouncementFeedCardBody = ({
             {t(ANNOUNCEMENT_STATUS_LABEL_KEYS[status])}
           </Typography>
           {dropdownItems.length > 0 && (
-            <Dropdown menu={{ items: dropdownItems }} trigger={['click']}>
-              <Button
-                data-testid="announcement-actions"
-                icon={<MoreOutlined />}
-                type="text"
-              />
-            </Dropdown>
+            <Dropdown.Root>
+              <Dropdown.DotsButton data-testid="announcement-actions" />
+              <Dropdown.Popover className="tw:w-max">
+                <Dropdown.Menu items={dropdownItems}>
+                  {(item: {
+                    id: string;
+                    label: string;
+                    testId: string;
+                    onAction: () => void;
+                  }) => (
+                    <Dropdown.Item
+                      data-testid={item.testId}
+                      id={item.id}
+                      label={item.label}
+                      onAction={item.onAction}
+                    />
+                  )}
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.Root>
           )}
         </Box>
       </Box>

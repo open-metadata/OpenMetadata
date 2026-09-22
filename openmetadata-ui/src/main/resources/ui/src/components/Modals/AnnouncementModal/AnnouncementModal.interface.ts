@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { DateTime } from 'luxon';
 import {
   AnnouncementColor,
   AnnouncementType,
@@ -22,8 +21,8 @@ import { AnnouncementEntity } from '../../../rest/announcementsAPI';
 export interface AnnouncementFormValues {
   title: string;
   description: string;
-  startTime: DateTime;
-  endTime: DateTime;
+  startTime: number;
+  endTime: number;
   announcementType: AnnouncementType;
   color?: AnnouncementColor;
 }

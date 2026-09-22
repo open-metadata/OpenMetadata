@@ -1554,7 +1554,10 @@ const announcementForm = async (
     throw new Error('Announcement creation response did not include an id');
   }
 
-  await page.click('[data-testid="announcement-close"]');
+  await page
+    .getByTestId('announcement-drawer')
+    .getByRole('button', { name: 'Close' })
+    .click();
   if (hideAlert) {
     await toastNotification(page, /Announcement created successfully/i);
   }
@@ -1582,7 +1585,7 @@ export const createAnnouncement = async (
 
   await page.getByTestId('add-announcement').click();
 
-  await expect(page.locator('.ant-modal-header')).toContainText(
+  await expect(page.getByTestId('add-announcement')).toContainText(
     'Make an announcement'
   );
 
@@ -1788,7 +1791,10 @@ export const editAnnouncement = async (
   await expect(drawerAnnouncementCard).toContainText(data.description);
 
   // Close the announcement drawer
-  await page.locator('[data-testid="announcement-close"]').click();
+  await page
+    .getByTestId('announcement-drawer')
+    .getByRole('button', { name: 'Close' })
+    .click();
 
   await expect(page.getByTestId('announcement-drawer')).not.toBeVisible();
 };
@@ -1836,7 +1842,10 @@ export const createInactiveAnnouncement = async (
       .getByTestId('announcement-card')
       .filter({ hasText: data.title })
   ).toBeVisible();
-  await page.getByTestId('announcement-close').click();
+  await page
+    .getByTestId('announcement-drawer')
+    .getByRole('button', { name: 'Close' })
+    .click();
 
   return announcementId;
 };

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,12 +12,12 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { DateTime } from 'luxon';
+import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import { createAnnouncement } from '../../../rest/announcementsAPI';
 import * as ToastUtils from '../../../utils/ToastUtils';
 import AddAnnouncementModal from './AddAnnouncementModal';
+import { AnnouncementFormValues } from './AnnouncementModal.interface';
 
-// Mock dependencies
 jest.mock('../../../rest/announcementsAPI', () => ({
   createAnnouncement: jest.fn(),
 }));
@@ -32,17 +32,39 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
-  getTimeZone: () => 'UTC',
-}));
-
 jest.mock('../../../utils/EntityPureUtils', () => ({
   getEntityFeedLink: (entityType: string, entityFQN: string) =>
     `<#E::${entityType}::${entityFQN}>`,
 }));
 
-jest.mock('../../../utils/formUtils', () => ({
-  getField: jest.fn(() => <div data-testid="mocked-description-field" />),
+// The form body has its own test; here it is a harness that submits whatever
+// values a case wants, so these assertions stay on the payload the modal builds.
+let submittedValues: AnnouncementFormValues;
+
+jest.mock('./AnnouncementForm.component', () => ({
+  __esModule: true,
+  default: ({
+    open,
+    title,
+    onCancel,
+    onSubmit,
+  }: {
+    open: boolean;
+    title: string;
+    onCancel: () => void;
+    onSubmit: (values: AnnouncementFormValues) => void;
+  }) =>
+    open ? (
+      <div data-testid="announcement-form">
+        <span>{title}</span>
+        <button data-testid="submit" onClick={() => onSubmit(submittedValues)}>
+          submit
+        </button>
+        <button data-testid="cancel" onClick={onCancel}>
+          cancel
+        </button>
+      </div>
+    ) : null,
 }));
 
 const mockCreateAnnouncement = createAnnouncement as jest.MockedFunction<
@@ -60,95 +82,115 @@ const defaultProps = {
   onSave: jest.fn(),
 };
 
+const START = 1700000000000;
+const END = START + 86400000;
+
+const baseValues: AnnouncementFormValues = {
+  title: 'Test Announcement',
+  description: 'Test description',
+  announcementType: AnnouncementType.Notice,
+  startTime: START,
+  endTime: END,
+};
+
 describe('AddAnnouncementModal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    submittedValues = { ...baseValues };
   });
 
-  it('should render the modal with all form fields when open', () => {
+  it('should render the form when open', () => {
     render(<AddAnnouncementModal {...defaultProps} />);
 
+    expect(screen.getByTestId('announcement-form')).toBeInTheDocument();
     expect(
       screen.getByText('message.make-an-announcement')
     ).toBeInTheDocument();
-    expect(screen.getByLabelText('label.title:')).toBeInTheDocument();
-    expect(screen.getByTestId('mocked-description-field')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
   });
 
-  it('should not render the modal when closed', () => {
+  it('should not render the form when closed', () => {
     render(<AddAnnouncementModal {...defaultProps} open={false} />);
 
-    expect(
-      screen.queryByText('label.add-announcement')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('announcement-form')).not.toBeInTheDocument();
   });
 
-  it('should show error when start time is greater than or equal to end time', async () => {
+  it('should reject a start time that is not before the end time', async () => {
+    submittedValues = { ...baseValues, startTime: END, endTime: START };
+
     render(<AddAnnouncementModal {...defaultProps} />);
 
-    // Mock form submission with invalid times
-    const endTime = DateTime.now().plus({ hours: 1 });
-    const startTime = DateTime.now().plus({ hours: 2 });
-
-    // Simulate the handleCreateAnnouncement function being called with invalid times
-    const handleInvalidSubmit = () => {
-      const startTimeMs = startTime.toMillis();
-      const endTimeMs = endTime.toMillis();
-
-      if (startTimeMs >= endTimeMs) {
-        mockShowErrorToast('message.announcement-invalid-start-time');
-      }
-    };
-
-    handleInvalidSubmit();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit'));
+    });
 
     expect(mockShowErrorToast).toHaveBeenCalledWith(
       'message.announcement-invalid-start-time'
     );
+    expect(mockCreateAnnouncement).not.toHaveBeenCalled();
   });
 
-  it('should successfully create announcement with valid data', async () => {
-    const mockAnnouncementResponse = {
+  it('should post the announcement with its type', async () => {
+    mockCreateAnnouncement.mockResolvedValueOnce({
       id: '1',
       name: 'announcement-1',
-      displayName: 'Test Announcement',
-      entityLink: '<#E::table::test.table>',
       description: 'Test description',
-      startTime: Date.now(),
-      endTime: Date.now(),
-      updatedAt: Date.now(),
-    };
-    mockCreateAnnouncement.mockResolvedValueOnce(mockAnnouncementResponse);
+      startTime: START,
+      endTime: END,
+    });
 
     render(<AddAnnouncementModal {...defaultProps} />);
 
-    const validStartTime = DateTime.now().plus({ hours: 1 });
-    const validEndTime = DateTime.now().plus({ hours: 2 });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit'));
+    });
 
-    // Simulate the announcement creation logic
-    const announcementData = {
+    expect(mockCreateAnnouncement).toHaveBeenCalledWith({
       displayName: 'Test Announcement',
       description: 'Test description',
       entityLink: '<#E::table::test.table>',
-      startTime: validStartTime.toMillis(),
-      endTime: validEndTime.toMillis(),
-    };
-
-    await mockCreateAnnouncement(announcementData);
-
-    expect(mockCreateAnnouncement).toHaveBeenCalledWith(announcementData);
+      startTime: START,
+      endTime: END,
+      announcementType: AnnouncementType.Notice,
+      color: undefined,
+    });
+    expect(defaultProps.onSave).toHaveBeenCalledTimes(1);
   });
 
-  it('should call onCancel when cancel button is clicked', async () => {
+  it('should only send a colour for a Custom announcement', async () => {
+    mockCreateAnnouncement.mockResolvedValue({
+      id: '1',
+      name: 'announcement-1',
+      description: 'Test description',
+      startTime: START,
+      endTime: END,
+    });
+    submittedValues = {
+      ...baseValues,
+      announcementType: AnnouncementType.Critical,
+      color: undefined,
+    };
+
+    render(<AddAnnouncementModal {...defaultProps} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit'));
+    });
+
+    expect(mockCreateAnnouncement).toHaveBeenCalledWith(
+      expect.objectContaining({
+        announcementType: AnnouncementType.Critical,
+        color: undefined,
+      })
+    );
+  });
+
+  it('should call onCancel when cancel is clicked', async () => {
     const onCancelMock = jest.fn();
 
     render(<AddAnnouncementModal {...defaultProps} onCancel={onCancelMock} />);
 
-    const cancelButton = screen.getByRole('button', { name: 'Cancel' });
     await act(async () => {
-      fireEvent.click(cancelButton);
+      fireEvent.click(screen.getByTestId('cancel'));
     });
 
     expect(onCancelMock).toHaveBeenCalledTimes(1);

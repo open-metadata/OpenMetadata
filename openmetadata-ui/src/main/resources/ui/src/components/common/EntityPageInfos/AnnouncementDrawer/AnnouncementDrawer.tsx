@@ -16,12 +16,11 @@ import {
   Button,
   ButtonGroup,
   ButtonGroupItem,
-  ButtonUtility,
+  SlideoutMenu,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Announcement02, XClose } from '@untitledui/icons';
-import { Drawer } from 'antd';
+import { Announcement02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { FC, useCallback, useMemo, useState } from 'react';
@@ -135,65 +134,64 @@ const AnnouncementDrawer: FC<Props> = ({
           {t('label.add-entity', { entity: t('label.announcement') })}
         </Button>
       </Tooltip>
-
-      <ButtonUtility
-        aria-label={t('label.close')}
-        color="tertiary"
-        data-testid="announcement-close"
-        icon={XClose}
-        size="sm"
-        onClick={onClose}
-      />
     </Box>
   );
 
   return (
-    <Drawer
-      closable={false}
+    <SlideoutMenu
+      isDismissable
       data-testid="announcement-drawer"
-      open={open}
-      placement="right"
-      title={title}
+      isOpen={open}
       width={576}
-      onClose={onClose}>
-      <ButtonGroup
-        className="tw:mb-4"
-        data-testid="announcement-status-tabs"
-        selectedKeys={[activeTab]}
-        size="sm"
-        onSelectionChange={(keys) => {
-          const [selected] = Array.from(keys);
-          // react-aria clears the selection when the active item is clicked
-          // again; keeping the current tab avoids an unfiltered flash.
-          setActiveTab((prev) => (selected as string) ?? prev);
-        }}>
-        <ButtonGroupItem id={ALL_TAB}>{t('label.all')}</ButtonGroupItem>
-        {STATUS_TABS.map((status) => (
-          <ButtonGroupItem id={status} key={status}>
-            {t(ANNOUNCEMENT_STATUS_LABEL_KEYS[status])}
-          </ButtonGroupItem>
-        ))}
-      </ButtonGroup>
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          onClose();
+        }
+      }}>
+      <SlideoutMenu.Header className="tw:pr-12" onClose={onClose}>
+        {title}
+      </SlideoutMenu.Header>
 
-      <AnnouncementThreadBody
-        deleteAnnouncementHandler={deletePostHandler}
-        editPermission={createPermission}
-        refetchThread={refetchThread}
-        statusFilter={statusFilter}
-        threadLink={getEntityFeedLink(entityType, entityFQN)}
-        updateAnnouncementHandler={updateThreadHandler}
-      />
+      <SlideoutMenu.Content className="tw:gap-4 tw:pb-6">
+        <ButtonGroup
+          className="tw:mb-4"
+          data-testid="announcement-status-tabs"
+          selectedKeys={[activeTab]}
+          size="sm"
+          onSelectionChange={(keys) => {
+            const [selected] = Array.from(keys);
+            // react-aria clears the selection when the active item is clicked
+            // again; keeping the current tab avoids an unfiltered flash.
+            setActiveTab((prev) => (selected as string) ?? prev);
+          }}>
+          <ButtonGroupItem id={ALL_TAB}>{t('label.all')}</ButtonGroupItem>
+          {STATUS_TABS.map((status) => (
+            <ButtonGroupItem id={status} key={status}>
+              {t(ANNOUNCEMENT_STATUS_LABEL_KEYS[status])}
+            </ButtonGroupItem>
+          ))}
+        </ButtonGroup>
 
-      {isAddAnnouncementOpen && (
-        <AddAnnouncementModal
-          entityFQN={entityFQN || ''}
-          entityType={entityType || ''}
-          open={isAddAnnouncementOpen}
-          onCancel={handleCloseAnnouncementModal}
-          onSave={handleSaveAnnouncement}
+        <AnnouncementThreadBody
+          deleteAnnouncementHandler={deletePostHandler}
+          editPermission={createPermission}
+          refetchThread={refetchThread}
+          statusFilter={statusFilter}
+          threadLink={getEntityFeedLink(entityType, entityFQN)}
+          updateAnnouncementHandler={updateThreadHandler}
         />
-      )}
-    </Drawer>
+
+        {isAddAnnouncementOpen && (
+          <AddAnnouncementModal
+            entityFQN={entityFQN || ''}
+            entityType={entityType || ''}
+            open={isAddAnnouncementOpen}
+            onCancel={handleCloseAnnouncementModal}
+            onSave={handleSaveAnnouncement}
+          />
+        )}
+      </SlideoutMenu.Content>
+    </SlideoutMenu>
   );
 };
 
