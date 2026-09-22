@@ -244,7 +244,7 @@
   },
   "playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 9
+      "count": 7
     }
   },
   "playwright/e2e/Features/Glossary/GlossaryStatusFilterLargeDataset.spec.ts": {
