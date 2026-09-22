@@ -52,6 +52,15 @@ import {
   buildTestSuitePipelinePayload,
 } from './transformTestCaseFormData';
 
+// The pipeline-payload builder is stubbed module-wide below so the unrelated
+// submit tests can assert on a fixed payload. The FQN regression test restores
+// the real implementation for a single call so it can assert on the request
+// body that actually reaches addIngestionPipeline.
+const { buildTestSuitePipelinePayload: actualBuildTestSuitePipelinePayload } =
+  jest.requireActual<typeof import('./transformTestCaseFormData')>(
+    './transformTestCaseFormData'
+  );
+
 const mockGetResourceLimit = jest.fn().mockResolvedValue(undefined);
 
 // The real doc markdown Task 7 authored for the test-type field. The mocked
@@ -477,14 +486,24 @@ describe('TestCaseFormDrawer', () => {
     });
   });
 
-  it('should pass the raw selected-table FQN to the pipeline payload when the table entity has not resolved', async () => {
+  it('should create the pipeline against the selected table FQN when the table entity has not resolved', async () => {
+    (buildTestSuitePipelinePayload as jest.Mock).mockImplementationOnce(
+      actualBuildTestSuitePipelinePayload
+    );
     mockCreateTestCase.mockResolvedValue({
       name: 'transformed-test-case',
       id: 'created-id',
       testSuite: { id: 'suite-id', name: 'test-suite' },
     });
 
-    renderDrawer({ onFormSubmit: jest.fn(), onClose: jest.fn() });
+    // No `table` prop: the drawer is opened from the Test Library, where the
+    // table comes from the form field alone. Otherwise the payload builder's
+    // `table` fallback would hide a missing FQN.
+    renderDrawer({
+      table: undefined,
+      onFormSubmit: jest.fn(),
+      onClose: jest.fn(),
+    });
 
     await screen.findByTestId('test-case-form-body');
 
@@ -499,9 +518,14 @@ describe('TestCaseFormDrawer', () => {
     });
 
     await waitFor(() => {
-      expect(buildTestSuitePipelinePayload).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({ selectedTable: 'service.db.schema.table' })
+      expect(mockAddIngestionPipeline).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sourceConfig: {
+            config: expect.objectContaining({
+              entityFullyQualifiedName: 'service.db.schema.table',
+            }),
+          },
+        })
       );
     });
   });
