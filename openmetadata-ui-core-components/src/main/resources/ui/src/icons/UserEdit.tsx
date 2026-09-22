@@ -17,7 +17,7 @@ interface Props extends SVGProps<SVGSVGElement> {
   size?: number;
 }
 
-export const Owners: FC<Props> = ({
+export const UserEdit: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
@@ -39,4 +39,4 @@ export const Owners: FC<Props> = ({
     />
   </svg>
 );
-Owners.displayName = 'Owners';
+UserEdit.displayName = 'UserEdit';

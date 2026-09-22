@@ -51,7 +51,7 @@ import {
   Tag01,
   Trash01,
   Upload01,
-  Owners,
+  UserEdit,
   Users01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
@@ -121,7 +121,7 @@ export const AVAILABLE_ICONS: IconDefinition[] = [
   },
   { name: 'BarChart01', component: BarChart01, category: 'icons' },
   { name: 'File01', component: File01, category: 'icons' },
-  { name: 'Owners', component: Owners, category: 'icons' },
+  { name: 'UserEdit', component: UserEdit, category: 'icons' },
   { name: 'Rss01', component: Rss01, category: 'icons' },
   { name: 'Browser', component: Browser, category: 'icons' },
   { name: 'Calendar', component: Calendar, category: 'icons' },
