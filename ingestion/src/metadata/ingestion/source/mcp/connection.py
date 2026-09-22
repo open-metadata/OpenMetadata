@@ -15,18 +15,20 @@ Handles connection creation and testing for MCP (Model Context Protocol) servers
 """
 
 from functools import partial
-from typing import List, Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.mcp.mcpConnection import (
     DiscoveryMethod,
-    McpConnection,
+)
+from metadata.generated.schema.entity.services.connections.mcp.mcpConnection import (
+    McpConnection as McpConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
     test_connection_steps,
@@ -54,11 +56,11 @@ class McpConnectionManager:
     - Registry: Discover servers from an MCP registry (future)
     """
 
-    def __init__(self, connection: McpConnection):
+    def __init__(self, connection: McpConnectionConfig):
         self.connection = connection
-        self._discovered_servers: Optional[List[McpServerInfo]] = None
+        self._discovered_servers: list[McpServerInfo] | None = None
 
-    def discover_servers(self) -> List[McpServerInfo]:
+    def discover_servers(self) -> list[McpServerInfo]:
         """Discover MCP servers based on the configured discovery method"""
         if self._discovered_servers is not None:
             return self._discovered_servers
@@ -77,18 +79,16 @@ class McpConnectionManager:
 
         return self._discovered_servers
 
-    def _discover_from_config_files(self) -> List[McpServerInfo]:
+    def _discover_from_config_files(self) -> list[McpServerInfo]:
         """Discover servers from configuration files"""
         config_paths = self.connection.configFilePaths or []
         if not config_paths:
-            logger.warning(
-                "No config file paths specified for ConfigFile discovery method"
-            )
+            logger.warning("No config file paths specified for ConfigFile discovery method")
             return []
 
         return discover_servers_from_config_files(config_paths)
 
-    def _discover_from_direct_config(self) -> List[McpServerInfo]:
+    def _discover_from_direct_config(self) -> list[McpServerInfo]:
         """Create server info from direct connection configuration"""
         servers = []
         direct_servers = self.connection.servers or []
@@ -96,26 +96,18 @@ class McpConnectionManager:
         for server_config in direct_servers:
             server_info = McpServerInfo(
                 name=server_config.name,
-                transport=(
-                    server_config.transport.value
-                    if server_config.transport
-                    else "Stdio"
-                ),
+                transport=(server_config.transport.value if server_config.transport else "Stdio"),
                 command=server_config.command,
                 args=server_config.args or [],
                 env=server_config.env or {},
                 url=server_config.url,
-                api_key=(
-                    server_config.apiKey.get_secret_value()
-                    if server_config.apiKey
-                    else None
-                ),
+                api_key=(server_config.apiKey.get_secret_value() if server_config.apiKey else None),
             )
             servers.append(server_info)
 
         return servers
 
-    def _discover_from_registry(self) -> List[McpServerInfo]:
+    def _discover_from_registry(self) -> list[McpServerInfo]:
         """Discover servers from an MCP registry"""
         registry_url = self.connection.registryUrl
         if not registry_url:
@@ -141,21 +133,19 @@ class McpConnectionManager:
         client = None
         try:
             client = self.connect_to_server(server)
-            return True
+            return True  # noqa: TRY300
         except McpProtocolError as e:
-            logger.warning(f"Failed to connect to MCP server '{server.name}': {e}")
+            logger.error(f"Failed to connect to MCP server '{server.name}': {e}")
             return False
         except Exception as e:
-            logger.warning(
-                f"Unexpected error connecting to MCP server '{server.name}': {e}"
-            )
+            logger.warning(f"Unexpected error connecting to MCP server '{server.name}': {e}")
             return False
         finally:
             if client:
                 client.close()
 
 
-def get_connection(connection: McpConnection) -> McpConnectionManager:
+def get_connection(connection: McpConnectionConfig) -> McpConnectionManager:
     """
     Create an MCP connection manager.
 
@@ -169,7 +159,7 @@ def get_connection(connection: McpConnection) -> McpConnectionManager:
         return McpConnectionManager(connection)
     except Exception as exc:
         msg = f"Error creating MCP connection: {exc}"
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg)  # noqa: B904
 
 
 def _test_discover_servers(manager: McpConnectionManager) -> None:
@@ -181,29 +171,38 @@ def _test_discover_servers(manager: McpConnectionManager) -> None:
 
 
 def _test_connect_to_servers(manager: McpConnectionManager) -> None:
-    """Test step: Connect to at least one MCP server"""
-    servers = manager.discover_servers()
-    connected = False
+    """Test step: Connect to at least one connectable MCP server.
 
-    for server in servers[:3]:
+    Stdio servers are cataloging-only: the transport is not supported, so they are
+    no longer connection targets. If every
+    discovered server is Stdio there is nothing to connect to and the step passes
+    - the servers are still cataloged by the ingestion step.
+    """
+    servers = manager.discover_servers()
+    connectable = [server for server in servers if server.transport.lower() != "stdio"]
+
+    if not connectable:
+        logger.warning(
+            "Only Stdio MCP servers were discovered. Stdio transport is no longer supported; "
+            "these servers will be cataloged but not connected. Use an HTTP (SSE / StreamableHTTP) URL to connect."
+        )
+        return
+
+    for server in connectable[:3]:
         if manager.test_server_connection(server):
             logger.info(f"Successfully connected to MCP server '{server.name}'")
-            connected = True
-            break
+            return
         logger.warning(f"Could not connect to MCP server '{server.name}'")
 
-    if not connected:
-        raise SourceConnectionException(
-            "Could not connect to any discovered MCP servers"
-        )
+    raise SourceConnectionException("Could not connect to any discovered MCP servers")
 
 
 def test_connection(
     metadata: OpenMetadata,
     client: McpConnectionManager,
-    service_connection: McpConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    service_connection: McpConnectionConfig,
+    automation_workflow: AutomationWorkflow | None = None,
+    timeout_seconds: int | None = THREE_MIN,
 ) -> TestConnectionResult:
     """
     Test connection to MCP servers.
@@ -224,3 +223,22 @@ def test_connection(
         automation_workflow=automation_workflow,
         timeout_seconds=timeout_seconds,
     )
+
+
+class McpConnection(BaseConnection[McpConnectionConfig, McpConnectionManager]):
+    def _get_client(self) -> McpConnectionManager:
+        return get_connection(self.service_connection)
+
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
+    ) -> TestConnectionResult:
+        return test_connection(
+            metadata,
+            self.client,
+            self.service_connection,
+            automation_workflow,
+            timeout_seconds,
+        )

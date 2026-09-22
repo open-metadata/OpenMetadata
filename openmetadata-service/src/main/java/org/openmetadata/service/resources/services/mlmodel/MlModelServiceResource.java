@@ -280,9 +280,7 @@ public class MlModelServiceResource
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return addFollowerInternal(securityContext, id, userId);
   }
 
   @DELETE
@@ -310,9 +308,7 @@ public class MlModelServiceResource
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
-        .toResponse();
+    return deleteFollowerInternal(securityContext, id, UUID.fromString(userId));
   }
 
   @PUT
@@ -363,25 +359,8 @@ public class MlModelServiceResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the ML Model service", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    EntityHistory entityHistory =
-        super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
 
     List<Object> versions =
         entityHistory.getVersions().stream()

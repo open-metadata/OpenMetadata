@@ -1,7 +1,6 @@
 """
 Teradata models
 """
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -17,6 +16,6 @@ class TeradataStoredProcedure(BaseModel):
     """Teradata stored procedure list query results"""
 
     procedure_name: str = Field(...)
-    database_schema: Optional[str] = Field(None)
+    database_schema: str | None = Field(None)
     procedure_type: str = Field(Language.SQL)
     definition: str = Field(None)

@@ -2,6 +2,7 @@ package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -17,7 +18,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -25,7 +26,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
-import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
+import org.openmetadata.service.config.AsyncOperationsConfiguration;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 
 class AsyncServiceTest {
 
@@ -186,7 +188,137 @@ class AsyncServiceTest {
     AsyncService second = AsyncService.getInstance();
 
     assertSame(first, second);
-    assertTrue(first.getMaxConcurrency() >= 4);
+  }
+
+  @Test
+  void testDatabaseTasksAreBoundedWithoutBlockingRawContinuations() throws Exception {
+    AsyncOperationsConfiguration config = new AsyncOperationsConfiguration();
+    config.setMaxConcurrentDbTasks(1);
+    AsyncService.initialize(config);
+    AsyncService service = AsyncService.getInstance();
+    CountDownLatch firstStarted = new CountDownLatch(1);
+    CountDownLatch releaseFirst = new CountDownLatch(1);
+    CountDownLatch secondStarted = new CountDownLatch(1);
+    CountDownLatch rawTaskRan = new CountDownLatch(1);
+
+    try {
+      service.executeDatabaseTask(
+          DatabaseOperation.TEST_CASE_CLEANUP,
+          "first",
+          () -> {
+            firstStarted.countDown();
+            awaitLatch(releaseFirst);
+          });
+      assertTrue(firstStarted.await(5, TimeUnit.SECONDS));
+      service.executeDatabaseTask(
+          DatabaseOperation.TEST_CASE_CLEANUP, "second", secondStarted::countDown);
+
+      awaitDatabaseCounts(service, DatabaseOperation.TEST_CASE_CLEANUP, 1, 1);
+      service.getExecutorService().execute(rawTaskRan::countDown);
+      assertTrue(rawTaskRan.await(5, TimeUnit.SECONDS));
+      assertNotSame(service.getExecutorService(), service.getDatabaseExecutorService());
+
+      releaseFirst.countDown();
+      assertTrue(secondStarted.await(5, TimeUnit.SECONDS));
+    } finally {
+      releaseFirst.countDown();
+    }
+  }
+
+  @Test
+  void testSubmitDatabaseTaskPropagatesCheckedFailureAndReleasesPermit() throws Exception {
+    AsyncOperationsConfiguration config = new AsyncOperationsConfiguration();
+    config.setMaxConcurrentDbTasks(1);
+    AsyncService.initialize(config);
+    AsyncService service = AsyncService.getInstance();
+
+    CompletionException failure =
+        assertThrows(
+            CompletionException.class,
+            () ->
+                service
+                    .submitDatabaseTask(
+                        DatabaseOperation.AUDIT_PACK,
+                        "report",
+                        () -> {
+                          throw new Exception("checked");
+                        })
+                    .join());
+
+    assertEquals("checked", failure.getCause().getMessage());
+    assertEquals(
+        "ok", service.submitDatabaseTask(DatabaseOperation.AUDIT_PACK, "next", () -> "ok").join());
+  }
+
+  @Test
+  void testCancellableDatabaseTaskInterruptsWorkerAndReleasesPermit() throws Exception {
+    AsyncOperationsConfiguration config = new AsyncOperationsConfiguration();
+    config.setMaxConcurrentDbTasks(1);
+    AsyncService.initialize(config);
+    AsyncService service = AsyncService.getInstance();
+    CountDownLatch started = new CountDownLatch(1);
+    CountDownLatch interrupted = new CountDownLatch(1);
+
+    Future<Void> task =
+        service.submitCancellableDatabaseTask(
+            DatabaseOperation.SEARCH_OPERATION,
+            "reindex",
+            () -> {
+              started.countDown();
+              try {
+                new CountDownLatch(1).await();
+              } catch (InterruptedException e) {
+                interrupted.countDown();
+                Thread.currentThread().interrupt();
+              }
+              return null;
+            });
+
+    assertTrue(started.await(5, TimeUnit.SECONDS));
+    assertTrue(task.cancel(true));
+    assertTrue(interrupted.await(5, TimeUnit.SECONDS));
+    assertEquals(
+        "ok",
+        service
+            .submitCancellableDatabaseTask(DatabaseOperation.SEARCH_OPERATION, "next", () -> "ok")
+            .get(5, TimeUnit.SECONDS));
+  }
+
+  @Test
+  void testShutdownNowClearsMetricsForQueuedDatabaseTasks() throws Exception {
+    AsyncOperationsConfiguration config = new AsyncOperationsConfiguration();
+    config.setMaxConcurrentDbTasks(1);
+    AsyncService.initialize(config);
+    AsyncService service = AsyncService.getInstance();
+    CountDownLatch firstStarted = new CountDownLatch(1);
+    CountDownLatch releaseFirst = new CountDownLatch(1);
+
+    try {
+      service.executeDatabaseTask(
+          DatabaseOperation.SEARCH_OPERATION,
+          "active",
+          () -> {
+            firstStarted.countDown();
+            awaitLatch(releaseFirst);
+          });
+      assertTrue(firstStarted.await(5, TimeUnit.SECONDS));
+      service.executeDatabaseTask(DatabaseOperation.SEARCH_OPERATION, "execute", () -> {});
+      CompletableFuture<String> queuedFuture =
+          service.submitDatabaseTask(DatabaseOperation.SEARCH_OPERATION, "future", () -> "unused");
+      Future<String> queuedCancellable =
+          service.submitCancellableDatabaseTask(
+              DatabaseOperation.SEARCH_OPERATION, "cancellable", () -> "unused");
+      awaitDatabaseCounts(service, DatabaseOperation.SEARCH_OPERATION, 1, 3);
+
+      service.getDatabaseExecutorService().shutdownNow();
+
+      awaitDatabaseCounts(service, DatabaseOperation.SEARCH_OPERATION, 0, 0);
+      assertTrue(queuedFuture.isCancelled());
+      assertTrue(queuedCancellable.isCancelled());
+    } finally {
+      releaseFirst.countDown();
+      service.getDatabaseExecutorService().shutdownNow();
+    }
   }
 
   @Test
@@ -315,44 +447,6 @@ class AsyncServiceTest {
   }
 
   @Test
-  void testResolveMaxConcurrencyUsesConfigBudgetAndCpuFallback() throws Exception {
-    Method method = AsyncService.class.getDeclaredMethod("resolveMaxConcurrency");
-    method.setAccessible(true);
-
-    int cpuBudget = Runtime.getRuntime().availableProcessors() * 2;
-    setConfigHolderInstance(null);
-    assertEquals(Integer.valueOf(Math.max(4, cpuBudget)), invoke(method, null));
-
-    OpenMetadataApplicationConfig config = mock(OpenMetadataApplicationConfig.class);
-    HikariCPDataSourceFactory dataSourceFactory = mock(HikariCPDataSourceFactory.class);
-    when(config.getDataSourceFactory()).thenReturn(dataSourceFactory);
-    when(dataSourceFactory.getMaxSize()).thenReturn(30);
-    setConfigHolderInstance(config);
-
-    assertEquals(Integer.valueOf(Math.max(4, Math.min(cpuBudget, 10))), invoke(method, null));
-  }
-
-  @Test
-  void testBoundedExecutorLifecycleDelegatesState() throws Exception {
-    ExecutorService delegate = mock(ExecutorService.class);
-    when(delegate.isShutdown()).thenReturn(true);
-    when(delegate.isTerminated()).thenReturn(true);
-    when(delegate.awaitTermination(5, TimeUnit.SECONDS)).thenReturn(true);
-
-    ExecutorService boundedExecutor = newBoundedExecutorService(delegate);
-
-    assertTrue(boundedExecutor.isShutdown());
-    assertTrue(boundedExecutor.isTerminated());
-    assertTrue(boundedExecutor.awaitTermination(5, TimeUnit.SECONDS));
-
-    boundedExecutor.shutdown();
-    boundedExecutor.shutdownNow();
-
-    verify(delegate).shutdown();
-    verify(delegate).shutdownNow();
-  }
-
-  @Test
   void testShutdownForcesExecutorOnTimeoutAndInterrupt() throws Exception {
     AsyncService timeoutService = newAsyncService();
     ExecutorService timeoutExecutor = mock(ExecutorService.class);
@@ -384,14 +478,22 @@ class AsyncServiceTest {
     return constructor.newInstance();
   }
 
-  private static ExecutorService newBoundedExecutorService(ExecutorService delegate)
-      throws Exception {
-    Class<?> boundedClass =
-        Class.forName("org.openmetadata.service.util.AsyncService$BoundedExecutorService");
-    Constructor<?> constructor =
-        boundedClass.getDeclaredConstructor(ExecutorService.class, Semaphore.class);
-    constructor.setAccessible(true);
-    return (ExecutorService) constructor.newInstance(delegate, new Semaphore(1));
+  private static void awaitDatabaseCounts(
+      AsyncService service, DatabaseOperation operation, int active, int queued) {
+    org.awaitility.Awaitility.await()
+        .atMost(java.time.Duration.ofSeconds(5))
+        .until(
+            () ->
+                service.getOperationActiveCount(operation) == active
+                    && service.getOperationQueuedCount(operation) == queued);
+  }
+
+  private static void awaitLatch(CountDownLatch latch) {
+    try {
+      latch.await();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
   }
 
   private static void replaceExecutor(AsyncService service, ExecutorService executor)

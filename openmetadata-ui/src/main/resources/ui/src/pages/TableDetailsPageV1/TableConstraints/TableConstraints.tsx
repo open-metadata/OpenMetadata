@@ -11,22 +11,22 @@
  *  limitations under the License.
  */
 import { Space, Tooltip, Typography } from 'antd';
-import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import ExpandableCard from '../../../components/common/ExpandableCard/ExpandableCard';
 import {
-  EditIconButton,
-  PlusIconButton,
-} from '../../../components/common/IconButtons/EditIconButton';
-import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../../components/common/WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { ConstraintType, Table } from '../../../generated/entity/data/table';
-import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { tableConstraintRendererBasedOnType } from '../../../utils/TableUtils';
 import ForeignKeyConstraint from './ForeignKeyConstraint';
 import './table-constraints.less';
@@ -43,8 +43,10 @@ const TableConstraints = ({
 
   const { deleted } = data ?? {};
 
+  // useGenericContext consumer (rule 2) — raw OperationPermission contract kept. Pure rename:
+  // canEditAll's internal `!deleted` gating matches the old manual `&& !deleted`.
   const hasPermission = useMemo(
-    () => permissions.EditAll && !deleted,
+    () => getDerivedPermissionFlags(permissions, deleted).canEditAll,
     [permissions, deleted]
   );
 
@@ -62,32 +64,27 @@ const TableConstraints = ({
     setIsModalOpen(false);
   };
 
-  const header = (
-    <Space size="middle">
-      <Typography.Text className={classNames('text-sm font-medium')}>
-        {t('label.table-constraints')}
-      </Typography.Text>
+  const showAddConstraint = hasPermission && isEmpty(data?.tableConstraints);
+  const showEditConstraint = hasPermission && !isEmpty(data?.tableConstraints);
 
-      {hasPermission &&
-        (isEmpty(data?.tableConstraints) ? (
-          <PlusIconButton
-            data-testid="table-constraints-add-button"
-            size="small"
-            title={t('label.add-entity', {
-              entity: t('label.table-constraints'),
-            })}
-            onClick={handleOpenEditConstraintModal}
-          />
-        ) : (
-          <EditIconButton
-            newLook
-            data-testid="edit-table-constraint-button"
-            size="small"
-            onClick={handleOpenEditConstraintModal}
-          />
-        ))}
-    </Space>
-  );
+  let headerExtra: ReactNode = null;
+  if (showAddConstraint) {
+    headerExtra = (
+      <WidgetPlusButton
+        data-testid="table-constraints-add-button"
+        title={t('label.add-entity', { entity: t('label.table-constraints') })}
+        onClick={handleOpenEditConstraintModal}
+      />
+    );
+  } else if (showEditConstraint) {
+    headerExtra = (
+      <WidgetEditButton
+        data-testid="edit-table-constraint-button"
+        title={t('label.edit-entity', { entity: t('label.table-constraints') })}
+        onClick={handleOpenEditConstraintModal}
+      />
+    );
+  }
 
   const content = isEmpty(data?.tableConstraints) ? null : (
     <Space className="w-full new-header-border-card" direction="vertical">
@@ -159,13 +156,12 @@ const TableConstraints = ({
   return (
     <>
       {renderAsExpandableCard ? (
-        <ExpandableCard
-          cardProps={{
-            title: header,
-          }}
-          isExpandDisabled={isEmpty(data?.tableConstraints)}>
+        <WidgetCard
+          headerExtra={headerExtra}
+          isExpandDisabled={isEmpty(data?.tableConstraints)}
+          title={t('label.table-constraints')}>
           {content}
-        </ExpandableCard>
+        </WidgetCard>
       ) : (
         content
       )}

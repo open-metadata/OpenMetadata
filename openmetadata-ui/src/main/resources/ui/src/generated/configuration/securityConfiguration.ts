@@ -31,6 +31,13 @@ export interface SecurityConfiguration {
  */
 export interface AuthenticationConfiguration {
     /**
+     * Additional redirect URIs allowed for the login flow, beyond the callback URL and the
+     * server's own callbacks. Each entry must exactly match the requested redirect URI (scheme,
+     * host, port, path, query). Use this to allow browser-extension login redirects such as
+     * 'https://<extension-id>.chromiumapp.org/<path>'.
+     */
+    additionalTrustedRedirectUris?: string[];
+    /**
      * Authentication Authority
      */
     authority?: string;
@@ -47,6 +54,16 @@ export interface AuthenticationConfiguration {
      */
     clientType?: ClientType;
     /**
+     * JWT claim name containing the user's display name. Used only when emailClaim is
+     * configured.
+     */
+    displayNameClaim?: string;
+    /**
+     * JWT claim name containing the user's email address. When omitted, OpenMetadata continues
+     * using the legacy jwtPrincipalClaims flow for backward compatibility.
+     */
+    emailClaim?: string;
+    /**
      * Enable automatic redirect from the sign-in page to the configured SSO provider.
      */
     enableAutoRedirect?: boolean;
@@ -60,12 +77,15 @@ export interface AuthenticationConfiguration {
      */
     forceSecureSessionCookie?: boolean;
     /**
-     * Jwt Principal Claim
+     * [DEPRECATED: Use 'emailClaim' instead] Use this claim from the JWT to identify the
+     * principal/subject of the token. Defaults are sub, email, preferred_username, name, upn,
+     * email_verified
      */
-    jwtPrincipalClaims: string[];
+    jwtPrincipalClaims?: string[];
     /**
-     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
-     * 'email'. Both username and email mappings are required.
+     * [DEPRECATED: Use 'emailClaim' and 'displayNameClaim' instead] Use these claims from the
+     * JWT to identify the principal/subject and extract email. Format:
+     * 'username:claim_name,email:claim_name'
      */
     jwtPrincipalClaimsMapping?: string[];
     /**
@@ -79,6 +99,12 @@ export interface AuthenticationConfiguration {
      * LDAP Configuration in case the Provider is LDAP
      */
     ldapConfiguration?: LDAPConfiguration;
+    /**
+     * Maximum number of active authenticated sessions allowed per user. When the limit is
+     * exceeded, the least recently used active sessions are revoked. If unset, OpenMetadata
+     * uses the default of 5.
+     */
+    maxActiveSessionsPerUser?: number;
     /**
      * Oidc Configuration for Confidential Client Type
      */
@@ -100,6 +126,12 @@ export interface AuthenticationConfiguration {
      * Saml Configuration that is applicable only when the provider is Saml
      */
     samlConfiguration?: SamlSSOClientConfig;
+    /**
+     * Validity for the authenticated session across all auth providers. Minimum is 3600
+     * seconds. If unset, OpenMetadata falls back to the legacy OIDC-specific sessionExpiry when
+     * present, then to the default 604800-second expiry.
+     */
+    sessionExpiry?: number;
     /**
      * Token Validation Algorithm to use.
      */
@@ -176,6 +208,11 @@ export interface LDAPConfiguration {
      * Port of the server
      */
     port: number;
+    /**
+     * Enable transitive group membership resolution for Active Directory nested groups using
+     * LDAP_MATCHING_RULE_IN_CHAIN.
+     */
+    recursiveGroupMembership?: boolean;
     /**
      * Admin role name
      */
@@ -369,7 +406,7 @@ export interface OidcClientConfig {
      */
     tenant: string;
     /**
-     * Validity for the JWT Token created from SAML Response
+     * Lifetime in seconds of the OpenMetadata JWT issued after OIDC authentication.
      */
     tokenValidity?: number;
     /**
@@ -498,7 +535,7 @@ export interface Security {
      */
     strictMode?: boolean;
     /**
-     * Validity for the JWT Token created from SAML Response
+     * Lifetime in seconds of the OpenMetadata JWT issued after SAML authentication.
      */
     tokenValidity?: number;
     /**
@@ -564,19 +601,32 @@ export enum TokenValidationAlgorithm {
  */
 export interface AuthorizerConfiguration {
     /**
-     * List of unique admin principals.
+     * List of email addresses that should be granted admin privileges. Preferred over
+     * adminPrincipals.
      */
-    adminPrincipals: string[];
+    adminEmails?: string[];
     /**
-     * Allowed Domains to access
+     * [DEPRECATED: Use 'adminEmails' instead] List of unique admin principals.
+     */
+    adminPrincipals?: string[];
+    /**
+     * [DEPRECATED: Use 'allowedEmailDomains' instead] Allowed Domains to access.
      */
     allowedDomains?: string[];
+    /**
+     * List of email domains allowed to authenticate. If empty, all domains are allowed.
+     */
+    allowedEmailDomains?: string[];
     /**
      * List of unique email domains that are allowed to signup on the platforms
      */
     allowedEmailRegistrationDomains?: string[];
     /**
-     * **@Deprecated** List of unique bot principals
+     * Email domain used for system-created bots (e.g., ingestion-bot@{botDomain}).
+     */
+    botDomain?: string;
+    /**
+     * [DEPRECATED] List of unique bot principals.
      */
     botPrincipals?: string[];
     /**
@@ -597,13 +647,14 @@ export interface AuthorizerConfiguration {
      */
     enableSecureSocketConnection: boolean;
     /**
-     * Enable Enforce Principal Domain
+     * [DEPRECATED: Use 'allowedEmailDomains' instead] Enable Enforce Principal Domain.
      */
-    enforcePrincipalDomain: boolean;
+    enforcePrincipalDomain?: boolean;
     /**
-     * Principal Domain
+     * [DEPRECATED: Use 'botDomain' for bots, 'allowedEmailDomains' for domain restrictions]
+     * Domain to use for constructing email addresses.
      */
-    principalDomain: string;
+    principalDomain?: string;
     /**
      * List of unique principals used as test users. **NOTE THIS IS ONLY FOR TEST SETUP AND NOT
      * TO BE USED IN PRODUCTION SETUP**

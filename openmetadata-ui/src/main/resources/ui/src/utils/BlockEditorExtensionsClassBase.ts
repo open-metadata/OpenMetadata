@@ -21,27 +21,29 @@ import TableRow from '@tiptap/extension-table-row';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import Text from '@tiptap/extension-text';
-import { Extensions } from '@tiptap/react';
+import type { Extensions } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import {
   ExtensionOptions,
   FileType,
 } from '../components/BlockEditor/BlockEditor.interface';
+import AdmonitionNode from '../components/BlockEditor/Extensions/AdmonitionNode';
 import BlockAndDragDrop from '../components/BlockEditor/Extensions/BlockAndDragDrop/BlockAndDragDrop';
 import { Callout } from '../components/BlockEditor/Extensions/Callout/Callout';
+import CodeBlockWithCopy from '../components/BlockEditor/Extensions/CodeBlock/CodeBlockWithCopy';
 import DiffView from '../components/BlockEditor/Extensions/diff-view';
 import FileNode from '../components/BlockEditor/Extensions/File/FileNode';
 import { Focus } from '../components/BlockEditor/Extensions/focus';
-import { Hashtag } from '../components/BlockEditor/Extensions/hashtag';
+import { Hashtag } from '../components/BlockEditor/Extensions/hashtag/Hashtag';
 import { hashtagSuggestion } from '../components/BlockEditor/Extensions/hashtag/hashtagSuggestion';
 import { LinkExtension } from '../components/BlockEditor/Extensions/link';
 import MathEquation from '../components/BlockEditor/Extensions/MathEquation/MathEquation';
-import { Mention } from '../components/BlockEditor/Extensions/mention';
+import { Mention } from '../components/BlockEditor/Extensions/mention/Mention';
 import { mentionSuggestion } from '../components/BlockEditor/Extensions/mention/mentionSuggestions';
 import SectionNode from '../components/BlockEditor/Extensions/SectionNode';
-import slashCommand from '../components/BlockEditor/Extensions/slash-command';
 import { getSuggestionItems } from '../components/BlockEditor/Extensions/slash-command/items';
 import renderItems from '../components/BlockEditor/Extensions/slash-command/renderItems';
+import slashCommand from '../components/BlockEditor/Extensions/slash-command/slashCommand';
 import TextHighlightView from '../components/BlockEditor/Extensions/text-highlight-view';
 import { TrailingNode } from '../components/BlockEditor/Extensions/trailing-node';
 import { DROP_CURSOR_COLOR } from '../constants/BlockEditor.constants';
@@ -56,11 +58,12 @@ export class BlockEditorExtensionsClassBase {
    * Get the core extensions for the BlockEditor
    * These are the base extensions that are always included
    */
-  protected getCoreExtensions(): Extensions {
+  protected getCoreExtensions(disableCodeBlock = false): Extensions {
     return [
       StarterKit.configure({
+        codeBlock: disableCodeBlock ? false : undefined,
         heading: {
-          levels: [1, 2, 3],
+          levels: [1, 2, 3, 4, 5, 6],
         },
         bulletList: {
           HTMLAttributes: {
@@ -101,7 +104,10 @@ export class BlockEditorExtensionsClassBase {
       }),
       LinkExtension.configure({
         autolink: false,
-        openOnClick: true,
+        // Open links on click only in read-only previews. While editing, a
+        // click should surface the link popup (edit/open/unlink) instead of
+        // navigating away.
+        openOnClick: 'whenNotEditable',
         linkOnPaste: true,
         HTMLAttributes: {
           rel: 'noopener noreferrer nofollow',
@@ -224,18 +230,22 @@ export class BlockEditorExtensionsClassBase {
       tableExtensions = true,
       advancedContextExtensions = true,
       enableSectionNode = false,
+      enableAdmonitionNode = false,
+      enableCodeBlockCopy = false,
     } = options ?? {};
 
     return [
       Document,
       Paragraph,
       Text,
-      ...(coreExtensions ? this.getCoreExtensions() : []),
+      ...(coreExtensions ? this.getCoreExtensions(enableCodeBlockCopy) : []),
       ...(enableHandlebars ? this.getHandlebarsExtensions() : []),
       ...(utilityExtensions ? this.getUtilityExtensions() : []),
       ...(tableExtensions ? this.getTableExtensions() : []),
       ...(advancedContextExtensions ? this.getAdvancedContentExtensions() : []),
       ...(enableSectionNode ? [SectionNode] : []),
+      ...(enableAdmonitionNode ? [AdmonitionNode] : []),
+      ...(enableCodeBlockCopy ? [CodeBlockWithCopy] : []),
     ];
   }
 

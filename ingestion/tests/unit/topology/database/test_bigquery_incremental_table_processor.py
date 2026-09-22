@@ -94,47 +94,35 @@ class TestIsTableDeleted:
 
 class TestBigQueryIncrementalTableProcessor:
     def test_create_table_is_detected(self):
-        entries = [
-            _make_entry("projects/proj/datasets/ds1/tables/my_table", ["tableCreation"])
-        ]
+        entries = [_make_entry("projects/proj/datasets/ds1/tables/my_table", ["tableCreation"])]
         mock_client = MagicMock()
         mock_client.list_entries.return_value = entries
 
         processor = BigQueryIncrementalTableProcessor(mock_client)
-        processor.set_tables_map(
-            "proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"]
-        )
+        processor.set_tables_map("proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"])
 
         assert "my_table" in processor.get_not_deleted("ds1")
         assert processor.get_deleted("ds1") == []
         assert not processor.query_failed
 
     def test_delete_table_is_detected(self):
-        entries = [
-            _make_entry("projects/proj/datasets/ds1/tables/my_table", ["tableDeletion"])
-        ]
+        entries = [_make_entry("projects/proj/datasets/ds1/tables/my_table", ["tableDeletion"])]
         mock_client = MagicMock()
         mock_client.list_entries.return_value = entries
 
         processor = BigQueryIncrementalTableProcessor(mock_client)
-        processor.set_tables_map(
-            "proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"]
-        )
+        processor.set_tables_map("proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"])
 
         assert "my_table" in processor.get_deleted("ds1")
         assert processor.get_not_deleted("ds1") == []
 
     def test_update_table_is_detected(self):
-        entries = [
-            _make_entry("projects/proj/datasets/ds1/tables/my_table", ["tableChange"])
-        ]
+        entries = [_make_entry("projects/proj/datasets/ds1/tables/my_table", ["tableChange"])]
         mock_client = MagicMock()
         mock_client.list_entries.return_value = entries
 
         processor = BigQueryIncrementalTableProcessor(mock_client)
-        processor.set_tables_map(
-            "proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"]
-        )
+        processor.set_tables_map("proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"])
 
         assert "my_table" in processor.get_not_deleted("ds1")
         assert processor.get_deleted("ds1") == []
@@ -179,9 +167,7 @@ class TestBigQueryIncrementalTableProcessor:
         mock_client.list_entries.return_value = entries
 
         processor = BigQueryIncrementalTableProcessor(mock_client)
-        processor.set_tables_map(
-            "proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"]
-        )
+        processor.set_tables_map("proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"])
 
         assert "my_table" in processor.get_deleted("ds1")
         assert processor.get_not_deleted("ds1") == []
@@ -191,9 +177,7 @@ class TestBigQueryIncrementalTableProcessor:
         mock_client.list_entries.return_value = []
 
         processor = BigQueryIncrementalTableProcessor(mock_client)
-        processor.set_tables_map(
-            "proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"]
-        )
+        processor.set_tables_map("proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"])
 
         assert processor.get_not_deleted("ds1") == []
         assert processor.get_deleted("ds1") == []
@@ -204,17 +188,13 @@ class TestBigQueryIncrementalTableProcessor:
         entries = [
             _make_entry("projects/proj/datasets/ds1", ["tableCreation"]),
             _make_entry("", ["tableCreation"]),
-            _make_entry(
-                "projects/proj/datasets/ds1/tables/valid_table", ["tableCreation"]
-            ),
+            _make_entry("projects/proj/datasets/ds1/tables/valid_table", ["tableCreation"]),
         ]
         mock_client = MagicMock()
         mock_client.list_entries.return_value = entries
 
         processor = BigQueryIncrementalTableProcessor(mock_client)
-        processor.set_tables_map(
-            "proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"]
-        )
+        processor.set_tables_map("proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"])
 
         assert processor.get_not_deleted("ds1") == ["valid_table"]
 
@@ -241,31 +221,21 @@ class TestBigQueryIncrementalTableProcessor:
         assert all_deleted["ds1"] == ["t1"]
         assert all_deleted["ds2"] == ["t2"]
 
-    @patch(
-        "metadata.ingestion.source.database.bigquery"
-        ".incremental_table_processor.time"
-    )
+    @patch("metadata.ingestion.source.database.bigquery.incremental_table_processor.time")
     def test_quota_exceeded_retries_and_falls_back(self, mock_time):
         mock_client = MagicMock()
         mock_client.list_entries.side_effect = ResourceExhausted("quota exceeded")
 
         processor = BigQueryIncrementalTableProcessor(mock_client)
-        processor.set_tables_map(
-            "proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"]
-        )
+        processor.set_tables_map("proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"])
 
         assert processor.query_failed
         assert mock_client.list_entries.call_count == 3
         assert mock_time.sleep.call_count == 2
 
-    @patch(
-        "metadata.ingestion.source.database.bigquery"
-        ".incremental_table_processor.time"
-    )
+    @patch("metadata.ingestion.source.database.bigquery.incremental_table_processor.time")
     def test_quota_exceeded_recovers_on_retry(self, mock_time):
-        entries = [
-            _make_entry("projects/proj/datasets/ds1/tables/t1", ["tableCreation"])
-        ]
+        entries = [_make_entry("projects/proj/datasets/ds1/tables/t1", ["tableCreation"])]
         mock_client = MagicMock()
         mock_client.list_entries.side_effect = [
             ResourceExhausted("quota exceeded"),
@@ -273,9 +243,7 @@ class TestBigQueryIncrementalTableProcessor:
         ]
 
         processor = BigQueryIncrementalTableProcessor(mock_client)
-        processor.set_tables_map(
-            "proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"]
-        )
+        processor.set_tables_map("proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"])
 
         assert not processor.query_failed
         assert "t1" in processor.get_not_deleted("ds1")
@@ -286,9 +254,7 @@ class TestBigQueryIncrementalTableProcessor:
         mock_client.list_entries.side_effect = RuntimeError("connection error")
 
         processor = BigQueryIncrementalTableProcessor(mock_client)
-        processor.set_tables_map(
-            "proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"]
-        )
+        processor.set_tables_map("proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"])
 
         assert processor.query_failed
         assert mock_client.list_entries.call_count == 1
@@ -298,9 +264,7 @@ class TestBigQueryIncrementalTableProcessor:
         mock_client.list_entries.return_value = []
 
         processor = BigQueryIncrementalTableProcessor(mock_client)
-        processor.set_tables_map(
-            "proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"]
-        )
+        processor.set_tables_map("proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"])
 
         call_kwargs = mock_client.list_entries.call_args[1]
         assert call_kwargs["page_size"] == 10000
@@ -312,9 +276,7 @@ class TestBigQueryIncrementalTableProcessor:
         mock_client.list_entries.return_value = []
 
         processor = BigQueryIncrementalTableProcessor(mock_client)
-        processor.set_tables_map(
-            "proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=datasets
-        )
+        processor.set_tables_map("proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=datasets)
 
         assert mock_client.list_entries.call_count == 2
 
@@ -347,9 +309,7 @@ class TestBigQueryIncrementalTableProcessor:
         mock_client.list_entries.return_value = []
 
         processor = BigQueryIncrementalTableProcessor(mock_client)
-        processor.set_tables_map(
-            "proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=None
-        )
+        processor.set_tables_map("proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=None)
 
         assert mock_client.list_entries.call_count == 1
         filter_str = mock_client.list_entries.call_args[1]["filter_"]
@@ -360,18 +320,13 @@ class TestBigQueryIncrementalTableProcessor:
         mock_client.list_entries.return_value = []
 
         processor = BigQueryIncrementalTableProcessor(mock_client)
-        processor.set_tables_map(
-            "proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"]
-        )
+        processor.set_tables_map("proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"])
 
         filter_str = mock_client.list_entries.call_args[1]["filter_"]
         assert 'timestamp >= "2024-01-01T00:00:00Z"' in filter_str
         assert "timestamp <" in filter_str
 
-    @patch(
-        "metadata.ingestion.source.database.bigquery"
-        ".incremental_table_processor.time"
-    )
+    @patch("metadata.ingestion.source.database.bigquery.incremental_table_processor.time")
     def test_batch_failure_stops_remaining_batches(self, mock_time):
         datasets = [f"ds_{i}" for i in range(DATASET_BATCH_SIZE * 3)]
         mock_client = MagicMock()
@@ -405,9 +360,7 @@ class TestBigQueryIncrementalTableProcessor:
             "ds2",
         ]
         processor = BigQueryIncrementalTableProcessor(mock_client)
-        processor.set_tables_map(
-            "proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=datasets
-        )
+        processor.set_tables_map("proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=datasets)
 
         assert mock_client.list_entries.call_count == 2
         assert "t1" in processor.get_not_deleted("ds1")
@@ -423,8 +376,6 @@ class TestBigQueryIncrementalTableProcessor:
         mock_client.list_entries.return_value = all_entries
 
         processor = BigQueryIncrementalTableProcessor(mock_client)
-        processor.set_tables_map(
-            "proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"]
-        )
+        processor.set_tables_map("proj", datetime(2024, 1, 1, tzinfo=timezone.utc), datasets=["ds1"])
 
         assert set(processor.get_not_deleted("ds1")) == {"t1", "t2"}

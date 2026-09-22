@@ -41,5 +41,5 @@ PGSPIDER_GET_CHILD_TABLES = textwrap.dedent(
             WHERE (relname ~ (SELECT string_agg(regex, '|') FROM regex_pattern))
             AND (relname NOT LIKE '%%\\_%%\\_seq')
             ORDER BY relname;
-    """
+    """  # noqa: W291
 )

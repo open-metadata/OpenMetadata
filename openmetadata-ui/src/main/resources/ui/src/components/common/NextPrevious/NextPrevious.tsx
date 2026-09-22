@@ -43,6 +43,13 @@ const NextPrevious: FC<NextPreviousProps> = ({
     pageSizeOptions = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
     onShowSizeChange,
   } = (pagingProps ?? {}) as PagingProps;
+  const totalPages = computeTotalPages(pageSize, paging.total);
+  const cursorTotalPages = Math.max(
+    totalPages,
+    currentPage + (paging.after ? 1 : 0),
+    currentPage
+  );
+  const displayTotalPages = isNumberBased ? totalPages : cursorTotalPages;
 
   const onNextHandler = () => {
     if (isNumberBased) {
@@ -76,8 +83,6 @@ const NextPrevious: FC<NextPreviousProps> = ({
 
   const computeNextDisableState = () => {
     if (isNumberBased) {
-      const totalPages = computeTotalPages(pageSize, paging.total);
-
       return currentPage === totalPages;
     } else {
       return paging.after ? false : true;
@@ -86,11 +91,13 @@ const NextPrevious: FC<NextPreviousProps> = ({
 
   return (
     <div
+      aria-label={t('label.page-plural')}
       className={classNames(
         'pagination-container flex-center gap-3',
         className
       )}
-      data-testid="pagination">
+      data-testid="pagination"
+      role="navigation">
       <Button
         className="pagination-button hover-button"
         data-testid="previous"
@@ -107,10 +114,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
       </Button>
       <span className="pagination-indicator" data-testid="page-indicator">{`${t(
         'label.page'
-      )} ${currentPage} ${t('label.of')} ${computeTotalPages(
-        pageSize,
-        paging.total
-      )} `}</span>
+      )} ${currentPage} ${t('label.of')} ${displayTotalPages} `}</span>
       <Button
         className="pagination-button hover-button"
         data-testid="next"

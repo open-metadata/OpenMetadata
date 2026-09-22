@@ -12,6 +12,7 @@
 """
 Test Secrets Manager Factory
 """
+
 import os
 from unittest import TestCase
 from unittest.mock import patch
@@ -42,12 +43,8 @@ class TestSecretsManagerFactory(TestCase):
                 SecretsManagerClientLoader.noop,
             )
             om_connection.secretsManagerProvider = "aws"
-            SecretsManagerFactory(
-                om_connection.secretsManagerProvider, om_connection.secretsManagerLoader
-            )
-            self.assertEqual(
-                "[any] is not implemented.", not_implemented_error.exception
-            )
+            SecretsManagerFactory(om_connection.secretsManagerProvider, om_connection.secretsManagerLoader)
+            self.assertEqual("[any] is not implemented.", not_implemented_error.exception)
 
     def test_get_none_secret_manager(self):
         om_connection: OpenMetadataConnection = self.build_open_metadata_connection(
@@ -61,17 +58,13 @@ class TestSecretsManagerFactory(TestCase):
             om_connection.secretsManagerProvider, om_connection.secretsManagerLoader
         )
         assert secrets_manager_factory.get_secrets_manager() is not None
-        assert isinstance(
-            secrets_manager_factory.get_secrets_manager(), DBSecretsManager
-        )
+        assert isinstance(secrets_manager_factory.get_secrets_manager(), DBSecretsManager)
 
     @patch.dict(os.environ, {"AZURE_KEY_VAULT_NAME": "test"})
     @patch("metadata.utils.secrets.kubernetes_secrets_manager.config")
     @patch("metadata.utils.secrets.kubernetes_secrets_manager.client")
     @patch("metadata.clients.aws_client.boto3")
-    def test_all_providers_has_implementation(
-        self, mocked_boto3, mocked_k8s_client, mocked_k8s_config
-    ):
+    def test_all_providers_has_implementation(self, mocked_boto3, mocked_k8s_client, mocked_k8s_config):
         mocked_boto3.s3_client.return_value = {}
         # Mock Kubernetes client
         mocked_k8s_client.CoreV1Api.return_value = None

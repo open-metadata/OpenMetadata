@@ -14,10 +14,9 @@ import { WidgetProps } from '@rjsf/utils';
 import { Select } from 'antd';
 import { capitalize } from 'lodash';
 import { FC } from 'react';
-import { filterSelectOptions } from '../../../../../utils/CommonUtils';
-import { getPopupContainer } from '../../../../../utils/formUtils';
+import { filterSelectOptions } from '../../../../../utils/FilterQueryUtils';
+import { getPopupContainer } from '../../../../../utils/formPureUtils';
 import TreeSelectWidget from './TreeSelectWidget';
-
 const getDisplayLabel = (
   label: string | number | boolean | null,
   shouldCapitalize: boolean
@@ -40,6 +39,7 @@ const SelectWidget: FC<WidgetProps> = (props) => {
     <Select
       allowClear
       showSearch
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- autofocus is driven by the JSON schema widget config
       autoFocus={rest.autofocus}
       className="d-block w-full"
       data-testid={`select-widget-${rest.id}`}

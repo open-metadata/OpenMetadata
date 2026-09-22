@@ -12,21 +12,26 @@
  */
 
 import {
+  clearOidcToken,
   getOidcToken,
   getRefreshToken,
   isServiceWorkerAvailable,
+  resetSwTokenStorageState,
   setOidcToken,
+  setOidcTokenStrict,
   setRefreshToken,
 } from './SwTokenStorageUtils';
 
 // Mock SwTokenStorage
 const mockSetItem = jest.fn();
 const mockGetItem = jest.fn();
+const mockRemoveItem = jest.fn();
 
 jest.mock('./SwTokenStorage', () => ({
   swTokenStorage: {
     setItem: (key: string, value: string) => mockSetItem(key, value),
     getItem: (key: string) => mockGetItem(key),
+    removeItem: (key: string) => mockRemoveItem(key),
   },
 }));
 
@@ -46,6 +51,7 @@ const mockNavigator: MockNavigator = {
 const mockLocalStorage = {
   getItem: jest.fn(),
   setItem: jest.fn(),
+  removeItem: jest.fn(),
 };
 
 Object.defineProperty(global, 'navigator', {
@@ -68,6 +74,7 @@ Object.defineProperty(global, 'window', {
 describe('SwTokenStorageUtils', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    resetSwTokenStorageState();
   });
 
   describe('isServiceWorkerAvailable', () => {
@@ -229,6 +236,91 @@ describe('SwTokenStorageUtils', () => {
     });
   });
 
+  describe('setOidcTokenStrict', () => {
+    // Greptile P1 r4037800527: `setAppState` swallows every write error and
+    // falls back to a module-level in-memory store, so the earlier
+    // "strict" variant that delegated through it silently resolved on
+    // broken IndexedDB / quota / SW crash — letting the CrossTabLock
+    // leader broadcast `done` with a payload no reload could recover.
+    // The strict path bypasses `setAppState` entirely; these tests pin
+    // the propagation contract each failure mode has to honour.
+    beforeEach(() => {
+      mockNavigator.serviceWorker = {};
+      (global.window as unknown as MockWindow).indexedDB = {};
+    });
+
+    it('writes through the service worker on the happy path', async () => {
+      const existing = JSON.stringify({ secondary: 'refresh-token' });
+      mockGetItem.mockResolvedValue(existing);
+      mockSetItem.mockResolvedValue(undefined);
+
+      await setOidcTokenStrict('leader-persisted');
+
+      expect(mockSetItem).toHaveBeenCalledWith(
+        'app_state',
+        JSON.stringify({
+          secondary: 'refresh-token',
+          primary: 'leader-persisted',
+        })
+      );
+      expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
+    });
+
+    it('propagates a service-worker setItem rejection instead of falling back to memory', async () => {
+      const consoleSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(jest.fn());
+      mockGetItem.mockResolvedValue(null);
+      const swFailure = new Error('IndexedDB write failed');
+      mockSetItem.mockRejectedValue(swFailure);
+
+      await expect(setOidcTokenStrict('never-persisted')).rejects.toBe(
+        swFailure
+      );
+      // Nothing may reach localStorage (SECURITY invariant preserved) and
+      // subsequent callers must see the SW as broken so they stop paying the
+      // controller-wait timeout — same side effect as the fail-silent path.
+      expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledTimes(1);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('throws when the service worker has already been marked broken (in-memory does not survive reload)', async () => {
+      const consoleSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(jest.fn());
+      // Trip the broken verdict via a fail-silent write so subsequent
+      // strict calls hit the swStorageBroken branch.
+      mockGetItem.mockResolvedValue(null);
+      mockSetItem.mockRejectedValueOnce(new Error('SW timeout'));
+      await setOidcToken('best-effort');
+      mockSetItem.mockClear();
+
+      await expect(setOidcTokenStrict('leader-persisted')).rejects.toThrow(
+        /service worker is unreachable/i
+      );
+      // Must not silently attempt the SW again — that's the whole point of
+      // the `swStorageBroken` short-circuit.
+      expect(mockSetItem).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    it('propagates a localStorage throw on the no-service-worker path', async () => {
+      delete mockNavigator.serviceWorker;
+      mockLocalStorage.getItem.mockReturnValue(null);
+      const quotaError = new Error('QuotaExceededError');
+      mockLocalStorage.setItem.mockImplementationOnce(() => {
+        throw quotaError;
+      });
+
+      await expect(setOidcTokenStrict('leader-persisted')).rejects.toBe(
+        quotaError
+      );
+    });
+  });
+
   describe('getRefreshToken', () => {
     beforeEach(() => {
       mockNavigator.serviceWorker = {};
@@ -378,6 +470,245 @@ describe('SwTokenStorageUtils', () => {
       // Should fallback to localStorage
       expect(mockLocalStorage.getItem).toHaveBeenCalledWith('app_state');
       expect(result).toBe('');
+    });
+  });
+
+  describe('service worker registration failure fallback', () => {
+    // #32063: the SW API being present does not mean a worker can actually be
+    // registered (proxy 404s /app-worker.js, CSP, insecure origin, disabled
+    // service workers). In that case swTokenStorage calls reject and tokens
+    // must survive in memory instead of being silently dropped.
+    const swFailure = new Error(
+      'Timed out waiting for service worker to take control'
+    );
+
+    beforeEach(() => {
+      mockNavigator.serviceWorker = {};
+      (global.window as unknown as MockWindow).indexedDB = {};
+      mockGetItem.mockRejectedValue(swFailure);
+      mockSetItem.mockRejectedValue(swFailure);
+    });
+
+    it('should keep the oidc token readable when the service worker cannot be reached', async () => {
+      await setOidcToken('in-memory-oidc-token');
+
+      const result = await getOidcToken();
+
+      expect(result).toBe('in-memory-oidc-token');
+      // SECURITY: broken-SW fallback must not spill tokens into localStorage
+      expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
+    });
+
+    it('should keep the refresh token readable when the service worker cannot be reached', async () => {
+      await setRefreshToken('in-memory-refresh-token');
+
+      const result = await getRefreshToken();
+
+      expect(result).toBe('in-memory-refresh-token');
+      expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
+    });
+
+    it('should stop calling the service worker after the first failure', async () => {
+      await setOidcToken('in-memory-oidc-token');
+      mockGetItem.mockClear();
+      mockSetItem.mockClear();
+
+      await getOidcToken();
+      await setRefreshToken('in-memory-refresh-token');
+
+      expect(mockGetItem).not.toHaveBeenCalled();
+      expect(mockSetItem).not.toHaveBeenCalled();
+    });
+
+    it('should clear the in-memory tokens on clearOidcToken', async () => {
+      await setOidcToken('in-memory-oidc-token');
+
+      await clearOidcToken();
+
+      expect(await getOidcToken()).toBe('');
+    });
+
+    it('should surface a single console.error when falling back', async () => {
+      const consoleSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(jest.fn());
+
+      await setOidcToken('in-memory-oidc-token');
+      await setRefreshToken('in-memory-refresh-token');
+
+      expect(consoleSpy).toHaveBeenCalledTimes(1);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should keep the token in memory when only the write fails', async () => {
+      mockGetItem.mockResolvedValue(null);
+
+      await setOidcToken('in-memory-oidc-token');
+
+      expect(await getOidcToken()).toBe('in-memory-oidc-token');
+    });
+  });
+
+  describe('clearOidcToken', () => {
+    beforeEach(() => {
+      mockNavigator.serviceWorker = {};
+      (global.window as unknown as MockWindow).indexedDB = {};
+    });
+
+    it('should remove state via service worker when available', async () => {
+      mockRemoveItem.mockResolvedValue(null);
+
+      await clearOidcToken();
+
+      expect(mockRemoveItem).toHaveBeenCalledWith('app_state');
+      expect(mockLocalStorage.removeItem).not.toHaveBeenCalled();
+    });
+
+    it('should remove state from localStorage when service worker is not available', async () => {
+      delete mockNavigator.serviceWorker;
+
+      await clearOidcToken();
+
+      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('app_state');
+      expect(mockRemoveItem).not.toHaveBeenCalled();
+    });
+
+    it('should skip the doomed service worker call and clear IndexedDB directly once marked broken', async () => {
+      // #32063 review findings: tokens persisted before a transient SW failure
+      // must not survive logout (a reload resets the broken verdict and a
+      // recovered SW would restore the logged-out session) — but retrying the
+      // SW when it is already known broken would block logout on the 15s
+      // controller wait, so the deletion must go straight to IndexedDB.
+      mockGetItem.mockRejectedValue(new Error('SW timeout'));
+      mockSetItem.mockRejectedValue(new Error('SW timeout'));
+      await setOidcToken('in-memory-oidc-token'); // marks the SW broken
+      const mockIdbDelete = jest.fn();
+      const store = { delete: mockIdbDelete };
+      const tx: { objectStore: () => typeof store; oncomplete?: () => void } = {
+        objectStore: () => store,
+      };
+      const db = {
+        objectStoreNames: { contains: () => true },
+        transaction: () => {
+          Promise.resolve().then(() => tx.oncomplete?.());
+
+          return tx;
+        },
+        close: jest.fn(),
+      };
+      const openRequest: { result?: typeof db; onsuccess?: () => void } = {};
+      (global.window as unknown as MockWindow).indexedDB = {
+        open: jest.fn(() => {
+          Promise.resolve().then(() => {
+            openRequest.result = db;
+            openRequest.onsuccess?.();
+          });
+
+          return openRequest;
+        }),
+      };
+      mockRemoveItem.mockClear();
+
+      await clearOidcToken();
+
+      expect(mockRemoveItem).not.toHaveBeenCalled();
+      expect(mockIdbDelete).toHaveBeenCalledWith('app_state');
+      expect(await getOidcToken()).toBe('');
+    });
+
+    it('should not create a phantom database when the worker never persisted one', async () => {
+      const mockOpen = jest.fn();
+      (global.window as unknown as MockWindow).indexedDB = {
+        databases: jest.fn().mockResolvedValue([]),
+        open: mockOpen,
+      };
+      mockRemoveItem.mockRejectedValue(new Error('SW timeout'));
+
+      await expect(clearOidcToken()).resolves.toBeUndefined();
+
+      expect(mockOpen).not.toHaveBeenCalled();
+    });
+
+    it('should delete persisted state directly from IndexedDB when the service worker removal fails', async () => {
+      // #32063 review finding: when the SW cannot be reached at logout, the
+      // page must fall back to deleting app_state from IndexedDB itself, so
+      // stale tokens cannot be restored once the SW recovers after a reload.
+      const mockIdbDelete = jest.fn();
+      const store = { delete: mockIdbDelete };
+      const tx: { objectStore: () => typeof store; oncomplete?: () => void } = {
+        objectStore: () => store,
+      };
+      const db = {
+        objectStoreNames: { contains: () => true },
+        transaction: () => {
+          // native promise microtask: the suite runs with fake timers, which
+          // intercept setTimeout and queueMicrotask but not promise jobs
+          Promise.resolve().then(() => tx.oncomplete?.());
+
+          return tx;
+        },
+        close: jest.fn(),
+      };
+      const openRequest: { result?: typeof db; onsuccess?: () => void } = {};
+      (global.window as unknown as MockWindow).indexedDB = {
+        open: jest.fn(() => {
+          Promise.resolve().then(() => {
+            openRequest.result = db;
+            openRequest.onsuccess?.();
+          });
+
+          return openRequest;
+        }),
+      };
+      mockRemoveItem.mockRejectedValue(new Error('SW timeout'));
+
+      await clearOidcToken();
+
+      expect(mockRemoveItem).toHaveBeenCalledWith('app_state');
+      expect(mockIdbDelete).toHaveBeenCalledWith('app_state');
+    });
+
+    it('should resolve quietly when the IndexedDB store does not exist yet', async () => {
+      const db = {
+        objectStoreNames: { contains: () => false },
+        transaction: jest.fn(),
+        close: jest.fn(),
+      };
+      const openRequest: { result?: typeof db; onsuccess?: () => void } = {};
+      (global.window as unknown as MockWindow).indexedDB = {
+        open: jest.fn(() => {
+          Promise.resolve().then(() => {
+            openRequest.result = db;
+            openRequest.onsuccess?.();
+          });
+
+          return openRequest;
+        }),
+      };
+      mockRemoveItem.mockRejectedValue(new Error('SW timeout'));
+
+      await expect(clearOidcToken()).resolves.toBeUndefined();
+
+      expect(db.transaction).not.toHaveBeenCalled();
+      expect(db.close).toHaveBeenCalled();
+    });
+
+    it('should not throw when opening IndexedDB fails during the logout fallback', async () => {
+      const openRequest: { error?: Error; onerror?: () => void } = {};
+      (global.window as unknown as MockWindow).indexedDB = {
+        open: jest.fn(() => {
+          Promise.resolve().then(() => {
+            openRequest.error = new Error('IDB blocked');
+            openRequest.onerror?.();
+          });
+
+          return openRequest;
+        }),
+      };
+      mockRemoveItem.mockRejectedValue(new Error('SW timeout'));
+
+      await expect(clearOidcToken()).resolves.toBeUndefined();
     });
   });
 });

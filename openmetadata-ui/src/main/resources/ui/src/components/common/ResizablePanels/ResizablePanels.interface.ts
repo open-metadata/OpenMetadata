@@ -31,10 +31,14 @@ export interface PanelProps {
   minWidth: number;
   className?: string;
   cardClassName?: string;
+  cardBodyStyles?: React.CSSProperties;
   flex?: number;
   overlay?: Overlay;
   onStopResize?: (newFlex: number | undefined) => void;
   title?: string;
+  titleClassName?: string;
+  titleContainerClassName?: string;
+  titleStrong?: boolean;
   wrapInCard?: boolean;
   allowScroll?: boolean;
 }

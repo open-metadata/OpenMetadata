@@ -70,6 +70,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.SchemaFieldExtractor;
@@ -105,9 +106,14 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      repository.populateRegistryFromDatabase();
+      return;
+    }
     // Load types defined in OpenMetadata schemas
     long now = System.currentTimeMillis();
-    List<Type> types = JsonUtils.getTypes();
+    List<Type> types =
+        JsonUtils.getTypes(ignored -> SeedDataGate.getInstance().recordSeedFailure());
     types.forEach(
         type -> {
           type.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
@@ -129,6 +135,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
             this.repository.createOrUpdate(null, type, ADMIN_USER_NAME);
             this.repository.addToRegistry(type);
           } catch (Exception e) {
+            SeedDataGate.getInstance().recordSeedFailure();
             LOG.error("Error loading type {}", type.getName(), e);
           }
         });
@@ -303,24 +310,8 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the type", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET

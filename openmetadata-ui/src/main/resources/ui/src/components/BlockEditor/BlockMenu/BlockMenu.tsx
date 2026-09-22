@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import tippy, { Instance } from 'tippy.js';
 
-import { Editor } from '@tiptap/react';
+import type { Editor } from '@tiptap/react';
 
 import { NodeSelection } from '@tiptap/pm/state';
 import { isUndefined } from 'lodash';

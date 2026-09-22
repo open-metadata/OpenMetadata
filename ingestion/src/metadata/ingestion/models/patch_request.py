@@ -11,13 +11,13 @@
 """
 Pydantic definition for storing entities for patching
 """
+
 import json
 import logging
 import traceback
-from typing import Dict, List, Optional, Tuple
 
 import jsonpatch
-from pydantic import BaseModel
+from pydantic import BaseModel, RootModel
 
 from metadata.ingestion.api.models import Entity, T
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import PatchOperation
@@ -33,7 +33,7 @@ class PatchRequest(BaseModel):
 
     original_entity: Entity
     new_entity: Entity
-    override_metadata: Optional[bool] = False
+    override_metadata: bool | None = False
 
 
 class PatchedEntity(BaseModel):
@@ -41,7 +41,7 @@ class PatchedEntity(BaseModel):
     Store the new entity after patch request
     """
 
-    new_entity: Optional[Entity] = None
+    new_entity: Entity | None = None
 
 
 ALLOWED_COLUMN_FIELDS = {
@@ -92,6 +92,10 @@ ALLOWED_COMMON_PATCH_FIELDS = {
     "reviewers": True,
     # Table Entity Fields
     "tableType": True,
+    # Source-managed: the connector recomputes it every run, so the patch has to be
+    # able to add, replace and remove it. Omitting it here silently drops synonyms
+    # on every table that already exists in OpenMetadata.
+    "aliases": True,
     "columns": {"__all__": ALLOWED_COLUMN_FIELDS},
     "tableConstraints": True,
     "tablePartition": True,
@@ -160,7 +164,7 @@ RESTRICT_UPDATE_LIST = [
 ARRAY_ENTITY_FIELDS = ["columns", "tasks", "fields"]
 
 
-PathTuple = Tuple[str]
+PathTuple = tuple[str]
 
 
 # For each 'replace to None' operation we will add a Remove operation at the end.
@@ -210,7 +214,7 @@ class ReplaceWithNoneOpFixer:
         This means that '/path/2' becomes '/path/1'.
     """
 
-    def __init__(self, index_drift_map: Dict[PathTuple, int]):
+    def __init__(self, index_drift_map: dict[PathTuple, int]):
         self.index_drift_map = index_drift_map
 
     @classmethod
@@ -218,7 +222,7 @@ class ReplaceWithNoneOpFixer:
         """Instantiates the ReplaceWithNoOpFixer with an empty drift map."""
         return cls(index_drift_map={})
 
-    def _fix_index_drift(self, path: List[str]):
+    def _fix_index_drift(self, path: list[str]):
         """Modifies the incoming path depending on how many Remove operations we have already
         registered for this path."""
 
@@ -234,19 +238,17 @@ class ReplaceWithNoneOpFixer:
                     continue
         return path
 
-    def _update_index_drift_map(self, path: List[str]):
+    def _update_index_drift_map(self, path: list[str]):
         """Update the dirft map with the seen path."""
         path_tuple: PathTuple = tuple(path[:-1])
 
-        self.index_drift_map[path_tuple] = (
-            self.index_drift_map.setdefault(path_tuple, 0) + 1
-        )
+        self.index_drift_map[path_tuple] = self.index_drift_map.setdefault(path_tuple, 0) + 1
 
-    def _get_remove_operation(self, path: List[str]) -> Dict:
+    def _get_remove_operation(self, path: list[str]) -> dict:
         """Return a JSONPatch Remove operation for the given path."""
         return {"op": PatchOperation.REMOVE.value, "path": "/".join(path)}
 
-    def get_remove_operation(self, path: List[str]):
+    def get_remove_operation(self, path: list[str]):
         """Returns a JSONPatch Remove operation for the given path
         while keeping in the state that we are sending a Remove operation
         for the given path."""
@@ -262,25 +264,21 @@ class JsonPatchUpdater:
 
     def __init__(
         self,
-        restrict_update_fields: List,
+        restrict_update_fields: list,
         replace_with_none_op_fixer: ReplaceWithNoneOpFixer,
     ):
         self.restrict_update_fields = restrict_update_fields
         self.replace_with_none_op_fixer = replace_with_none_op_fixer
 
     @classmethod
-    def from_restrict_update_fields(
-        cls, restrict_update_fields: List
-    ) -> "JsonPatchUpdater":
+    def from_restrict_update_fields(cls, restrict_update_fields: list) -> "JsonPatchUpdater":
         """Instantiates a JsonPatchUpdater based on the restric_update_fields"""
         return cls(
             restrict_update_fields=restrict_update_fields,
             replace_with_none_op_fixer=ReplaceWithNoneOpFixer.default(),
         )
 
-    def _determine_restricted_operation(
-        self, patch_ops: Dict, override_metadata: bool
-    ) -> bool:
+    def _determine_restricted_operation(self, patch_ops: dict, override_metadata: bool) -> bool:
         """
         Only retain add operation for restrict_update_fields fields
         """
@@ -292,7 +290,7 @@ class JsonPatchUpdater:
                 if override_metadata:
                     # REMOVE operations will be skipped since this removes any data on the field
                     # that is added by the user, if the source has no data on the field
-                    if ops == PatchOperation.REMOVE.value:
+                    if ops == PatchOperation.REMOVE.value:  # noqa: SIM103
                         return False
                     return True
                 # if we have overrideMetadata disabled we will only allow ADD operations
@@ -302,17 +300,13 @@ class JsonPatchUpdater:
 
     def _is_replace_with_none_operation(self, patch_ops: dict) -> bool:
         """Check if the Operation is a Replace operation to a None value."""
-        return (patch_ops.get("op") == PatchOperation.REPLACE.value) and (
-            patch_ops.get("value") is None
-        )
+        return (patch_ops.get("op") == PatchOperation.REPLACE.value) and (patch_ops.get("value") is None)
 
-    def _get_remove_operation_for_replace_with_none(self, path: str) -> Dict:
+    def _get_remove_operation_for_replace_with_none(self, path: str) -> dict:
         """Returns the Remove operation for the given Path. Used to fix the Replace to None operations."""
         return self.replace_with_none_op_fixer.get_remove_operation(path.split("/"))
 
-    def update(
-        self, patch: jsonpatch.JsonPatch, override_metadata: bool = False
-    ) -> List:
+    def update(self, patch: jsonpatch.JsonPatch, override_metadata: bool = False) -> list:
         """Given a JSONPatch generated by the jsonpatch library, updates it based on our custom needs.
         1. Remove any restricted operations
         2. Fix any 'Replace to None' operation by adding a 'Remove' operation at the end.
@@ -321,33 +315,27 @@ class JsonPatchUpdater:
         remove_ops_list = []
 
         for patch_ops in patch.patch or []:
-            if self._determine_restricted_operation(
-                patch_ops=patch_ops, override_metadata=override_metadata
-            ):
+            if self._determine_restricted_operation(patch_ops=patch_ops, override_metadata=override_metadata):
                 patch_ops_list.append(patch_ops)
 
                 if self._is_replace_with_none_operation(patch_ops):
-                    remove_ops_list.append(
-                        self._get_remove_operation_for_replace_with_none(
-                            patch_ops["path"]
-                        )
-                    )
+                    remove_ops_list.append(self._get_remove_operation_for_replace_with_none(patch_ops["path"]))
 
         patch_ops_list.extend(remove_ops_list)
 
         return patch_ops_list
 
 
-def build_patch(
+def build_patch(  # noqa: C901
     source: T,
     destination: T,
-    allowed_fields: Optional[Dict] = None,
-    restrict_update_fields: Optional[List] = None,
-    array_entity_fields: Optional[List] = None,
+    allowed_fields: dict | None = None,
+    restrict_update_fields: list | None = None,
+    array_entity_fields: list | None = None,
     remove_change_description: bool = True,
-    override_metadata: Optional[bool] = False,
-    skip_on_failure: Optional[bool] = True,
-) -> Optional[jsonpatch.JsonPatch]:
+    override_metadata: bool | None = False,
+    skip_on_failure: bool | None = True,
+) -> jsonpatch.JsonPatch | None:
     """
     Given an Entity type and Source entity and Destination entity,
     generate a JSON Patch and apply it.
@@ -394,9 +382,7 @@ def build_patch(
         # They are handled via full "replace" operations to preserve correct
         # ordering when columns are added/removed/reordered.
         if allowed_fields:
-            non_array_allowed = {
-                k: v for k, v in allowed_fields.items() if k not in active_array_fields
-            }
+            non_array_allowed = {k: v for k, v in allowed_fields.items() if k not in active_array_fields}
             if non_array_allowed:
                 patch = jsonpatch.make_patch(
                     json.loads(
@@ -417,9 +403,7 @@ def build_patch(
             else:
                 patch = jsonpatch.JsonPatch([])
         else:
-            array_exclude = (
-                {f: True for f in active_array_fields} if active_array_fields else None
-            )
+            array_exclude = {f: True for f in active_array_fields} if active_array_fields else None  # noqa: C420
             patch = jsonpatch.make_patch(
                 json.loads(
                     source.model_dump_json(
@@ -474,12 +458,12 @@ def build_patch(
         # "replace" operations (e.g. /columns) pass through because their
         # paths do not contain restricted field names.
         if restrict_update_fields:
-            updated_operations = JsonPatchUpdater.from_restrict_update_fields(
-                restrict_update_fields
-            ).update(patch, override_metadata=override_metadata)
+            updated_operations = JsonPatchUpdater.from_restrict_update_fields(restrict_update_fields).update(
+                patch, override_metadata=override_metadata
+            )
             patch.patch = updated_operations
 
-        return patch
+        return patch  # noqa: TRY300
     except Exception as exc:
         logger.debug(traceback.format_exc())
         if skip_on_failure:
@@ -492,12 +476,9 @@ def build_patch(
             except Exception:
                 pass
 
-            logger.warning(
-                f"Failed to build patch{entity_info}. The patch generation was skipped. "
-                f"Reason: {exc}"
-            )
+            logger.warning(f"Failed to build patch{entity_info}. The patch generation was skipped. Reason: {exc}")
             return None
-        else:
+        else:  # noqa: RET505
             entity_info = ""
             try:
                 if hasattr(source, "fullyQualifiedName"):
@@ -520,7 +501,7 @@ def _get_attribute_name(attr: T) -> str:
     return model_str(attr)
 
 
-def rearrange_attributes(final_attributes: List[T], source_attributes: List[T]):
+def rearrange_attributes(final_attributes: list[T], source_attributes: list[T]):
     source_staging_list = []
     destination_staging_list = []
     for attribute in final_attributes or []:
@@ -536,13 +517,11 @@ def _table_constraints_handler(source: T, destination: T):
     Handle table constraints patching properly.
     This ensures we only perform allowed operations on constraints and maintain the structure.
     """
-    if not hasattr(source, "tableConstraints") or not hasattr(
-        destination, "tableConstraints"
-    ):
+    if not hasattr(source, "tableConstraints") or not hasattr(destination, "tableConstraints"):
         return
 
-    source_table_constraints = getattr(source, "tableConstraints")
-    destination_table_constraints = getattr(destination, "tableConstraints")
+    source_table_constraints = getattr(source, "tableConstraints")  # noqa: B009
+    destination_table_constraints = getattr(destination, "tableConstraints")  # noqa: B009
 
     if not source_table_constraints or not destination_table_constraints:
         return
@@ -573,12 +552,10 @@ def _table_constraints_handler(source: T, destination: T):
             rearranged_constraints.append(dest_constraint)
 
     # Update the destination constraints with the rearranged list
-    setattr(destination, "tableConstraints", rearranged_constraints)
+    setattr(destination, "tableConstraints", rearranged_constraints)  # noqa: B010
 
 
-def _should_update_restricted_field(
-    source_value, dest_value, override_metadata: bool
-) -> bool:
+def _should_update_restricted_field(source_value, dest_value, override_metadata: bool) -> bool:
     """Decide whether a restricted field should be updated from destination.
 
     Mirrors the restrict_update_fields filter semantics:
@@ -586,12 +563,8 @@ def _should_update_restricted_field(
     - REPLACE (both have values):           only with override
     - REMOVE  (source has value → dest empty): never allowed
     """
-    source_empty = source_value is None or (
-        isinstance(source_value, list) and len(source_value) == 0
-    )
-    dest_empty = dest_value is None or (
-        isinstance(dest_value, list) and len(dest_value) == 0
-    )
+    source_empty = source_value is None or (isinstance(source_value, list) and len(source_value) == 0)
+    dest_empty = dest_value is None or (isinstance(dest_value, list) and len(dest_value) == 0)
     if dest_empty:
         return False
     if source_empty:
@@ -602,9 +575,9 @@ def _should_update_restricted_field(
 def _sort_array_entity_fields(
     source: T,
     destination: T,
-    array_entity_fields: Optional[List] = None,
-    restrict_update_fields: Optional[List] = None,
-    override_metadata: Optional[bool] = False,
+    array_entity_fields: list | None = None,
+    restrict_update_fields: list | None = None,
+    override_metadata: bool | None = False,
 ):
     """
     Reorder array entity fields to match the destination order (the actual
@@ -622,9 +595,13 @@ def _sort_array_entity_fields(
             destination_attributes = getattr(destination, field)
             source_attributes = getattr(source, field)
 
-            source_dict = {
-                _get_attribute_name(attr): attr for attr in (source_attributes or [])
-            }
+            dest_is_root_model = isinstance(destination_attributes, RootModel)
+            if dest_is_root_model:
+                destination_attributes = destination_attributes.root
+            if isinstance(source_attributes, RootModel):
+                source_attributes = source_attributes.root
+
+            source_dict = {_get_attribute_name(attr): attr for attr in (source_attributes or [])}
 
             updated_attributes = []
             for dest_attr in destination_attributes or []:
@@ -636,14 +613,10 @@ def _sort_array_entity_fields(
                             continue
                         if k in restrict_set:
                             src_val = getattr(source_attr, k, None)
-                            if not _should_update_restricted_field(
-                                src_val, v, override_metadata
-                            ):
+                            if not _should_update_restricted_field(src_val, v, override_metadata):
                                 continue
                         update_dict[k] = v
-                    updated_attributes.append(
-                        source_attr.model_copy(update=update_dict)
-                    )
+                    updated_attributes.append(source_attr.model_copy(update=update_dict))
                 else:
                     updated_attributes.append(dest_attr)
 
@@ -651,7 +624,10 @@ def _sort_array_entity_fields(
                 if hasattr(attr, "ordinalPosition"):
                     attr.ordinalPosition = idx + 1
 
-            setattr(destination, field, updated_attributes)
+            if dest_is_root_model:
+                setattr(destination, field, getattr(destination, field).model_copy(update={"root": updated_attributes}))
+            else:
+                setattr(destination, field, updated_attributes)
 
 
 def _remove_change_description(entity: T) -> T:
@@ -660,7 +636,7 @@ def _remove_change_description(entity: T) -> T:
     We never want to patch that, and we won't have that information
     from the source. It's fully handled in the server.
     """
-    if hasattr(entity, "changeDescription") and getattr(entity, "changeDescription"):
+    if hasattr(entity, "changeDescription") and getattr(entity, "changeDescription"):  # noqa: B009
         entity.changeDescription = None
 
     return entity

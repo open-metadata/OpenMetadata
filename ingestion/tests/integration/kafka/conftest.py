@@ -4,6 +4,8 @@ from textwrap import dedent
 
 import pytest
 import testcontainers.core.network
+from confluent_kafka.admin import AdminClient, NewTopic
+from confluent_kafka.schema_registry import Schema, SchemaRegistryClient
 from docker.types import EndpointConfig
 from testcontainers.core.container import DockerContainer
 from testcontainers.kafka import KafkaContainer
@@ -26,10 +28,22 @@ from metadata.generated.schema.metadataIngestion.messagingServiceMetadataPipelin
     MessagingMetadataConfigType,
 )
 
+LOANS_TOPIC = "loans"
+LOANS_PROTOBUF_SCHEMA = dedent(
+    """
+    syntax = "proto3";
+    package org.example.loans;
 
-def _connect_to_network(
-    ctr: DockerContainer, network: testcontainers.core.network, alias: str
-):
+    message MyLoanRecord {
+      int32 my_field1 = 1;
+      double my_field2 = 2;
+      string my_field3 = 3;
+    }
+    """
+).strip()
+
+
+def _connect_to_network(ctr: DockerContainer, network: testcontainers.core.network, alias: str):
     # Needed until https://github.com/testcontainers/testcontainers-python/issues/645 is fixed
     ctr.with_kwargs(
         network=network.name,
@@ -41,9 +55,7 @@ class CustomKafkaContainer(KafkaContainer):
     def __init__(self):
         super().__init__()
         self.security_protocol_map += ",EXTERNAL:PLAINTEXT"
-        self.with_env(
-            "KAFKA_LISTENER_SECURITY_PROTOCOL_MAP", self.security_protocol_map
-        )
+        self.with_env("KAFKA_LISTENER_SECURITY_PROTOCOL_MAP", self.security_protocol_map)
 
         self.listeners = f"PLAINTEXT://0.0.0.0:29092,BROKER://0.0.0.0:9092,EXTERNAL://0.0.0.0:{self.port}"
         self.with_env("KAFKA_LISTENERS", self.listeners)
@@ -81,14 +93,18 @@ def docker_network():
 
 @pytest.fixture(scope="module")
 def schema_registry_container(docker_network, kafka_container):
-    with SchemaRegistryContainer(
-        schema_registry_kafkastore_bootstrap_servers="PLAINTEXT://kafka:9092",
-        schema_registry_host_name="schema-registry",
-    ).with_network(docker_network).with_network_aliases("schema-registry") as container:
+    with (
+        SchemaRegistryContainer(
+            schema_registry_kafkastore_bootstrap_servers="PLAINTEXT://kafka:9092",
+            schema_registry_host_name="schema-registry",
+        )
+        .with_network(docker_network)
+        .with_network_aliases("schema-registry") as container
+    ):
         load_csv_data.main(
             kafka_broker=kafka_container.get_bootstrap_server(),
             schema_registry_url=container.get_connection_url(),
-            csv_directory=os.path.dirname(__file__) + "/data",
+            csv_directory=os.path.dirname(__file__) + "/data",  # noqa: PTH120
         )
         yield container
 
@@ -99,6 +115,21 @@ def kafka_container(docker_network):
     _connect_to_network(container, docker_network, "kafka")
     with container:
         yield container
+
+
+@pytest.fixture(scope="module")
+def protobuf_topic(kafka_container, schema_registry_container):
+    admin_client = AdminClient({"bootstrap.servers": kafka_container.get_bootstrap_server()})
+    admin_client.create_topics([NewTopic(LOANS_TOPIC, num_partitions=1, replication_factor=1)])[LOANS_TOPIC].result(
+        timeout=10
+    )
+
+    schema_registry_client = SchemaRegistryClient({"url": schema_registry_container.get_connection_url()})
+    schema_registry_client.register_schema(
+        f"{LOANS_TOPIC}-value",
+        Schema(LOANS_PROTOBUF_SCHEMA, "PROTOBUF"),
+    )
+    return LOANS_TOPIC
 
 
 @pytest.fixture(scope="module")
@@ -121,9 +152,7 @@ def ingestion_config(db_service, metadata, workflow_config, sink_config):
         "source": {
             "type": db_service.connection.config.type.value.lower(),
             "serviceName": db_service.fullyQualifiedName.root,
-            "sourceConfig": {
-                "config": {"type": MessagingMetadataConfigType.MessagingMetadata.value}
-            },
+            "sourceConfig": {"config": {"type": MessagingMetadataConfigType.MessagingMetadata.value}},
             "serviceConnection": db_service.connection.model_dump(),
         },
         "sink": sink_config,

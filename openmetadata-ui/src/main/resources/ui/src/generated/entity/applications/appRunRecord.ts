@@ -262,6 +262,25 @@ export interface StepStats {
      */
     failedRecords?: number;
     /**
+     * Per-entity Process (doc-build / RDF translation) cumulative time in ms, summed across the
+     * concurrent translation pool. Aggregate work, not wall-clock: with many translation
+     * threads this can exceed the run duration.
+     */
+    processTimeMs?: number;
+    /**
+     * Per-entity Reader (DB) cumulative time in ms, summed across concurrent readers and
+     * therefore aggregate rather than wall-clock. Populated only on per-entity StepStats inside
+     * Stats.entityStats so the UI can show Reader latency per entity. Job-level Reader time
+     * uses Stats.readerStats.totalTimeMs.
+     */
+    readerTimeMs?: number;
+    /**
+     * Per-entity Sink (search bulk, or RDF storage writes) cumulative time in ms, summed across
+     * writers. For RDF the sink is serialized to one in-flight write, so this stage is close to
+     * wall-clock; reader and process are not.
+     */
+    sinkTimeMs?: number;
+    /**
      * Count of Total Successfully Records
      */
     successRecords?: number;
@@ -270,6 +289,15 @@ export interface StepStats {
      */
     totalRecords?: number;
     /**
+     * Cumulative time (ms) spent in this stage, SUMMED ACROSS CONCURRENT WORKERS. Reader,
+     * process and sink stages overlap, so this is aggregate work done, not elapsed wall-clock
+     * time, and it can legitimately exceed a run's duration. Use it to compare where a run
+     * spent effort; take elapsed time from the run record's startTime/endTime. UI computes avg
+     * latency = totalTimeMs / successRecords and throughput = successRecords / (totalTimeMs /
+     * 1000).
+     */
+    totalTimeMs?: number;
+    /**
      * Count of records with failed vector embeddings
      */
     vectorFailedRecords?: number;
@@ -277,6 +305,10 @@ export interface StepStats {
      * Count of records with successful vector embeddings
      */
     vectorSuccessRecords?: number;
+    /**
+     * Per-entity Vector (embedding API) cumulative time in ms.
+     */
+    vectorTimeMs?: number;
     /**
      * Count of Records with Warnings (e.g., stale references that were skipped)
      */

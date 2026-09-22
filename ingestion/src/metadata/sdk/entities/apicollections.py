@@ -1,7 +1,6 @@
 """
 APICollections entity SDK with fluent API
 """
-from typing import Type
 
 from metadata.generated.schema.api.data.createAPICollection import (
     CreateAPICollectionRequest,
@@ -14,6 +13,6 @@ class APICollections(BaseEntity[APICollection, CreateAPICollectionRequest]):
     """APICollections SDK class - plural to avoid conflict with generated APICollection entity"""
 
     @classmethod
-    def entity_type(cls) -> Type[APICollection]:
+    def entity_type(cls) -> type[APICollection]:
         """Return the APICollection entity type"""
         return APICollection

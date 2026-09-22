@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/databaseService.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Database Service",
   "description": "This schema defines the `Database Service` is a service such as MySQL, BigQuery, Redshift, Postgres, or Snowflake. Alternative terms such as Database Cluster, Database Server instance are also used for database service.",
   "type": "object",
@@ -36,6 +36,7 @@
         "Druid",
         "Db2",
         "Clickhouse",
+        "Clickzetta",
         "Databricks",
         "AzureSQL",
         "DynamoDB",
@@ -50,6 +51,7 @@
         "CustomDatabase",
         "Dbt",
         "SapHana",
+        "SapSuccessFactors",
         "MongoDB",
         "Cassandra",
         "Couchbase",
@@ -70,7 +72,10 @@
         "MicrosoftFabric",
         "BurstIQ",
         "Informix",
-        "Iomete"
+        "Iomete",
+        "QuestDB",
+        "Data360",
+        "SapBw4Hana"
       ],
       "javaEnums": [
         {
@@ -179,6 +184,9 @@
           "name": "SapHana"
         },
         {
+          "name": "SapSuccessFactors"
+        },
+        {
           "name": "MongoDB"
         },
         {
@@ -240,6 +248,15 @@
         },
         {
           "name": "Iomete"
+        },
+        {
+          "name": "QuestDB"
+        },
+        {
+          "name": "Data360"
+        },
+        {
+          "name": "SapBw4Hana"
         }
       ]
     },
@@ -267,6 +284,9 @@
             },
             {
               "$ref": "./connections/database/clickhouseConnection.json"
+            },
+            {
+              "$ref": "./connections/database/clickzettaConnection.json"
             },
             {
               "$ref": "./connections/database/databricksConnection.json"
@@ -324,6 +344,9 @@
             },
             {
               "$ref": "./connections/database/salesforceConnection.json"
+            },
+            {
+              "$ref": "./connections/database/sapSuccessFactorsConnection.json"
             },
             {
               "$ref": "./connections/database/singleStoreConnection.json"
@@ -414,6 +437,15 @@
             },
             {
               "$ref": "./connections/database/iometeConnection.json"
+            },
+            {
+              "$ref": "./connections/database/questdbConnection.json"
+            },
+            {
+              "$ref": "./connections/database/data360Connection.json"
+            },
+            {
+              "$ref": "./connections/database/sapBw4HanaConnection.json"
             }
           ]
         }
@@ -464,6 +496,9 @@
         "$ref": "../../type/tagLabel.json"
       },
       "default": []
+    },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
     },
     "version": {
       "description": "Metadata version of the entity.",

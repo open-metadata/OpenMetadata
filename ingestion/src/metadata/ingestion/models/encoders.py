@@ -11,6 +11,7 @@
 """
 Custom pydantic encoders
 """
+
 from pydantic import SecretStr
 from pydantic.json import pydantic_encoder
 

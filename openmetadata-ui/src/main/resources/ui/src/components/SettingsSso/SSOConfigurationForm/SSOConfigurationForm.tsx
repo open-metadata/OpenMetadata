@@ -55,7 +55,7 @@ import {
 import {
   createScrollToErrorHandler,
   transformErrors,
-} from '../../../utils/formUtils';
+} from '../../../utils/formPureUtils';
 import {
   applySamlConfiguration,
   cleanupProviderSpecificFields,
@@ -85,12 +85,16 @@ import DescriptionFieldTemplate from '../../common/Form/JSONSchema/JSONSchemaTem
 import { FieldErrorTemplate } from '../../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import LdapRoleMappingWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/LdapRoleMappingWidget/LdapRoleMappingWidget';
 import SelectWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
+import InlineAlert from '../../common/InlineAlert/InlineAlert';
 import Loader from '../../common/Loader/Loader';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import { UnsavedChangesModal } from '../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import ProviderSelector from '../ProviderSelector/ProviderSelector';
 import SSODocPanel from '../SSODocPanel/SSODocPanel';
+import { SSOFieldTemplate } from '../SSOFieldTemplate/SSOFieldTemplate';
 import { SSOGroupedFieldTemplate } from '../SSOGroupedFieldTemplate/SSOGroupedFieldTemplate';
+import SsoTestLoginModal from '../SsoTestLogin/SsoTestLoginModal';
+import { useSsoTestLogin } from '../SsoTestLogin/useSsoTestLogin';
 import './sso-configuration-form.less';
 import {
   FormData,
@@ -99,11 +103,15 @@ import {
 } from './SSOConfigurationForm.interface';
 import SsoConfigurationFormArrayFieldTemplate from './SsoConfigurationFormArrayFieldTemplate';
 import SsoRolesSelectField from './SsoRolesSelectField';
-
 interface MetadataUploadStatusCardProps {
   status: 'success' | 'error';
   fileName: string;
   onChangeFile: () => void;
+}
+
+interface SsoTestResult {
+  status: 'success' | 'failed';
+  errorCount: number;
 }
 
 const MetadataUploadStatusCard = ({
@@ -156,6 +164,17 @@ const widgets = {
   LdapRoleMappingWidget: LdapRoleMappingWidget,
 };
 
+// Providers whose public-client login can be exercised end-to-end in the browser
+// for an interactive Test Login (the browser obtains an id_token directly).
+const OIDC_TEST_LOGIN_PROVIDERS: AuthProvider[] = [
+  AuthProvider.Google,
+  AuthProvider.Okta,
+  AuthProvider.Azure,
+  AuthProvider.Auth0,
+  AuthProvider.AwsCognito,
+  AuthProvider.CustomOidc,
+];
+
 const SSOConfigurationFormRJSF = ({
   forceEditMode = false,
   onChangeProvider,
@@ -187,6 +206,16 @@ const SSOConfigurationFormRJSF = ({
   >(null);
   const [metadataUploadFileName, setMetadataUploadFileName] =
     useState<string>('');
+  const [isTesting, setIsTesting] = useState<boolean>(false);
+  const [testResult, setTestResult] = useState<SsoTestResult | undefined>();
+  const [showTestLoginModal, setShowTestLoginModal] = useState<boolean>(false);
+  const {
+    isTesting: isTestingLogin,
+    result: testLoginResult,
+    error: testLoginError,
+    runTestLogin,
+    reset: resetTestLogin,
+  } = useSsoTestLogin();
   const fieldErrorsRef = useRef<ErrorSchema>({});
 
   // Helper function to setup configuration state - extracted to avoid redundancy
@@ -838,29 +867,108 @@ const SSOConfigurationFormRJSF = ({
     [hasExistingConfig, isModalSave, t, setIsAuthenticated, setCurrentUser]
   );
 
+  // Helper: Build the cleaned form data + security configuration payload
+  const buildPayload = useCallback(():
+    | { cleanedFormData: FormData; payload: SecurityConfiguration }
+    | undefined => {
+    const cleanedFormData = cleanupProviderSpecificFields(
+      internalData,
+      internalData?.authenticationConfiguration?.provider as string
+    );
+
+    if (!cleanedFormData) {
+      return undefined;
+    }
+
+    const payload: SecurityConfiguration = {
+      authenticationConfiguration: cleanedFormData.authenticationConfiguration,
+      authorizerConfiguration: cleanedFormData.authorizerConfiguration,
+    };
+
+    return { cleanedFormData, payload };
+  }, [internalData]);
+
+  const getTestResultDescription = useCallback(
+    (result: SsoTestResult): string => {
+      if (result.status === 'success') {
+        return t('message.sso-configuration-test-success');
+      }
+
+      if (result.errorCount > 0) {
+        return t('message.sso-configuration-test-failed-with-count', {
+          count: result.errorCount,
+        });
+      }
+
+      return t('message.sso-configuration-test-failed-description');
+    },
+    [t]
+  );
+
+  // Run the existing backend validation without persisting the configuration
+  const handleTestConfiguration = async () => {
+    setIsTesting(true);
+    setTestResult(undefined);
+    fieldErrorsRef.current = {};
+    setErrorClearTrigger(0);
+
+    const built = buildPayload();
+    if (!built) {
+      setIsTesting(false);
+
+      return;
+    }
+
+    try {
+      const response = await validateSecurityConfiguration(built.payload);
+      const validationResult = response.data;
+      const errors = validationResult.errors ?? [];
+      const isSuccess =
+        errors.length === 0 &&
+        validationResult.status === VALIDATION_STATUS.SUCCESS;
+
+      if (isSuccess) {
+        setTestResult({ status: 'success', errorCount: 0 });
+      } else {
+        handleValidationErrors(validationResult);
+        setTestResult({ status: 'failed', errorCount: errors.length });
+      }
+    } catch (error) {
+      // handleApiError already surfaces the failure (toast or per-field errors)
+      handleApiError(error);
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  // Interactive round-trip: sign in via the IdP in an isolated popup and confirm
+  // the resolved identity, without ever touching the admin's current session.
+  const handleTestLogin = () => {
+    const built = buildPayload();
+    if (!built) {
+      return;
+    }
+
+    resetTestLogin();
+    setShowTestLoginModal(true);
+    runTestLogin(built.payload);
+  };
+
   const handleSave = async () => {
     updateLoadingState(isModalSave, setIsLoading, true);
     fieldErrorsRef.current = {};
     setErrorClearTrigger(0);
+    setTestResult(undefined);
 
     try {
-      // Prepare payload
-      const cleanedFormData = cleanupProviderSpecificFields(
-        internalData,
-        internalData?.authenticationConfiguration?.provider as string
-      );
-
-      if (!cleanedFormData) {
+      const built = buildPayload();
+      if (!built) {
         updateLoadingState(isModalSave, setIsLoading, false);
 
         return;
       }
 
-      const payload: SecurityConfiguration = {
-        authenticationConfiguration:
-          cleanedFormData.authenticationConfiguration,
-        authorizerConfiguration: cleanedFormData.authorizerConfiguration,
-      };
+      const { cleanedFormData, payload } = built;
 
       // Save configuration (PATCH for existing, PUT with validation for new)
       try {
@@ -974,6 +1082,91 @@ const SSOConfigurationFormRJSF = ({
     setInternalData(freshFormData);
   };
 
+  const isOidcPublicClientProvider = useMemo(
+    () =>
+      !!currentProvider &&
+      OIDC_TEST_LOGIN_PROVIDERS.includes(currentProvider as AuthProvider) &&
+      internalData?.authenticationConfiguration?.clientType ===
+        ClientType.Public,
+    [currentProvider, internalData]
+  );
+
+  const renderConfigAlerts = () => {
+    const isTestSuccess = testResult?.status === 'success';
+
+    return !hasExistingConfig || testResult ? (
+      <div className="tw:mt-4 tw:flex tw:flex-col tw:gap-4">
+        {!hasExistingConfig && (
+          <InlineAlert
+            alertClassName="sso-save-warning"
+            description={t('message.sso-new-config-save-warning')}
+            heading={t('label.warning')}
+            type="warning"
+          />
+        )}
+        {testResult && (
+          <InlineAlert
+            alertClassName="sso-test-result"
+            description={getTestResultDescription(testResult)}
+            heading={isTestSuccess ? t('label.success') : t('label.failed')}
+            type={isTestSuccess ? 'success' : 'error'}
+            onClose={() => setTestResult(undefined)}
+          />
+        )}
+      </div>
+    ) : null;
+  };
+
+  const renderFormActions = () =>
+    isEditMode ? (
+      <>
+        {renderConfigAlerts()}
+        <div className="form-actions-bottom">
+          <Button
+            className="cancel-sso-configuration text-md"
+            data-testid="cancel-sso-configuration"
+            type="link"
+            onClick={handleCancelClick}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            className="test-sso-configuration text-md"
+            data-testid="test-sso-configuration"
+            disabled={isLoading || isTesting || !currentProvider}
+            loading={isTesting}
+            onClick={handleTestConfiguration}>
+            {t('label.test-entity', { entity: t('label.configuration') })}
+          </Button>
+          {isOidcPublicClientProvider && (
+            <Button
+              className="test-login-sso-configuration text-md"
+              data-testid="test-login-sso-configuration"
+              disabled={isLoading || isTestingLogin || !currentProvider}
+              loading={isTestingLogin}
+              onClick={handleTestLogin}>
+              {t('label.test-login')}
+            </Button>
+          )}
+          <Button
+            className="save-sso-configuration text-md"
+            data-testid="save-sso-configuration"
+            disabled={isLoading}
+            loading={isLoading}
+            type="primary"
+            onClick={handleSave}>
+            {t('label.save')}
+          </Button>
+        </div>
+        <SsoTestLoginModal
+          error={testLoginError}
+          isTesting={isTestingLogin}
+          open={showTestLoginModal}
+          result={testLoginResult}
+          onClose={() => setShowTestLoginModal(false)}
+        />
+      </>
+    ) : null;
+
   if (isInitializing) {
     return <Loader data-testid="loader" />;
   }
@@ -995,97 +1188,105 @@ const SSOConfigurationFormRJSF = ({
 
   const isSamlProvider = currentProvider === AuthProvider.Saml;
 
-  const formContent = (
-    <>
-      {isEditMode && showForm && isSamlProvider && (
-        <div className="m-b-md">
-          {metadataUploadStatus === null && (
-            <Upload.Dragger
-              accept=".xml,application/xml,text/xml"
-              beforeUpload={(file) => {
-                const dataTransfer = new DataTransfer();
-                dataTransfer.items.add(file);
-                handleMetadataFileUpload(dataTransfer.files);
+  const renderSamlUpload = () =>
+    isEditMode && showForm && isSamlProvider ? (
+      <div className="m-b-md">
+        {metadataUploadStatus === null && (
+          <Upload.Dragger
+            accept=".xml,application/xml,text/xml"
+            beforeUpload={(file) => {
+              const dataTransfer = new DataTransfer();
+              dataTransfer.items.add(file);
+              handleMetadataFileUpload(dataTransfer.files);
 
-                return false;
-              }}
-              className="saml-metadata-upload-drop-zone"
-              data-testid="file-uploader"
-              multiple={false}
-              showUploadList={false}>
+              return false;
+            }}
+            className="saml-metadata-upload-drop-zone"
+            data-testid="file-uploader"
+            multiple={false}
+            showUploadList={false}>
+            <div
+              className="flex flex-center flex-column gap-1"
+              data-testid="file-upload-drop-zone">
               <div
-                className="flex flex-center flex-column gap-1"
-                data-testid="file-upload-drop-zone">
-                <div
-                  className="flex flex-shrink items-center justify-center bg-white border border-radius-xs"
-                  style={{ width: '40px', height: '40px' }}>
-                  <UploadCloud02 className="text-grey-600" size={20} />
-                </div>
-                <div
-                  className="flex align-center flex-wrap gap-4 justify-center"
-                  style={{ maxWidth: '220px' }}>
-                  <Typography.Text className="font-medium">
-                    {t('label.click-to')}{' '}
-                    <Button
-                      className="h-auto p-0 font-semibold"
-                      size="small"
-                      type="link">
-                      {t('label.upload-lowercase')}
-                    </Button>{' '}
-                    {t('label.or-drag-and-drop-an-xml-file-here')}
-                  </Typography.Text>
-                </div>
-                <Typography.Text className="text-grey-muted text-xs">
-                  {t('message.upload-saml-metadata-xml-description')}
+                className="flex flex-shrink items-center justify-center bg-white border border-radius-xs"
+                style={{ width: '40px', height: '40px' }}>
+                <UploadCloud02 className="text-grey-600" size={20} />
+              </div>
+              <div
+                className="flex align-center flex-wrap gap-4 justify-center"
+                style={{ maxWidth: '220px' }}>
+                <Typography.Text className="font-medium">
+                  {t('label.click-to')}{' '}
+                  <Button
+                    className="h-auto p-0 font-semibold"
+                    size="small"
+                    type="link">
+                    {t('label.upload-lowercase')}
+                  </Button>{' '}
+                  {t('label.or-drag-and-drop-an-xml-file-here')}
                 </Typography.Text>
               </div>
-            </Upload.Dragger>
-          )}
-          {metadataUploadStatus !== null && (
-            <MetadataUploadStatusCard
-              fileName={metadataUploadFileName}
-              status={metadataUploadStatus}
-              onChangeFile={() => setMetadataUploadStatus(null)}
-            />
-          )}
-        </div>
-      )}
-      {isEditMode && showForm && (
-        <Form
-          focusOnFirstError
-          noHtml5Validate
-          className="rjsf no-header"
-          customValidate={customValidate}
-          fields={customFields}
-          formContext={{
-            clearFieldError: handleClearFieldError,
-          }}
-          formData={internalData}
-          idSeparator="/"
-          liveValidate={
-            Object.keys(fieldErrorsRef.current).length > 0 ||
-            errorClearTrigger > 0
-          }
-          schema={schema}
-          showErrorList={false}
-          templates={{
-            DescriptionFieldTemplate: DescriptionFieldTemplate,
-            FieldErrorTemplate: FieldErrorTemplate,
-            ObjectFieldTemplate: SSOGroupedFieldTemplate,
-          }}
-          transformErrors={transformErrors}
-          uiSchema={{
-            ...uiSchema,
-            'ui:submitButtonOptions': {
-              submitText: '',
-              norender: true,
-            },
-          }}
-          validator={validator}
-          widgets={widgets}
-          onChange={handleOnChange}
-        />
-      )}
+              <Typography.Text className="text-grey-muted text-xs">
+                {t('message.upload-saml-metadata-xml-description')}
+              </Typography.Text>
+            </div>
+          </Upload.Dragger>
+        )}
+        {metadataUploadStatus !== null && (
+          <MetadataUploadStatusCard
+            fileName={metadataUploadFileName}
+            status={metadataUploadStatus}
+            onChangeFile={() => setMetadataUploadStatus(null)}
+          />
+        )}
+      </div>
+    ) : null;
+
+  const renderSsoForm = () =>
+    isEditMode && showForm ? (
+      <Form
+        focusOnFirstError
+        noHtml5Validate
+        className="rjsf no-header"
+        customValidate={customValidate}
+        fields={customFields}
+        formContext={{
+          clearFieldError: handleClearFieldError,
+          currentProvider,
+        }}
+        formData={internalData}
+        idSeparator="/"
+        liveValidate={
+          Object.keys(fieldErrorsRef.current).length > 0 ||
+          errorClearTrigger > 0
+        }
+        schema={schema}
+        showErrorList={false}
+        templates={{
+          DescriptionFieldTemplate: DescriptionFieldTemplate,
+          FieldErrorTemplate: FieldErrorTemplate,
+          FieldTemplate: SSOFieldTemplate,
+          ObjectFieldTemplate: SSOGroupedFieldTemplate,
+        }}
+        transformErrors={transformErrors}
+        uiSchema={{
+          ...uiSchema,
+          'ui:submitButtonOptions': {
+            submitText: '',
+            norender: true,
+          },
+        }}
+        validator={validator}
+        widgets={widgets}
+        onChange={handleOnChange}
+      />
+    ) : null;
+
+  const formContent = (
+    <>
+      {renderSamlUpload()}
+      {renderSsoForm()}
     </>
   );
 
@@ -1111,26 +1312,7 @@ const SSOConfigurationFormRJSF = ({
             children: (
               <>
                 {formContent}
-                {isEditMode && (
-                  <div className="form-actions-bottom">
-                    <Button
-                      className="cancel-sso-configuration text-md"
-                      data-testid="cancel-sso-configuration"
-                      type="link"
-                      onClick={handleCancelClick}>
-                      {t('label.cancel')}
-                    </Button>
-                    <Button
-                      className="save-sso-configuration text-md"
-                      data-testid="save-sso-configuration"
-                      disabled={isLoading}
-                      loading={isLoading}
-                      type="primary"
-                      onClick={handleSave}>
-                      {t('label.save')}
-                    </Button>
-                  </div>
-                )}
+                {renderFormActions()}
               </>
             ),
             minWidth: 400,
@@ -1154,38 +1336,41 @@ const SSOConfigurationFormRJSF = ({
     );
   }
 
+  const renderProviderHeader = () =>
+    currentProvider ? (
+      <div className="sso-provider-form-header flex items-center justify-between">
+        <div className="flex align-items-center gap-2 flex items-center">
+          <div className="provider-icon-container">
+            {getProviderIcon(currentProvider) && (
+              <img
+                alt={getProviderDisplayName(currentProvider)}
+                height={22}
+                src={getProviderIcon(currentProvider) as string}
+                width={22}
+              />
+            )}
+          </div>
+          <Typography.Title className="m-0 text-md">
+            {getProviderDisplayName(currentProvider)} {t('label.set-up')}
+          </Typography.Title>
+        </div>
+        {hasExistingConfig && onChangeProvider && (
+          <Button
+            data-testid="change-provider-button"
+            type="link"
+            onClick={onChangeProvider}>
+            {t('label.change-provider')}
+          </Button>
+        )}
+      </div>
+    ) : null;
+
   const wrappedFormContent = (
     <Card
       className="sso-configuration-form-card flex-col p-0"
       data-testid="sso-configuration-form-card">
       {/* SSO Provider Header */}
-      {currentProvider && (
-        <div className="sso-provider-form-header flex items-center justify-between">
-          <div className="flex align-items-center gap-2 flex items-center">
-            <div className="provider-icon-container">
-              {getProviderIcon(currentProvider) && (
-                <img
-                  alt={getProviderDisplayName(currentProvider)}
-                  height={22}
-                  src={getProviderIcon(currentProvider) as string}
-                  width={22}
-                />
-              )}
-            </div>
-            <Typography.Title className="m-0 text-md">
-              {getProviderDisplayName(currentProvider)} {t('label.set-up')}
-            </Typography.Title>
-          </div>
-          {hasExistingConfig && onChangeProvider && (
-            <Button
-              data-testid="change-provider-button"
-              type="link"
-              onClick={onChangeProvider}>
-              {t('label.change-provider')}
-            </Button>
-          )}
-        </div>
-      )}
+      {renderProviderHeader()}
       {formContent}
     </Card>
   );
@@ -1211,26 +1396,7 @@ const SSOConfigurationFormRJSF = ({
             <>
               <div className="sso-form-sticky-header" />
               {wrappedFormContent}
-              {isEditMode && (
-                <div className="form-actions-bottom">
-                  <Button
-                    className="cancel-sso-configuration text-md"
-                    data-testid="cancel-sso-configuration"
-                    type="link"
-                    onClick={handleCancelClick}>
-                    {t('label.cancel')}
-                  </Button>
-                  <Button
-                    className="save-sso-configuration text-md"
-                    data-testid="save-sso-configuration"
-                    disabled={isLoading}
-                    loading={isLoading}
-                    type="primary"
-                    onClick={handleSave}>
-                    {t('label.save')}
-                  </Button>
-                </div>
-              )}
+              {renderFormActions()}
             </>
           ),
           minWidth: 700,

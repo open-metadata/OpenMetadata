@@ -270,7 +270,7 @@ describe('WorksheetDetailsUtils', () => {
   });
 
   describe('getWorksheetWidgetsFromKey', () => {
-    it('should return WorksheetColumnsTable for worksheet columns widget', () => {
+    it('should return WorksheetColumnsTable for worksheet columns widget', async () => {
       const widgetConfig: WidgetConfig = {
         h: 8,
         i: DetailPageWidgetKeys.WORKSHEET_COLUMNS,
@@ -284,7 +284,9 @@ describe('WorksheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('worksheet-columns-table')).toBeInTheDocument();
+      expect(
+        await screen.findByTestId('worksheet-columns-table')
+      ).toBeInTheDocument();
     });
 
     it('should return WorksheetColumnsTable for widget key starting with worksheet columns', () => {

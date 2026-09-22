@@ -1,11 +1,11 @@
 """Data quality integration tests"""
+
 import json
 from pathlib import Path
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
-    List,
     TestSuiteConfigType,
 )
 from metadata.ingestion.ometa.routes import TestDefinition
@@ -51,14 +51,12 @@ def test_empty_test_suite(
 def test_all_definition_exists(metadata):
     """Test that all test definitions defined in json schema exist in the platform."""
     cwd = Path(__file__).resolve().parent
-    test_definition_path = (
-        cwd.parents[3] / "openmetadata-service/src/main/resources/json/data/tests"
-    )
+    test_definition_path = cwd.parents[3] / "openmetadata-service/src/main/resources/json/data/tests"
     test_difinitions_glob = test_definition_path.glob("*.json")
 
-    test_definitions_names: List[str] = []
+    test_definitions_names: list[str] = []
     for test_definition_file in test_difinitions_glob:
-        with open(test_definition_file, encoding="utf-8") as fle:
+        with open(test_definition_file, encoding="utf-8") as fle:  # noqa: PTH123
             test_definitions_names.append(json.load(fle)["name"])
     assert len(test_definitions_names) > 0
 

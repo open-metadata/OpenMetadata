@@ -16,7 +16,6 @@ To be used by OpenMetadata class
 
 import traceback
 from datetime import datetime
-from typing import List, Optional, Type, Union
 from urllib.parse import urlencode, urljoin
 from uuid import UUID
 
@@ -80,14 +79,12 @@ class OMetaTestsMixin:
             test_results.model_dump_json(),
         )
 
-        return resp
+        return resp  # noqa: RET504
 
     def get_or_create_test_suite(
         self,
         test_suite_name: str,
-        test_suite_description: Optional[
-            str
-        ] = f"Test Suite created on {datetime.now().strftime('%Y-%m-%d')}",
+        test_suite_description: str | None = f"Test Suite created on {datetime.now().strftime('%Y-%m-%d')}",
     ) -> TestSuite:
         """Get or create a TestSuite
 
@@ -107,9 +104,7 @@ class OMetaTestsMixin:
         if test_suite:
             return test_suite
 
-        logger.info(
-            f"TestSuite {test_suite_name} not found. Creating new TestSuite: {test_suite_name}"
-        )
+        logger.info(f"TestSuite {test_suite_name} not found. Creating new TestSuite: {test_suite_name}")
 
         return self.create_or_update(
             CreateTestSuiteRequest(
@@ -121,12 +116,10 @@ class OMetaTestsMixin:
     def get_or_create_test_definition(
         self,
         test_definition_fqn: str,
-        test_definition_description: Optional[str] = None,
-        entity_type: Optional[EntityType] = None,
-        test_platforms: Optional[List[TestPlatform]] = None,
-        test_case_parameter_definition: Optional[
-            List[TestCaseParameterDefinition]
-        ] = None,
+        test_definition_description: str | None = None,
+        entity_type: EntityType | None = None,
+        test_platforms: list[TestPlatform] | None = None,
+        test_case_parameter_definition: list[TestCaseParameterDefinition] | None = None,
     ) -> TestDefinition:
         """Get or create a test definition
 
@@ -167,10 +160,10 @@ class OMetaTestsMixin:
     def get_or_create_test_case(
         self,
         test_case_fqn: str,
-        entity_link: Optional[str] = None,
-        test_definition_fqn: Optional[str] = None,
-        test_case_parameter_values: Optional[List[TestCaseParameterValue]] = None,
-        description: Optional[str] = None,
+        entity_link: str | None = None,
+        test_definition_fqn: str | None = None,
+        test_case_parameter_values: list[TestCaseParameterValue] | None = None,
+        description: str | None = None,
     ) -> TestCase:
         """Get or create a test case
 
@@ -189,22 +182,20 @@ class OMetaTestsMixin:
         if test_case:
             return test_case
 
-        logger.info(
-            f"TestCase {test_case_fqn} not found. Creating TestCase {test_case_fqn}"
-        )
+        logger.info(f"TestCase {test_case_fqn} not found. Creating TestCase {test_case_fqn}")
 
         test_case = self.create_or_update(
             CreateTestCaseRequest(
-                name=test_case_fqn.split(".")[-1],
+                name=test_case_fqn.split(".")[-1],  # noqa: PLC0207
                 entityLink=entity_link,
                 testDefinition=test_definition_fqn,
                 parameterValues=test_case_parameter_values,
                 description=description,
             )  # type: ignore
         )
-        return test_case
+        return test_case  # noqa: RET504
 
-    def get_executable_test_suite(self, table_fqn: str) -> Optional[TestSuite]:
+    def get_executable_test_suite(self, table_fqn: str) -> TestSuite | None:
         """Given an entity fqn, retrieve the link test suite if it exists
 
         Args:
@@ -213,9 +204,7 @@ class OMetaTestsMixin:
         Returns:
             An instance of TestSuite or None
         """
-        table_entity = self.get_by_name(
-            entity=Table, fqn=table_fqn, fields=["testSuite"]
-        )
+        table_entity = self.get_by_name(entity=Table, fqn=table_fqn, fields=["testSuite"])
         if not table_entity:
             raise RuntimeError(
                 f"Unable to find table {table_fqn} in OpenMetadata. "
@@ -232,9 +221,7 @@ class OMetaTestsMixin:
             nullable=False,
         )
 
-    def get_or_create_executable_test_suite(
-        self, entity_fqn: str
-    ) -> Union[EntityReference, TestSuite]:
+    def get_or_create_executable_test_suite(self, entity_fqn: str) -> EntityReference | TestSuite:
         """Given an entity fqn, retrieve the link test suite if it exists or create a new one
 
         Args:
@@ -243,9 +230,7 @@ class OMetaTestsMixin:
         Returns:
             TestSuite:
         """
-        table_entity = self.get_by_name(
-            entity=Table, fqn=entity_fqn, fields=["testSuite"]
-        )
+        table_entity = self.get_by_name(entity=Table, fqn=entity_fqn, fields=["testSuite"])
         if not table_entity:
             raise RuntimeError(
                 f"Unable to find table {entity_fqn} in OpenMetadata. "
@@ -260,14 +245,14 @@ class OMetaTestsMixin:
             basicEntityReference=table_entity.fullyQualifiedName.root,
         )  # type: ignore
         test_suite = self.create_or_update_executable_test_suite(create_test_suite)
-        return test_suite
+        return test_suite  # noqa: RET504
 
     def get_test_case_results(
         self,
         test_case_fqn: str,
         start_ts: int,
         end_ts: int,
-    ) -> Optional[List[TestCaseResult]]:
+    ) -> list[TestCaseResult] | None:
         """Retrieve list of test cases
 
         Args:
@@ -290,9 +275,7 @@ class OMetaTestsMixin:
             return [TestCaseResult.model_validate(entity) for entity in resp["data"]]
         return None
 
-    def create_or_update_executable_test_suite(
-        self, data: CreateTestSuiteRequest
-    ) -> TestSuite:
+    def create_or_update_executable_test_suite(self, data: CreateTestSuiteRequest) -> TestSuite:
         """Create or update an executable test suite
 
         Args:
@@ -310,8 +293,8 @@ class OMetaTestsMixin:
 
     def delete_executable_test_suite(
         self,
-        entity: Type[TestSuite],
-        entity_id: Union[str, UUID],
+        entity: type[TestSuite],
+        entity_id: str | UUID,
         recursive: bool = False,
         hard_delete: bool = False,
     ) -> None:
@@ -336,9 +319,7 @@ class OMetaTestsMixin:
         path = self.get_suffix(TestCase) + "/logicalTestCases"
         self.client.put(path, data=data.model_dump_json())
 
-    def create_test_case_resolution(
-        self, data: CreateTestCaseResolutionStatus
-    ) -> TestCaseResolutionStatus:
+    def create_test_case_resolution(self, data: CreateTestCaseResolutionStatus) -> TestCaseResolutionStatus:
         """Create a test case resolution
 
         Args:
@@ -357,7 +338,7 @@ class OMetaTestsMixin:
         test_case: TestCase,
         failed_rows: TableData,
         validate=True,
-    ) -> Optional[TableData]:
+    ) -> TableData | None:
         """
         PUT sample failed data for a test case.
 
@@ -373,9 +354,7 @@ class OMetaTestsMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to PUT sample data for {test_case.fullyQualifiedName.root}: {exc}"
-            )
+            logger.warning(f"Error trying to PUT sample data for {test_case.fullyQualifiedName.root}: {exc}")
 
         if resp:
             try:
@@ -383,8 +362,7 @@ class OMetaTestsMixin:
             except UnicodeError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Unicode Error parsing the sample data response from {test_case.fullyQualifiedName.root}: "
-                    f"{err}"
+                    f"Unicode Error parsing the sample data response from {test_case.fullyQualifiedName.root}: {err}"
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
@@ -394,7 +372,7 @@ class OMetaTestsMixin:
 
         return None
 
-    def get_failed_rows_sample(self, test_case: TestCase) -> Optional[TableData]:
+    def get_failed_rows_sample(self, test_case: TestCase) -> TableData | None:
         """
         GET failed row sample data for a test case.
 
@@ -407,26 +385,18 @@ class OMetaTestsMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to GET failed rows sample for "
-                f"{test_case.fullyQualifiedName.root}: {exc}"
-            )
+            logger.warning(f"Error trying to GET failed rows sample for {test_case.fullyQualifiedName.root}: {exc}")
 
         if resp:
             try:
                 return TableData(**resp)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Error parsing failed rows sample for "
-                    f"{test_case.fullyQualifiedName.root}: {exc}"
-                )
+                logger.warning(f"Error parsing failed rows sample for {test_case.fullyQualifiedName.root}: {exc}")
 
         return None
 
-    def ingest_inspection_query(
-        self, test_case: TestCase, inspection_query: str
-    ) -> Optional[TestCase]:
+    def ingest_inspection_query(self, test_case: TestCase, inspection_query: str) -> TestCase | None:
         """
         PUT inspection query for a test case.
 
@@ -452,7 +422,7 @@ class OMetaTestsMixin:
             hard (bool, optional): hard delete if true
         """
         params = urlencode(
-            dict(
+            dict(  # noqa: C408
                 recursive="true" if recursive else "false",
                 hardDelete="true" if hard else "false",
             )

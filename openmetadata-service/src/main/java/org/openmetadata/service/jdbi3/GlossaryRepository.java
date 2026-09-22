@@ -16,8 +16,10 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.FIELD_SEPARATOR;
+import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addEntityReference;
 import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
@@ -27,7 +29,8 @@ import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.csv.CsvUtil.addTermRelations;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
-import static org.openmetadata.service.search.SearchClient.GLOSSARY_TERM_SEARCH_INDEX;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 
 import java.io.IOException;
@@ -35,12 +38,10 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -55,12 +56,10 @@ import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
-import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
-import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.entity.type.Style;
-import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
@@ -78,19 +77,22 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
+import org.openmetadata.service.ontology.OntologyLayerValidator;
+import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
-import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
+import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class GlossaryRepository extends EntityRepository<Glossary> {
-  private static final String UPDATE_FIELDS = "";
-  private static final String PATCH_FIELDS = "";
+  private static final String ONTOLOGY_CONFIGURATION = "ontologyConfiguration";
+  private static final String UPDATE_FIELDS = ONTOLOGY_CONFIGURATION;
+  private static final String PATCH_FIELDS = ONTOLOGY_CONFIGURATION;
+  private final OntologyLayerValidator ontologyLayerValidator;
 
   public GlossaryRepository() {
     super(
@@ -103,6 +105,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     quoteFqn = true;
     supportsSearch = true;
     renameAllowed = true;
+    ontologyLayerValidator =
+        new OntologyLayerValidator(
+            id -> Entity.getEntity(Entity.GLOSSARY, id, "", Include.NON_DELETED));
   }
 
   @Override
@@ -167,7 +172,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   @Override
-  public void prepare(Glossary glossary, boolean update) {}
+  public void prepare(Glossary glossary, boolean update) {
+    ontologyLayerValidator.applyDefaultsAndValidate(glossary);
+  }
 
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
@@ -241,7 +248,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
     List<GlossaryTerm> terms =
         repository.listAllForCSV(
-            repository.getFields("owners,reviewers,tags,relatedTerms,synonyms,extension,parent"),
+            repository.getFields(
+                "owners,reviewers,tags,relatedTerms,synonyms,extension,parent,domains"),
             glossary.getFullyQualifiedName());
     terms.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new GlossaryCsv(glossary, user).exportCsv(terms, callback);
@@ -267,10 +275,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         getCsvDocumentation(Entity.GLOSSARY, false);
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
     private final Glossary glossary;
+    private final Set<String> validRelationTypeNames;
 
     GlossaryCsv(Glossary glossary, String user) {
       super(GLOSSARY_TERM, HEADERS, user);
       this.glossary = glossary;
+      this.validRelationTypeNames = loadValidRelationTypeNames();
     }
 
     @Override
@@ -316,7 +326,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           .withOwners(getOwners(printer, csvRecord, 9))
           .withEntityStatus(getTermStatus(printer, csvRecord))
           .withStyle(getStyle(csvRecord))
-          .withExtension(getExtension(printer, csvRecord, 13));
+          .withDomains(getDomains(printer, csvRecord, 13))
+          .withExtension(getExtension(printer, csvRecord, 14));
 
       // Validate to catch logical errors for both dry run and actual import
       if (processRecord) {
@@ -363,9 +374,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       }
       return list;
     }
-
-    private static final Set<String> DEFAULT_RELATION_TYPES =
-        Set.copyOf(GlossaryTermRepository.DEFAULT_RELATION_TYPES);
 
     /**
      * Parse term relations from CSV field with support for relation type prefix.
@@ -439,39 +447,20 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       return termRelations.isEmpty() ? null : termRelations;
     }
 
-    /**
-     * Check if a relation type is valid against the glossaryTermRelationSettings.
-     */
     private boolean isValidRelationType(String relationType) {
-      try {
-        GlossaryTermRelationSettings settings =
-            SettingsCache.getSetting(
-                SettingsType.GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class);
-        if (settings == null || settings.getRelationTypes() == null) {
-          return DEFAULT_RELATION_TYPES.contains(relationType);
-        }
-        return settings.getRelationTypes().stream()
-            .anyMatch(rt -> relationType.equals(rt.getName()));
-      } catch (Exception e) {
-        return DEFAULT_RELATION_TYPES.contains(relationType);
-      }
+      return validRelationTypeNames.contains(relationType);
     }
 
     private String getValidRelationTypeNames() {
-      try {
-        GlossaryTermRelationSettings settings =
-            SettingsCache.getSetting(
-                SettingsType.GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class);
-        if (settings != null && settings.getRelationTypes() != null) {
-          return settings.getRelationTypes().stream()
-              .map(GlossaryTermRelationType::getName)
-              .sorted()
-              .collect(Collectors.joining(", "));
-        }
-      } catch (Exception e) {
-        // Fall through to defaults
-      }
-      return String.join(", ", new TreeSet<>(DEFAULT_RELATION_TYPES));
+      return validRelationTypeNames.stream().sorted().collect(Collectors.joining(", "));
+    }
+
+    private static Set<String> loadValidRelationTypeNames() {
+      RelationshipTypeResolver resolver =
+          new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO());
+      return resolver.list().stream()
+          .map(RelationshipType::getName)
+          .collect(Collectors.toUnmodifiableSet());
     }
 
     private EntityStatus getTermStatus(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
@@ -480,7 +469,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       }
       String termStatus = csvRecord.get(10);
       try {
-        return nullOrEmpty(termStatus) ? EntityStatus.DRAFT : EntityStatus.fromValue(termStatus);
+        return nullOrEmpty(termStatus)
+            ? EntityStatus.DRAFT
+            : EntityFieldUtils.parseEntityStatus(termStatus);
       } catch (Exception ex) {
         // List should have even numbered terms - termName and endPoint
         importFailure(
@@ -531,8 +522,15 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       addField(recordList, entity.getEntityStatus().value());
       addField(recordList, entity.getStyle() != null ? entity.getStyle().getColor() : null);
       addField(recordList, entity.getStyle() != null ? entity.getStyle().getIconURL() : null);
+      addDomains(recordList, getDirectDomains(entity.getDomains()));
       addExtension(recordList, entity.getExtension());
       addRecord(csvFile, recordList);
+    }
+
+    private static List<EntityReference> getDirectDomains(List<EntityReference> domains) {
+      return listOrEmpty(domains).stream()
+          .filter(domain -> !Boolean.TRUE.equals(domain.getInherited()))
+          .toList();
     }
 
     private String termReferencesToRecord(List<TermReference> list) {
@@ -566,64 +564,68 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   private void updateAssetIndexes(Glossary original, Glossary updated) {
-    // Update ES indexes of entity tagged with the glossary term and its children terms to reflect
-    // its latest value.
-    GlossaryTermRepository repository =
-        (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
-    Set<String> targetFQNHashesFromDb =
-        new HashSet<>(
-            daoCollection
-                .tagUsageDAO()
-                .getTargetFQNHashForTagPrefix(updated.getFullyQualifiedName()));
-    List<GlossaryTerm> childTerms = getAllTerms(updated);
+    String oldFqn = original.getFullyQualifiedName();
+    String newFqn = updated.getFullyQualifiedName();
 
-    for (GlossaryTerm child : childTerms) {
-      targetFQNHashesFromDb.addAll( // for each child term find the targetFQNHashes of assets
-          daoCollection.tagUsageDAO().getTargetFQNHashForTag(child.getFullyQualifiedName()));
-    }
+    // Re-index the glossary and all nested child terms from the renamed DB rows so each doc's own
+    // FQN and the glossary/parent denorm reflect the new name. Drained on the request thread
+    // post-commit = read-your-write, unlike the previous fire-and-forget reindexAcrossIndices that
+    // raced the commit and left child terms stale. Rebuilding from the authoritative rows is
+    // boundary-safe — getAllTerms matches on fixed-width fqnHash segments, where an ES
+    // prefix-rewrite over the raw FQN would also hit sibling glossaries sharing a name prefix
+    // (e.g. "Finance" vs "FinanceReports") and can't refresh glossary.name/fullyQualifiedName at
+    // all. The child terms go out as one bulk request, not N individual ES round-trips.
+    searchRepository.updateEntity(updated.getEntityReference());
+    searchRepository.deferIfFlushScopeActive(
+        () ->
+            searchRepository.updateEntitiesByReference(
+                getAllTerms(updated).stream().map(GlossaryTerm::getEntityReference).toList()),
+        "updateEntitiesByReference",
+        updated.getId().toString(),
+        newFqn,
+        GLOSSARY_TERM);
 
-    // List of entity references tagged with the glossary term
-    Map<String, EntityReference> targetFQNFromES =
-        repository.getGlossaryUsageFromES(
-            original.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false);
-    List<EntityReference> childrenTerms =
-        searchRepository.getEntitiesContainingFQNFromES(
-            original.getFullyQualifiedName(),
-            getTermCount(updated),
-            GLOSSARY_TERM_SEARCH_INDEX); // get old value of children term from ES
-    for (EntityReference child : childrenTerms) {
-      targetFQNFromES.putAll( // List of entity references tagged with the children term
-          repository.getGlossaryUsageFromES(
-              child.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false));
-      searchRepository.updateEntity(child); // update es index of child term
-      searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", child);
-    }
-
-    searchRepository.updateEntityIndex(original); // update es index of child term
-    searchRepository
-        .getSearchClient()
-        .reindexAcrossIndices("fullyQualifiedName", original.getEntityReference());
-    searchRepository
-        .getSearchClient()
-        .reindexAcrossIndices("glossary.name", original.getEntityReference());
+    // Rewrite tags.tagFQN on every asset tagged with this glossary's terms in one synchronous
+    // prefix update-by-query (refresh=true) — the same in-line mechanism GlossaryTerm rename uses.
+    searchRepository.deferIfFlushScopeActive(
+        () ->
+            searchRepository
+                .getSearchClient()
+                .updateGlossaryTermByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, TAGS_FQN),
+        "updateGlossaryTermByFqnPrefix",
+        null,
+        newFqn,
+        GLOSSARY);
   }
 
   private void updateEntityLinksOnGlossaryRename(String oldFqn, String newFqn, Glossary updated) {
     // update field relationships for feed
     daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
 
-    MessageParser.EntityLink newAbout = new MessageParser.EntityLink(entityType, newFqn);
-
-    Entity.getFeedRepository()
-        .updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
+    ConversationRepository conversations = Entity.getConversationRepository();
+    conversations.updateEntityReference(updated.getEntityReference(), oldFqn);
 
     List<GlossaryTerm> childTerms = getAllTerms(updated);
 
+    // A glossary rename cascades the FQN to every child term, so their open approval tasks (keyed
+    // by
+    // aboutFqnHash) and workflow-instance relatedEntity must follow the rename exactly as a term
+    // move/rename does — otherwise the tasks become unfindable at the new FQN and the workflow
+    // history card goes stale.
+    Map<String, String> taskFqnHashUpdates = new HashMap<>();
     for (GlossaryTerm child : childTerms) {
-      newAbout = new MessageParser.EntityLink(GLOSSARY_TERM, child.getFullyQualifiedName());
-      Entity.getFeedRepository()
-          .updateLegacyThreadsAbout(newAbout.getLinkString(), child.getId().toString());
+      String childNewFqn = child.getFullyQualifiedName();
+      if (!nullOrEmpty(childNewFqn) && childNewFqn.startsWith(newFqn)) {
+        String childOldFqn = oldFqn + childNewFqn.substring(newFqn.length());
+        conversations.updateEntityReference(child.getEntityReference(), childOldFqn);
+        taskFqnHashUpdates.put(
+            FullyQualifiedName.buildHash(childOldFqn), FullyQualifiedName.buildHash(childNewFqn));
+      }
     }
+    // The glossary FQN is the prefix of every child term's FQN, so one subtree repoint covers them
+    // all; child approval tasks (opaque hash) are rewritten per term.
+    updateTaskAboutFqnHashes(taskFqnHashUpdates);
+    repointWorkflowInstancesForFqnChange(GLOSSARY_TERM, oldFqn, newFqn);
   }
 
   private List<GlossaryTerm> getAllTerms(Glossary glossary) {
@@ -642,10 +644,19 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       renameAllowed = true;
     }
 
+    @Override
+    protected void resetForRetryAttempt() {
+      renameProcessed = false;
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate("name", () -> updateName(updated));
+      recordChange(
+          ONTOLOGY_CONFIGURATION,
+          original.getOntologyConfiguration(),
+          updated.getOntologyConfiguration());
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
     }
@@ -675,7 +686,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       // Glossary name changed - update tag names starting from glossary and all the children tags
       LOG.info("Glossary FQN changed from {} to {}", oldFqn, newFqn);
       // Drop cache entries for every glossary term under this glossary BEFORE we rewrite the DB.
-      invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
+      // Capture the descendants so the post-write pass can re-evict any entry a racing reader
+      // re-populated with the pre-rename row between this call and glossaryTermDAO.updateFqn.
+      // The pass below runs after updateFqn but inside this transaction — see
+      // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
+      List<EntityDAO.EntityIdFqnPair> renamedTerms =
+          EntityRepository.invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
       daoCollection.glossaryTermDAO().updateFqn(oldFqn, newFqn);
       daoCollection.tagUsageDAO().updateTagPrefix(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
       recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
@@ -695,11 +711,19 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           condition ->
               PolicyConditionUpdater.renamePrefixInCondition(
                   condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
+
+      // Cascade rename into the search index — child term FQNs and the embedded glossary denorm
+      // (glossary.name / glossary.fullyQualifiedName) must reflect the new name. This used to be
+      // driven by entityRelationshipReindex, which has no caller since PR #19550, so the call has
+      // to happen inline here (mirroring Domain / Classification / GlossaryTerm renames).
+      updateAssetIndexes(original, updated);
+
+      finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
     }
 
     public void invalidateGlossary(UUID classificationId) {
       // Glossary name changed. Invalidate the glossary and its children terms
-      CACHE_WITH_ID.invalidate(new ImmutablePair<>(GLOSSARY, classificationId));
+      EntityRepository.CACHE_WITH_ID.invalidate(new ImmutablePair<>(GLOSSARY, classificationId));
       List<EntityRelationshipRecord> tags =
           findToRecords(classificationId, GLOSSARY, Relationship.CONTAINS, GLOSSARY_TERM);
       for (EntityRelationshipRecord tagRecord : tags) {
@@ -712,7 +736,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       // children from the cache
       List<EntityRelationshipRecord> tagRecords =
           findToRecords(termId, GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
-      CACHE_WITH_ID.invalidate(new ImmutablePair<>(GLOSSARY_TERM, termId));
+      EntityRepository.CACHE_WITH_ID.invalidate(new ImmutablePair<>(GLOSSARY_TERM, termId));
       for (EntityRelationshipRecord tagRecord : tagRecords) {
         invalidateTerms(tagRecord.getId());
       }

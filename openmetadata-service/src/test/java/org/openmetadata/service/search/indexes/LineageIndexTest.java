@@ -1,12 +1,16 @@
 package org.openmetadata.service.search.indexes;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Collections;
@@ -19,6 +23,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -91,5 +96,53 @@ class LineageIndexTest {
     index.applyLineageFields(doc);
 
     assertFalse(doc.containsKey("upstreamLineage"));
+  }
+
+  @Test
+  void testApplyLineageFieldsUsesPrefetchedContextAndDoesNotHitDb() {
+    UUID metricId = UUID.randomUUID();
+    Metric metric =
+        new Metric()
+            .withId(metricId)
+            .withName("test-metric")
+            .withFullyQualifiedName("svc.test-metric");
+
+    CollectionDAO dao = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relDao = mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(dao.relationshipDAO()).thenReturn(relDao);
+    entityStaticMock.when(Entity::getCollectionDAO).thenReturn(dao);
+
+    List<EsLineageData> prefetched = List.of(new EsLineageData());
+    MetricIndex index = new MetricIndex(metric);
+    Map<String, Object> doc = new HashMap<>();
+
+    index.applyLineageFields(doc, DocBuildContext.withUpstreamLineage(prefetched));
+
+    assertSame(prefetched, doc.get("upstreamLineage"));
+    verify(relDao, never()).findFrom(any(UUID.class), anyString(), anyInt());
+  }
+
+  @Test
+  void testApplyLineageFieldsUsesEmptyPrefetchedList() {
+    UUID metricId = UUID.randomUUID();
+    Metric metric =
+        new Metric()
+            .withId(metricId)
+            .withName("test-metric")
+            .withFullyQualifiedName("svc.test-metric");
+
+    CollectionDAO dao = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relDao = mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(dao.relationshipDAO()).thenReturn(relDao);
+    entityStaticMock.when(Entity::getCollectionDAO).thenReturn(dao);
+
+    MetricIndex index = new MetricIndex(metric);
+    Map<String, Object> doc = new HashMap<>();
+
+    index.applyLineageFields(doc, DocBuildContext.withUpstreamLineage(Collections.emptyList()));
+
+    assertNotNull(doc.get("upstreamLineage"));
+    assertEquals(0, ((List<?>) doc.get("upstreamLineage")).size());
+    verify(relDao, never()).findFrom(any(UUID.class), anyString(), anyInt());
   }
 }

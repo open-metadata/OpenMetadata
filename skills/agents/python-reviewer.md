@@ -19,8 +19,7 @@ OpenMetadata ingestion uses:
 - **75+ connectors** following a plugin architecture
 - **Schema-first design** — JSON schemas generate Pydantic models via `make generate`
 - **pytest** for testing (not unittest)
-- **black, isort, pycln** for formatting (`make py_format`)
-- **pylint** for linting (`make lint`)
+- **ruff** for formatting + linting (`make py_format` to apply, `make py_format_check` to verify)
 - **basedpyright** for type checking (`make static-checks`)
 
 ## Review Task

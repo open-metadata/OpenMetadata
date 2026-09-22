@@ -20,6 +20,7 @@ import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertTy
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -55,6 +56,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
@@ -68,6 +70,7 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
+import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.schema.entity.events.authentication.WebhookOAuth2Config;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
@@ -83,7 +86,9 @@ import org.openmetadata.service.apps.bundles.changeEvent.AlertFactory;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
+import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
+import org.openmetadata.service.events.subscription.ResourceEventTypes;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
@@ -111,6 +116,8 @@ public class EventSubscriptionResource
     extends EntityResource<EventSubscription, EventSubscriptionRepository> {
   public static final String COLLECTION_PATH = "/v1/events/subscriptions/";
   public static final String FIELDS = "owners,filteringRules";
+  private static final Pattern URL_QUERY_PATTERN = Pattern.compile("(https?://[^\\s?]*)\\?\\S*");
+  private static final String REDACTED_QUERY_REPLACEMENT = "$1?***";
   private final EventSubscriptionMapper mapper = new EventSubscriptionMapper();
 
   public EventSubscriptionResource(Authorizer authorizer, Limits limits) {
@@ -157,7 +164,7 @@ public class EventSubscriptionResource
       EventsSubscriptionRegistry.initialize(
           listOrEmpty(EventSubscriptionResource.getNotificationsFilterDescriptors()),
           listOrEmpty(EventSubscriptionResource.getObservabilityFilterDescriptors()));
-      repository.initSeedDataFromResources();
+      repository.initSeedDataFromResourcesOnStartup();
       initializeEventSubscriptions();
       // Schedule the audit log consumer to read from change_event and write to audit_log
       EventSubscriptionScheduler.getInstance().scheduleAuditLogConsumer();
@@ -174,8 +181,7 @@ public class EventSubscriptionResource
         .forEach(
             subscription -> {
               try {
-                EventSubscriptionScheduler.getInstance()
-                    .addSubscriptionPublisher(subscription, true);
+                EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(subscription);
               } catch (Exception ex) {
                 LOG.error("Failed to initialize subscription: {}", subscription.getId(), ex);
               }
@@ -341,7 +347,7 @@ public class EventSubscriptionResource
     EventSubscription eventSub =
         mapper.createToEntity(request, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, eventSub);
-    EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub, false);
+    EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub);
     return response;
   }
 
@@ -461,24 +467,8 @@ public class EventSubscriptionResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -1434,12 +1424,19 @@ public class EventSubscriptionResource
   @Operation(
       operationId = "testDestination",
       summary = "Send a test message alert to external destinations.",
-      description = "Send a test message alert to external destinations of the alert.",
+      description =
+          "Send a test message alert to external destinations of the alert. Returns one entry per "
+              + "requested destination, in request order, carrying the test status details. "
+              + "Destination configurations are redacted from the response.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Test message sent successfully",
-            content = @Content(schema = @Schema(implementation = Response.class)))
+            content =
+                @Content(
+                    array =
+                        @ArraySchema(
+                            schema = @Schema(implementation = SubscriptionDestination.class))))
       })
   public Response sendTestMessageAlert(
       @Context UriInfo uriInfo,
@@ -1448,28 +1445,42 @@ public class EventSubscriptionResource
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
 
-    if (request.getDestinations() == null || request.getDestinations().isEmpty()) {
+    if (nullOrEmpty(request.getDestinations())) {
       throw new WebApplicationException(
           "At least one destination must be provided to send a test message.",
           Response.Status.BAD_REQUEST);
     }
 
-    EventSubscription eventSubscription = new EventSubscription();
-
-    List<SubscriptionDestination> resultDestinations = new ArrayList<>();
-
-    for (SubscriptionDestination destination : request.getDestinations()) {
-      validateDestinationConfig(destination);
-      try {
-        Destination<ChangeEvent> alert = AlertFactory.getAlert(eventSubscription, destination);
-        alert.sendTestMessage();
-        resultDestinations.add(destination);
-      } catch (EventPublisherException e) {
-        LOG.error("Failed to send test message to destination: {}", e.getMessage());
-      }
-    }
+    List<SubscriptionDestination> resultDestinations =
+        request.getDestinations().stream().map(this::sendTestMessageToDestination).toList();
 
     return Response.ok(resultDestinations).build();
+  }
+
+  private SubscriptionDestination sendTestMessageToDestination(
+      SubscriptionDestination destination) {
+    validateDestinationConfig(destination);
+    try {
+      Destination<ChangeEvent> alert = AlertFactory.getAlert(new EventSubscription(), destination);
+      alert.sendTestMessage();
+    } catch (EventPublisherException e) {
+      LOG.error("Failed to send test message to destination: {}", e.getMessage());
+      destination.setStatusDetails(
+          AlertUtil.buildTestDestinationStatus(
+              TestDestinationStatus.Status.FAILED,
+              redactUrlQueryParams(e.getMessage()),
+              System.currentTimeMillis()));
+    }
+    return destination.withConfig(null);
+  }
+
+  /** Endpoint query strings can carry credentials, so keep them out of the returned reason. */
+  private static String redactUrlQueryParams(String reason) {
+    String result = null;
+    if (reason != null) {
+      result = URL_QUERY_PATTERN.matcher(reason).replaceAll(REDACTED_QUERY_REPLACEMENT);
+    }
+    return result;
   }
 
   private void validateDestinationConfig(SubscriptionDestination destination) {
@@ -1579,6 +1590,8 @@ public class EventSubscriptionResource
     }
   }
 
+  private static final String ALL_RESOURCE_NAME = "all";
+
   public static List<FilterResourceDescriptor> getNotificationsFilterDescriptors()
       throws IOException {
     List<NotificationResourceDescriptor> entityNotificationDescriptors =
@@ -1588,19 +1601,41 @@ public class EventSubscriptionResource
         getDescriptorsFromFile("FilterFunctionsDescriptor.json", EventFilterRule.class).stream()
             .collect(
                 Collectors.toMap(EventFilterRule::getName, eventFilterRule -> eventFilterRule));
-    return entityNotificationDescriptors.stream()
-        .map(
-            descriptor -> {
-              List<EventFilterRule> rules =
-                  descriptor.getSupportedFilters().stream()
-                      .map(operation -> functions.get(operation.value()))
-                      .filter(Objects::nonNull)
-                      .toList();
-              return new FilterResourceDescriptor()
-                  .withName(descriptor.getName())
-                  .withSupportedFilters(rules);
-            })
-        .toList();
+    List<FilterResourceDescriptor> descriptors =
+        entityNotificationDescriptors.stream()
+            .map(
+                descriptor -> {
+                  List<EventFilterRule> rules =
+                      descriptor.getSupportedFilters().stream()
+                          .map(operation -> functions.get(operation.value()))
+                          .filter(Objects::nonNull)
+                          .toList();
+                  return new FilterResourceDescriptor()
+                      .withName(descriptor.getName())
+                      .withSupportedFilters(rules)
+                      .withContainerEntities(descriptor.getContainerEntities())
+                      .withSupportedEventTypes(
+                          ResourceEventTypes.forResource(descriptor.getName()));
+                })
+            .toList();
+    setAllResourceContainerEntities(descriptors);
+    return descriptors;
+  }
+
+  // The "all" source spans every entity type, so its container entities are the union of every
+  // source's container entities — letting the UI scope an Entity FQN filter to descendants.
+  private static void setAllResourceContainerEntities(List<FilterResourceDescriptor> descriptors) {
+    List<String> unionContainerEntities =
+        descriptors.stream()
+            .map(FilterResourceDescriptor::getContainerEntities)
+            .filter(Objects::nonNull)
+            .flatMap(List::stream)
+            .distinct()
+            .toList();
+    descriptors.stream()
+        .filter(descriptor -> ALL_RESOURCE_NAME.equals(descriptor.getName()))
+        .findFirst()
+        .ifPresent(descriptor -> descriptor.setContainerEntities(unionContainerEntities));
   }
 
   private ResultList<TypedEvent> fetchEventRecords(
@@ -1662,7 +1697,11 @@ public class EventSubscriptionResource
     if (event instanceof ChangeEvent changeEvent) {
       return changeEvent.getTimestamp();
     } else if (event instanceof FailedEventResponse failedEvent) {
-      return failedEvent.getChangeEvent().getTimestamp();
+      // A failure recorded by a consumer that makes its own deliveries carries no change event,
+      // so fall back to when the failure itself was recorded.
+      return failedEvent.getChangeEvent() == null
+          ? failedEvent.getTimestamp()
+          : failedEvent.getChangeEvent().getTimestamp();
     }
     throw new IllegalArgumentException("Unknown event type: " + event.getClass());
   }

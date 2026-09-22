@@ -177,6 +177,10 @@ public final class Tags {
     public TagDeleter delete() {
       return new TagDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Tag> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(client.tags(), identifier);
+    }
   }
 
   // ==================== Deleter ====================
@@ -291,5 +295,15 @@ public final class Tags {
     public TagDeleter delete() {
       return new TagDeleter(client, tag.getId().toString());
     }
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().tags().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().tags().getContextByName(fqn);
   }
 }

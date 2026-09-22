@@ -78,15 +78,11 @@ def _root_model_default_offenders() -> list[tuple[str, str, str]]:
 
             referenced_schema = (schema_file.parent / ref).resolve()
             try:
-                referenced_schema_relative = referenced_schema.relative_to(
-                    schema_root.resolve()
-                )
+                referenced_schema_relative = referenced_schema.relative_to(schema_root.resolve())
             except ValueError:
                 continue
 
-            generated_model = (
-                generated_schema_root / referenced_schema_relative.with_suffix(".py")
-            )
+            generated_model = generated_schema_root / referenced_schema_relative.with_suffix(".py")
             if not generated_model.exists():
                 continue
 

@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { nestedChildrenTestData } from '../../constant/nestedColumnUpdates';
+import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import {
   assignTagToChildren,
@@ -28,6 +29,8 @@ for (const [
   { CreationClass, tabSelector, supportDisplayNameUpdate },
 ] of Object.entries(nestedChildrenTestData)) {
   test.describe(entityType, () => {
+    test.describe.configure({ mode: 'default' });
+
     const entity = new CreationClass();
 
     test.beforeAll(async ({ browser }) => {
@@ -40,7 +43,7 @@ for (const [
     test.describe('Level 1 Nested Columns', () => {
       test.beforeEach(async ({ page }) => {
         await redirectToHomePage(page);
-        const { level0Key, expand } = getNestedColumnDetails(
+        const { level0Key, level1Key, expand } = getNestedColumnDetails(
           entityType,
           entity
         );
@@ -52,7 +55,7 @@ for (const [
           await page.click(tabSelector);
         }
         if (expand) {
-          await expandNestedColumn(page, level0Key);
+          await expandNestedColumn(page, level0Key, level1Key);
         }
       });
 
@@ -155,7 +158,7 @@ for (const [
     test.describe('Level 2 Deeply Nested Columns', () => {
       test.beforeEach(async ({ page }) => {
         await redirectToHomePage(page);
-        const { level0Key, level1Key, expand } = getNestedColumnDetails(
+        const { level0Key, level1Key, level2Key } = getNestedColumnDetails(
           entityType,
           entity
         );
@@ -166,10 +169,8 @@ for (const [
 
           await page.click(tabSelector);
         }
-        if (expand) {
-          await expandNestedColumn(page, level0Key);
-          await expandNestedColumn(page, level1Key);
-        }
+        await expandNestedColumn(page, level0Key, level1Key);
+        await expandNestedColumn(page, level1Key, level2Key);
       });
 
       test('should update nested column description immediately without page refresh', async ({
@@ -266,15 +267,29 @@ for (const [
   });
 }
 
-const expandNestedColumn = async (page: Page, nestedColumnFqn: string) => {
-  await page
-    .locator(`[data-row-key="${nestedColumnFqn}"]`)
-    .getByTestId('expand-icon')
-    .waitFor({
-      state: 'visible',
-    });
-
-  await page
-    .locator(`[data-row-key="${nestedColumnFqn}"] [data-testid="expand-icon"]`)
-    .click();
+// check-click-confirm inside toPass: skips the click when the child is already
+// shown (Topic auto-expands its first level, so a blind click would toggle it
+// shut), and a click that lands wrong fails the confirm so the retry corrects
+// it. Also absorbs the row remount and below-the-fold scroll.
+const expandNestedColumn = async (
+  page: Page,
+  nestedColumnFqn: string,
+  childKey?: string
+) => {
+  const childRow = childKey
+    ? page.locator(`[data-row-key="${childKey}"]`)
+    : undefined;
+  const expandIcon = page.locator(
+    `[data-row-key="${nestedColumnFqn}"] [data-testid="expand-icon"]`
+  );
+  await expect(async () => {
+    if (childRow && (await childRow.isVisible())) {
+      return;
+    }
+    await expandIcon.scrollIntoViewIfNeeded();
+    await expandIcon.click({ timeout: 10_000 });
+    if (childRow) {
+      await expect(childRow).toBeVisible({ timeout: 5_000 });
+    }
+  }).toPass({ timeout: 60_000 });
 };

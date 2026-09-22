@@ -47,9 +47,7 @@ class TestHiveMySQLMetastoreDialect(TestCase):
         mock_connection.execute.return_value = mock_result
 
         # Call the method
-        result = self.dialect._get_table_columns(
-            mock_connection, "test_table", "test_schema"
-        )
+        result = self.dialect._get_table_columns(mock_connection, "test_table", "test_schema")
 
         # Verify connection.execute was called
         self.assertTrue(mock_connection.execute.called)
@@ -130,23 +128,26 @@ class TestHiveMySQLMetastoreDialect(TestCase):
 
         # Get the executed query (may be a TextClause, so convert to str)
         executed_query = str(mock_connection.execute.call_args[0][0])
+        # Normalize whitespace/case so formatting churn does not break semantics checks
+        normalized_query = " ".join(executed_query.upper().split())
 
-        # Verify SELECT statements are present
-        select_count = executed_query.upper().count("SELECT")
-        self.assertEqual(select_count, 2)  # Two SELECT statements joined by UNION ALL
+        # Regular columns
+        self.assertIn("COLUMN_NAME", normalized_query)
+        self.assertIn("TYPE_NAME", normalized_query)
+        self.assertIn("COMMENT", normalized_query)
 
-        # Verify the first SELECT (regular columns)
-        self.assertIn("COLUMN_NAME", executed_query)
-        self.assertIn("TYPE_NAME", executed_query)
-        self.assertIn("COMMENT", executed_query)
+        # Partition keys
+        self.assertIn("PKEY_NAME", normalized_query)
+        self.assertIn("PKEY_TYPE", normalized_query)
+        self.assertIn("PKEY_COMMENT", normalized_query)
 
-        # Verify the second SELECT (partition columns)
-        self.assertIn("PKEY_NAME", executed_query)
-        self.assertIn("PKEY_TYPE", executed_query)
-        self.assertIn("PKEY_COMMENT", executed_query)
+        # Partition contract (#26712): sentinel + ordinals + stable ordering
+        self.assertIn("'# PARTITION INFORMATION'", normalized_query)
+        self.assertIn("INTEGER_IDX", normalized_query)
+        self.assertIn("ORDER BY SORT_ORDER, COL_INDEX", normalized_query)
 
         # Verify JOINs are present in both parts
-        join_count = executed_query.upper().count("JOIN")
+        join_count = normalized_query.count("JOIN")
         self.assertGreaterEqual(join_count, 6)  # At least 6 JOINs in total
 
     def test_compatibility_mysql_57_syntax(self):

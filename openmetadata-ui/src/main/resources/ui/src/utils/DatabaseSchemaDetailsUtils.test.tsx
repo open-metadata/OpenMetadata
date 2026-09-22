@@ -12,10 +12,8 @@
  */
 import { useNavigate } from 'react-router-dom';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
-import {
-  buildSchemaQueryFilter,
-  ExtraDatabaseSchemaDropdownOptions,
-} from './DatabaseSchemaDetailsUtils';
+import { buildSchemaQueryFilter } from './DatabaseSchemaDetailsUtils';
+import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDropdownOptions';
 
 jest.mock(
   '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',

@@ -283,36 +283,36 @@ export const useSemanticsRuleList = ({
   const [deleteSemanticsRule, setDeleteSemanticsRule] =
     useState<SemanticsRule | null>(null);
 
-  const handleSave = async (
-    semanticsRule: SemanticsRule,
-    previousName?: string
-  ) => {
-    // previousName: pass this if editing and the name was changed
-    let updatedSemanticsRules = [...semanticsRules];
+  const handleSave = useCallback(
+    async (semanticsRule: SemanticsRule, previousName?: string) => {
+      // previousName: pass this if editing and the name was changed
+      let updatedSemanticsRules = [...semanticsRules];
 
-    // Remove the old rule if editing and the name has changed
-    if (previousName && previousName !== semanticsRule.name) {
-      updatedSemanticsRules = updatedSemanticsRules.filter(
-        (rule) => rule.name !== previousName
+      // Remove the old rule if editing and the name has changed
+      if (previousName && previousName !== semanticsRule.name) {
+        updatedSemanticsRules = updatedSemanticsRules.filter(
+          (rule) => rule.name !== previousName
+        );
+      }
+
+      // Check if a rule with the new name already exists
+      const existingIndex = updatedSemanticsRules.findIndex(
+        (rule) => rule.name === semanticsRule.name
       );
-    }
 
-    // Check if a rule with the new name already exists
-    const existingIndex = updatedSemanticsRules.findIndex(
-      (rule) => rule.name === semanticsRule.name
-    );
+      if (existingIndex > -1) {
+        // Replace the existing rule
+        updatedSemanticsRules[existingIndex] = semanticsRule;
+      } else {
+        // Add as new rule in the beginning
+        updatedSemanticsRules.unshift(semanticsRule);
+      }
 
-    if (existingIndex > -1) {
-      // Replace the existing rule
-      updatedSemanticsRules[existingIndex] = semanticsRule;
-    } else {
-      // Add as new rule in the beginning
-      updatedSemanticsRules.unshift(semanticsRule);
-    }
-
-    await onSemanticsRuleChange(updatedSemanticsRules);
-    setAddEditSemanticsRule(null);
-  };
+      await onSemanticsRuleChange(updatedSemanticsRules);
+      setAddEditSemanticsRule(null);
+    },
+    [semanticsRules, onSemanticsRuleChange]
+  );
 
   const handleAddDataAssetRule = () => {
     setAddEditSemanticsRule({
@@ -331,33 +331,36 @@ export const useSemanticsRuleList = ({
     setDeleteSemanticsRule(null);
   };
 
-  const columns = [
-    {
-      title: t('label.name'),
-      dataIndex: 'name',
-      className: 'col-name',
-    },
-    {
-      title: t('label.description'),
-      dataIndex: 'description',
-      className: 'col-description',
-      render: (description: string) => (
-        <RichTextEditorPreviewerNew markdown={description} />
-      ),
-    },
-    {
-      title: t('label.enabled'),
-      dataIndex: 'enabled',
-      render: (enabled: boolean, record: SemanticsRule) => (
-        <Switch
-          checked={enabled}
-          onChange={() => {
-            handleSave({ ...record, enabled: !enabled });
-          }}
-        />
-      ),
-    },
-  ];
+  const columns = useMemo(
+    () => [
+      {
+        title: t('label.name'),
+        dataIndex: 'name',
+        className: 'col-name',
+      },
+      {
+        title: t('label.description'),
+        dataIndex: 'description',
+        className: 'col-description',
+        render: (description: string) => (
+          <RichTextEditorPreviewerNew markdown={description} />
+        ),
+      },
+      {
+        title: t('label.enabled'),
+        dataIndex: 'enabled',
+        render: (enabled: boolean, record: SemanticsRule) => (
+          <Switch
+            checked={enabled}
+            onChange={() => {
+              handleSave({ ...record, enabled: !enabled });
+            }}
+          />
+        ),
+      },
+    ],
+    [t, handleSave]
+  );
 
   const dataAssetRuleList = useMemo(() => {
     return (

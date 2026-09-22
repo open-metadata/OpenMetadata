@@ -67,26 +67,14 @@ export const isImageUrl = (str: string): boolean => {
   return IMAGE_URL_PATTERN.test(str);
 };
 
-/**
- * Get the proper image source URL for tag/classification icons
- * Handles absolute URLs, data URIs, and relative paths
- */
-export const getTagImageSrc = (iconURL: string): string => {
-  if (!iconURL) {
-    return '';
-  }
-
-  if (iconURL.startsWith('http') || iconURL.startsWith('data:image')) {
-    return iconURL;
-  }
-
-  return `${window.location.origin}/${iconURL}`;
-};
-
 // Map of icon names to their components
 export const ICON_MAP: Record<
   string,
-  ComponentType<{ size?: number; style?: React.CSSProperties }>
+  ComponentType<{
+    size?: number;
+    className?: string;
+    style?: React.CSSProperties;
+  }>
 > = {
   Cube01: Cube01,
   Home02: Home02,
@@ -133,17 +121,23 @@ export const ICON_MAP: Record<
 };
 
 /**
+ * An icon whose stroke weight can be overridden — the shape `@untitledui`
+ * icons expose (their own props type is wider, so they need a cast).
+ */
+export type StrokableIcon = ComponentType<{
+  size?: number;
+  strokeWidth?: number;
+  style?: React.CSSProperties;
+}>;
+
+/**
  * Creates an icon component with custom stroke width
  * @param IconComponent - The icon component from @untitledui/icons
  * @param strokeWidth - Custom stroke width (default icons use 2)
  * @returns Wrapped icon component with custom stroke width
  */
 export const createIconWithStroke = (
-  IconComponent: ComponentType<{
-    size?: number;
-    strokeWidth?: number;
-    style?: React.CSSProperties;
-  }>,
+  IconComponent: StrokableIcon,
   strokeWidth: number
 ) => {
   return (props: { size?: number; style?: React.CSSProperties }) => (
@@ -151,56 +145,18 @@ export const createIconWithStroke = (
   );
 };
 
-interface RenderIconOptions {
-  size?: number;
-  className?: string;
-  style?: React.CSSProperties;
-  strokeWidth?: number;
-}
-
 /**
- * Utility function to render an icon from either a URL or an icon name
- * @param iconValue - Either a URL string or an icon name from ICON_MAP
- * @param options - Options for rendering the icon
- * @returns React element of the icon or image, or null if invalid
+ * The Ontology Studio glyph, as every nav entry leading there renders it —
+ * classic sidebar and app-mode sub-nav — so the two surfaces cannot drift
+ * apart. Restroked to 1.2, the weight the hand-drawn nav SVGs beside it use:
+ * `@untitledui` icons ship at stroke 2, which at nav size reads noticeably
+ * heavier than the items around it. The page header draws the same glyph
+ * unrestroked, because there it sits reversed-out on a brand-solid badge.
  */
-export const renderIcon = (
-  iconValue: string | undefined,
-  options: RenderIconOptions = {}
-) => {
-  const { size = 24, className = '', style = {}, strokeWidth = 1.5 } = options;
-
-  if (!iconValue) {
-    return null;
-  }
-
-  // Check if it's a known icon name
-  const IconComponent = ICON_MAP[iconValue];
-  if (IconComponent) {
-    // Return the icon component directly without wrapper
-    return <IconComponent size={size} style={{ strokeWidth, ...style }} />;
-  }
-
-  // Only render as image if it looks like a valid URL/path or has an image extension
-  if (!IMAGE_URL_PATTERN.test(iconValue)) {
-    return null;
-  }
-
-  // Render as image with error handling
-  return (
-    <img
-      alt="icon"
-      className={className}
-      src={getTagImageSrc(iconValue)}
-      style={{
-        width: size,
-        height: size,
-        objectFit: 'contain',
-        ...style,
-      }}
-    />
-  );
-};
+export const OntologyStudioIcon = createIconWithStroke(
+  LayersThree01 as StrokableIcon,
+  1.2
+);
 
 /**
  * Get the default icon for an entity type
@@ -218,17 +174,21 @@ export const getDefaultIconForEntityType = (entityType?: string): FC => {
 export const getEntityAvatarProps = (entity: {
   style?: { iconURL?: string; color?: string };
   entityType?: string;
-}) => ({
-  src:
-    entity.style?.iconURL?.startsWith('http') ||
-    entity.style?.iconURL?.startsWith('/')
-      ? entity.style.iconURL
-      : undefined,
-  className: 'tw:text-white',
-  style: {
-    backgroundColor: entity.style?.color ?? 'var(--tw-color-brand-600)',
-  },
-  placeholderIcon: getDefaultIconForEntityType(entity.entityType) as FC<{
-    className?: string;
-  }>,
-});
+}) => {
+  const iconURL = entity.style?.iconURL;
+  const isUrl = iconURL?.startsWith('http') || iconURL?.startsWith('/');
+  const iconComponent = iconURL ? ICON_MAP[iconURL] : undefined;
+
+  return {
+    src: isUrl ? iconURL : undefined,
+    className: 'tw:text-white',
+    style: {
+      backgroundColor: entity.style?.color ?? 'var(--tw-color-brand-600)',
+    },
+    placeholderIcon: (isUrl
+      ? undefined
+      : iconComponent ?? getDefaultIconForEntityType(entity.entityType)) as FC<{
+      className?: string;
+    }>,
+  };
+};

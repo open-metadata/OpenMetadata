@@ -12,7 +12,9 @@
 Integration tests for TagProcessor with multi-classification support.
 Tests scenarios from AUTO_CLASSIFICATION_REFACTOR_SOLUTION.md
 """
-from typing import Any, List, Sequence
+
+from collections.abc import Sequence
+from typing import Any
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -58,12 +60,10 @@ from metadata.pii.tag_processor import TagProcessor
 
 
 class FakeScoreTagsForColumn:
-    def __init__(self, scored_tags: List[ScoredTag]) -> None:
+    def __init__(self, scored_tags: list[ScoredTag]) -> None:
         self.scored_tags = scored_tags
 
-    def __call__(
-        self, column: Column, data: Sequence[Any], tags_to_analyze: List[Tag]
-    ) -> List[ScoredTag]:
+    def __call__(self, column: Column, data: Sequence[Any], tags_to_analyze: list[Tag]) -> list[ScoredTag]:
         return self.scored_tags
 
 
@@ -177,9 +177,7 @@ class TestTagProcessorMultiClassification:
         )
 
     @pytest.fixture
-    def general_password_tag(
-        self, general_classification_non_exclusive: Classification
-    ):
+    def general_password_tag(self, general_classification_non_exclusive: Classification):
         """General.Password tag."""
         pwd_pattern = PatternFactory.create(name="pwd-pattern", regex="^password$")
         password_pattern_recognizer = PatternRecognizerFactory.create(
@@ -300,14 +298,12 @@ class TestTagProcessorMultiClassification:
         )
 
         # Process column
-        tag_labels = processor.create_column_tag_labels(
-            column=sample_column, sample_data=sample_email_password_data
-        )
+        tag_labels = processor.create_column_tag_labels(column=sample_column, sample_data=sample_email_password_data)
 
         # Verify results
-        assert (
-            len(tag_labels) == 3
-        ), f"Should return 3 tags (1 PII + 2 General), got {len(tag_labels)}: {[l.tagFQN for l in tag_labels]}"
+        assert len(tag_labels) == 3, (
+            f"Should return 3 tags (1 PII + 2 General), got {len(tag_labels)}: {[l.tagFQN for l in tag_labels]}"  # noqa: E741
+        )
 
         tag_fqns = [label.tagFQN for label in tag_labels]
 
@@ -385,14 +381,12 @@ class TestTagProcessorMultiClassification:
         )
 
         # Process column
-        tag_labels = processor.create_column_tag_labels(
-            column=sample_column, sample_data=sample_email_password_data
-        )
+        tag_labels = processor.create_column_tag_labels(column=sample_column, sample_data=sample_email_password_data)
 
         # Verify results
-        assert (
-            len(tag_labels) == 3
-        ), f"Should return 3 tags (1 from each classification), got {len(tag_labels)}: {[l.tagFQN for l in tag_labels]}"
+        assert len(tag_labels) == 3, (
+            f"Should return 3 tags (1 from each classification), got {len(tag_labels)}: {[l.tagFQN for l in tag_labels]}"  # noqa: E741
+        )
 
         tag_fqns = [label.tagFQN.root for label in tag_labels]
 
@@ -441,14 +435,12 @@ class TestTagProcessorMultiClassification:
         )
 
         # Process column
-        tag_labels = processor.create_column_tag_labels(
-            column=sample_column, sample_data=sample_email_password_data
-        )
+        tag_labels = processor.create_column_tag_labels(column=sample_column, sample_data=sample_email_password_data)
 
         # Should only have PII tag
-        assert (
-            len(tag_labels) == 1
-        ), f"Should only return PII tag, got {len(tag_labels)}: {[l.tagFQN for l in tag_labels]}"
+        assert len(tag_labels) == 1, (
+            f"Should only return PII tag, got {len(tag_labels)}: {[l.tagFQN for l in tag_labels]}"  # noqa: E741
+        )
         assert tag_labels[0].tagFQN.root == "PII.Sensitive"
 
     def test_max_tags_per_column_limit(
@@ -465,9 +457,7 @@ class TestTagProcessorMultiClassification:
         # Create 5 General tags
         general_tags = []
         for i in range(5):
-            email_recognizer = PredefinedRecognizerFactory.create(
-                name=Name.EmailRecognizer
-            )
+            email_recognizer = PredefinedRecognizerFactory.create(name=Name.EmailRecognizer)
             recognizer = RecognizerFactory.create(
                 name="email_recognizer",
                 recognizerConfig=email_recognizer,
@@ -506,9 +496,7 @@ class TestTagProcessorMultiClassification:
         )
 
         # Process column
-        tag_labels = processor.create_column_tag_labels(
-            column=sample_column, sample_data=sample_email_password_data
-        )
+        tag_labels = processor.create_column_tag_labels(column=sample_column, sample_data=sample_email_password_data)
 
         # Should only return top 3 tags by score
         assert len(tag_labels) == 3, f"Should limit to 3 tags, got {len(tag_labels)}"
@@ -547,23 +535,21 @@ class TestTagProcessorMultiClassification:
             ],
         )
 
-        # Create TagProcessor
+        score_tags_for_column = Mock()
         processor = TagProcessor(
             config=workflow_config,
             metadata=metadata,
             classification_manager=classification_manager,
+            score_tags_for_column=score_tags_for_column,
             max_tags_per_column=10,
         )
 
-        # Process column
-        tag_labels = processor.create_column_tag_labels(
-            column=column_with_tag, sample_data=sample_email_password_data
-        )
+        tag_labels = processor.create_column_tag_labels(column=column_with_tag, sample_data=sample_email_password_data)
 
-        # Should return empty list (tag already applied)
-        assert (
-            len(tag_labels) == 0
-        ), f"Should not re-suggest existing tags, got {len(tag_labels)}: {[l.tagFQN for l in tag_labels]}"
+        assert len(tag_labels) == 0, (
+            f"Should not re-suggest existing tags, got {len(tag_labels)}: {[l.tagFQN for l in tag_labels]}"  # noqa: E741
+        )
+        score_tags_for_column.assert_not_called()
 
     def test_idempotent_mutually_exclusive_tags(
         self,
@@ -654,8 +640,7 @@ class TestTagProcessorMultiClassification:
         )
 
         assert len(first_run_labels) == 1, (
-            f"First run should return 1 tag (Date), got {len(first_run_labels)}: "
-            f"{[l.tagFQN for l in first_run_labels]}"
+            f"First run should return 1 tag (Date), got {len(first_run_labels)}: {[l.tagFQN for l in first_run_labels]}"  # noqa: E741
         )
         assert first_run_labels[0].tagFQN.root == "General.Date"
 
@@ -700,5 +685,5 @@ class TestTagProcessorMultiClassification:
         assert len(second_run_labels) == 0, (
             f"Second run should return 0 tags (mutually exclusive "
             f"classification already has Date tag applied), but got {len(second_run_labels)}: "
-            f"{[l.tagFQN for l in second_run_labels]}"
+            f"{[l.tagFQN for l in second_run_labels]}"  # noqa: E741
         )

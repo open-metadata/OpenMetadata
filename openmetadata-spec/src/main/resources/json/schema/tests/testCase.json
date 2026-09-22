@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/tests/testCase.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "TestCase",
   "description": "Test case is a test definition to capture data quality tests against tables, columns, and other data assets.",
   "type": "object",
@@ -72,6 +72,10 @@
         "$ref": "#/definitions/testCaseParameterValue"
       }
     },
+    "dataQualityDimension": {
+      "description": "Data quality dimension this test case belongs to. When not set at creation time, it defaults to the dimension of the test definition. Any dimension registered in Settings > Preferences > Data Quality can be used, system and custom alike.",
+      "$ref": "../type/entityReference.json"
+    },
     "testCaseResult": {
       "description": "Latest test case result obtained for this test case.",
       "$ref": "./basic.json#/definitions/testCaseResult"
@@ -131,6 +135,10 @@
     "incidentId": {
       "description": "Reference to an ongoing Incident ID (stateId) for this test case.",
       "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "incidentStatus": {
+      "description": "Latest incident resolution status for this test case. Inlined so clients can render the current incident status without an additional lookup per test case.",
+      "$ref": "./testCaseResolutionStatus.json"
     },
     "failedRowsSample": {
       "description": "Sample of failed rows for this test case.",

@@ -11,8 +11,10 @@
 """
 Grafana source module
 """
+
 import traceback
-from typing import Dict, Iterable, List, Optional, Set
+from collections.abc import Iterable
+from typing import cast
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -45,7 +47,9 @@ from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Diale
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.dashboard.grafana.client import GrafanaApiClient
+from metadata.ingestion.source.dashboard.grafana.client import (
+    GrafanaApiClient,  # noqa: TC001
+)
 from metadata.ingestion.source.dashboard.grafana.models import (
     GrafanaDashboardResponse,
     GrafanaDatasource,
@@ -65,6 +69,9 @@ logger = ingestion_logger()
 
 GRAFANA_TAG_CATEGORY = "GrafanaTags"
 
+# Datasources whose query language is not SQL, so there is nothing to hand to the lineage parser
+NON_SQL_DATASOURCE_TYPES = frozenset({"prometheus", "elasticsearch"})
+
 
 class GrafanaSource(DashboardServiceSource):
     """
@@ -77,25 +84,23 @@ class GrafanaSource(DashboardServiceSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.client: GrafanaApiClient = self.connection_obj
-        self.folders: List[GrafanaFolder] = []
-        self.datasources: Dict[str, GrafanaDatasource] = {}
-        self.dashboards: List[GrafanaSearchResult] = []
-        self.tags: Set[str] = set()
+        self.client: GrafanaApiClient = cast("GrafanaApiClient", self.client)
+        self.folders: list[GrafanaFolder] = []
+        self.datasources: dict[str, GrafanaDatasource] = {}
+        self.dashboards: list[GrafanaSearchResult] = []
+        self.tags: set[str] = set()
 
     @classmethod
     def create(
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: str | None = None,
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: GrafanaConnection = config.serviceConnection.root.config
         if not isinstance(connection, GrafanaConnection):
-            raise InvalidSourceException(
-                f"Expected GrafanaConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected GrafanaConnection, but got {connection}")
         return cls(config, metadata)
 
     def prepare(self):
@@ -107,46 +112,36 @@ class GrafanaSource(DashboardServiceSource):
         for ds in datasources:
             self.datasources[ds.uid] = ds
             self.datasources[ds.name] = ds
-        logger.info(f"Found {len(datasources)} datasources")
+        logger.info("Found %s datasources", len(datasources))
 
-    def get_dashboards_list(self) -> Optional[List[dict]]:
+    def get_dashboards_list(self) -> list[GrafanaSearchResult] | None:
         """Get list of dashboards"""
         dashboards_list = self.client.search_dashboards()
-        return dashboards_list
+        return dashboards_list  # noqa: RET504
 
-    def get_dashboard_name(self, dashboard: dict) -> str:
+    def get_dashboard_name(self, dashboard: GrafanaSearchResult) -> str:
         """Get dashboard name"""
         return dashboard.uid
 
-    def get_dashboard_details(
-        self, dashboard: dict
-    ) -> Optional[GrafanaDashboardResponse]:
+    def get_dashboard_details(self, dashboard: GrafanaSearchResult) -> GrafanaDashboardResponse | None:
         """Get detailed dashboard information"""
         try:
             return self.client.get_dashboard(dashboard.uid)
         except Exception as exc:
-            logger.warning(
-                f"Failed to get dashboard details for {dashboard['uid']}: {exc}"
-            )
+            logger.warning("Failed to get dashboard details for %s: %s", dashboard.uid, exc)
             return None
 
-    def get_owner_ref(
-        self, dashboard_details: GrafanaDashboardResponse
-    ) -> Optional[EntityReferenceList]:
+    def get_owner_ref(self, dashboard_details: GrafanaDashboardResponse) -> EntityReferenceList | None:
         """Get owner reference from dashboard metadata"""
         try:
             if dashboard_details.meta.createdBy:
                 # Try to get user by email if available
-                return self.metadata.get_reference_by_email(
-                    dashboard_details.meta.createdBy
-                )
+                return self.metadata.get_reference_by_email(dashboard_details.meta.createdBy)
         except Exception as err:
-            logger.debug(f"Could not fetch owner data: {err}")
+            logger.debug("Could not fetch owner data: %s", err)
         return None
 
-    def yield_dashboard(
-        self, dashboard_details: GrafanaDashboardResponse
-    ) -> Iterable[Either[CreateDashboardRequest]]:
+    def yield_dashboard(self, dashboard_details: GrafanaDashboardResponse) -> Iterable[Either[CreateDashboardRequest]]:
         """Method to Get Dashboard Entity"""
         try:
             dashboard_url = f"{clean_uri(self.service_connection.hostPort)}{dashboard_details.meta.url}"
@@ -196,6 +191,25 @@ class GrafanaSource(DashboardServiceSource):
                 )
             )
 
+    @staticmethod
+    def _flatten_panels(
+        panels: list[GrafanaPanel],
+    ) -> list[GrafanaPanel]:
+        """Flatten top-level panels, recursing into collapsed row panels.
+
+        When a Grafana row is collapsed the API moves child panels from the
+        top-level ``dashboard.panels`` list into the row panel's own ``panels``
+        field.  Expanded rows keep their children at the top level, so in that
+        case the row's ``panels`` list is empty and nothing extra is yielded.
+        """
+        result: list[GrafanaPanel] = []
+        for panel in panels or []:
+            if panel.type == "row" and panel.collapsed and panel.panels:
+                result.extend(panel.panels)
+            else:
+                result.append(panel)
+        return result
+
     def yield_dashboard_chart(
         self, dashboard_details: GrafanaDashboardResponse
     ) -> Iterable[Either[CreateChartRequest]]:
@@ -203,7 +217,7 @@ class GrafanaSource(DashboardServiceSource):
         if not dashboard_details.dashboard.panels:
             return
 
-        for panel in dashboard_details.dashboard.panels:
+        for panel in self._flatten_panels(dashboard_details.dashboard.panels):
             try:
                 # Skip row panels and panels without visualizations
                 if panel.type in ["row", "text"]:
@@ -215,9 +229,7 @@ class GrafanaSource(DashboardServiceSource):
                 chart_name = f"{dashboard_details.dashboard.uid}_{panel.id}"
                 chart_display_name = panel.title or f"Panel {panel.id}"
 
-                if filter_by_chart(
-                    self.source_config.chartFilterPattern, chart_display_name
-                ):
+                if filter_by_chart(self.source_config.chartFilterPattern, chart_display_name):
                     self.status.filter(chart_display_name, "Chart filtered out")
                     continue
 
@@ -227,13 +239,9 @@ class GrafanaSource(DashboardServiceSource):
                 chart_request = CreateChartRequest(
                     name=EntityName(chart_name),
                     displayName=chart_display_name,
-                    description=(
-                        Markdown(panel.description) if panel.description else None
-                    ),
+                    description=(Markdown(panel.description) if panel.description else None),
                     chartType=chart_type,
-                    service=FullyQualifiedEntityName(
-                        self.context.get().dashboard_service
-                    ),
+                    service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                     sourceUrl=SourceUrl(
                         f"{clean_uri(self.service_connection.hostPort)}"
                         f"{dashboard_details.meta.url}?viewPanel={panel.id}"
@@ -253,7 +261,7 @@ class GrafanaSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: GrafanaDashboardResponse,
-        db_service_prefix: Optional[str] = None,
+        db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
@@ -276,8 +284,8 @@ class GrafanaSource(DashboardServiceSource):
             if not to_entity:
                 return
 
-            # Extract lineage from panels
-            for panel in dashboard_details.dashboard.panels:
+            # Extract lineage from panels (including those inside collapsed rows)
+            for panel in self._flatten_panels(dashboard_details.dashboard.panels):
                 if not panel.targets:
                     continue
 
@@ -303,7 +311,7 @@ class GrafanaSource(DashboardServiceSource):
         target: GrafanaTarget,
         panel: GrafanaPanel,
         to_entity: LineageDashboard,
-        db_service_prefix: Optional[str] = None,
+        db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Process lineage for a single panel target"""
         try:
@@ -333,13 +341,9 @@ class GrafanaSource(DashboardServiceSource):
             dialect = Dialect.ANSI
             try:
                 if prefix_service_name:
-                    db_service_entity = self.metadata.get_by_name(
-                        entity=DatabaseService, fqn=prefix_service_name
-                    )
+                    db_service_entity = self.metadata.get_by_name(entity=DatabaseService, fqn=prefix_service_name)
                     if db_service_entity and db_service_entity.serviceType:
-                        dialect = ConnectionTypeDialectMapper.dialect_of(
-                            db_service_entity.serviceType.value
-                        )
+                        dialect = ConnectionTypeDialectMapper.dialect_of(db_service_entity.serviceType.value)
             except Exception:
                 pass
 
@@ -356,9 +360,7 @@ class GrafanaSource(DashboardServiceSource):
                 table_name_str = str(table)
                 db_sch_table = fqn.split_table_name(table_name_str)
                 database_name = db_sch_table.get("database") or database_name_hint
-                schema_name = self.check_database_schema_name(
-                    db_sch_table.get("database_schema")
-                )
+                schema_name = self.check_database_schema_name(db_sch_table.get("database_schema"))
                 base_table_name = db_sch_table.get("table")
 
                 # Apply prefix filters when provided
@@ -368,17 +370,9 @@ class GrafanaSource(DashboardServiceSource):
                     and prefix_database_name.lower() != str(database_name).lower()
                 ):
                     continue
-                if (
-                    prefix_schema_name
-                    and schema_name
-                    and prefix_schema_name.lower() != str(schema_name).lower()
-                ):
+                if prefix_schema_name and schema_name and prefix_schema_name.lower() != str(schema_name).lower():
                     continue
-                if (
-                    prefix_table_name
-                    and base_table_name
-                    and prefix_table_name.lower() != str(base_table_name).lower()
-                ):
+                if prefix_table_name and base_table_name and prefix_table_name.lower() != str(base_table_name).lower():
                     continue
 
                 # Build ES FQN search string and fetch matching table entities
@@ -406,55 +400,40 @@ class GrafanaSource(DashboardServiceSource):
 
         except Exception as exc:
             hash_prefix = f"[{query_hash}] " if "query_hash" in locals() else ""
-            logger.debug(f"{hash_prefix}Error processing panel lineage: {exc}")
+            logger.debug("%sError processing panel lineage: %s", hash_prefix, exc)
             logger.error(traceback.format_exc())
 
-    def _extract_datasource_name(
-        self, target: GrafanaTarget, panel: GrafanaPanel
-    ) -> Optional[str]:
+    def _extract_datasource_name(self, target: GrafanaTarget, panel: GrafanaPanel) -> str | None:
         """Extract datasource name from target or panel"""
         try:
             # Try target datasource first
             if target.datasource:
                 if isinstance(target.datasource, str):
                     return target.datasource
-                elif isinstance(target.datasource, dict):
+                elif isinstance(target.datasource, dict):  # noqa: RET505
                     return target.datasource.get("uid") or target.datasource.get("type")
 
             # Fall back to panel datasource
             if panel.datasource:
                 if isinstance(panel.datasource, str):
                     return panel.datasource
-                elif isinstance(panel.datasource, dict):
+                elif isinstance(panel.datasource, dict):  # noqa: RET505
                     return panel.datasource.get("uid") or panel.datasource.get("type")
 
-            return None
+            return None  # noqa: TRY300
         except Exception as exc:
-            logger.debug(f"Error extracting datasource name: {exc}")
+            logger.debug("Error extracting datasource name: %s", exc)
             return None
 
-    def _extract_sql_query(
-        self, target: GrafanaTarget, datasource: GrafanaDatasource
-    ) -> Optional[str]:
-        """Extract SQL query from target based on datasource type"""
-        try:
-            # Handle different datasource types
-            if datasource.type in [
-                "mysql",
-                "grafana-postgresql-datasource",
-                "mssql",
-                "clickhouse",
-            ]:
-                return target.rawSql or target.query
-            elif datasource.type in ["prometheus", "elasticsearch"]:
-                # Prometheus and Elasticsearch queries aren't SQL
-                return None
-            else:
-                # Try generic query field
-                return target.query
-        except Exception as exc:
-            logger.debug(f"Error extracting SQL query: {exc}")
+    def _extract_sql_query(self, target: GrafanaTarget, datasource: GrafanaDatasource) -> str | None:
+        """Extract the SQL statement a panel target runs, if it runs one at all"""
+        # SQL plugins are an open set (trino, athena, redshift, ...) and they do not agree on
+        # where they keep the statement - rawSql, rawSQL, or plain query for older ones. So
+        # read every datasource's raw SQL field rather than allow-listing types, which is what
+        # dropped Trino panels before (#23997), and only skip the languages that are not SQL.
+        if datasource.type in NON_SQL_DATASOURCE_TYPES:
             return None
+        return target.raw_sql or target.query
 
     def _map_panel_type_to_chart_type(self, panel_type: str) -> str:
         """Map Grafana panel types to OpenMetadata chart types"""

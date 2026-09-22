@@ -42,7 +42,8 @@
           "type": "custom",
           "tokenizer": "n_gram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         },
         "om_compound_analyzer": {
@@ -50,6 +51,7 @@
           "filter": [
             "compound_word_delimiter_graph",
             "lowercase",
+            "asciifolding",
             "flatten_graph"
           ]
         }
@@ -94,6 +96,9 @@
   },
   "mappings": {
     "properties": {
+      "deleted": {
+        "type": "boolean"
+      },
       "changeDescription": {
         "enabled": false
       },
@@ -219,6 +224,22 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "dataProductType": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "visibility": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "portfolioPriority": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "lifecycleStage": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "version": {
         "type": "float"
       },
@@ -318,7 +339,8 @@
                 "type": "text",
                 "analyzer": "om_analyzer"
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -521,7 +543,8 @@
         }
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "totalVotes": {
         "type": "long",

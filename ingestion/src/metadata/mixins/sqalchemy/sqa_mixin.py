@@ -14,9 +14,6 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-
-from typing import List, Optional
-
 from sqlalchemy import Column, MetaData, inspect, text
 
 from metadata.generated.schema.entity.data.table import Table
@@ -29,18 +26,12 @@ from metadata.generated.schema.entity.services.connections.database.mariaDBConne
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
-from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
-    SnowflakeType,
-)
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
     UnityCatalogConnection,
 )
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.snowflake.queries import (
-    SNOWFLAKE_SESSION_TAG_QUERY,
-)
 from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
 from metadata.utils.collaborative_super import Root
 from metadata.utils.constants import NON_SQA_DATABASE_CONNECTIONS
@@ -59,29 +50,11 @@ class SQAInterfaceMixin(Root):
         """
         engine = get_connection(super().service_connection_config)
 
-        return engine
+        return engine  # noqa: RET504
 
     def get_columns(self) -> Column:
         """get columns from an orm object"""
         return inspect(super().table).c
-
-    def set_session_tag(self, session) -> None:
-        """
-        Set session query tag for snowflake
-
-        Args:
-            service_connection_config: connection details for the specific service
-        """
-        if (
-            self.service_connection_config.type.value == SnowflakeType.Snowflake.value
-            and hasattr(self.service_connection_config, "queryTag")
-            and self.service_connection_config.queryTag
-        ):
-            session.execute(
-                SNOWFLAKE_SESSION_TAG_QUERY.format(
-                    query_tag=self.service_connection_config.queryTag
-                )
-            )
 
     def set_catalog(self, session) -> None:
         """Set the catalog or database for the session.
@@ -93,14 +66,12 @@ class SQAInterfaceMixin(Root):
             self.service_connection_config,
             (UnityCatalogConnection, DatabricksConnection),
         ):
-            session.execute(
-                text("USE CATALOG :catalog"),
-                {"catalog": self.service_connection_config.catalog},
-            ).first()
+            catalog = self.service_connection_config.catalog  # pyright: ignore[reportAttributeAccessIssue]
+            if catalog:
+                quoted_catalog = session.connection().dialect.identifier_preparer.quote(catalog)  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
+                session.execute(text(f"USE CATALOG {quoted_catalog}"))  # pyright: ignore[reportUnknownMemberType]
 
-        if isinstance(
-            self.service_connection_config, (MysqlConnection, MariaDBConnection)
-        ):
+        if isinstance(self.service_connection_config, (MysqlConnection, MariaDBConnection)):
             session.execute(
                 text(f"USE {self.table_entity.databaseSchema.name}"),
             )
@@ -109,7 +80,7 @@ class SQAInterfaceMixin(Root):
         """close session"""
         self.session.close()
 
-    def _get_sample_columns(self) -> List[str]:
+    def _get_sample_columns(self) -> list[str]:
         """Get the list of columns to use for the sampler"""
         return [
             column.name
@@ -117,11 +88,9 @@ class SQAInterfaceMixin(Root):
             if column.name in {col.name.root for col in self.table_entity.columns}
         ]
 
-    def build_table_orm(
-        self, table: Table, service_conn_config: BaseModel, ometa_client: OpenMetadata
-    ) -> Optional[type]:
+    def build_table_orm(self, table: Table, service_conn_config: BaseModel, ometa_client: OpenMetadata) -> type | None:
         """Build the ORM table if needed for the sampler and profiler interfaces"""
         if service_conn_config.type.value not in NON_SQA_DATABASE_CONNECTIONS:
             orm_obj = ometa_to_sqa_orm(table, ometa_client, MetaData())
-            return orm_obj
+            return orm_obj  # noqa: RET504
         return None

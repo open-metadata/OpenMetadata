@@ -11,7 +11,6 @@
 """
 Alation Sink Data Models
 """
-from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -24,9 +23,9 @@ class CreateDatasourceRequest(BaseModel):
     uri: str
     connector_id: int
     db_username: str
-    db_password: Optional[str] = None
+    db_password: str | None = None
     title: str
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class DataSource(BaseModel):
@@ -46,7 +45,7 @@ class CreateSchemaRequest(BaseModel):
 
     key: str
     title: str
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class CreateSchemaRequestList(BaseModel):
@@ -54,7 +53,7 @@ class CreateSchemaRequestList(BaseModel):
     Alation CreateSchemaRequestList Model
     """
 
-    root: List[CreateSchemaRequest]
+    root: list[CreateSchemaRequest]
 
 
 class Schema(BaseModel):
@@ -64,8 +63,8 @@ class Schema(BaseModel):
 
     id: str
     name: str
-    title: Optional[str] = None
-    description: Optional[str] = None
+    title: str | None = None
+    description: str | None = None
 
 
 class CreateTableRequest(BaseModel):
@@ -75,9 +74,9 @@ class CreateTableRequest(BaseModel):
 
     key: str
     title: str
-    description: Optional[str] = None
-    table_type: Optional[str] = None
-    sql: Optional[str] = None
+    description: str | None = None
+    table_type: str | None = None
+    sql: str | None = None
 
 
 class CreateTableRequestList(BaseModel):
@@ -85,7 +84,7 @@ class CreateTableRequestList(BaseModel):
     Alation CreateTableRequestList Model
     """
 
-    root: List[CreateTableRequest]
+    root: list[CreateTableRequest]
 
 
 class Table(BaseModel):
@@ -95,7 +94,7 @@ class Table(BaseModel):
 
     id: str
     name: str
-    title: Optional[str] = None
+    title: str | None = None
 
 
 class ColumnIndex(BaseModel):
@@ -103,10 +102,10 @@ class ColumnIndex(BaseModel):
     Alation Index Model
     """
 
-    isPrimaryKey: Optional[bool] = None
-    isForeignKey: Optional[bool] = None
-    referencedColumnId: Optional[str] = None
-    isOtherIndex: Optional[bool] = None
+    isPrimaryKey: bool | None = None  # noqa: N815
+    isForeignKey: bool | None = None  # noqa: N815
+    referencedColumnId: str | None = None  # noqa: N815
+    isOtherIndex: bool | None = None  # noqa: N815
 
 
 class CreateColumnRequest(BaseModel):
@@ -116,12 +115,12 @@ class CreateColumnRequest(BaseModel):
 
     key: str
     column_type: str
-    title: Optional[str]
-    description: Optional[str] = None
-    nullable: Optional[bool] = None
-    position: Optional[str] = None
-    index: Optional[ColumnIndex] = None
-    nullable: Optional[bool] = None
+    title: str | None
+    description: str | None = None
+    nullable: bool | None = None
+    position: str | None = None
+    index: ColumnIndex | None = None
+    nullable: bool | None = None  # noqa: PIE794
 
 
 class CreateColumnRequestList(BaseModel):
@@ -129,7 +128,7 @@ class CreateColumnRequestList(BaseModel):
     Alation CreateColumnRequestList Model
     """
 
-    root: List[CreateColumnRequest]
+    root: list[CreateColumnRequest]
 
 
 class Column(BaseModel):
@@ -139,10 +138,10 @@ class Column(BaseModel):
 
     id: str
     name: str
-    title: Optional[str] = None
-    description: Optional[str] = None
-    column_comment: Optional[str] = None
+    title: str | None = None
+    description: str | None = None
+    column_comment: str | None = None
     column_type: str
-    position: Optional[str] = None
-    nullable: Optional[bool] = None
-    index: Optional[ColumnIndex] = None
+    position: str | None = None
+    nullable: bool | None = None
+    index: ColumnIndex | None = None

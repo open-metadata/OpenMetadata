@@ -72,9 +72,7 @@ class FirstQuartile(StaticMetric, PercentilMixin):
                 0.25,
             )
 
-        logger.debug(
-            f"Don't know how to process type {self.col.type} when computing First Quartile"
-        )
+        logger.debug(f"Don't know how to process type {self.col.type} when computing First Quartile")
         return None
 
     def df_fn(self, dfs: Optional["PandasRunner"] = None):
@@ -99,7 +97,5 @@ class FirstQuartile(StaticMetric, PercentilMixin):
             # check if nan
             first_quartile = df.quantile(0.25, interpolation="midpoint")
             return None if pd.isnull(first_quartile) else first_quartile
-        logger.debug(
-            f"Don't know how to process type {self.col.type} when computing First Quartile"
-        )
+        logger.debug(f"Don't know how to process type {self.col.type} when computing First Quartile")
         return None

@@ -185,9 +185,6 @@ export interface AppMarketPlaceDefinition {
  * This schema defines the type of application.
  */
 export enum AgentType {
-    CollateAI = "CollateAI",
-    CollateAIQualityAgent = "CollateAIQualityAgent",
-    CollateAITierAgent = "CollateAITierAgent",
     Metadata = "Metadata",
 }
 
@@ -198,14 +195,16 @@ export enum AgentType {
  *
  * This schema defines the Slack App Information
  *
- * Configuration for the Collate AI Quality Agent.
- *
  * No configuration needed to instantiate the Data Insights Pipeline. The logic is handled
  * in the backend.
  *
  * Search Indexing App.
  *
  * Cache Warmup Application Configuration.
+ *
+ * RDF indexing application configuration.
+ *
+ * Scheduled RDF inference materialization configuration.
  *
  * Configuration for the AutoPilot Application.
  */
@@ -218,8 +217,6 @@ export interface CollateAIAppConfig {
     filter?: string;
     /**
      * Patch the description if it is empty, instead of raising a suggestion
-     *
-     * Patch the tier if it is empty, instead of raising a suggestion
      */
     patchIfEmpty?: boolean;
     /**
@@ -255,13 +252,7 @@ export interface CollateAIAppConfig {
     /**
      * User Token
      */
-    userToken?: string;
-    /**
-     * Whether the suggested tests should be active or not upon suggestion
-     *
-     * Whether the AutoPilot Workflow should be active or not.
-     */
-    active?:                boolean;
+    userToken?:             string;
     backfillConfiguration?: BackfillConfiguration;
     /**
      * Maximum number of events processed at a time (Default 100).
@@ -269,6 +260,8 @@ export interface CollateAIAppConfig {
      * Maximum number of events sent in a batch (Default 100).
      *
      * Number of entities to process in each batch.
+     *
+     * Maximum number of entities processed in a batch.
      */
     batchSize?:           number;
     moduleConfiguration?: ModuleConfiguration;
@@ -286,21 +279,43 @@ export interface CollateAIAppConfig {
      */
     autoTune?: boolean;
     /**
+     * Overrides applied to staged indexes during bulk reindex. Reverted to liveIndexSettings
+     * before alias swap. Nothing reads from staged indexes, so refresh=-1 and replicas=0 are
+     * safe. Defaults: refresh=-1, replicas=0, durability=async, syncInterval=30s,
+     * forceMergeOnPromote=false.
+     */
+    bulkIndexSettings?: BulkIndexOverrides;
+    /**
      * Number of threads to use for reindexing
      *
-     * Number of parallel threads for processing entities and warming cache.
+     * Number of consumer threads to use for non-distributed RDF reindexing
      */
     consumerThreads?: number;
     /**
      * List of Entities to Reindex
      *
      * List of entity types to warm up in cache. Use 'all' to warm up all entity types.
+     *
+     * List of entities that you need to reindex. Leave empty to index all supported entities.
      */
     entities?: string[];
     /**
      * Initial backoff time in milliseconds
      */
     initialBackoff?: number;
+    /**
+     * Settings applied to staged indexes before alias swap (live serving values). Tune for read
+     * freshness and HA. Defaults: refresh=1s (near-real-time, required if users/agents
+     * read-after-write), replicas=1, shards=1, durability=request.
+     */
+    liveIndexSettings?: IndexSettings;
+    /**
+     * Override liveIndexSettings for specific entity types. Useful for large or specialized
+     * entities (e.g. 'container' on instances with 500k+ assets, 'queryCostRecord' for
+     * high-cardinality time series). Keys are entity type names; values override the global
+     * liveIndexSettings.
+     */
+    liveIndexSettingsByEntity?: { [key: string]: IndexSettings };
     /**
      * Maximum backoff time in milliseconds
      */
@@ -316,6 +331,9 @@ export interface CollateAIAppConfig {
     /**
      * Number of entities per partition for distributed indexing. Smaller values create more
      * partitions for better distribution across servers. Range: 1000-50000.
+     *
+     * Number of entities per partition for distributed RDF indexing. Smaller values create more
+     * partitions for better distribution across servers.
      */
     partitionSize?: number;
     /**
@@ -324,20 +342,18 @@ export interface CollateAIAppConfig {
     payLoadSize?: number;
     /**
      * Number of threads to use for reindexing
+     *
+     * Number of producer threads to use for non-distributed RDF reindexing
      */
     producerThreads?: number;
     /**
      * Queue Size to user internally for reindexing.
      *
-     * Internal queue size for entity processing pipeline.
+     * Queue size to use internally for non-distributed RDF reindexing.
      */
     queueSize?: number;
     /**
-     * This schema publisher run modes.
-     */
-    recreateIndex?: boolean;
-    /**
-     * Recreate Indexes with updated Language
+     * Search index mapping language.
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
     /**
@@ -352,14 +368,65 @@ export interface CollateAIAppConfig {
      */
     timeSeriesMaxDays?: number;
     /**
-     * Enable distributed indexing to scale reindexing across multiple servers with fault
-     * tolerance and parallel processing
+     * In multi-instance deployments, claim each entity type via Redis SETNX so only one
+     * instance warms it. Disable to let every instance warm independently (idempotent but
+     * redundant).
+     */
+    enableDistributedClaim?: boolean;
+    /**
+     * Force cache warmup even if another instance is detected (use with caution).
+     *
+     * Materialize every enabled rule even when its durable dirty flag is clear.
+     */
+    force?: boolean;
+    /**
+     * Pre-warm the per-entity bundle cache (tags + certification) so the first read after
+     * deploy doesn't fan out to the DB. Disable for very large installs.
+     */
+    warmBundles?: boolean;
+    /**
+     * Optionally pre-warm common relationship fields in the read bundle cache. Requires Warm
+     * Read Bundles. This adds extra relationship-table and entity-reference reads during
+     * warmup, so enable it only when first-read relationship latency matters.
+     */
+    warmRelationships?: boolean;
+    /**
+     * Build the rebuild into an idle dataset and switch to it only after the run succeeds, so
+     * queries keep seeing the previous graph instead of a partially-rebuilt one. Requires
+     * roughly twice the dataset size on disk. Only applies when Recreate RDF Store is enabled.
+     */
+    blueGreenRebuild?: boolean;
+    /**
+     * Fraction of records that must index successfully before a blue/green rebuild is allowed
+     * to become the served dataset. Below this the previous dataset keeps serving and the run
+     * is marked failed.
+     */
+    minSuccessRatio?: number;
+    /**
+     * Recreate the RDF store before indexing.
+     */
+    recreateIndex?: boolean;
+    /**
+     * Maximum failed per-source writes during isolation of a failed RDF relationship batch.
+     * Once this limit is reached, remaining sources are recorded as failures. Successful writes
+     * do not consume the budget; zero disables per-source isolation. This is separate from HTTP
+     * request retries.
+     */
+    relationshipIsolationMaxFailures?: number;
+    /**
+     * Enable distributed RDF indexing across multiple servers with partition coordination and
+     * recovery.
      */
     useDistributedIndexing?: boolean;
     /**
-     * Force cache warmup even if another instance is detected (use with caution).
+     * Optional rule name for an on-demand single-rule run.
      */
-    force?: boolean;
+    ruleName?: string;
+    /**
+     * Enter the retention period for comments on Activity Events in days. Use 0 to retain
+     * activity comments forever.
+     */
+    activityCommentsRetentionPeriod?: number;
     /**
      * Enter the retention period for Activity Threads of type = 'Conversation' records in days
      * (e.g., 30 for one month, 60 for two months).
@@ -375,6 +442,12 @@ export interface CollateAIAppConfig {
      */
     changeEventRetentionPeriod?: number;
     /**
+     * Retention periods for cleanups contributed by distributions built on OpenMetadata, keyed
+     * by the extension's name. OpenMetadata never reads these values; it hands them to the
+     * registered DataRetentionExtension, which decides what a missing key means.
+     */
+    extensions?: any;
+    /**
      * Enter the retention period for Profile Data in days (e.g., 30 for one month, 60 for two
      * months).
      */
@@ -384,6 +457,16 @@ export interface CollateAIAppConfig {
      * two months).
      */
     testCaseResultsRetentionPeriod?: number;
+    /**
+     * Enter the retention period in days for automation Workflows: the short-lived records left
+     * behind by test connection, query runner and reverse ingestion runs. Use 0 to retain them
+     * forever.
+     */
+    workflowRetentionPeriod?: number;
+    /**
+     * Whether the AutoPilot Workflow should be active or not.
+     */
+    active?: boolean;
     /**
      * Service Entity Link for which to trigger the application.
      */
@@ -1173,6 +1256,69 @@ export interface BackfillConfiguration {
 }
 
 /**
+ * Overrides applied to staged indexes during bulk reindex. Reverted to liveIndexSettings
+ * before alias swap. Nothing reads from staged indexes, so refresh=-1 and replicas=0 are
+ * safe. Defaults: refresh=-1, replicas=0, durability=async, syncInterval=30s,
+ * forceMergeOnPromote=false.
+ *
+ * Overrides applied to a staged index DURING bulk reindex for write throughput. Reverted to
+ * indexSettings before alias swap. Nothing reads from the staged index, so refresh=-1 and
+ * replicas=0 are safe here.
+ */
+export interface BulkIndexOverrides {
+    /**
+     * Run _forcemerge to 1 segment before swapping the alias. Improves post-reindex query
+     * performance at the cost of build time.
+     */
+    forceMergeOnPromote?:  boolean;
+    numberOfReplicas?:     number;
+    refreshInterval?:      string;
+    translogDurability?:   TranslogDurability;
+    translogSyncInterval?: string;
+}
+
+/**
+ * 'request' = fsync per write (durable). 'async' = fsync on interval (faster, can lose
+ * <syncInterval seconds on crash).
+ */
+export enum TranslogDurability {
+    Async = "async",
+    Request = "request",
+}
+
+/**
+ * Settings applied to staged indexes before alias swap (live serving values). Tune for read
+ * freshness and HA. Defaults: refresh=1s (near-real-time, required if users/agents
+ * read-after-write), replicas=1, shards=1, durability=request.
+ *
+ * Index settings applied to live (post-promote) search indexes. Tune for read freshness,
+ * durability, and HA. These do not affect bulk reindex throughput; bulkIndexOverrides
+ * controls that. number_of_shards is intentionally omitted — it can only be set at index
+ * creation time and the staged-index reindex flow uses the static mapping JSON for creation.
+ */
+export interface IndexSettings {
+    /**
+     * Replica shard count. 1 for HA on multi-node clusters; 0 for single-node.
+     */
+    numberOfReplicas?: number;
+    /**
+     * How often new writes become searchable. '1s' = near-real-time (default; required if
+     * users/agents read-after-write). Higher values reduce CPU/segment churn but delay search
+     * visibility.
+     */
+    refreshInterval?: string;
+    /**
+     * 'request' = fsync per write (durable). 'async' = fsync on interval (faster, can lose
+     * <syncInterval seconds on crash).
+     */
+    translogDurability?: TranslogDurability;
+    /**
+     * Translog fsync cadence when durability=async. Ignored when durability=request.
+     */
+    translogSyncInterval?: string;
+}
+
+/**
  * Different Module Configurations
  */
 export interface ModuleConfiguration {
@@ -1188,10 +1334,6 @@ export interface ModuleConfiguration {
      * Data Assets Insights Module configuration
      */
     dataAssets: DataAssetsConfig;
-    /**
-     * Data Quality Insights Module configuration
-     */
-    dataQuality: DataQualityConfig;
 }
 
 /**
@@ -1240,16 +1382,6 @@ export interface ServiceFilter {
 }
 
 /**
- * Data Quality Insights Module configuration
- */
-export interface DataQualityConfig {
-    /**
-     * If Enabled, Data Quality insights will be populated when the App runs.
-     */
-    enabled: boolean;
-}
-
-/**
  * Entities selected to run the automation.
  */
 export interface Resource {
@@ -1272,7 +1404,7 @@ export interface Resource {
 }
 
 /**
- * Recreate Indexes with updated Language
+ * Search index mapping language.
  *
  * This schema defines the language options available for search index mappings.
  */
@@ -1293,10 +1425,9 @@ export enum Type {
     Automator = "Automator",
     CacheWarmup = "CacheWarmup",
     CollateAI = "CollateAI",
-    CollateAIQualityAgent = "CollateAIQualityAgent",
-    CollateAITierAgent = "CollateAITierAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
+    RDFIndexing = "RdfIndexing",
     SearchIndexing = "SearchIndexing",
 }
 

@@ -51,6 +51,12 @@ export interface LlmModel {
      */
     description?: string;
     /**
+     * Origin of Shadow AI detection — auto-discovered from outbound API traffic, SSO logs,
+     * connector audits, etc. Populated for models that were not registered through the intake
+     * wizard.
+     */
+    detection?: AIDetection;
+    /**
      * Display name for the LLM Model
      */
     displayName?: string;
@@ -62,6 +68,14 @@ export interface LlmModel {
      * Domains the LLMModel belongs to
      */
     domains?: EntityReference[];
+    /**
+     * Governance approval status of the LLM Model.
+     */
+    entityStatus?: EntityStatus;
+    /**
+     * Supporting documentation URLs (DPIA, model card, fairness analysis, technical docs)
+     */
+    evidence?: AIEvidence;
     /**
      * Entity extension data with custom attributes
      */
@@ -121,6 +135,14 @@ export interface LlmModel {
      * Regulatory compliance standards met
      */
     regulatoryCompliance?: string[];
+    /**
+     * Structured remediation actions with assignee, due date, priority, and status
+     */
+    remediationActions?: RemediationAction[];
+    /**
+     * Risk Council reviewers responsible for approving this LLM Model.
+     */
+    reviewers?: EntityReference[];
     /**
      * OPTIONAL reference to LLMService where this model is hosted
      */
@@ -489,6 +511,8 @@ export interface CostMetrics {
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
+ * User or team accountable for completing the action
+ *
  * OPTIONAL reference to LLMService where this model is hosted
  */
 export interface EntityReference {
@@ -555,6 +579,148 @@ export enum DeploymentType {
     Hybrid = "Hybrid",
     OnPremise = "OnPremise",
     SelfHosted = "SelfHosted",
+}
+
+/**
+ * Origin of Shadow AI detection — auto-discovered from outbound API traffic, SSO logs,
+ * connector audits, etc. Populated for models that were not registered through the intake
+ * wizard.
+ *
+ * Origin of a Shadow AI detection. Populated when an asset was auto-discovered (outbound
+ * API traffic, SSO logs, connector audits, etc.) rather than registered through the intake
+ * wizard.
+ */
+export interface AIDetection {
+    /**
+     * When the detection was recorded
+     */
+    detectedAt?: number;
+    /**
+     * Heuristic flags associated with this detection
+     */
+    flags?: Flag[];
+    /**
+     * Triage severity assigned to this detection
+     */
+    severity?: Rity;
+    /**
+     * How this AI asset was detected
+     */
+    source?: Source;
+    /**
+     * Free-text detail about the detection (e.g. 'api.openai.com from #marketing-eng workspace')
+     */
+    sourceDetails?: string;
+    /**
+     * Likely team or workspace driving this AI usage
+     */
+    suspectedTeam?: string;
+    /**
+     * Likely user driving this AI usage, when known
+     */
+    suspectedUser?: string;
+    /**
+     * Human-readable 7-day volume estimate (e.g. '~1,820 calls / 7d')
+     */
+    volume7d?: string;
+}
+
+export enum Flag {
+    NewDeployment = "NewDeployment",
+    NoOwner = "NoOwner",
+    OrgWideEnable = "OrgWideEnable",
+    PiiWithoutDpa = "PiiWithoutDpa",
+    PrivilegedData = "PrivilegedData",
+}
+
+/**
+ * Triage severity assigned to this detection
+ */
+export enum Rity {
+    High = "High",
+    Low = "Low",
+    Medium = "Medium",
+}
+
+/**
+ * How this AI asset was detected
+ */
+export enum Source {
+    ConnectorAudit = "ConnectorAudit",
+    ManualUpload = "ManualUpload",
+    Other = "Other",
+    OutboundAPITraffic = "OutboundApiTraffic",
+    SSOLogs = "SSOLogs",
+}
+
+/**
+ * Governance approval status of the LLM Model.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Archived = "Archived",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
+}
+
+/**
+ * Supporting documentation URLs (DPIA, model card, fairness analysis, technical docs)
+ *
+ * Supporting documentation URLs for AI governance evidence packs (DPIA, model card,
+ * fairness analysis, etc.)
+ */
+export interface AIEvidence {
+    /**
+     * Additional evidence references
+     */
+    additional?: Additional[];
+    /**
+     * Data Protection Impact Assessment URL
+     */
+    dpiaUrl?: string;
+    /**
+     * URL to fairness / subgroup analysis evidence
+     */
+    fairnessEvidenceUrl?: string;
+    /**
+     * Model card URL
+     */
+    modelCardUrl?: string;
+    /**
+     * Technical documentation URL
+     */
+    technicalDocsUrl?: string;
+}
+
+export interface Additional {
+    addedAt?:   number;
+    addedBy?:   string;
+    framework?: ComplianceFramework;
+    label?:     string;
+    url?:       string;
+}
+
+/**
+ * Type of AI compliance framework
+ *
+ * Framework that requires this remediation
+ */
+export enum ComplianceFramework {
+    CanadaAIDA = "Canada_AIDA",
+    ChinaAIRegulations = "China_AI_Regulations",
+    Custom = "Custom",
+    EUAIAct = "EU_AI_Act",
+    ISOIEC42001 = "ISO_IEC_42001",
+    NISTAIRmf = "NIST_AI_RMF",
+    SingaporeModelAIGovernance = "Singapore_Model_AI_Governance",
+    UKAIRegulation = "UK_AI_Regulation",
+    USAIBillOfRights = "US_AI_Bill_of_Rights",
 }
 
 /**
@@ -722,6 +888,50 @@ export enum ModelType {
     Distilled = "Distilled",
     FineTuned = "FineTuned",
     Quantized = "Quantized",
+}
+
+/**
+ * A structured remediation action with assignee, due date, priority, and status. Replaces
+ * the legacy string-array remediationRequired on AIComplianceRecord.
+ */
+export interface RemediationAction {
+    /**
+     * User or team accountable for completing the action
+     */
+    assignee?:    EntityReference;
+    completedAt?: number;
+    /**
+     * Control identifier within the framework (e.g. 'art-10')
+     */
+    controlCode?: string;
+    createdAt?:   number;
+    createdBy?:   string;
+    /**
+     * Target completion date
+     */
+    dueDate?: number;
+    /**
+     * Framework that requires this remediation
+     */
+    frameworkRef?: ComplianceFramework;
+    /**
+     * Stable identifier of this remediation action
+     */
+    id: string;
+    /**
+     * Short description of the remediation action
+     */
+    label:     string;
+    notes?:    string;
+    priority?: Rity;
+    status:    Status;
+}
+
+export enum Status {
+    Deferred = "Deferred",
+    Done = "Done",
+    InProgress = "InProgress",
+    Open = "Open",
 }
 
 /**

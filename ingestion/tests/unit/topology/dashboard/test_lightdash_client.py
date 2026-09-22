@@ -250,9 +250,7 @@ class TestLightdashApiClient(TestCase):
 
         client = LightdashApiClient(self.client.config)
         client.client = mock_rest_instance
-        client.client.get = MagicMock(
-            side_effect=Exception("404 Not Found: Space does not exist")
-        )
+        client.client.get = MagicMock(side_effect=Exception("404 Not Found: Space does not exist"))
 
         with self.assertRaises(Exception) as context:
             client.test_get_dashboards_list()
@@ -459,9 +457,7 @@ class TestLightdashApiClient(TestCase):
 
         mock_response = Mock()
         mock_response.status_code = 400
-        api_error = APIError(
-            {"code": 400, "message": "Invalid project or space UUID"}, mock_response
-        )
+        api_error = APIError({"code": 400, "message": "Invalid project or space UUID"}, mock_response)
 
         client = LightdashApiClient(self.client.config)
         client.client = mock_rest_instance

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,25 +11,36 @@
  *  limitations under the License.
  */
 
+import { Badge, Tooltip } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
 import { Col, Row, Select, Typography } from 'antd';
 import classNames from 'classnames';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
+import { DEPRECATED_SSO_PROPERTIES } from '../../../constants/Services.constant';
 import { useClipboard } from '../../../hooks/useClipBoard';
-import { splitCSV } from '../../../utils/CSV/CSV.utils';
+import { splitCSV } from '../../../utils/CSV/CSVPureUtils';
 import { isValidUrl } from '../../../utils/SSOUtils';
 import './sso-configuration-form-array-field-template.less';
 
 const SsoCustomTagRenderer = (props: CustomTagProps) => {
   const { label, closable, onClose } = props;
+  const labelStr = (label as string) ?? '';
+
+  const labelNode = labelStr ? (
+    <Tooltip title={labelStr}>
+      <span className="ant-select-selection-item-content">{label}</span>
+    </Tooltip>
+  ) : (
+    <span className="ant-select-selection-item-content">{label}</span>
+  );
 
   return (
-    <span className="ant-select-selection-item" title={(label as string) ?? ''}>
-      <span className="ant-select-selection-item-content">{label}</span>
+    <span className="ant-select-selection-item">
+      {labelNode}
       {closable && (
         <button className="ant-select-selection-item-remove" onClick={onClose}>
           <CloseIcon width={8} />
@@ -37,6 +48,31 @@ const SsoCustomTagRenderer = (props: CustomTagProps) => {
       )}
     </span>
   );
+};
+
+const getArrayFieldValue = (
+  formData: FieldProps['formData'],
+  isScopeField: boolean
+): string[] => {
+  if (isScopeField) {
+    return typeof formData === 'string'
+      ? formData.split(' ').filter(Boolean)
+      : formData ?? [];
+  }
+
+  return formData ?? [];
+};
+
+const getArrayFieldErrorState = (
+  isUrlField: boolean,
+  value: string[],
+  rawErrors?: string[]
+): { hasInvalidUrls: boolean; hasError: boolean } => {
+  const hasInvalidUrls =
+    isUrlField && value.some((url: string) => !isValidUrl(url));
+  const hasError = (rawErrors && rawErrors.length > 0) || hasInvalidUrls;
+
+  return { hasInvalidUrls, hasError: Boolean(hasError) };
 };
 
 const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
@@ -92,25 +128,17 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
   const id = props.idSchema.$id;
 
   // Handle scope field conversion between string (backend) and array (UI)
-  let value: string[];
-  if (isScopeField) {
-    // Convert string to array for UI display
-    value =
-      typeof props.formData === 'string'
-        ? props.formData.split(' ').filter(Boolean)
-        : props.formData ?? [];
-  } else {
-    value = props.formData ?? [];
-  }
+  const value = getArrayFieldValue(props.formData, isScopeField);
 
   const options = generateOptions();
   const { onPasteFromClipBoard } = useClipboard(JSON.stringify(value));
 
   // Check if field has errors (including invalid URLs)
-  const hasInvalidUrls =
-    isUrlField && value.some((url: string) => !isValidUrl(url));
-  const hasError =
-    (props.rawErrors && props.rawErrors.length > 0) || hasInvalidUrls;
+  const { hasInvalidUrls, hasError } = getArrayFieldErrorState(
+    isUrlField,
+    value,
+    props.rawErrors
+  );
 
   const handlePaste = useCallback(async () => {
     const text = await onPasteFromClipBoard();
@@ -175,11 +203,12 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
   const handleChange = useCallback(
     (newValue: string[]) => {
       // Handle scope field conversion from array (UI) to string (backend)
-      const convertedValue = isScopeField
-        ? Array.isArray(newValue)
+      let convertedValue: string | string[] = newValue;
+      if (isScopeField) {
+        convertedValue = Array.isArray(newValue)
           ? newValue.join(' ')
-          : newValue
-        : newValue;
+          : newValue;
+      }
 
       props.onChange(convertedValue);
       // Clear field-specific error when value changes
@@ -195,14 +224,27 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
     props.onBlur(id, convertedValue);
   }, [isScopeField, value, props.onBlur, id]);
 
+  const isDeprecated = useMemo(
+    () =>
+      Boolean(props.schema.deprecated) ||
+      DEPRECATED_SSO_PROPERTIES.includes(props.name),
+    [props.schema.deprecated, props.name]
+  );
+
   return (
     <Row className={classNames('field-error', { 'has-error': hasError })}>
       <Col span={24}>
         <Typography
-          className={`array-field-label ${
-            props.required ? 'required-field' : ''
-          }`}>
+          className={classNames('array-field-label', {
+            'required-field': props.required,
+            'sso-deprecated-field-label': isDeprecated,
+          })}>
           {startCase(props.name)}
+          {isDeprecated && (
+            <Badge className="sso-deprecated-tag" color="warning" size="sm">
+              {t('label.deprecated')}
+            </Badge>
+          )}
         </Typography>
       </Col>
       <Col className="sso-select-container" span={24}>

@@ -1,12 +1,22 @@
 package org.openmetadata.service.monitoring;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.TestUtils.simulateWork;
 
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.micrometer.prometheusmetrics.PrometheusConfig;
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
@@ -647,22 +657,57 @@ class RequestLatencyContextTest {
   }
 
   @Test
-  void testNoHistogramBucketExplosion() {
+  void testUsesStandardLatencyBucketsByDefault() {
+    PrometheusMeterRegistry registry = replaceWithPrometheusRegistry();
     String endpoint = "/v1/tables";
 
     RequestLatencyContext.startRequest(endpoint, "GET");
     simulateWork(10);
     RequestLatencyContext.endRequest();
 
-    long bucketMeters =
-        Metrics.globalRegistry.getMeters().stream()
-            .filter(m -> m.getId().getName().equals("request.latency.total"))
-            .count();
+    Timer timer =
+        registry
+            .find("request.latency.total")
+            .tag("endpoint", endpoint)
+            .tag("method", "GET")
+            .timer();
 
-    // With only SLO buckets (no publishPercentileHistogram), we should have exactly 1 timer
-    // not dozens of histogram bucket meters
+    assertNotNull(timer);
+    assertArrayEquals(
+        Arrays.stream(MetricUtils.LATENCY_SLA_BUCKETS)
+            .mapToDouble(duration -> duration.toNanos())
+            .toArray(),
+        Arrays.stream(timer.takeSnapshot().histogramCounts())
+            .mapToDouble(bucket -> bucket.bucket())
+            .toArray());
+  }
+
+  @Test
+  void testPercentileHistogramIsOptIn() {
+    PrometheusMeterRegistry registry = replaceWithPrometheusRegistry();
+    RequestLatencyContext.configure(true);
+
+    String endpoint = "/v1/histogram-test";
+    RequestLatencyContext.startRequest(endpoint, "GET");
+    simulateWork(10);
+    RequestLatencyContext.endRequest();
+
+    Timer timer =
+        registry
+            .find("request.latency.total")
+            .tag("endpoint", endpoint)
+            .tag("method", "GET")
+            .timer();
+
+    assertNotNull(timer);
     assertTrue(
-        bucketMeters <= 2,
-        "Should not have histogram bucket explosion, found " + bucketMeters + " meters");
+        timer.takeSnapshot().histogramCounts().length > MetricUtils.LATENCY_SLA_BUCKETS.length);
+  }
+
+  private PrometheusMeterRegistry replaceWithPrometheusRegistry() {
+    new ArrayList<>(Metrics.globalRegistry.getRegistries()).forEach(Metrics.globalRegistry::remove);
+    PrometheusMeterRegistry registry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+    Metrics.addRegistry(registry);
+    return registry;
   }
 }

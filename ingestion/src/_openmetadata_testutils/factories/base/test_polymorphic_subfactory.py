@@ -1,4 +1,5 @@
-from typing import Any, Mapping, Union
+from collections.abc import Mapping
+from typing import Any
 
 import factory.fuzzy
 import pytest
@@ -19,7 +20,7 @@ class Bar(BaseModel):
 
 
 class FooBar(BaseModel):
-    foo_or_bar: Union[Foo, Bar]
+    foo_or_bar: Foo | Bar
 
 
 class FooFactory(factory.Factory):
@@ -59,19 +60,13 @@ class FooBarFactory(factory.Factory):
         ),
         (
             {},
-            IsInstance(FooBar)
-            & HasAttributes(
-                foo_or_bar=IsInstance(Foo) & HasAttributes(foo=IsPositiveInt)
-            ),
+            IsInstance(FooBar) & HasAttributes(foo_or_bar=IsInstance(Foo) & HasAttributes(foo=IsPositiveInt)),
         ),
         (
             {"foo_or_bar__type": "bar"},
-            IsInstance(FooBar)
-            & HasAttributes(foo_or_bar=IsInstance(Bar) & HasAttributes(bar=IsStr)),
+            IsInstance(FooBar) & HasAttributes(foo_or_bar=IsInstance(Bar) & HasAttributes(bar=IsStr)),
         ),
     ),
 )
-def test_it_creates_model_with_specific_subfactory(
-    creation_kwargs: Mapping[str, Any], expected: BaseModel
-):
+def test_it_creates_model_with_specific_subfactory(creation_kwargs: Mapping[str, Any], expected: BaseModel):
     assert FooBarFactory.create(**creation_kwargs) == expected

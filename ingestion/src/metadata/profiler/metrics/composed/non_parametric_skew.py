@@ -14,7 +14,7 @@ Non Parametric Skew definition
 """
 # pylint: disable=duplicate-code
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import ComposedMetric
@@ -35,7 +35,7 @@ class NonParametricSkew(ComposedMetric):
         return MetricType.nonParametricSkew.value
 
     @classmethod
-    def required_metrics(cls) -> Tuple[str, ...]:
+    def required_metrics(cls) -> tuple[str, ...]:
         return Mean.name(), StdDev.name(), Median.name()
 
     @property
@@ -46,7 +46,7 @@ class NonParametricSkew(ComposedMetric):
         """
         return float
 
-    def fn(self, res: Dict[str, Any]) -> Optional[float]:
+    def fn(self, res: dict[str, Any]) -> float | None:
         """
         Safely compute null ratio based on the profiler
         results of other Metrics
@@ -57,9 +57,7 @@ class NonParametricSkew(ComposedMetric):
 
         if res_mean is not None and res_stddev is not None and res_median is not None:
             try:
-                return (float(res_mean) - float(res_median)) / float(
-                    res_stddev
-                )  # convert from decimal
+                return (float(res_mean) - float(res_median)) / float(res_stddev)  # convert from decimal
             except ZeroDivisionError:
                 return None
         return None

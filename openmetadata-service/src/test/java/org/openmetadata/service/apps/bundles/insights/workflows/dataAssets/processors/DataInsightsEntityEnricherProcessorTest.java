@@ -1,3 +1,13 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file
+ *  except in compliance with the License. You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software distributed under the License
+ *  is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and limitations under
+ *  the License.
+ */
 package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -5,6 +15,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.END_TIMESTAMP_KEY;
+import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
 import static org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow.ENTITY_TYPE_FIELDS_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 
@@ -23,38 +36,113 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.ColumnCoverage;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentContext;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentTarget;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.VersionShape;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.SearchIndexUtils;
 
+/**
+ * Behavior of {@link DataInsightsEntityEnricherProcessor#enrichEntity(EnrichmentTarget)} (the
+ * pipeline body, package-private for testing). Version-walk and day-fanout live in
+ * {@code VersionResolver} / {@code SnapshotMaterializer} respectively and have their own unit
+ * tests; this class focuses on what each enrichment step contributes to the snapshot for a
+ * single prepared target.
+ */
 @ExtendWith(MockitoExtension.class)
 class DataInsightsEntityEnricherProcessorTest {
 
+  private static final long WINDOW_START = 1_000_000_000L;
+  private static final long WINDOW_END = 2_000_000_000L;
+  private static final List<String> PROJECTION_FIELDS =
+      List.of(
+          "id",
+          "name",
+          "description",
+          "displayName",
+          "fullyQualifiedName",
+          "columns",
+          "tags",
+          "owners",
+          "deleted",
+          "version");
+
   private DataInsightsEntityEnricherProcessor processor;
-  private Method enrichEntityMethod;
 
   @BeforeEach
-  void setUp() throws Exception {
+  void setUp() {
     processor = new DataInsightsEntityEnricherProcessor(100);
-    enrichEntityMethod =
-        DataInsightsEntityEnricherProcessor.class.getDeclaredMethod(
-            "enrichEntity", Map.class, Map.class);
-    enrichEntityMethod.setAccessible(true);
   }
 
   @Test
-  void testHasColumnDescriptionAllColumnsDescribed() throws Exception {
-    List<Column> columns =
-        List.of(
-            createColumn("col1", "Description for col1"),
-            createColumn("col2", "Description for col2"),
-            createColumn("col3", "Description for col3"));
+  void skipsEntityDeletedMidRunInsteadOfFailingSource() throws Exception {
+    // An asset hard-deleted mid-run (e.g. a concurrent recursive service delete) must be skipped,
+    // not fail the whole Data Insights source — otherwise dependent extensions such as completeness
+    // scoring are aborted for every asset in the run. Regression for the MetadataCompleteness AUT.
+    Table deleted =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withFullyQualifiedName("svc.db.schema.orders")
+            .withVersion(0.1)
+            // Within the window, so version resolution takes the walk path (not the N+1 fast path).
+            .withUpdatedAt(WINDOW_END);
 
-    MockColumnsEntity entity = new MockColumnsEntity(columns, "test description");
-    Map<String, Object> result = invokeEnrichEntity(entity, "table");
+    Map<String, Object> contextData = new HashMap<>();
+    contextData.put(ENTITY_TYPE_KEY, Entity.TABLE);
+    contextData.put(ENTITY_TYPE_FIELDS_KEY, PROJECTION_FIELDS);
+    contextData.put(START_TIMESTAMP_KEY, WINDOW_START);
+    contextData.put(END_TIMESTAMP_KEY, WINDOW_END);
+
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      EntityRepository<?> repository = Mockito.mock(EntityRepository.class);
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
+      Mockito.when(repository.listVersionsWithOffset(any(UUID.class), anyInt(), anyInt()))
+          .thenThrow(new EntityNotFoundException("Entity not found: table " + deleted.getId()));
+
+      List<Map<String, Object>> snapshots = processor.enrichSingle(deleted, contextData);
+
+      assertTrue(snapshots.isEmpty(), "a deleted asset should produce no snapshots and not throw");
+    }
+  }
+
+  @Test
+  void recursiveCoverageIsCapturedBeforeTheColumnProjectionDropsChildren() throws Exception {
+    Column parent =
+        createColumn("payload", "Documented parent")
+            .withChildren(
+                List.of(createColumn("documented", "A child"), createColumn("missing", null)));
+    Map<String, Object> result =
+        enrichEntity(new MockColumnsEntity(List.of(parent), "table"), "table");
+    assertEquals(new ColumnCoverage(3, 2, 0, 0), result.get("columnCoverage"));
+    assertEquals(1, result.get("numberOfColumns"));
+    Map<String, Object> projection = JsonUtils.getMap(result);
+    invokeStripNestedColumnChildren(projection);
+    var projected = (List<Map<String, Object>>) projection.get("columns");
+    assertFalse(projected.getFirst().containsKey("children"));
+    assertEquals(2, parent.getChildren().size());
+  }
+
+  @Test
+  void testHasColumnDescriptionAllColumnsDescribed() {
+    Map<String, Object> result =
+        enrichEntity(
+            new MockColumnsEntity(
+                List.of(
+                    createColumn("col1", "Description for col1"),
+                    createColumn("col2", "Description for col2"),
+                    createColumn("col3", "Description for col3")),
+                "test description"),
+            "table");
 
     assertEquals(3, result.get("numberOfColumns"));
     assertEquals(3, result.get("numberOfColumnsWithDescription"));
@@ -62,12 +150,16 @@ class DataInsightsEntityEnricherProcessorTest {
   }
 
   @Test
-  void testHasColumnDescriptionNoColumnsDescribed() throws Exception {
-    List<Column> columns =
-        List.of(createColumn("col1", null), createColumn("col2", null), createColumn("col3", ""));
-
-    MockColumnsEntity entity = new MockColumnsEntity(columns, "test description");
-    Map<String, Object> result = invokeEnrichEntity(entity, "table");
+  void testHasColumnDescriptionNoColumnsDescribed() {
+    Map<String, Object> result =
+        enrichEntity(
+            new MockColumnsEntity(
+                List.of(
+                    createColumn("col1", null),
+                    createColumn("col2", null),
+                    createColumn("col3", "")),
+                "test description"),
+            "table");
 
     assertEquals(3, result.get("numberOfColumns"));
     assertEquals(0, result.get("numberOfColumnsWithDescription"));
@@ -75,15 +167,16 @@ class DataInsightsEntityEnricherProcessorTest {
   }
 
   @Test
-  void testHasColumnDescriptionPartialColumnsDescribed() throws Exception {
-    List<Column> columns =
-        List.of(
-            createColumn("col1", "Description for col1"),
-            createColumn("col2", null),
-            createColumn("col3", "Description for col3"));
-
-    MockColumnsEntity entity = new MockColumnsEntity(columns, "test description");
-    Map<String, Object> result = invokeEnrichEntity(entity, "table");
+  void testHasColumnDescriptionPartialColumnsDescribed() {
+    Map<String, Object> result =
+        enrichEntity(
+            new MockColumnsEntity(
+                List.of(
+                    createColumn("col1", "Description for col1"),
+                    createColumn("col2", null),
+                    createColumn("col3", "Description for col3")),
+                "test description"),
+            "table");
 
     assertEquals(3, result.get("numberOfColumns"));
     assertEquals(2, result.get("numberOfColumnsWithDescription"));
@@ -91,11 +184,12 @@ class DataInsightsEntityEnricherProcessorTest {
   }
 
   @Test
-  void testHasColumnDescriptionSingleColumnWithDescription() throws Exception {
-    List<Column> columns = List.of(createColumn("col1", "Has description"));
-
-    MockColumnsEntity entity = new MockColumnsEntity(columns, "test description");
-    Map<String, Object> result = invokeEnrichEntity(entity, "table");
+  void testHasColumnDescriptionSingleColumnWithDescription() {
+    Map<String, Object> result =
+        enrichEntity(
+            new MockColumnsEntity(
+                List.of(createColumn("col1", "Has description")), "test description"),
+            "table");
 
     assertEquals(1, result.get("numberOfColumns"));
     assertEquals(1, result.get("numberOfColumnsWithDescription"));
@@ -103,11 +197,11 @@ class DataInsightsEntityEnricherProcessorTest {
   }
 
   @Test
-  void testHasColumnDescriptionSingleColumnWithoutDescription() throws Exception {
-    List<Column> columns = List.of(createColumn("col1", null));
-
-    MockColumnsEntity entity = new MockColumnsEntity(columns, "test description");
-    Map<String, Object> result = invokeEnrichEntity(entity, "table");
+  void testHasColumnDescriptionSingleColumnWithoutDescription() {
+    Map<String, Object> result =
+        enrichEntity(
+            new MockColumnsEntity(List.of(createColumn("col1", null)), "test description"),
+            "table");
 
     assertEquals(1, result.get("numberOfColumns"));
     assertEquals(0, result.get("numberOfColumnsWithDescription"));
@@ -115,9 +209,8 @@ class DataInsightsEntityEnricherProcessorTest {
   }
 
   @Test
-  void testEntityWithoutColumnsDoesNotHaveColumnFields() throws Exception {
-    MockEntity entity = new MockEntity("test description");
-    Map<String, Object> result = invokeEnrichEntity(entity, "pipeline");
+  void testEntityWithoutColumnsDoesNotHaveColumnFields() {
+    Map<String, Object> result = enrichEntity(new MockEntity("test description"), "pipeline");
 
     assertFalse(result.containsKey("numberOfColumns"));
     assertFalse(result.containsKey("numberOfColumnsWithDescription"));
@@ -125,33 +218,54 @@ class DataInsightsEntityEnricherProcessorTest {
   }
 
   @Test
-  void testHasDescriptionWithDescription() throws Exception {
-    MockEntity entity = new MockEntity("Some description");
-    Map<String, Object> result = invokeEnrichEntity(entity, "pipeline");
+  void testOwnerNameProjectedForOwnedEntity() {
+    List<EntityReference> owners =
+        List.of(
+            new EntityReference().withName("alice").withType(Entity.USER),
+            new EntityReference().withName("data-team").withType(Entity.TEAM));
+    Map<String, Object> result = enrichEntity(new MockOwnedEntity(owners), "pipeline");
 
+    assertEquals(List.of("alice", "data-team"), result.get("ownerName"));
+  }
+
+  @Test
+  void testOwnerNameAbsentForUnownedEntity() {
+    Map<String, Object> result = enrichEntity(new MockEntity("test description"), "pipeline");
+
+    assertFalse(result.containsKey("ownerName"));
+  }
+
+  @Test
+  void testOwnerNameAbsentWhenOwnerNamesBlank() {
+    List<EntityReference> owners =
+        List.of(new EntityReference().withName(null).withType(Entity.USER));
+    Map<String, Object> result = enrichEntity(new MockOwnedEntity(owners), "pipeline");
+
+    assertFalse(result.containsKey("ownerName"));
+  }
+
+  @Test
+  void testHasDescriptionWithDescription() {
+    Map<String, Object> result = enrichEntity(new MockEntity("Some description"), "pipeline");
     assertEquals(1, result.get("hasDescription"));
   }
 
   @Test
-  void testHasDescriptionWithoutDescription() throws Exception {
-    MockEntity entity = new MockEntity(null);
-    Map<String, Object> result = invokeEnrichEntity(entity, "pipeline");
-
+  void testHasDescriptionWithoutDescription() {
+    Map<String, Object> result = enrichEntity(new MockEntity(null), "pipeline");
     assertEquals(0, result.get("hasDescription"));
   }
 
   @Test
-  void testHasDescriptionWithEmptyDescription() throws Exception {
-    MockEntity entity = new MockEntity("");
-    Map<String, Object> result = invokeEnrichEntity(entity, "pipeline");
-
+  void testHasDescriptionWithEmptyDescription() {
+    Map<String, Object> result = enrichEntity(new MockEntity(""), "pipeline");
     assertEquals(0, result.get("hasDescription"));
   }
 
   @Test
-  void testEmptyColumnsListSetsHasColumnDescription() throws Exception {
-    MockColumnsEntity entity = new MockColumnsEntity(new ArrayList<>(), "desc");
-    Map<String, Object> result = invokeEnrichEntity(entity, "table");
+  void testEmptyColumnsListSetsHasColumnDescription() {
+    Map<String, Object> result =
+        enrichEntity(new MockColumnsEntity(new ArrayList<>(), "desc"), "table");
 
     assertEquals(0, result.get("numberOfColumns"));
     assertEquals(0, result.get("numberOfColumnsWithDescription"));
@@ -214,34 +328,17 @@ class DataInsightsEntityEnricherProcessorTest {
     assertFalse(entityMap.containsKey("columns"));
   }
 
-  private void invokeStripNestedColumnChildren(Map<String, Object> entityMap) throws Exception {
-    Method stripMethod =
-        DataInsightsEntityEnricherProcessor.class.getDeclaredMethod(
-            "stripNestedColumnChildren", Map.class);
-    stripMethod.setAccessible(true);
-    stripMethod.invoke(null, entityMap);
-  }
+  // ───────────────────────────── helpers ─────────────────────────────
 
-  @SuppressWarnings("unchecked")
-  private Map<String, Object> invokeEnrichEntity(EntityInterface entity, String entityType)
-      throws Exception {
-    try (MockedStatic<JsonUtils> jsonUtilsMock = Mockito.mockStatic(JsonUtils.class);
-        MockedStatic<SearchIndexUtils> searchIndexUtilsMock =
+  /**
+   * Drive the pipeline against a synthetic entity. Mocks {@link SearchIndexUtils} static helpers
+   * so each step's contract is exercised without pulling in their real implementations, and
+   * stubs {@link Entity#getEntityTypeFromObject(Object)} for the per-step team/tier log lines.
+   */
+  private Map<String, Object> enrichEntity(EntityInterface entity, String entityType) {
+    try (MockedStatic<SearchIndexUtils> searchIndexUtilsMock =
             Mockito.mockStatic(SearchIndexUtils.class);
         MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
-
-      Map<String, Object> entityMap = new HashMap<>();
-      entityMap.put("id", entity.getId());
-      entityMap.put("name", entity.getName());
-      entityMap.put("description", entity.getDescription());
-      entityMap.put("displayName", entity.getDisplayName());
-      entityMap.put("fullyQualifiedName", entity.getFullyQualifiedName());
-      entityMap.put("version", entity.getVersion());
-      if (entity instanceof ColumnsEntityInterface columnsEntity) {
-        entityMap.put("columns", columnsEntity.getColumns());
-      }
-
-      jsonUtilsMock.when(() -> JsonUtils.getMap(any())).thenReturn(entityMap);
 
       searchIndexUtilsMock.when(() -> SearchIndexUtils.getChangeSummaryMap(any())).thenReturn(null);
       searchIndexUtilsMock
@@ -260,32 +357,40 @@ class DataInsightsEntityEnricherProcessorTest {
 
       entityMock.when(() -> Entity.getEntityTypeFromObject(any())).thenReturn(entityType);
 
-      Map<String, Object> entityVersionMap = new HashMap<>();
-      entityVersionMap.put("versionEntity", entity);
-      entityVersionMap.put("startTimestamp", 1000L);
-      entityVersionMap.put("endTimestamp", 2000L);
+      Map<String, Object> entityMap = new HashMap<>();
+      entityMap.put("id", entity.getId());
+      entityMap.put("name", entity.getName());
+      entityMap.put("description", entity.getDescription());
+      entityMap.put("displayName", entity.getDisplayName());
+      entityMap.put("fullyQualifiedName", entity.getFullyQualifiedName());
+      entityMap.put("version", entity.getVersion());
+      if (entity instanceof ColumnsEntityInterface columnsEntity) {
+        entityMap.put("columns", columnsEntity.getColumns());
+      }
 
-      List<String> fields =
-          new ArrayList<>(
-              List.of(
-                  "id",
-                  "name",
-                  "description",
-                  "displayName",
-                  "fullyQualifiedName",
-                  "columns",
-                  "tags",
-                  "owners",
-                  "deleted",
-                  "version"));
+      EnrichmentContext context =
+          new EnrichmentContext(entityType, PROJECTION_FIELDS, WINDOW_START, WINDOW_END);
+      EnrichmentTarget target =
+          new EnrichmentTarget(
+              entity,
+              entityMap,
+              new HashMap<>(),
+              WINDOW_START,
+              WINDOW_END,
+              context,
+              VersionShape.LATEST_HYDRATED);
 
-      Map<String, Object> contextData = new HashMap<>();
-      contextData.put(ENTITY_TYPE_KEY, entityType);
-      contextData.put(ENTITY_TYPE_FIELDS_KEY, fields);
-
-      return (Map<String, Object>)
-          enrichEntityMethod.invoke(processor, entityVersionMap, contextData);
+      processor.enrichEntity(target);
+      return entityMap;
     }
+  }
+
+  private void invokeStripNestedColumnChildren(Map<String, Object> entityMap) throws Exception {
+    Method stripMethod =
+        DataInsightsEntityEnricherProcessor.class.getDeclaredMethod(
+            "stripNestedColumnChildren", Map.class);
+    stripMethod.setAccessible(true);
+    stripMethod.invoke(null, entityMap);
   }
 
   private Column createColumn(String name, String description) {
@@ -506,6 +611,20 @@ class DataInsightsEntityEnricherProcessorTest {
     @Override
     public <T extends EntityInterface> T withHref(URI href) {
       return (T) this;
+    }
+  }
+
+  static class MockOwnedEntity extends MockEntity {
+    private final List<EntityReference> owners;
+
+    MockOwnedEntity(List<EntityReference> owners) {
+      super("test description");
+      this.owners = owners;
+    }
+
+    @Override
+    public List<EntityReference> getOwners() {
+      return owners;
     }
   }
 }

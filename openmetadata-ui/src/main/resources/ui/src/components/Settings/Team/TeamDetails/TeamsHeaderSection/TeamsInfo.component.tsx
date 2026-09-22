@@ -15,7 +15,7 @@ import {
   CloseOutlined,
   InfoCircleOutlined,
 } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
 import { Button, Divider, Form, Input, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, last } from 'lodash';
@@ -31,21 +31,20 @@ import {
 } from '../../../../../constants/constants';
 import { EMAIL_REG_EX } from '../../../../../constants/regex.constants';
 import { EntityType } from '../../../../../enums/entity.enum';
-import { Operation } from '../../../../../generated/entity/policies/policy';
 import { Team, TeamType } from '../../../../../generated/entity/teams/team';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { useEntityRules } from '../../../../../hooks/useEntityRules';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../../../utils/EntityUtils';
-import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
-import { OwnerLabel } from '../../../../common/OwnerLabel/OwnerLabel.component';
 import TeamTypeSelect from '../../../../common/TeamTypeSelect/TeamTypeSelect.component';
+import { UserTeamSelectableList } from '../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { PersonaSelectableList } from '../../../../MyData/Persona/PersonaSelectableList/PersonaSelectableList.component';
 import { SubscriptionWebhook, TeamsInfoProps } from '../team.interface';
 import './teams-info.less';
@@ -73,25 +72,28 @@ const TeamsInfo = ({
     [currentTeam]
   );
 
-  const { hasEditPermission, hasEditOwnerPermission } = useMemo(
-    () => ({
-      hasEditPermission: entityPermissions.EditAll && !isTeamDeleted,
-      hasEditOwnerPermission:
-        getPrioritizedEditPermission(entityPermissions, Operation.EditOwners) &&
-        !isTeamDeleted,
-    }),
-
+  // Consumer via the `entityPermissions: OperationPermission` prop (raw contract kept per
+  // Task 8 rule 2). hasEditPermission (bare EditAll-only) and hasEditOwnerPermission (already
+  // used the prioritized helper directly, just not through the shared derivation) are both
+  // identical mappings onto canEditAll/canEditOwners.
+  const { canEditAll, canEditOwners } = useMemo(
+    () => getDerivedPermissionFlags(entityPermissions, isTeamDeleted),
     [entityPermissions, isTeamDeleted]
   );
+  const hasEditPermission = canEditAll;
+  const hasEditOwnerPermission = canEditOwners;
 
   const isUserPartOfCurrentTeam = useMemo<boolean>(() => {
     return owners?.some((owner) => owner.id === currentUser?.id) ?? false;
   }, [owners, currentUser]);
 
+  // canEditAll already applies `!isTeamDeleted` internally; the outer `&& !isTeamDeleted`
+  // here is preserved anyway (not simplified away) because `isUserPartOfCurrentTeam` is an
+  // unrelated local boolean, not itself deleted-gated — dropping the outer guard would let a
+  // team member on a deleted team see this as editable.
   const hasEditSubscriptionPermission = useMemo(
-    () =>
-      (entityPermissions.EditAll || isUserPartOfCurrentTeam) && !isTeamDeleted,
-    [entityPermissions, isUserPartOfCurrentTeam, isTeamDeleted]
+    () => (canEditAll || isUserPartOfCurrentTeam) && !isTeamDeleted,
+    [canEditAll, isUserPartOfCurrentTeam, isTeamDeleted]
   );
 
   const onEmailSave = async (data: { email: string }) => {
@@ -406,15 +408,21 @@ const TeamsInfo = ({
         hasPermission={hasEditPermission}
       />
       <Divider className="vertical-divider" type="vertical" />
-      <OwnerLabel
+      <Owner
         hasPermission={hasEditOwnerPermission}
         isCompactView={false}
-        multiple={{
-          user: entityRules.canAddMultipleUserOwners,
-          team: entityRules.canAddMultipleTeamOwner,
-        }}
-        owners={owners}
-        onUpdate={updateOwner}
+        owners={owners ?? []}
+        selectorContent={
+          <UserTeamSelectableList
+            hasPermission={Boolean(hasEditOwnerPermission)}
+            multiple={{
+              user: entityRules.canAddMultipleUserOwners,
+              team: entityRules.canAddMultipleTeamOwner,
+            }}
+            owner={owners}
+            onUpdate={updateOwner}
+          />
+        }
       />
       <Divider className="vertical-divider" type="vertical" />
       {emailRender}

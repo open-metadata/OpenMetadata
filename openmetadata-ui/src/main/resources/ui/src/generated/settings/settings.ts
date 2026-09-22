@@ -29,6 +29,7 @@ export interface Settings {
  */
 export enum SettingType {
     AirflowConfiguration = "airflowConfiguration",
+    AppConfiguration = "appConfiguration",
     AssetCertificationSettings = "assetCertificationSettings",
     AuthenticationConfiguration = "authenticationConfiguration",
     AuthorizerConfiguration = "authorizerConfiguration",
@@ -57,6 +58,8 @@ export enum SettingType {
     SlackEventPublishers = "slackEventPublishers",
     SlackInstaller = "slackInstaller",
     SlackState = "slackState",
+    SparqlQuerySettings = "sparqlQuerySettings",
+    StartupChecksums = "startupChecksums",
     TeamsAppConfiguration = "teamsAppConfiguration",
     WorkflowSettings = "workflowSettings",
 }
@@ -108,6 +111,13 @@ export enum SettingType {
  *
  * This schema defines the Glossary Term Relation Settings for configuring typed semantic
  * relations between glossary terms.
+ *
+ * Administrator-managed SPARQL query templates available across the installation.
+ *
+ * App-wide UI configuration. Seeded from yaml/env on first boot; DB-backed and
+ * admin-mutable at runtime afterwards (yaml is ignored once a DB row exists).
+ *
+ * Fingerprints of bundled resources successfully applied during server startup.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -165,8 +175,14 @@ export interface PipelineServiceClientConfiguration {
     /**
      * Additional parameters to initialize the PipelineServiceClient.
      */
-    parameters?:           { [key: string]: any };
-    secretsManagerLoader?: SecretsManagerClientLoader;
+    parameters?: { [key: string]: any };
+    /**
+     * How long a `queued` pipeline status recorded when triggering a run stays visible before
+     * it is treated as stale and hidden. Covers runs that the orchestrator accepted but never
+     * started.
+     */
+    queuedStatusTimeoutSeconds?: number;
+    secretsManagerLoader?:       SecretsManagerClientLoader;
     /**
      * OpenMetadata Client SSL configuration. This SSL information is about the OpenMetadata
      * server. It will be picked up from the pipelineServiceClient to use/ignore SSL when
@@ -178,6 +194,13 @@ export interface PipelineServiceClientConfiguration {
      * ignore, validate.
      */
     verifySSL?: VerifySSL;
+    /**
+     * Additional redirect URIs allowed for the login flow, beyond the callback URL and the
+     * server's own callbacks. Each entry must exactly match the requested redirect URI (scheme,
+     * host, port, path, query). Use this to allow browser-extension login redirects such as
+     * 'https://<extension-id>.chromiumapp.org/<path>'.
+     */
+    additionalTrustedRedirectUris?: string[];
     /**
      * Authentication Authority
      */
@@ -197,6 +220,16 @@ export interface PipelineServiceClientConfiguration {
      */
     clientType?: ClientType;
     /**
+     * JWT claim name containing the user's display name. Used only when emailClaim is
+     * configured.
+     */
+    displayNameClaim?: string;
+    /**
+     * JWT claim name containing the user's email address. When omitted, OpenMetadata continues
+     * using the legacy jwtPrincipalClaims flow for backward compatibility.
+     */
+    emailClaim?: string;
+    /**
      * Enable automatic redirect from the sign-in page to the configured SSO provider.
      */
     enableAutoRedirect?: boolean;
@@ -210,12 +243,15 @@ export interface PipelineServiceClientConfiguration {
      */
     forceSecureSessionCookie?: boolean;
     /**
-     * Jwt Principal Claim
+     * [DEPRECATED: Use 'emailClaim' instead] Use this claim from the JWT to identify the
+     * principal/subject of the token. Defaults are sub, email, preferred_username, name, upn,
+     * email_verified
      */
     jwtPrincipalClaims?: string[];
     /**
-     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
-     * 'email'. Both username and email mappings are required.
+     * [DEPRECATED: Use 'emailClaim' and 'displayNameClaim' instead] Use these claims from the
+     * JWT to identify the principal/subject and extract email. Format:
+     * 'username:claim_name,email:claim_name'
      */
     jwtPrincipalClaimsMapping?: string[];
     /**
@@ -229,6 +265,12 @@ export interface PipelineServiceClientConfiguration {
      * LDAP Configuration in case the Provider is LDAP
      */
     ldapConfiguration?: LDAPConfiguration;
+    /**
+     * Maximum number of active authenticated sessions allowed per user. When the limit is
+     * exceeded, the least recently used active sessions are revoked. If unset, OpenMetadata
+     * uses the default of 5.
+     */
+    maxActiveSessionsPerUser?: number;
     /**
      * Oidc Configuration for Confidential Client Type
      */
@@ -251,23 +293,42 @@ export interface PipelineServiceClientConfiguration {
      */
     samlConfiguration?: SamlSSOClientConfig;
     /**
+     * Validity for the authenticated session across all auth providers. Minimum is 3600
+     * seconds. If unset, OpenMetadata falls back to the legacy OIDC-specific sessionExpiry when
+     * present, then to the default 604800-second expiry.
+     */
+    sessionExpiry?: number;
+    /**
      * Token Validation Algorithm to use.
      */
     tokenValidationAlgorithm?: TokenValidationAlgorithm;
     /**
-     * List of unique admin principals.
+     * List of email addresses that should be granted admin privileges. Preferred over
+     * adminPrincipals.
+     */
+    adminEmails?: string[];
+    /**
+     * [DEPRECATED: Use 'adminEmails' instead] List of unique admin principals.
      */
     adminPrincipals?: string[];
     /**
-     * Allowed Domains to access
+     * [DEPRECATED: Use 'allowedEmailDomains' instead] Allowed Domains to access.
      */
     allowedDomains?: string[];
+    /**
+     * List of email domains allowed to authenticate. If empty, all domains are allowed.
+     */
+    allowedEmailDomains?: string[];
     /**
      * List of unique email domains that are allowed to signup on the platforms
      */
     allowedEmailRegistrationDomains?: string[];
     /**
-     * **@Deprecated** List of unique bot principals
+     * Email domain used for system-created bots (e.g., ingestion-bot@{botDomain}).
+     */
+    botDomain?: string;
+    /**
+     * [DEPRECATED] List of unique bot principals.
      */
     botPrincipals?: string[];
     /**
@@ -284,11 +345,12 @@ export interface PipelineServiceClientConfiguration {
      */
     enableSecureSocketConnection?: boolean;
     /**
-     * Enable Enforce Principal Domain
+     * [DEPRECATED: Use 'allowedEmailDomains' instead] Enable Enforce Principal Domain.
      */
     enforcePrincipalDomain?: boolean;
     /**
-     * Principal Domain
+     * [DEPRECATED: Use 'botDomain' for bots, 'allowedEmailDomains' for domain restrictions]
+     * Domain to use for constructing email addresses.
      */
     principalDomain?: string;
     /**
@@ -314,6 +376,10 @@ export interface PipelineServiceClientConfiguration {
      */
     clusterAlias?: string;
     /**
+     * Maximum time in seconds to wait for a connection from the HTTP connection pool
+     */
+    connectionRequestTimeoutSecs?: number;
+    /**
      * Connection Timeout in Seconds
      */
     connectionTimeoutSecs?: number;
@@ -327,7 +393,9 @@ export interface PipelineServiceClientConfiguration {
      */
     keepAliveTimeoutSecs?: number;
     /**
-     * Maximum connections per host/route in the connection pool
+     * Maximum connections per host/route in the connection pool. Keep this below maxConnTotal
+     * for multi-host clusters so one slow host cannot consume the entire pool; single-host
+     * deployments can raise it up to maxConnTotal.
      */
     maxConnPerRoute?: number;
     /**
@@ -361,7 +429,13 @@ export interface PipelineServiceClientConfiguration {
      * Index factory name
      */
     searchIndexFactoryClassName?: string;
-    searchIndexMappingLanguage?:  SearchIndexMappingLanguage;
+    /**
+     * Limits applied while building search documents so that field values can never be rejected
+     * by Elasticsearch/OpenSearch. Values default to the documented engine defaults; override
+     * to tune without changing infrastructure settings.
+     */
+    searchIndexingLimits?:       SearchIndexingLimits;
+    searchIndexMappingLanguage?: SearchIndexMappingLanguage;
     /**
      * This enum defines the search Type elastic/open search.
      */
@@ -532,6 +606,11 @@ export interface PipelineServiceClientConfiguration {
      */
     historyCleanUpConfiguration?: HistoryCleanUpConfiguration;
     /**
+     * Settings for the Policy Agent batch coordinator that clubs concurrent Data Access Request
+     * grants into a single ingestion run per pipeline.
+     */
+    policyAgentConfiguration?: PolicyAgentConfiguration;
+    /**
      * Used to set up the History CleanUp Settings.
      */
     runTimeCleanUpConfiguration?: RunTimeCleanUpConfiguration;
@@ -568,6 +647,12 @@ export interface PipelineServiceClientConfiguration {
      * 'prod-postgres'
      */
     namespaceToServiceMapping?: { [key: string]: string };
+    /**
+     * Set how owners from OpenLineage job ownership facets update Pipeline owners. In replace
+     * mode, resolved owners from the current event replace existing owners. In append mode,
+     * resolved owners are appended to active existing Pipeline owners.
+     */
+    ownershipUpdateMode?: OwnershipUpdateMode;
     /**
      * List of allowed origins for CORS on OAuth endpoints. Use specific origins for production
      * security. Wildcard (*) is NOT recommended.
@@ -613,6 +698,32 @@ export interface PipelineServiceClientConfiguration {
      * List of configured glossary term relation types.
      */
     relationTypes?: GlossaryTermRelationType[];
+    /**
+     * Installation query templates visible to SPARQL console users.
+     */
+    queryTemplates?: SavedSparqlQuery[];
+    /**
+     * Tenant-wide 'first impression' app-mode default. Seeds the app mode for users who have
+     * not chosen one; user preference and persona-level app mode still win over this default.
+     * Null means no tenant default is configured.
+     */
+    defaultAppMode?: DefaultAppMode | null;
+    /**
+     * Timestamp when the fingerprints were last persisted.
+     */
+    appliedAt?: number;
+    /**
+     * Fingerprint of the search index templates.
+     */
+    searchTemplateFingerprint?: string;
+    /**
+     * Fingerprint of the bundled seed data and type schemas.
+     */
+    seedDataFingerprint?: string;
+    /**
+     * Server version that produced these fingerprints.
+     */
+    serverVersion?: string;
 }
 
 export interface AllowedFieldValueBoostFields {
@@ -648,6 +759,13 @@ export interface AllowedFieldField {
      * Detailed explanation of what this field represents and how it affects search behavior
      */
     description: string;
+    /**
+     * Whether this field may be enabled for search highlighting. Server-derived from the index
+     * mapping, not configured: false when the field is mapped flattened/flat_object (no
+     * analyzer, fails the highlight phase) or enabled:false (not indexed, can never match). The
+     * UI only offers the highlight toggle where this is true. Defaults to false.
+     */
+    highlight?: boolean;
     /**
      * Field name that can be used in searchFields
      */
@@ -686,6 +804,11 @@ export interface AssetTypeConfiguration {
      * Multipliers applied to different match types to control their relative importance.
      */
     matchTypeBoostMultipliers?: MatchTypeBoostMultipliers;
+    /**
+     * High-level ranking algorithm for this asset. Defines lexical ranking stages first, then
+     * bounded metadata signals.
+     */
+    ranking?: RankingConfiguration;
     /**
      * How to combine function scores if multiple boosts are applied.
      */
@@ -741,6 +864,8 @@ export enum AggregationType {
 
 /**
  * How the function score is combined with the main query score.
+ *
+ * How metadata signals combine with the lexical score.
  */
 export enum BoostMode {
     Avg = "avg",
@@ -823,6 +948,75 @@ export interface MatchTypeBoostMultipliers {
 }
 
 /**
+ * High-level ranking algorithm for this asset. Defines lexical ranking stages first, then
+ * bounded metadata signals.
+ */
+export interface RankingConfiguration {
+    /**
+     * Human-readable ranking algorithm identifier.
+     */
+    algorithm?: string;
+    /**
+     * DisMax tie breaker used between ranking stages. Keep low so broad context matches do not
+     * overpower stronger name stages.
+     */
+    disMaxTieBreaker?: number;
+    /**
+     * Whether to use staged ranking for this asset. When disabled, legacy searchFields scoring
+     * is used.
+     */
+    enabled?: boolean;
+    /**
+     * Bounded metadata signals used after lexical relevance.
+     */
+    signals?: RankingSignals;
+    /**
+     * Ordered lexical ranking stages. Earlier stages should represent stronger relevance
+     * signals.
+     */
+    stages?: RankingStage[];
+    /**
+     * Language-neutral query words ignored by token-coverage ranking stages. These are unioned
+     * with stopWordsByLanguage.
+     */
+    stopWords?: string[];
+    /**
+     * Language-keyed query words ignored by token-coverage ranking stages. Keys should match
+     * search index mapping languages such as en, ru, zh, jp, or ja. Values are whole query
+     * tokens only; language analyzers still perform the actual index/query tokenization.
+     */
+    stopWordsByLanguage?: { [key: string]: string[] };
+}
+
+/**
+ * Bounded metadata signals used after lexical relevance.
+ */
+export interface RankingSignals {
+    /**
+     * How metadata signals combine with the lexical score.
+     */
+    boostMode?: BoostMode;
+    /**
+     * Metadata fields expected to contribute to signal scoring.
+     */
+    fields?: string[];
+    /**
+     * Maximum signal score added to lexical relevance. Keeps Tier and Usage as tie-breakers.
+     */
+    maxBoost?: number;
+    /**
+     * Human-readable explanation of how metadata signals should affect ranking.
+     */
+    purpose?: string;
+    /**
+     * How to combine metadata signal functions.
+     */
+    scoreMode?: ScoreMode;
+}
+
+/**
+ * How to combine metadata signal functions.
+ *
  * How to combine function scores if multiple boosts are applied.
  */
 export enum ScoreMode {
@@ -832,6 +1026,46 @@ export enum ScoreMode {
     Min = "min",
     Multiply = "multiply",
     Sum = "sum",
+}
+
+export interface RankingStage {
+    /**
+     * Fields queried by this stage.
+     */
+    fields: string[];
+    /**
+     * Query strategy for this ranking stage.
+     */
+    matchType?: StageMatchType;
+    /**
+     * Minimum significant-token coverage for tokenCoverage or fuzzy stages.
+     */
+    minimumShouldMatch?: string;
+    /**
+     * Stable stage name used in ranking debug output.
+     */
+    name: string;
+    /**
+     * Human-readable explanation of what this ranking stage is intended to do.
+     */
+    purpose?: string;
+    /**
+     * Stage-level score band. Higher stages should use materially higher weights than later
+     * stages.
+     */
+    weight?: number;
+}
+
+/**
+ * Query strategy for this ranking stage.
+ */
+export enum StageMatchType {
+    Exact = "exact",
+    Fuzzy = "fuzzy",
+    Phrase = "phrase",
+    Prefix = "prefix",
+    Standard = "standard",
+    TokenCoverage = "tokenCoverage",
 }
 
 export interface FieldBoost {
@@ -848,7 +1082,7 @@ export interface FieldBoost {
      * 'phrase' uses match_phrase, 'fuzzy' allows fuzzy matching, 'standard' uses the default
      * behavior.
      */
-    matchType?: MatchType;
+    matchType?: SearchFieldMatchType;
 }
 
 /**
@@ -856,7 +1090,7 @@ export interface FieldBoost {
  * 'phrase' uses match_phrase, 'fuzzy' allows fuzzy matching, 'standard' uses the default
  * behavior.
  */
-export enum MatchType {
+export enum SearchFieldMatchType {
     Exact = "exact",
     Fuzzy = "fuzzy",
     Phrase = "phrase",
@@ -1057,6 +1291,13 @@ export enum AuthProvider {
  */
 export interface AuthenticationConfiguration {
     /**
+     * Additional redirect URIs allowed for the login flow, beyond the callback URL and the
+     * server's own callbacks. Each entry must exactly match the requested redirect URI (scheme,
+     * host, port, path, query). Use this to allow browser-extension login redirects such as
+     * 'https://<extension-id>.chromiumapp.org/<path>'.
+     */
+    additionalTrustedRedirectUris?: string[];
+    /**
      * Authentication Authority
      */
     authority?: string;
@@ -1073,6 +1314,16 @@ export interface AuthenticationConfiguration {
      */
     clientType?: ClientType;
     /**
+     * JWT claim name containing the user's display name. Used only when emailClaim is
+     * configured.
+     */
+    displayNameClaim?: string;
+    /**
+     * JWT claim name containing the user's email address. When omitted, OpenMetadata continues
+     * using the legacy jwtPrincipalClaims flow for backward compatibility.
+     */
+    emailClaim?: string;
+    /**
      * Enable automatic redirect from the sign-in page to the configured SSO provider.
      */
     enableAutoRedirect?: boolean;
@@ -1086,12 +1337,15 @@ export interface AuthenticationConfiguration {
      */
     forceSecureSessionCookie?: boolean;
     /**
-     * Jwt Principal Claim
+     * [DEPRECATED: Use 'emailClaim' instead] Use this claim from the JWT to identify the
+     * principal/subject of the token. Defaults are sub, email, preferred_username, name, upn,
+     * email_verified
      */
-    jwtPrincipalClaims: string[];
+    jwtPrincipalClaims?: string[];
     /**
-     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
-     * 'email'. Both username and email mappings are required.
+     * [DEPRECATED: Use 'emailClaim' and 'displayNameClaim' instead] Use these claims from the
+     * JWT to identify the principal/subject and extract email. Format:
+     * 'username:claim_name,email:claim_name'
      */
     jwtPrincipalClaimsMapping?: string[];
     /**
@@ -1105,6 +1359,12 @@ export interface AuthenticationConfiguration {
      * LDAP Configuration in case the Provider is LDAP
      */
     ldapConfiguration?: LDAPConfiguration;
+    /**
+     * Maximum number of active authenticated sessions allowed per user. When the limit is
+     * exceeded, the least recently used active sessions are revoked. If unset, OpenMetadata
+     * uses the default of 5.
+     */
+    maxActiveSessionsPerUser?: number;
     /**
      * Oidc Configuration for Confidential Client Type
      */
@@ -1126,6 +1386,12 @@ export interface AuthenticationConfiguration {
      * Saml Configuration that is applicable only when the provider is Saml
      */
     samlConfiguration?: SamlSSOClientConfig;
+    /**
+     * Validity for the authenticated session across all auth providers. Minimum is 3600
+     * seconds. If unset, OpenMetadata falls back to the legacy OIDC-specific sessionExpiry when
+     * present, then to the default 604800-second expiry.
+     */
+    sessionExpiry?: number;
     /**
      * Token Validation Algorithm to use.
      */
@@ -1202,6 +1468,11 @@ export interface LDAPConfiguration {
      * Port of the server
      */
     port: number;
+    /**
+     * Enable transitive group membership resolution for Active Directory nested groups using
+     * LDAP_MATCHING_RULE_IN_CHAIN.
+     */
+    recursiveGroupMembership?: boolean;
     /**
      * Admin role name
      */
@@ -1395,7 +1666,7 @@ export interface OidcClientConfig {
      */
     tenant: string;
     /**
-     * Validity for the JWT Token created from SAML Response
+     * Lifetime in seconds of the OpenMetadata JWT issued after OIDC authentication.
      */
     tokenValidity?: number;
     /**
@@ -1507,7 +1778,7 @@ export interface Security {
      */
     strictMode?: boolean;
     /**
-     * Validity for the JWT Token created from SAML Response
+     * Lifetime in seconds of the OpenMetadata JWT issued after SAML authentication.
      */
     tokenValidity?: number;
     /**
@@ -1573,19 +1844,32 @@ export enum TokenValidationAlgorithm {
  */
 export interface AuthorizerConfiguration {
     /**
-     * List of unique admin principals.
+     * List of email addresses that should be granted admin privileges. Preferred over
+     * adminPrincipals.
      */
-    adminPrincipals: string[];
+    adminEmails?: string[];
     /**
-     * Allowed Domains to access
+     * [DEPRECATED: Use 'adminEmails' instead] List of unique admin principals.
+     */
+    adminPrincipals?: string[];
+    /**
+     * [DEPRECATED: Use 'allowedEmailDomains' instead] Allowed Domains to access.
      */
     allowedDomains?: string[];
+    /**
+     * List of email domains allowed to authenticate. If empty, all domains are allowed.
+     */
+    allowedEmailDomains?: string[];
     /**
      * List of unique email domains that are allowed to signup on the platforms
      */
     allowedEmailRegistrationDomains?: string[];
     /**
-     * **@Deprecated** List of unique bot principals
+     * Email domain used for system-created bots (e.g., ingestion-bot@{botDomain}).
+     */
+    botDomain?: string;
+    /**
+     * [DEPRECATED] List of unique bot principals.
      */
     botPrincipals?: string[];
     /**
@@ -1606,13 +1890,14 @@ export interface AuthorizerConfiguration {
      */
     enableSecureSocketConnection: boolean;
     /**
-     * Enable Enforce Principal Domain
+     * [DEPRECATED: Use 'allowedEmailDomains' instead] Enable Enforce Principal Domain.
      */
-    enforcePrincipalDomain: boolean;
+    enforcePrincipalDomain?: boolean;
     /**
-     * Principal Domain
+     * [DEPRECATED: Use 'botDomain' for bots, 'allowedEmailDomains' for domain restrictions]
+     * Domain to use for constructing email addresses.
      */
-    principalDomain: string;
+    principalDomain?: string;
     /**
      * List of unique principals used as test users. **NOTE THIS IS ONLY FOR TEST SETUP AND NOT
      * TO BE USED IN PRODUCTION SETUP**
@@ -1640,6 +1925,11 @@ export interface Aws {
      */
     serviceName?: string;
     [property: string]: any;
+}
+
+export enum DefaultAppMode {
+    AI = "ai",
+    Classic = "classic",
 }
 
 /**
@@ -1879,10 +2169,6 @@ export enum LineageLayer {
  */
 export interface LogStorageConfiguration {
     /**
-     * Size of async buffer in MB for batching log writes
-     */
-    asyncBufferSizeMB?: number;
-    /**
      * AWS credentials configuration
      */
     awsConfig?: AWSCredentials;
@@ -1890,6 +2176,14 @@ export interface LogStorageConfiguration {
      * S3 bucket name for storing logs (required for S3 type)
      */
     bucketName?: string;
+    /**
+     * How often the sweeper wakes up to check for abandoned streams
+     */
+    cleanupIntervalMinutes?: number;
+    /**
+     * Triggers an out-of-band flush when pendingFlush exceeds this size
+     */
+    earlyFlushWatermarkBytes?: number;
     /**
      * Enable it for pipelines deployed in the server
      */
@@ -1911,6 +2205,14 @@ export interface LogStorageConfiguration {
      */
     maxConcurrentStreams?: number;
     /**
+     * Periodic cadence for flushing pendingFlush to partial.txt
+     */
+    partialFlushIntervalMinutes?: number;
+    /**
+     * Emit an alerting metric after this many consecutive failed flushes for a stream
+     */
+    pendingFlushAlertAfterFailures?: number;
+    /**
      * S3 key prefix for organizing logs
      */
     prefix?: string;
@@ -1923,7 +2225,7 @@ export interface LogStorageConfiguration {
      */
     storageClass?: StorageClass;
     /**
-     * Timeout in minutes for idle log streams before automatic cleanup
+     * Idle threshold in minutes before the abandoned-run sweeper finalizes a stream
      */
     streamTimeoutMinutes?: number;
     /**
@@ -2165,36 +2467,27 @@ export enum MetricType {
  */
 export interface NaturalLanguageSearch {
     /**
-     * AWS Bedrock configuration for natural language processing
-     */
-    bedrock?: Bedrock;
-    /**
-     * Embedding generation using Deep Java Library (DJL)
-     */
-    djl?: Djl;
-    /**
-     * The provider to use for generating vector embeddings (e.g., bedrock, openai).
-     */
-    embeddingProvider?: string;
-    /**
      * Enable or disable natural language search
      */
     enabled?: boolean;
+    /**
+     * NLQ filter extractor cache and prompt tuning.
+     */
+    filterExtractor?: FilterExtractor;
+    /**
+     * Hybrid search runtime tuning combining BM25 keyword and KNN semantic queries.
+     */
+    hybridSearch?: HybridSearch;
     /**
      * Weight for BM25 keyword search results in hybrid RRF pipeline (0.0-1.0)
      */
     keywordWeight?: number;
     /**
-     * Maximum number of concurrent embedding API requests. Controls the semaphore used to
-     * throttle calls to the embedding provider and prevent overwhelming HTTP/2 connection
-     * limits.
+     * Multiplier applied to k when computing num_candidates for Elasticsearch kNN vector
+     * search. num_candidates = max(k * multiplier, 100). Higher values improve recall at the
+     * cost of latency. Defaults to 2.
      */
-    maxConcurrentEmbeddingRequests?: number;
-    /**
-     * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
-     * endpoints.
-     */
-    openai?: Openai;
+    knnNumCandidatesMultiplier?: number;
     /**
      * Fully qualified class name of the NLQService implementation to use
      */
@@ -2210,110 +2503,64 @@ export interface NaturalLanguageSearch {
 }
 
 /**
- * AWS Bedrock configuration for natural language processing
+ * NLQ filter extractor cache and prompt tuning.
  */
-export interface Bedrock {
+export interface FilterExtractor {
     /**
-     * AWS credentials configuration for Bedrock service
+     * Cache TTL in minutes for NLQ filter extraction results.
      */
-    awsConfig?: AWSBaseConfig;
+    cacheExpiryMinutes?: number;
     /**
-     * Dimension of the embedding vector
+     * Max number of entries in the NLQ filter extraction result cache.
      */
-    embeddingDimension?: number;
+    cacheMaxSize?: number;
     /**
-     * Bedrock embedding model identifier to use for vector search
+     * Max sample values shown per filter category in the system prompt.
      */
-    embeddingModelId?: string;
+    maxSampleValues?: number;
     /**
-     * Bedrock model identifier to use for query transformation
+     * Maximum tokens the model may generate for NLQ filter extraction.
+     */
+    maxTokens?: number;
+    /**
+     * Optional model override for NLQ filter extraction. Leave empty to use the model from
+     * llmConfiguration.
      */
     modelId?: string;
+    /**
+     * Sampling temperature for NLQ filter extraction.
+     */
+    temperature?: number;
+    /**
+     * Per-call timeout in seconds for NLQ filter extraction completion.
+     */
+    timeoutSeconds?: number;
 }
 
 /**
- * AWS credentials configuration for Bedrock service
- *
- * Base AWS configuration for authentication. Supports static credentials, IAM roles, and
- * default credential provider chain.
+ * Hybrid search runtime tuning combining BM25 keyword and KNN semantic queries.
  */
-export interface AWSBaseConfig {
+export interface HybridSearch {
     /**
-     * AWS Access Key ID. Falls back to default credential provider chain if not set.
+     * Highlight fragment size (characters) for hybrid search hits.
      */
-    accessKeyId?: string;
+    fragmentSize?: number;
     /**
-     * ARN of IAM role to assume for cross-account access.
+     * Maximum number of query terms forwarded to the shard-fair keyword sub-query.
      */
-    assumeRoleArn?: string;
+    maxQueryTerms?: number;
     /**
-     * Session name for assumed role.
+     * Pagination depth used by the hybrid query for RRF normalization.
      */
-    assumeRoleSessionName?: string;
+    paginationDepth?: number;
     /**
-     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
-     * (environment variables, instance profile, etc.). Defaults to false for backward
-     * compatibility.
+     * Name of the OpenSearch search pipeline used to normalize hybrid (BM25 + KNN) scores.
      */
-    enabled?: boolean;
+    searchPipeline?: string;
     /**
-     * Custom endpoint URL for AWS-compatible services (MinIO, LocalStack).
+     * Minimum score threshold for the semantic (KNN) sub-query results.
      */
-    endpointUrl?: string;
-    /**
-     * AWS Region (e.g., us-east-1). Required when AWS authentication is enabled.
-     */
-    region?: string;
-    /**
-     * AWS Secret Access Key. Falls back to default credential provider chain if not set.
-     */
-    secretAccessKey?: string;
-    /**
-     * AWS Session Token for temporary credentials.
-     */
-    sessionToken?: string;
-}
-
-/**
- * Embedding generation using Deep Java Library (DJL)
- */
-export interface Djl {
-    /**
-     * DJL model name for embedding generation
-     */
-    embeddingModel?: string;
-}
-
-/**
- * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
- * endpoints.
- */
-export interface Openai {
-    /**
-     * API key for authenticating with OpenAI or Azure OpenAI.
-     */
-    apiKey?: string;
-    /**
-     * Azure OpenAI API version. Only used with Azure OpenAI.
-     */
-    apiVersion?: string;
-    /**
-     * Azure OpenAI deployment name. Required when using Azure OpenAI.
-     */
-    deploymentName?: string;
-    /**
-     * Dimension of the embedding vector. Default is 1536 for text-embedding-3-small.
-     */
-    embeddingDimension?: number;
-    /**
-     * OpenAI embedding model identifier (e.g., text-embedding-3-small, text-embedding-ada-002).
-     */
-    embeddingModelId?: string;
-    /**
-     * Custom endpoint URL. For Azure OpenAI, use the Azure resource endpoint (e.g.,
-     * https://your-resource.openai.azure.com). Leave empty for standard OpenAI API.
-     */
-    endpoint?: string;
+    semanticScoreThreshold?: number;
 }
 
 /**
@@ -2451,6 +2698,16 @@ export interface TitleSection {
 }
 
 /**
+ * Set how owners from OpenLineage job ownership facets update Pipeline owners. In replace
+ * mode, resolved owners from the current event replace existing owners. In append mode,
+ * resolved owners are appended to active existing Pipeline owners.
+ */
+export enum OwnershipUpdateMode {
+    Append = "append",
+    Replace = "replace",
+}
+
+/**
  * Pipeline View Mode for Lineage.
  *
  * Determines the view mode for pipelines in lineage.
@@ -2458,6 +2715,93 @@ export interface TitleSection {
 export enum PipelineViewMode {
     Edge = "Edge",
     Node = "Node",
+}
+
+/**
+ * Settings for the Policy Agent batch coordinator that clubs concurrent Data Access Request
+ * grants into a single ingestion run per pipeline.
+ */
+export interface PolicyAgentConfiguration {
+    /**
+     * Maximum number of policies clubbed into a single Policy Agent ingestion run. Pending
+     * requests beyond this are picked up by the next window.
+     */
+    batchMaxSize?: number;
+    /**
+     * The batch window: how often (in seconds) the scheduler triggers the Policy Agent
+     * coordinator to drain accumulated grant requests and fire one clubbed ingestion run per
+     * pipeline. Typically 60-300 (1-5 minutes). All Data Access Requests that arrive within a
+     * window are clubbed into the next run. Lower = lower latency but more Argo runs; higher =
+     * fewer runs, more clubbing.
+     */
+    batchWindowSeconds?: number;
+    /**
+     * Size of the worker pool that runs clubbed Policy Agent batches. Each in-flight batch (one
+     * per distinct pipeline) holds one worker while it polls its run to completion, so this
+     * bounds how many distinct services can provision concurrently. Raise it for deployments
+     * with many services receiving Data Access Requests at once.
+     */
+    batchWorkerThreads?: number;
+    /**
+     * Interval (seconds) at which the batch coordinator polls a Policy Agent ingestion run for
+     * completion. The Data Access Request workflow node itself does not poll — it is signalled
+     * (pushed) when the run finishes, with a safety timer as the fallback.
+     */
+    pollingIntervalSeconds?: number;
+}
+
+/**
+ * A SPARQL query saved by a user or curated as an installation query template.
+ */
+export interface SavedSparqlQuery {
+    /**
+     * Preferred result serialization.
+     */
+    format: Format;
+    /**
+     * Stable identifier for the saved query.
+     */
+    id: string;
+    /**
+     * Preferred inference level.
+     */
+    inference: Inference;
+    /**
+     * Display name for the saved query.
+     */
+    name: string;
+    /**
+     * SPARQL query body.
+     */
+    query: string;
+    /**
+     * Time the query was last saved, in Unix epoch milliseconds.
+     */
+    savedAt: number;
+}
+
+/**
+ * Preferred result serialization.
+ */
+export enum Format {
+    CSV = "csv",
+    JSON = "json",
+    Jsonld = "jsonld",
+    Ntriples = "ntriples",
+    Rdfxml = "rdfxml",
+    Tsv = "tsv",
+    Turtle = "turtle",
+    XML = "xml",
+}
+
+/**
+ * Preferred inference level.
+ */
+export enum Inference {
+    Custom = "custom",
+    None = "none",
+    Owl = "owl",
+    Rdfs = "rdfs",
 }
 
 /**
@@ -2486,14 +2830,40 @@ export interface GlossaryTermRelationType {
      */
     displayName: string;
     /**
+     * Glossary term FQNs (or external class IRIs) a source term must be typed as for this
+     * relation. Empty means unconstrained. Stored for RDF round-trip and optional validation;
+     * not enforced by default.
+     */
+    domain?: string[];
+    /**
      * Name of the inverse relation type (e.g., 'narrower' for 'broader'). Null for symmetric
      * relations.
      */
     inverseRelation?: string;
     /**
+     * Whether the relation is asymmetric (A relates B implies B does not relate A).
+     */
+    isAsymmetric?: boolean;
+    /**
      * Whether relations can be created between terms in different glossaries.
      */
     isCrossGlossaryAllowed?: boolean;
+    /**
+     * Whether the relation is functional (a source term has at most one target).
+     */
+    isFunctional?: boolean;
+    /**
+     * Whether the relation is inverse-functional (a target term has at most one source).
+     */
+    isInverseFunctional?: boolean;
+    /**
+     * Whether the relation is irreflexive (no term relates to itself).
+     */
+    isIrreflexive?: boolean;
+    /**
+     * Whether the relation is reflexive (every term relates to itself).
+     */
+    isReflexive?: boolean;
     /**
      * Whether the relation is symmetric (A relates B implies B relates A).
      */
@@ -2510,6 +2880,12 @@ export interface GlossaryTermRelationType {
      * Unique name of the relation type (e.g., 'broader', 'synonym').
      */
     name: string;
+    /**
+     * Glossary term FQNs (or external class IRIs) a target term must be typed as for this
+     * relation. Empty means unconstrained. Stored for RDF round-trip and optional validation;
+     * not enforced by default.
+     */
+    range?: string[];
     /**
      * RDF predicate URI for this relation (e.g., 'skos:broader').
      */
@@ -2589,6 +2965,44 @@ export enum SearchIndexMappingLanguage {
     Jp = "JP",
     Ru = "RU",
     Zh = "ZH",
+}
+
+/**
+ * Limits applied while building search documents so that field values can never be rejected
+ * by Elasticsearch/OpenSearch. Values default to the documented engine defaults; override
+ * to tune without changing infrastructure settings.
+ */
+export interface SearchIndexingLimits {
+    /**
+     * Enable injecting ignore_above / ignore_malformed and index.mapping.*.limit guardrails
+     * into index mappings at creation time so documents cannot be rejected. When false,
+     * mappings are created as-is.
+     */
+    enableMappingHardening?: boolean;
+    /**
+     * Maximum UTF-8 byte length of a single keyword term. ignore_above is set to a byte-safe
+     * character count derived from this (value/4). The hard Lucene limit is 32766 bytes.
+     */
+    keywordMaxBytes?: number;
+    /**
+     * Maximum object/column nesting depth. Mirrors index.mapping.depth.limit.
+     */
+    mappingDepthLimit?: number;
+    /**
+     * Maximum number of flattened columns or schema fields indexed for a single data asset.
+     * Items beyond this are dropped from the search document.
+     */
+    maxColumns?: number;
+    /**
+     * Maximum number of nested-type objects allowed in a single document before
+     * Elasticsearch/OpenSearch rejects it (the engine rejects rather than truncates). Mirrors
+     * index.mapping.nested_objects.limit.
+     */
+    nestedObjectsLimit?: number;
+    /**
+     * Maximum total fields per index. Mirrors index.mapping.total_fields.limit.
+     */
+    totalFieldsLimit?: number;
 }
 
 /**

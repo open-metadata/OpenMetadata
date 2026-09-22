@@ -44,9 +44,7 @@ table = Table(
             scale=None,
             dataTypeDisplay="integer",
             description=Markdown(root="This is a unique identifier for an order"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.orders.order_id"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.orders.order_id"),
             constraint=Constraint.NULL,
         ),
         Column(
@@ -59,9 +57,7 @@ table = Table(
             scale=None,
             dataTypeDisplay="integer",
             description=Markdown(root="Foreign key to the customers table"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.orders.customer_id"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.orders.customer_id"),
             constraint=Constraint.NULL,
         ),
         Column(
@@ -74,9 +70,7 @@ table = Table(
             scale=None,
             dataTypeDisplay="date",
             description=Markdown(root="Date (UTC) that the order was placed"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.orders.order_date"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.orders.order_date"),
             constraint=Constraint.NULL,
         ),
         Column(
@@ -88,9 +82,7 @@ table = Table(
             precision=14,
             scale=None,
             dataTypeDisplay="character varying(14)",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.orders.status"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.orders.status"),
             constraint=Constraint.NULL,
         ),
         Column(
@@ -102,12 +94,8 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="bigint",
-            description=Markdown(
-                root="Amount of the order (AUD) paid for by credit card"
-            ),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.orders.credit_card_amount"
-            ),
+            description=Markdown(root="Amount of the order (AUD) paid for by credit card"),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.orders.credit_card_amount"),
             constraint=Constraint.NULL,
         ),
         Column(
@@ -120,9 +108,7 @@ table = Table(
             scale=None,
             dataTypeDisplay="bigint",
             description=Markdown(root="Amount of the order (AUD) paid for by coupon"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.orders.coupon_amount"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.orders.coupon_amount"),
             constraint=Constraint.NULL,
         ),
         Column(
@@ -134,12 +120,8 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="bigint",
-            description=Markdown(
-                root="Amount of the order (AUD) paid for by bank transfer"
-            ),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.orders.bank_transfer_amount"
-            ),
+            description=Markdown(root="Amount of the order (AUD) paid for by bank transfer"),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.orders.bank_transfer_amount"),
             constraint=Constraint.NULL,
         ),
         Column(
@@ -151,12 +133,8 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="bigint",
-            description=Markdown(
-                root="Amount of the order (AUD) paid for by gift card"
-            ),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.orders.gift_card_amount"
-            ),
+            description=Markdown(root="Amount of the order (AUD) paid for by gift card"),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.orders.gift_card_amount"),
             constraint=Constraint.NULL,
         ),
         Column(
@@ -169,9 +147,7 @@ table = Table(
             scale=None,
             dataTypeDisplay="bigint",
             description=Markdown(root="Total amount (AUD) of the order"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.orders.amount"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.orders.amount"),
             constraint=Constraint.NULL,
         ),
     ],

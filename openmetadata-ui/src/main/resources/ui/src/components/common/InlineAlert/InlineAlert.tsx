@@ -25,6 +25,8 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import './inline-alert.less';
 import { InlineAlertProps } from './InlineAlert.interface';
 
+const ALERT_ICON_CLASS = 'alert-icon';
+
 function InlineAlert({
   alertClassName = '',
   type,
@@ -40,7 +42,7 @@ function InlineAlert({
   const { alertContainerClass, alertIconClass } = useMemo(
     () => ({
       alertContainerClass: `${type ?? 'default'}-alert`,
-      alertIconClass: `${type ?? 'default'}-icon`,
+      alertIconClass: `${type ?? 'default'}-icon tw:flex-shrink-0`,
     }),
     [type]
   );
@@ -56,25 +58,25 @@ function InlineAlert({
       case 'error':
         return (
           <ErrorExclamationIcon
-            className={classNames('alert-icon', alertIconClass)}
+            className={classNames(ALERT_ICON_CLASS, alertIconClass)}
           />
         );
       case 'warning':
         return (
-          <AlertIcon className={classNames('alert-icon', alertIconClass)} />
+          <AlertIcon className={classNames(ALERT_ICON_CLASS, alertIconClass)} />
         );
 
       case 'success':
         return (
           <CheckCircleOutlined
-            className={classNames('alert-icon', alertIconClass)}
+            className={classNames(ALERT_ICON_CLASS, alertIconClass)}
           />
         );
       case 'info':
       default:
         return (
           <ExclamationCircleOutlined
-            className={classNames('alert-icon', alertIconClass)}
+            className={classNames(ALERT_ICON_CLASS, alertIconClass)}
           />
         );
     }

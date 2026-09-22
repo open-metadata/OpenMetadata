@@ -70,17 +70,13 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
             raw_dataset=self.sampler.raw_dataset,
         )
 
-    def _get_validator_builder(
-        self, test_case: TestCase, entity_type: str
-    ) -> ValidatorBuilder:
+    def _get_validator_builder(self, test_case: TestCase, entity_type: str) -> ValidatorBuilder:
         test_definition = self.ometa_client.get_by_name(
             entity=TestDefinition,
             fqn=test_case.testDefinition.fullyQualifiedName,
         )
         if test_definition is None:
-            raise ValueError(
-                f"Cannot find TestDefinition for test case {test_case.fullyQualifiedName}"
-            )
+            raise ValueError(f"Cannot find TestDefinition for test case {test_case.fullyQualifiedName}")
 
         return self.validator_builder_class(
             runner=self._runner,

@@ -11,8 +11,6 @@
 
 """Partition utility tests"""
 
-from typing import Optional
-
 import pytest
 from pydantic import BaseModel
 
@@ -31,27 +29,27 @@ from metadata.sampler.partition import get_partition_details
 
 
 class MockTable(BaseModel):
-    tablePartition: Optional[TablePartition] = None
-    tableProfilerConfig: Optional[TableProfilerConfig] = None
-    serviceType: DatabaseServiceType = DatabaseServiceType.BigQuery
+    tablePartition: TablePartition | None = None  # noqa: N815
+    tableProfilerConfig: TableProfilerConfig | None = None  # noqa: N815
+    serviceType: DatabaseServiceType = DatabaseServiceType.BigQuery  # noqa: N815
 
     class Config:
         arbitrary_types_allowed = True
 
 
 class MockRedshiftTable(BaseModel):
-    tablePartition: Optional[TablePartition] = None
-    tableProfilerConfig: Optional[TableProfilerConfig] = None
-    serviceType: DatabaseServiceType = DatabaseServiceType.Redshift
+    tablePartition: TablePartition | None = None  # noqa: N815
+    tableProfilerConfig: TableProfilerConfig | None = None  # noqa: N815
+    serviceType: DatabaseServiceType = DatabaseServiceType.Redshift  # noqa: N815
 
     class Config:
         arbitrary_types_allowed = True
 
 
 class MockAthenaTable(BaseModel):
-    tablePartition: Optional[TablePartition] = None
-    tableProfilerConfig: Optional[TableProfilerConfig] = None
-    serviceType: DatabaseServiceType = DatabaseServiceType.Athena
+    tablePartition: TablePartition | None = None  # noqa: N815
+    tableProfilerConfig: TableProfilerConfig | None = None  # noqa: N815
+    serviceType: DatabaseServiceType = DatabaseServiceType.Athena  # noqa: N815
 
     class Config:
         arbitrary_types_allowed = True
@@ -74,7 +72,7 @@ def test_get_partition_details():
 
     partition = get_partition_details(table_entity)
 
-    assert partition.enablePartitioning == True
+    assert partition.enablePartitioning == True  # noqa: E712
     assert partition.partitionColumnName == "order_date"
     assert partition.partitionIntervalType == PartitionIntervalTypes.TIME_UNIT
     assert partition.partitionInterval == 5
@@ -95,7 +93,7 @@ def test_get_partition_details():
 
     partition = get_partition_details(table_entity)
 
-    assert partition.enablePartitioning == True
+    assert partition.enablePartitioning == True  # noqa: E712
     assert partition.partitionColumnName == "_PARTITIONTIME"
     assert partition.partitionIntervalType == PartitionIntervalTypes.INGESTION_TIME
     assert partition.partitionInterval == 1
@@ -140,7 +138,7 @@ def test_athena_injected_partition():
 
     with pytest.raises(
         RuntimeError,
-        match="Table profiler config is missing for table with injected partitioning. Please define the partitioning in the table profiler config for column e",
+        match="Table profiler config is missing for table with injected partitioning. Please define the partitioning in the table profiler config for column e",  # noqa: RUF043
     ):
         # As athena table has injected partitioning, it should raise an error
         # since we have not provided any partitioning details for the injected partition
@@ -159,7 +157,7 @@ def test_athena_injected_partition():
 
     partition = get_partition_details(entity)
 
-    assert partition.enablePartitioning == True
+    assert partition.enablePartitioning == True  # noqa: E712
     assert partition.partitionColumnName == "e"
     assert partition.partitionIntervalType == PartitionIntervalTypes.COLUMN_VALUE
     assert partition.partitionValues == ["red"]

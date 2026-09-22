@@ -13,6 +13,8 @@
 import {
   LayoutEngine,
   MODEL_ANTV_DAGRE_RANKSEP_WITH_COMBOS,
+  NODE_LABEL_FONT_SIZE,
+  NODE_LABEL_FONT_WEIGHT,
   NODE_PADDING_H,
   NODE_PADDING_V,
   toLayoutEngineType,
@@ -20,12 +22,18 @@ import {
   type LayoutType,
 } from '../OntologyExplorer.constants';
 import { LayoutConfig, LayoutNodeLike } from '../OntologyExplorer.interface';
+import { measureTextWidth, truncateToFit } from './textMeasure';
 
 export const NODE_WIDTH = 120;
 export const NODE_HEIGHT = 2 * NODE_PADDING_V + 18;
 export { NODE_PADDING_H } from '../OntologyExplorer.constants';
-export const CHAR_WIDTH_ESTIMATE = 7;
-export const MODEL_NODE_MAX_WIDTH = 220;
+export const NODE_LABEL_EXTRA_PAD_H = 10;
+export const CHAR_WIDTH_ESTIMATE = 9;
+export const MODEL_NODE_MAX_LABEL_CHARS = 60;
+export const MODEL_NODE_MAX_WIDTH = 150;
+
+const NODE_LABEL_MEASURE_FONT = `${NODE_LABEL_FONT_WEIGHT} ${NODE_LABEL_FONT_SIZE}px sans-serif`;
+
 export const COMBO_PADDING = 48;
 export const HULL_GAP = 56;
 export const MIN_NODE_SPACING = 12;
@@ -63,6 +71,20 @@ export interface GetOntologyLayoutConfigOptions {
   isHierarchyMode: boolean;
 }
 
+export function shouldUseComboGridLayout(
+  layoutType: LayoutEngineType,
+  options: Pick<
+    GetOntologyLayoutConfigOptions,
+    'hasCombos' | 'isModelView' | 'isHierarchyMode'
+  >
+): boolean {
+  return (
+    layoutType === LayoutEngine.Dagre &&
+    options.hasCombos &&
+    (options.isModelView || options.isHierarchyMode)
+  );
+}
+
 export function getNodeSize(d?: LayoutNodeLike): [number, number] {
   const size = d?.data?.size;
   if (Array.isArray(size) && size.length >= 2) {
@@ -80,81 +102,85 @@ export function getNodeSize(d?: LayoutNodeLike): [number, number] {
   return [NODE_WIDTH, NODE_HEIGHT];
 }
 
-export function estimateNodeWidth(label: string): number {
-  const fromLabel = NODE_PADDING_H * 2 + label.length * CHAR_WIDTH_ESTIMATE;
+const NODE_LABEL_H_PAD = NODE_PADDING_H + NODE_LABEL_EXTRA_PAD_H;
 
-  return Math.max(MIN_NODE_WIDTH, fromLabel);
-}
-
-export function truncateNodeLabelByWidth(label: string, width: number): string {
-  const maxChars = Math.max(
-    1,
-    Math.floor((width - NODE_PADDING_H * 2) / CHAR_WIDTH_ESTIMATE)
-  );
-
-  if (label.length <= maxChars) {
+function capLabelToMaxChars(label: string): string {
+  if (label.length <= MODEL_NODE_MAX_LABEL_CHARS) {
     return label;
   }
 
-  if (maxChars <= 1) {
-    return '...';
-  }
-
-  return `${label.slice(0, maxChars - 1)}...`;
+  return `${label.slice(0, MODEL_NODE_MAX_LABEL_CHARS - 1)}...`;
 }
 
-export function getLayoutConfig(
-  layoutType: LayoutType | LayoutEngineType,
+export function estimateNodeWidth(label: string): number {
+  return Math.max(
+    MIN_NODE_WIDTH,
+    measureTextWidth(
+      capLabelToMaxChars(label),
+      NODE_LABEL_MEASURE_FONT,
+      CHAR_WIDTH_ESTIMATE
+    ) +
+      NODE_LABEL_H_PAD * 2
+  );
+}
+
+export function truncateNodeLabelByWidth(label: string, width: number): string {
+  return truncateToFit(
+    capLabelToMaxChars(label),
+    width - NODE_LABEL_H_PAD * 2,
+    NODE_LABEL_MEASURE_FONT,
+    CHAR_WIDTH_ESTIMATE
+  );
+}
+
+function getNonModelViewLayoutConfig(
+  engineType: LayoutEngineType,
   nodeCount: number,
-  options: GetOntologyLayoutConfigOptions
+  isDataMode: boolean,
+  isHierarchyMode: boolean,
+  baseNodeSize: (d?: LayoutNodeLike) => [number, number]
 ): LayoutConfig {
-  const { hasCombos, isDataMode, isModelView, isHierarchyMode } = options;
-
-  const baseNodeSize = (d?: LayoutNodeLike) => getNodeSize(d);
-
-  const engineType: LayoutEngineType =
-    layoutType === LayoutEngine.Dagre || layoutType === LayoutEngine.Circular
-      ? layoutType
-      : toLayoutEngineType(layoutType as LayoutType);
-
-  if (!isModelView) {
-    if (engineType === LayoutEngine.Dagre) {
-      const baseSep = isHierarchyMode
-        ? HIERARCHY_DAGRE_NODE_SEP
-        : DAGRE_NODE_SEP;
-      const baseRank = isHierarchyMode
-        ? HIERARCHY_DAGRE_RANK_SEP
-        : DAGRE_RANK_SEP;
-
-      return {
-        type: LayoutEngine.Dagre,
-        animation: false,
-        rankdir: 'TB',
-        nodesep: adaptiveSpacing(baseSep, nodeCount),
-        ranksep: adaptiveSpacing(baseRank, nodeCount),
-        preventOverlap: true,
-        nodeSize: baseNodeSize,
-      };
-    }
-
-    if (isDataMode && engineType === LayoutEngine.Circular) {
-      return { type: 'preset', animation: false };
-    }
-
-    if (engineType === LayoutEngine.Circular) {
-      return {
-        type: LayoutEngine.Circular,
-        animation: false,
-        nodeSize: baseNodeSize,
-        nodeSpacing: MIN_NODE_SPACING,
-      };
-    }
+  if (engineType === LayoutEngine.Dagre) {
+    const baseSep = isHierarchyMode ? HIERARCHY_DAGRE_NODE_SEP : DAGRE_NODE_SEP;
+    const baseRank = isHierarchyMode
+      ? HIERARCHY_DAGRE_RANK_SEP
+      : DAGRE_RANK_SEP;
 
     return {
-      type: engineType,
+      type: LayoutEngine.Dagre,
+      animation: false,
+      rankdir: 'TB',
+      nodesep: adaptiveSpacing(baseSep, nodeCount),
+      ranksep: adaptiveSpacing(baseRank, nodeCount),
+      preventOverlap: true,
+      nodeSize: baseNodeSize,
     };
   }
 
+  if (isDataMode && engineType === LayoutEngine.Circular) {
+    return { type: 'preset', animation: false };
+  }
+
+  if (engineType === LayoutEngine.Circular) {
+    return {
+      type: LayoutEngine.Circular,
+      animation: false,
+      nodeSize: baseNodeSize,
+      nodeSpacing: MIN_NODE_SPACING,
+    };
+  }
+
+  return {
+    type: engineType,
+  };
+}
+
+function getModelViewLayoutConfig(
+  engineType: LayoutEngineType,
+  nodeCount: number,
+  hasCombos: boolean,
+  baseNodeSize: (d?: LayoutNodeLike) => [number, number]
+): LayoutConfig {
   if (engineType === LayoutEngine.Dagre) {
     return {
       type: 'antv-dagre',
@@ -176,4 +202,36 @@ export function getLayoutConfig(
   return {
     type: engineType,
   };
+}
+
+export function getLayoutConfig(
+  layoutType: LayoutType | LayoutEngineType,
+  nodeCount: number,
+  options: GetOntologyLayoutConfigOptions
+): LayoutConfig {
+  const { hasCombos, isDataMode, isModelView, isHierarchyMode } = options;
+
+  const baseNodeSize = (d?: LayoutNodeLike) => getNodeSize(d);
+
+  const engineType: LayoutEngineType =
+    layoutType === LayoutEngine.Dagre || layoutType === LayoutEngine.Circular
+      ? layoutType
+      : toLayoutEngineType(layoutType as LayoutType);
+
+  if (!isModelView) {
+    return getNonModelViewLayoutConfig(
+      engineType,
+      nodeCount,
+      isDataMode,
+      isHierarchyMode,
+      baseNodeSize
+    );
+  }
+
+  return getModelViewLayoutConfig(
+    engineType,
+    nodeCount,
+    hasCombos,
+    baseNodeSize
+  );
 }

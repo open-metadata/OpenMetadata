@@ -51,9 +51,59 @@ public class SdkClients {
   private static final long INTEGRATION_TEST_TOKEN_TTL_SECONDS = 86400;
   private static final long CACHED_CLIENT_MAX_AGE_MILLIS = 15 * 60 * 1000;
 
-  private static final String BASE_URL =
-      System.getProperty(
-          "IT_BASE_URL", System.getenv().getOrDefault("IT_BASE_URL", "http://localhost:8585"));
+  // Mutable so UI test harnesses (containerized server, ephemeral port) can override at
+  // runtime via overrideBaseUrl(...) — that path also flushes the cached per-role clients.
+  //
+  // OM_URL is read here, not just by UiTestServer, because a test that talks to the server
+  // directly (HttpClient + getServerUrl()) rather than through a harness has nothing to trigger
+  // overrideBaseUrl. In external mode that left BASE_URL on localhost until some *other* class
+  // happened to boot the harness first, so the suite passed or failed on test order:
+  // HighlightFieldSaveValidationIT died with ConnectException in 0.006s whenever it sorted early.
+  private static volatile String BASE_URL = resolveBaseUrl(lookup("IT_BASE_URL"), lookup("OM_URL"));
+
+  /** Package-private and pure so {@link SdkClientsBaseUrlTest} can pin the /api convention. */
+  static String resolveBaseUrl(final String itBaseUrl, final String omUrl) {
+    if (itBaseUrl != null) {
+      return stripTrailingSlash(itBaseUrl);
+    }
+    // External mode's signal, exported alongside OM_ADMIN_TOKEN by the CI login script.
+    //
+    // OM_URL is the bare host; BASE_URL carries the /api suffix. Both other producers append it —
+    // TestSuiteBootstrap sets IT_BASE_URL to "http://localhost:<port>/api" and ExternalServer
+    // builds OM_URL + "/api" — because the server's rootPath is /api/* in every config. Seeding
+    // OM_URL verbatim reached the right host but sent /v1/... to the UI, which answers any
+    // unmatched route with index.html, so callers died on `Unexpected character ('<')`.
+    return omUrl != null ? stripTrailingSlash(omUrl) + "/api" : "http://localhost:8585";
+  }
+
+  private static String stripTrailingSlash(final String url) {
+    return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+  }
+
+  /** Env first, then system property — the order {@code OssTestServer} uses for the same names. */
+  private static String lookup(final String name) {
+    final String env = System.getenv(name);
+    if (env != null && !env.isBlank()) {
+      return env;
+    }
+    final String prop = System.getProperty(name);
+    return (prop != null && !prop.isBlank()) ? prop : null;
+  }
+
+  // When an admin token is supplied out-of-band (external mode's OM_ADMIN_TOKEN, or the
+  // containerized TokenRefresher), adminClient() must keep using THAT token and never self-mint a
+  // replacement with the harness key — an external cluster doesn't trust the harness keyId and
+  // would reject the minted token with SigningKeyNotFoundException once the 15-min cache expired.
+  //
+  // Seeded from OM_ADMIN_TOKEN at init for the same reason BASE_URL is seeded from OM_URL: a test
+  // that calls getAdminToken() directly, rather than through a harness that would have called
+  // overrideAdminToken(), otherwise self-mints a harness-signed JWT the deployed cluster does not
+  // trust. Latent until now — the requests were not reaching the API to be authenticated.
+  private static volatile String OVERRIDDEN_ADMIN_TOKEN = lookup("OM_ADMIN_TOKEN");
+
+  public static String baseUrl() {
+    return BASE_URL;
+  }
 
   // Cached clients to avoid creating new HTTP connections for each test
   private static volatile CachedClient ADMIN_CLIENT;
@@ -80,6 +130,22 @@ public class SdkClients {
   }
 
   public static OpenMetadataClient adminClient() {
+    // An explicitly supplied token (external operator token / refresher) pins the admin client:
+    // keep using it verbatim, never self-mint a harness-signed replacement on cache expiry.
+    final String overridden = OVERRIDDEN_ADMIN_TOKEN;
+    if (overridden != null) {
+      CachedClient cached = ADMIN_CLIENT;
+      if (cached == null) {
+        synchronized (SdkClients.class) {
+          if (ADMIN_CLIENT == null) {
+            ADMIN_CLIENT =
+                new CachedClient(buildAdminClientWithToken(overridden), System.currentTimeMillis());
+          }
+          cached = ADMIN_CLIENT;
+        }
+      }
+      return cached.client;
+    }
     CachedClient cached = ADMIN_CLIENT;
     long nowMillis = System.currentTimeMillis();
     if (cached == null || cached.isExpired(nowMillis)) {
@@ -240,6 +306,83 @@ public class SdkClients {
   }
 
   /**
+   * Wire the supplied client as the default for all fluent API classes (Tables.create()...,
+   * Glossaries.create()..., etc.). Use this from external-mode tests where the client comes
+   * from a JWT obtained out-of-band, not from the embedded JwtAuthProvider.
+   */
+  public static void useFluentApis(OpenMetadataClient client) {
+    initializeFluentAPIs(client);
+  }
+
+  /**
+   * Point all subsequent {@link #adminClient()} (and other per-role) calls at the given URL,
+   * flushing the cached clients so existing references rebuild against the new endpoint.
+   *
+   * <p>Used by UI test harnesses where the server runs on an ephemeral testcontainers port
+   * not knowable at JVM start. Safe to call repeatedly.
+   */
+  public static synchronized void overrideBaseUrl(String url) {
+    BASE_URL = url;
+    flushCachedClients();
+  }
+
+  /**
+   * Replace the cached admin client with one that uses the given access token. Subsequent
+   * {@link #adminClient()} calls return a freshly built client carrying the new token.
+   *
+   * <p>Used by the UI suite's {@code TokenRefresher} so factories never see an expired
+   * admin token after a long-running run. Other per-role caches are also flushed so the
+   * next refresh of those rebuilds against current state.
+   */
+  public static synchronized void overrideAdminToken(String accessToken) {
+    OVERRIDDEN_ADMIN_TOKEN = accessToken;
+    ADMIN_CLIENT =
+        new CachedClient(buildAdminClientWithToken(accessToken), System.currentTimeMillis());
+    TEST_USER_CLIENT = null;
+    BOT_CLIENT = null;
+    DATA_STEWARD_CLIENT = null;
+    DATA_CONSUMER_CLIENT = null;
+    USER1_CLIENT = null;
+    USER2_CLIENT = null;
+    USER3_CLIENT = null;
+  }
+
+  /**
+   * Whether an admin token has been supplied out-of-band (external operator token, or a
+   * refresher's re-login). When true, {@link #adminClient()} is the single source of truth for
+   * the current token and is rebuilt on every {@link #overrideAdminToken(String)} — callers must
+   * fetch it fresh rather than capturing a client reference that goes stale on the next refresh.
+   */
+  public static boolean hasAdminOverride() {
+    return OVERRIDDEN_ADMIN_TOKEN != null;
+  }
+
+  private static OpenMetadataClient buildAdminClientWithToken(String accessToken) {
+    OpenMetadataConfig cfg =
+        OpenMetadataConfig.builder()
+            .serverUrl(BASE_URL)
+            .accessToken(accessToken)
+            .header("X-Auth-Params-Email", "admin@open-metadata.org")
+            .readTimeout(300000)
+            .writeTimeout(300000)
+            .build();
+    OpenMetadataClient client = new OpenMetadataClient(cfg);
+    initializeFluentAPIs(client);
+    return client;
+  }
+
+  private static void flushCachedClients() {
+    ADMIN_CLIENT = null;
+    TEST_USER_CLIENT = null;
+    BOT_CLIENT = null;
+    DATA_STEWARD_CLIENT = null;
+    DATA_CONSUMER_CLIENT = null;
+    USER1_CLIENT = null;
+    USER2_CLIENT = null;
+    USER3_CLIENT = null;
+  }
+
+  /**
    * Initialize all fluent API classes with the default client.
    * This allows using static methods like Tables.find(id).fetch()
    */
@@ -307,10 +450,13 @@ public class SdkClients {
 
   /** Get an admin JWT token for direct HTTP calls */
   public static String getAdminToken() {
-    return JwtAuthProvider.tokenFor(
-        "admin@open-metadata.org",
-        "admin@open-metadata.org",
-        new String[] {"admin"},
-        INTEGRATION_TEST_TOKEN_TTL_SECONDS);
+    final String overriddenAdminToken = OVERRIDDEN_ADMIN_TOKEN;
+    return overriddenAdminToken == null
+        ? JwtAuthProvider.tokenFor(
+            "admin@open-metadata.org",
+            "admin@open-metadata.org",
+            new String[] {"admin"},
+            INTEGRATION_TEST_TOKEN_TTL_SECONDS)
+        : overriddenAdminToken;
   }
 }

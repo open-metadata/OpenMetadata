@@ -15,7 +15,6 @@ Validator for column value stddev to be between test case
 
 import traceback
 from abc import abstractmethod
-from typing import List, Optional, Union
 
 from sqlalchemy import Column
 
@@ -60,7 +59,7 @@ class BaseColumnValueStdDevToBeBetweenValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self.get_column()
+            column: SQALikeColumn | Column = self.get_column()
             stddev_value = self._run_results(Metrics.stddev, column)
 
             metric_values = {
@@ -70,7 +69,7 @@ class BaseColumnValueStdDevToBeBetweenValidator(BaseTestValidator):
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
-            logger.warning(msg)
+            logger.error(msg)
             return self.get_test_case_result_object(
                 self.execution_date,
                 TestCaseStatus.Aborted,
@@ -79,9 +78,7 @@ class BaseColumnValueStdDevToBeBetweenValidator(BaseTestValidator):
             )
 
         evaluation = self._evaluate_test_condition(metric_values, test_params)
-        result_message = self._format_result_message(
-            metric_values, test_params=test_params
-        )
+        result_message = self._format_result_message(metric_values, test_params=test_params)
         test_result_values = self._get_test_result_values(metric_values)
 
         return self.get_test_case_result_object(
@@ -113,12 +110,13 @@ class BaseColumnValueStdDevToBeBetweenValidator(BaseTestValidator):
         Returns:
             dict: Test parameters including min and max bounds
         """
+        min_bound, max_bound = self.get_bounds(self.MIN_BOUND, self.MAX_BOUND)
         return {
-            self.MIN_BOUND: self.get_min_bound(self.MIN_BOUND),
-            self.MAX_BOUND: self.get_max_bound(self.MAX_BOUND),
+            self.MIN_BOUND: min_bound,
+            self.MAX_BOUND: max_bound,
         }
 
-    def _get_metrics_to_compute(self, test_params: Optional[dict] = None) -> dict:
+    def _get_metrics_to_compute(self, test_params: dict | None = None) -> dict:
         """Get metrics that need to be computed for this test
 
         Args:
@@ -131,9 +129,7 @@ class BaseColumnValueStdDevToBeBetweenValidator(BaseTestValidator):
             Metrics.stddev.name: Metrics.stddev,
         }
 
-    def _evaluate_test_condition(
-        self, metric_values: dict, test_params: dict
-    ) -> TestEvaluation:
+    def _evaluate_test_condition(self, metric_values: dict, test_params: dict) -> TestEvaluation:
         """Evaluate the stddev-to-be-between test condition
 
         For stddev test, the condition passes if the stddev value is within the specified bounds.
@@ -167,8 +163,8 @@ class BaseColumnValueStdDevToBeBetweenValidator(BaseTestValidator):
     def _format_result_message(
         self,
         metric_values: dict,
-        dimension_info: Optional[DimensionInfo] = None,
-        test_params: Optional[dict] = None,
+        dimension_info: DimensionInfo | None = None,
+        test_params: dict | None = None,
     ) -> str:
         """Format the result message for stddev-to-be-between test
 
@@ -181,9 +177,7 @@ class BaseColumnValueStdDevToBeBetweenValidator(BaseTestValidator):
             str: Formatted result message
         """
         if test_params is None:
-            raise ValueError(
-                "test_params is required for columnValueStdDevToBeBetween._format_result_message"
-            )
+            raise ValueError("test_params is required for columnValueStdDevToBeBetween._format_result_message")
 
         stddev_value = metric_values[Metrics.stddev.name]
         min_bound = test_params[self.MIN_BOUND]
@@ -194,10 +188,10 @@ class BaseColumnValueStdDevToBeBetweenValidator(BaseTestValidator):
                 f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
                 f"Found stddev={stddev_value} vs. the expected min={min_bound}, max={max_bound}"
             )
-        else:
+        else:  # noqa: RET505
             return f"Found stddev={stddev_value} vs. the expected min={min_bound}, max={max_bound}."
 
-    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:
+    def _get_test_result_values(self, metric_values: dict) -> list[TestResultValue]:
         """Get test result values for stddev-to-be-between test
 
         Args:
@@ -214,18 +208,18 @@ class BaseColumnValueStdDevToBeBetweenValidator(BaseTestValidator):
         ]
 
     @abstractmethod
-    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column]):
+    def _run_results(self, metric: Metrics, column: SQALikeColumn | Column):
         raise NotImplementedError
 
     @abstractmethod
     def _execute_dimensional_validation(
         self,
-        column: Union[SQALikeColumn, Column],
-        dimension_col: Union[SQALikeColumn, Column],
+        column: SQALikeColumn | Column,
+        dimension_col: SQALikeColumn | Column,
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> list[DimensionResult]:
         """Execute dimensional validation query for a single dimension column
 
         Args:

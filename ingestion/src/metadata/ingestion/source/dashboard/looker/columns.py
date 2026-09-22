@@ -11,8 +11,10 @@
 """
 Looker general utilities
 """
+
+from collections.abc import Sequence
 from functools import singledispatch
-from typing import List, Sequence, Union, cast
+from typing import cast
 
 from looker_sdk.sdk.api40.models import LookmlModelExplore, LookmlModelExploreField
 
@@ -89,15 +91,13 @@ LOOKER_TYPE_MAP = {
 }
 
 
-def get_columns_from_model(
-    model: Union[LookmlModelExplore, LookMlView]
-) -> List[Column]:
+def get_columns_from_model(model: LookmlModelExplore | LookMlView) -> list[Column]:
     """
     Obtain the column (measures and dimensions) from the models
     """
     columns = []
     all_fields = get_model_fields(model)
-    for field in cast(Sequence[LookmlModelExploreField], all_fields):
+    for field in cast(Sequence[LookmlModelExploreField], all_fields):  # noqa: TC006
         type_ = LOOKER_TYPE_MAP.get(field.type, DataType.UNKNOWN)
         columns.append(
             Column(
@@ -115,17 +115,15 @@ def get_columns_from_model(
 
 
 @singledispatch
-def get_model_fields(
-    model: Union[LookmlModelExplore, LookMlView]
-) -> List[Union[LookmlModelExploreField, LookMlField]]:
+def get_model_fields(model: LookmlModelExplore | LookMlView) -> list[LookmlModelExploreField | LookMlField]:
     raise NotImplementedError(f"Missing implementation for type {type(model)}")
 
 
 @get_model_fields.register
-def _(model: LookmlModelExplore) -> List[LookmlModelExploreField]:
+def _(model: LookmlModelExplore) -> list[LookmlModelExploreField]:
     return (model.fields.dimensions or []) + (model.fields.measures or [])
 
 
 @get_model_fields.register
-def _(model: LookMlView) -> List[LookMlField]:
+def _(model: LookMlView) -> list[LookMlField]:
     return (model.dimensions or []) + (model.measures or [])

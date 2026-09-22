@@ -57,7 +57,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -190,34 +189,6 @@ public class EmailUtil {
       sendMail(subject, templatePopulator, user.getEmail(), templateFilePath, true);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, user.getEmail());
-    }
-  }
-
-  public static void sendTaskAssignmentNotificationToUser(
-      String assigneeName,
-      String email,
-      String taskLink,
-      Thread thread,
-      String subject,
-      String templateFilePath)
-      throws IOException, TemplateException {
-    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
-
-      Map<String, Object> templatePopulator =
-          new TemplatePopulatorBuilder()
-              .add("assignee", assigneeName)
-              .add("createdBy", thread.getCreatedBy())
-              .add("taskName", thread.getMessage())
-              .add("taskStatus", thread.getTask().getStatus().toString())
-              .add("taskType", thread.getTask().getType().toString())
-              .add("fieldOldValue", thread.getTask().getOldValue())
-              .add("fieldNewValue", thread.getTask().getSuggestion())
-              .add("taskLink", taskLink)
-              .build();
-
-      sendMail(subject, templatePopulator, email, templateFilePath, true);
-    } else {
-      LOG.warn(EMAIL_IGNORE_MSG, email);
     }
   }
 

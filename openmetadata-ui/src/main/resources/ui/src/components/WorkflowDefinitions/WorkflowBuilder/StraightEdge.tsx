@@ -14,10 +14,27 @@
 import { Button, Typography } from '@openmetadata/ui-core-components';
 import { XClose } from '@untitledui/icons';
 import classNames from 'classnames';
+import { capitalize, startCase } from 'lodash';
 import React, { useState } from 'react';
-import { BaseEdge, EdgeLabelRenderer, EdgeProps, Position } from 'reactflow';
-import { ConditionValue } from '../../../constants/WorkflowBuilder.constants';
+import {
+  BaseEdge,
+  Edge,
+  EdgeLabelRenderer,
+  EdgeProps,
+  Position,
+  ReactFlowState,
+  useStore,
+} from 'reactflow';
 import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
+
+const PARALLEL_LABEL_GAP = 44;
+
+const getSameDirectionEdges = (
+  edges: Edge[],
+  source: string,
+  target: string
+): Edge[] =>
+  edges.filter((edge) => edge.source === source && edge.target === target);
 
 const getCleanStraightPath = (
   sourceX: number,
@@ -65,9 +82,65 @@ const getCleanStraightPath = (
   return [path, labelX, labelY] as const;
 };
 
+const formatEdgeLabel = (label: string): string =>
+  startCase(label).split(' ').map(capitalize).join(' ');
+
+const computeLabelOffsetY = (
+  parallelCount: number,
+  parallelIndex: number,
+  labelY: number
+): number => {
+  const offset =
+    parallelCount > 1
+      ? (parallelIndex - (parallelCount - 1) / 2) * PARALLEL_LABEL_GAP
+      : 0;
+
+  return labelY + offset;
+};
+
+const resolveDisplayLabel = (label: EdgeProps['label']): EdgeProps['label'] =>
+  typeof label === 'string' && label.length > 0
+    ? formatEdgeLabel(label)
+    : label;
+
+const computeLabelStyleOverrides = (
+  labelBgStyle?: React.CSSProperties,
+  labelStyle?: React.CSSProperties
+) => {
+  const hasStyleOverrides = !!(labelBgStyle?.fill || labelStyle?.color);
+
+  if (!hasStyleOverrides) {
+    return { hasStyleOverrides, labelStyleOverrides: undefined };
+  }
+
+  return {
+    hasStyleOverrides,
+    labelStyleOverrides: {
+      backgroundColor: labelBgStyle?.fill,
+      borderColor: labelBgStyle?.stroke,
+      color: labelStyle?.color,
+      ...labelStyle,
+    },
+  };
+};
+
+const computeDeleteButtonTransform = (
+  label: EdgeProps['label'],
+  isHorizontalEdge: boolean,
+  labelX: number,
+  stackedLabelY: number
+): string => {
+  const x = label && isHorizontalEdge ? labelX + 48 : labelX;
+  const y = label && !isHorizontalEdge ? stackedLabelY - 36 : stackedLabelY;
+
+  return `translate(-50%, -50%) translate(${x}px, ${y}px)`;
+};
+
 export const StraightEdge = (props: EdgeProps) => {
   const {
     id,
+    source,
+    target,
     sourceX,
     sourceY,
     targetX,
@@ -90,6 +163,17 @@ export const StraightEdge = (props: EdgeProps) => {
   const showDeleteButton =
     isHovered && allowStructuralGraphEdits && !!onEdgeDelete;
 
+  const parallelCount = useStore(
+    (state: ReactFlowState) =>
+      getSameDirectionEdges(state.edges, source, target).length
+  );
+  const parallelIndex = useStore((state: ReactFlowState) => {
+    const siblings = getSameDirectionEdges(state.edges, source, target);
+    const index = siblings.findIndex((edge) => edge.id === id);
+
+    return index === -1 ? 0 : index;
+  });
+
   const isHorizontalEdge = Math.abs(sourceY - targetY) < 10;
 
   const [path, labelX, labelY] = getCleanStraightPath(
@@ -100,20 +184,22 @@ export const StraightEdge = (props: EdgeProps) => {
     targetY,
     targetPosition
   );
-  const isConditionLabel =
-    label === ConditionValue.TRUE || label === ConditionValue.FALSE;
+
+  const stackedLabelY = computeLabelOffsetY(
+    parallelCount,
+    parallelIndex,
+    labelY
+  );
+
+  const displayLabel = resolveDisplayLabel(label);
+  const { hasStyleOverrides, labelStyleOverrides } = computeLabelStyleOverrides(
+    labelBgStyle,
+    labelStyle
+  );
   const labelClassName = classNames(
     'tw:flex tw:items-center tw:rounded tw:border tw:border-border-secondary tw:bg-primary tw:px-2 tw:py-1 tw:shadow-sm',
-    { 'tw:cursor-pointer': isConditionLabel }
+    { 'tw:cursor-pointer': hasStyleOverrides }
   );
-  const labelStyleOverrides = isConditionLabel
-    ? {
-        backgroundColor: labelBgStyle?.fill,
-        borderColor: labelBgStyle?.stroke,
-        color: labelStyle?.color,
-        ...labelStyle,
-      }
-    : undefined;
 
   return (
     <>
@@ -131,16 +217,17 @@ export const StraightEdge = (props: EdgeProps) => {
         {label && (
           <div
             className={labelClassName}
+            role="presentation"
             style={{
               position: 'absolute',
-              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${stackedLabelY}px)`,
               pointerEvents: 'all',
               ...labelStyleOverrides,
             }}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}>
             <Typography size="text-xs" weight="semibold">
-              {label}
+              {displayLabel}
             </Typography>
           </div>
         )}
@@ -148,12 +235,15 @@ export const StraightEdge = (props: EdgeProps) => {
           <div
             className="tw:absolute tw:pointer-events-auto"
             style={{
-              transform: `translate(-50%, -50%) translate(${
-                label && isHorizontalEdge ? labelX + 48 : labelX
-              }px, ${label && !isHorizontalEdge ? labelY - 36 : labelY}px)`,
+              transform: computeDeleteButtonTransform(
+                label,
+                isHorizontalEdge,
+                labelX,
+                stackedLabelY
+              ),
             }}>
             <Button
-              className="tw:rounded-full tw:bg-white tw:shadow-sm"
+              className="tw:rounded-full tw:bg-primary tw:shadow-sm"
               color="tertiary-destructive"
               iconLeading={XClose}
               size="sm"

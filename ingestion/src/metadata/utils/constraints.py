@@ -13,8 +13,6 @@
 Define constraints helper methods useful for the metadata ingestion
 """
 
-from typing import Dict, List
-
 from metadata.generated.schema.entity.data.table import (
     Column,
     ConstraintType,
@@ -23,7 +21,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.ingestion.ometa.utils import model_str
 
 
-def _is_column_unique(column: Dict, columns: List[Column]) -> bool:
+def _is_column_unique(column: dict, columns: list[Column]) -> bool:
     """
     Method to check if the column in unique in the table
     """
@@ -40,21 +38,15 @@ def _is_column_unique(column: Dict, columns: List[Column]) -> bool:
     return False
 
 
-def get_relationship_type(
-    column: Dict, referred_table_columns: List[Column], columns: List[Column]
-) -> str:
+def get_relationship_type(column: dict, referred_table_columns: list[Column], columns: list[Column]) -> str:
     """
     Determine the type of relationship (one-to-one, one-to-many, etc.)
     """
     # Check if the column is unique in the current table
-    is_unique_in_current_table = _is_column_unique(
-        column.get("constrained_columns"), columns
-    )
+    is_unique_in_current_table = _is_column_unique(column.get("constrained_columns"), columns)
 
     # Check if the referred column is unique in the referred table
-    is_unique_in_referred_table = _is_column_unique(
-        column.get("referred_columns"), referred_table_columns
-    )
+    is_unique_in_referred_table = _is_column_unique(column.get("referred_columns"), referred_table_columns)
 
     if is_unique_in_current_table and is_unique_in_referred_table:
         return RelationshipType.ONE_TO_ONE

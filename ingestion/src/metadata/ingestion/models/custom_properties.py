@@ -11,8 +11,9 @@
 """
 Custom models for custom properties
 """
+
 from enum import Enum
-from typing import Optional, Type, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel
 
@@ -43,8 +44,8 @@ class CustomPropertyDataTypes(Enum):
 
 
 class OMetaCustomProperties(BaseModel):
-    entity_type: Type[T]
-    createCustomPropertyRequest: CreateCustomPropertyRequest
+    entity_type: type[T]
+    createCustomPropertyRequest: CreateCustomPropertyRequest  # noqa: N815
 
 
 class CustomPropertyType(BaseModel):
@@ -54,12 +55,12 @@ class CustomPropertyType(BaseModel):
 
     id: basic.Uuid
     name: basic.EntityName
-    displayName: Optional[str] = None
-    fullyQualifiedName: Optional[basic.FullyQualifiedEntityName] = None
-    description: Optional[basic.Markdown] = None
-    category: Optional[str] = None
-    nameSpace: Optional[str] = None
-    version: Optional[entityHistory.EntityVersion] = None
-    updatedAt: Optional[basic.Timestamp] = None
-    updatedBy: Optional[str] = None
-    href: Optional[basic.Href] = None
+    displayName: str | None = None  # noqa: N815
+    fullyQualifiedName: basic.FullyQualifiedEntityName | None = None  # noqa: N815
+    description: basic.Markdown | None = None
+    category: str | None = None
+    nameSpace: str | None = None  # noqa: N815
+    version: entityHistory.EntityVersion | None = None
+    updatedAt: basic.Timestamp | None = None  # noqa: N815
+    updatedBy: str | None = None  # noqa: N815
+    href: basic.Href | None = None

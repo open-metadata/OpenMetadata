@@ -8,7 +8,7 @@
     <parent>
         <groupId>org.open-metadata</groupId>
         <artifactId>platform</artifactId>
-        <version>1.12.0-SNAPSHOT</version>
+        <version>2.0.0-SNAPSHOT</version>
     </parent>
     
     <artifactId>openmetadata-mcp</artifactId>
@@ -17,7 +17,7 @@
     
     <properties>
         <assertj-core.version>3.27.7</assertj-core.version>
-        <jetty.version>12.1.7</jetty.version>
+        <jetty.version>12.1.10</jetty.version>
     </properties>
 
     <dependencyManagement>
@@ -117,12 +117,6 @@
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp-sse</artifactId>
-            <version>4.12.0</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.squareup.okhttp3</groupId>
-            <artifactId>mockwebserver</artifactId>
             <version>4.12.0</version>
             <scope>test</scope>
         </dependency>

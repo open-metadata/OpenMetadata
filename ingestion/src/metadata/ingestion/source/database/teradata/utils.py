@@ -22,9 +22,7 @@ logger = ingestion_logger()
 
 
 @reflection.cache
-def get_table_comment(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_table_comment(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument
     return get_table_comment_wrapper(
         self,
         connection,

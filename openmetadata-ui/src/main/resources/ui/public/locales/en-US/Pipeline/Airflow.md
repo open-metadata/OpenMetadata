@@ -213,14 +213,20 @@ Host and port of the MySQL service. This should be specified as a string in the 
 
 MySQL schema that contains the Airflow tables.
 
+$$section
 ### SSL CA $(id="sslCA")
 Provide the path to SSL CA file, which needs to be local in the ingestion process.
+$$
 
+$$section
 ### SSL Certificate $(id="sslCert")
 Provide the path to SSL client certificate file (`ssl_cert`)
+$$
 
+$$section
 ### SSL Key $(id="sslKey")
 Provide the path to SSL key file (`ssl_key`)
+$$
 
 
 ## Postgres Connection
@@ -239,11 +245,13 @@ Host and port of the Postgres service. E.g., `localhost:5432` or `host.docker.in
 
 Postgres database that contains the Airflow tables.
 
+$$section
 ### SSL Mode $(id="sslMode")
 
 SSL Mode to connect to postgres database. E.g, `prefer`, `verify-ca` etc.
 
 You can ignore the rest of the properties, since we won't ingest any database not policy tags.
+$$
 
 
 ## MSSQL Connection
@@ -271,12 +279,14 @@ $$
 
 ## Basic Auth
 
+$$section
 ### Password $(id="password")
 Password to connect to MySQL.
+$$
 
 ## IAM Auth Config
 
-$$note 
+$$note
 If you are using IAM auth, add <br />`"ssl": {"ssl-mode": "allow"}` under Connection Arguments
 $$
 
@@ -432,6 +442,7 @@ $$
 
 $$section
 ### Database Name $(id="databaseName")
+
 In OpenMetadata, the Database Service hierarchy works as follows:
 ```
 Database Service > Database > Schema > Table
@@ -467,16 +478,18 @@ $$
 $$section
 ### Connection Arguments $(id="connectionArguments")
 Additional connection arguments such as security or protocol configs that can be sent to the service during connection.
+$$
 
 
 ## Postgres Connection
 
-
+$$section
 ### Username $(id="username")
 
 Username to connect to Postgres. This user should have privileges to read all the metadata in Postgres.
+$$
 
-
+$$section
 ### Auth Config $(id="authType")
 There are 2 types of auth configs:
 - Basic Auth.
@@ -484,18 +497,21 @@ There are 2 types of auth configs:
 - Azure Based Auth.
 
 User can authenticate the Postgres Instance with auth type as `Basic Authentication` i.e. Password **or** by using `IAM based Authentication` to connect to AWS related services **or** by using `Azure Baed Authentication` to connecto to Azure releated services.
+$$
 
 
 ## Basic Auth
 
+$$section
 ### Password $(id="password")
 
 Password to connect to Postgres.
+$$
 
 
 ## IAM Auth Config
 
-
+$$section
 ### AWS Access Key ID $(id="awsAccessKeyId")
 
 When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and authorize your requests (<a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html" target="_blank">docs</a>).
@@ -513,9 +529,9 @@ $$section
 ### AWS Secret Access Key $(id="awsSecretAccessKey")
 
 Secret access key (for example, `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`).
+$$
 
-
-
+$$section
 ### AWS Region $(id="awsRegion")
 
 Each AWS Region is a separate geographic area in which AWS clusters data centers (<a href="https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html" target="_blank">docs</a>).
@@ -523,25 +539,25 @@ Each AWS Region is a separate geographic area in which AWS clusters data centers
 As AWS can have instances in multiple regions, we need to know the region the service you want reach belongs to.
 
 Note that the AWS Region is the only required parameter when configuring a connection. When connecting to the services programmatically, there are different ways in which we can extract and use the rest of AWS configurations. You can find further information about configuring your credentials <a href="https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials" target="_blank">here</a>.
+$$
 
-
-
+$$section
 ### AWS Session Token $(id="awsSessionToken")
 
 If you are using temporary credentials to access your services, you will need to inform the AWS Access Key ID and AWS Secrets Access Key. Also, these will include an AWS Session Token.
 
 You can find more information on <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_use-resources.html" target="_blank">Using temporary credentials with AWS resources</a>.
+$$
 
-
-
+$$section
 ### Endpoint URL $(id="endPointURL")
 
 To connect programmatically to an AWS service, you use an endpoint. An *endpoint* is the URL of the entry point for an AWS web service. The AWS SDKs and the AWS Command Line Interface (AWS CLI) automatically use the default endpoint for each service in an AWS Region. But you can specify an alternate endpoint for your API requests.
 
 Find more information on <a href="https://docs.aws.amazon.com/general/latest/gr/rande.html" target="_blank">AWS service endpoints</a>.
+$$
 
-
-
+$$section
 ### Profile Name $(id="profileName")
 
 A named profile is a collection of settings and credentials that you can apply to an AWS CLI command. When you specify a profile to run a command, the settings and credentials are used to run that command. Multiple named profiles can be stored in the config and credentials files.
@@ -549,9 +565,9 @@ A named profile is a collection of settings and credentials that you can apply t
 You can inform this field if you'd like to use a profile other than `default`.
 
 Find here more information about <a href="https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html" target="_blank">Named profiles for the AWS CLI</a>.
+$$
 
-
-
+$$section
 ### Assume Role ARN $(id="assumeRoleArn")
 
 Typically, you use `AssumeRole` within your account or for cross-account access. In this field you'll set the `ARN` (Amazon Resource Name) of the policy of the other account.
@@ -561,9 +577,9 @@ A user who wants to access a role in a different account must also have permissi
 This is a required field if you'd like to `AssumeRole`.
 
 Find more information on <a href="https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html" target="_blank">AssumeRole</a>.
+$$
 
-
-
+$$section
 ### Assume Role Session Name $(id="assumeRoleSessionName")
 
 An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role is assumed by different principals or for different reasons.
@@ -571,25 +587,26 @@ An identifier for the assumed role session. Use the role session name to uniquel
 By default, we'll use the name `OpenMetadataSession`.
 
 Find more information about the <a href="https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=An%20identifier%20for%20the%20assumed%20role%20session." target="_blank">Role Session Name</a>.
+$$
 
-
-
+$$section
 ### Assume Role Source Identity $(id="assumeRoleSourceIdentity")
 
 The source identity specified by the principal that is calling the `AssumeRole` operation. You can use source identity information in AWS CloudTrail logs to determine who took actions with a role.
 
 Find more information about <a href="https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity" target="_blank">Source Identity</a>.
+$$
 
 
 ## Azure Auth Config
 
-
+$$section
 ### Client ID $(id="clientId")
 
 This is a unique identifier for the service account. To fetch this key, look for the value associated with the `client_id` key in the service account key file.
+$$
 
-
-
+$$section
 ### Client Secret $(id="clientSecret")
 To get the client secret, follow these steps:
 
@@ -601,8 +618,9 @@ To get the client secret, follow these steps:
 6. In the `Add a client secret` pop-up window, provide a description for your application secret. Choose when the application should expire, and select `Add`.
 7. From the `Client secrets` section, copy the string in the `Value` column of the newly created application secret.
 
+$$
 
-
+$$section
 ### Tenant ID $(id="tenantId")
 
 To get the tenant ID, follow these steps:
@@ -611,21 +629,21 @@ To get the tenant ID, follow these steps:
 2. Search for `App registrations` and select the `App registrations link`.
 3. Select the `Azure AD` app you're using for Power BI.
 4. From the `Overview` section, copy the `Directory (tenant) ID`.
+$$
 
-
-
+$$section
 ### Storage Account Name $(id="accountName")
 
 Account Name of your storage account
+$$
 
-
-
+$$section
 ### Key Vault Name $(id="vaultName")
 
 Key Vault Name
+$$
 
-
-
+$$section
 ### Scopes $(id="scopes")
 
 To let OM use the Trino Auth APIs using your Azure AD app, you'll need to add the scope
@@ -634,23 +652,23 @@ To let OM use the Trino Auth APIs using your Azure AD app, you'll need to add th
 3. Select the `Azure AD` app you're using for Trino.
 4. From the `Expose an API` section, copy the `Application ID URI`
 5. Make sure the URI ends with `/.default` in case it does not, you can append the same manually
+$$
 
-
-
+$$section
 ### Host and Port $(id="hostPort")
 
 This parameter specifies the host and port of the Postgres instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:5432`.
 
 If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:5432` as the value.
+$$
 
-
-
+$$section
 ### Database $(id="database")
 
 Initial Postgres database to connect to. If you want to ingest all databases, set `ingestAllDatabases` to true.
+$$
 
-
-
+$$section
 ### SSL Mode $(id="sslMode")
 
 SSL Mode to connect to postgres database. E.g, `prefer`, `verify-ca`, `allow` etc.
@@ -659,12 +677,16 @@ $$note
 if you are using `IAM auth`, select either `allow` (recommended) or other option based on your use case.
 $$
 
+$$
+
+$$section
 ### SSL CA $(id="caCertificate")
 The CA certificate used for SSL validation (`sslrootcert`).
 
-
 $$note
 Postgres only needs CA Certificate
+$$
+
 $$
 
 $$section
@@ -679,43 +701,47 @@ $$section
 If ticked, the workflow will be able to ingest all database in the cluster. If not ticked, the workflow will only ingest tables from the database set above.
 $$
 
-
+$$section
 ### Connection Arguments $(id="connectionArguments")
 
 Additional connection arguments such as security or protocol configs that can be sent to service during connection.
+$$
 
-
-
+$$section
 ### Connection Options $(id="connectionOptions")
 
 Additional connection options to build the URL that can be sent to service during the connection.
+$$
 
 
 ## SQLite Connection
 
+$$section
 ### Username $(id="username")
 
 Username to connect to SQLite. Blank for in-memory database.
+$$
 
-
+$$section
 ### Password $(id="password")
 
 Password to connect to SQLite. Blank for in-memory database.
+$$
 
-
-
+$$section
 ### Host Port $(id="hostPort")
 This parameter specifies the host and port of the SQLite instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:3306`.
 
 If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:3306` as the value.
 
 Keep it blank for in-memory databases.
+$$
 
-
+$$section
 ### Database $(id="database")
 
 Database of the data source. This is an optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, the OpenMetadata Ingestion attempts to scan all the databases.
-
+$$
 
 $$section
 ### Database Mode $(id="databaseMode")
@@ -723,13 +749,14 @@ $$section
 How to run the SQLite database. :memory: by default.
 $$
 
-
+$$section
 ### Connection Options $(id="connectionOptions")
 
 Additional connection options to build the URL that can be sent to service during the connection.
+$$
 
-
-
+$$section
 ### Connection Arguments $(id="connectionArguments")
 
 Additional connection arguments such as security or protocol configs that can be sent to service during connection.
+$$

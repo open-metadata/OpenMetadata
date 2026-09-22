@@ -18,7 +18,7 @@ import {
 } from '../constant/customPropertyAdvancedSearch';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { TopicClass } from '../support/entity/TopicClass';
-import { selectOption } from './advancedSearch';
+import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
 import { getApiContext, uuid } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 
@@ -43,6 +43,16 @@ export interface CPASTestData {
   types: { name: string; id: string }[];
   cpMetadataType: { name: string; id: string };
   createdCPData: CustomPropertyDetails[];
+}
+
+interface SearchResponseData {
+  hits: {
+    hits: Array<{
+      _source?: {
+        fullyQualifiedName?: string;
+      };
+    }>;
+  };
 }
 
 export const getCustomPropertyCreationData = (types: CPASTestData['types']) => {
@@ -278,63 +288,94 @@ export const setupCustomPropertyAdvancedSearchTest = async (
 ) => {
   const { apiContext, afterAction } = await getApiContext(page);
 
-  // Get the metadata types info required to create custom properties
-  const typesInfo = await apiContext.get(
-    '/api/v1/metadata/types?category=field&limit=20'
-  );
+  try {
+    // Get the metadata types info required to create custom properties
+    const typesInfo = await apiContext.get(
+      '/api/v1/metadata/types?category=field&limit=20'
+    );
 
-  // Get the dashboard metadata types info to add custom properties to it
-  const cpMetadataType = await apiContext.get(
-    '/api/v1/metadata/types/name/dashboard?fields=customProperties'
-  );
+    // Get the dashboard metadata types info to add custom properties to it
+    const cpMetadataType = await apiContext.get(
+      '/api/v1/metadata/types/name/dashboard?fields=customProperties'
+    );
 
-  testData.types = (await typesInfo.json()).data;
-  testData.cpMetadataType = await cpMetadataType.json();
+    testData.types = (await typesInfo.json()).data;
+    testData.cpMetadataType = await cpMetadataType.json();
 
-  // Map and prepare the data required for creating custom properties of different types
-  const cpCreationData = getCustomPropertyCreationData(testData.types);
-  testData.createdCPData = Object.values(cpCreationData);
+    // Map and prepare the data required for creating custom properties of different types
+    const cpCreationData = getCustomPropertyCreationData(testData.types);
+    testData.createdCPData = Object.values(cpCreationData);
 
-  // The API calls need to be sequential as the server replaces some types with others
-  // due to simultaneous requests causing conflicts.
-  for (const type of testData.types) {
-    const typeData = cpCreationData[type.name as keyof typeof cpCreationData];
+    // The API calls need to be sequential as the server replaces some types with others
+    // due to simultaneous requests causing conflicts.
+    for (const type of testData.types) {
+      const typeData = cpCreationData[type.name as keyof typeof cpCreationData];
 
-    if (!isUndefined(typeData)) {
-      await apiContext.put(
-        `/api/v1/metadata/types/${testData.cpMetadataType.id}`,
-        {
-          data: typeData,
-        }
-      );
+      if (!isUndefined(typeData)) {
+        await apiContext.put(
+          `/api/v1/metadata/types/${testData.cpMetadataType.id}`,
+          {
+            data: typeData,
+          }
+        );
+      }
     }
-  }
 
-  // Get the custom property to values mapping to add to the dashboard entity
-  const cpValuesData = getCustomPropertyValues(
-    testData.createdCPData,
-    topic1,
-    topic2
-  );
+    // Get the custom property to values mapping to add to the dashboard entity
+    const cpValuesData = getCustomPropertyValues(
+      testData.createdCPData,
+      topic1,
+      topic2
+    );
 
-  // Update the dashboard entity with the created custom property values
-  await apiContext.patch(
-    `/api/v1/dashboards/${dashboard.entityResponseData.id}`,
-    {
-      data: [
-        {
-          op: 'add',
-          path: '/extension',
-          value: cpValuesData,
+    // Update the dashboard entity with the created custom property values
+    await apiContext.patch(
+      `/api/v1/dashboards/${dashboard.entityResponseData.id}`,
+      {
+        data: [
+          {
+            op: 'add',
+            path: '/extension',
+            value: cpValuesData,
+          },
+        ],
+        headers: {
+          'Content-Type': 'application/json-patch+json',
         },
-      ],
-      headers: {
-        'Content-Type': 'application/json-patch+json',
-      },
-    }
-  );
+      }
+    );
 
-  await afterAction();
+    // Wait for the custom properties to be indexed in Elasticsearch
+    const cpName = Object.keys(cpValuesData)[0];
+    await expect(async () => {
+      const searchParams = new URLSearchParams({
+        q: `fullyQualifiedName:"${dashboard.entityResponseData.fullyQualifiedName}"`,
+        index: 'dashboard_search_index',
+      });
+      const res = await apiContext.get(
+        `/api/v1/search/query?${searchParams.toString()}`
+      );
+      const data = await res.json();
+      expect(data.hits.hits.length).toBeGreaterThanOrEqual(1);
+
+      const hit = data.hits.hits.find(
+        (h: {
+          _source: {
+            fullyQualifiedName?: string;
+            extension?: Record<string, unknown>;
+          };
+        }) =>
+          h._source.fullyQualifiedName ===
+          dashboard.entityResponseData.fullyQualifiedName
+      );
+      expect(hit).toBeDefined();
+      const source = hit._source;
+      expect(source.extension).toBeDefined();
+      expect(source.extension[cpName]).toBeDefined();
+    }).toPass({ timeout: 20000 });
+  } finally {
+    await afterAction();
+  }
 };
 
 export const getOperatorLabel = (operator: string): string => {
@@ -359,6 +400,55 @@ export const getOperatorLabel = (operator: string): string => {
   return operatorMap[operator] || operator;
 };
 
+// The query builder renders native date/datetime inputs, which only accept
+// ISO-like fill values — convert from the CP display format
+// (dd-MM-yyyy[ HH:mm:ss]). Detection is pattern-based because several call
+// sites don't pass propertyType.
+const DATE_DISPLAY_PATTERN = /^(\d{2})-(\d{2})-(\d{4})$/;
+const DATE_TIME_DISPLAY_PATTERN =
+  /^(\d{2})-(\d{2})-(\d{4}) (\d{2}:\d{2}:\d{2})$/;
+
+const toNativeDateInputValue = (value: string | number): string => {
+  const stringValue = String(value);
+  let result = stringValue;
+
+  const dateTimeMatch = stringValue.match(DATE_TIME_DISPLAY_PATTERN);
+  const dateMatch = stringValue.match(DATE_DISPLAY_PATTERN);
+
+  if (dateTimeMatch) {
+    const [, day, month, year, time] = dateTimeMatch;
+    result = `${year}-${month}-${day}T${time}`;
+  } else if (dateMatch) {
+    const [, day, month, year] = dateMatch;
+    result = `${year}-${month}-${day}`;
+  }
+
+  return result;
+};
+
+// Playwright's fill() rejects datetime-local values that carry seconds even
+// when the input has step=1, so converted date values are written through the
+// native value setter (fill() is used for everything else).
+const fillPropertyValue = async (
+  input: ReturnType<Page['locator']>,
+  value: string | number
+) => {
+  const nativeValue = toNativeDateInputValue(value);
+
+  if (nativeValue === String(value)) {
+    await input.fill(String(value));
+  } else {
+    await input.evaluate((element, val) => {
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        'value'
+      )?.set;
+      setter?.call(element, val);
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+    }, nativeValue);
+  }
+};
+
 const handlePropertyValueInput = async (
   page: Page,
   ruleLocator: ReturnType<Page['locator']>,
@@ -366,29 +456,32 @@ const handlePropertyValueInput = async (
   value: string | number | { start: string | number; end: string | number },
   propertyType?: string
 ) => {
-  const inputElement = ruleLocator.locator('.rule--widget input');
+  const inputElement = ruleLocator
+    .getByTestId('advanced-search-value')
+    .locator('input');
   const entityRefProperties = ['entityReference', 'entityReferenceList'];
   const isEntityRefProperty = entityRefProperties.includes(propertyType || '');
   // Fill the input only if it's visible
   if (await inputElement.isVisible()) {
     // Convert object values to JSON strings
-    const stringValue = isObject(value) ? JSON.stringify(value) : String(value);
-
-    const apiResponsePromise = isEntityRefProperty
-      ? page.waitForResponse('/api/v1/search/aggregate?*value=.%2A*')
-      : undefined;
+    const stringValue = isObject(value) ? JSON.stringify(value) : value;
 
     await inputElement.click();
 
-    if (apiResponsePromise) {
-      await apiResponsePromise;
+    if (isEntityRefProperty) {
+      await expect(
+        page.locator('[role="listbox"]:visible').getByRole('option')
+      ).not.toHaveCount(0);
     }
 
-    await inputElement.fill(stringValue);
+    await fillPropertyValue(inputElement, stringValue);
 
-    // Press Enter for multiselect operators and date types
-    if (
-      MULTISELECT_OPERATORS.includes(operator) ||
+    if (MULTISELECT_OPERATORS.includes(operator)) {
+      await page
+        .locator('[role="listbox"]:visible')
+        .getByRole('option', { name: String(value), exact: true })
+        .click();
+    } else if (
       ((operator === 'equal' || operator === 'not_equal') &&
         propertyType === 'dateTime-cp') ||
       propertyType === 'date-cp'
@@ -399,7 +492,8 @@ const handlePropertyValueInput = async (
     // Handle entity reference selection
     if (isEntityRefProperty) {
       await page
-        .locator(`.ant-select-dropdown:visible [title*="${value as string}"]`)
+        .locator('[role="listbox"]:visible [role="option"]')
+        .filter({ hasText: value as string })
         .first()
         .click();
     }
@@ -414,25 +508,27 @@ export const applyCustomPropertyFilter = async (
   entityType: string = 'Dashboard',
   propertyType?: string
 ) => {
-  const ruleLocator = page.locator('.rule').nth(0);
+  const ruleLocator = page.getByTestId('query-builder-rule-0');
 
+  // Each drill level gets its own control in the row, suffixed by depth:
+  // Custom Properties -> the entity -> the property.
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field .ant-select'),
+    ruleLocator.getByTestId('advanced-search-field-select'),
     'Custom Properties',
     true
   );
 
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field .ant-select'),
+    ruleLocator.getByTestId('advanced-search-field-select-1'),
     entityType,
     true
   );
 
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field .ant-select'),
+    ruleLocator.getByTestId('advanced-search-field-select-2'),
     propertyName,
     true
   );
@@ -440,7 +536,7 @@ export const applyCustomPropertyFilter = async (
   const operatorLabel = getOperatorLabel(operator);
   await selectOption(
     page,
-    ruleLocator.locator('.rule--operator .ant-select'),
+    ruleLocator.getByTestId('advanced-search-operator-select'),
     operatorLabel
   );
 
@@ -450,13 +546,19 @@ export const applyCustomPropertyFilter = async (
         start: string | number;
         end: string | number;
       };
-      const startInput = ruleLocator.locator('.rule--value input').first();
-      const endInput = ruleLocator.locator('.rule--value input').last();
+      const startInput = ruleLocator
+        .getByTestId('advanced-search-value')
+        .locator('input')
+        .first();
+      const endInput = ruleLocator
+        .getByTestId('advanced-search-value')
+        .locator('input')
+        .last();
 
       await startInput.click();
-      await startInput.fill(String(rangeValue.start));
+      await fillPropertyValue(startInput, rangeValue.start);
       await endInput.click();
-      await endInput.fill(String(rangeValue.end));
+      await fillPropertyValue(endInput, rangeValue.end);
 
       await page.keyboard.press('Enter');
     } else {
@@ -477,20 +579,63 @@ export const verifySearchResults = async (
   shouldBeVisible: boolean,
   filterValue?: string
 ) => {
-  const searchResponse = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=15*'
-  );
+  const searchResponsePattern =
+    '/api/v1/search/query?*index=dataAsset&from=0&size=15*';
+  const searchResponse = page.waitForResponse(searchResponsePattern);
   await page.getByTestId('apply-btn').click();
-  await searchResponse;
+  const response = await searchResponse;
 
   await waitForAllLoadersToDisappear(page);
 
   const dashboardCardSelector = `table-data-card_${dashboardFQN}`;
+  const dashboardCard = page.getByTestId(dashboardCardSelector);
 
   if (shouldBeVisible) {
-    await expect(page.getByTestId(dashboardCardSelector)).toBeVisible();
+    if (!(await dashboardCard.isVisible())) {
+      // Re-query the backend through an authenticated context. `page.request`
+      // shares cookies but NOT the app's `Authorization: Bearer <JWT>` header,
+      // so re-fetching the search URL with it returns 401 "Token not present"
+      // and the poll would never resolve. getApiContext attaches the token.
+      const { apiContext, afterAction } = await getApiContext(page);
+      try {
+        await expect
+          .poll(
+            async () => {
+              const retryResponse = await apiContext.get(response.url());
+
+              if (!retryResponse.ok()) {
+                return false;
+              }
+
+              const searchData =
+                (await retryResponse.json()) as SearchResponseData;
+
+              return searchData.hits.hits.some(
+                (hit) => hit._source?.fullyQualifiedName === dashboardFQN
+              );
+            },
+            {
+              intervals: [1000, 2000, 5000],
+              timeout: 30000,
+            }
+          )
+          .toBe(true);
+      } finally {
+        await afterAction();
+      }
+
+      await showAdvancedSearchDialog(page);
+      const retrySearchResponse = page.waitForResponse(searchResponsePattern);
+      await page.getByTestId('apply-btn').click();
+      await retrySearchResponse;
+      await waitForAllLoadersToDisappear(page);
+    }
+
+    await expect(dashboardCard).toBeVisible({ timeout: 10000 });
   } else {
-    await expect(page.getByTestId(dashboardCardSelector)).not.toBeVisible();
+    await expect(dashboardCard).not.toBeVisible({
+      timeout: 30000,
+    });
   }
 
   if (filterValue) {
@@ -504,7 +649,7 @@ export const clearAdvancedSearchFilters = async (page: Page) => {
   const clearResponse = page.waitForResponse(
     '/api/v1/search/query?*index=dataAsset*'
   );
-  await page.getByTestId('clear-filters').click();
+  await page.getByTestId('advance-search-clear-btn').click();
   await clearResponse;
   await waitForAllLoadersToDisappear(page);
 };

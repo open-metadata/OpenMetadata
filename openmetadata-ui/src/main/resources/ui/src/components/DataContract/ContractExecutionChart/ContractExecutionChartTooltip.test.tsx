@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { TooltipProps } from 'recharts';
+import type { TooltipProps } from 'recharts';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import ContractExecutionChartTooltip from './ContractExecutionChartTooltip.component';
 

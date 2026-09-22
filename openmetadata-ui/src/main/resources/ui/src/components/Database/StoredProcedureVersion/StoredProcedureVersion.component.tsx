@@ -26,12 +26,12 @@ import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
-} from '../../../utils/EntityVersionUtils';
+} from '../../../utils/EntityVersionUtilsPure';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import Description from '../../common/EntityDescription/Description';
 import Loader from '../../common/Loader/Loader';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
@@ -39,6 +39,7 @@ import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/Da
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
+import { StoredProcedureCodeCard } from '../StoredProcedureCodeCard/StoredProcedureCodeCard';
 import { StoredProcedureVersionProp } from './StoredProcedureVersion.interface';
 
 const StoredProcedureVersion = ({
@@ -51,9 +52,6 @@ const StoredProcedureVersion = ({
   tier,
   slashedTableName,
   versionList,
-  onLoadMore,
-  hasMore,
-  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -129,11 +127,14 @@ const StoredProcedureVersion = ({
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
-                  <DescriptionV1
+                  <Description
                     description={description}
                     entityType={EntityType.STORED_PROCEDURE}
                     showActions={false}
                   />
+                </Col>
+                <Col span={24}>
+                  <StoredProcedureCodeCard />
                 </Col>
               </Row>
             </Col>
@@ -230,12 +231,9 @@ const StoredProcedureVersion = ({
       <EntityVersionTimeLine
         currentVersion={toString(version)}
         entityType={EntityType.STORED_PROCEDURE}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
-        onLoadMore={onLoadMore}
       />
     </>
   );

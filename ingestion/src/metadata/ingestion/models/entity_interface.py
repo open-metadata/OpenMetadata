@@ -13,7 +13,7 @@
 Entity interface model
 """
 
-from typing import List, Optional, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 from metadata.generated.schema.type import basic, entityHistory, tagLabel
 
@@ -23,49 +23,38 @@ class EntityInterface(Protocol):
     """Entity interface model use where entity classes are used for structural typing"""
 
     @property
-    def id(self) -> basic.Uuid:
-        ...
+    def id(self) -> basic.Uuid: ...
 
     @property
-    def description(self) -> Optional[basic.Markdown]:
-        ...
+    def description(self) -> basic.Markdown | None: ...
 
     @property
-    def displayName(self) -> Optional[str]:
-        ...
+    def displayName(self) -> str | None: ...  # noqa: N802
 
     @property
-    def name(self) -> basic.EntityName:
-        ...
+    def name(self) -> basic.EntityName: ...
 
     @property
-    def version(self) -> Optional[entityHistory.EntityVersion]:
-        ...
+    def version(self) -> entityHistory.EntityVersion | None: ...
 
     @property
-    def updatedBy(self) -> Optional[str]:
-        ...
+    def updatedBy(self) -> str | None: ...  # noqa: N802
 
     @property
-    def updatedAt(self) -> Optional[basic.Timestamp]:
-        ...
+    def updatedAt(self) -> basic.Timestamp | None: ...  # noqa: N802
 
     @property
-    def href(self) -> Optional[basic.Href]:
-        ...
+    def href(self) -> basic.Href | None: ...
 
     @property
-    def changeDescription(self) -> Optional[entityHistory.ChangeDescription]:
-        ...
+    def changeDescription(self) -> entityHistory.ChangeDescription | None: ...  # noqa: N802
 
     @property
-    def fullyQualifiedName(self) -> Optional[basic.FullyQualifiedEntityName]:
-        ...
+    def fullyQualifiedName(self) -> basic.FullyQualifiedEntityName | None: ...  # noqa: N802
 
 
 class EntityInterfaceWithTags(EntityInterface, Protocol):
     """Entity interface model with tags"""
 
     @property
-    def tags(self) -> Optional[List[tagLabel.TagLabel]]:
-        ...
+    def tags(self) -> list[tagLabel.TagLabel] | None: ...

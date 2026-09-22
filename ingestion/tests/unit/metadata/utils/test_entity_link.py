@@ -88,8 +88,8 @@ def test_get_decoded_column(entity_link, expected):
             id="valid_entity_link7",
         ),
         pytest.param(
-            "<#E::table::rds.dev.dbt_jaffle.customers::columns::б>",
-            "rds.dev.dbt_jaffle.customers.б",
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::б>",  # noqa: RUF001
+            "rds.dev.dbt_jaffle.customers.б",  # noqa: RUF001
             id="valid_entity_link8",
         ),
         pytest.param(

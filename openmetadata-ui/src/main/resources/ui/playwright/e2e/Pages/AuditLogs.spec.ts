@@ -10,30 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { expect, test } from '../../support/fixtures/base';
+import {
+  navigateToAuditLogsPage,
+  verifyAuditEntryHasValidUUIDs,
+  waitForAuditLogEntry,
+} from '../../utils/auditLogs';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
-
-const navigateToAuditLogsPage = async (page: Page) => {
-  const logRequest = page.waitForResponse('/api/v1/audit/logs?*');
-  await settingClick(page, GlobalSettingOptions.AUDIT_LOGS);
-  await logRequest;
-  await page.locator('.ant-skeleton').first().waitFor({ state: 'detached' });
-  await page.getByTestId('audit-log-list').waitFor({ state: 'visible' });
-};
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
-    const customPropertiesResponsePromise = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/metadata/types/customProperties')
-    );
     await redirectToHomePage(page);
-    const customPropertiesResponse = await customPropertiesResponsePromise;
-    expect(customPropertiesResponse.status()).toBe(200);
     await navigateToAuditLogsPage(page);
   });
 
@@ -129,7 +121,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await entityTypeFilter.click();
 
       const tableOption = page
-        .locator('.ant-dropdown-menu')
+        .getByTestId('drop-down-menu')
         .getByText('Table', { exact: true });
       await expect(tableOption).toBeVisible();
 
@@ -176,7 +168,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await searchInput.fill('Table');
 
       const tableOption = page
-        .locator('.ant-dropdown-menu')
+        .getByTestId('drop-down-menu')
         .getByText('Table', { exact: true });
       await expect(tableOption).toBeVisible();
     });
@@ -284,13 +276,14 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const userSearchResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=user')
+          response.url().includes('index=user') &&
+          response.url().includes('q=admin')
       );
       await searchInput.fill('admin');
       await userSearchResponse;
 
       const adminOption = page
-        .locator('.ant-dropdown-menu')
+        .getByTestId('drop-down-menu')
         .getByText('admin', { exact: true });
       await expect(adminOption).toBeVisible();
 
@@ -322,7 +315,11 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           response.request().method() === 'GET'
       );
 
-      await page.locator('.ant-dropdown-menu-item:visible').first().click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByRole('menuitemradio')
+        .first()
+        .click();
       await page.getByTestId('update-btn').click();
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
@@ -562,9 +559,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const avatar = firstItem.getByTestId('item-avatar');
       await expect(avatar).toBeVisible();
 
-      const profilePic = avatar.locator(
-        '.profile-image-container, .ant-avatar'
-      );
+      const profilePic = avatar.locator('[data-avatar]');
       await expect(profilePic).toBeVisible();
     });
 
@@ -593,7 +588,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const filtersDropdown = page.getByTestId('search-dropdown-Entity Type');
       await filtersDropdown.click();
 
-      const popover = page.locator('.ant-dropdown-menu');
+      const popover = page.getByTestId('drop-down-menu');
       await expect(popover).toBeVisible();
       const tableOption = popover.getByText('Table', { exact: true });
       await expect(tableOption).toBeVisible();
@@ -773,6 +768,28 @@ test.describe(
 
         expect(responseData).toHaveProperty('jobId');
         expect(responseData).toHaveProperty('message');
+
+        // The job id has to name a background_jobs row. A UUID here would mean the
+        // export ran on a local executor, whose result only that server can serve.
+        expect(responseData.jobId).toMatch(/^\d+$/);
+      });
+
+      // The completion event only reaches sockets held by the server that ran the
+      // job, so the download must not depend on it arriving.
+      await test.step('Export completes and downloads the result', async () => {
+        const download = await page.waitForEvent('download', {
+          timeout: 120_000,
+        });
+
+        expect(download.suggestedFilename()).toContain('audit_logs_');
+
+        const stream = await download.createReadStream();
+        const chunks: Uint8Array[] = [];
+        for await (const chunk of stream) {
+          chunks.push(chunk as Uint8Array);
+        }
+
+        expect(Buffer.concat(chunks).toString('utf-8').trim()).toMatch(/^\[/);
       });
     });
 
@@ -963,62 +980,6 @@ test.describe(
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
     test.use({ storageState: 'playwright/.auth/admin.json' });
-
-    const POLL_TIMEOUT = 120000;
-
-    // Helper function to wait for an audit log entry to appear
-    const waitForAuditLogEntry = async (
-      apiContext: APIRequestContext,
-      _page: Page,
-      entityFqn: string,
-      entityType: string,
-      eventType: string
-    ): Promise<Record<string, unknown> | null> => {
-      let auditEntry: Record<string, unknown> | null = null;
-
-      await expect
-        .poll(
-          async () => {
-            const response = await apiContext.get(
-              `/api/v1/audit/logs?entityFQN=${encodeURIComponent(
-                entityFqn
-              )}&entityType=${entityType}&eventType=${eventType}&limit=10`
-            );
-
-            if (!response.ok()) {
-              return false;
-            }
-
-            const data = await response.json();
-            auditEntry = data.data?.[0] ?? null;
-
-            return Boolean(auditEntry);
-          },
-          {
-            timeout: POLL_TIMEOUT,
-            intervals: [1000, 2000],
-            message: `Timed out waiting for ${eventType} audit entry for ${entityType}:${entityFqn}`,
-          }
-        )
-        .toBe(true);
-
-      return auditEntry;
-    };
-
-    // Helper to verify audit entry has valid UUIDs
-    const verifyAuditEntryHasValidUUIDs = (
-      entry: Record<string, unknown>,
-      expectedEntityId: string
-    ) => {
-      // Verify changeEventId is a valid UUID (not empty)
-      expect(entry.changeEventId).toBeTruthy();
-      expect(typeof entry.changeEventId).toBe('string');
-      expect((entry.changeEventId as string).length).toBeGreaterThan(0);
-
-      // Verify entityId matches expected
-      expect(entry.entityId).toBeTruthy();
-      expect(entry.entityId).toBe(expectedEntityId);
-    };
 
     test('should create audit log entry when glossary is created', async ({
       page,
@@ -1560,7 +1521,7 @@ test.describe(
           );
           await filtersDropdown.click();
 
-          const popover = page.locator('.ant-dropdown-menu');
+          const popover = page.getByTestId('drop-down-menu');
           await expect(popover).toBeVisible();
 
           const glossaryTermsOption = popover.getByTestId('glossary');
@@ -1621,7 +1582,7 @@ test.describe(
           ).toContainText('Glossary');
 
           await expect(
-            glossaryEntry.first().locator('.description-content')
+            glossaryEntry.first().getByTestId('description-content')
           ).toContainText(glossaryName);
 
           await expect(

@@ -35,8 +35,6 @@ const dashboardEntity = new DashboardServiceClass();
 const dashboard = new DashboardClass();
 
 test.describe('Dashboards', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
-  test.slow(true);
-
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -99,8 +97,6 @@ test.describe(
   'Dashboard and Charts deleted toggle',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    test.slow(true);
-
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -130,11 +126,10 @@ test.describe(
       await page.click('[data-testid="manage-button"]');
       await page.click('[data-testid="delete-button"]');
 
-      await page.locator('[role="dialog"].ant-modal').waitFor();
+      await page.getByTestId('delete-modal').waitFor();
 
-      await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+      await expect(page.getByTestId('delete-modal')).toBeVisible();
 
-      await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
       const deleteResponse = page.waitForResponse(
         `/api/v1/${EntityTypeEndpoint.Dashboard}/async/*?hardDelete=false&recursive=true`
       );

@@ -36,16 +36,22 @@ import { UserClass } from '../support/user/UserClass';
 import {
   clickOutside,
   closeFirstPopupAlert,
-  descriptionBox,
+  fillDescriptionBox,
   getApiContext,
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
   readElementInListWithScroll,
   redirectToHomePage,
+  selectOptionWithRetry,
   uuid,
 } from './common';
 import { addOwner, waitForAllLoadersToDisappear } from './entity';
+import {
+  applyGlossaryPicker,
+  openGlossaryPicker,
+  toggleGlossaryTermInPicker,
+} from './glossaryPicker';
 import { sidebarClick } from './sidebar';
 
 const waitForSearchDebounce = async (page: Page) => {
@@ -61,6 +67,99 @@ const waitForSearchDebounce = async (page: Page) => {
     // Loader never appeared - search was instant, which is fine
     // Just continue without waiting
   }
+};
+
+// A widget shows the add button when the value is unset and the edit button
+// once it is assigned. The caller knows which state the entity is in, so it
+// passes `isUpdate` and we open the exact button — click() auto-waits for it,
+// so there is no need to probe which of the two is currently rendered.
+const openWidgetEditor = (
+  page: Page,
+  addTestId: string,
+  editTestId: string,
+  isUpdate: boolean
+) => page.getByTestId(isUpdate ? editTestId : addTestId).click();
+
+export const addTierWidget = async (
+  page: Page,
+  tier: string,
+  endpoint: string,
+  isUpdate = false
+) => {
+  await openWidgetEditor(page, 'add-tier', 'edit-tier', isUpdate);
+
+  await waitForAllLoadersToDisappear(page);
+
+  const tierRadioButton = page.getByTestId(`radio-btn-${tier}`);
+  await tierRadioButton.waitFor({ state: 'visible' });
+
+  const patchRequest = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/v1/${endpoint}`) &&
+      response.request().method() === 'PATCH'
+  );
+
+  await tierRadioButton.click();
+
+  const updateButton = page.getByTestId('update-tier-card');
+  await updateButton.waitFor({ state: 'visible' });
+  await updateButton.click();
+
+  const response = await patchRequest;
+  expect(response.status()).toBe(200);
+
+  await waitForAllLoadersToDisappear(page);
+  await clickOutside(page);
+
+  await expect(page.getByTestId('Tier')).toContainText(tier);
+};
+
+export const addCertificationWidget = async (
+  page: Page,
+  certification: TagClass,
+  endpoint: string,
+  isUpdate = false
+) => {
+  await openWidgetEditor(
+    page,
+    'add-certification',
+    'edit-certification',
+    isUpdate
+  );
+
+  await page.locator('.certification-card-popover').waitFor({
+    state: 'visible',
+  });
+  await waitForAllLoadersToDisappear(page);
+
+  await readElementInListWithScroll(
+    page,
+    page.getByTestId(
+      `radio-btn-${certification.responseData.fullyQualifiedName}`
+    ),
+    page.locator('[data-testid="certification-cards"] .ant-radio-group')
+  );
+
+  await page
+    .getByTestId(`radio-btn-${certification.responseData.fullyQualifiedName}`)
+    .click();
+
+  const patchRequest = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/v1/${endpoint}`) &&
+      response.request().method() === 'PATCH'
+  );
+  await page.getByTestId('update-certification').click();
+
+  const patchResponse = await patchRequest;
+  expect(patchResponse.status()).toBe(200);
+
+  await waitForAllLoadersToDisappear(page);
+  await clickOutside(page);
+
+  await expect(page.getByTestId('certification-label')).toContainText(
+    certification.responseData.displayName
+  );
 };
 
 export const assignCertificationForWidget = async (
@@ -122,9 +221,7 @@ export const removeTierFromWidget = async (page: Page, endpoint: string) => {
   await waitForAllLoadersToDisappear(page);
   await clickOutside(page);
 
-  await expect(
-    page.locator('[data-testid="Tier"].no-data-placeholder')
-  ).toBeVisible();
+  await expect(page.getByTestId('add-tier')).toBeVisible();
 };
 
 export const removeCertificationFromWidget = async (
@@ -150,9 +247,86 @@ export const removeCertificationFromWidget = async (
   await waitForAllLoadersToDisappear(page);
   await clickOutside(page);
 
+  await expect(page.getByTestId('add-certification')).toBeVisible();
+};
+
+export const assignDomainWidget = async (
+  page: Page,
+  domain: { name: string; displayName: string; fullyQualifiedName?: string },
+  multiSelect = false,
+  isUpdate = false
+) => {
+  await openWidgetEditor(page, 'add-domain', 'edit-domain', isUpdate);
+  await waitForAllLoadersToDisappear(page);
+
+  const searchDomain = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
+  );
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domain.name);
+  await searchDomain;
+
+  const domainTag = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
+  await domainTag.waitFor({ state: 'visible' });
+
+  if (multiSelect) {
+    await domainTag.click();
+    const patchReq = page.waitForResponse(
+      (req) => req.request().method() === 'PATCH'
+    );
+    await page.getByTestId('saveAssociatedTag').click();
+    await patchReq;
+  } else {
+    const patchReq = page.waitForResponse(
+      (req) => req.request().method() === 'PATCH'
+    );
+    await domainTag.click();
+    await patchReq;
+  }
+
+  await waitForAllLoadersToDisappear(page);
+
   await expect(
-    page.locator('[data-testid="certification-label"] .no-data-placeholder')
+    page.getByTestId('domain-link').filter({ hasText: domain.displayName })
   ).toBeVisible();
+};
+
+export const removeDomainWidget = async (
+  page: Page,
+  domain: { name: string; displayName: string; fullyQualifiedName?: string }
+) => {
+  // Removing implies a domain is already assigned, so the widget shows edit.
+  await openWidgetEditor(page, 'add-domain', 'edit-domain', true);
+  await waitForAllLoadersToDisappear(page);
+
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .clear();
+
+  const searchDomain = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
+  );
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domain.name);
+  await searchDomain;
+
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
+  await patchReq;
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(page.getByTestId('domain-link')).not.toBeVisible();
 };
 
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
@@ -166,7 +340,10 @@ export const assignDomain = async (page: Page, domain: Domain['data']) => {
     .getByTestId('searchbar')
     .fill(domain.name);
   await searchDomain;
-  await page.getByRole('listitem', { name: domain.displayName }).click();
+  await page
+    .locator('[data-testid="owner-option"]')
+    .filter({ hasText: domain.displayName })
+    .click();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
@@ -193,7 +370,10 @@ export const updateDomain = async (page: Page, domain: Domain['data']) => {
     .getByTestId('searchbar')
     .fill(domain.name);
   await searchDomain;
-  await page.getByRole('listitem', { name: domain.displayName }).click();
+  await page
+    .locator('[data-testid="owner-option"]')
+    .filter({ hasText: domain.displayName })
+    .click();
 
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName
@@ -238,18 +418,47 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
   const searchBox = page
     .getByTestId('page-layout-v1')
     .getByPlaceholder('Search');
+  const domainRow = page.getByTestId(domain.name);
 
   await waitForAllLoadersToDisappear(page);
 
-  await Promise.all([
-    searchBox.fill(domain.name),
-    page.waitForResponse('/api/v1/search/query?q=*&index=domain*'),
-  ]);
+  // The domain listing is search-backed, and search indexing is eventually
+  // consistent — a domain created moments ago can legitimately be missing from
+  // the first query. Retry the search, reloading between attempts, so the row
+  // is only clicked once it is actually there; otherwise the click auto-waits
+  // against a list that will never contain it and burns the test timeout.
+  let hasSearched = false;
+  await expect
+    .poll(
+      async () => {
+        if (hasSearched) {
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+        }
+        hasSearched = true;
 
-  await waitForSearchDebounce(page);
+        await Promise.all([
+          searchBox.fill(domain.name),
+          page.waitForResponse('/api/v1/search/query?q=*&index=domain*'),
+        ]);
 
+        await waitForSearchDebounce(page);
+
+        return domainRow.isVisible();
+      },
+      {
+        message: `Wait for domain "${domain.name}" to appear in the domain listing`,
+        timeout: 60_000,
+        intervals: [2_000, 3_000, 5_000],
+      }
+    )
+    .toBe(true);
+
+  // Click the domain name cell, not the row center — the row's center column is
+  // the glossary-terms cell whose tags are their own links, so a row-center
+  // click lands on a tag instead of triggering the domain navigation.
   await Promise.all([
-    page.getByTestId(domain.name).click(),
+    domainRow.getByTestId('entity-name').click(),
     page.waitForResponse('/api/v1/domains/name/*'),
   ]);
 
@@ -333,16 +542,51 @@ export const selectDataProduct = async (
   await waitForAllLoadersToDisappear(page);
   await searchBox.waitFor({ state: 'visible' });
 
-  await Promise.all([
-    page.waitForResponse('/api/v1/search/query?q=*&index=dataProduct*'),
-    searchBox.fill(dataProduct.name),
-  ]);
+  const dataProductRow = page.getByTestId(dataProduct.name);
 
-  await waitForSearchDebounce(page);
+  // Same eventual consistency as the domain listing above: a data product
+  // created moments ago can be missing from the first query, and the listing
+  // re-queries only when the search text changes. Retry the search, reloading
+  // between attempts, so the row is clicked only once it is really there.
+  //
+  // The response wait deliberately lives outside this callback -- waits here
+  // are test-bound, so a `waitForResponse` that never matches would hang the
+  // callback and the poll could never retry it.
+  let hasSearched = false;
+  await expect
+    .poll(
+      async () => {
+        if (hasSearched) {
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+          await searchBox.waitFor({ state: 'visible' });
+        }
+        hasSearched = true;
 
+        await searchBox.fill('');
+        await searchBox.fill(dataProduct.name);
+
+        await waitForSearchDebounce(page);
+
+        return dataProductRow.isVisible();
+      },
+      {
+        message: `Wait for data product "${dataProduct.name}" to appear in the data product listing`,
+        // Deliberately well under the default 60s test budget: most callers of
+        // this helper do not set test.slow(), and a poll sized to the whole
+        // budget would starve the rest of the test instead of failing it.
+        timeout: 30_000,
+        intervals: [1_000, 2_000, 3_000, 5_000],
+      }
+    )
+    .toBe(true);
+
+  // Click the data product name cell, not the row center — the row's center
+  // column can be the glossary-terms cell whose tags are their own links, so a
+  // row-center click lands on a tag instead of triggering navigation.
   await Promise.all([
     page.waitForResponse('/api/v1/dataProducts/name/*'),
-    page.getByTestId(dataProduct.name).click(),
+    dataProductRow.getByTestId('entity-name').click(),
   ]);
 
   await waitForAllLoadersToDisappear(page);
@@ -388,13 +632,25 @@ export const verifyAssetsInDomain = async (
   }
 };
 
+/**
+ * Fill the fields AddDomainForm shares between domains, subdomains and data
+ * products.
+ *
+ * Everything is resolved through the `add-domain-form` container rather than
+ * off `page`: DomainDetails mounts the data product drawer and the subdomain
+ * drawer as siblings, so a page-global `#root/name` or `descriptionBox` can see
+ * a second copy of this very form and strict mode violate (merge queue run
+ * 33847455975 ejected #32465 that way).
+ */
 export const fillCommonFormItems = async (
   page: Page,
   entity: Domain['data'] | DataProduct['data'] | SubDomain['data']
 ) => {
-  await page.locator('#root\\/name').fill(entity.name);
-  await page.locator('#root\\/displayName').fill(entity.displayName);
-  await page.locator(descriptionBox).fill(entity.description);
+  const form = page.getByTestId('add-domain-form');
+
+  await form.locator('#root\\/name').fill(entity.name);
+  await form.locator('#root\\/displayName').fill(entity.displayName);
+  await fillDescriptionBox(form, entity.description);
   if (!isEmpty(entity.owners) && !isUndefined(entity.owners)) {
     await addOwner({
       page,
@@ -409,15 +665,42 @@ export const fillCommonFormItems = async (
 
 export const fillDomainForm = async (
   page: Page,
-  entity: Domain['data'] | SubDomain['data'],
-  isDomain = true
+  entity: Domain['data'] | SubDomain['data']
 ) => {
   await fillCommonFormItems(page, entity);
 
-  const domainTypeCombo = page.getByRole('combobox', { name: 'Domain Type' });
-  await domainTypeCombo.click();
+  const domainTypeTrigger = page
+    .getByTestId('add-domain-form')
+    .getByTestId('domainType')
+    .getByRole('button');
+  const domainTypeOption = page.getByRole('option', {
+    name: entity.domainType,
+    exact: true,
+  });
 
-  await page.getByRole('option', { name: entity.domainType }).click();
+  // React Aria can close the listbox mid-click and detach the option
+  // ("element was detached from the DOM"); selectOptionWithRetry re-resolves the
+  // trigger's expanded state and reopens the popover before retrying the click.
+  await selectOptionWithRetry(domainTypeTrigger, domainTypeOption);
+};
+
+/**
+ * Submit the AddDomain/AddDataProduct drawer via its footer Save button.
+ *
+ * The drawer is a SlideoutMenu whose footer height is coupled to its
+ * (re-rendering) body, so the footer — and the Save button inside it — keeps
+ * shifting while the form settles. A pointer `click()` gates on Playwright's
+ * "stable" actionability check and can spin until the test times out
+ * ("element is not stable" → "element was detached from the DOM"), especially
+ * under CI load. save-btn is a native <button>, so focus it (focus() has no
+ * stability gate) and activate it with Enter, which fires the button's native
+ * click without needing a stable pointer target.
+ */
+export const clickDrawerSave = async (page: Page) => {
+  const saveButton = page.getByTestId('save-btn');
+  await expect(saveButton).toBeVisible();
+  await saveButton.focus();
+  await page.keyboard.press('Enter');
 };
 
 export const checkDomainDisplayName = async (
@@ -485,6 +768,44 @@ export const checkDataProductCount = async (page: Page, count: number) => {
     .toBe(count.toString());
 };
 
+/**
+ * Asserts the sub-domain tab count, alongside checkAssetsCount and
+ * checkDataProductCount.
+ *
+ * Unlike those two this reloads between attempts. The sub-domain count is
+ * rendered from a search query the domain page issues once, on mount, and
+ * search indexing is eventually consistent — so a render that raced indexing
+ * never refreshes itself and polling the label alone would just re-read a
+ * frozen DOM until the timeout. Reloading re-issues the query.
+ */
+export const checkSubDomainCount = async (page: Page, count: number) => {
+  let shouldReload = false;
+
+  await expect
+    .poll(
+      async () => {
+        if (shouldReload) {
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+        }
+        shouldReload = true;
+
+        const text = await page
+          .getByTestId('subdomains')
+          .getByTestId('count')
+          .textContent();
+
+        return text?.trim();
+      },
+      {
+        message: `Wait for the sub-domain tab count to reach ${count}`,
+        timeout: 120_000,
+        intervals: [2_000, 3_000, 5_000],
+      }
+    )
+    .toBe(count.toString());
+};
+
 export const verifyDomain = async (
   page: Page,
   domain: Domain['data'] | SubDomain['data'],
@@ -505,9 +826,9 @@ export const verifyDomain = async (
     ).toContainText(domain.owners[0].name);
   }
 
-  await expect(
-    page.getByTestId('domain-type-label').locator('div')
-  ).toContainText(domain.domainType);
+  await expect(page.getByTestId('domain-type-label')).toContainText(
+    domain.domainType
+  );
 
   // Check breadcrumbs
   if (!isDomain && parentDomain) {
@@ -556,7 +877,7 @@ export const createSubDomain = async (
 
   await expect(page.getByText('Add Sub Domain')).toBeVisible();
 
-  await fillDomainForm(page, subDomain, false);
+  await fillDomainForm(page, subDomain);
   const saveRes = page.waitForResponse('/api/v1/domains');
   await page.getByTestId('save-btn').click();
   await saveRes;
@@ -574,9 +895,7 @@ export const addAssetsToDomain = async (
   }
   await checkAssetsCount(page, 0);
 
-  await expect(page.getByTestId('no-data-placeholder')).toContainText(
-    "Looks like you haven't added any data assets yet."
-  );
+  await expect(page.getByTestId('empty-placeholder')).toBeVisible();
 
   await page.getByTestId('domain-details-add-button').click();
   const assetRes = page.waitForResponse('/api/v1/search/query?q=&index=all&*');
@@ -680,9 +999,7 @@ export const addAssetsToDataProduct = async (
   await page.getByTestId('assets').click();
   await checkAssetsCount(page, 0);
 
-  await expect(page.getByTestId('no-data-placeholder')).toContainText(
-    "Looks like you haven't added any data assets yet."
-  );
+  await expect(page.getByTestId('empty-placeholder')).toBeVisible();
 
   const assetRes = page.waitForResponse('/api/v1/search/query?q=&index=all&*');
   await page.getByTestId('data-product-details-add-button').click();
@@ -822,9 +1139,10 @@ export const createDataProductFromListPage = async (
   await fillCommonFormItems(page, dataProduct);
 
   // Fill domain field (required when creating from list page)
-  const domainInput = page.getByTestId('domain-select');
-  await domainInput.scrollIntoViewIfNeeded();
-  await domainInput.waitFor({ state: 'visible' });
+  const domainContainer = page.getByTestId('domain-select');
+  await domainContainer.scrollIntoViewIfNeeded();
+  await domainContainer.waitFor({ state: 'visible' });
+  const domainInput = domainContainer.getByRole('combobox');
   await domainInput.click();
 
   const searchDomain = page.waitForResponse(
@@ -933,51 +1251,43 @@ export const addTagsAndGlossaryToDomain = async (
   {
     tagFqn,
     glossaryTermFqn,
+    glossaryTermName,
     isDomain = true,
   }: {
     tagFqn: string;
     glossaryTermFqn: string;
+    // From the term, never split out of the FQN: a name can contain dots.
+    glossaryTermName: string;
     isDomain?: boolean;
   }
 ) => {
-  const addTagOrTerm = async (
-    containerType: 'tags' | 'glossary',
-    value: string
-  ) => {
-    const container = `[data-testid="${containerType}-container"]`;
+  const patchUrl = (response: import('@playwright/test').Response) =>
+    response
+      .url()
+      .includes(`/api/v1/${isDomain ? 'domains' : 'dataProducts'}/`) &&
+    response.request().method() === 'PATCH';
 
-    // Click add button
-    await page.locator(`${container} [data-testid="add-tag"]`).click();
+  // Add classification tag (still uses the old tag-select form)
+  const tagsContainer = '[data-testid="tags-container"]';
+  await page.locator(`${tagsContainer} [data-testid="add-tag"]`).click();
+  const tagInput = page.locator(`${tagsContainer} #tagsForm_tags`);
+  await tagInput.click();
+  await tagInput.fill(tagFqn);
+  await page.getByTestId(`tag-${tagFqn}`).click();
+  const tagPatchResponse = page.waitForResponse(patchUrl);
+  await page.getByTestId('saveAssociatedTag').click();
+  await tagPatchResponse;
 
-    // Fill and select tag/term
-    const input = page.locator(`${container} #tagsForm_tags`);
-    await input.click();
-    await input.fill(value);
-    const tag = page.getByTestId(`tag-${value}`);
-    if (containerType === 'glossary') {
-      // To avoid clicking on white space between checkbox and text
-      await tag.locator('.ant-select-tree-checkbox').click();
-    } else {
-      await tag.click();
-    }
-
-    // Save and wait for response
-    const updateResponse = page.waitForResponse(
-      (response) =>
-        response
-          .url()
-          .includes(`/api/v1/${isDomain ? 'domains' : 'dataProducts'}/`) &&
-        response.request().method() === 'PATCH'
-    );
-    await page.getByTestId('saveAssociatedTag').click();
-    await updateResponse;
-  };
-
-  // Add tag
-  await addTagOrTerm('tags', tagFqn);
-
-  // Add glossary term
-  await addTagOrTerm('glossary', glossaryTermFqn);
+  // Add glossary term (uses the new GlossaryTermPicker)
+  await openGlossaryPicker(
+    page,
+    page.locator('[data-testid="glossary-container"] [data-testid="add-tag"]')
+  );
+  await toggleGlossaryTermInPicker(page, {
+    name: glossaryTermName,
+    fullyQualifiedName: glossaryTermFqn,
+  });
+  await applyGlossaryPicker(page, patchUrl);
 };
 
 /**
@@ -1160,11 +1470,13 @@ export const setupDomainHasDomainTest = async (
     patchData: [
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: mainDomain.responseData.id,
-          type: 'domain',
-        },
+        path: '/domains',
+        value: [
+          {
+            id: mainDomain.responseData.id,
+            type: 'domain',
+          },
+        ],
       },
     ],
   });
@@ -1174,11 +1486,13 @@ export const setupDomainHasDomainTest = async (
     patchData: [
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: subDomain.responseData.id,
-          type: 'domain',
-        },
+        path: '/domains',
+        value: [
+          {
+            id: subDomain.responseData.id,
+            type: 'domain',
+          },
+        ],
       },
     ],
   });
@@ -1273,11 +1587,13 @@ export const setupNoDomainRule = async (apiContext: APIRequestContext) => {
     patchData: [
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: mainDomain.responseData.id,
-          type: 'domain',
-        },
+        path: '/domains',
+        value: [
+          {
+            id: mainDomain.responseData.id,
+            type: 'domain',
+          },
+        ],
       },
     ],
   });
@@ -1396,7 +1712,7 @@ export const verifyDataProductsCount = async (
         },
         {
           message: `Wait for data product search index to show ${expectedCount} results for domain "${domainFqn}"`,
-          timeout: 30_000,
+          timeout: 120_000,
           intervals: [2_000, 3_000, 5_000],
         }
       )
@@ -1439,6 +1755,20 @@ export const navigateToPortsTab = async (page: Page) => {
   const portsTab = page.getByTestId('input_output_ports');
   await portsTab.waitFor({ state: 'visible' });
 
+  // Already on the ports tab: clicking the active tab is a no-op that fires no
+  // /portsView request — waiting on that response would hang until the test
+  // timeout. The selected tab exposes `aria-selected` via its `role="tab"`.
+  const isActive = await page
+    .getByRole('tab', { selected: true })
+    .getByTestId('input_output_ports')
+    .isVisible();
+
+  if (isActive) {
+    await waitForAllLoadersToDisappear(page);
+
+    return;
+  }
+
   const portsViewResponse = page.waitForResponse((response) =>
     response.url().includes('/portsView')
   );
@@ -1448,16 +1778,117 @@ export const navigateToPortsTab = async (page: Page) => {
 };
 
 /**
+ * Waits for a port row to appear in the ports list, reloading if it does not.
+ *
+ * The ports endpoint sources its rows and its total from two separate queries
+ * and drops records whose entity cannot be resolved without adjusting the
+ * total, so it can answer with no rows next to a non-zero total. The list
+ * fetches only on mount, so that empty result is held until the component
+ * remounts — waiting alone can never recover, but a reload can.
+ */
+export const waitForPortRow = async (page: Page, portId: string) => {
+  const portRow = page.getByTestId(`port-actions-${portId}`);
+
+  await expect
+    .poll(
+      async () => {
+        if (await portRow.isVisible()) {
+          return true;
+        }
+
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await waitForAllLoadersToDisappear(page);
+
+        if (!(await page.getByTestId('input-output-ports-tab').isVisible())) {
+          await navigateToPortsTab(page);
+        }
+
+        return portRow.isVisible();
+      },
+      { timeout: 60_000, intervals: [2_000, 5_000, 10_000] }
+    )
+    .toBe(true);
+};
+
+/**
  * Expands the lineage section in the InputOutputPortsTab.
- * Only expands if currently collapsed.
+ * No-op when the section is already expanded.
  */
 export const expandLineageSection = async (page: Page) => {
-  const portsViewRes = page.waitForResponse((response) =>
-    response.url().includes('/portsView')
-  );
-  await page.getByTestId('toggle-lineage-collapse').click();
-  await portsViewRes;
+  const header = page.getByTestId('toggle-lineage-collapse');
+  await header.waitFor({ state: 'visible' });
+
+  // The header is a toggle, so clicking it while the section is already
+  // expanded collapses it — and no /portsView request follows, which left the
+  // response wait below hanging until the test timeout.
+  const alreadyExpanded =
+    (await header.getAttribute('aria-expanded')) === 'true';
+
+  if (!alreadyExpanded) {
+    // Match only the lineage fetch. The port-count probe hits the same
+    // /portsView endpoint but always carries pagination params, so matching on
+    // '/portsView' alone can resolve against the counts response while the
+    // lineage request is still in flight.
+    const lineageResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/portsView') &&
+        !response.url().includes('inputLimit=')
+    );
+
+    await header.click();
+    await lineageResponse;
+  }
+
   await waitForAllLoadersToDisappear(page);
+
+  // Settle on the rendered end state. A loader count alone can pass vacuously
+  // when React has not yet mounted the loader, letting callers act on a panel
+  // that is still loading.
+  await page
+    .getByTestId('ports-lineage-view')
+    .or(page.locator('.ports-lineage-view-empty'))
+    .first()
+    .waitFor({ state: 'visible' });
+};
+
+/**
+ * Expands the lineage section and waits for the populated lineage graph to
+ * render, reloading if it does not.
+ *
+ * `PortsLineageView` decides between the graph and the empty placeholder from
+ * the lineage /portsView response's port arrays, and it builds nodes only on
+ * mount. That endpoint sources rows and total from two separate queries and
+ * drops records whose entity cannot be resolved without adjusting the total,
+ * so it can answer with empty port arrays next to a non-zero total. When it
+ * does, the component paints the empty placeholder (`.ports-lineage-view-empty`,
+ * which has no `toggle-fullscreen-btn`) and holds it until the component
+ * remounts — so waiting alone can never recover, but a reload can. Use this in
+ * tests that assert on or interact with the graph itself.
+ */
+export const waitForLineageGraph = async (page: Page) => {
+  const lineageView = page.getByTestId('ports-lineage-view');
+
+  await expect
+    .poll(
+      async () => {
+        await expandLineageSection(page);
+
+        if (await lineageView.isVisible()) {
+          return true;
+        }
+
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await waitForAllLoadersToDisappear(page);
+
+        if (!(await page.getByTestId('input-output-ports-tab').isVisible())) {
+          await navigateToPortsTab(page);
+        }
+
+        return false;
+      },
+      { timeout: 60_000, intervals: [2_000, 5_000, 10_000] }
+    )
+    .toBe(true);
 };
 
 /**
@@ -1647,45 +2078,19 @@ export const selectDomainFromNavbar = async (
   const domainDropdown = page.getByTestId('domain-dropdown');
   const domainTree = page.getByTestId('domain-selectable-tree');
   const searchTerm = domain.displayName ?? domain.name;
-  const domainOption = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
 
-  const openDropdown = async () => {
-    await domainDropdown.click();
-    await domainTree.waitFor({ state: 'visible' });
-  };
+  await domainDropdown.click();
+  await page
+    .getByTestId('domain-selectable-tree')
+    .waitFor({ state: 'visible' });
 
-  await openDropdown();
+  await domainTree.getByTestId('searchbar').waitFor({ state: 'visible' });
 
-  const searchBar = domainTree.locator('input[placeholder]').first();
+  await domainTree.getByTestId('searchbar').click();
+  await page.keyboard.press('Control+a');
+  await domainTree.getByTestId('searchbar').pressSequentially(searchTerm);
 
-  await expect
-    .poll(
-      async () => {
-        if (!(await domainTree.isVisible().catch(() => false))) {
-          await openDropdown();
-        }
-
-        const isSearchBarVisible = await searchBar
-          .isVisible()
-          .catch(() => false);
-
-        if (isSearchBarVisible) {
-          await searchBar.focus();
-          await searchBar.press('Control+a');
-          await searchBar.pressSequentially(searchTerm);
-        }
-
-        return await domainOption.isVisible().catch(() => false);
-      },
-      {
-        timeout: 60000,
-        intervals: [1000, 2000, 5000],
-        message: `Timed out waiting for domain ${searchTerm} to appear in navbar selector`,
-      }
-    )
-    .toBe(true);
-
-  await domainOption.click();
+  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -1778,11 +2183,13 @@ export const assignDomainToEntity = async (
     patchData: [
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: domain.responseData.id,
-          type: 'domain',
-        },
+        path: '/domains',
+        value: [
+          {
+            id: domain.responseData.id,
+            type: 'domain',
+          },
+        ],
       },
     ],
   });
@@ -1833,9 +2240,10 @@ export const openDataProductDrawer = async (page: Page, domain: Domain) => {
   await descriptionEditor.click();
   await page.keyboard.type('Test data product description');
 
-  const domainInput = page.getByTestId('domain-select');
-  await domainInput.scrollIntoViewIfNeeded();
-  await domainInput.waitFor({ state: 'visible' });
+  const domainContainer = page.getByTestId('domain-select');
+  await domainContainer.scrollIntoViewIfNeeded();
+  await domainContainer.waitFor({ state: 'visible' });
+  const domainInput = domainContainer.getByRole('combobox');
   await domainInput.click();
 
   const searchDomain = page.waitForResponse(

@@ -11,6 +11,7 @@
 """
 This module defines the CLI commands for OpenMetadata
 """
+
 import argparse
 import logging
 import sys
@@ -19,8 +20,6 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 # pyright: reportUnusedCallResult=false
-from typing import List, Optional, Union
-
 from metadata.__version__ import get_metadata_version
 from metadata.cli.app import run_app
 from metadata.cli.classify import run_classification
@@ -76,6 +75,13 @@ def create_common_config_parser_args(parser: argparse.ArgumentParser):
         type=Path,
         required=True,
     )
+    parser.add_argument(
+        "--status-file",
+        help="path to write structured JSON status output (optional)",
+        type=Path,
+        required=False,
+        default=None,
+    )
 
 
 def create_dbt_parser_args(parser: argparse.ArgumentParser):
@@ -87,8 +93,14 @@ def create_dbt_parser_args(parser: argparse.ArgumentParser):
         "--dbt-project-path",
         help="path to the dbt project directory (default: current directory)",
         type=Path,
-        default=Path("."),
+        default=Path("."),  # noqa: PTH201
         required=False,
+    )
+    parser.add_argument(
+        "--status-file",
+        help="path to write structured JSON status output (optional)",
+        type=Path,
+        default=None,
     )
 
 
@@ -96,9 +108,7 @@ def webhook_args(parser: argparse.ArgumentParser):
     """
     Additional Parser Arguments for Webhook
     """
-    parser.add_argument(
-        "-H", "--host", help="Webserver Host", type=str, default="0.0.0.0"
-    )
+    parser.add_argument("-H", "--host", help="Webserver Host", type=str, default="0.0.0.0")
     parser.add_argument("-p", "--port", help="Webserver Port", type=int, default=8000)
 
 
@@ -106,9 +116,7 @@ def add_metadata_args(parser: argparse.ArgumentParser):
     """
     Additional Parser Arguments for Metadata
     """
-    parser.add_argument(
-        "-v", "--version", action="version", version=get_metadata_version()
-    )
+    parser.add_argument("-v", "--version", action="version", version=get_metadata_version())
 
     parser.add_argument(
         "-l",
@@ -118,24 +126,16 @@ def add_metadata_args(parser: argparse.ArgumentParser):
     )
 
 
-def get_parser(args: Optional[List[str]] = None):
+def get_parser(args: list[str] | None = None):
     """
     Parser method that returns parsed_args
     """
     parser = argparse.ArgumentParser(prog="metadata", description="Ingestion Framework")
     sub_parser = parser.add_subparsers(dest="command")
 
-    create_common_config_parser_args(
-        sub_parser.add_parser(MetadataCommands.INGEST.value, help="Ingestion Workflow")
-    )
-    create_dbt_parser_args(
-        sub_parser.add_parser(
-            MetadataCommands.INGEST_DBT.value, help="DBT Artifacts Ingestion"
-        )
-    )
-    create_common_config_parser_args(
-        sub_parser.add_parser(MetadataCommands.LINEAGE.value, help="Lineage Workflow")
-    )
+    create_common_config_parser_args(sub_parser.add_parser(MetadataCommands.INGEST.value, help="Ingestion Workflow"))
+    create_dbt_parser_args(sub_parser.add_parser(MetadataCommands.INGEST_DBT.value, help="DBT Artifacts Ingestion"))
+    create_common_config_parser_args(sub_parser.add_parser(MetadataCommands.LINEAGE.value, help="Lineage Workflow"))
     create_common_config_parser_args(
         sub_parser.add_parser(
             MetadataCommands.USAGE.value,
@@ -149,9 +149,7 @@ def get_parser(args: Optional[List[str]] = None):
         )
     )
     create_common_config_parser_args(
-        sub_parser.add_parser(
-            MetadataCommands.TEST.value, help="Workflow for running test suites"
-        )
+        sub_parser.add_parser(MetadataCommands.TEST.value, help="Workflow for running test suites")
     )
     create_common_config_parser_args(
         sub_parser.add_parser(
@@ -175,12 +173,8 @@ def get_parser(args: Optional[List[str]] = None):
         MetadataCommands.SCAFFOLD_CONNECTOR.value,
         help="Scaffold a new connector (interactive or with flags)",
     )
-    scaffold_parser.add_argument(
-        "--name", help="Connector name in snake_case (e.g., my_db)"
-    )
-    scaffold_parser.add_argument(
-        "--service-type", choices=SERVICE_TYPES, help="Service type"
-    )
+    scaffold_parser.add_argument("--name", help="Connector name in snake_case (e.g., my_db)")
+    scaffold_parser.add_argument("--service-type", choices=SERVICE_TYPES, help="Service type")
     scaffold_parser.add_argument(
         "--connection-type",
         choices=CONNECTION_TYPES,
@@ -204,12 +198,8 @@ def get_parser(args: Optional[List[str]] = None):
     )
     scaffold_parser.add_argument("--display-name", help="Display name")
     scaffold_parser.add_argument("--description", help="Short description")
-    scaffold_parser.add_argument(
-        "--docs-url", help="API/SDK documentation URL (included in AI context)"
-    )
-    scaffold_parser.add_argument(
-        "--sdk-package", help="Python SDK package name (included in AI context)"
-    )
+    scaffold_parser.add_argument("--docs-url", help="API/SDK documentation URL (included in AI context)")
+    scaffold_parser.add_argument("--sdk-package", help="Python SDK package name (included in AI context)")
     scaffold_parser.add_argument(
         "--api-endpoints",
         help="Key API endpoints (included in AI context)",
@@ -233,14 +223,15 @@ def get_parser(args: Optional[List[str]] = None):
     return parser.parse_args(args)
 
 
-def metadata(args: Optional[List[str]] = None):
+def metadata(args: list[str] | None = None):
     """
     This method implements parsing of the arguments passed from CLI
     """
     contains_args = vars(get_parser(args))
     metadata_workflow = contains_args.get("command")
-    config_file: Optional[Path] = contains_args.get("config")
-    dbt_project_path: Optional[Path] = contains_args.get("dbt_project_path")
+    config_file: Path | None = contains_args.get("config")
+    dbt_project_path: Path | None = contains_args.get("dbt_project_path")
+    status_file: Path | None = contains_args.get("status_file")
 
     path = None
     if config_file:
@@ -251,11 +242,11 @@ def metadata(args: Optional[List[str]] = None):
     if contains_args.get("debug"):
         set_loggers_level(logging.DEBUG)
     else:
-        log_level: Union[str, int] = contains_args.get("log_level") or logging.INFO
+        log_level: str | int = contains_args.get("log_level") or logging.INFO
         set_loggers_level(log_level)
 
     if path and metadata_workflow and metadata_workflow in RUN_PATH_METHODS:
-        RUN_PATH_METHODS[metadata_workflow](path)
+        RUN_PATH_METHODS[metadata_workflow](path, status_file)
 
     if metadata_workflow == MetadataCommands.SCAFFOLD_CONNECTOR.value:
         has_name = contains_args.get("name")
@@ -263,9 +254,7 @@ def metadata(args: Optional[List[str]] = None):
         if has_name and has_type:
             run_scaffold_cli(argparse.Namespace(**contains_args))
         elif has_name or has_type:
-            logger.error(
-                "Both --name and --service-type are required for non-interactive mode."
-            )
+            logger.error("Both --name and --service-type are required for non-interactive mode.")
             sys.exit(1)
         else:
             run_scaffold_interactive()
@@ -290,10 +279,6 @@ def metadata(args: Optional[List[str]] = None):
                 self.send_header("Content-type", "application/json")
                 self.end_headers()
 
-        logger.info(
-            f"Starting server at {contains_args.get('host')}:{contains_args.get('port')}"
-        )
-        with HTTPServer(
-            (contains_args["host"], contains_args["port"]), WebhookHandler
-        ) as server:
+        logger.info(f"Starting server at {contains_args.get('host')}:{contains_args.get('port')}")
+        with HTTPServer((contains_args["host"], contains_args["port"]), WebhookHandler) as server:
             server.serve_forever()

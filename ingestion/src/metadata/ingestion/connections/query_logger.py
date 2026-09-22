@@ -13,8 +13,9 @@
 """
 Query tracking implementation using SQLAlchemy event listeners
 """
+
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.event import listen
@@ -31,29 +32,29 @@ class QueryInfo(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    statement: Union[str, TextClause]
-    parameters: Optional[Union[Dict[str, Any], Tuple[Any, ...]]]
+    statement: str | TextClause
+    parameters: dict[str, Any] | tuple[Any, ...] | None
     start_time: datetime
-    end_time: Optional[datetime] = None
-    duration_ms: Optional[float] = None
-    error: Optional[Exception] = None
+    end_time: datetime | None = None
+    duration_ms: float | None = None
+    error: Exception | None = None
 
 
 class QueryLogger:
     """Class to track SQL query execution using SQLAlchemy event listeners"""
 
     def __init__(self):
-        self._current_query: Optional[QueryInfo] = None
+        self._current_query: QueryInfo | None = None
 
     def before_cursor_execute(
         self,
         conn: Any,
         cursor: Any,
-        statement: Union[str, TextClause],
-        parameters: Optional[Dict[str, Any]],
+        statement: str | TextClause,
+        parameters: dict[str, Any] | None,
         context: Any,
         executemany: bool,
-    ) -> Tuple[Union[str, TextClause], Optional[Dict[str, Any]]]:
+    ) -> tuple[str | TextClause, dict[str, Any] | None]:
         """Event listener for before cursor execute"""
         self._current_query = QueryInfo(
             statement=statement,
@@ -66,8 +67,8 @@ class QueryLogger:
         self,
         conn: Any,
         cursor: Any,
-        statement: Union[str, TextClause],
-        parameters: Optional[Dict[str, Any]],
+        statement: str | TextClause,
+        parameters: dict[str, Any] | None,
         context: Any,
         executemany: bool,
     ) -> None:
@@ -75,9 +76,7 @@ class QueryLogger:
         if self._current_query:
             query = self._current_query
             query.end_time = datetime.now(timezone.utc)
-            query.duration_ms = (
-                query.end_time - query.start_time
-            ).total_seconds() * 1000
+            query.duration_ms = (query.end_time - query.start_time).total_seconds() * 1000
 
             logger.debug(
                 "Query execution details:\n"
@@ -98,17 +97,15 @@ class QueryLogger:
             self._current_query = None
 
     @staticmethod
-    def _extract_query_type(statement: Union[str, TextClause]) -> str:
+    def _extract_query_type(statement: str | TextClause) -> str:
         """Extract the query type (SELECT, INSERT, etc.) from a SQL statement"""
         if isinstance(statement, TextClause):
             statement = str(statement)
 
         statement_str = statement.strip().upper() if statement else ""
         if statement_str:
-            first_word = (
-                statement_str.split()[0] if statement_str.split() else "UNKNOWN"
-            )
-            return first_word
+            first_word = statement_str.split()[0] if statement_str.split() else "UNKNOWN"
+            return first_word  # noqa: RET504
         return "UNKNOWN"
 
 

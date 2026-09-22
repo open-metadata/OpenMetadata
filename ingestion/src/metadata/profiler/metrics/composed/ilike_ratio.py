@@ -14,7 +14,7 @@ ILIKE Ratio Composed Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import ComposedMetric
@@ -35,14 +35,14 @@ class ILikeRatio(ComposedMetric):
         return MetricType.iLikeRatio.value
 
     @classmethod
-    def required_metrics(cls) -> Tuple[str, ...]:
+    def required_metrics(cls) -> tuple[str, ...]:
         return Count.name(), ILikeCount.name()
 
     @property
     def metric_type(self):
         return float
 
-    def fn(self, res: Dict[str, Any]) -> Optional[float]:
+    def fn(self, res: dict[str, Any]) -> float | None:
         """
         Safely compute null ratio based on the profiler
         results of other Metrics

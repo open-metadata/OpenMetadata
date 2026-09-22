@@ -13,20 +13,43 @@
 
 import { cloneDeep, isUndefined } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
-import {
-  MessagingConnection,
-  MessagingServiceType,
-} from '../generated/entity/services/messagingService';
-import customMessagingConnection from '../jsons/connectionSchemas/connections/messaging/customMessagingConnection.json';
-import kafkaConnection from '../jsons/connectionSchemas/connections/messaging/kafkaConnection.json';
-import kinesisConnection from '../jsons/connectionSchemas/connections/messaging/kinesisConnection.json';
-import pubSubConnection from '../jsons/connectionSchemas/connections/messaging/pubSubConnection.json';
-import redpandaConnection from '../jsons/connectionSchemas/connections/messaging/redpandaConnection.json';
+import type { MessagingConnection } from '../generated/entity/services/messagingService';
+import { MessagingServiceType } from '../generated/entity/services/messagingService';
+import { loadConnectionSchema } from './loadConnectionSchema';
+
+type SchemaModule =
+  | { default: Record<string, unknown> }
+  | Record<string, unknown>;
+type SchemaLoader = () => Promise<SchemaModule>;
+
+const messagingSchemaLoaders: Partial<
+  Record<MessagingServiceType, SchemaLoader>
+> = {
+  [MessagingServiceType.Kafka]: () =>
+    loadConnectionSchema('connections/messaging/kafkaConnection.json'),
+  [MessagingServiceType.Redpanda]: () =>
+    loadConnectionSchema('connections/messaging/redpandaConnection.json'),
+  [MessagingServiceType.CustomMessaging]: () =>
+    loadConnectionSchema(
+      'connections/messaging/customMessagingConnection.json'
+    ),
+  [MessagingServiceType.Kinesis]: () =>
+    loadConnectionSchema('connections/messaging/kinesisConnection.json'),
+  [MessagingServiceType.PubSub]: () =>
+    loadConnectionSchema('connections/messaging/pubSubConnection.json'),
+  [MessagingServiceType.Nats]: () =>
+    loadConnectionSchema('connections/messaging/natsConnection.json'),
+};
+
+const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {
+  const maybeDefault = (mod as { default?: Record<string, unknown> }).default;
+
+  return maybeDefault ?? (mod as Record<string, unknown>);
+};
 
 export const getBrokers = (config: MessagingConnection['config']) => {
   let retVal: string | undefined;
 
-  // Change it to switch case if more than 1 conditions arise
   if (config?.type === MessagingServiceType.Kafka) {
     retVal = config.bootstrapServers;
   }
@@ -40,40 +63,21 @@ const SCHEMA_REGISTRY_SUFFIX_UI_SCHEMA = {
   },
 };
 
-export const getMessagingConfig = (type: MessagingServiceType) => {
-  let schema = {};
-  const uiSchema = { ...COMMON_UI_SCHEMA };
+export const getMessagingConfig = async (type: MessagingServiceType) => {
+  const loader = messagingSchemaLoaders[type];
+  let schema: Record<string, unknown> = {};
+  const uiSchema: Record<string, unknown> = { ...COMMON_UI_SCHEMA };
 
-  switch (type) {
-    case MessagingServiceType.Kafka:
-      schema = kafkaConnection;
+  if (loader) {
+    const mod = await loader();
+    schema = resolveSchemaModule(mod);
+
+    if (
+      type === MessagingServiceType.Kafka ||
+      type === MessagingServiceType.Redpanda
+    ) {
       Object.assign(uiSchema, SCHEMA_REGISTRY_SUFFIX_UI_SCHEMA);
-
-      break;
-
-    case MessagingServiceType.Redpanda:
-      schema = redpandaConnection;
-      Object.assign(uiSchema, SCHEMA_REGISTRY_SUFFIX_UI_SCHEMA);
-
-      break;
-
-    case MessagingServiceType.CustomMessaging:
-      schema = customMessagingConnection;
-
-      break;
-
-    case MessagingServiceType.Kinesis:
-      schema = kinesisConnection;
-
-      break;
-
-    case MessagingServiceType.PubSub:
-      schema = pubSubConnection;
-
-      break;
-
-    default:
-      break;
+    }
   }
 
   return cloneDeep({ schema, uiSchema });

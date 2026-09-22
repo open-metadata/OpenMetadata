@@ -16,22 +16,25 @@ import {
   Fragment,
   ReactNode,
   useCallback,
+  useEffect,
   useImperativeHandle,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   AccessTokenResponse,
   getAccessTokenOnExpiry,
 } from '../../../rest/auth-API';
-
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { authCoordinator } from '../../../utils/Auth/AuthCoordinator/AuthCoordinator';
+import type { Renewer } from '../../../utils/Auth/AuthCoordinator/types';
+import { extractDetailsFromToken } from '../../../utils/AuthProvider.util';
 import {
   setOidcToken,
   setRefreshToken,
 } from '../../../utils/SwTokenStorageUtils';
 import Loader from '../../common/Loader/Loader';
-import { useBasicAuth } from '../AuthProviders/BasicAuthProvider';
+import { useBasicAuth } from '../AuthProviders/BasicAuthContext';
 
 interface BasicAuthenticatorInterface {
   children: ReactNode;
@@ -61,10 +64,38 @@ const BasicAuthenticator = forwardRef(
         return Promise.resolve(response);
       }, [authConfig, setOidcToken, setRefreshToken, t]);
 
+    // Bridges to the AuthCoordinator Renewer contract (auth-coordinator-refactor
+    // Task 7). Kept alongside handleSilentSignIn/renewIdToken until every
+    // authenticator is migrated and the old TokenService path is deleted.
+    const getRenewer = useCallback(
+      (): Renewer => async () => {
+        const response = await getAccessTokenOnExpiry();
+        const decoded = extractDetailsFromToken(response.accessToken);
+
+        return {
+          idToken: response.accessToken,
+          expiresAt: (decoded.exp ?? 0) * 1000,
+        };
+      },
+      []
+    );
+
     useImperativeHandle(ref, () => ({
       invokeLogout: handleLogout,
       renewIdToken: handleSilentSignIn,
     }));
+
+    // Register this authenticator's renewer with the AuthCoordinator as soon
+    // as the wrapper mounts (which is after the async config fetch + lazy
+    // chunk load). Doing it here — instead of via a parent-side effect that
+    // reads authenticatorRef.current?.getRenewer — avoids a race: a ref
+    // change does not schedule a re-render, so a parent-side dep on it can
+    // register late (or never, on some render paths).
+    useEffect(() => {
+      authCoordinator.registerRenewer(getRenewer());
+
+      return () => authCoordinator.registerRenewer(null);
+    }, [getRenewer]);
 
     /**
      * isApplicationLoading is true when the application is loading in AuthProvider

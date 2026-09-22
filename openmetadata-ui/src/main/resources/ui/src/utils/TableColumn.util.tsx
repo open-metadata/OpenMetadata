@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { ColumnsType, ColumnType } from 'antd/lib/table';
+import { Owner } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
+import { lazy } from 'react';
 import { ReactComponent as FilterIcon } from '../assets/svg/ic-filter.svg';
-import { DomainLabel } from '../components/common/DomainLabel/DomainLabel.component';
-import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerNew from '../components/common/RichTextEditor/RichTextEditorPreviewNew';
-import DataProductsContainer from '../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
-import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import {
+  ColumnsType,
+  ColumnType,
+} from '../components/common/Table/Table.interface';
 import { TAG_LIST_SIZE } from '../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
 import { EntityType } from '../enums/entity.enum';
@@ -31,7 +32,34 @@ import {
   getTagsWithoutCertification,
   getTagsWithoutTier,
   getTierTags,
-} from './TableUtils';
+} from './TablePureUtils';
+
+const DomainLabel = withSuspenseFallback(
+  lazy(() =>
+    import('../components/common/DomainLabel/DomainLabel.component').then(
+      (module) => ({ default: module.DomainLabel })
+    )
+  )
+);
+
+const RichTextEditorPreviewerNew = withSuspenseFallback(
+  lazy(
+    () => import('../components/common/RichTextEditor/RichTextEditorPreviewNew')
+  )
+);
+
+const DataProductsContainer = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/DataProducts/DataProductsContainer/DataProductsContainer.component'
+      )
+  )
+);
+
+const TagsViewer = withSuspenseFallback(
+  lazy(() => import('../components/Tag/TagsViewer/TagsViewer'))
+);
 
 export const columnFilterIcon = (filtered: boolean) => (
   <Icon
@@ -53,10 +81,10 @@ export const ownerTableObject = <
     width: 280,
     filterIcon: columnFilterIcon,
     render: (owners: EntityReference[]) => (
-      <OwnerLabel
+      <Owner
         isCompactView={false}
         maxVisibleOwners={4}
-        owners={owners}
+        owners={owners ?? []}
         showLabel={false}
       />
     ),

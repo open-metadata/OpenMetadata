@@ -12,6 +12,7 @@
 """
 Tests utils function for the profiler
 """
+
 from datetime import datetime
 from unittest import TestCase
 from unittest.mock import Mock
@@ -117,7 +118,7 @@ class TestCardinalityDistributionUtils(TestCase):
 
     def test_cardinality_distribution_metric_type(self):
         """Test metric type"""
-        assert self.cardinality_dist.metric_type == dict
+        assert self.cardinality_dist.metric_type == dict  # noqa: E721
 
 
 def test_is_array():

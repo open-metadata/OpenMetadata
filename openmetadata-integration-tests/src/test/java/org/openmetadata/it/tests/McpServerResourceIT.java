@@ -32,6 +32,8 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.ai.CreateMcpServer;
 import org.openmetadata.schema.api.services.CreateMcpService;
 import org.openmetadata.schema.entity.ai.McpDevelopmentStage;
+import org.openmetadata.schema.entity.ai.McpExecution;
+import org.openmetadata.schema.entity.ai.McpExecutionStatus;
 import org.openmetadata.schema.entity.ai.McpGovernanceMetadata;
 import org.openmetadata.schema.entity.ai.McpPrompt;
 import org.openmetadata.schema.entity.ai.McpResource;
@@ -44,6 +46,7 @@ import org.openmetadata.schema.entity.ai.McpServerType;
 import org.openmetadata.schema.entity.ai.McpTool;
 import org.openmetadata.schema.entity.ai.McpToolCategory;
 import org.openmetadata.schema.entity.ai.McpTransportType;
+import org.openmetadata.schema.entity.ai.McpUsageMetrics;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 
@@ -141,6 +144,36 @@ public class McpServerResourceIT {
     assertEquals("Test Server", created.getServerInfo().getServerName());
     assertNotNull(created.getCapabilities());
     assertTrue(created.getCapabilities().getToolsSupported());
+  }
+
+  @Test
+  void testPutMcpServerPreservesUsageMetrics(final TestNamespace ns) throws Exception {
+    final McpUsageMetrics usageMetrics = showcaseUsageMetrics();
+    final CreateMcpServer request = usageMetricsRequest(ns, usageMetrics);
+    final McpServer created = updateMcpServer(request);
+    final McpServer updated = updateMcpServer(request);
+    final McpServer fetched = getMcpServer(created.getId().toString());
+    assertEquals(created.getId(), updated.getId());
+    assertEquals(usageMetrics, fetched.getUsageMetrics());
+  }
+
+  private static McpUsageMetrics showcaseUsageMetrics() {
+    return new McpUsageMetrics()
+        .withTotalInvocations(42_100)
+        .withSuccessRate(0.991)
+        .withAverageLatencyMs(145.0)
+        .withP95LatencyMs(310.0)
+        .withLastInvokedAt(1_775_001_600_000L)
+        .withUniqueUsers(128)
+        .withDailyActiveUsers(47);
+  }
+
+  private static CreateMcpServer usageMetricsRequest(
+      final TestNamespace ns, final McpUsageMetrics usageMetrics) {
+    return new CreateMcpServer()
+        .withName(ns.prefix("mcp-usage-metrics"))
+        .withServerType(McpServerType.DataAccess)
+        .withUsageMetrics(usageMetrics);
   }
 
   @Test
@@ -422,6 +455,50 @@ public class McpServerResourceIT {
         Exception.class,
         () -> getMcpServer(created.getId().toString()),
         "Hard deleted server should not be retrievable");
+  }
+
+  @Test
+  void testRecursiveHardDeleteCascadesPastMcpExecutionChildren(TestNamespace ns) throws Exception {
+    CreateMcpServer create =
+        new CreateMcpServer()
+            .withName(ns.prefix("mcp-cascade-delete"))
+            .withServerType(McpServerType.DataAccess)
+            .withTransportType(McpTransportType.Stdio)
+            .withDescription("Server for execution cascade delete test");
+
+    McpServer created = createMcpServer(create);
+
+    // Writes an MCP_SERVER --CONTAINS--> mcpExecution row. mcpExecution is a time-series entity
+    // (registered in ENTITY_TS_REPOSITORY_MAP, not ENTITY_REPOSITORY_MAP), so the bulk
+    // hard-delete cascade used to throw EntityRepositoryNotFound the moment it walked CONTAINS
+    // children of an MCP Server.
+    McpExecution execution =
+        new McpExecution()
+            .withServer(created.getEntityReference())
+            .withServerId(created.getId())
+            .withTimestamp(System.currentTimeMillis())
+            .withStatus(McpExecutionStatus.Success);
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST, "/v1/mcpExecutions", execution, RequestOptions.builder().build());
+
+    String serverId = created.getId().toString();
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            "/v1/mcpServers/" + serverId,
+            null,
+            RequestOptions.builder()
+                .queryParam("recursive", "true")
+                .queryParam("hardDelete", "true")
+                .build());
+
+    assertThrows(
+        Exception.class,
+        () -> getMcpServer(serverId),
+        "MCP Server should be deleted along with its mcp-execution children");
   }
 
   @Test

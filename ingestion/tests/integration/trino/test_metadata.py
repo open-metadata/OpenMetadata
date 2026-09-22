@@ -24,6 +24,4 @@ def run_workflow(run_workflow, ingestion_config, create_test_data):
     ids=lambda x: x.split(".")[-1],
 )
 def test_metadata(run_workflow, db_service, metadata: OpenMetadata, table_name):
-    metadata.get_by_name(
-        Table, table_name.format(database_service=db_service.fullyQualifiedName.root)
-    )
+    metadata.get_by_name(Table, table_name.format(database_service=db_service.fullyQualifiedName.root))

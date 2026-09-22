@@ -10,25 +10,33 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter, useParams } from 'react-router-dom';
 import {
   BoostMode,
   ScoreMode,
 } from '../../../generated/configuration/searchSettings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import {
+  restoreSettingsConfig,
+  updateSettingsConfig,
+} from '../../../rest/settingConfigAPI';
+import SearchPreview from '../SearchPreview/SearchPreview';
 import EntitySearchSettings from './EntitySearchSettings';
 
-const mockEntityType = 'table';
 const mockSearchConfig = {
   assetTypeConfigurations: [
     {
       assetType: 'table',
       searchFields: [
-        {
-          field: 'description',
-          boost: 5,
-        },
+        { field: 'name.ngram', boost: 1 },
+        { field: 'description', boost: 5 },
       ],
       boostMode: BoostMode.Multiply,
       scoreMode: ScoreMode.Avg,
@@ -40,7 +48,6 @@ const mockSearchConfig = {
 };
 
 const mockSetAppPreferences = jest.fn();
-
 const mockUseApplicationStore = useApplicationStore as unknown as jest.Mock;
 
 jest.mock('react-router-dom', () => ({
@@ -55,6 +62,11 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
 jest.mock('../../../rest/settingConfigAPI', () => ({
   updateSettingsConfig: jest.fn(),
   restoreSettingsConfig: jest.fn(),
+  getSettingsByType: jest.fn(),
+}));
+
+jest.mock('../../../rest/metadataTypeAPI', () => ({
+  getCustomPropertiesByEntityType: jest.fn().mockResolvedValue([]),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -82,22 +94,24 @@ jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
 
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
-    permissions: {
-      searchIndex: { Edit: true },
-    },
+    permissions: { searchIndex: { Edit: true } },
   }),
 }));
 
 jest.mock('../../../hooks/authHooks', () => ({
-  useAuth: jest.fn().mockReturnValue({
-    isAdminUser: true,
-  }),
+  useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
 }));
+
+const getLastSearchPreviewProps = () => {
+  const mock = SearchPreview as jest.Mock;
+
+  return mock.mock.calls[mock.mock.calls.length - 1]?.[0] ?? {};
+};
 
 describe('EntitySearchSettings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (useParams as jest.Mock).mockReturnValue({ entityType: mockEntityType });
+    (useParams as jest.Mock).mockReturnValue({ fqn: 'tables' });
     mockUseApplicationStore.mockReturnValue({
       appPreferences: { searchConfig: mockSearchConfig },
       setAppPreferences: mockSetAppPreferences,
@@ -119,6 +133,246 @@ describe('EntitySearchSettings', () => {
       screen.getByTestId('entity-search-settings-header')
     ).toBeInTheDocument();
     expect(screen.getByTestId('search-preview')).toBeInTheDocument();
-    expect(screen.getByTestId('field-configurations')).toBeInTheDocument();
+    expect(screen.getByText('label.ranking-detail-plural')).toBeInTheDocument();
+    expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+    expect(screen.getByTestId('add-field-btn')).toBeInTheDocument();
+  });
+
+  it('Should not override preview config with undefined searchFields before entity config loads', async () => {
+    // With fqn: undefined, entityType resolves to undefined and getEntityConfiguration
+    // is null, so searchSettings.searchFields stays undefined. The guard
+    // (searchFields !== undefined) must prevent overriding previewSearchConfig with
+    // a config that has searchFields: undefined for the entity.
+    (useParams as jest.Mock).mockReturnValue({ fqn: undefined });
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <EntitySearchSettings />
+        </MemoryRouter>
+      );
+    });
+
+    const props = getLastSearchPreviewProps();
+
+    // Preview must receive the original searchConfig, not a partially-overridden copy.
+    expect(props.searchConfig).toEqual(mockSearchConfig);
+  });
+
+  it('Should update preview config when restore defaults returns empty searchFields', async () => {
+    const restoredConfig = {
+      ...mockSearchConfig,
+      assetTypeConfigurations: [
+        {
+          assetType: 'table',
+          searchFields: [],
+          boostMode: BoostMode.Multiply,
+          scoreMode: ScoreMode.Avg,
+          highlightFields: [],
+          fieldValueBoosts: [],
+          termBoosts: [],
+        },
+      ],
+    };
+
+    (restoreSettingsConfig as jest.Mock).mockResolvedValue({
+      data: restoredConfig,
+    });
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <EntitySearchSettings />
+        </MemoryRouter>
+      );
+    });
+
+    // Call handleRestoreDefaults directly from the props passed to the mocked SearchPreview.
+    const { handleRestoreDefaults } = getLastSearchPreviewProps();
+
+    await act(async () => {
+      await handleRestoreDefaults();
+    });
+
+    await waitFor(() => {
+      const entityConfig =
+        getLastSearchPreviewProps()?.searchConfig?.assetTypeConfigurations?.find(
+          (c: { assetType: string }) => c.assetType === 'table'
+        );
+
+      expect(entityConfig?.searchFields).toEqual([]);
+    });
+  });
+
+  it('Should set entity-specific config after save, not full SearchSettings', async () => {
+    const savedConfig = {
+      ...mockSearchConfig,
+      assetTypeConfigurations: [
+        {
+          assetType: 'table',
+          searchFields: [{ field: 'name.ngram', boost: 5 }],
+          boostMode: BoostMode.Multiply,
+          scoreMode: ScoreMode.Avg,
+          highlightFields: ['description'],
+          fieldValueBoosts: [],
+          termBoosts: [],
+        },
+      ],
+    };
+
+    (updateSettingsConfig as jest.Mock).mockResolvedValue({
+      data: { config_type: 'searchSettings', config_value: savedConfig },
+    });
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <EntitySearchSettings />
+        </MemoryRouter>
+      );
+    });
+
+    // Call handleSaveChanges directly from the props passed to the mocked SearchPreview.
+    const { handleSaveChanges } = getLastSearchPreviewProps();
+
+    await act(async () => {
+      await handleSaveChanges();
+    });
+
+    await waitFor(() => {
+      expect(updateSettingsConfig).toHaveBeenCalled();
+    });
+
+    // After save the preview config must reflect only entity-specific fields.
+    const entityConfig =
+      getLastSearchPreviewProps()?.searchConfig?.assetTypeConfigurations?.find(
+        (c: { assetType: string }) => c.assetType === 'table'
+      );
+
+    // Verify no full-SearchSettings properties (e.g. allowedFields) leaked into
+    // the entity config after the save response is processed.
+    expect(entityConfig).not.toHaveProperty('allowedFields');
+    expect(entityConfig).not.toHaveProperty('assetTypeConfigurations');
+  });
+
+  it('Should omit cleared ranking stage weight while saving', async () => {
+    const configWithRanking = {
+      ...mockSearchConfig,
+      assetTypeConfigurations: [
+        {
+          ...mockSearchConfig.assetTypeConfigurations[0],
+          ranking: {
+            enabled: true,
+            stages: [
+              {
+                name: 'exactName',
+                fields: ['name.keyword'],
+                weight: 100,
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    mockUseApplicationStore.mockReturnValue({
+      appPreferences: { searchConfig: configWithRanking },
+      setAppPreferences: mockSetAppPreferences,
+    });
+
+    (updateSettingsConfig as jest.Mock).mockImplementation((settings) =>
+      Promise.resolve({ data: settings })
+    );
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <EntitySearchSettings />
+        </MemoryRouter>
+      );
+    });
+
+    fireEvent.change(screen.getByRole('spinbutton'), {
+      target: { value: '' },
+    });
+
+    const { handleSaveChanges } = getLastSearchPreviewProps();
+
+    await act(async () => {
+      await handleSaveChanges();
+    });
+
+    await waitFor(() => {
+      const settings = (updateSettingsConfig as jest.Mock).mock.calls[0][0];
+      const entityConfig = settings.config_value.assetTypeConfigurations.find(
+        (config: { assetType: string }) => config.assetType === 'table'
+      );
+
+      expect(entityConfig.ranking.stages[0]).not.toHaveProperty('weight');
+    });
+  });
+
+  it('Should update the selected unnamed ranking stage while saving', async () => {
+    const configWithRanking = {
+      ...mockSearchConfig,
+      assetTypeConfigurations: [
+        {
+          ...mockSearchConfig.assetTypeConfigurations[0],
+          ranking: {
+            enabled: true,
+            stages: [
+              {
+                fields: ['name.keyword'],
+                weight: 100,
+              },
+              {
+                fields: ['description'],
+                weight: 40,
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    mockUseApplicationStore.mockReturnValue({
+      appPreferences: { searchConfig: configWithRanking },
+      setAppPreferences: mockSetAppPreferences,
+    });
+
+    (updateSettingsConfig as jest.Mock).mockImplementation((settings) =>
+      Promise.resolve({ data: settings })
+    );
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <EntitySearchSettings />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByTestId('ranking-stage-unnamed-0')).toBeInTheDocument();
+    expect(screen.getByTestId('ranking-stage-unnamed-1')).toBeInTheDocument();
+
+    fireEvent.change(screen.getAllByRole('spinbutton')[1], {
+      target: { value: '' },
+    });
+
+    const { handleSaveChanges } = getLastSearchPreviewProps();
+
+    await act(async () => {
+      await handleSaveChanges();
+    });
+
+    await waitFor(() => {
+      const settings = (updateSettingsConfig as jest.Mock).mock.calls[0][0];
+      const entityConfig = settings.config_value.assetTypeConfigurations.find(
+        (config: { assetType: string }) => config.assetType === 'table'
+      );
+
+      expect(entityConfig.ranking.stages[0].weight).toBe(100);
+      expect(entityConfig.ranking.stages[1]).not.toHaveProperty('weight');
+    });
   });
 });

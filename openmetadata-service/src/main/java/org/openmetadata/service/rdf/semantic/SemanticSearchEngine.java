@@ -1,6 +1,11 @@
 package org.openmetadata.service.rdf.semantic;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -170,6 +175,7 @@ public class SemanticSearchEngine {
         String sparql =
             """
           PREFIX om: <https://open-metadata.org/ontology/>
+          PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
           SELECT ?predicate ?object ?objectType
           WHERE {
             <%s> ?predicate ?object .
@@ -180,7 +186,8 @@ public class SemanticSearchEngine {
           """
                 .formatted(getEntityUri(result.getEntity()));
 
-        List<Map<String, String>> relationships = rdfRepository.executeSparqlQueryAsJson(sparql);
+        List<Map<String, String>> relationships =
+            rdfRepository.executeSparqlQueryDirectAsJson(sparql);
 
         // Boost score based on relevant relationships
         double contextBoost = calculateContextBoost(relationships, query);
@@ -210,21 +217,10 @@ public class SemanticSearchEngine {
     try {
       // Use inference to find additional related entities
       for (SearchResult result : results) {
-        String sparql =
-            """
-          PREFIX om: <https://open-metadata.org/ontology/>
-          SELECT ?related ?type ?relationship
-          WHERE {
-            <%s> ?relationship ?related .
-            ?related a ?type .
-            FILTER(?relationship IN (om:relatedTo, om:similarTo, om:derivedFrom))
-          }
-          """
-                .formatted(getEntityUri(result.getEntity()));
+        String sparql = buildInferenceQuery(getEntityUri(result.getEntity()));
 
-        // Execute with custom inference rules
         List<Map<String, String>> inferenceResults =
-            rdfRepository.executeSparqlQueryWithInferenceAsJson(sparql, "custom");
+            rdfRepository.executeSparqlQueryDirectAsJson(sparql);
 
         for (Map<String, String> row : inferenceResults) {
           String relatedUri = row.get("related");
@@ -232,7 +228,8 @@ public class SemanticSearchEngine {
 
           if (relatedUri != null && relationType != null) {
             // Extract relationship type from URI
-            String relationName = relationType.substring(relationType.lastIndexOf("#") + 1);
+            int separator = Math.max(relationType.lastIndexOf('#'), relationType.lastIndexOf('/'));
+            String relationName = relationType.substring(separator + 1);
 
             // Create inferred result
             EntityReference related = getEntityFromUri(relatedUri);
@@ -253,6 +250,35 @@ public class SemanticSearchEngine {
     }
 
     return inferredResults;
+  }
+
+  static String buildInferenceQuery(final String entityUri) {
+    return """
+          PREFIX om: <https://open-metadata.org/ontology/>
+          PREFIX prov: <http://www.w3.org/ns/prov#>
+          SELECT ?related ?type ?relationship
+          WHERE {
+            {
+              <%1$s> ?relationship ?related .
+              FILTER(?relationship IN (om:relatedTo, om:similarTo))
+            } UNION {
+              <%1$s> (om:upstream|^om:downstream|prov:wasDerivedFrom|^om:UPSTREAM)+ ?related .
+              BIND(om:upstream AS ?relationship)
+            } UNION {
+              <%1$s> (om:downstream|^om:upstream|^prov:wasDerivedFrom|om:UPSTREAM)+ ?related .
+              BIND(om:downstream AS ?relationship)
+            } UNION {
+              <%1$s> (om:belongsTo/om:inDomain|om:belongsTo/om:hasGlossaryTerm) ?related .
+              BIND(om:relatedTo AS ?relationship)
+            } UNION {
+              <%1$s> (^om:owns|^prov:used) ?related .
+              BIND(om:relatedTo AS ?relationship)
+            }
+            ?related a ?type .
+          }
+          LIMIT 100
+          """
+        .formatted(entityUri);
   }
 
   private boolean isDuplicate(List<SearchResult> results, EntityReference entity) {

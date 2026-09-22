@@ -11,15 +11,15 @@
 """
 Metadata DAG common functions
 """
+
 import json
 import uuid
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from functools import partial
-from typing import Callable, Optional, Union
 
 from airflow import DAG
 from airflow.utils import timezone
-from openmetadata_managed_apis.api.utils import clean_dag_id
 from pydantic import ValidationError
 from requests.utils import quote
 
@@ -40,6 +40,7 @@ from metadata.generated.schema.type.basic import Timestamp, Uuid
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.workflow.base import BaseWorkflow
+from openmetadata_managed_apis.api.utils import clean_dag_id
 
 # pylint: disable=ungrouped-imports
 try:
@@ -48,12 +49,6 @@ except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
 from croniter import croniter
-from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
-from openmetadata_managed_apis.utils.logger import set_operator_logger, workflow_logger
-from openmetadata_managed_apis.utils.parser import (
-    parse_service_connection,
-    parse_validation_err,
-)
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -62,17 +57,23 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.metadataIngestion.workflow import (
     LogLevels,
     OpenMetadataWorkflowConfig,
+    WorkflowConfig,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.parser import (
     InvalidWorkflowException,
     ParsingConfigurationError,
 )
 from metadata.ingestion.ometa.utils import model_str
 from metadata.workflow.metadata import MetadataWorkflow
+from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
+from openmetadata_managed_apis.utils.logger import set_operator_logger, workflow_logger
+from openmetadata_managed_apis.utils.parser import (
+    parse_service_connection,
+    parse_validation_err,
+)
 
 logger = workflow_logger()
 
@@ -90,13 +91,13 @@ ENTITY_CLASS_MAP = {
 }
 
 
-class InvalidServiceException(Exception):
+class InvalidServiceException(Exception):  # noqa: N818
     """
     The service type we received is not supported
     """
 
 
-class GetServiceException(Exception):
+class GetServiceException(Exception):  # noqa: N818
     """
     Exception to be thrown when couldn't fetch the service from server
     """
@@ -133,7 +134,7 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
         # check we can access OM server
         metadata.health_check()
     except Exception as exc:
-        raise ClientInitializationError(
+        raise ClientInitializationError(  # noqa: B904
             f"Failed to initialize the OpenMetadata client due to: {exc}."
             " Make sure that the Airflow host can reach the OpenMetadata"
             f" server running at {ingestion_pipeline.openMetadataServerConnection.hostPort}"
@@ -172,12 +173,12 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
             if isinstance(scoped_error, ValidationError):
                 # Let's catch validations of internal Workflow models, not the Workflow itself
                 object_error = getattr(scoped_error, "title", None) or "workflow"
-                raise ParsingConfigurationError(
+                raise ParsingConfigurationError(  # noqa: B904
                     f"We encountered an error parsing the configuration of your {object_error}.\n"
                     f"{parse_validation_err(scoped_error)}"
                 )
-            raise scoped_error
-        raise ParsingConfigurationError(
+            raise scoped_error  # noqa: TRY201
+        raise ParsingConfigurationError(  # noqa: B904
             f"We encountered an error parsing the configuration of your workflow.\n"
             f"{parse_validation_err(original_error)}"
         )
@@ -193,9 +194,7 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
     )
 
 
-def execute_workflow(
-    workflow: BaseWorkflow, workflow_config: OpenMetadataWorkflowConfig
-) -> None:
+def execute_workflow(workflow: BaseWorkflow, workflow_config: OpenMetadataWorkflowConfig) -> None:
     """
     Execute the workflow and handle the status
     """
@@ -217,9 +216,7 @@ def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     set_operator_logger(workflow_config)
 
-    config = json.loads(
-        workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False)
-    )
+    config = json.loads(workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False))
     workflow = MetadataWorkflow.create(config)
     execute_workflow(workflow, workflow_config)
 
@@ -239,7 +236,7 @@ def build_workflow_config_property(
     )
 
 
-def clean_name_tag(tag: str) -> Optional[str]:
+def clean_name_tag(tag: str) -> str | None:
     """
     Clean the tag to be used in Airflow.
     Airflow supports 100 characters. We'll keep just 90
@@ -263,10 +260,22 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     # Determine start_date based on schedule_interval using croniter
     schedule_interval = ingestion_pipeline.airflowConfig.scheduleInterval
     if is_airflow_3_or_higher():
-        # Use timezone-aware `now` to avoid Airflow auto-scheduling an immediate first run.
-        # Setting the start_date in the past (previous cron) causes Airflow 3 to fire a run
-        # right after deployment even with catchup disabled.
-        start_date = timezone.utcnow()
+        # We want start_date to be close to "now" (not in the past) so Airflow 3
+        # doesn't immediately fire a catch-up run on creation even with catchup
+        # disabled. But `build_dag_configs` runs on every DAG-processor reparse,
+        # and `timezone.utcnow()` recomputes to a new "now" each time — so the
+        # cron interval measured from start_date never elapses and the DAG never
+        # fires on its own schedule (#32505). Anchor on the pipeline's own
+        # `updatedAt` instead: it only changes when the pipeline is actually
+        # (re)configured (a no-op redeploy leaves version/updatedAt untouched),
+        # so start_date stays stable across routine reparses/redeploys while
+        # still resetting close to "now" whenever the schedule is genuinely
+        # edited — preserving the original intent without the instability.
+        start_date = (
+            timezone.from_timestamp(ingestion_pipeline.updatedAt.root / 1000)
+            if ingestion_pipeline.updatedAt
+            else timezone.utcnow()
+        )
     else:
         now = datetime.now()
 
@@ -282,24 +291,18 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
 
     dag_kwargs = {
         "dag_id": clean_dag_id(ingestion_pipeline.name.root),
-        "description": ingestion_pipeline.description.root
-        if ingestion_pipeline.description is not None
-        else None,
+        "description": ingestion_pipeline.description.root if ingestion_pipeline.description is not None else None,
         "start_date": start_date,
-        "end_date": ingestion_pipeline.airflowConfig.endDate.root
-        if ingestion_pipeline.airflowConfig.endDate
-        else None,
+        "end_date": ingestion_pipeline.airflowConfig.endDate.root if ingestion_pipeline.airflowConfig.endDate else None,
         "max_active_runs": ingestion_pipeline.airflowConfig.maxActiveRuns,
         "dagrun_timeout": timedelta(ingestion_pipeline.airflowConfig.workflowTimeout)
         if ingestion_pipeline.airflowConfig.workflowTimeout
         else None,
-        "is_paused_upon_creation": ingestion_pipeline.airflowConfig.pausePipeline
-        or False,
+        "is_paused_upon_creation": ingestion_pipeline.airflowConfig.pausePipeline or False,
         "catchup": ingestion_pipeline.airflowConfig.pipelineCatchup or False,
         "tags": [
             "OpenMetadata",
-            clean_name_tag(ingestion_pipeline.displayName)
-            or clean_name_tag(ingestion_pipeline.name.root),
+            clean_name_tag(ingestion_pipeline.displayName) or clean_name_tag(ingestion_pipeline.name.root),
             f"type:{ingestion_pipeline.pipelineType.value}",
             f"service:{clean_name_tag(ingestion_pipeline.service.name)}",
         ],
@@ -311,12 +314,8 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
         dag_kwargs["schedule_interval"] = schedule_interval
 
     if not is_airflow_3_or_higher():
-        dag_kwargs[
-            "default_view"
-        ] = ingestion_pipeline.airflowConfig.workflowDefaultView
-        dag_kwargs[
-            "orientation"
-        ] = ingestion_pipeline.airflowConfig.workflowDefaultViewOrientation
+        dag_kwargs["default_view"] = ingestion_pipeline.airflowConfig.workflowDefaultView
+        dag_kwargs["orientation"] = ingestion_pipeline.airflowConfig.workflowDefaultViewOrientation
 
     concurrency = ingestion_pipeline.airflowConfig.concurrency
     if concurrency is not None:
@@ -355,9 +354,7 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_,
         metadata = OpenMetadata(config=metadata_config)
 
         if workflow_config.ingestionPipelineFQN:
-            logger.info(
-                f"Sending status to Ingestion Pipeline {workflow_config.ingestionPipelineFQN}"
-            )
+            logger.info(f"Sending status to Ingestion Pipeline {workflow_config.ingestionPipelineFQN}")
 
             pipeline_status = metadata.get_pipeline_status(
                 workflow_config.ingestionPipelineFQN,
@@ -366,16 +363,10 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_,
             pipeline_status.endDate = Timestamp(int(datetime.now().timestamp() * 1000))
             pipeline_status.pipelineState = PipelineState.failed
 
-            metadata.create_or_update_pipeline_status(
-                workflow_config.ingestionPipelineFQN, pipeline_status
-            )
-            logger.info(
-                f"Successfully sent failed status for {workflow_config.ingestionPipelineFQN}"
-            )
+            metadata.create_or_update_pipeline_status(workflow_config.ingestionPipelineFQN, pipeline_status)
+            logger.info(f"Successfully sent failed status for {workflow_config.ingestionPipelineFQN}")
         else:
-            logger.info(
-                "Workflow config does not have ingestionPipelineFQN informed. We won't update the status."
-            )
+            logger.info("Workflow config does not have ingestionPipelineFQN informed. We won't update the status.")
     except Exception as exc:
         logger.error(f"Failed to send failed status callback: {exc}", exc_info=True)
 
@@ -395,14 +386,10 @@ class CustomPythonOperator(PythonOperator):
         try:
             workflow_config = self.op_kwargs.get("workflow_config")
             if workflow_config:
-                logger.info(
-                    f"Task killed, sending failed status for workflow: {workflow_config.ingestionPipelineFQN}"
-                )
+                logger.info(f"Task killed, sending failed status for workflow: {workflow_config.ingestionPipelineFQN}")
                 send_failed_status_callback(workflow_config)
             else:
-                logger.warning(
-                    "on_kill called but no workflow_config found in op_kwargs"
-                )
+                logger.warning("on_kill called but no workflow_config found in op_kwargs")
         except Exception as exc:
             # Log the error but don't raise - we don't want to prevent cleanup
             logger.error(f"Error in on_kill callback: {exc}", exc_info=True)
@@ -411,9 +398,9 @@ class CustomPythonOperator(PythonOperator):
 def build_dag(
     task_name: str,
     ingestion_pipeline: IngestionPipeline,
-    workflow_config: Union[OpenMetadataWorkflowConfig, OpenMetadataApplicationConfig],
+    workflow_config: OpenMetadataWorkflowConfig | OpenMetadataApplicationConfig,
     workflow_fn: Callable,
-    params: Optional[dict] = None,
+    params: dict | None = None,
 ) -> DAG:
     """
     Build a simple metadata workflow DAG
@@ -425,26 +412,34 @@ def build_dag(
     :return: DAG
     """
 
-    with DAG(**build_dag_configs(ingestion_pipeline)) as dag:
-        # Initialize with random UUID4. Will be used by the callback instead of
-        # generating it inside the Workflow itself.
-        workflow_config.pipelineRunId = Uuid(uuid.uuid4())
+    # Build the DAG and attach the task with an explicit `dag=` reference instead of
+    # the `with DAG(...) as dag:` context manager. The context manager relies on
+    # Airflow 3.x's process-global DagContext autoregister, which races when multiple
+    # DAG files are parsed concurrently in the same process and raises a KeyError on
+    # __exit__ (see issue #28500). The DAG is registered into the module globals
+    # explicitly by WorkflowFactory.register_dag, so autoregister is not needed here.
+    dag = DAG(**build_dag_configs(ingestion_pipeline))
 
-        CustomPythonOperator(
-            task_id=task_name,
-            python_callable=workflow_fn,
-            op_kwargs={
-                "workflow_config": workflow_config,
-            },
-            # There's no need to retry if we have had an error. Wait until the next schedule or manual rerun.
-            retries=ingestion_pipeline.airflowConfig.retries or 0,
-            # each DAG will call its own OpenMetadataWorkflowConfig
-            on_failure_callback=partial(send_failed_status_callback, workflow_config),
-            # Add tag and ownership to easily identify DAGs generated by OM
-            owner=ingestion_pipeline.owners.root[0].name
-            if (ingestion_pipeline.owners and ingestion_pipeline.owners.root)
-            else "openmetadata",
-            params=params,
-        )
+    # Initialize with random UUID4. Will be used by the callback instead of
+    # generating it inside the Workflow itself.
+    workflow_config.pipelineRunId = Uuid(uuid.uuid4())
 
-        return dag
+    CustomPythonOperator(
+        task_id=task_name,
+        python_callable=workflow_fn,
+        op_kwargs={
+            "workflow_config": workflow_config,
+        },
+        # There's no need to retry if we have had an error. Wait until the next schedule or manual rerun.
+        retries=ingestion_pipeline.airflowConfig.retries or 0,
+        # each DAG will call its own OpenMetadataWorkflowConfig
+        on_failure_callback=partial(send_failed_status_callback, workflow_config),
+        # Add tag and ownership to easily identify DAGs generated by OM
+        owner=ingestion_pipeline.owners.root[0].name
+        if (ingestion_pipeline.owners and ingestion_pipeline.owners.root)
+        else "openmetadata",
+        params=params,
+        dag=dag,
+    )
+
+    return dag

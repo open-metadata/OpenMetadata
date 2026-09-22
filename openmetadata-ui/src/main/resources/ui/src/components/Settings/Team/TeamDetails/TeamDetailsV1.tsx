@@ -30,7 +30,7 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
@@ -68,21 +68,23 @@ import AddAttributeModal from '../../../../pages/RolesPage/AddAttributeModal/Add
 import { ImportType } from '../../../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { exportTeam, restoreTeam } from '../../../../rest/teamsAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   EXTENSION_POINTS,
   TabContribution,
 } from '../../../../utils/ExtensionPointTypes';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import {
   getSettingsPathWithFqn,
   getTeamsWithFqnPath,
 } from '../../../../utils/RouterUtils';
-import { getTermQuery } from '../../../../utils/SearchUtils';
+import { getTermQuery } from '../../../../utils/SearchPureUtils';
 import { getDeleteMessagePostFix } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+import Description from '../../../common/EntityDescription/Description';
 import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
@@ -91,7 +93,6 @@ import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useEntityExportModalProvider } from '../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import EntitySummaryPanel from '../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../../Explore/ExplorePage.interface';
 import AssetsTabs from '../../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
@@ -110,6 +111,12 @@ import './teams.less';
 import TeamsHeadingLabel from './TeamsHeaderSection/TeamsHeadingLabel.component';
 import TeamsInfo from './TeamsHeaderSection/TeamsInfo.component';
 import { UserTab } from './UserTab/UserTab.component';
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
+  )
+);
 
 const TeamDetailsV1 = ({
   assetsCount,
@@ -162,8 +169,20 @@ const TeamDetailsV1 = ({
       return activeTab;
     }
 
-    return isGroupType ? TeamsPageTab.USERS : TeamsPageTab.TEAMS;
-  }, [activeTab, isGroupType]);
+    // Derive the default from the actual tab list so a team with inconsistent
+    // name/teamType data (e.g. root team mistyped as Group) can't default to a
+    // tab that isn't rendered, which would leave the page blank.
+    const [defaultTab] = getTabs(
+      currentTeam,
+      isGroupType,
+      isOrganization,
+      0,
+      0,
+      false
+    );
+
+    return defaultTab?.key ?? TeamsPageTab.TEAMS;
+  }, [activeTab, currentTeam, isGroupType, isOrganization]);
   const [deletingUser, setDeletingUser] = useState<{
     user: UserTeams | undefined;
     state: boolean;
@@ -205,6 +224,33 @@ const TeamDetailsV1 = ({
   const isTeamDeleted = useMemo(
     () => currentTeam.deleted ?? false,
     [currentTeam]
+  );
+
+  // Consumer via prop (Task 8 rule: keep the raw `entityPermissions: OperationPermission`
+  // contract — the owner, TeamsPage.tsx, is out of this batch's scope so the interface can't
+  // be migrated to DerivedPermissionFlags here — and derive named flags internally instead of
+  // reading raw `.EditAll` at each call site.
+  const { canEditAll, canEditDescription } = useMemo(
+    () => getDerivedPermissionFlags(entityPermissions, isTeamDeleted),
+    [entityPermissions, isTeamDeleted]
+  );
+
+  // Sites that must ignore deleted-gating (Task 8 Batch 3 review round, Findings 1 & 2):
+  // - ManageButton hosts the ONLY UI path to restore a soft-deleted team
+  //   (extraDropdownContent's `restore-team-dropdown`); gating it on `canEditAll` (deleted-
+  //   gated) makes it disappear for a deleted team, admins included, with no way back.
+  // - AssignErrorPlaceHolder hard-branches on its `permission` prop
+  //   (`if (!permission) return <PermissionErrorPlaceholder />`), replacing the whole
+  //   assign-roles/policies UI (including the separately-disabled Add button) with a
+  //   misleading "you don't have permission" message, when the real state is "you have
+  //   permission, but this team is deleted" (already communicated via the Add button's own
+  //   `disabled={isTeamDeleted}` + tooltip).
+  // Old code read raw `entityPermissions.EditAll` (ungated) at both kinds of site — this
+  // reproduces that intentionally-ungated behavior via a second derivation instead of
+  // reintroducing a raw read.
+  const ungatedFlags = useMemo(
+    () => getDerivedPermissionFlags(entityPermissions),
+    [entityPermissions]
   );
 
   const teamCount = useMemo(
@@ -266,6 +312,8 @@ const TeamDetailsV1 = ({
   const searchTeams = async (text: string) => {
     setIsSearchLoading(true);
     try {
+      // Scope the Teams-tab search to this team's own child teams instead of searching every team
+      // in the instance (parents.id matches teams whose direct parent is the current team).
       const res = await searchQuery({
         query: `*${text}*`,
         pageNumber: 1,
@@ -273,6 +321,13 @@ const TeamDetailsV1 = ({
         queryFilter: {
           query: {
             bool: {
+              must: [
+                {
+                  term: {
+                    'parents.id': currentTeam.id,
+                  },
+                },
+              ],
               must_not: [
                 {
                   term: {
@@ -636,10 +691,11 @@ const TeamDetailsV1 = ({
       );
     }
 
+    const childrenCount = currentTeam.childrenCount ?? 0;
     const showEmptyTeamPlaceholder =
       isEmpty(searchTerm) &&
       isEmpty(childTeamList) &&
-      (currentTeam.childrenCount ?? 0) === 0 &&
+      childrenCount === 0 &&
       !isTeamBasicDataLoading;
 
     return showEmptyTeamPlaceholder ? (
@@ -656,7 +712,12 @@ const TeamDetailsV1 = ({
           <Transi18next
             i18nKey="message.refer-to-our-doc"
             renderElement={
-              <a href={GLOSSARIES_DOCS} rel="noreferrer" target="_blank" />
+              <a
+                aria-label={t('label.doc-plural-lowercase')}
+                href={GLOSSARIES_DOCS}
+                rel="noreferrer"
+                target="_blank"
+              />
             }
             values={{
               doc: t('label.doc-plural-lowercase'),
@@ -763,7 +824,7 @@ const TeamDetailsV1 = ({
     () =>
       isEmpty(currentTeam.defaultRoles ?? []) ? (
         fetchErrorPlaceHolder({
-          permission: entityPermissions.EditAll,
+          permission: ungatedFlags.canEditAll,
           heading: t('label.role'),
           doc: ROLE_DOCS,
           children: t('message.assigning-team-entity-description', {
@@ -782,7 +843,7 @@ const TeamDetailsV1 = ({
               <Button
                 ghost
                 className={classNames({
-                  'p-x-lg': entityPermissions.EditAll && !isTeamDeleted,
+                  'p-x-lg': canEditAll,
                 })}
                 data-testid="add-placeholder-button"
                 disabled={isTeamDeleted}
@@ -801,7 +862,7 @@ const TeamDetailsV1 = ({
         })
       ) : (
         <Row className="roles-and-policy p-y-md" gutter={[0, 10]}>
-          {entityPermissions.EditAll && !isTeamDeleted && (
+          {canEditAll && (
             <Col className="d-flex justify-end" span={24}>
               <Button
                 data-testid="add-role"
@@ -818,7 +879,7 @@ const TeamDetailsV1 = ({
           )}
           <Col span={24}>
             <ListEntities
-              hasAccess={entityPermissions.EditAll}
+              hasAccess={canEditAll}
               isTeamDeleted={isTeamDeleted}
               list={currentTeam.defaultRoles ?? []}
               type={EntityType.ROLE}
@@ -829,14 +890,14 @@ const TeamDetailsV1 = ({
           </Col>
         </Row>
       ),
-    [currentTeam, entityPermissions, addRole, isTeamDeleted]
+    [currentTeam, canEditAll, ungatedFlags, addRole, isTeamDeleted]
   );
 
   const policiesTabRender = useMemo(
     () =>
       isEmpty(currentTeam.policies) ? (
         fetchErrorPlaceHolder({
-          permission: entityPermissions.EditAll,
+          permission: ungatedFlags.canEditAll,
           heading: t('label.policy'),
           children: t('message.assigning-team-entity-description', {
             entity: t('label.policy-lowercase-plural'),
@@ -854,7 +915,7 @@ const TeamDetailsV1 = ({
               <Button
                 ghost
                 className={classNames({
-                  'p-x-lg': entityPermissions.EditAll && !isTeamDeleted,
+                  'p-x-lg': canEditAll,
                 })}
                 data-testid="add-placeholder-button"
                 disabled={isTeamDeleted}
@@ -873,14 +934,12 @@ const TeamDetailsV1 = ({
         })
       ) : (
         <Row className="roles-and-policy p-y-md" gutter={[0, 10]}>
-          {entityPermissions.EditAll && !isTeamDeleted && (
+          {canEditAll && (
             <Col className="d-flex justify-end" span={24}>
               <Button
                 data-testid="add-policy"
                 title={
-                  entityPermissions.EditAll
-                    ? addPolicy
-                    : t('message.no-permission-for-action')
+                  canEditAll ? addPolicy : t('message.no-permission-for-action')
                 }
                 type="primary"
                 onClick={() =>
@@ -895,7 +954,7 @@ const TeamDetailsV1 = ({
           )}
           <Col span={24}>
             <ListEntities
-              hasAccess={entityPermissions.EditAll}
+              hasAccess={canEditAll}
               isTeamDeleted={isTeamDeleted}
               list={currentTeam.policies ?? []}
               type={EntityType.POLICY}
@@ -906,14 +965,20 @@ const TeamDetailsV1 = ({
           </Col>
         </Row>
       ),
-    [currentTeam, entityPermissions, addPolicy, isTeamDeleted]
+    [currentTeam, canEditAll, ungatedFlags, addPolicy, isTeamDeleted]
   );
 
-  const teamActionButton = useMemo(
-    () =>
-      !isOrganization &&
-      !isUndefined(currentUser) &&
-      isGroupType &&
+  const teamActionButton = useMemo(() => {
+    const canManageTeamMembership =
+      !isOrganization && !isUndefined(currentUser) && isGroupType;
+    const joinTeamButton = (Boolean(currentTeam.isJoinable) || isAdminUser) && (
+      <Button data-testid="join-teams" type="primary" onClick={joinTeam}>
+        {t('label.join-team')}
+      </Button>
+    );
+
+    return (
+      canManageTeamMembership &&
       (isAlreadyJoinedTeam ? (
         <Button
           ghost
@@ -927,29 +992,24 @@ const TeamDetailsV1 = ({
           {t('label.leave-team')}
         </Button>
       ) : (
-        (Boolean(currentTeam.isJoinable) || isAdminUser) && (
-          <Button data-testid="join-teams" type="primary" onClick={joinTeam}>
-            {t('label.join-team')}
-          </Button>
-        )
-      )),
+        joinTeamButton
+      ))
+    );
+  }, [
+    currentUser,
+    isAlreadyJoinedTeam,
+    isGroupType,
+    isAdminUser,
+    joinTeam,
+    deleteUserHandler,
+  ]);
 
-    [
-      currentUser,
-      isAlreadyJoinedTeam,
-      isGroupType,
-      isAdminUser,
-      joinTeam,
-      deleteUserHandler,
-    ]
-  );
-
-  const editDescriptionPermission = useMemo(
-    () =>
-      (entityPermissions.EditAll || entityPermissions.EditDescription) &&
-      !isTeamDeleted,
-    [entityPermissions, isTeamDeleted]
-  );
+  // Old: (entityPermissions.EditAll || entityPermissions.EditDescription) &&
+  // !isTeamDeleted. canEditDescription instead prioritizes the field-specific
+  // EditDescription key over the bare EditAll fallback (explicit-deny-wins) —
+  // same documented behavior change as CommonWidgets/QuickLinkFormModal
+  // (Task 8 Batch 2): an explicit `EditDescription: false` now wins over an
+  // `EditAll: true` grant, where the old raw OR granted regardless.
   const teamsCollapseHeader = useMemo(
     () => (
       <>
@@ -978,12 +1038,12 @@ const TeamDetailsV1 = ({
             <Space align="center">
               {teamActionButton}
               {!isOrganization ? (
-                entityPermissions.EditAll && (
+                ungatedFlags.canEditAll && (
                   <ManageButton
                     isRecursiveDelete
                     afterDeleteAction={afterDeleteAction}
                     allowSoftDelete={!currentTeam.deleted}
-                    canDelete={entityPermissions.EditAll}
+                    canDelete={ungatedFlags.canEditAll}
                     displayName={getEntityName(currentTeam)}
                     entityId={currentTeam.id}
                     entityName={
@@ -1027,12 +1087,12 @@ const TeamDetailsV1 = ({
           />
         </div>
         <div className="m-t-md">
-          <DescriptionV1
+          <Description
             wrapInCard
             description={currentTeam.description ?? ''}
             entityName={getEntityName(currentTeam)}
             entityType={EntityType.TEAM}
-            hasEditAccess={editDescriptionPermission}
+            hasEditAccess={canEditDescription}
             showCommentsIcon={false}
             onDescriptionUpdate={onDescriptionUpdate}
           />
@@ -1048,12 +1108,13 @@ const TeamDetailsV1 = ({
       isOrganization,
       slashedTeamName,
       entityPermissions,
+      ungatedFlags,
       teamActionButton,
       extraDropdownContent,
       updateTeamHandler,
       afterDeleteAction,
       getDeleteMessagePostFix,
-      editDescriptionPermission,
+      canEditDescription,
       onDescriptionUpdate,
     ]
   );

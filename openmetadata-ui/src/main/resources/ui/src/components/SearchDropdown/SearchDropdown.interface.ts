@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
+import type { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
 
 export interface SearchDropdownProps {
   triggerButtonSize?: 'large' | 'middle' | 'small';
@@ -31,16 +31,19 @@ export interface SearchDropdownProps {
   independent?: boolean; // flag to indicate if the filters are independent of aggregations
   hideCounts?: boolean; // Determines if the count should be displayed or not.
   hasNullOption?: boolean; // Determines if the null option should be displayed or not. For e.g No Owner, No Tier etc
-  showSelectedCounts?: boolean; // Show counts instead of labels for selected items
   hideSearchBar?: boolean; // Determines if the search bar should be hidden. Default is false
   singleSelect?: boolean; // Enable single-select mode with radio buttons instead of checkboxes
+  // Tri-state Select All row over the currently displayed options (multi-select only)
+  showSelectAll?: boolean;
+  // When true, every selection is applied to the query immediately (no Update button).
+  // The dropdown stays open for multi-select and closes after a single-select pick.
+  immediateApply?: boolean;
+  // Helper text shown at the bottom of the dropdown (e.g. "Pick values to refine.").
+  // Replaces the Update/Close footer when immediateApply is enabled.
+  helperText?: string;
   getPopupContainer?: (triggerNode: HTMLElement) => HTMLElement;
 }
 
-export interface SearchDropdownOption {
-  key: string;
-  label: string;
-  labelKeyOptions?: Record<string, string | number | boolean>;
-  count?: number;
-  description?: string;
-}
+import type { SearchDropdownOption } from '../../interface/quickFilter.interface';
+
+export type { SearchDropdownOption };

@@ -1,5 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +21,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.governance.workflows.Workflow;
+import org.openmetadata.service.governance.workflows.WorkflowExpressionValidator;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.governance.WorkflowDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -186,17 +189,61 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     validateNodeInputOutputMapping(workflowDefinition);
     // 5. Conditional task validations
     validateConditionalTasks(workflowDefinition);
+    // 6. Restrict the values interpolated into conditional-edge JUEL expressions
+    validateEdgeConditions(workflowDefinition);
+  }
+
+  private void validateEdgeConditions(WorkflowDefinition workflowDefinition) {
+    if (workflowDefinition.getEdges() == null) {
+      return;
+    }
+    String workflowName = workflowDefinition.getName();
+    for (EdgeDefinition edge : workflowDefinition.getEdges()) {
+      checkEdgeExpressionSafety(workflowName, edge);
+    }
+  }
+
+  /**
+   * A conditional edge builds the Flowable expression {@code ${from_result == 'condition'}}, so both
+   * the condition value and the source node ('from') are interpolated into it. Restrict them to a
+   * well-formed character set. Unconditional edges (null/empty condition) are left untouched, so node
+   * names keep the broader entityName contract.
+   */
+  static void checkEdgeExpressionSafety(String workflowName, EdgeDefinition edge) {
+    String condition = edge.getCondition();
+    if (nullOrEmpty(condition)) {
+      return;
+    }
+    if (!WorkflowExpressionValidator.isSafeCondition(condition)) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s' edge '%s' -> '%s' has an invalid condition '%s'; it must contain at "
+                  + "least one letter or digit and only letters, digits, space, '.', '_', '-'",
+              workflowName, edge.getFrom(), edge.getTo(), condition));
+    }
+    if (!WorkflowExpressionValidator.isSafeNodeReference(edge.getFrom())) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s' conditional edge '%s' -> '%s' has an invalid source node reference; "
+                  + "allowed characters: letters, digits, '_'",
+              workflowName, edge.getFrom(), edge.getTo()));
+    }
   }
 
   /**
    * Comprehensive workflow graph structure validation.
    * Performs all graph validations in a single traversal for efficiency:
    * 1. Exactly one start node (if nodes exist)
-   * 2. No cycles in the graph
+   * 2. No infinite (automated-only) cycles
    * 3. No orphaned nodes (all nodes are reachable from start)
    * 4. All edges reference valid nodes
    * 5. Non-end nodes must have outgoing edges
    * 6. End nodes must not have outgoing edges
+   *
+   * <p>A cycle is permitted only when it passes through a human-gated node (a userApprovalTask):
+   * workflow state machines legitimately loop back (e.g. the incident-resolution New-&gt;Ack-&gt;New
+   * transition, or an Assigned self-reassign). A cycle of only automated tasks is an infinite loop
+   * and is rejected.
    */
   private void validateWorkflowGraphStructure(WorkflowDefinition workflowDefinition) {
     // Skip validation if no nodes are present - allow empty workflows
@@ -293,17 +340,19 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       }
     }
 
-    // Validation 2 & 3: Cycle detection and orphaned nodes check using DFS
+    // Reject infinite automated cycles and orphaned nodes. A cycle is ALLOWED when it passes
+    // through
+    // a human-gated node (a userApprovalTask): such a loop cannot run unbounded without external
+    // input (e.g. the incident New<->Ack transitions, or an Assigned self-reassign). A cycle of
+    // only
+    // automated tasks would loop forever and is rejected.
     String startNode = startNodes.iterator().next();
     Set<String> visited = new java.util.HashSet<>();
-    Set<String> recursionStack = new java.util.HashSet<>();
-
-    if (hasCycleDFS(startNode, outgoingEdges, visited, recursionStack)) {
+    if (hasAutomatedOnlyCycle(startNode, outgoingEdges, nodeMap, visited, new ArrayList<>())) {
       throw BadRequestException.of(
           String.format("Workflow '%s' contains a cycle in its execution path", workflowName));
     }
 
-    // Validation 3: Check for orphaned nodes (nodes not reachable from start)
     Set<String> orphanedNodes = new java.util.HashSet<>(allNodeIds);
     orphanedNodes.removeAll(visited);
 
@@ -316,46 +365,48 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   }
 
   /**
-   * Depth-First Search to detect cycles in directed graph.
+   * Depth-first traversal that detects an infinite automated cycle while collecting every reachable
+   * node into {@code visited} (which drives the orphaned-node check). A back edge to a node on the
+   * current path forms a cycle; that cycle is allowed when it contains a human-gated node (a {@code
+   * userApprovalTask}), because such a loop cannot advance without external input (e.g. the incident
+   * New&lt;-&gt;Ack transitions). A cycle of only automated tasks would loop forever and is reported.
    *
    * @param node Current node being visited
    * @param adjacencyList Graph representation
-   * @param visited Set of completely processed nodes (black nodes)
-   * @param recursionStack Set of nodes currently in the DFS path (gray nodes)
+   * @param nodeMap Node id to definition, used to classify human-gated nodes
+   * @param visited Accumulates every node reachable from the start node
+   * @param path Nodes on the current DFS path, used to extract a detected cycle
    */
-  private boolean hasCycleDFS(
+  private boolean hasAutomatedOnlyCycle(
       String node,
       Map<String, List<String>> adjacencyList,
+      Map<String, WorkflowNodeDefinitionInterface> nodeMap,
       Set<String> visited,
-      Set<String> recursionStack) {
-
-    // If node is in current recursion path, we've found a cycle
-    if (recursionStack.contains(node)) {
-      return true;
-    }
-
-    // If node is already completely processed, skip it
-    if (visited.contains(node)) {
-      return false;
-    }
-
-    // Mark node as being processed (gray)
-    visited.add(node);
-    recursionStack.add(node);
-
-    // Recursively visit all neighbors
-    List<String> neighbors = adjacencyList.get(node);
-    if (neighbors != null) {
-      for (String neighbor : neighbors) {
-        if (hasCycleDFS(neighbor, adjacencyList, visited, recursionStack)) {
-          return true;
+      List<String> path) {
+    boolean automatedOnlyCycle = false;
+    int cycleStart = path.indexOf(node);
+    if (cycleStart >= 0) {
+      automatedOnlyCycle =
+          path.subList(cycleStart, path.size()).stream()
+              .noneMatch(nodeId -> isHumanGatedNode(nodeMap.get(nodeId)));
+    } else if (visited.add(node)) {
+      path.add(node);
+      List<String> neighbors = adjacencyList.get(node);
+      if (neighbors != null) {
+        for (String neighbor : neighbors) {
+          if (hasAutomatedOnlyCycle(neighbor, adjacencyList, nodeMap, visited, path)) {
+            automatedOnlyCycle = true;
+            break;
+          }
         }
       }
+      path.removeLast();
     }
+    return automatedOnlyCycle;
+  }
 
-    // Mark node as completely processed (black) by removing from recursion stack
-    recursionStack.remove(node);
-    return false;
+  private boolean isHumanGatedNode(WorkflowNodeDefinitionInterface node) {
+    return node != null && "userApprovalTask".equals(node.getSubType());
   }
 
   public void suspendWorkflow(WorkflowDefinition workflow) {
@@ -367,7 +418,8 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
       workflow.setSuspended(true);
       dao.update(workflow);
-      invalidateCacheForEntity(entityType, workflow.getId(), workflow.getFullyQualifiedName());
+      EntityRepository.invalidateCacheForEntity(
+          entityType, workflow.getId(), workflow.getFullyQualifiedName());
       LOG.info("Suspended workflow '{}' in Flowable engine", workflowName);
     } catch (IllegalArgumentException e) {
       // Workflow not deployed to Flowable - this can happen for workflows that haven't been
@@ -391,7 +443,8 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
       workflow.setSuspended(false);
       dao.update(workflow);
-      invalidateCacheForEntity(entityType, workflow.getId(), workflow.getFullyQualifiedName());
+      EntityRepository.invalidateCacheForEntity(
+          entityType, workflow.getId(), workflow.getFullyQualifiedName());
 
       // Log the resumption
       LOG.info("Resumed workflow '{}' in Flowable engine", workflowName);
@@ -691,6 +744,8 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
                 workflowName, node.getNodeDisplayName(), configuredTransitions, outgoingEdges);
             continue;
           }
+          validateApprovalConditions(workflowName, node.getNodeDisplayName(), outgoingEdges);
+          continue;
         }
 
         // Check if we have both TRUE and FALSE conditions
@@ -719,6 +774,36 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     }
   }
 
+  private void validateApprovalConditions(
+      String workflowName, String nodeDisplayName, List<EdgeDefinition> outgoingEdges) {
+    boolean hasApprove = false;
+    boolean hasReject = false;
+    for (EdgeDefinition edge : outgoingEdges) {
+      String condition = edge.getCondition();
+      if (condition != null) {
+        String trimmed = condition.trim();
+        if (APPROVE_CONDITIONS.contains(trimmed)) {
+          hasApprove = true;
+        } else if (REJECT_CONDITIONS.contains(trimmed)) {
+          hasReject = true;
+        }
+      }
+    }
+
+    if (!hasApprove || !hasReject) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s': User approval task '%s' must have both approve and reject outgoing sequence flows. "
+                  + "Add sequence flows with conditions for both outcomes to prevent workflow execution errors.",
+              workflowName, nodeDisplayName));
+    }
+  }
+
+  private static final Set<String> APPROVE_CONDITIONS =
+      Set.of(Workflow.APPROVE_CONDITION, Workflow.LEGACY_APPROVE_CONDITION);
+  private static final Set<String> REJECT_CONDITIONS =
+      Set.of(Workflow.REJECT_CONDITION, Workflow.LEGACY_REJECT_CONDITION);
+
   /**
    * Checks if a node is a conditional task that requires TRUE/FALSE outputs.
    */
@@ -731,19 +816,22 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   @SuppressWarnings("unchecked")
   private List<String> getConfiguredUserApprovalTransitions(WorkflowNodeDefinitionInterface node) {
-    if (node.getConfig() == null) {
-      return List.of();
+    List<String> transitionIds = new ArrayList<>();
+    if (node.getConfig() != null) {
+      Map<String, Object> config = JsonUtils.readOrConvertValue(node.getConfig(), Map.class);
+      collectTransitionMetadataIds(config.get("transitionMetadata"), transitionIds);
+      collectExpiryTimerTransitionId(config.get("expiryTimer"), transitionIds);
     }
+    return transitionIds;
+  }
 
-    Map<String, Object> config = JsonUtils.readOrConvertValue(node.getConfig(), Map.class);
-    Object transitionMetadata = config.get("transitionMetadata");
+  @SuppressWarnings("unchecked")
+  private void collectTransitionMetadataIds(Object transitionMetadata, List<String> transitionIds) {
     if (transitionMetadata == null) {
-      return List.of();
+      return;
     }
-
     List<Map<String, Object>> transitions =
         JsonUtils.readOrConvertValue(transitionMetadata, List.class);
-    List<String> transitionIds = new ArrayList<>();
     for (Map<String, Object> transition : transitions) {
       if (transition == null) {
         continue;
@@ -753,7 +841,22 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
         transitionIds.add(id.trim());
       }
     }
-    return transitionIds;
+  }
+
+  // expiryTimer.transitionId is a legitimate outgoing edge condition on a user approval task —
+  // it is emitted by the boundary timer's ExpireOnTimerImpl service task, not by a user click.
+  // Without this, workflows that use expiryTimer fail validation because the outgoing edge
+  // named after transitionId is not declared in transitionMetadata.
+  @SuppressWarnings("unchecked")
+  private void collectExpiryTimerTransitionId(Object expiryTimer, List<String> transitionIds) {
+    if (expiryTimer == null) {
+      return;
+    }
+    Map<String, Object> timerConfig = JsonUtils.readOrConvertValue(expiryTimer, Map.class);
+    Object transitionId = timerConfig.get("transitionId");
+    if (transitionId instanceof String id && !id.isBlank()) {
+      transitionIds.add(id.trim());
+    }
   }
 
   private void validateUserApprovalTransitions(

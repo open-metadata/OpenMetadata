@@ -10,20 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { GlossaryTag } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
 import { useEntityRules } from '../../../hooks/useEntityRules';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { GlossaryTermSelectableList } from '../GlossaryTermSelectableList/GlossaryTermSelectableList.component';
+import GlossaryTermPicker from '../GlossaryTermPicker/GlossaryTermPicker';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import { GlossaryTermsSectionProps } from './GlossaryTermsSection.interface';
@@ -39,33 +39,24 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
   maxVisibleGlossaryTerms = 3,
 }) => {
   const { t } = useTranslation();
-  const [editingGlossaryTerms, setEditingGlossaryTerms] = useState<TagLabel[]>(
-    []
-  );
   const [showAllTerms, setShowAllTerms] = useState(false);
   const { entityRules } = useEntityRules(entityType);
 
   const {
     isEditing,
     isLoading,
-    popoverOpen,
     displayData: displayTags,
     setDisplayData: setDisplayTags,
     setIsLoading,
-    setPopoverOpen,
     startEditing,
     cancelEditing,
     completeEditing,
   } = useEditableSection<TagLabel[]>(tags);
 
-  const glossaryTerms = displayTags.filter(
-    (tag) => tag.source === TagSource.Glossary
+  const glossaryTerms = useMemo(
+    () => displayTags.filter((tag) => tag.source === TagSource.Glossary),
+    [displayTags]
   );
-
-  const handleEditClick = () => {
-    setEditingGlossaryTerms(glossaryTerms);
-    startEditing();
-  };
 
   const handleGlossaryTermSelection = useCallback(
     async (selectedTerms: TagLabel[]) => {
@@ -73,8 +64,6 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
         if (!entityId || !entityType) {
           return;
         }
-        // Update the local state for the selectable list with the new selection
-        setEditingGlossaryTerms(selectedTerms);
 
         setIsLoading(true);
 
@@ -83,8 +72,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
         );
         const updatedTags = [...nonGlossaryTags, ...selectedTerms];
 
-        // When onGlossaryTermsUpdate is provided, use it directly as the update mechanism
-        // This avoids updateEntityField's fallback behavior for non-standard entity types
+        // Skips updateEntityField's fallback for non-standard entity types.
         if (onGlossaryTermsUpdate) {
           try {
             const resultTags = await onGlossaryTermsUpdate(updatedTags);
@@ -93,8 +81,6 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
             }
             completeEditing();
           } catch {
-            // Revert editing state so the UI doesn't show the failed selection
-            setEditingGlossaryTerms(glossaryTerms);
             cancelEditing();
             setIsLoading(false);
           }
@@ -134,108 +120,88 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
       setIsLoading,
       setDisplayTags,
       completeEditing,
+      cancelEditing,
     ]
   );
 
-  const handlePopoverOpenChange = (open: boolean) => {
-    setPopoverOpen(open);
-    if (!open) {
-      setEditingGlossaryTerms(glossaryTerms);
-    }
-  };
-
-  const handleCancel = () => {
-    setEditingGlossaryTerms(glossaryTerms);
-    cancelEditing();
-  };
-
   const loadingState = useMemo(() => <Loader size="small" />, []);
 
-  const editingState = useMemo(
-    () => (
-      <GlossaryTermSelectableList
-        multiSelect={entityRules.canAddMultipleGlossaryTerm}
-        popoverProps={{
-          placement: 'bottomLeft',
-          open: popoverOpen,
-          onOpenChange: handlePopoverOpenChange,
-          overlayClassName: 'glossary-term-select-popover',
-        }}
-        selectedTerms={editingGlossaryTerms}
-        onCancel={handleCancel}
-        onUpdate={handleGlossaryTermSelection}>
-        <div className="d-none glossary-term-selector-display">
-          {editingGlossaryTerms.length > 0 ? (
-            <div className="selected-glossary-terms-list">
-              {editingGlossaryTerms.map((term) => (
-                <div className="selected-glossary-term-chip" key={term.tagFQN}>
-                  <GlossaryIcon className="glossary-term-icon" />
-                  <span className="glossary-term-name">
-                    {getEntityName(term)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <span className="no-data-placeholder">
-              {t('label.no-entity-assigned', {
+  // The picker is anchored on the edit icon, so the body always shows the terms.
+  const editButton = useMemo(
+    () =>
+      showEditButton && hasPermission && !isLoading ? (
+        <GlossaryTermPicker
+          commitMode="staged"
+          data-testid="glossary-term-picker"
+          isOpen={isEditing}
+          multiple={entityRules.canAddMultipleGlossaryTerm}
+          renderTrigger={({ toggle }) => (
+            <EditIconButton
+              newLook
+              data-testid="edit-glossary-terms"
+              disabled={false}
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+              size="small"
+              title={t('label.edit-entity', {
                 entity: t('label.glossary-term-plural'),
               })}
-            </span>
+              onClick={toggle}
+            />
           )}
-        </div>
-      </GlossaryTermSelectableList>
-    ),
+          value={glossaryTerms}
+          onChange={handleGlossaryTermSelection}
+          onOpenChange={(open) => (open ? startEditing() : cancelEditing())}
+        />
+      ) : null,
     [
-      popoverOpen,
-      handlePopoverOpenChange,
-      editingGlossaryTerms,
-      handleCancel,
-      handleGlossaryTermSelection,
+      showEditButton,
+      hasPermission,
+      isLoading,
+      isEditing,
       entityRules.canAddMultipleGlossaryTerm,
+      glossaryTerms,
+      handleGlossaryTermSelection,
+      startEditing,
+      cancelEditing,
       t,
     ]
   );
 
-  const emptyContent = useMemo(() => {
+  const glossaryTermsContent = useMemo(() => {
     if (isLoading) {
       return loadingState;
     }
-    if (isEditing) {
-      return editingState;
+
+    if (!glossaryTerms.length) {
+      return (
+        <span className="no-data-placeholder">
+          {t('label.no-entity-assigned', {
+            entity: t('label.glossary-term-plural'),
+          })}
+        </span>
+      );
     }
 
     return (
-      <span className="no-data-placeholder">
-        {t('label.no-entity-assigned', {
-          entity: t('label.glossary-term-plural'),
-        })}
-      </span>
-    );
-  }, [isLoading, isEditing, loadingState, editingState, t]);
-
-  const glossaryTermsDisplay = useMemo(
-    () => (
       <div className="glossary-terms-display">
         <div className="glossary-terms-list">
           {(showAllTerms
             ? glossaryTerms
             : glossaryTerms.slice(0, maxVisibleGlossaryTerms)
           ).map((glossaryTerm, index) => (
-            <div
-              className="glossary-term-item"
+            <GlossaryTag
+              color={glossaryTerm.style?.color}
               data-testid={`tag-${
                 glossaryTerm.tagFQN ||
                 glossaryTerm.name ||
                 glossaryTerm.displayName ||
                 index
               }`}
-              key={glossaryTerm.tagFQN}>
-              <GlossaryIcon className="glossary-term-icon" />
-              <span className="glossary-term-name">
-                {getEntityName(glossaryTerm)}
-              </span>
-            </div>
+              icon={glossaryTerm.style?.iconURL}
+              key={glossaryTerm.tagFQN}
+              label={getEntityName(glossaryTerm)}
+              tooltip={getEntityName(glossaryTerm)}
+            />
           ))}
           {glossaryTerms.length > maxVisibleGlossaryTerms && (
             <button
@@ -251,54 +217,15 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
           )}
         </div>
       </div>
-    ),
-    [showAllTerms, glossaryTerms, maxVisibleGlossaryTerms, t]
-  );
-
-  const glossaryTermsContent = useMemo(() => {
-    if (isLoading) {
-      return loadingState;
-    }
-    if (isEditing) {
-      return editingState;
-    }
-
-    return glossaryTermsDisplay;
-  }, [isLoading, isEditing, loadingState, editingState, glossaryTermsDisplay]);
-
-  const canShowEditButton = showEditButton && hasPermission && !isLoading;
-
-  if (!glossaryTerms?.length) {
-    return (
-      <div
-        className="glossary-terms-section"
-        data-testid="KnowledgePanel.GlossaryTerms">
-        <div className="glossary-terms-header">
-          <Typography.Text className="glossary-terms-title">
-            {t('label.glossary-term-plural')}
-          </Typography.Text>
-          {canShowEditButton && (
-            <EditIconButton
-              newLook
-              data-testid="edit-glossary-terms"
-              disabled={false}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-              size="small"
-              title={t('label.edit-entity', {
-                entity: t('label.glossary-term-plural'),
-              })}
-              onClick={handleEditClick}
-            />
-          )}
-        </div>
-        <div
-          className="glossary-terms-content"
-          data-testid="glossary-container">
-          {emptyContent}
-        </div>
-      </div>
     );
-  }
+  }, [
+    isLoading,
+    loadingState,
+    glossaryTerms,
+    showAllTerms,
+    maxVisibleGlossaryTerms,
+    t,
+  ]);
 
   return (
     <div
@@ -308,19 +235,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
         <Typography.Text className="glossary-terms-title">
           {t('label.glossary-term-plural')}
         </Typography.Text>
-        {canShowEditButton && (
-          <EditIconButton
-            newLook
-            data-testid="edit-glossary-terms"
-            disabled={false}
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-            size="small"
-            title={t('label.edit-entity', {
-              entity: t('label.glossary-term-plural'),
-            })}
-            onClick={handleEditClick}
-          />
-        )}
+        {editButton}
       </div>
       <div className="glossary-terms-content" data-testid="glossary-container">
         {glossaryTermsContent}

@@ -11,8 +11,8 @@
 """
 NoSQL adaptor for the NoSQL profiler.
 """
+
 from abc import ABC, abstractmethod
-from typing import Dict, List, Union
 
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -29,37 +29,44 @@ class NoSQLAdaptor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def scan(
-        self, table: Table, columns: List[Column], limit: int
-    ) -> List[Dict[str, any]]:
+    def scan(self, table: Table, columns: list[Column], limit: int) -> list[dict[str, any]]:
         pass
 
-    def query(
-        self, table: Table, columns: List[Column], query: any, limit: int
-    ) -> List[Dict[str, any]]:
+    def query(self, table: Table, columns: list[Column], query: any, limit: int) -> list[dict[str, any]]:
         raise NotImplementedError
 
     def get_aggregates(
-        self, table: Table, column: SQALikeColumn, aggregate_functions: List[any]
-    ) -> Dict[str, Union[int, float]]:
+        self,
+        table: Table,
+        column: SQALikeColumn,
+        aggregate_functions: list[any],
+    ) -> dict[str, int | float]:
         raise NotImplementedError
 
-    def sum(
-        self, table: Table, column: Column  # pylint: disable=unused-argument
+    def sum(  # pylint: disable=unused-argument
+        self,
+        table: Table,
+        column: Column,
     ) -> any:
         return None
 
-    def mean(
-        self, table: Table, column: Column  # pylint: disable=unused-argument
+    def mean(  # pylint: disable=unused-argument
+        self,
+        table: Table,
+        column: Column,
     ) -> any:
         return None
 
-    def max(
-        self, table: Table, column: Column  # pylint: disable=unused-argument
+    def max(  # pylint: disable=unused-argument
+        self,
+        table: Table,
+        column: Column,
     ) -> any:
         return None
 
-    def min(
-        self, table: Table, column: Column  # pylint: disable=unused-argument
+    def min(  # pylint: disable=unused-argument
+        self,
+        table: Table,
+        column: Column,
     ) -> any:
         return None

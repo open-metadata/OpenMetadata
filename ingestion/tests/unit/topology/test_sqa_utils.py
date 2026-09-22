@@ -40,9 +40,7 @@ DISPATCH_TEST_DATA = [
 ]
 
 
-@pytest.mark.parametrize(
-    "filters,expected", FILTER_TEST_DATA, ids=["eq", "gt_lt", "in", "not_in"]
-)
+@pytest.mark.parametrize("filters,expected", FILTER_TEST_DATA, ids=["eq", "gt_lt", "in", "not_in"])
 def test_build_query_filter(filters, expected):
     """Test SQA query filter builder"""
     filter_ = build_query_filter(filters, False)

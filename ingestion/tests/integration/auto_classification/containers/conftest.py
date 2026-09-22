@@ -8,11 +8,13 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""MinIO and S3 container classification test fixtures"""
+"""S3 container classification test fixtures"""
+
 import csv
 import io
 import json
 import uuid
+from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -48,7 +50,7 @@ from metadata.ingestion.source.storage.storage_service import (
 from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ...containers import MinioContainerConfigs, get_minio_container
+from ...containers import S3ContainerConfigs, get_s3_container  # noqa: TID252
 
 
 @pytest.fixture(scope="module")
@@ -58,7 +60,7 @@ def metadata():
 
 @pytest.fixture(scope="module")
 def service_name():
-    return f"s3_container_classification_{uuid.uuid4().hex[:8]}"
+    return f"s3_classification_{uuid.uuid4().hex[:8]}"
 
 
 @pytest.fixture(scope="module")
@@ -68,7 +70,7 @@ def bucket_name():
 
 @pytest.fixture(scope="module", autouse=True)
 def mock_cloudwatch():
-    """Mock CloudWatch client since MinIO doesn't support it"""
+    """Mock CloudWatch client: the S3 test container has no CloudWatch API"""
     from metadata.clients.aws_client import AWSClient
 
     original_get_client = AWSClient.get_client
@@ -76,9 +78,7 @@ def mock_cloudwatch():
     def get_client_override(self, service_name):
         if service_name == "cloudwatch":
             mock_cw = MagicMock()
-            mock_cw.get_metric_data.return_value = {
-                "MetricDataResults": [{"StatusCode": "Complete", "Values": [0]}]
-            }
+            mock_cw.get_metric_data.return_value = {"MetricDataResults": [{"StatusCode": "Complete", "Values": [0]}]}
             mock_cw.list_metrics.return_value = {"Metrics": []}
             return mock_cw
         return original_get_client(self, service_name)
@@ -88,15 +88,14 @@ def mock_cloudwatch():
 
 
 @pytest.fixture(scope="module")
-def minio(bucket_name):
-    config = MinioContainerConfigs(container_name=f"minio_{uuid.uuid4().hex[:8]}")
-    minio_container = get_minio_container(config)
-    minio_container.with_exposed_ports(9000, 9001)
+def s3(bucket_name):
+    config = S3ContainerConfigs(container_name=f"s3proxy_{uuid.uuid4().hex[:8]}")
+    s3_container = get_s3_container(config)
 
-    with minio_container:
-        minio_client = minio_container.get_client()
-        minio_client.make_bucket(bucket_name)
-        yield minio_container, minio_client
+    with s3_container:
+        s3_client = s3_container.get_client()
+        s3_client.make_bucket(bucket_name)
+        yield s3_container, s3_client
 
 
 @pytest.fixture(scope="module")
@@ -239,13 +238,11 @@ def pii_employees_parquet():
 
 
 @pytest.fixture(scope="module")
-def upload_test_data(
-    minio, bucket_name, pii_customers_csv, non_pii_orders_csv, pii_employees_parquet
-):
-    """Upload test data files to MinIO"""
-    _, minio_client = minio
+def upload_test_data(s3, bucket_name, pii_customers_csv, non_pii_orders_csv, pii_employees_parquet):
+    """Upload test data files to the S3 container"""
+    _, s3_client = s3
 
-    minio_client.put_object(
+    s3_client.put_object(
         bucket_name,
         "customers/data.csv",
         io.BytesIO(pii_customers_csv),
@@ -253,7 +250,7 @@ def upload_test_data(
         content_type="text/csv",
     )
 
-    minio_client.put_object(
+    s3_client.put_object(
         bucket_name,
         "orders/data.csv",
         io.BytesIO(non_pii_orders_csv),
@@ -261,7 +258,7 @@ def upload_test_data(
         content_type="text/csv",
     )
 
-    minio_client.put_object(
+    s3_client.put_object(
         bucket_name,
         "employees/data.parquet",
         io.BytesIO(pii_employees_parquet),
@@ -288,7 +285,7 @@ def upload_test_data(
         ]
     }
     metadata_json = json.dumps(metadata_config).encode("utf-8")
-    minio_client.put_object(
+    s3_client.put_object(
         bucket_name,
         OPENMETADATA_TEMPLATE_FILE_NAME,
         io.BytesIO(metadata_json),
@@ -298,14 +295,14 @@ def upload_test_data(
 
     yield
 
-    for obj in minio_client.list_objects(bucket_name):
-        minio_client.remove_object(bucket_name, obj.object_name)
+    for obj in s3_client.list_objects(bucket_name):
+        s3_client.remove_object(bucket_name, obj.object_name)
 
 
 @pytest.fixture(scope="module")
-def storage_service_config(minio, service_name, bucket_name):
-    """Storage service configuration for S3/MinIO"""
-    minio_container, _ = minio
+def storage_service_config(s3, service_name, bucket_name):
+    """Storage service configuration for S3"""
+    s3_container, _ = s3
     return {
         "source": {
             "type": "s3",
@@ -314,10 +311,10 @@ def storage_service_config(minio, service_name, bucket_name):
                 "config": {
                     "type": "S3",
                     "awsConfig": {
-                        "awsAccessKeyId": minio_container.access_key,
-                        "awsSecretAccessKey": minio_container.secret_key,
+                        "awsAccessKeyId": s3_container.access_key,
+                        "awsSecretAccessKey": s3_container.secret_key,
                         "awsRegion": "us-east-1",
-                        "endPointURL": f"http://localhost:{minio_container.get_exposed_port(9000)}",
+                        "endPointURL": f"http://localhost:{s3_container.get_exposed_port(9000)}",
                     },
                     "bucketNames": [bucket_name],
                 }
@@ -337,9 +334,7 @@ def storage_service_config(minio, service_name, bucket_name):
 
 
 @pytest.fixture(scope="module")
-def ingest_storage_metadata(
-    metadata, storage_service_config, upload_test_data, run_workflow
-):
+def ingest_storage_metadata(metadata, storage_service_config, upload_test_data, run_workflow):
     """Ingest storage service metadata"""
     workflow = run_workflow(MetadataWorkflow, storage_service_config)
     yield workflow
@@ -372,9 +367,7 @@ def run_workflow():
 def bot_metadata(metadata) -> OpenMetadata:
     """Get the bot ometa for auto-classification"""
     automator_bot = metadata.get_by_name(entity=User, fqn="ingestion-bot")
-    automator_bot_auth = metadata.get_by_id(
-        entity=AuthenticationMechanism, entity_id=automator_bot.id
-    )
+    automator_bot_auth = metadata.get_by_id(entity=AuthenticationMechanism, entity_id=automator_bot.id)
     return int_admin_ometa(jwt=automator_bot_auth.config.JWTToken.get_secret_value())
 
 
@@ -439,15 +432,65 @@ def pii_spacy_recognizer() -> Recognizer:
     )
 
 
+PII_CLASSIFICATION_FQN = "PII"
+PII_SENSITIVE_FQN = "PII.Sensitive"
+PII_NON_SENSITIVE_FQN = "PII.NonSensitive"
+
+
+def snapshot_classification(metadata: OpenMetadata, fqn: str) -> CreateClassificationRequest:
+    """Capture a classification's current definition as a request that restores it verbatim."""
+    classification = metadata.get_by_name(entity=Classification, fqn=fqn, fields=["autoClassificationConfig"])
+    # The entity and the request generate distinct AutoClassificationConfig classes, so the instance
+    # has to be round-tripped through JSON rather than handed over directly.
+    auto_classification_config = (
+        classification.autoClassificationConfig.model_dump(mode="json")
+        if classification.autoClassificationConfig
+        else None
+    )
+
+    return CreateClassificationRequest(
+        name=classification.name,
+        displayName=classification.displayName,
+        description=classification.description,
+        provider=classification.provider,
+        mutuallyExclusive=classification.mutuallyExclusive,
+        autoClassificationConfig=auto_classification_config,
+    )
+
+
+def snapshot_tag(metadata: OpenMetadata, fqn: str) -> CreateTagRequest:
+    """Capture a tag's current definition as a request that restores it verbatim."""
+    tag = metadata.get_by_name(entity=Tag, fqn=fqn, fields=["recognizers"])
+
+    return CreateTagRequest(
+        name=tag.name,
+        displayName=tag.displayName,
+        description=tag.description,
+        classification=fqn.rsplit(".", 1)[0],
+        style=tag.style,
+        provider=tag.provider,
+        mutuallyExclusive=tag.mutuallyExclusive,
+        recognizers=tag.recognizers,
+        autoClassificationEnabled=tag.autoClassificationEnabled,
+        autoClassificationPriority=tag.autoClassificationPriority,
+    )
+
+
+# The PII classification is global server state shared by every auto-classification suite in the
+# session. These fixtures overwrite its recognizers, so they must restore the seeded definition on
+# teardown -- ingestion/tests/integration/auto_classification/databases asserts against the
+# recognizers shipped in piiTagsWithRecognizers.json and runs after this module.
 @pytest.fixture(scope="module")
 def pii_classification(
     metadata: OpenMetadata[Classification, CreateClassificationRequest],
-) -> Classification:
+) -> Generator[Classification, None, None]:
+    seeded = snapshot_classification(metadata, PII_CLASSIFICATION_FQN)
     create_classification_request = CreateClassificationRequestFactory.create(
         fqn="PII",
         autoClassificationConfig__conflictResolution=ConflictResolution.highest_priority.value,
     )
-    return metadata.create_or_update(create_classification_request)
+    yield metadata.create_or_update(create_classification_request)
+    metadata.create_or_update(seeded)
 
 
 @pytest.fixture(scope="module")
@@ -458,7 +501,8 @@ def sensitive_pii_tag(
     credit_card_recognizer: Recognizer,
     us_ssn_recognizer: Recognizer,
     pii_spacy_recognizer: Recognizer,
-) -> Tag:
+) -> Generator[Tag, None, None]:
+    seeded = snapshot_tag(metadata, PII_SENSITIVE_FQN)
     create_tag_request = CreateTagRequestFactory.create(
         tag_name="Sensitive",
         tag_classification=pii_classification.fullyQualifiedName.root,
@@ -470,7 +514,8 @@ def sensitive_pii_tag(
             pii_spacy_recognizer,
         ],
     )
-    return metadata.create_or_update(create_tag_request)
+    yield metadata.create_or_update(create_tag_request)
+    metadata.create_or_update(seeded)
 
 
 @pytest.fixture(scope="module")
@@ -479,7 +524,8 @@ def non_sensitive_pii_tag(
     pii_classification: Classification,
     phone_recognizer: Recognizer,
     date_recognizer: Recognizer,
-) -> Tag:
+) -> Generator[Tag, None, None]:
+    seeded = snapshot_tag(metadata, PII_NON_SENSITIVE_FQN)
     create_tag_request = CreateTagRequestFactory.create(
         tag_name="NonSensitive",
         tag_classification=pii_classification.fullyQualifiedName.root,
@@ -489,14 +535,13 @@ def non_sensitive_pii_tag(
             date_recognizer,
         ],
     )
-    return metadata.create_or_update(create_tag_request)
+    yield metadata.create_or_update(create_tag_request)
+    metadata.create_or_update(seeded)
 
 
 @pytest.fixture(scope="module")
-def autoclassification_config(
-    storage_service_config, bot_workflow_config, bucket_name, service_name, minio
-):
-    minio_container, _ = minio
+def autoclassification_config(storage_service_config, bot_workflow_config, bucket_name, service_name, s3):
+    s3_container, _ = s3
     return {
         "source": {
             "type": "s3",
@@ -505,10 +550,10 @@ def autoclassification_config(
                 "config": {
                     "type": "S3",
                     "awsConfig": {
-                        "awsAccessKeyId": minio_container.access_key,
-                        "awsSecretAccessKey": minio_container.secret_key,
+                        "awsAccessKeyId": s3_container.access_key,
+                        "awsSecretAccessKey": s3_container.secret_key,
                         "awsRegion": "us-east-1",
-                        "endPointURL": f"http://localhost:{minio_container.get_exposed_port(9000)}",
+                        "endPointURL": f"http://localhost:{s3_container.get_exposed_port(9000)}",
                     },
                     "bucketNames": [bucket_name],
                 }

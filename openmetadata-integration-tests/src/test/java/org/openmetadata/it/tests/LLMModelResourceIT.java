@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -15,15 +16,29 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.ai.CreateLLMModel;
 import org.openmetadata.schema.entity.ai.LLMModel;
+import org.openmetadata.schema.entity.ai.ModelCapability;
+import org.openmetadata.schema.entity.ai.ModelType;
 import org.openmetadata.schema.entity.services.LLMService;
+import org.openmetadata.schema.type.AIDetection;
+import org.openmetadata.schema.type.AIDetectionSource;
+import org.openmetadata.schema.type.AIEvidence;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.RemediationAction;
+import org.openmetadata.schema.type.RemediationStatus;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.resources.ai.LLMModelResource;
 
 @Execution(ExecutionMode.CONCURRENT)
 public class LLMModelResourceIT extends BaseEntityIT<LLMModel, CreateLLMModel> {
+  private static final String BASE_MODEL = "external-research-model";
+  private static final String CERTIFICATION = "ISO/IEC 42001";
+  private static final String INITIAL_PROVIDER_MODEL_ID = "vendor/external-research-model";
+  private static final String REGULATION = "EU AI Act";
+  private static final String UPDATED_PROVIDER_MODEL_ID = "vendor/external-research-model-v2";
+  private static final String MODEL_CARD_URL = "https://example.com/model-card";
 
   {
     supportsSearchIndex = false; // LLMModel doesn't have a search index
@@ -146,17 +161,6 @@ public class LLMModelResourceIT extends BaseEntityIT<LLMModel, CreateLLMModel> {
   }
 
   @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().llmModels().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient().llmModels().getVersionList(id, limit, offset, fieldChanged);
-  }
-
-  @Override
   protected LLMModel getVersion(UUID id, Double version) {
     return SdkClients.adminClient().llmModels().getVersion(id.toString(), version);
   }
@@ -193,6 +197,104 @@ public class LLMModelResourceIT extends BaseEntityIT<LLMModel, CreateLLMModel> {
     assertEquals("OpenAI", llmModel.getModelProvider());
     assertEquals("1.0", llmModel.getModelVersion());
     assertEquals("Complete LLM model with all fields", llmModel.getDescription());
+  }
+
+  @Test
+  void put_llmModelPreservesShowcaseGovernanceFields_200_OK(final TestNamespace ns) {
+    final LLMService service = LLMServiceTestFactory.createOpenAI(ns);
+    final RemediationAction remediation =
+        new RemediationAction()
+            .withId(UUID.randomUUID())
+            .withLabel("Complete the vendor risk review")
+            .withStatus(RemediationStatus.Open);
+    final CreateLLMModel request = showcaseModelRequest(ns, service, remediation);
+    final LLMModel created = putModel(request);
+    request.setProviderModelId(UPDATED_PROVIDER_MODEL_ID);
+    final LLMModel updated = putModel(request);
+    final LLMModel fetched = getEntity(created.getId().toString());
+
+    assertEquals(created.getId(), updated.getId());
+    assertShowcaseFields(fetched, remediation);
+  }
+
+  @Test
+  void sdkUpsert_createOrUpdate_200_OK(TestNamespace ns) {
+    // Exercises the SDK LLMModelService.upsert(CreateLLMModel) path (PUT /v1/llmModels with the
+    // server's Create contract), rather than the raw HttpClient PUT used by putModel above.
+    final LLMService service = LLMServiceTestFactory.createOpenAI(ns);
+
+    final CreateLLMModel request = new CreateLLMModel();
+    request.setName(ns.prefix("llmmodel_sdk_upsert"));
+    request.setService(service.getFullyQualifiedName());
+    request.setBaseModel("gpt-3.5-turbo");
+    request.setModelProvider("OpenAI");
+
+    // Create path: upsert on a new name creates the model.
+    final LLMModel created = SdkClients.adminClient().llmModels().upsert(request);
+    assertNotNull(created);
+    assertEquals(request.getName(), created.getName());
+    assertNotNull(created.getService(), "LLMModel upserted via SDK must resolve a service");
+    assertEquals(request.getService(), created.getService().getFullyQualifiedName());
+    assertEquals("gpt-3.5-turbo", created.getBaseModel());
+    assertEquals("OpenAI", created.getModelProvider());
+
+    // Update path: mutate a field and upsert again; same id, updated field.
+    request.setBaseModel("gpt-4");
+    final LLMModel updated = SdkClients.adminClient().llmModels().upsert(request);
+    assertNotNull(updated);
+    assertEquals(created.getId(), updated.getId(), "Upsert on existing name should preserve id");
+    assertEquals("gpt-4", updated.getBaseModel());
+
+    // Confirm persisted state via a fresh GET.
+    final LLMModel fetched = getEntity(created.getId().toString());
+    assertEquals(created.getId(), fetched.getId());
+    assertEquals("gpt-4", fetched.getBaseModel());
+  }
+
+  private static LLMModel putModel(final CreateLLMModel request) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/llmModels", request, LLMModel.class);
+  }
+
+  private static CreateLLMModel showcaseModelRequest(
+      final TestNamespace ns, final LLMService service, final RemediationAction remediation) {
+    final CreateLLMModel request =
+        new CreateLLMModel()
+            .withName(ns.prefix("llmmodel_governance"))
+            .withService(service.getFullyQualifiedName())
+            .withBaseModel(BASE_MODEL)
+            .withModelType(ModelType.Custom)
+            .withProviderModelId(INITIAL_PROVIDER_MODEL_ID)
+            .withCapabilities(List.of(ModelCapability.CHAT, ModelCapability.TOOL_USE));
+    return withGovernanceEvidence(request, remediation);
+  }
+
+  private static CreateLLMModel withGovernanceEvidence(
+      final CreateLLMModel request, final RemediationAction remediation) {
+    return request
+        .withGovernanceStatus(CreateLLMModel.GovernanceStatus.UNAUTHORIZED)
+        .withDetection(
+            new AIDetection()
+                .withSource(AIDetectionSource.OutboundApiTraffic)
+                .withSourceDetails("Detected in outbound API traffic"))
+        .withEvidence(new AIEvidence().withModelCardUrl(MODEL_CARD_URL))
+        .withRemediationActions(List.of(remediation))
+        .withCertifications(List.of(CERTIFICATION))
+        .withRegulatoryCompliance(List.of(REGULATION));
+  }
+
+  private static void assertShowcaseFields(
+      final LLMModel fetched, final RemediationAction remediation) {
+    assertEquals(ModelType.Custom, fetched.getModelType());
+    assertEquals(UPDATED_PROVIDER_MODEL_ID, fetched.getProviderModelId());
+    assertEquals(
+        List.of(ModelCapability.CHAT, ModelCapability.TOOL_USE), fetched.getCapabilities());
+    assertEquals(AIDetectionSource.OutboundApiTraffic, fetched.getDetection().getSource());
+    assertEquals(MODEL_CARD_URL, fetched.getEvidence().getModelCardUrl());
+    assertEquals(remediation.getId(), fetched.getRemediationActions().getFirst().getId());
+    assertEquals(List.of(CERTIFICATION), fetched.getCertifications());
+    assertEquals(List.of(REGULATION), fetched.getRegulatoryCompliance());
   }
 
   @Test

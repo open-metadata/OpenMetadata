@@ -12,8 +12,6 @@
  */
 
 import { Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
-import { ExpandableConfig } from 'antd/lib/table/interface';
 import {
   cloneDeep,
   groupBy,
@@ -24,19 +22,23 @@ import {
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  ColumnsType,
+  ExpandableConfig,
+} from '../../../components/common/Table/Table.interface';
 
+import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../../components/common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import Table from '../../../components/common/Table/Table';
+import Table from '../../../components/common/Table/TableV2';
 import ToggleExpandButton from '../../../components/common/ToggleExpandButton/ToggleExpandButton';
-import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../../components/Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../components/Database/TableDescription/TableDescription.component';
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
-import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
   HIGHLIGHTED_ROW_SELECTOR,
@@ -57,29 +59,37 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
+import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
-  getColumnSorter,
-  getEntityName,
   highlightSearchArrayElement,
   highlightSearchText,
-} from '../../../utils/EntityUtils';
+  renderHighlightedText,
+} from '../../../utils/EntitySearchUtils';
+import { getColumnSorter } from '../../../utils/EntitySortUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { makeData } from '../../../utils/SearchIndexUtils';
-import { stringToHTML } from '../../../utils/StringsUtils';
-import {
-  getAllTags,
-  searchTagInData,
-} from '../../../utils/TableTags/TableTags.utils';
+import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getHighlightedRowClassName,
-  getTableExpandableConfig,
   searchInFields,
   updateFieldDescription,
   updateFieldTags,
-} from '../../../utils/TableUtils';
+} from '../../../utils/TablePureUtils';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import {
   SearchIndexCellRendered,
   SearchIndexFieldsTableProps,
 } from './SearchIndexFieldsTable.interface';
+
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor'
+    ).then((m) => ({ default: m.ModalWithMarkdownEditor }))
+  )
+);
 
 const SearchIndexFieldsTable = ({
   searchIndexFields,
@@ -204,8 +214,10 @@ const SearchIndexFieldsTable = ({
     [handleEditField]
   );
 
+  // Consumer via useGenericContext() (Task 8 rule 2). `hasViewAccess` is a
+  // byte-for-byte match of the old `ViewAll || ViewBasic` bare OR — pure rename.
   const hasViewPermission = useMemo(
-    () => permissions?.ViewAll || permissions?.ViewBasic,
+    () => getDerivedPermissionFlags(permissions).hasViewAccess,
     [permissions]
   );
 
@@ -215,10 +227,8 @@ const SearchIndexFieldsTable = ({
       const isExpandIcon = target.closest('.table-expand-icon') !== null;
       const isButton = target.closest('button') !== null;
 
-      if (!isExpandIcon && !isButton) {
-        if (hasViewPermission) {
-          openColumnDetailPanel(field);
-        }
+      if (!isExpandIcon && !isButton && hasViewPermission) {
+        openColumnDetailPanel(field);
       }
     },
     [openColumnDetailPanel, hasViewPermission]
@@ -237,10 +247,12 @@ const SearchIndexFieldsTable = ({
         return <>{NO_DATA_PLACEHOLDER}</>;
       }
 
+      const shouldShowPlainText =
+        isReadOnly || (displayValue && displayValue.length < 25 && !isReadOnly);
+
       return (
         <div data-testid={`${record.name}-data-type`}>
-          {isReadOnly ||
-          (displayValue && displayValue.length < 25 && !isReadOnly) ? (
+          {shouldShowPlainText ? (
             toLower(displayValue)
           ) : (
             <Tooltip title={toLower(displayValue)}>
@@ -276,6 +288,9 @@ const SearchIndexFieldsTable = ({
     [entityFqn, hasDescriptionEditAccess, isReadOnly, handleUpdate]
   );
 
+  const { tagFilterState, filteredData, handleTableChange } =
+    useTreeTagFilter(data);
+
   const fields: ColumnsType<SearchIndexField> = useMemo(
     () => [
       {
@@ -295,7 +310,7 @@ const SearchIndexFieldsTable = ({
             className="d-inline-flex items-start gap-1 hover-icon-group flex-column"
             style={{ maxWidth: '80%' }}>
             <span className="break-word text-link-color">
-              {stringToHTML(
+              {renderHighlightedText(
                 highlightSearchText(getEntityName(record), searchText)
               )}
             </span>
@@ -326,9 +341,10 @@ const SearchIndexFieldsTable = ({
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.TAGS,
         width: 250,
+        filterIcon: columnFilterIcon,
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? null,
         render: (tags: TagLabel[], record: SearchIndexField, index: number) => (
           <TableTags<SearchIndexField>
             entityFqn={entityFqn}
@@ -348,9 +364,10 @@ const SearchIndexFieldsTable = ({
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.GLOSSARY,
         width: 250,
+        filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
         render: (tags: TagLabel[], record: SearchIndexField, index: number) => (
           <TableTags<SearchIndexField>
             entityFqn={entityFqn}
@@ -378,6 +395,7 @@ const SearchIndexFieldsTable = ({
       tagFilter,
       handleFieldClick,
       hasViewPermission,
+      tagFilterState,
     ]
   );
 
@@ -432,7 +450,7 @@ const SearchIndexFieldsTable = ({
         className="align-table-filter-left"
         columns={fields}
         data-testid="search-index-fields-table"
-        dataSource={data}
+        dataSource={filteredData}
         defaultVisibleColumns={DEFAULT_SEARCH_INDEX_VISIBLE_COLUMNS}
         expandable={expandableConfig}
         extraTableFilters={
@@ -457,6 +475,7 @@ const SearchIndexFieldsTable = ({
         }}
         size="middle"
         staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+        onChange={handleTableChange}
       />
       {editField && (
         <EntityAttachmentProvider

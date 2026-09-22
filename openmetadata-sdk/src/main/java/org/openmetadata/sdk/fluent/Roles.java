@@ -78,27 +78,17 @@ public final class Roles {
     return getClient().roles().getVersionList(id);
   }
 
-  public static org.openmetadata.schema.type.EntityHistory getVersionList(
-      java.util.UUID id, int limit, int offset) {
-    return getClient().roles().getVersionList(id, limit, offset);
-  }
-
-  public static org.openmetadata.schema.type.EntityHistory getVersionList(
-      java.util.UUID id, int limit, int offset, String fieldChanged) {
-    return getClient().roles().getVersionList(id, limit, offset, fieldChanged);
-  }
-
-  public static org.openmetadata.schema.utils.ResultList getEntityHistory(
-      long startTs, long endTs) {
-    return getClient().roles().getEntityHistory(startTs, endTs);
-  }
-
-  public static org.openmetadata.schema.utils.ResultList getEntityHistory(
-      long startTs, long endTs, int limit, String before, String after) {
-    return getClient().roles().getEntityHistory(startTs, endTs, limit, before, after);
-  }
-
   public static Role getVersion(String id, Double version) {
     return getClient().roles().getVersion(id, version);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().roles().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().roles().getContextByName(fqn);
   }
 }

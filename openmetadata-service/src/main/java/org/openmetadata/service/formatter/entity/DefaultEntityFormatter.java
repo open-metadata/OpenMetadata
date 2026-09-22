@@ -15,16 +15,16 @@ package org.openmetadata.service.formatter.entity;
 
 import static org.openmetadata.service.formatter.util.FormatterUtil.transformMessage;
 
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
+import org.openmetadata.service.formatter.util.FormattedMessage;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 
 public class DefaultEntityFormatter implements EntityFormatter {
   @Override
   public String format(
       MessageDecorator<?> messageFormatter,
-      Thread thread,
+      FormattedMessage thread,
       FieldChange fieldChange,
       FormatterUtil.CHANGE_TYPE changeType) {
     return transformMessage(messageFormatter, thread, fieldChange, changeType);

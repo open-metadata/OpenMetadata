@@ -12,27 +12,12 @@
 """
 Validate metadata ingestion workflow generation
 """
+
 import json
 import uuid
 from datetime import datetime
 from unittest import TestCase
 from unittest.mock import patch
-
-from openmetadata_managed_apis.workflows.ingestion.lineage import (
-    build_lineage_workflow_config,
-)
-from openmetadata_managed_apis.workflows.ingestion.metadata import (
-    build_metadata_workflow_config,
-)
-from openmetadata_managed_apis.workflows.ingestion.profiler import (
-    build_profiler_workflow_config,
-)
-from openmetadata_managed_apis.workflows.ingestion.test_suite import (
-    build_test_suite_workflow_config,
-)
-from openmetadata_managed_apis.workflows.ingestion.usage import (
-    build_usage_workflow_config,
-)
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -72,6 +57,21 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
+from openmetadata_managed_apis.workflows.ingestion.lineage import (
+    build_lineage_workflow_config,
+)
+from openmetadata_managed_apis.workflows.ingestion.metadata import (
+    build_metadata_workflow_config,
+)
+from openmetadata_managed_apis.workflows.ingestion.profiler import (
+    build_profiler_workflow_config,
+)
+from openmetadata_managed_apis.workflows.ingestion.test_suite import (
+    build_test_suite_workflow_config,
+)
+from openmetadata_managed_apis.workflows.ingestion.usage import (
+    build_usage_workflow_config,
+)
 
 
 def mock_set_ingestion_pipeline_status(self, state):
@@ -100,7 +100,7 @@ class OMetaServiceTest(TestCase):
 
     assert metadata.health_check()
 
-    data = {
+    data = {  # noqa: RUF012
         "type": "mysql",
         "serviceName": "test-workflow-mysql",
         "serviceConnection": {
@@ -114,7 +114,7 @@ class OMetaServiceTest(TestCase):
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
-    usage_data = {
+    usage_data = {  # noqa: RUF012
         "type": "snowflake",
         "serviceName": "local_snowflake",
         "serviceConnection": {
@@ -129,7 +129,7 @@ class OMetaServiceTest(TestCase):
         "sourceConfig": {"config": {"type": "DatabaseUsage", "queryLogDuration": 10}},
     }
 
-    lineage_data = {
+    lineage_data = {  # noqa: RUF012
         "type": "snowflake",
         "serviceName": "local_snowflake",
         "serviceConnection": {

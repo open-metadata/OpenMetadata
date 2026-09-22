@@ -22,17 +22,21 @@ import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 
 import io.dropwizard.jersey.errors.ErrorMessage;
+import jakarta.json.JsonException;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.openmetadata.sdk.exception.WebServiceException;
+import org.openmetadata.service.resources.rdf.AgentSparqlTransport;
 import org.openmetadata.service.rules.RuleValidationException;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.AuthorizationException;
@@ -42,12 +46,22 @@ import org.slf4j.LoggerFactory;
 
 @Slf4j
 public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable> {
+  @Context private UriInfo uriInfo;
+
   @Override
   public Response toResponse(Throwable ex) {
     LOG.debug(ex.getMessage());
+    // Accepted layering exception: the shared mapper routes the agent path through the
+    // endpoint's transport so filter-stage failures keep the stable envelope. If a second
+    // endpoint ever needs this, introduce a mapper extension point instead of a second branch.
+    if (AgentSparqlTransport.isAgentSparqlRequest(uriInfo)) {
+      return AgentSparqlTransport.errorResponse(ex);
+    }
     if (ex instanceof RuleValidationException) {
       return getRuleViolationResponse(ex);
     } else if (ex instanceof BadRequestException || ex instanceof IllegalArgumentException) {
+      return getResponse(BAD_REQUEST, ex.getMessage());
+    } else if (ex instanceof JsonException) {
       return getResponse(BAD_REQUEST, ex.getMessage());
     } else if (ex instanceof ProcessingException) {
       return getResponse(BAD_REQUEST, "Invalid request parameter");

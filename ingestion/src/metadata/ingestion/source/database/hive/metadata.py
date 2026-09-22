@@ -13,22 +13,21 @@ Hive source methods.
 """
 
 import traceback
-from typing import Optional, Tuple, Union
+from typing import cast
 
-from pydantic import ValidationError
 from pyhive.sqlalchemy_hive import HiveDialect
 from sqlalchemy import text
+from sqlalchemy.engine.interfaces import ReflectedColumn
 from sqlalchemy.engine.reflection import Inspector
 
-from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.data.table import (
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
+    TablePartition,
+    TableType,
+)
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
-)
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
-)
-from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
-    PostgresConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -36,7 +35,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.ingestion.source.database.hive.connection import get_metastore_connection
+from metadata.ingestion.source.database.hive.connection import (
+    get_validated_metastore_connection,
+)
 from metadata.ingestion.source.database.hive.utils import (
     get_columns,
     get_table_comment,
@@ -47,6 +48,7 @@ from metadata.ingestion.source.database.hive.utils import (
     get_view_names_older_versions,
 )
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.lru_cache import LRUCache
 
 logger = ingestion_logger()
 
@@ -55,6 +57,7 @@ HiveDialect.get_table_comment = get_table_comment
 
 
 HIVE_VERSION_WITH_VIEW_SUPPORT = "2.2.0"
+_RAW_COLUMNS_CACHE_MAX = 512
 
 
 class HiveSource(CommonDbSourceService):
@@ -66,48 +69,51 @@ class HiveSource(CommonDbSourceService):
     service_connection: HiveConnection
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: HiveConnection = config.serviceConnection.root.config
         if not isinstance(connection, HiveConnection):
-            raise InvalidSourceException(
-                f"Expected HiveConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected HiveConnection, but got {connection}")
         return cls(config, metadata)
 
-    def _parse_version(self, version: str) -> Tuple:
+    def _columns_cache(self) -> "LRUCache[list[ReflectedColumn]]":
+        # Bounded + thread-safe (table processing is multi-threaded). Lazily
+        # created so callers work even without prepare() (e.g. unit tests).
+        if getattr(self, "_raw_hive_columns", None) is None:
+            self._raw_hive_columns: LRUCache[list[ReflectedColumn]] = LRUCache(_RAW_COLUMNS_CACHE_MAX)
+        return self._raw_hive_columns
+
+    def _get_columns_internal(
+        self,
+        schema_name: str,
+        table_name: str,
+        db_name: str,
+        inspector: Inspector,
+        table_type: TableType | None = None,
+    ) -> list[ReflectedColumn]:
+        """
+        Cache raw dialect column dicts (including ``is_partition``) so
+        ``get_table_partition_details`` can reuse them without a second DESCRIBE.
+        """
+        cache = self._columns_cache()
+        key = f"{schema_name}.{table_name}"
+        try:
+            # Read in one locked operation: a check-then-get would let a concurrent
+            # eviction drop the key in between and raise on the read.
+            return cache.get(key)
+        except KeyError:
+            pass
+        columns = cast(
+            "list[ReflectedColumn]",
+            inspector.get_columns(table_name, schema_name, table_type=table_type, db_name=db_name),
+        )
+        cache.put(key, columns)
+        return columns
+
+    def _parse_version(self, version: str) -> tuple:
         if "-" in version:
             version = version.replace("-", ".")
         return tuple(map(int, (version.split(".")[:3])))
-
-    def _get_validated_metastore_connection(
-        self,
-    ) -> Optional[Union[PostgresConnection, MysqlConnection]]:
-        """
-        Validate and return the metastore connection if it exists.
-        Handles cases where the connection may be a raw dict that needs validation.
-        """
-        metastore_conn = self.service_connection.metastoreConnection
-
-        if not metastore_conn:
-            return None
-
-        if isinstance(metastore_conn, (PostgresConnection, MysqlConnection)):
-            return metastore_conn
-
-        if isinstance(metastore_conn, dict) and len(metastore_conn) > 0:
-            try:
-                return PostgresConnection.model_validate(metastore_conn)
-            except ValidationError:
-                try:
-                    return MysqlConnection.model_validate(metastore_conn)
-                except ValidationError:
-                    logger.warning("Invalid metastore connection configuration")
-                    return None
-
-        return None
 
     def prepare(self):
         """
@@ -115,30 +121,27 @@ class HiveSource(CommonDbSourceService):
         Fetching views in hive server with query "SHOW VIEWS" was possible
         only after hive 2.2.0 version
         """
-        metastore_conn = self._get_validated_metastore_connection()
-
-        if not metastore_conn:
+        # The engine is owned by HiveConnection, which already picked the metastore engine when one
+        # is configured. Dialect patching only applies to the HiveServer2 engine.
+        if not get_validated_metastore_connection(self.service_connection.metastoreConnection):
             with self.engine.connect() as conn:
                 result = conn.execute(text("SELECT VERSION()")).fetchone()._asdict()
 
             version = result.get("_c0", "").split()
-            if version and self._parse_version(version[0]) >= self._parse_version(
-                HIVE_VERSION_WITH_VIEW_SUPPORT
-            ):
+            if version and self._parse_version(version[0]) >= self._parse_version(HIVE_VERSION_WITH_VIEW_SUPPORT):
                 HiveDialect.get_table_names = get_table_names
                 HiveDialect.get_view_names = get_view_names
                 HiveDialect.get_view_definition = get_view_definition
             else:
                 HiveDialect.get_table_names = get_table_names_older_versions
                 HiveDialect.get_view_names = get_view_names_older_versions
-        else:
-            self.engine = get_metastore_connection(metastore_conn)
         self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
+        self._columns_cache()
 
     def get_schema_definition(  # pylint: disable=unused-argument
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Get the DDL statement or View Definition for a table
         """
@@ -148,15 +151,9 @@ class HiveSource(CommonDbSourceService):
                 TableType.View,
                 TableType.MaterializedView,
             ):
-                schema_definition = inspector.get_view_definition(
-                    table_name, schema_name
-                )
-            schema_definition = (
-                str(schema_definition).strip()
-                if schema_definition is not None
-                else None
-            )
-            return schema_definition
+                schema_definition = inspector.get_view_definition(table_name, schema_name)
+            schema_definition = str(schema_definition).strip() if schema_definition is not None else None
+            return schema_definition  # noqa: RET504, TRY300
 
         except NotImplementedError:
             logger.warning("Schema definition not implemented")
@@ -165,3 +162,46 @@ class HiveSource(CommonDbSourceService):
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch schema definition for {table_name}: {exc}")
         return None
+
+    def get_table_partition_details(
+        self, table_name: str, schema_name: str, inspector: Inspector
+    ) -> tuple[bool, TablePartition | None]:
+        """
+        Return Hive partition keys from DESCRIBE's Partition Information section.
+
+        Prefer raw column dicts cached by ``_get_columns_internal`` (already flagged
+        with ``is_partition``) so yield_table does not DESCRIBE twice per table.
+        """
+        try:
+            cache = self._columns_cache()
+            key = f"{schema_name}.{table_name}"
+            try:
+                # Single locked read: a check-then-get would let a concurrent
+                # eviction drop the key between the check and the read.
+                columns = cache.get(key)
+            except KeyError:
+                columns = cast(
+                    "list[ReflectedColumn]",
+                    inspector.get_columns(table_name=table_name, schema=schema_name),
+                )
+                cache.put(key, columns)
+
+            partition_columns = [col for col in columns if isinstance(col, dict) and col.get("is_partition")]
+            if not partition_columns:
+                return False, None
+            partition_details = TablePartition(
+                columns=[
+                    PartitionColumnDetails(
+                        columnName=col["name"],
+                        intervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                        interval=None,
+                    )
+                    for col in partition_columns
+                ]
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch partition details for %s.%s: %s", schema_name, table_name, exc)
+            return False, None
+        else:
+            return True, partition_details

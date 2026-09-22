@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Col, Row, Skeleton, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import {
   FunctionComponent,
   useCallback,
@@ -27,7 +28,7 @@ import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
-import Loader from '../../components/common/Loader/Loader';
+import { PageLoader } from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
@@ -36,87 +37,216 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
-} from '../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { APICollection } from '../../generated/entity/data/apiCollection';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
 import { useCustomPages } from '../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
-  getApiCollectionByFQN,
   patchApiCollection,
   restoreApiCollection,
   updateApiCollectionVote,
 } from '../../rest/apiCollectionsAPI';
 import { getApiEndPoints } from '../../rest/apiEndpointsAPI';
+import {
+  apiCollectionQueryFn,
+  apiCollectionQueryKey,
+  API_COLLECTION_DEFAULT_FIELDS,
+} from '../../rest/queries/apiCollectionQuery';
 import apiCollectionClassBase from '../../utils/APICollection/APICollectionClassBase';
-import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../utils/CustomizePage/CustomizePageUtils';
+} from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
 import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
-import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-
 const APICollectionPage: FunctionComponent = () => {
   const { t } = useTranslation();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const { customizedPage, isLoading } = useCustomPages(PageType.APICollection);
   const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedAPICollectionFQN } = useFqn();
   const navigate = useNavigate();
-  const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
-  const [apiCollection, setAPICollection] = useState<APICollection>(
-    {} as APICollection
-  );
-  const [isAPICollectionLoading, setIsAPICollectionLoading] =
-    useState<boolean>(true);
+  const queryClient = useQueryClient();
+
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
   const [apiEndpointCount, setApiEndpointCount] = useState<number>(0);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
-  const [apiCollectionPermission, setAPICollectionPermission] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const { filters, setFilters } = useTableFilters({
     showDeletedEndpoints: false,
   });
 
+  // Two useEntityPermissions calls in this component, partitioned by deleted-sensitivity —
+  // see the analogous comment in TableDetailsPageV1.tsx for the general pattern. This
+  // view-tier call must run before {@code apiCollection} exists:
+  // {@code viewAPICollectionPermission} gates the entity {@code useQuery}'s `enabled` below,
+  // and {@code apiCollection} is that query's own result — a real ordering cycle, not a
+  // shortcut. The edit-tier call (the one canEdit* flag this page uses) lives further down,
+  // at the earliest point {@code apiCollection} (and therefore its `deleted` field) exists;
+  // see the comment there. Both calls share one React Query cache entry (same queryKey), so
+  // having two costs an extra derivation, not an extra fetch — never diverges into two
+  // fetches as long as both pass the identical (resource, identifier) pair.
+  const {
+    permissions: apiCollectionPermission, // children consume the raw OperationPermission prop
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    canViewBasic: viewAPICollectionPermission,
+    canViewAll: viewAllPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+  } = useEntityPermissions(
+    ResourceEntity.API_COLLECTION,
+    decodedAPICollectionFQN
+  );
+
+  // Permission fetching itself now lives in useEntityPermissions (called above, twice).
+  // Preserves the old fetchAPICollectionPermission catch's exact behavior: the raw error was
+  // passed straight to showErrorToast with no translated message.
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
+
+  const apiCollectionCacheKey = useMemo(
+    () =>
+      apiCollectionQueryKey(
+        decodedAPICollectionFQN,
+        API_COLLECTION_DEFAULT_FIELDS
+      ),
+    [decodedAPICollectionFQN]
+  );
+
+  const isAPICollectionQueryEnabled = useMemo(
+    () =>
+      Boolean(
+        decodedAPICollectionFQN &&
+          viewAPICollectionPermission &&
+          !isPermissionsLoading
+      ),
+    [decodedAPICollectionFQN, viewAPICollectionPermission, isPermissionsLoading]
+  );
+
+  const {
+    data: apiCollection,
+    isLoading: isAPICollectionLoading,
+    isFetching: isAPICollectionFetching,
+    error: apiCollectionError,
+  } = useQuery({
+    queryKey: apiCollectionCacheKey,
+    queryFn: apiCollectionQueryFn(
+      decodedAPICollectionFQN,
+      API_COLLECTION_DEFAULT_FIELDS
+    ),
+    enabled: isAPICollectionQueryEnabled,
+  });
+
+  // Edit-tier useEntityPermissions call — the counterpart to the view-tier call near the top
+  // of this component (see its comment for why this component calls the hook twice). This is
+  // the earliest point {@code apiCollection} (and therefore `deleted`) exists: the one
+  // canEdit* flag this page uses is gated on it — don't destructure canEdit* or `can` from
+  // the view-tier call above, it was captured before `deleted` existed and would silently
+  // return an ungated edit permission.
+  const { canEditCustomFields: editCustomAttributePermission } =
+    useEntityPermissions(
+      ResourceEntity.API_COLLECTION,
+      decodedAPICollectionFQN,
+      {
+        deleted: Boolean(apiCollection?.deleted),
+      }
+    );
+
+  const isError = useMemo(
+    () =>
+      (apiCollectionError as AxiosError | undefined)?.response?.status === 404,
+    [apiCollectionError]
+  );
+
+  useEffect(() => {
+    const status = (apiCollectionError as AxiosError | undefined)?.response
+      ?.status;
+    if (status === ClientErrors.FORBIDDEN) {
+      navigate(ROUTES.FORBIDDEN, { replace: true });
+    } else if (status && status !== 404) {
+      showErrorToast(
+        apiCollectionError as AxiosError,
+        t('server.entity-details-fetch-error', {
+          entityType: t('label.api-collection'),
+          entityName: decodedAPICollectionFQN,
+        })
+      );
+    }
+  }, [apiCollectionError, navigate, decodedAPICollectionFQN, t]);
+
+  // Soft-deleted collections need the endpoint list to flip include modes; mirror the
+  // soft-delete state into the table-filter store once the fetched entity lands.
+  useEffect(() => {
+    if (apiCollection) {
+      setFilters({
+        showDeletedEndpoints: apiCollection.deleted ?? false,
+      });
+    }
+    // {@code setFilters} is a stable zustand setter; including it would re-run the effect
+    // each render. {@code apiCollection.deleted} is the only signal that matters.
+  }, [apiCollection?.deleted]);
+
+  const setAPICollection = useCallback(
+    (
+      updater:
+        | APICollection
+        | undefined
+        | ((prev: APICollection | undefined) => APICollection | undefined)
+    ) => {
+      queryClient.setQueryData<APICollection | undefined>(
+        apiCollectionCacheKey,
+        updater
+      );
+    },
+    [queryClient, apiCollectionCacheKey]
+  );
+
+  const refetchAPICollection = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: apiCollectionCacheKey }),
+    [queryClient, apiCollectionCacheKey]
+  );
+
   const extraDropdownContent = useMemo(
     () =>
-      entityUtilClassBase.getManageExtraOptions(
-        EntityType.API_COLLECTION,
-        decodedAPICollectionFQN,
-        apiCollectionPermission,
-        apiCollection,
-        navigate
-      ),
-    [apiCollectionPermission, decodedAPICollectionFQN, apiCollection]
+      apiCollection
+        ? entityUtilClassBase.getManageExtraOptions(
+            EntityType.API_COLLECTION,
+            decodedAPICollectionFQN,
+            apiCollectionPermission,
+            apiCollection,
+            navigate
+          )
+        : [],
+    [apiCollectionPermission, decodedAPICollectionFQN, apiCollection, navigate]
   );
 
   const { currentVersion, apiCollectionId } = useMemo(
@@ -125,30 +255,6 @@ const APICollectionPage: FunctionComponent = () => {
       apiCollectionId: apiCollection?.id ?? '',
     }),
     [apiCollection]
-  );
-
-  const fetchAPICollectionPermission = useCallback(async () => {
-    setIsPermissionsLoading(true);
-    try {
-      const response = await getEntityPermissionByFqn(
-        ResourceEntity.API_COLLECTION,
-        decodedAPICollectionFQN
-      );
-      setAPICollectionPermission(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsPermissionsLoading(false);
-    }
-  }, [decodedAPICollectionFQN]);
-
-  const viewAPICollectionPermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        apiCollectionPermission,
-        PermissionOperation.ViewBasic
-      ),
-    [apiCollectionPermission]
   );
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -163,24 +269,19 @@ const APICollectionPage: FunctionComponent = () => {
     );
   }, [handleFeedCount, decodedAPICollectionFQN]);
 
-  const fetchAPICollectionDetails = useCallback(async () => {
-    try {
-      setIsAPICollectionLoading(true);
-      const response = await getApiCollectionByFQN(decodedAPICollectionFQN, {
-        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DOMAINS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
-        include: Include.All,
-      });
-      setAPICollection(response);
-      setFilters({
-        showDeletedEndpoints: response.deleted ?? false,
-      });
-    } catch (err) {
-      // Error
-      if ((err as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        navigate(ROUTES.FORBIDDEN, { replace: true });
-      }
-    } finally {
-      setIsAPICollectionLoading(false);
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedAPICollectionFQN) {
+      fetchEntityTaskCountsInto(decodedAPICollectionFQN, setFeedCount);
+    }
+  }, [decodedAPICollectionFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedAPICollectionFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.API_COLLECTION,
+        decodedAPICollectionFQN,
+        setFeedCount
+      );
     }
   }, [decodedAPICollectionFQN]);
 
@@ -197,7 +298,6 @@ const APICollectionPage: FunctionComponent = () => {
   }, [
     decodedAPICollectionFQN,
     filters.showDeletedEndpoints,
-    apiCollection,
     apiCollection?.service?.fullyQualifiedName,
   ]);
 
@@ -233,6 +333,9 @@ const APICollectionPage: FunctionComponent = () => {
 
   const handleUpdateOwner = useCallback(
     async (owners: APICollection['owners']) => {
+      if (!apiCollection) {
+        return;
+      }
       try {
         const updatedData = {
           ...apiCollection,
@@ -253,11 +356,14 @@ const APICollectionPage: FunctionComponent = () => {
         );
       }
     },
-    [apiCollection, apiCollection?.owners]
+    [apiCollection, saveUpdatedAPICollectionData, setAPICollection, t]
   );
 
   const handleUpdateTier = useCallback(
     async (newTier?: Tag) => {
+      if (!apiCollection) {
+        return;
+      }
       const tierTag = updateTierTag(apiCollection?.tags ?? [], newTier);
       const updateAPICollection = {
         ...apiCollection,
@@ -269,7 +375,7 @@ const APICollectionPage: FunctionComponent = () => {
       );
       setAPICollection(res);
     },
-    [saveUpdatedAPICollectionData, apiCollection]
+    [saveUpdatedAPICollectionData, apiCollection, setAPICollection]
   );
 
   const handleUpdateDisplayName = useCallback(
@@ -286,26 +392,29 @@ const APICollectionPage: FunctionComponent = () => {
         showErrorToast(error as AxiosError, t('server.api-error'));
       }
     },
-    [apiCollection, saveUpdatedAPICollectionData]
+    [apiCollection, saveUpdatedAPICollectionData, setAPICollection, t]
   );
 
-  const handleToggleDelete = (version?: number) => {
-    setAPICollection((prev) => {
-      if (!prev) {
-        return prev;
-      }
+  const handleToggleDelete = useCallback(
+    (version?: number) => {
+      setAPICollection((prev) => {
+        if (!prev) {
+          return prev;
+        }
 
-      setFilters({
-        showDeletedEndpoints: !prev.deleted,
+        setFilters({
+          showDeletedEndpoints: !prev.deleted,
+        });
+
+        return {
+          ...prev,
+          deleted: !prev?.deleted,
+          ...(version ? { version } : {}),
+        };
       });
-
-      return {
-        ...prev,
-        deleted: !prev?.deleted,
-        ...(version ? { version } : {}),
-      };
-    });
-  };
+    },
+    [setAPICollection, setFilters]
+  );
 
   const handleRestoreAPICollection = useCallback(async () => {
     try {
@@ -318,6 +427,8 @@ const APICollectionPage: FunctionComponent = () => {
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -325,8 +436,10 @@ const APICollectionPage: FunctionComponent = () => {
           entity: t('label.collection'),
         })
       );
+
+      return false;
     }
-  }, [apiCollectionId]);
+  }, [apiCollectionId, handleToggleDelete, t]);
 
   const versionHandler = useCallback(() => {
     currentVersion &&
@@ -338,36 +451,37 @@ const APICollectionPage: FunctionComponent = () => {
           EntityTabs.API_ENDPOINT
         )
       );
-  }, [currentVersion, decodedAPICollectionFQN]);
+  }, [currentVersion, decodedAPICollectionFQN, navigate]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.API_SERVICES,
+          getPartialNameFromTableFQN(decodedAPICollectionFQN, [FqnPart.Service])
+        )
+      ),
+    [decodedAPICollectionFQN, navigate]
   );
 
-  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
-    const updatedData = data as APICollection;
-
-    setAPICollection((data) => ({
-      ...(updatedData ?? data),
-      version: updatedData.version,
-    }));
-  }, []);
-
-  useEffect(() => {
-    fetchAPICollectionPermission();
-  }, [decodedAPICollectionFQN]);
+  const afterDomainUpdateAction = useCallback(
+    (data: DataAssetWithDomains) => {
+      const updatedData = data as APICollection;
+      setAPICollection((prev) => ({
+        ...(updatedData ?? prev),
+        version: updatedData.version,
+      }));
+    },
+    [setAPICollection]
+  );
 
   useEffect(() => {
     if (viewAPICollectionPermission) {
-      fetchAPICollectionDetails();
-      getEntityFeedCount();
+      fetchTaskCounts();
+      fetchActivityCount();
     }
-  }, [
-    viewAPICollectionPermission,
-    fetchAPICollectionDetails,
-    getEntityFeedCount,
-  ]);
+  }, [viewAPICollectionPermission, fetchTaskCounts, fetchActivityCount]);
 
   useEffect(() => {
     if (viewAPICollectionPermission && decodedAPICollectionFQN) {
@@ -380,57 +494,28 @@ const APICollectionPage: FunctionComponent = () => {
     apiCollection,
   ]);
 
-  const {
-    editCustomAttributePermission,
-    viewAllPermission,
-    viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editTagsPermission:
-        getPrioritizedEditPermission(
-          apiCollectionPermission,
-          PermissionOperation.EditTags
-        ) && !apiCollection.deleted,
-      editGlossaryTermsPermission:
-        getPrioritizedEditPermission(
-          apiCollectionPermission,
-          PermissionOperation.EditGlossaryTerms
-        ) && !apiCollection.deleted,
-      editDescriptionPermission:
-        getPrioritizedEditPermission(
-          apiCollectionPermission,
-          PermissionOperation.EditDescription
-        ) && !apiCollection.deleted,
-      editCustomAttributePermission:
-        getPrioritizedEditPermission(
-          apiCollectionPermission,
-          PermissionOperation.EditCustomFields
-        ) && !apiCollection.deleted,
-      viewAllPermission: apiCollectionPermission.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        apiCollectionPermission,
-        PermissionOperation.ViewCustomFields
-      ),
-    }),
-    [apiCollectionPermission, apiCollection]
+  const handleAPICollectionUpdate = useCallback(
+    async (updatedData: APICollection) => {
+      if (!apiCollection) {
+        return;
+      }
+      const response = await saveUpdatedAPICollectionData({
+        ...apiCollection,
+        ...updatedData,
+      });
+      setAPICollection(response);
+    },
+    [apiCollection, saveUpdatedAPICollectionData, setAPICollection]
   );
-
-  const handleAPICollectionUpdate = async (updatedData: APICollection) => {
-    const response = await saveUpdatedAPICollectionData({
-      ...apiCollection,
-      ...updatedData,
-    });
-    setAPICollection(response);
-  };
 
   const tabs: TabsProps['items'] = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
-    const tabs = apiCollectionClassBase.getAPICollectionDetailPageTabs({
+    const tabsList = apiCollectionClassBase.getAPICollectionDetailPageTabs({
       activeTab: tab,
       feedCount,
-      apiCollection,
-      fetchAPICollectionDetails,
+      apiCollection: apiCollection ?? ({} as APICollection),
+      fetchAPICollectionDetails: refetchAPICollection,
       getEntityFeedCount,
       handleFeedCount,
       editCustomAttributePermission,
@@ -441,7 +526,7 @@ const APICollectionPage: FunctionComponent = () => {
     });
 
     return getDetailsTabWithNewLabel(
-      tabs,
+      tabsList,
       customizedPage?.tabs,
       EntityTabs.API_ENDPOINT
     );
@@ -450,7 +535,7 @@ const APICollectionPage: FunctionComponent = () => {
     customizedPage,
     feedCount,
     apiCollection,
-    fetchAPICollectionDetails,
+    refetchAPICollection,
     getEntityFeedCount,
     handleFeedCount,
     editCustomAttributePermission,
@@ -462,11 +547,9 @@ const APICollectionPage: FunctionComponent = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateApiCollectionVote(id, data);
-      const response = await getApiCollectionByFQN(decodedAPICollectionFQN, {
-        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.VOTES}`,
-        include: Include.All,
+      await queryClient.invalidateQueries({
+        queryKey: apiCollectionCacheKey,
       });
-      setAPICollection(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -495,8 +578,31 @@ const APICollectionPage: FunctionComponent = () => {
     () => checkIfExpandViewSupported(tabs[0], tab, PageType.APICollection),
     [tabs[0], tab]
   );
-  if (isPermissionsLoading || isLoading) {
-    return <Loader />;
+
+  const isPageLoading = useMemo(
+    () => isPermissionsLoading || isLoading,
+    [isPermissionsLoading, isLoading]
+  );
+
+  const isCollectionDataFetching = useMemo(
+    () => isAPICollectionLoading || isAPICollectionFetching,
+    [isAPICollectionLoading, isAPICollectionFetching]
+  );
+
+  const expandButton = useMemo(
+    () =>
+      isExpandViewSupported && (
+        <AlignRightIconButton
+          className={isTabExpanded ? 'rotate-180' : ''}
+          title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+          onClick={toggleTabExpanded}
+        />
+      ),
+    [isExpandViewSupported, isTabExpanded, t, toggleTabExpanded]
+  );
+
+  if (isPageLoading) {
+    return <PageLoader />;
   }
 
   if (!viewAPICollectionPermission) {
@@ -511,46 +617,50 @@ const APICollectionPage: FunctionComponent = () => {
     );
   }
 
+  if (isError) {
+    return (
+      <ErrorPlaceHolder className="m-0">
+        {getEntityMissingError(
+          EntityType.API_COLLECTION,
+          decodedAPICollectionFQN
+        )}
+      </ErrorPlaceHolder>
+    );
+  }
+
   return (
     <PageLayoutV1 pageTitle={getEntityName(apiCollection)}>
-      {isEmpty(apiCollection) && !isAPICollectionLoading ? (
-        <ErrorPlaceHolder className="m-0">
-          {getEntityMissingError(
-            EntityType.API_COLLECTION,
-            decodedAPICollectionFQN
+      <Row gutter={[0, 12]}>
+        <Col span={24}>
+          {isCollectionDataFetching || !apiCollection ? (
+            <Skeleton
+              active
+              className="m-b-md"
+              paragraph={{
+                rows: 2,
+                width: ['20%', '80%'],
+              }}
+            />
+          ) : (
+            <DataAssetsHeader
+              isRecursiveDelete
+              afterDeleteAction={afterDeleteAction}
+              afterDomainUpdateAction={afterDomainUpdateAction}
+              dataAsset={apiCollection}
+              entityType={EntityType.API_COLLECTION}
+              extraDropdownContent={extraDropdownContent}
+              permissions={apiCollectionPermission}
+              onCertificationUpdate={onCertificationUpdate}
+              onDisplayNameUpdate={handleUpdateDisplayName}
+              onOwnerUpdate={handleUpdateOwner}
+              onRestoreDataAsset={handleRestoreAPICollection}
+              onTierUpdate={handleUpdateTier}
+              onUpdateVote={updateVote}
+              onVersionClick={versionHandler}
+            />
           )}
-        </ErrorPlaceHolder>
-      ) : (
-        <Row gutter={[0, 12]}>
-          <Col span={24}>
-            {isAPICollectionLoading ? (
-              <Skeleton
-                active
-                className="m-b-md"
-                paragraph={{
-                  rows: 2,
-                  width: ['20%', '80%'],
-                }}
-              />
-            ) : (
-              <DataAssetsHeader
-                isRecursiveDelete
-                afterDeleteAction={afterDeleteAction}
-                afterDomainUpdateAction={afterDomainUpdateAction}
-                dataAsset={apiCollection}
-                entityType={EntityType.API_COLLECTION}
-                extraDropdownContent={extraDropdownContent}
-                permissions={apiCollectionPermission}
-                onCertificationUpdate={onCertificationUpdate}
-                onDisplayNameUpdate={handleUpdateDisplayName}
-                onOwnerUpdate={handleUpdateOwner}
-                onRestoreDataAsset={handleRestoreAPICollection}
-                onTierUpdate={handleUpdateTier}
-                onUpdateVote={updateVote}
-                onVersionClick={versionHandler}
-              />
-            )}
-          </Col>
+        </Col>
+        {apiCollection && (
           <GenericProvider<APICollection>
             customizedPage={customizedPage}
             data={apiCollection}
@@ -565,23 +675,13 @@ const APICollectionPage: FunctionComponent = () => {
                 className="tabs-new"
                 data-testid="tabs"
                 items={tabs}
-                tabBarExtraContent={
-                  isExpandViewSupported && (
-                    <AlignRightIconButton
-                      className={isTabExpanded ? 'rotate-180' : ''}
-                      title={
-                        isTabExpanded ? t('label.collapse') : t('label.expand')
-                      }
-                      onClick={toggleTabExpanded}
-                    />
-                  )
-                }
+                tabBarExtraContent={expandButton}
                 onChange={activeTabHandler}
               />
             </Col>
           </GenericProvider>
-        </Row>
-      )}
+        )}
+      </Row>
     </PageLayoutV1>
   );
 };

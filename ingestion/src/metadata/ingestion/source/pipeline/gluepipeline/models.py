@@ -13,8 +13,6 @@
 Glue Pipeline Source Model module
 """
 
-from typing import List, Optional
-
 from pydantic import BaseModel, Field
 
 
@@ -30,7 +28,7 @@ class SourceDetails(BaseModel):
 class AmazonRedshift(BaseModel):
     Name: str
     Data: SourceDetails
-    database_name: Optional[str] = None
+    database_name: str | None = None
 
     @property
     def table_name(self):
@@ -48,46 +46,44 @@ class AmazonRedshift(BaseModel):
 class CatalogSource(BaseModel):
     Name: str
     database_name: str = Field(alias="Database")
-    schema_name: Optional[str] = None
+    schema_name: str | None = None
     table_name: str = Field(alias="Table")
 
 
 class JDBCSource(BaseModel):
     Name: str
-    schema_name: Optional[str] = Field(default=None, alias="SchemaName")
-    database_name: Optional[str] = None
+    schema_name: str | None = Field(default=None, alias="SchemaName")
+    database_name: str | None = None
     table_name: str = Field(alias="ConnectionTable")
 
 
 class S3Source(BaseModel):
     Name: str
-    Paths: List[str]
+    Paths: list[str]
 
 
 class S3Target(BaseModel):
     Name: str
     Path: str
-    Paths: Optional[str] = None
+    Paths: str | None = None
 
 
 class JobCommand(BaseModel):
-    Name: Optional[str] = None
-    ScriptLocation: Optional[str] = None
-    PythonVersion: Optional[str] = None
+    Name: str | None = None
+    ScriptLocation: str | None = None
+    PythonVersion: str | None = None
 
 
 class JobConnections(BaseModel):
-    Connections: Optional[List[str]] = None
+    Connections: list[str] | None = None
 
 
 class JobNodes(BaseModel):
-    config_nodes: Optional[dict] = Field(
-        default=None, alias="CodeGenConfigurationNodes"
-    )
-    command: Optional[JobCommand] = Field(default=None, alias="Command")
-    connections: Optional[JobConnections] = Field(default=None, alias="Connections")
-    default_arguments: Optional[dict] = Field(default=None, alias="DefaultArguments")
+    config_nodes: dict | None = Field(default=None, alias="CodeGenConfigurationNodes")
+    command: JobCommand | None = Field(default=None, alias="Command")
+    connections: JobConnections | None = Field(default=None, alias="Connections")
+    default_arguments: dict | None = Field(default=None, alias="DefaultArguments")
 
 
 class JobNodeResponse(BaseModel):
-    Job: Optional[JobNodes] = None
+    Job: JobNodes | None = None

@@ -79,9 +79,7 @@ TABLE_FILTER = {
 }
 
 
-@pytest.mark.skip(
-    reason="Disabled by default. Should be ran manually on system metric updates"
-)
+@pytest.mark.skip(reason="Disabled by default. Should be ran manually on system metric updates")
 class TestBigquerySystem(TestCase):
     """Test class for bigquery system metrics"""
 
@@ -100,7 +98,7 @@ class TestBigquerySystem(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         """set up class"""
-        with open(cls.full_config_path, "r", encoding="utf-8") as file:
+        with open(cls.full_config_path, "r", encoding="utf-8") as file:  # noqa: PTH123
             cls.config = yaml.safe_load(file)
 
         # set up the config to filter from the `dbt_jaffle` schema
@@ -110,32 +108,20 @@ class TestBigquerySystem(TestCase):
         cls.config["source"]["sourceConfig"]["config"]["tableFilterPattern"] = {
             "includes": [cls.table],
         }
-        cls.config["source"]["serviceConnection"]["config"]["credentials"]["gcpConfig"][
-            "projectId"
-        ] = cls.project_id
-        cls.config["source"]["serviceConnection"]["config"]["credentials"]["gcpConfig"][
-            "privateKeyId"
-        ] = cls.private_key_id
-        cls.config["source"]["serviceConnection"]["config"]["credentials"]["gcpConfig"][
-            "privateKey"
-        ] = cls.private_key
-        cls.config["source"]["serviceConnection"]["config"]["credentials"]["gcpConfig"][
-            "clientEmail"
-        ] = cls.client_email
-        cls.config["source"]["serviceConnection"]["config"]["credentials"]["gcpConfig"][
-            "clientId"
-        ] = cls.client_id
-        cls.config["source"]["serviceConnection"]["config"]["taxonomyProjectID"] = [
-            cls.taxonomy
-        ]
+        cls.config["source"]["serviceConnection"]["config"]["credentials"]["gcpConfig"]["projectId"] = cls.project_id
+        cls.config["source"]["serviceConnection"]["config"]["credentials"]["gcpConfig"]["privateKeyId"] = (
+            cls.private_key_id
+        )
+        cls.config["source"]["serviceConnection"]["config"]["credentials"]["gcpConfig"]["privateKey"] = cls.private_key
+        cls.config["source"]["serviceConnection"]["config"]["credentials"]["gcpConfig"]["clientEmail"] = (
+            cls.client_email
+        )
+        cls.config["source"]["serviceConnection"]["config"]["credentials"]["gcpConfig"]["clientId"] = cls.client_id
+        cls.config["source"]["serviceConnection"]["config"]["taxonomyProjectID"] = [cls.taxonomy]
 
         # set metadata config
-        cls.metadata_config_dict = cls.config["workflowConfig"][
-            "openMetadataServerConfig"
-        ]
-        cls.metadata_config = OpenMetadataConnection.model_validate(
-            cls.metadata_config_dict
-        )
+        cls.metadata_config_dict = cls.config["workflowConfig"]["openMetadataServerConfig"]
+        cls.metadata_config = OpenMetadataConnection.model_validate(cls.metadata_config_dict)
         cls.metadata = OpenMetadata(cls.metadata_config)
 
         # run the ingestion workflow
@@ -178,4 +164,4 @@ class TestBigquerySystem(TestCase):
             profile_type=SystemProfile,
         )
         ddl_operations = [prl.operation.value for prl in profile.entities]
-        assert set(ddl_operations) == set(["INSERT", "UPDATE", "DELETE"])
+        assert set(ddl_operations) == set(["INSERT", "UPDATE", "DELETE"])  # noqa: C405

@@ -3,1665 +3,1196 @@ package org.openmetadata.service.security;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.mockingDetails;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.Entity.ADMIN_ROLE;
 
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.MACSigner;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
-import com.nimbusds.oauth2.sdk.AuthorizationCode;
-import com.nimbusds.oauth2.sdk.RefreshTokenGrant;
-import com.nimbusds.oauth2.sdk.ResponseMode;
-import com.nimbusds.oauth2.sdk.auth.ClientAuthentication;
-import com.nimbusds.oauth2.sdk.auth.ClientAuthenticationMethod;
-import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
-import com.nimbusds.oauth2.sdk.auth.ClientSecretPost;
-import com.nimbusds.oauth2.sdk.auth.PrivateKeyJWT;
-import com.nimbusds.oauth2.sdk.http.HTTPResponse;
-import com.nimbusds.oauth2.sdk.id.Issuer;
-import com.nimbusds.oauth2.sdk.id.State;
-import com.nimbusds.oauth2.sdk.pkce.CodeChallengeMethod;
-import com.nimbusds.oauth2.sdk.pkce.CodeVerifier;
-import com.nimbusds.oauth2.sdk.token.AccessToken;
-import com.nimbusds.oauth2.sdk.token.BearerAccessToken;
-import com.nimbusds.oauth2.sdk.token.RefreshToken;
-import com.nimbusds.openid.connect.sdk.AuthenticationSuccessResponse;
-import com.nimbusds.openid.connect.sdk.SubjectType;
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
-import com.sun.net.httpserver.HttpServer;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
-import java.io.OutputStream;
-import java.lang.reflect.Constructor;
+import jakarta.ws.rs.core.Response;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.InetSocketAddress;
 import java.net.URI;
-import java.security.KeyPairGenerator;
-import java.time.Instant;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
-import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.security.client.OidcClientConfig;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.security.jwt.JWTTokenGenerator;
-import org.openmetadata.service.util.UserUtil;
+import org.openmetadata.service.security.session.SessionService;
+import org.openmetadata.service.security.session.UserSession;
+import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.pac4j.core.exception.TechnicalException;
-import org.pac4j.oidc.client.AzureAd2Client;
-import org.pac4j.oidc.client.GoogleOidcClient;
 import org.pac4j.oidc.client.OidcClient;
-import org.pac4j.oidc.config.AzureAd2OidcConfiguration;
 import org.pac4j.oidc.config.OidcConfiguration;
-import org.pac4j.oidc.config.PrivateKeyJWTClientAuthnMethodConfig;
-import org.pac4j.oidc.credentials.OidcCredentials;
-import sun.misc.Unsafe;
+import org.pac4j.oidc.metadata.IOidcOpMetadataResolver;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class AuthenticationCodeFlowHandlerTest {
 
+  private static final String TEST_SERVER_URL = "https://om.test";
+  private static final String MCP_CALLBACK = "/mcp/callback";
+
+  @Mock private SessionService sessionService;
   @Mock private HttpServletRequest request;
   @Mock private HttpServletResponse response;
-  @Mock private HttpSession session;
-  @Mock private ServletOutputStream outputStream;
+  @Mock private OidcClient oidcClient;
+  @Mock private OidcConfiguration oidcConfiguration;
 
-  @Test
-  void buildOidcClientAllowsMissingClientAuthenticationMethodForGoogle() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    OidcClientConfig clientConfig = new OidcClientConfig();
-    clientConfig.setId("google-client");
-    clientConfig.setSecret("google-secret");
-    clientConfig.setType("google");
-    clientConfig.setScope("openid profile email");
-    clientConfig.setResponseType("code");
-    clientConfig.setUseNonce("true");
-    clientConfig.setPreferredJwsAlgorithm("RS256");
-    clientConfig.setMaxClockSkew("42");
+  private CaptureServletOutputStream captureOutputStream;
 
-    OidcClient client =
-        invokePrivate(
-            handler, "buildOidcClient", new Class<?>[] {OidcClientConfig.class}, clientConfig);
+  @BeforeEach
+  void setUp() throws IOException {
+    captureOutputStream = new CaptureServletOutputStream();
+    when(response.getOutputStream()).thenReturn(captureOutputStream);
+    AuthenticationCodeFlowHandler.setMcpStateChecker(null);
+    AuthenticationCodeFlowHandler.setMcpPendingStatePersister(null);
+  }
 
-    assertInstanceOf(GoogleOidcClient.class, client);
-    assertEquals("google-client", client.getConfiguration().getClientId());
-    assertEquals("google-secret", client.getConfiguration().getSecret());
-    assertEquals("query", client.getConfiguration().getResponseMode());
-    assertEquals("code", client.getConfiguration().getResponseType());
-    assertEquals("openid profile email", client.getConfiguration().getScope());
-    assertTrue(client.getConfiguration().isUseNonce());
-    assertEquals(JWSAlgorithm.RS256, client.getConfiguration().getPreferredJwsAlgorithm());
-    assertEquals(42, client.getConfiguration().getMaxClockSkew());
-    assertEquals("offline", client.getConfiguration().getCustomParams().get("access_type"));
+  @AfterEach
+  void tearDown() {
+    AuthenticationCodeFlowHandler.setMcpStateChecker(null);
+    AuthenticationCodeFlowHandler.setMcpPendingStatePersister(null);
   }
 
   @Test
-  void buildOidcClientCreatesAzureClientAndCustomParams() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    OidcClientConfig clientConfig = new OidcClientConfig();
-    clientConfig.setId("azure-client");
-    clientConfig.setSecret("azure-secret");
-    clientConfig.setType("azure");
-    clientConfig.setTenant("organizations");
-    clientConfig.setDisablePkce(true);
-    clientConfig.setClientAuthenticationMethod(
-        OidcClientConfig.ClientAuthenticationMethod.CLIENT_SECRET_POST);
-    Map<String, String> customParams = new HashMap<>();
-    customParams.put("customParamKey1", "resource");
-    customParams.put("customParamValue1", "graph");
-    clientConfig.setCustomParams(customParams);
+  void getErrorMessage_setsStatus500AndWritesErrorBody() throws IOException {
+    Exception error = new TechnicalException("Something went wrong");
 
-    OidcClient client =
-        invokePrivate(
-            handler, "buildOidcClient", new Class<?>[] {OidcClientConfig.class}, clientConfig);
+    AuthenticationCodeFlowHandler.getErrorMessage(response, error);
 
-    assertInstanceOf(AzureAd2Client.class, client);
-    AzureAd2OidcConfiguration configuration =
-        assertInstanceOf(AzureAd2OidcConfiguration.class, client.getConfiguration());
-    assertEquals("organizations", configuration.getTenant());
-    assertTrue(configuration.isDisablePkce());
-    assertEquals("graph", configuration.getCustomParams().get("resource"));
+    verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+    String body = captureOutputStream.getCapturedOutput();
+    assertTrue(body.contains("Something went wrong"));
+  }
+
+  @Test
+  void getErrorMessage_handlesNullMessage() throws IOException {
+    Exception error = new TechnicalException((String) null);
+
+    AuthenticationCodeFlowHandler.getErrorMessage(response, error);
+
+    verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+  }
+
+  @Test
+  void handleCallback_noPendingSession_redirectsToSignin() throws Exception {
+    when(sessionService.getPendingSession(request, response)).thenReturn(Optional.empty());
+
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    setField(handler, "serverUrl", TEST_SERVER_URL);
+
+    handler.handleCallback(request, response);
+
+    verify(response).sendRedirect(TEST_SERVER_URL + "/signin");
+    verify(response, never()).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+  }
+
+  @Test
+  void handleCallback_silentAuthError_redirectsToSignin() throws Exception {
+    UserSession pendingSession =
+        UserSession.builder().id("pending-session").state("state-abc").build();
+    when(sessionService.getPendingSession(request, response))
+        .thenReturn(Optional.of(pendingSession));
+    when(oidcClient.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
+    when(request.getParameterMap())
+        .thenReturn(
+            Map.of(
+                "state", new String[] {"state-abc"},
+                "error", new String[] {"login_required"},
+                "error_description",
+                    new String[] {
+                      "The client specified not to prompt, but the user is not logged in."
+                    }));
+
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    setField(handler, "serverUrl", TEST_SERVER_URL);
+
+    handler.handleCallback(request, response);
+
+    verify(response).sendRedirect(TEST_SERVER_URL + "/signin");
+    verify(response, never()).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+  }
+
+  @Test
+  void handleCallback_nonSilentAuthError_writesErrorResponse() throws Exception {
+    UserSession pendingSession =
+        UserSession.builder().id("pending-session").state("state-abc").build();
+    when(sessionService.getPendingSession(request, response))
+        .thenReturn(Optional.of(pendingSession));
+    when(oidcClient.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
+    when(request.getParameterMap())
+        .thenReturn(
+            Map.of(
+                "state", new String[] {"state-abc"},
+                "error", new String[] {"server_error"}));
+
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    setField(handler, "serverUrl", TEST_SERVER_URL);
+
+    handler.handleCallback(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+    String body = captureOutputStream.getCapturedOutput();
+    assertTrue(body.contains("Bad authentication response"));
+    verify(response, never()).sendRedirect(anyString());
+  }
+
+  @Test
+  void validateStateIfRequired_mismatchedStates_throwsTechnicalException() throws Exception {
+    when(oidcClient.getConfiguration()).thenReturn(oidcConfiguration);
+    when(oidcConfiguration.isWithState()).thenReturn(true);
+
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+
+    UserSession pendingSession =
+        UserSession.builder().id("test-session").state("expected-state-abc").build();
+
+    com.nimbusds.openid.connect.sdk.AuthenticationSuccessResponse successResponse =
+        new com.nimbusds.openid.connect.sdk.AuthenticationSuccessResponse(
+            java.net.URI.create("https://example.com/callback"),
+            new com.nimbusds.oauth2.sdk.AuthorizationCode("test-code"),
+            null,
+            null,
+            new com.nimbusds.oauth2.sdk.id.State("different-state-xyz"),
+            null,
+            null);
+
+    Method validateMethod =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "validateStateIfRequired",
+            UserSession.class,
+            HttpServletResponse.class,
+            com.nimbusds.openid.connect.sdk.AuthenticationSuccessResponse.class);
+    validateMethod.setAccessible(true);
+
+    TechnicalException thrown =
+        assertThrows(
+            TechnicalException.class,
+            () -> {
+              try {
+                validateMethod.invoke(handler, pendingSession, response, successResponse);
+              } catch (java.lang.reflect.InvocationTargetException e) {
+                throw e.getCause();
+              }
+            });
+
     assertEquals(
-        ClientAuthenticationMethod.CLIENT_SECRET_POST,
-        configuration.getClientAuthenticationMethod());
+        "State parameter is different from the one sent in authentication request.",
+        thrown.getMessage());
   }
 
   @Test
-  void buildOidcClientRejectsMissingCredentials() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    OidcClientConfig clientConfig = new OidcClientConfig();
-    clientConfig.setId("client");
-    clientConfig.setSecret("");
+  void validateStateIfRequired_matchingStates_doesNotThrow() throws Exception {
+    when(oidcClient.getConfiguration()).thenReturn(oidcConfiguration);
+    when(oidcConfiguration.isWithState()).thenReturn(true);
 
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                invokePrivate(
-                    handler,
-                    "buildOidcClient",
-                    new Class<?>[] {OidcClientConfig.class},
-                    clientConfig));
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
 
-    assertTrue(exception.getMessage().contains("Client ID and Client Secret"));
+    UserSession pendingSession =
+        UserSession.builder().id("test-session").state("matching-state").build();
+
+    com.nimbusds.openid.connect.sdk.AuthenticationSuccessResponse successResponse =
+        new com.nimbusds.openid.connect.sdk.AuthenticationSuccessResponse(
+            java.net.URI.create("https://example.com/callback"),
+            new com.nimbusds.oauth2.sdk.AuthorizationCode("test-code"),
+            null,
+            null,
+            new com.nimbusds.oauth2.sdk.id.State("matching-state"),
+            null,
+            null);
+
+    Method validateMethod =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "validateStateIfRequired",
+            UserSession.class,
+            HttpServletResponse.class,
+            com.nimbusds.openid.connect.sdk.AuthenticationSuccessResponse.class);
+    validateMethod.setAccessible(true);
+
+    validateMethod.invoke(handler, pendingSession, response, successResponse);
   }
 
   @Test
-  void getClientAuthenticationPrefersConfiguredClientSecretPost() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    OidcConfiguration configuration =
-        configuredOidcConfiguration(
-            "client-id",
-            "client-secret",
-            List.of(
-                ClientAuthenticationMethod.CLIENT_SECRET_POST,
-                ClientAuthenticationMethod.CLIENT_SECRET_BASIC));
-    configuration.setClientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST);
+  void validateStateIfRequired_stateDisabled_doesNotThrow() throws Exception {
+    when(oidcClient.getConfiguration()).thenReturn(oidcConfiguration);
+    when(oidcConfiguration.isWithState()).thenReturn(false);
 
-    ClientAuthentication authentication =
-        invokePrivate(
-            handler,
-            "getClientAuthentication",
-            new Class<?>[] {OidcConfiguration.class},
-            configuration);
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
 
-    assertInstanceOf(ClientSecretPost.class, authentication);
+    UserSession pendingSession =
+        UserSession.builder().id("test-session").state("some-state").build();
+
+    com.nimbusds.openid.connect.sdk.AuthenticationSuccessResponse successResponse =
+        new com.nimbusds.openid.connect.sdk.AuthenticationSuccessResponse(
+            java.net.URI.create("https://example.com/callback"),
+            new com.nimbusds.oauth2.sdk.AuthorizationCode("test-code"),
+            null,
+            null,
+            new com.nimbusds.oauth2.sdk.id.State("different-state"),
+            null,
+            null);
+
+    Method validateMethod =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "validateStateIfRequired",
+            UserSession.class,
+            HttpServletResponse.class,
+            com.nimbusds.openid.connect.sdk.AuthenticationSuccessResponse.class);
+    validateMethod.setAccessible(true);
+
+    validateMethod.invoke(handler, pendingSession, response, successResponse);
   }
 
   @Test
-  void getClientAuthenticationFallsBackToMetadataSupportedMethod() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    OidcConfiguration configuration =
-        configuredOidcConfiguration(
-            "client-id", "client-secret", List.of(ClientAuthenticationMethod.CLIENT_SECRET_BASIC));
+  void validateStateIfRequired_blankStateInSession_throwsTechnicalException() throws Exception {
+    when(oidcClient.getConfiguration()).thenReturn(oidcConfiguration);
+    when(oidcConfiguration.isWithState()).thenReturn(true);
 
-    ClientAuthentication authentication =
-        invokePrivate(
-            handler,
-            "getClientAuthentication",
-            new Class<?>[] {OidcConfiguration.class},
-            configuration);
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
 
-    assertInstanceOf(ClientSecretBasic.class, authentication);
-  }
+    UserSession pendingSession = UserSession.builder().id("test-session").state("").build();
 
-  @Test
-  void getClientAuthenticationBuildsPrivateKeyJwtWhenConfigured() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    OidcConfiguration configuration =
-        configuredOidcConfiguration(
-            "client-id", "client-secret", List.of(ClientAuthenticationMethod.PRIVATE_KEY_JWT));
-    configuration.setClientAuthenticationMethod(ClientAuthenticationMethod.PRIVATE_KEY_JWT);
-    PrivateKeyJWTClientAuthnMethodConfig privateKeyConfig =
-        new PrivateKeyJWTClientAuthnMethodConfig(
-            JWSAlgorithm.RS256,
-            KeyPairGenerator.getInstance("RSA").generateKeyPair().getPrivate(),
-            "test-key");
-    configuration.setPrivateKeyJWTClientAuthnMethodConfig(privateKeyConfig);
+    com.nimbusds.openid.connect.sdk.AuthenticationSuccessResponse successResponse =
+        new com.nimbusds.openid.connect.sdk.AuthenticationSuccessResponse(
+            java.net.URI.create("https://example.com/callback"),
+            new com.nimbusds.oauth2.sdk.AuthorizationCode("test-code"),
+            null,
+            null,
+            new com.nimbusds.oauth2.sdk.id.State("attacker-state"),
+            null,
+            null);
 
-    ClientAuthentication authentication =
-        invokePrivate(
-            handler,
-            "getClientAuthentication",
-            new Class<?>[] {OidcConfiguration.class},
-            configuration);
+    Method validateMethod =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "validateStateIfRequired",
+            UserSession.class,
+            HttpServletResponse.class,
+            com.nimbusds.openid.connect.sdk.AuthenticationSuccessResponse.class);
+    validateMethod.setAccessible(true);
 
-    assertInstanceOf(PrivateKeyJWT.class, authentication);
-  }
-
-  @Test
-  void getClientAuthenticationRejectsUnsupportedConfiguredMethod() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    OidcConfiguration configuration =
-        configuredOidcConfiguration(
-            "client-id", "client-secret", List.of(ClientAuthenticationMethod.CLIENT_SECRET_JWT));
-    configuration.setClientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_JWT);
-
-    TechnicalException exception =
-        assertThrows(
-            TechnicalException.class,
-            () ->
-                invokePrivate(
-                    handler,
-                    "getClientAuthentication",
-                    new Class<?>[] {OidcConfiguration.class},
-                    configuration));
-
-    assertTrue(exception.getMessage().contains("Configured authentication method"));
-  }
-
-  @Test
-  void getClientAuthenticationRejectsUnsupportedMetadataMethods() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    OidcConfiguration configuration =
-        configuredOidcConfiguration(
-            "client-id", "client-secret", List.of(ClientAuthenticationMethod.CLIENT_SECRET_JWT));
-
-    TechnicalException exception =
+    TechnicalException thrown =
         assertThrows(
             TechnicalException.class,
-            () ->
-                invokePrivate(
-                    handler,
-                    "getClientAuthentication",
-                    new Class<?>[] {OidcConfiguration.class},
-                    configuration));
+            () -> {
+              try {
+                validateMethod.invoke(handler, pendingSession, response, successResponse);
+              } catch (java.lang.reflect.InvocationTargetException e) {
+                throw e.getCause();
+              }
+            });
 
-    assertTrue(exception.getMessage().contains("None of the Token endpoint provider metadata"));
+    assertTrue(thrown.getMessage().contains("Missing state parameter"));
   }
 
   @Test
-  void getHttpSessionReusesExistingSessionAndCreatesWhenMissing() {
-    when(request.getSession(false)).thenReturn(session);
-    when(session.getId()).thenReturn("existing-session");
+  void isMcpState_returnsFalse_whenCheckerIsNull() {
+    AuthenticationCodeFlowHandler.setMcpStateChecker(null);
 
-    assertEquals(session, AuthenticationCodeFlowHandler.getHttpSession(request, true));
-
-    when(request.getSession(false)).thenReturn(null);
-    when(request.getSession(true)).thenReturn(session);
-
-    assertEquals(session, AuthenticationCodeFlowHandler.getHttpSession(request, true));
-    assertNull(AuthenticationCodeFlowHandler.getHttpSession(request, false));
+    assertFalse(AuthenticationCodeFlowHandler.isMcpState("some-state"));
   }
 
   @Test
-  void checkAndStoreRedirectUriRequiresValue() {
-    assertThrows(
-        TechnicalException.class,
-        () -> AuthenticationCodeFlowHandler.checkAndStoreRedirectUriInSession(session, null));
+  void isMcpState_returnsFalse_whenStateIsNull() {
+    AuthenticationCodeFlowHandler.setMcpStateChecker(s -> true);
 
-    AuthenticationCodeFlowHandler.checkAndStoreRedirectUriInSession(
-        session, "https://app.example.com/callback");
-
-    verify(session)
-        .setAttribute(
-            AuthenticationCodeFlowHandler.SESSION_REDIRECT_URI, "https://app.example.com/callback");
+    assertFalse(AuthenticationCodeFlowHandler.isMcpState(null));
   }
 
   @Test
-  void validatePrincipalClaimsMappingRequiresUsernameAndEmail() {
-    Map<String, String> mapping = Map.of("sub", "subject");
+  void isMcpState_returnsTrue_whenCheckerReturnsTrue() {
+    AuthenticationCodeFlowHandler.setMcpStateChecker(s -> s.startsWith("mcp-"));
+
+    assertTrue(AuthenticationCodeFlowHandler.isMcpState("mcp-abc123"));
+  }
+
+  @Test
+  void isMcpState_returnsFalse_whenCheckerReturnsFalse() {
+    AuthenticationCodeFlowHandler.setMcpStateChecker(s -> s.startsWith("mcp-"));
+
+    assertFalse(AuthenticationCodeFlowHandler.isMcpState("regular-state"));
+  }
+
+  @Test
+  void isMcpState_returnsFalse_whenCheckerThrowsException() {
+    AuthenticationCodeFlowHandler.setMcpStateChecker(
+        s -> {
+          throw new RuntimeException("checker failed");
+        });
+
+    assertFalse(AuthenticationCodeFlowHandler.isMcpState("some-state"));
+  }
+
+  @Test
+  void validatePrincipalClaimsMapping_throwsWhenMissingUsername() {
+    java.util.Map<String, String> mapping = new java.util.HashMap<>();
+    mapping.put("email", "mail");
+
     assertThrows(
         IllegalArgumentException.class,
         () -> AuthenticationCodeFlowHandler.validatePrincipalClaimsMapping(mapping));
-
-    assertDoesNotThrow(
-        () ->
-            AuthenticationCodeFlowHandler.validatePrincipalClaimsMapping(
-                Map.of("username", "preferred_username", "email", "mail")));
   }
 
   @Test
-  void retrieveCallbackParametersCopiesAllValues() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    when(request.getParameterMap())
-        .thenReturn(
-            Map.of("code", new String[] {"auth-code"}, "scope", new String[] {"openid", "email"}));
+  void validatePrincipalClaimsMapping_throwsWhenMissingEmail() {
+    java.util.Map<String, String> mapping = new java.util.HashMap<>();
+    mapping.put("username", "preferred_username");
 
-    Map<String, List<String>> parameters =
-        invokePrivate(
-            handler,
-            "retrieveCallbackParameters",
-            new Class<?>[] {HttpServletRequest.class},
-            request);
-
-    assertEquals(List.of("auth-code"), parameters.get("code"));
-    assertEquals(List.of("openid", "email"), parameters.get("scope"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> AuthenticationCodeFlowHandler.validatePrincipalClaimsMapping(mapping));
   }
 
   @Test
-  void addStateAndNonceParametersStoresCsrfReplayAndPkceValues() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    OidcConfiguration configuration =
-        configuredOidcConfiguration(
-            "client-id", null, List.of(ClientAuthenticationMethod.CLIENT_SECRET_BASIC));
-    configuration.setWithState(true);
-    configuration.setUseNonce(true);
-    configuration.setPkceMethod(CodeChallengeMethod.S256);
-    OidcClient client = oidcClient(configuration, "TestOidcClient");
-    Map<String, String> params = new HashMap<>();
-
-    invokePrivate(
-        handler,
-        "addStateAndNonceParameters",
-        new Class<?>[] {OidcClient.class, HttpSession.class, Map.class},
-        client,
-        session,
-        params);
-
-    assertNotNull(params.get(OidcConfiguration.STATE));
-    assertNotNull(params.get(OidcConfiguration.NONCE));
-    assertNotNull(params.get(OidcConfiguration.CODE_CHALLENGE));
-    assertEquals("S256", params.get(OidcConfiguration.CODE_CHALLENGE_METHOD));
-    ArgumentCaptor<State> stateCaptor = ArgumentCaptor.forClass(State.class);
-    verify(session).setAttribute(eq(client.getStateSessionAttributeName()), stateCaptor.capture());
-    assertEquals(params.get(OidcConfiguration.STATE), stateCaptor.getValue().getValue());
-    verify(session)
-        .setAttribute(client.getNonceSessionAttributeName(), params.get(OidcConfiguration.NONCE));
-    verify(session).setAttribute(eq(client.getCodeVerifierSessionAttributeName()), any());
+  void validatePrincipalClaimsMapping_allowsEmptyMapping() {
+    AuthenticationCodeFlowHandler.validatePrincipalClaimsMapping(java.util.Collections.emptyMap());
   }
 
   @Test
-  void validateStateIfRequiredWritesErrorWhenSessionStateMissing() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    OidcConfiguration configuration =
-        configuredOidcConfiguration(
-            "client-id", null, List.of(ClientAuthenticationMethod.CLIENT_SECRET_BASIC));
-    configuration.setWithState(true);
-    setField(handler, "client", oidcClient(configuration, "StateClient"));
+  void validatePrincipalClaimsMapping_allowsValidMapping() {
+    java.util.Map<String, String> mapping = new java.util.HashMap<>();
+    mapping.put("username", "preferred_username");
+    mapping.put("email", "mail");
 
-    AuthenticationSuccessResponse successResponse =
-        new AuthenticationSuccessResponse(
-            URI.create("https://openmetadata.example.com/callback"),
-            new AuthorizationCode("auth-code"),
-            null,
-            null,
-            new State("response-state"),
-            null,
-            ResponseMode.QUERY);
+    AuthenticationCodeFlowHandler.validatePrincipalClaimsMapping(mapping);
+  }
 
-    TechnicalException exception =
+  @Test
+  void isJWT_returnsTrueForThreePartToken() {
+    assertTrue(AuthenticationCodeFlowHandler.isJWT("header.payload.signature"));
+  }
+
+  @Test
+  void isJWT_returnsFalseForTwoPartToken() {
+    assertFalse(AuthenticationCodeFlowHandler.isJWT("header.payload"));
+  }
+
+  @Test
+  void isJWT_returnsFalseForPlainString() {
+    assertFalse(AuthenticationCodeFlowHandler.isJWT("not-a-jwt"));
+  }
+
+  @Test
+  void getOrCreateOidcUser_selfSignup_persistsMappedEmailNotDerivedFromUsername() throws Exception {
+    AuthenticationCodeFlowHandler handler = createSelfSignupHandler(null);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubUserNotFoundAndEchoCreate(mockedEntity);
+
+      User created =
+          invokeGetOrCreateOidcUser(handler, "shortid", "firstname.lastname@example.com");
+
+      assertEquals("shortid", created.getName());
+      assertEquals("firstname.lastname@example.com", created.getEmail());
+    }
+  }
+
+  @Test
+  void getOrCreateOidcUser_selfSignup_preservesEmailWhenUsernameMatchesLocalPart()
+      throws Exception {
+    AuthenticationCodeFlowHandler handler = createSelfSignupHandler(null);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubUserNotFoundAndEchoCreate(mockedEntity);
+
+      User created = invokeGetOrCreateOidcUser(handler, "john.doe", "john.doe@example.com");
+
+      assertEquals("john.doe", created.getName());
+      assertEquals("john.doe@example.com", created.getEmail());
+    }
+  }
+
+  @Test
+  void getOrCreateOidcUser_selfSignup_allowsConfiguredDomainAndPersistsMappedEmail()
+      throws Exception {
+    AuthenticationCodeFlowHandler handler = createSelfSignupHandler(Set.of("example.com"));
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubUserNotFoundAndEchoCreate(mockedEntity);
+
+      User created =
+          invokeGetOrCreateOidcUser(handler, "shortid", "firstname.lastname@example.com");
+
+      assertEquals("shortid", created.getName());
+      assertEquals("firstname.lastname@example.com", created.getEmail());
+    }
+  }
+
+  @Test
+  void getOrCreateOidcUser_selfSignup_rejectsDisallowedEmailDomain() throws Exception {
+    AuthenticationCodeFlowHandler handler = createSelfSignupHandler(Set.of("allowed.com"));
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubUserNotFoundAndEchoCreate(mockedEntity);
+
+      AuthenticationException thrown =
+          assertThrows(
+              AuthenticationException.class,
+              () ->
+                  invokeGetOrCreateOidcUser(handler, "shortid", "firstname.lastname@example.com"));
+
+      assertTrue(thrown.getMessage().contains("example.com"));
+    }
+  }
+
+  @Test
+  void requireRedirectUri_allowsConfiguredBrowserExtensionRedirect() throws Exception {
+    String extensionRedirect = "https://ndjnpiadedlmgddlpeklbnobebkpkdgb.chromiumapp.org/auth0";
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("https://app.example.com", "", List.of(extensionRedirect));
+
+    assertEquals(extensionRedirect, invokeRequireRedirectUri(handler, extensionRedirect));
+  }
+
+  @Test
+  void requireRedirectUri_rejectsUnconfiguredBrowserExtensionRedirect() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("https://app.example.com", "", List.of());
+
+    IllegalArgumentException thrown =
         assertThrows(
-            TechnicalException.class,
+            IllegalArgumentException.class,
+            () -> invokeRequireRedirectUri(handler, "https://evil.chromiumapp.org/auth0"));
+
+    assertEquals("Redirect URI must exactly match a trusted redirect URI", thrown.getMessage());
+  }
+
+  private AuthenticationCodeFlowHandler createRedirectHandler(
+      String serverUrl, String callbackUrl, List<String> additionalTrustedRedirectUris)
+      throws Exception {
+    AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
+    when(authConfig.getCallbackUrl()).thenReturn(callbackUrl);
+    when(authConfig.getAdditionalTrustedRedirectUris()).thenReturn(additionalTrustedRedirectUris);
+
+    AuthenticationCodeFlowHandler handler =
+        (AuthenticationCodeFlowHandler)
+            getUnsafe().allocateInstance(AuthenticationCodeFlowHandler.class);
+    setField(handler, "authenticationConfiguration", authConfig);
+    setField(handler, "serverUrl", serverUrl);
+    return handler;
+  }
+
+  private String invokeRequireRedirectUri(AuthenticationCodeFlowHandler handler, String redirectUri)
+      throws Exception {
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod("requireRedirectUri", String.class);
+    method.setAccessible(true);
+    String result;
+    try {
+      result = (String) method.invoke(handler, redirectUri);
+    } catch (InvocationTargetException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+      throw e;
+    }
+    return result;
+  }
+
+  private AuthenticationCodeFlowHandler createSelfSignupHandler(Set<String> allowedDomains)
+      throws Exception {
+    AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
+    when(authConfig.getEnableSelfSignup()).thenReturn(true);
+
+    AuthorizerConfiguration authzConfig = mock(AuthorizerConfiguration.class);
+    when(authzConfig.getAdminPrincipals()).thenReturn(Set.of());
+    when(authzConfig.getAllowedEmailRegistrationDomains()).thenReturn(allowedDomains);
+    when(authzConfig.getDefaultOAuthRole()).thenReturn(null);
+
+    sun.misc.Unsafe unsafe = getUnsafe();
+    AuthenticationCodeFlowHandler handler =
+        (AuthenticationCodeFlowHandler)
+            unsafe.allocateInstance(AuthenticationCodeFlowHandler.class);
+    setField(handler, "authenticationConfiguration", authConfig);
+    setField(handler, "authorizerConfiguration", authzConfig);
+    return handler;
+  }
+
+  private void stubUserNotFoundAndEchoCreate(MockedStatic<Entity> mockedEntity) {
+    UserRepository userRepository = mock(UserRepository.class);
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
+
+    mockedEntity
+        .when(
             () ->
-                invokePrivate(
-                    handler,
-                    "validateStateIfRequired",
-                    new Class<?>[] {
-                      HttpSession.class,
-                      HttpServletResponse.class,
-                      AuthenticationSuccessResponse.class
-                    },
-                    session,
-                    response,
-                    successResponse));
+                Entity.getEntityByName(
+                    eq(Entity.USER), anyString(), anyString(), any(Include.class)))
+        .thenThrow(new EntityNotFoundException("user not found"));
+    mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+    mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
 
-    assertEquals("Missing state parameter", exception.getMessage());
+    when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
+    when(userRepository.findByNameOrNull(any(), any())).thenReturn(null);
+    when(userRepository.createOrUpdate(eq(null), any(User.class), any()))
+        .thenAnswer(
+            invocation ->
+                new PutResponse<>(
+                    Response.Status.CREATED,
+                    invocation.getArgument(1, User.class),
+                    EventType.ENTITY_CREATED));
+  }
+
+  private User invokeGetOrCreateOidcUser(
+      AuthenticationCodeFlowHandler handler, String userName, String email) throws Exception {
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "getOrCreateOidcUser", String.class, String.class, Map.class);
+    method.setAccessible(true);
+    User result;
+    try {
+      result = (User) method.invoke(handler, userName, email, new HashMap<String, Object>());
+    } catch (InvocationTargetException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+      throw e;
+    }
+    return result;
   }
 
   @Test
-  void validateStateIfRequiredRejectsMismatchedState() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    OidcConfiguration configuration =
-        configuredOidcConfiguration(
-            "client-id", null, List.of(ClientAuthenticationMethod.CLIENT_SECRET_BASIC));
-    configuration.setWithState(true);
-    OidcClient client = oidcClient(configuration, "StateClient");
-    setField(handler, "client", client);
-    when(session.getAttribute(client.getStateSessionAttributeName())).thenReturn(new State("sent"));
-    AuthenticationSuccessResponse successResponse =
-        new AuthenticationSuccessResponse(
-            URI.create("https://openmetadata.example.com/callback"),
-            new AuthorizationCode("auth-code"),
-            null,
-            null,
-            new State("received"),
-            null,
-            ResponseMode.QUERY);
-
-    TechnicalException exception =
-        assertThrows(
-            TechnicalException.class,
-            () ->
-                invokePrivate(
-                    handler,
-                    "validateStateIfRequired",
-                    new Class<?>[] {
-                      HttpSession.class,
-                      HttpServletResponse.class,
-                      AuthenticationSuccessResponse.class
-                    },
-                    session,
-                    response,
-                    successResponse));
-
-    assertTrue(exception.getMessage().contains("State parameter is different"));
-  }
-
-  @Test
-  void validateNonceIfRequiredRejectsMissingAndUnexpectedNonce() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    OidcConfiguration configuration =
-        configuredOidcConfiguration(
-            "client-id", null, List.of(ClientAuthenticationMethod.CLIENT_SECRET_BASIC));
-    configuration.setUseNonce(true);
-    OidcClient client = oidcClient(configuration, "NonceClient");
-    setField(handler, "client", client);
-
-    TechnicalException missingSessionNonce =
-        assertThrows(
-            TechnicalException.class,
-            () ->
-                invokePrivate(
-                    handler,
-                    "validateNonceIfRequired",
-                    new Class<?>[] {HttpSession.class, JWTClaimsSet.class},
-                    session,
-                    new JWTClaimsSet.Builder().claim("nonce", "expected").build()));
-    assertTrue(missingSessionNonce.getMessage().contains("Missing nonce"));
-
-    when(session.getAttribute(client.getNonceSessionAttributeName())).thenReturn("expected");
-    com.nimbusds.jwt.proc.BadJWTException badNonce =
-        assertThrows(
-            com.nimbusds.jwt.proc.BadJWTException.class,
-            () ->
-                invokePrivate(
-                    handler,
-                    "validateNonceIfRequired",
-                    new Class<?>[] {HttpSession.class, JWTClaimsSet.class},
-                    session,
-                    new JWTClaimsSet.Builder().claim("nonce", "unexpected").build()));
-    assertTrue(badNonce.getMessage().contains("Unexpected JWT nonce"));
-  }
-
-  @Test
-  void createTokenRequestUsesClientAuthenticationWhenAvailable() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    OidcConfiguration configuration =
-        configuredOidcConfiguration(
-            "client-id", "client-secret", List.of(ClientAuthenticationMethod.CLIENT_SECRET_BASIC));
-    OidcClient client = oidcClient(configuration, "TokenClient");
-    setField(handler, "client", client);
-    setField(
-        handler,
-        "clientAuthentication",
-        new ClientSecretBasic(
-            new com.nimbusds.oauth2.sdk.id.ClientID("client-id"),
-            new com.nimbusds.oauth2.sdk.auth.Secret("client-secret")));
-
-    com.nimbusds.oauth2.sdk.TokenRequest requestWithAuthentication =
-        invokePrivate(
-            handler,
-            "createTokenRequest",
-            new Class<?>[] {com.nimbusds.oauth2.sdk.AuthorizationGrant.class},
-            new RefreshTokenGrant(new com.nimbusds.oauth2.sdk.token.RefreshToken("refresh-token")));
-
-    assertNotNull(requestWithAuthentication.getClientAuthentication());
-    assertNull(requestWithAuthentication.getClientID());
-
-    setField(handler, "clientAuthentication", null);
-
-    com.nimbusds.oauth2.sdk.TokenRequest requestWithClientId =
-        invokePrivate(
-            handler,
-            "createTokenRequest",
-            new Class<?>[] {com.nimbusds.oauth2.sdk.AuthorizationGrant.class},
-            new RefreshTokenGrant(new com.nimbusds.oauth2.sdk.token.RefreshToken("refresh-token")));
-
-    assertNull(requestWithClientId.getClientAuthentication());
-    assertEquals("client-id", requestWithClientId.getClientID().getValue());
-  }
-
-  @Test
-  void buildCredentialsCopiesAuthorizationArtifacts() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    SignedJWT idToken =
-        new SignedJWT(
-            new JWSHeader(JWSAlgorithm.HS256), new JWTClaimsSet.Builder().subject("user").build());
-    AccessToken accessToken = new BearerAccessToken("access-token");
-    AuthenticationSuccessResponse successResponse =
-        new AuthenticationSuccessResponse(
-            URI.create("https://openmetadata.example.com/callback"),
-            new AuthorizationCode("auth-code"),
-            idToken,
-            accessToken,
-            new State("state"),
-            null,
-            ResponseMode.QUERY);
-
-    org.pac4j.oidc.credentials.OidcCredentials credentials =
-        invokePrivate(
-            handler,
-            "buildCredentials",
-            new Class<?>[] {AuthenticationSuccessResponse.class},
-            successResponse);
-
-    assertEquals("auth-code", credentials.getCode().getValue());
-    assertEquals(idToken, credentials.getIdToken());
-    assertEquals(accessToken, credentials.getAccessToken());
-  }
-
-  @Test
-  void handleLoginRedirectsToProviderWithSecurityParameters() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    OidcConfiguration configuration =
-        configuredOidcConfiguration(
-            "client-id", null, List.of(ClientAuthenticationMethod.CLIENT_SECRET_BASIC));
-    configuration.setWithState(true);
-    configuration.setUseNonce(true);
-    configuration.setPkceMethod(CodeChallengeMethod.S256);
-    configuration.addCustomParam("resource", "https://graph.microsoft.com");
-    OidcClient client = oidcClient(configuration, "LoginClient");
-    setField(handler, "client", client);
-    setField(handler, "promptType", "login");
-    setField(handler, "maxAge", "600");
-
-    when(request.getSession(false)).thenReturn(null);
-    when(request.getSession(true)).thenReturn(session);
+  void handleLogin_mcpFlow_skipsActiveSessionShortcut() throws Exception {
+    stubOidcConfigForLogin();
     when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
-        .thenReturn("https://app.example.com/post-login");
-    when(session.getAttribute(AuthenticationCodeFlowHandler.OIDC_CREDENTIAL_PROFILE))
-        .thenReturn(null);
-    when(session.getId()).thenReturn("session-id");
+        .thenReturn(TEST_SERVER_URL + MCP_CALLBACK);
+
+    createLoginHandler().handleLogin(request, response);
+
+    // MCP must always run the full OIDC round-trip so the id_token is provider-issued; taking the
+    // active-session shortcut would mint an OpenMetadata JWT and fail the MCP issuer check.
+    verify(sessionService, never()).getActiveSession(any(), any());
+  }
+
+  @Test
+  void handleLogin_webFlow_stillUsesActiveSessionShortcut() throws Exception {
+    stubOidcConfigForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + "/auth/callback");
+    when(sessionService.getActiveSession(request, response)).thenReturn(Optional.empty());
+
+    createLoginHandler().handleLogin(request, response);
+
+    verify(sessionService).getActiveSession(request, response);
+  }
+
+  @Test
+  void handleLogin_mcpFlow_persistsPendingStateBeforeProviderRedirect() throws Exception {
+    stubOidcConfigForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + MCP_CALLBACK);
+
+    Map<String, String> persisted = new HashMap<>();
+    AtomicBoolean redirectAlreadySent = new AtomicBoolean(false);
+    AuthenticationCodeFlowHandler.setMcpPendingStatePersister(
+        (req, state, nonce, codeVerifier) -> {
+          redirectAlreadySent.set(
+              mockingDetails(response).getInvocations().stream()
+                  .anyMatch(invocation -> "sendRedirect".equals(invocation.getMethod().getName())));
+          persisted.put("state", state);
+          persisted.put("nonce", nonce);
+          persisted.put("codeVerifier", codeVerifier);
+        });
+
+    createLoginHandler().handleLogin(request, response);
+
+    assertFalse(persisted.isEmpty(), "persister must run for the MCP flow");
+    assertNotNull(persisted.get("state"), "state must be linked to the pending MCP request");
+    assertNotNull(persisted.get("nonce"));
+    assertNotNull(persisted.get("codeVerifier"));
+    assertFalse(
+        redirectAlreadySent.get(),
+        "state must be persisted BEFORE the provider redirect, otherwise a fast round-trip "
+            + "can return to /callback before the state is resolvable");
+  }
+
+  @Test
+  void handleLogin_webFlow_doesNotPersistMcpPendingState() throws Exception {
+    stubOidcConfigForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + "/auth/callback");
+    when(sessionService.getActiveSession(request, response)).thenReturn(Optional.empty());
+
+    AtomicBoolean persisterCalled = new AtomicBoolean(false);
+    AuthenticationCodeFlowHandler.setMcpPendingStatePersister(
+        (req, state, nonce, codeVerifier) -> persisterCalled.set(true));
+
+    createLoginHandler().handleLogin(request, response);
+
+    assertFalse(persisterCalled.get(), "web login must not touch MCP pending state");
+  }
+
+  @Test
+  void handleLogin_mcpFlow_withNoPersisterRegistered_doesNotThrow() throws Exception {
+    stubOidcConfigForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + MCP_CALLBACK);
+    AuthenticationCodeFlowHandler.setMcpPendingStatePersister(null);
+
+    AuthenticationCodeFlowHandler handler = createLoginHandler();
+
+    assertDoesNotThrow(() -> handler.handleLogin(request, response));
+  }
+
+  @Test
+  void handleLogin_mcpFlow_dropsPromptNone() throws Exception {
+    // prompt=none tells the IdP to fail rather than interact. An MCP client just opened a fresh
+    // browser context so the user can log in, so propagating it guarantees login_required and
+    // the MCP OAuth flow can never complete (#32671).
+    stubOidcConfigForLogin();
+    stubProviderMetadataForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + MCP_CALLBACK);
+    AuthenticationCodeFlowHandler handler = createLoginHandler();
+    setField(handler, "promptType", "none");
 
     handler.handleLogin(request, response);
 
-    verify(session)
-        .setAttribute(
-            AuthenticationCodeFlowHandler.SESSION_REDIRECT_URI,
-            "https://app.example.com/post-login");
-    ArgumentCaptor<String> redirectCaptor = ArgumentCaptor.forClass(String.class);
-    verify(response).sendRedirect(redirectCaptor.capture());
-    String location = redirectCaptor.getValue();
-    assertTrue(location.startsWith("https://issuer.example.com/authorize?"));
-    assertTrue(location.contains("client_id=client-id"));
-    assertTrue(location.contains("redirect_uri=https%3A%2F%2Fopenmetadata.example.com%2Fcallback"));
-    assertTrue(location.contains("prompt=login"));
-    assertTrue(location.contains("max_age=600"));
-    assertTrue(location.contains("resource=https%3A%2F%2Fgraph.microsoft.com"));
-    assertTrue(location.contains("state="));
-    assertTrue(location.contains("nonce="));
-    assertTrue(location.contains("code_challenge="));
+    assertFalse(capturedLoginRedirect().contains("prompt=none"));
   }
 
   @Test
-  void handleCallbackWithoutSessionReturnsErrorResponse() {
+  void handleLogin_webFlow_keepsPromptNone() throws Exception {
+    // Silent auth stays available to the browser app, where the /signin fallback handles a
+    // login_required response.
+    stubOidcConfigForLogin();
+    stubProviderMetadataForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + "/auth/callback");
+    when(sessionService.getActiveSession(request, response)).thenReturn(Optional.empty());
+    AuthenticationCodeFlowHandler handler = createLoginHandler();
+    setField(handler, "promptType", "none");
+
+    handler.handleLogin(request, response);
+
+    assertTrue(capturedLoginRedirect().contains("prompt=none"));
+  }
+
+  @Test
+  void handleLogin_mcpFlow_keepsNonSilentPromptValues() throws Exception {
+    // prompt=login/consent are deliberate admin policy (force re-auth or re-consent). Only the
+    // silent-auth value is suppressed for MCP; suppressing all of them would silently bypass a
+    // compliance setting.
+    stubOidcConfigForLogin();
+    stubProviderMetadataForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + MCP_CALLBACK);
+    AuthenticationCodeFlowHandler handler = createLoginHandler();
+    setField(handler, "promptType", "consent");
+
+    handler.handleLogin(request, response);
+
+    assertTrue(capturedLoginRedirect().contains("prompt=consent"));
+  }
+
+  @Test
+  void isMcpRedirectUri_matchesOnlyTheMcpCallback() throws Exception {
+    AuthenticationCodeFlowHandler handler = createLoginHandler();
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod("isMcpRedirectUri", String.class);
+    method.setAccessible(true);
+
+    // Drives the handleCallback gate that decides whether provider credentials are handed to MCP.
+    assertTrue((Boolean) method.invoke(handler, TEST_SERVER_URL + MCP_CALLBACK));
+    assertFalse((Boolean) method.invoke(handler, TEST_SERVER_URL + "/auth/callback"));
+    assertFalse((Boolean) method.invoke(handler, "https://evil.example.com" + MCP_CALLBACK));
+    assertFalse((Boolean) method.invoke(handler, (Object) null));
+  }
+
+  @Test
+  void resolveProviderMetadata_initializesResolverAndReturnsLoadedMetadata() throws Exception {
+    IOidcOpMetadataResolver resolver = mock(IOidcOpMetadataResolver.class);
+    OIDCProviderMetadata metadata = mock(OIDCProviderMetadata.class);
+    when(oidcConfiguration.getOpMetadataResolver()).thenReturn(resolver);
+    when(resolver.load()).thenReturn(metadata);
+
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "resolveProviderMetadata", OidcConfiguration.class);
+    method.setAccessible(true);
+
+    Object result = method.invoke(null, oidcConfiguration);
+
+    // pac4j 6 removed getProviderMetadata(); the helper must initialize the resolver, then load().
+    assertEquals(metadata, result);
+    verify(oidcConfiguration).ensuresMetadataResolverInitialized();
+    verify(resolver).load();
+  }
+
+  private void stubOidcConfigForLogin() {
+    when(oidcClient.getConfiguration()).thenReturn(oidcConfiguration);
+    when(oidcClient.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
+    when(oidcConfiguration.getScope()).thenReturn("openid email profile");
+    when(oidcConfiguration.getResponseType()).thenReturn("code");
+    when(oidcConfiguration.getCustomParams()).thenReturn(new HashMap<>());
+    when(oidcConfiguration.getClientId()).thenReturn("test-client-id");
+    when(oidcConfiguration.isWithState()).thenReturn(true);
+    when(oidcConfiguration.isUseNonce()).thenReturn(true);
+    when(oidcConfiguration.isDisablePkce()).thenReturn(false);
+  }
+
+  /** Lets handleLogin() build the provider authorize URL and reach resp.sendRedirect(). */
+  private void stubProviderMetadataForLogin() {
+    IOidcOpMetadataResolver resolver = mock(IOidcOpMetadataResolver.class);
+    OIDCProviderMetadata metadata = mock(OIDCProviderMetadata.class);
+    when(oidcConfiguration.getOpMetadataResolver()).thenReturn(resolver);
+    when(resolver.load()).thenReturn(metadata);
+    when(metadata.getAuthorizationEndpointURI())
+        .thenReturn(URI.create("https://idp.example.com/authorize"));
+  }
+
+  /** The provider authorize URL handleLogin() redirected the browser to. */
+  private String capturedLoginRedirect() throws IOException {
+    ArgumentCaptor<String> location = ArgumentCaptor.forClass(String.class);
+    verify(response).sendRedirect(location.capture());
+    return location.getValue();
+  }
+
+  /** Handler wired up far enough to drive handleLogin() through state generation. */
+  private AuthenticationCodeFlowHandler createLoginHandler() throws Exception {
     AuthenticationCodeFlowHandler handler =
-        assertDoesNotThrow(AuthenticationCodeFlowHandlerTest::newHandler);
-    assertDoesNotThrow(() -> when(response.getOutputStream()).thenReturn(outputStream));
-    when(request.getSession(false)).thenReturn(null);
-
-    handler.handleCallback(request, response);
-
-    verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
+    when(authConfig.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
+    when(authConfig.getProvider()).thenReturn(AuthProvider.GOOGLE);
+    setField(handler, "serverUrl", TEST_SERVER_URL);
+    setField(handler, "authenticationConfiguration", authConfig);
+    return handler;
   }
 
-  @Test
-  void isJwtRecognizesThreePartTokens() {
-    assertTrue(AuthenticationCodeFlowHandler.isJWT("a.b.c"));
-    assertFalse(AuthenticationCodeFlowHandler.isJWT("a.b"));
-  }
+  /**
+   * Allocates an AuthenticationCodeFlowHandler without invoking its constructor (which requires a
+   * real OIDC provider for discovery), then injects the mocked collaborators via reflection.
+   */
+
+  // Regression coverage for issue #32960: the callback mints an OpenMetadata token
+  // carrying OpenMetadata's own roles, so unless the provider's roles are applied here they are
+  // never seen again and the downstream sync just compares the database against itself.
 
   @Test
-  void handleCallbackCompletesTokenExchangeAndRedirectsUser() throws Exception {
-    String nonce = "expected-nonce";
-    String idToken =
-        signedJwt(
-            new JWTClaimsSet.Builder()
-                .subject("oidc-user")
-                .claim("preferred_username", "oidc-user")
-                .claim("email", "oidc-user@example.com")
-                .claim("nonce", nonce)
-                .expirationTime(Date.from(Instant.now().plusSeconds(3600)))
-                .build());
-    try (TokenServer tokenServer =
-            startTokenServer(
-                200,
-                JsonUtils.pojoToJson(
-                    Map.of(
-                        "access_token", "provider-access-token",
-                        "refresh_token", "provider-refresh-token",
-                        "token_type", "Bearer",
-                        "expires_in", 3600,
-                        "id_token", idToken)));
-        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
-      AuthenticationCodeFlowHandler handler = newHandler();
-      OidcConfiguration configuration =
-          configuredOidcConfiguration(
-              "client-id",
-              "client-secret",
-              List.of(ClientAuthenticationMethod.CLIENT_SECRET_BASIC),
-              tokenServer.tokenEndpoint());
-      configuration.setWithState(true);
-      configuration.setUseNonce(true);
-      configuration.setDisablePkce(true);
-      OidcClient client = oidcClient(configuration, "CallbackClient");
-      setField(handler, "client", client);
-      setField(handler, "claimsOrder", List.of("preferred_username", "email"));
-      setField(
-          handler, "claimsMapping", Map.of("username", "preferred_username", "email", "email"));
-      setField(handler, "principalDomain", "example.com");
-      setField(handler, "authorizerConfiguration", authorizerConfiguration(Set.of()));
+  void syncRolesFromProvider_assignsProviderRolesToTheUser() throws Exception {
+    User user = userWithRoles("alice");
+    UserRepository userRepository = mock(UserRepository.class);
 
-      when(request.getSession(false)).thenReturn(session);
-      when(request.getParameterMap())
-          .thenReturn(Map.of("code", new String[] {"auth-code"}, "state", new String[] {"csrf"}));
-      when(session.getAttribute(client.getStateSessionAttributeName()))
-          .thenReturn(new State("csrf"));
-      when(session.getAttribute(client.getNonceSessionAttributeName())).thenReturn(nonce);
-      when(session.getAttribute(client.getCodeVerifierSessionAttributeName()))
-          .thenReturn(new CodeVerifier("0123456789abcdef0123456789abcdef0123456789a"));
-      when(session.getAttribute(AuthenticationCodeFlowHandler.SESSION_SSO_CALLBACK_URL))
-          .thenReturn(client.getCallbackUrl());
-      when(session.getAttribute(AuthenticationCodeFlowHandler.SESSION_REDIRECT_URI))
-          .thenReturn("https://app.example.com/post-login");
-      when(session.getId()).thenReturn("session-id");
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository, "DataSteward");
 
-      User user = new User();
-      user.setId(UUID.randomUUID());
-      user.setName("oidc-user");
-      user.setEmail("oidc-user@example.com");
-      user.setDisplayName("OIDC User");
-      user.setIsAdmin(false);
-      UserRepository userRepository = mock(UserRepository.class);
-      AuditLogRepository auditLogRepository = mock(AuditLogRepository.class);
-      entity
-          .when(
-              () ->
-                  Entity.getEntityByName(
-                      Entity.USER, "oidc-user", "id,roles,teams", Include.NON_DELETED))
-          .thenReturn(user);
-      entity.when(Entity::getUserRepository).thenReturn(userRepository);
-      entity.when(Entity::getAuditLogRepository).thenReturn(auditLogRepository);
-
-      handler.handleCallback(request, response);
-
-      verify(session)
-          .setAttribute(
-              eq(AuthenticationCodeFlowHandler.OIDC_CREDENTIAL_PROFILE),
-              any(OidcCredentials.class));
-      verify(session)
-          .setAttribute(AuthenticationCodeFlowHandler.SESSION_USER_ID, user.getId().toString());
-      verify(session).setAttribute(AuthenticationCodeFlowHandler.SESSION_USERNAME, "oidc-user");
-      verify(userRepository).updateUserLastLoginTime(eq(user), anyLong());
-      verify(auditLogRepository)
-          .writeAuthEvent(AuditLogRepository.AUTH_EVENT_LOGIN, "oidc-user", user.getId());
-
-      ArgumentCaptor<String> redirectCaptor = ArgumentCaptor.forClass(String.class);
-      verify(response).sendRedirect(redirectCaptor.capture());
-      String redirect = redirectCaptor.getValue();
-      assertTrue(redirect.startsWith("https://app.example.com/post-login?id_token="));
-      assertTrue(redirect.contains("email=oidc-user%40example.com"));
-      assertTrue(redirect.contains("name=oidc-user"));
-    }
-  }
-
-  @Test
-  void handleLogoutWritesAuditEventAndRedirects() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    setField(handler, "serverUrl", "https://openmetadata.example.com");
-    when(request.getSession(false)).thenReturn(session);
-    when(session.getAttribute(AuthenticationCodeFlowHandler.SESSION_USER_ID))
-        .thenReturn("0f1d4b1f-b436-4d9e-a78b-7c3dd7ff60b0");
-    when(session.getAttribute(AuthenticationCodeFlowHandler.SESSION_USERNAME))
-        .thenReturn("oidc-user");
-
-    AuditLogRepository originalRepository = Entity.getAuditLogRepository();
-    AuditLogRepository auditLogRepository = mock(AuditLogRepository.class);
-    Entity.setAuditLogRepository(auditLogRepository);
-    try {
-      handler.handleLogout(request, response);
-    } finally {
-      Entity.setAuditLogRepository(originalRepository);
+      invokeSyncRolesFromProvider(
+          handlerWithRolesFromProvider(true), user, claims("roles", List.of("DataSteward")));
     }
 
-    verify(auditLogRepository)
-        .writeAuthEvent(
-            AuditLogRepository.AUTH_EVENT_LOGOUT,
-            "oidc-user",
-            UUID.fromString("0f1d4b1f-b436-4d9e-a78b-7c3dd7ff60b0"));
-    verify(session).invalidate();
-    verify(response).sendRedirect("https://openmetadata.example.com/logout");
+    assertEquals(List.of("DataSteward"), roleNames(user));
   }
 
   @Test
-  void refreshTokenRequestUpdatesCredentialsFromOidcTokenResponse() throws Exception {
-    String refreshedIdToken =
-        signedJwt(
-            new JWTClaimsSet.Builder()
-                .subject("refreshed-user")
-                .claim("preferred_username", "refreshed-user")
-                .expirationTime(Date.from(Instant.now().plusSeconds(3600)))
-                .build());
-    try (TokenServer tokenServer =
-        startTokenServer(
-            200,
-            JsonUtils.pojoToJson(
-                Map.of(
-                    "access_token", "refreshed-access-token",
-                    "refresh_token", "refreshed-refresh-token",
-                    "token_type", "Bearer",
-                    "expires_in", 3600,
-                    "id_token", refreshedIdToken)))) {
-      AuthenticationCodeFlowHandler handler = newHandler();
-      setField(
-          handler,
-          "client",
-          oidcClient(
-              configuredOidcConfiguration(
-                  "client-id",
-                  "client-secret",
-                  List.of(ClientAuthenticationMethod.CLIENT_SECRET_BASIC),
-                  tokenServer.tokenEndpoint()),
-              "RefreshClient"));
+  void syncRolesFromProvider_revokesRolesWhenProviderSendsAnEmptyClaim() throws Exception {
+    User user = userWithRoles("alice", "DataSteward");
+    UserRepository userRepository = mock(UserRepository.class);
 
-      OidcCredentials credentials = new OidcCredentials();
-      credentials.setRefreshToken(new RefreshToken("old-refresh-token"));
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository);
 
-      handler.refreshTokenRequest(session, credentials);
+      invokeSyncRolesFromProvider(
+          handlerWithRolesFromProvider(true), user, claims("roles", List.of()));
 
-      assertEquals("refreshed-access-token", credentials.getAccessToken().getValue());
-      assertEquals("refreshed-refresh-token", credentials.getRefreshToken().getValue());
-      assertEquals("refreshed-user", credentials.getIdToken().getJWTClaimsSet().getSubject());
+      verify(userRepository).patch(eq(null), eq(user.getId()), eq("alice"), any());
     }
+
+    assertEquals(List.of(), roleNames(user));
   }
 
   @Test
-  void refreshTokenRequestBuildsOpenMetadataJwtWhenProviderOmitsIdToken() throws Exception {
-    String sessionIdToken =
-        signedJwt(
-            new JWTClaimsSet.Builder()
-                .subject("oidc-user")
-                .claim("preferred_username", "oidc-user")
-                .claim("email", "oidc-user@example.com")
-                .expirationTime(Date.from(Instant.now().plusSeconds(3600)))
-                .build());
-    String generatedOmJwt =
-        signedJwt(
-            new JWTClaimsSet.Builder()
-                .subject("oidc-user")
-                .claim("email", "oidc-user@example.com")
-                .expirationTime(Date.from(Instant.now().plusSeconds(3600)))
-                .build());
-    try (TokenServer tokenServer =
-            startTokenServer(
-                200,
-                JsonUtils.pojoToJson(
-                    Map.of(
-                        "access_token", "provider-access-token",
-                        "refresh_token", "provider-refresh-token",
-                        "token_type", "Bearer",
-                        "expires_in", 3600)));
-        MockedStatic<Entity> entity = mockStatic(Entity.class);
-        MockedStatic<JWTTokenGenerator> tokenGeneratorStatic =
-            mockStatic(JWTTokenGenerator.class)) {
-      AuthenticationCodeFlowHandler handler = newHandler();
-      setField(
-          handler,
-          "client",
-          oidcClient(
-              configuredOidcConfiguration(
-                  "client-id",
-                  "client-secret",
-                  List.of(ClientAuthenticationMethod.CLIENT_SECRET_BASIC),
-                  tokenServer.tokenEndpoint()),
-              "RefreshClient"));
-      setField(handler, "claimsOrder", List.of("preferred_username", "email"));
-      setField(
-          handler, "claimsMapping", Map.of("username", "preferred_username", "email", "email"));
-      setField(handler, "tokenValidity", 600);
+  void syncRolesFromProvider_replacesStaleRolesWhenTheProviderChangesThem() throws Exception {
+    User user = userWithRoles("alice", "DataSteward");
+    UserRepository userRepository = mock(UserRepository.class);
 
-      OidcCredentials sessionCredentials = new OidcCredentials();
-      sessionCredentials.setIdToken(SignedJWT.parse(sessionIdToken));
-      when(session.getAttribute(AuthenticationCodeFlowHandler.OIDC_CREDENTIAL_PROFILE))
-          .thenReturn(sessionCredentials);
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository, "DataConsumer");
 
-      User user = new User();
-      user.setId(UUID.randomUUID());
-      user.setName("oidc-user");
-      user.setEmail("oidc-user@example.com");
-      user.setIsAdmin(false);
-      entity
-          .when(() -> Entity.getEntityByName(Entity.USER, "oidc-user", "id", Include.NON_DELETED))
-          .thenReturn(user);
-
-      JWTTokenGenerator tokenGenerator = mock(JWTTokenGenerator.class);
-      tokenGeneratorStatic.when(JWTTokenGenerator::getInstance).thenReturn(tokenGenerator);
-      JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism();
-      jwtAuthMechanism.setJWTToken(generatedOmJwt);
-      when(tokenGenerator.generateJWTToken(
-              eq("oidc-user"),
-              eq(Set.of()),
-              eq(false),
-              eq("oidc-user@example.com"),
-              eq(600L),
-              eq(false),
-              eq(org.openmetadata.schema.auth.ServiceTokenType.OM_USER)))
-          .thenReturn(jwtAuthMechanism);
-
-      OidcCredentials credentials = new OidcCredentials();
-      credentials.setRefreshToken(new RefreshToken("old-refresh-token"));
-
-      handler.refreshTokenRequest(session, credentials);
-
-      assertEquals("provider-access-token", credentials.getAccessToken().getValue());
-      assertEquals("provider-refresh-token", credentials.getRefreshToken().getValue());
-      assertEquals(generatedOmJwt, credentials.getIdToken().getParsedString());
+      invokeSyncRolesFromProvider(
+          handlerWithRolesFromProvider(true), user, claims("roles", List.of("DataConsumer")));
     }
+
+    assertEquals(List.of("DataConsumer"), roleNames(user));
   }
 
   @Test
-  void refreshTokenRequestRejectsMissingRefreshToken() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    OidcCredentials credentials = new OidcCredentials();
+  void syncRolesFromProvider_leavesRolesAloneWhenTheTokenHasNoRolesClaim() throws Exception {
+    User user = userWithRoles("alice", "DataSteward");
+    UserRepository userRepository = mock(UserRepository.class);
 
-    assertThrows(
-        jakarta.ws.rs.BadRequestException.class,
-        () -> handler.refreshTokenRequest(session, credentials));
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository);
+
+      invokeSyncRolesFromProvider(
+          handlerWithRolesFromProvider(true), user, claims("email", "alice@om.test"));
+
+      verifyNoInteractions(userRepository);
+    }
+
+    assertEquals(List.of("DataSteward"), roleNames(user));
   }
 
   @Test
-  void refreshTokenRequestThrowsTechnicalExceptionWhenProviderReturnsErrorStatus()
+  void syncRolesFromProvider_doesNothingWhenUseRolesFromProviderIsOff() throws Exception {
+    User user = userWithRoles("alice", "DataSteward");
+    UserRepository userRepository = mock(UserRepository.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository, "DataConsumer");
+
+      invokeSyncRolesFromProvider(
+          handlerWithRolesFromProvider(false), user, claims("roles", List.of("DataConsumer")));
+
+      verifyNoInteractions(userRepository);
+    }
+
+    assertEquals(List.of("DataSteward"), roleNames(user));
+  }
+
+  @Test
+  void syncRolesFromProvider_matchesTheRolesClaimCaseInsensitively() throws Exception {
+    User user = userWithRoles("alice");
+    UserRepository userRepository = mock(UserRepository.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository, "DataSteward");
+
+      invokeSyncRolesFromProvider(
+          handlerWithRolesFromProvider(true), user, claims("Roles", List.of("DataSteward")));
+    }
+
+    assertEquals(List.of("DataSteward"), roleNames(user));
+  }
+
+  @Test
+  void syncRolesFromProvider_promotesToAdminWhenTheProviderSendsTheAdminRole() throws Exception {
+    User user = userWithRoles("alice");
+    UserRepository userRepository = mock(UserRepository.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository);
+
+      invokeSyncRolesFromProvider(
+          handlerWithRolesFromProvider(true), user, claims("roles", List.of(ADMIN_ROLE)));
+    }
+
+    assertTrue(user.getIsAdmin());
+  }
+
+  private AuthenticationCodeFlowHandler handlerWithRolesFromProvider(boolean useRolesFromProvider)
       throws Exception {
-    try (TokenServer tokenServer = startTokenServer(500, "{\"error\":\"server_error\"}")) {
-      AuthenticationCodeFlowHandler handler = newHandler();
-      setField(
-          handler,
-          "client",
-          oidcClient(
-              configuredOidcConfiguration(
-                  "client-id",
-                  "client-secret",
-                  List.of(ClientAuthenticationMethod.CLIENT_SECRET_BASIC),
-                  tokenServer.tokenEndpoint()),
-              "RefreshFailureClient"));
-
-      OidcCredentials credentials = new OidcCredentials();
-      credentials.setRefreshToken(new RefreshToken("old-refresh-token"));
-
-      TechnicalException exception =
-          assertThrows(
-              TechnicalException.class, () -> handler.refreshTokenRequest(session, credentials));
-
-      assertTrue(exception.getMessage().contains("Failed to refresh id_token"));
-    }
-  }
-
-  @Test
-  void handleRefreshWritesJwtResponseWhenSessionCredentialsCanBeRenewed() throws Exception {
-    String refreshedIdToken =
-        signedJwt(
-            new JWTClaimsSet.Builder()
-                .subject("refresh-user")
-                .expirationTime(Date.from(Instant.now().plusSeconds(3600)))
-                .build());
-    try (TokenServer tokenServer =
-        startTokenServer(
-            200,
-            JsonUtils.pojoToJson(
-                Map.of(
-                    "access_token", "fresh-access-token",
-                    "refresh_token", "fresh-refresh-token",
-                    "token_type", "Bearer",
-                    "expires_in", 3600,
-                    "id_token", refreshedIdToken)))) {
-      AuthenticationCodeFlowHandler handler = newHandler();
-      setField(
-          handler,
-          "client",
-          oidcClient(
-              configuredOidcConfiguration(
-                  "client-id",
-                  "client-secret",
-                  List.of(ClientAuthenticationMethod.CLIENT_SECRET_BASIC),
-                  tokenServer.tokenEndpoint()),
-              "RefreshHandlerClient"));
-
-      OidcCredentials credentials = new OidcCredentials();
-      credentials.setRefreshToken(new RefreshToken("old-refresh-token"));
-      when(request.getSession(false)).thenReturn(session);
-      when(session.getAttribute(AuthenticationCodeFlowHandler.OIDC_CREDENTIAL_PROFILE))
-          .thenReturn(credentials);
-      when(session.getId()).thenReturn("refresh-session");
-      when(response.getOutputStream()).thenReturn(outputStream);
-
-      handler.handleRefresh(request, response);
-
-      assertEquals("fresh-access-token", credentials.getAccessToken().getValue());
-      assertEquals("fresh-refresh-token", credentials.getRefreshToken().getValue());
-      assertEquals(refreshedIdToken, credentials.getIdToken().getParsedString());
-      verify(session)
-          .setAttribute(AuthenticationCodeFlowHandler.OIDC_CREDENTIAL_PROFILE, credentials);
-      verify(outputStream).print(org.mockito.ArgumentMatchers.contains(refreshedIdToken));
-      verify(response).setStatus(HttpServletResponse.SC_OK);
-    }
-  }
-
-  @Test
-  void handleRefreshWithoutCredentialsFallsBackToLogout() throws Exception {
     AuthenticationCodeFlowHandler handler =
-        assertDoesNotThrow(AuthenticationCodeFlowHandlerTest::newHandler);
-    assertDoesNotThrow(() -> setField(handler, "serverUrl", "https://openmetadata.example.com"));
-    when(request.getSession(false)).thenReturn(session);
-    when(session.getAttribute(AuthenticationCodeFlowHandler.OIDC_CREDENTIAL_PROFILE))
-        .thenReturn(null);
-    when(session.getId()).thenReturn("missing-credentials-session");
-
-    handler.handleRefresh(request, response);
-
-    verify(session).invalidate();
-    verify(response).sendRedirect("https://openmetadata.example.com/logout");
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    setField(
+        handler,
+        "authorizerConfiguration",
+        new AuthorizerConfiguration().withUseRolesFromProvider(useRolesFromProvider));
+    return handler;
   }
 
-  @Test
-  void refreshAccessTokenAzureAd2TokenUpdatesAzureProfile() throws Exception {
-    String refreshedIdToken =
-        signedJwt(
-            new JWTClaimsSet.Builder()
-                .subject("azure-user")
-                .expirationTime(Date.from(Instant.now().plusSeconds(3600)))
-                .build());
-    try (TokenServer tokenServer =
-        startTokenServer(
-            200,
-            JsonUtils.pojoToJson(
-                Map.of(
-                    "access_token", "azure-access-token",
-                    "refresh_token", "azure-refresh-token",
-                    "token_type", "Bearer",
-                    "expires_in", 3600,
-                    "id_token", refreshedIdToken)))) {
-      AuthenticationCodeFlowHandler handler = newHandler();
-      OidcCredentials credentials = new OidcCredentials();
-      credentials.setRefreshToken(new RefreshToken("azure-old-refresh-token"));
-
-      invokePrivate(
-          handler,
-          "refreshAccessTokenAzureAd2Token",
-          new Class<?>[] {AzureAd2OidcConfiguration.class, OidcCredentials.class},
-          azureOidcConfiguration(tokenServer.tokenEndpoint()),
-          credentials);
-
-      assertEquals("azure-access-token", credentials.getAccessToken().getValue());
-      assertEquals("azure-refresh-token", credentials.getRefreshToken().getValue());
-      assertEquals(refreshedIdToken, credentials.getIdToken().getParsedString());
+  private static void invokeSyncRolesFromProvider(
+      AuthenticationCodeFlowHandler handler, User user, Map<String, Object> claims)
+      throws Exception {
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "syncRolesFromProvider", User.class, Map.class);
+    method.setAccessible(true);
+    try {
+      method.invoke(handler, user, claims);
+    } catch (InvocationTargetException e) {
+      throw (Exception) e.getCause();
     }
   }
 
-  @Test
-  void refreshAccessTokenAzureAd2TokenRejectsMissingRefreshToken() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    OidcCredentials credentials = new OidcCredentials();
-
-    TechnicalException exception =
-        assertThrows(
-            TechnicalException.class,
-            () ->
-                invokePrivate(
-                    handler,
-                    "refreshAccessTokenAzureAd2Token",
-                    new Class<?>[] {AzureAd2OidcConfiguration.class, OidcCredentials.class},
-                    azureOidcConfiguration(URI.create("https://issuer.example.com/token")),
-                    credentials));
-
-    assertTrue(exception.getMessage().contains("No refresh token available"));
+  // The callback builds its claims map case-insensitively; mirror that here so the tests exercise
+  // the same lookup behaviour the real flow has.
+  private static Map<String, Object> claims(String key, Object value) {
+    Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    claims.put(key, value);
+    return claims;
   }
 
-  @Test
-  void validateConfigRejectsMissingOidcConfiguration() {
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                AuthenticationCodeFlowHandler.validateConfig(
-                    new AuthenticationConfiguration(), authorizerConfiguration(Set.of())));
-
-    assertTrue(exception.getMessage().contains("OIDC configuration validation failed"));
-  }
-
-  @Test
-  void validateConfigAcceptsReachableOidcDiscoveryDocument() throws Exception {
-    try (OidcDiscoveryServer server =
-        startDiscoveryServer(
-            oidcDiscoveryMetadata(
-                "https://issuer.example.com/authorize", "https://issuer.example.com/token"))) {
-      assertDoesNotThrow(
-          () ->
-              AuthenticationCodeFlowHandler.validateConfig(
-                  oidcAuthConfig(server.discoveryUri()), authorizerConfiguration(Set.of("admin"))));
+  private static void stubRoleLookup(
+      MockedStatic<Entity> mockedEntity, UserRepository userRepository, String... roleNames) {
+    mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+    for (String roleName : roleNames) {
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.ROLE, roleName, "id", NON_DELETED, true))
+          .thenReturn(
+              new Role()
+                  .withId(java.util.UUID.randomUUID())
+                  .withName(roleName)
+                  .withFullyQualifiedName(roleName));
     }
   }
 
-  @Test
-  void constructorInitializesFieldsFromDiscoveryDocument() throws Exception {
-    try (OidcDiscoveryServer server =
-        startDiscoveryServer(
-            oidcDiscoveryMetadata(
-                "https://issuer.example.com/authorize", "https://issuer.example.com/token"))) {
-      AuthenticationCodeFlowHandler handler =
-          newInitializedHandler(
-              oidcAuthConfig(server.discoveryUri()), authorizerConfiguration(Set.of("admin")));
-
-      assertNotNull(handler);
-      assertNotNull(readField(handler, "client"));
-      assertEquals("https://openmetadata.example.com", readField(handler, "serverUrl"));
-      assertNotNull(readField(handler, "clientAuthentication"));
-    }
+  private static User userWithRoles(String name, String... roleNames) {
+    return new User()
+        .withId(java.util.UUID.randomUUID())
+        .withName(name)
+        .withFullyQualifiedName(name)
+        .withIsAdmin(false)
+        .withRoles(
+            java.util.Arrays.stream(roleNames)
+                .map(roleName -> new EntityReference().withName(roleName))
+                .toList());
   }
 
-  @Test
-  void validateConfigRejectsDiscoveryDocumentWithoutAuthorizationEndpoint() throws Exception {
-    try (OidcDiscoveryServer server =
-        startDiscoveryServer(oidcDiscoveryMetadata(null, "https://issuer.example.com/token"))) {
-      IllegalArgumentException exception =
-          assertThrows(
-              IllegalArgumentException.class,
-              () ->
-                  AuthenticationCodeFlowHandler.validateConfig(
-                      oidcAuthConfig(server.discoveryUri()),
-                      authorizerConfiguration(Set.of("admin"))));
-
-      assertTrue(exception.getMessage().contains("Authorization endpoint"));
-    }
+  private static List<String> roleNames(User user) {
+    return user.getRoles().stream().map(EntityReference::getName).toList();
   }
 
-  @Test
-  void validateConfigRejectsDiscoveryDocumentWithoutTokenEndpoint() throws Exception {
-    try (OidcDiscoveryServer server =
-        startDiscoveryServer(oidcDiscoveryMetadata("https://issuer.example.com/authorize", null))) {
-      IllegalArgumentException exception =
-          assertThrows(
-              IllegalArgumentException.class,
-              () ->
-                  AuthenticationCodeFlowHandler.validateConfig(
-                      oidcAuthConfig(server.discoveryUri()),
-                      authorizerConfiguration(Set.of("admin"))));
+  private AuthenticationCodeFlowHandler createHandlerWithMockedInternals(
+      SessionService sessionService, OidcClient client) throws Exception {
+    sun.misc.Unsafe unsafe = getUnsafe();
+    AuthenticationCodeFlowHandler handler =
+        (AuthenticationCodeFlowHandler)
+            unsafe.allocateInstance(AuthenticationCodeFlowHandler.class);
 
-      assertTrue(exception.getMessage().contains("Token endpoint"));
-    }
-  }
-
-  @Test
-  void parseTokenResponseRejectsOauthErrors() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    HTTPResponse httpResponse = new HTTPResponse(400);
-    httpResponse.setContentType("application/json");
-    httpResponse.setContent("{\"error\":\"invalid_grant\",\"error_description\":\"bad code\"}");
-
-    TechnicalException exception =
-        assertThrows(
-            TechnicalException.class,
-            () ->
-                invokePrivate(
-                    handler,
-                    "parseTokenResponseFromHttpResponse",
-                    new Class<?>[] {HTTPResponse.class},
-                    httpResponse));
-
-    assertTrue(exception.getMessage().contains("invalid_grant"));
-    assertTrue(exception.getMessage().contains("bad code"));
-  }
-
-  @Test
-  void getOrCreateOidcUserCreatesSelfSignupUserWhenEnabled() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    AuthenticationConfiguration authConfig = new AuthenticationConfiguration();
-    authConfig.setEnableSelfSignup(true);
-    setField(handler, "authenticationConfiguration", authConfig);
-    AuthorizerConfiguration authorizer = authorizerConfiguration(Set.of("new-user"));
-    authorizer.setAllowedEmailRegistrationDomains(Set.of("all"));
-    setField(handler, "authorizerConfiguration", authorizer);
-
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
-        MockedStatic<UserUtil> userUtil = mockStatic(UserUtil.class)) {
-      entity
-          .when(
-              () ->
-                  Entity.getEntityByName(
-                      Entity.USER, "new-user", "id,roles,teams", Include.NON_DELETED))
-          .thenThrow(EntityNotFoundException.byName("new-user"));
-      User draftUser = new User();
-      userUtil
-          .when(() -> UserUtil.user("new-user", "example.com", "new-user"))
-          .thenReturn(draftUser);
-      userUtil.when(() -> UserUtil.assignTeamsFromClaim(draftUser, List.of())).thenReturn(false);
-      User persistedUser = new User();
-      persistedUser.setName("new-user");
-      persistedUser.setEmail("new-user@example.com");
-      persistedUser.setDisplayName("New User");
-      persistedUser.setIsAdmin(true);
-      userUtil.when(() -> UserUtil.addOrUpdateUser(draftUser)).thenReturn(persistedUser);
-
-      User user =
-          invokePrivate(
-              handler,
-              "getOrCreateOidcUser",
-              new Class<?>[] {String.class, String.class, Map.class},
-              "new-user",
-              "new-user@example.com",
-              Map.of());
-
-      assertEquals(persistedUser, user);
-      assertEquals(Boolean.TRUE, draftUser.getIsAdmin());
-      assertEquals(Boolean.TRUE, draftUser.getIsEmailVerified());
-    }
-  }
-
-  @Test
-  void getOrCreateOidcUserRejectsMissingUserWhenSelfSignupDisabled() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    AuthenticationConfiguration authConfig = new AuthenticationConfiguration();
-    authConfig.setEnableSelfSignup(false);
-    setField(handler, "authenticationConfiguration", authConfig);
-    setField(handler, "authorizerConfiguration", authorizerConfiguration(Set.of()));
-
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
-      entity
-          .when(
-              () ->
-                  Entity.getEntityByName(
-                      Entity.USER, "missing-user", "id,roles,teams", Include.NON_DELETED))
-          .thenThrow(EntityNotFoundException.byName("missing-user"));
-
-      AuthenticationException exception =
-          assertThrows(
-              AuthenticationException.class,
-              () ->
-                  invokePrivate(
-                      handler,
-                      "getOrCreateOidcUser",
-                      new Class<?>[] {String.class, String.class, Map.class},
-                      "missing-user",
-                      "missing-user@example.com",
-                      Map.of()));
-
-      assertTrue(exception.getMessage().contains("self-signup is disabled"));
-    }
-  }
-
-  @Test
-  void getOrCreateOidcUserUpdatesExistingUserFromAdminAndTeamClaims() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    AuthenticationConfiguration authConfig = new AuthenticationConfiguration();
-    authConfig.setEnableSelfSignup(true);
-    setField(handler, "authenticationConfiguration", authConfig);
-    setField(handler, "authorizerConfiguration", authorizerConfiguration(Set.of("existing-user")));
-    setField(handler, "teamClaimMapping", "groups");
-
-    User existingUser = new User();
-    existingUser.setName("existing-user");
-    existingUser.setEmail("existing-user@example.com");
-    existingUser.setIsAdmin(false);
-
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
-        MockedStatic<UserUtil> userUtil = mockStatic(UserUtil.class)) {
-      entity
-          .when(
-              () ->
-                  Entity.getEntityByName(
-                      Entity.USER, "existing-user", "id,roles,teams", Include.NON_DELETED))
-          .thenReturn(existingUser);
-      userUtil
-          .when(() -> UserUtil.assignTeamsFromClaim(existingUser, List.of("analytics", "platform")))
-          .thenReturn(true);
-      userUtil.when(() -> UserUtil.addOrUpdateUser(existingUser)).thenReturn(existingUser);
-
-      User user =
-          invokePrivate(
-              handler,
-              "getOrCreateOidcUser",
-              new Class<?>[] {String.class, String.class, Map.class},
-              "existing-user",
-              "existing-user@example.com",
-              Map.of("groups", List.of("analytics", "platform")));
-
-      assertEquals(existingUser, user);
-      assertEquals(Boolean.TRUE, existingUser.getIsAdmin());
-      userUtil.verify(() -> UserUtil.addOrUpdateUser(existingUser));
-    }
-  }
-
-  @Test
-  void getOrCreateOidcUserAllowsSignupWhenAllowedDomainsEmpty() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    AuthenticationConfiguration authConfig = new AuthenticationConfiguration();
-    authConfig.setEnableSelfSignup(true);
-    setField(handler, "authenticationConfiguration", authConfig);
-    AuthorizerConfiguration authorizer = authorizerConfiguration(Set.of());
-    authorizer.setAllowedEmailRegistrationDomains(new LinkedHashSet<>());
-    setField(handler, "authorizerConfiguration", authorizer);
-
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
-        MockedStatic<UserUtil> userUtil = mockStatic(UserUtil.class)) {
-      entity
-          .when(
-              () ->
-                  Entity.getEntityByName(
-                      Entity.USER, "gmail-user", "id,roles,teams", Include.NON_DELETED))
-          .thenThrow(EntityNotFoundException.byName("gmail-user"));
-      User draftUser = new User();
-      userUtil
-          .when(() -> UserUtil.user("gmail-user", "gmail.com", "gmail-user"))
-          .thenReturn(draftUser);
-      userUtil.when(() -> UserUtil.assignTeamsFromClaim(draftUser, List.of())).thenReturn(false);
-      User persistedUser = new User();
-      persistedUser.setName("gmail-user");
-      userUtil.when(() -> UserUtil.addOrUpdateUser(draftUser)).thenReturn(persistedUser);
-
-      User user =
-          invokePrivate(
-              handler,
-              "getOrCreateOidcUser",
-              new Class<?>[] {String.class, String.class, Map.class},
-              "gmail-user",
-              "gmail-user@gmail.com",
-              Map.of());
-
-      assertEquals(persistedUser, user);
-    }
-  }
-
-  @Test
-  void getOrCreateOidcUserBlocksDisallowedDomain() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    AuthenticationConfiguration authConfig = new AuthenticationConfiguration();
-    authConfig.setEnableSelfSignup(true);
-    setField(handler, "authenticationConfiguration", authConfig);
-    AuthorizerConfiguration authorizer = authorizerConfiguration(Set.of());
-    authorizer.setAllowedEmailRegistrationDomains(Set.of("corp.com"));
-    setField(handler, "authorizerConfiguration", authorizer);
-
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
-      entity
-          .when(
-              () ->
-                  Entity.getEntityByName(
-                      Entity.USER, "outside-user", "id,roles,teams", Include.NON_DELETED))
-          .thenThrow(EntityNotFoundException.byName("outside-user"));
-
-      AuthenticationException exception =
-          assertThrows(
-              AuthenticationException.class,
-              () ->
-                  invokePrivate(
-                      handler,
-                      "getOrCreateOidcUser",
-                      new Class<?>[] {String.class, String.class, Map.class},
-                      "outside-user",
-                      "outside-user@gmail.com",
-                      Map.of()));
-
-      assertTrue(exception.getMessage().contains("Email domain not allowed"));
-    }
-  }
-
-  @Test
-  void getOrCreateOidcUserAllowsMatchingDomain() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    AuthenticationConfiguration authConfig = new AuthenticationConfiguration();
-    authConfig.setEnableSelfSignup(true);
-    setField(handler, "authenticationConfiguration", authConfig);
-    AuthorizerConfiguration authorizer = authorizerConfiguration(Set.of());
-    authorizer.setAllowedEmailRegistrationDomains(Set.of("gmail.com"));
-    setField(handler, "authorizerConfiguration", authorizer);
-
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
-        MockedStatic<UserUtil> userUtil = mockStatic(UserUtil.class)) {
-      entity
-          .when(
-              () ->
-                  Entity.getEntityByName(
-                      Entity.USER, "gmail-user", "id,roles,teams", Include.NON_DELETED))
-          .thenThrow(EntityNotFoundException.byName("gmail-user"));
-      User draftUser = new User();
-      userUtil
-          .when(() -> UserUtil.user("gmail-user", "gmail.com", "gmail-user"))
-          .thenReturn(draftUser);
-      userUtil.when(() -> UserUtil.assignTeamsFromClaim(draftUser, List.of())).thenReturn(false);
-      User persistedUser = new User();
-      persistedUser.setName("gmail-user");
-      userUtil.when(() -> UserUtil.addOrUpdateUser(draftUser)).thenReturn(persistedUser);
-
-      User user =
-          invokePrivate(
-              handler,
-              "getOrCreateOidcUser",
-              new Class<?>[] {String.class, String.class, Map.class},
-              "gmail-user",
-              "gmail-user@gmail.com",
-              Map.of());
-
-      assertEquals(persistedUser, user);
-    }
-  }
-
-  @Test
-  void handleCallbackReturnsErrorWhenProviderRespondsWithAuthenticationError() throws Exception {
-    AuthenticationCodeFlowHandler handler = newHandler();
-    OidcConfiguration configuration =
-        configuredOidcConfiguration(
-            "client-id", "client-secret", List.of(ClientAuthenticationMethod.CLIENT_SECRET_BASIC));
-    OidcClient client = oidcClient(configuration, "CallbackClient");
+    setField(handler, "sessionService", sessionService);
     setField(handler, "client", client);
-    when(request.getSession(false)).thenReturn(session);
-    when(request.getParameterMap())
-        .thenReturn(
-            Map.of("error", new String[] {"access_denied"}, "state", new String[] {"csrf"}));
-    when(response.getOutputStream()).thenReturn(outputStream);
 
-    handler.handleCallback(request, response);
-
-    verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-    verify(outputStream)
-        .println(org.mockito.ArgumentMatchers.contains("Authentication failed. Please try again."));
+    return handler;
   }
 
-  @Test
-  void getInstanceRequiresInitializationForNoArgAccess() throws Exception {
-    AuthenticationCodeFlowHandler previous = setHolderInstance(null);
-    try {
-      IllegalStateException exception =
-          assertThrows(IllegalStateException.class, AuthenticationCodeFlowHandler::getInstance);
-
-      assertTrue(exception.getMessage().contains("not initialized"));
-    } finally {
-      setHolderInstance(previous);
-    }
-  }
-
-  @Test
-  void getInstanceInitializesSingletonAndUpdateConfigurationRefreshesFields() throws Exception {
-    AuthenticationCodeFlowHandler previous = setHolderInstance(null);
-    try (OidcDiscoveryServer firstServer =
-            startDiscoveryServer(
-                oidcDiscoveryMetadata(
-                    "https://issuer.example.com/authorize", "https://issuer.example.com/token"));
-        OidcDiscoveryServer secondServer =
-            startDiscoveryServer(
-                oidcDiscoveryMetadata(
-                    "https://issuer-2.example.com/authorize",
-                    "https://issuer-2.example.com/token"))) {
-      AuthenticationConfiguration initialConfig = oidcAuthConfig(firstServer.discoveryUri());
-      initialConfig.setJwtPrincipalClaims(List.of("preferred_username", "email"));
-
-      AuthenticationCodeFlowHandler handler =
-          AuthenticationCodeFlowHandler.getInstance(
-              initialConfig, authorizerConfiguration(Set.of("admin")));
-
-      assertSame(handler, AuthenticationCodeFlowHandler.getInstance());
-      assertEquals("https://openmetadata.example.com", readField(handler, "serverUrl"));
-
-      AuthenticationConfiguration updatedConfig = oidcAuthConfig(secondServer.discoveryUri());
-      updatedConfig.getOidcConfiguration().setServerUrl("https://openmetadata.updated.example.com");
-      updatedConfig.getOidcConfiguration().setPrompt("login");
-      updatedConfig.getOidcConfiguration().setMaxAge("600");
-      updatedConfig.setJwtPrincipalClaims(List.of("email"));
-
-      AuthorizerConfiguration updatedAuthorizer = authorizerConfiguration(Set.of("updated-admin"));
-      updatedAuthorizer.setPrincipalDomain("updated.example.com");
-
-      handler.updateConfiguration(updatedConfig, updatedAuthorizer);
-
-      assertEquals("https://openmetadata.updated.example.com", readField(handler, "serverUrl"));
-      assertEquals(List.of("email"), readField(handler, "claimsOrder"));
-      assertEquals("login", readField(handler, "promptType"));
-      assertEquals("600", readField(handler, "maxAge"));
-      assertEquals("updated.example.com", readField(handler, "principalDomain"));
-      assertEquals(
-          "https://openmetadata.example.com/callback",
-          ((OidcClient) readField(handler, "client")).getCallbackUrl());
-    } finally {
-      setHolderInstance(previous);
-    }
-  }
-
-  private static AuthenticationCodeFlowHandler newHandler() throws Exception {
-    Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
+  private static sun.misc.Unsafe getUnsafe() throws Exception {
+    Field unsafeField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
     unsafeField.setAccessible(true);
-    Unsafe unsafe = (Unsafe) unsafeField.get(null);
-    return (AuthenticationCodeFlowHandler)
-        unsafe.allocateInstance(AuthenticationCodeFlowHandler.class);
+    return (sun.misc.Unsafe) unsafeField.get(null);
   }
 
-  private static AuthenticationCodeFlowHandler newInitializedHandler(
-      AuthenticationConfiguration authenticationConfiguration,
-      AuthorizerConfiguration authorizerConfiguration)
-      throws Exception {
-    Constructor<AuthenticationCodeFlowHandler> constructor =
-        AuthenticationCodeFlowHandler.class.getDeclaredConstructor(
-            AuthenticationConfiguration.class, AuthorizerConfiguration.class);
-    constructor.setAccessible(true);
-    return constructor.newInstance(authenticationConfiguration, authorizerConfiguration);
-  }
-
-  private static OidcConfiguration configuredOidcConfiguration(
-      String clientId, String secret, List<ClientAuthenticationMethod> supportedMethods) {
-    return configuredOidcConfiguration(
-        clientId, secret, supportedMethods, URI.create("https://issuer.example.com/token"));
-  }
-
-  private static OidcConfiguration configuredOidcConfiguration(
-      String clientId,
-      String secret,
-      List<ClientAuthenticationMethod> supportedMethods,
-      URI tokenEndpoint) {
-    OidcConfiguration configuration = new OidcConfiguration();
-    configuration.setClientId(clientId);
-    if (secret != null) {
-      configuration.setSecret(secret);
-    }
-    configuration.setScope("openid profile");
-    configuration.setResponseType("code");
-    configuration.setResponseMode("query");
-    configuration.setProviderMetadata(providerMetadata(supportedMethods, tokenEndpoint));
-    return configuration;
-  }
-
-  private static OidcClient oidcClient(OidcConfiguration configuration, String name) {
-    OidcClient client = new OidcClient(configuration);
-    client.setName(name);
-    client.setCallbackUrl("https://openmetadata.example.com/callback");
-    return client;
-  }
-
-  private static AzureAd2OidcConfiguration azureOidcConfiguration(URI tokenEndpoint) {
-    AzureAd2OidcConfiguration configuration = new AzureAd2OidcConfiguration();
-    configuration.setClientId("azure-client");
-    configuration.setSecret("azure-secret");
-    configuration.setTenant("organizations");
-    configuration.setProviderMetadata(
-        providerMetadata(List.of(ClientAuthenticationMethod.CLIENT_SECRET_POST), tokenEndpoint));
-    return configuration;
-  }
-
-  private static OIDCProviderMetadata providerMetadata(
-      List<ClientAuthenticationMethod> supportedMethods, URI tokenEndpoint) {
-    OIDCProviderMetadata metadata =
-        new OIDCProviderMetadata(
-            new Issuer("https://issuer.example.com"),
-            List.of(SubjectType.PUBLIC),
-            URI.create("https://issuer.example.com/jwks"));
-    metadata.setAuthorizationEndpointURI(URI.create("https://issuer.example.com/authorize"));
-    metadata.setTokenEndpointURI(tokenEndpoint);
-    metadata.setTokenEndpointAuthMethods(supportedMethods);
-    metadata.setCodeChallengeMethods(List.of(CodeChallengeMethod.S256));
-    return metadata;
-  }
-
-  private static AuthorizerConfiguration authorizerConfiguration(Set<String> adminPrincipals) {
-    AuthorizerConfiguration authorizerConfiguration = new AuthorizerConfiguration();
-    authorizerConfiguration.setAdminPrincipals(adminPrincipals);
-    authorizerConfiguration.setPrincipalDomain("example.com");
-    return authorizerConfiguration;
-  }
-
-  private static AuthenticationConfiguration oidcAuthConfig(URI discoveryUri) {
-    OidcClientConfig oidcClientConfig = new OidcClientConfig();
-    oidcClientConfig.setId("client-id");
-    oidcClientConfig.setSecret("client-secret");
-    oidcClientConfig.setDiscoveryUri(discoveryUri.toString());
-    oidcClientConfig.setCallbackUrl("https://openmetadata.example.com/callback");
-    oidcClientConfig.setServerUrl("https://openmetadata.example.com");
-    oidcClientConfig.setScope("openid profile email");
-    oidcClientConfig.setResponseType("code");
-
-    AuthenticationConfiguration authenticationConfiguration = new AuthenticationConfiguration();
-    authenticationConfiguration.setOidcConfiguration(oidcClientConfig);
-    authenticationConfiguration.setJwtPrincipalClaims(List.of("preferred_username", "email"));
-    authenticationConfiguration.setJwtPrincipalClaimsMapping(
-        List.of("username:preferred_username", "email:email"));
-    return authenticationConfiguration;
-  }
-
-  private static String signedJwt(JWTClaimsSet claimsSet) throws Exception {
-    SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claimsSet);
-    jwt.sign(new MACSigner("01234567890123456789012345678901"));
-    return jwt.serialize();
-  }
-
-  private static TokenServer startTokenServer(int statusCode, String responseBody)
-      throws Exception {
-    HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-    server.createContext(
-        "/token",
-        exchange -> {
-          byte[] body = responseBody.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-          exchange.getResponseHeaders().set("Content-Type", "application/json");
-          exchange.sendResponseHeaders(statusCode, body.length);
-          try (OutputStream output = exchange.getResponseBody()) {
-            output.write(body);
-          }
-        });
-    server.start();
-    return new TokenServer(server);
-  }
-
-  private static OidcDiscoveryServer startDiscoveryServer(String metadataBody) throws Exception {
-    HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-    server.createContext(
-        "/.well-known/openid-configuration",
-        exchange -> {
-          byte[] body = metadataBody.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-          exchange.getResponseHeaders().set("Content-Type", "application/json");
-          exchange.sendResponseHeaders(200, body.length);
-          try (OutputStream output = exchange.getResponseBody()) {
-            output.write(body);
-          }
-        });
-    server.start();
-    return new OidcDiscoveryServer(server);
-  }
-
-  private static String oidcDiscoveryMetadata(String authorizationEndpoint, String tokenEndpoint) {
-    Map<String, Object> metadata = new HashMap<>();
-    metadata.put("issuer", "https://issuer.example.com");
-    metadata.put("jwks_uri", "https://issuer.example.com/jwks");
-    metadata.put("subject_types_supported", List.of("public"));
-    metadata.put("response_types_supported", List.of("code"));
-    metadata.put("id_token_signing_alg_values_supported", List.of("RS256"));
-    metadata.put(
-        "token_endpoint_auth_methods_supported",
-        List.of("client_secret_basic", "client_secret_post"));
-    if (authorizationEndpoint != null) {
-      metadata.put("authorization_endpoint", authorizationEndpoint);
-    }
-    if (tokenEndpoint != null) {
-      metadata.put("token_endpoint", tokenEndpoint);
-    }
-    return JsonUtils.pojoToJson(metadata);
-  }
-
-  private static final class TokenServer implements AutoCloseable {
-    private final HttpServer server;
-
-    private TokenServer(HttpServer server) {
-      this.server = server;
-    }
-
-    private URI tokenEndpoint() {
-      return URI.create("http://localhost:" + server.getAddress().getPort() + "/token");
-    }
-
-    @Override
-    public void close() {
-      server.stop(0);
-    }
-  }
-
-  private static final class OidcDiscoveryServer implements AutoCloseable {
-    private final HttpServer server;
-
-    private OidcDiscoveryServer(HttpServer server) {
-      this.server = server;
-    }
-
-    private URI discoveryUri() {
-      return URI.create(
-          "http://localhost:"
-              + server.getAddress().getPort()
-              + "/.well-known/openid-configuration");
-    }
-
-    @Override
-    public void close() {
-      server.stop(0);
-    }
-  }
-
-  private static void setField(Object target, String name, Object value) throws Exception {
-    Field field = AuthenticationCodeFlowHandler.class.getDeclaredField(name);
+  private static void setField(Object target, String fieldName, Object value) throws Exception {
+    Field field = target.getClass().getDeclaredField(fieldName);
     field.setAccessible(true);
     field.set(target, value);
   }
 
-  private static AuthenticationCodeFlowHandler setHolderInstance(
-      AuthenticationCodeFlowHandler value) throws Exception {
-    Class<?> holderClass = Class.forName(AuthenticationCodeFlowHandler.class.getName() + "$Holder");
-    Field instanceField = holderClass.getDeclaredField("instance");
-    instanceField.setAccessible(true);
-    AuthenticationCodeFlowHandler previous =
-        (AuthenticationCodeFlowHandler) instanceField.get(null);
-    instanceField.set(null, value);
-    return previous;
+  private static class CaptureServletOutputStream extends ServletOutputStream {
+    private final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+
+    @Override
+    public void write(int b) {
+      buffer.write(b);
+    }
+
+    @Override
+    public void print(String s) {
+      try {
+        buffer.write(s.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    @Override
+    public boolean isReady() {
+      return true;
+    }
+
+    @Override
+    public void setWriteListener(jakarta.servlet.WriteListener writeListener) {}
+
+    String getCapturedOutput() {
+      return buffer.toString(java.nio.charset.StandardCharsets.UTF_8);
+    }
   }
 
-  private static Object readField(Object target, String name) throws Exception {
-    Field field = AuthenticationCodeFlowHandler.class.getDeclaredField(name);
-    field.setAccessible(true);
-    return field.get(target);
+  @Test
+  void resolveOidcIdentity_fallsBackToLegacyClaimsWhenEmailClaimMissing() throws Exception {
+    AuthenticationCodeFlowHandler handler = createEmailFirstHandler(null);
+    setField(handler, "claimsMapping", Map.of());
+    setField(handler, "claimsOrder", List.of("preferred_username"));
+    setField(handler, "principalDomain", "openmetadata.org");
+
+    Object identity =
+        invokePrivateMethod(
+            handler, "resolveOidcIdentity", Map.class, Map.of("preferred_username", "legacy-user"));
+
+    assertFalse((Boolean) readRecordComponent(identity, "emailFirstFlow"));
+    assertEquals("legacy-user", readRecordComponent(identity, "userName"));
+    assertEquals("legacy-user@openmetadata.org", readRecordComponent(identity, "email"));
   }
 
-  @SuppressWarnings("unchecked")
-  private static <T> T invokePrivate(
-      Object target, String methodName, Class<?>[] parameterTypes, Object... args)
+  @Test
+  void getOrCreateEmailFirstOidcUser_looksUpExistingUserByExactEmail() throws Exception {
+    AuthenticationCodeFlowHandler handler = createEmailFirstHandler(null);
+    User existing =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("john_a1b2")
+            .withEmail("john@y.com")
+            .withDisplayName("John Y");
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      UserRepository userRepository = mock(UserRepository.class);
+      mockedEntity.when(Entity::getUserRepository).thenReturn(userRepository);
+      when(userRepository.getActiveUserByEmailForAuth(eq("john@y.com"), any()))
+          .thenReturn(existing);
+
+      User resolved = invokeGetOrCreateEmailFirstOidcUser(handler, "john@y.com", "John Y");
+
+      assertSame(existing, resolved);
+      verify(userRepository).getActiveUserByEmailForAuth(eq("john@y.com"), any());
+    }
+  }
+
+  @Test
+  void getOrCreateEmailFirstOidcUser_rejectsUnregisteredUserWhenSelfSignupDisabled()
       throws Exception {
+    AuthenticationCodeFlowHandler handler = createEmailFirstHandler(null);
+    setField(handler, "authenticationConfiguration", selfSignupDisabledAuthConfig());
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      UserRepository userRepository = mock(UserRepository.class);
+      mockedEntity.when(Entity::getUserRepository).thenReturn(userRepository);
+      when(userRepository.getActiveUserByEmailForAuth(any(), any()))
+          .thenThrow(new EntityNotFoundException("user not found"));
+
+      org.openmetadata.service.security.AuthenticationException exception =
+          assertThrows(
+              org.openmetadata.service.security.AuthenticationException.class,
+              () ->
+                  invokeGetOrCreateEmailFirstOidcUser(handler, "newuser@company.com", "New User"));
+
+      assertTrue(exception.getMessage().contains("User not registered"));
+    }
+  }
+
+  @Test
+  void getOrCreateEmailFirstOidcUser_rejectsDisallowedRegistrationDomain() throws Exception {
+    AuthenticationCodeFlowHandler handler = createEmailFirstHandler(Set.of("company.com"));
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      UserRepository userRepository = mock(UserRepository.class);
+      mockedEntity.when(Entity::getUserRepository).thenReturn(userRepository);
+      when(userRepository.getActiveUserByEmailForAuth(any(), any()))
+          .thenThrow(new EntityNotFoundException("user not found"));
+
+      org.openmetadata.service.security.AuthenticationException exception =
+          assertThrows(
+              org.openmetadata.service.security.AuthenticationException.class,
+              () -> invokeGetOrCreateEmailFirstOidcUser(handler, "intruder@other.org", "Intruder"));
+
+      assertTrue(exception.getMessage().contains("not allowed for self-signup"));
+    }
+  }
+
+  private AuthenticationConfiguration selfSignupDisabledAuthConfig() {
+    AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
+    when(authConfig.getEnableSelfSignup()).thenReturn(false);
+    when(authConfig.getEmailClaim()).thenReturn("email");
+    return authConfig;
+  }
+
+  private AuthenticationCodeFlowHandler createEmailFirstHandler(Set<String> registrationDomains)
+      throws Exception {
+    AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
+    when(authConfig.getEnableSelfSignup()).thenReturn(true);
+    when(authConfig.getEmailClaim()).thenReturn("email");
+
+    AuthorizerConfiguration authzConfig = mock(AuthorizerConfiguration.class);
+    when(authzConfig.getAdminPrincipals()).thenReturn(Set.of());
+    when(authzConfig.getAllowedEmailRegistrationDomains()).thenReturn(registrationDomains);
+    when(authzConfig.getDefaultOAuthRole()).thenReturn(null);
+
+    sun.misc.Unsafe unsafe = getUnsafe();
+    AuthenticationCodeFlowHandler handler =
+        (AuthenticationCodeFlowHandler)
+            unsafe.allocateInstance(AuthenticationCodeFlowHandler.class);
+    setField(handler, "authenticationConfiguration", authConfig);
+    setField(handler, "authorizerConfiguration", authzConfig);
+    return handler;
+  }
+
+  private User invokeGetOrCreateEmailFirstOidcUser(
+      AuthenticationCodeFlowHandler handler, String email, String displayName) throws Exception {
     Method method =
-        AuthenticationCodeFlowHandler.class.getDeclaredMethod(methodName, parameterTypes);
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "getOrCreateEmailFirstOidcUser", String.class, String.class, Map.class);
     method.setAccessible(true);
     try {
-      return (T) method.invoke(target, args);
+      return (User) method.invoke(handler, email, displayName, new HashMap<String, Object>());
     } catch (InvocationTargetException e) {
-      if (e.getCause() instanceof Exception exception) {
-        throw exception;
+      Throwable cause = e.getCause();
+      if (cause instanceof RuntimeException runtimeException) {
+        throw runtimeException;
       }
-      if (e.getCause() instanceof Error error) {
-        throw error;
-      }
-      throw new RuntimeException(e.getCause());
+      throw e;
     }
+  }
+
+  private Object invokePrivateMethod(
+      Object target, String methodName, Class<?> paramType, Object arg) throws Exception {
+    Method method = target.getClass().getDeclaredMethod(methodName, paramType);
+    method.setAccessible(true);
+    try {
+      return method.invoke(target, arg);
+    } catch (InvocationTargetException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+      throw e;
+    }
+  }
+
+  private Object readRecordComponent(Object record, String component) throws Exception {
+    Method accessor = record.getClass().getDeclaredMethod(component);
+    accessor.setAccessible(true);
+    return accessor.invoke(record);
   }
 }

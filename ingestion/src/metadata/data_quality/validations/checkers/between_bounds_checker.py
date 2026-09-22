@@ -12,8 +12,10 @@
 """
 BetweenBoundsChecker implements the checker for any metric that should be between two bounds
 """
+
 import math
-from typing import TYPE_CHECKING, Any, List, Mapping
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any
 
 from metadata.data_quality.validations.checkers.base_checker import (
     BaseValidationChecker,
@@ -44,9 +46,7 @@ class BetweenBoundsChecker(BaseValidationChecker):
         """
         import pandas as pd
 
-        return ~pd.isna(values) & (
-            (values < self.min_bound) | (values > self.max_bound)
-        )
+        return ~pd.isna(values) & ((values < self.min_bound) | (values > self.max_bound))
 
     def _value_violates(self, value: Any) -> bool:
         """Check violation of one value (scalar).
@@ -77,7 +77,7 @@ class BetweenBoundsChecker(BaseValidationChecker):
         """Check if any value is outside [min_bound, max_bound]. Used on Pandas Data Quality."""
         return any(self._value_violates(value) for value in metrics.values())
 
-    def build_violation_sqa(self, metrics: List["ClauseElement"]) -> "ClauseElement":
+    def build_violation_sqa(self, metrics: list["ClauseElement"]) -> "ClauseElement":
         """Build SQA Violation Expression"""
         from sqlalchemy import and_, literal, or_
 
@@ -91,18 +91,12 @@ class BetweenBoundsChecker(BaseValidationChecker):
                 expr_conditions.append(and_(expr.isnot(None), expr > self.max_bound))
 
             if expr_conditions:
-                conditions.append(
-                    or_(*expr_conditions)
-                    if len(expr_conditions) > 1
-                    else expr_conditions[0]
-                )
+                conditions.append(or_(*expr_conditions) if len(expr_conditions) > 1 else expr_conditions[0])
         if not conditions:
             return literal(False)
         return or_(*conditions) if len(conditions) > 1 else conditions[0]
 
-    def build_row_level_violations_sqa(
-        self, column: "ClauseElement"
-    ) -> "ClauseElement":
+    def build_row_level_violations_sqa(self, column: "ClauseElement") -> "ClauseElement":
         """Build SQL expression to count row-level violations.
 
         Returns a SUM(CASE...) expression that counts individual rows where

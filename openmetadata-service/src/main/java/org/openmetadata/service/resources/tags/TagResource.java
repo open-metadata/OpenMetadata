@@ -76,6 +76,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
@@ -123,6 +124,9 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      return;
+    }
     super.initialize(config);
     // Find tag definitions and load classifications from the json file, if necessary
     ClassificationRepository classificationRepository =
@@ -150,6 +154,10 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       for (Tag tag : tagsToCreate) {
         repository.initializeEntity(tag);
       }
+
+      // initializeEntity() is create-only, so an existing Tag that drifted from the seed - or one
+      // predating a newly seeded recognizer - is reconciled separately
+      repository.reconcileSeededTags(tagsToCreate);
     }
   }
 
@@ -329,24 +337,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET

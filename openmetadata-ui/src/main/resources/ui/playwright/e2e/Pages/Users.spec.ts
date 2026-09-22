@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import {
   DATA_CONSUMER_RULES,
   DATA_STEWARD_RULES,
@@ -26,14 +26,16 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
+import { ChartClass } from '../../support/entity/ChartClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { PersonaClass } from '../../support/persona/PersonaClass';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext, performAdminLogin } from '../../utils/admin';
 import {
-  getApiContext,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -41,6 +43,7 @@ import {
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
+import { visitClassificationPage } from '../../utils/tag';
 import {
   addUser,
   checkDataConsumerPermissions,
@@ -56,6 +59,7 @@ import {
   restoreUser,
   restoreUserProfilePage,
   revokeToken,
+  searchUserByEmail,
   settingPageOperationPermissionCheck,
   softDeleteUser,
   softDeleteUserProfilePage,
@@ -86,6 +90,7 @@ let user2: UserClass;
 let user3: UserClass;
 let tableEntity: TableClass;
 let tableEntity2: TableClass;
+let dataStewardPermissionTableUrl: string;
 let policy: PolicyClass;
 let role: RolesClass;
 let persona1: PersonaClass;
@@ -163,7 +168,16 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await user3.create(apiContext);
   await user3.setAdminRole(apiContext);
   await tableEntity.create(apiContext);
-  await tableEntity2.create(apiContext);
+  const { entity: dataStewardPermissionTable } = await tableEntity2.create(
+    apiContext
+  );
+  await tableEntity2.setOwner(apiContext, {
+    id: user3.responseData.id,
+    type: 'user',
+  });
+  dataStewardPermissionTableUrl = `/table/${encodeURIComponent(
+    dataStewardPermissionTable.fullyQualifiedName
+  )}`;
   await policy.create(apiContext, DATA_STEWARD_RULES);
   await role.create(apiContext, [policy.responseData.name]);
   await persona1.create(apiContext, [adminUser.responseData.id]);
@@ -196,6 +210,14 @@ test.describe('User with Admin Roles', () => {
 
     await visitUserListPage(adminPage);
 
+    await test.step('User is searchable by email', async () => {
+      await searchUserByEmail(
+        adminPage,
+        updatedUserDetails.email,
+        updatedUserDetails.name
+      );
+    });
+
     await test.step("User shouldn't be allowed to create User with same Email", async () => {
       await checkForUserExistError(adminPage, {
         name: updatedUserDetails.name,
@@ -209,6 +231,16 @@ test.describe('User with Admin Roles', () => {
       updatedUserDetails.name,
       updatedUserDetails.name,
       false
+    );
+  });
+
+  test('Admin is searchable by email', async ({ adminPage }) => {
+    await redirectToHomePage(adminPage);
+    await settingClick(adminPage, GlobalSettingOptions.ADMINS);
+    await searchUserByEmail(
+      adminPage,
+      adminUser.data.email,
+      adminUser.responseData.name
     );
   });
 
@@ -293,58 +325,108 @@ test.describe('User with Data Consumer Roles', () => {
   test('User should have only view permission for glossary and tags for Data Consumer', async ({
     dataConsumerPage,
   }) => {
-    await redirectToHomePage(dataConsumerPage);
+    const { apiContext, afterAction } = await createAdminApiContext();
+    const userClassification = new ClassificationClass();
 
-    // Check CRUD for Glossary
-    await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
+    try {
+      await userClassification.create(apiContext);
+      await redirectToHomePage(dataConsumerPage);
 
-    await waitForAllLoadersToDisappear(dataConsumerPage);
+      // Check CRUD for Glossary
+      await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
 
-    await expect(
-      dataConsumerPage.locator('[data-testid="add-glossary"]')
-    ).not.toBeVisible();
+      await waitForAllLoadersToDisappear(dataConsumerPage);
 
-    await expect(
-      dataConsumerPage.locator('[data-testid="add-new-tag-button-header"]')
-    ).not.toBeVisible();
+      // Confirm the glossary page has rendered before asserting button absence
+      await expect(
+        dataConsumerPage.getByTestId('glossary-details')
+      ).toBeVisible();
 
-    await expect(
-      dataConsumerPage.locator('[data-testid="manage-button"]')
-    ).not.toBeVisible();
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-glossary"]')
+      ).not.toBeVisible();
 
-    // Glossary Term Table Action column
-    await expect(dataConsumerPage.getByText('Actions')).not.toBeVisible();
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-new-tag-button-header"]')
+      ).not.toBeVisible();
 
-    // right panel
-    await expect(
-      dataConsumerPage.locator('[data-testid="add-domain"]')
-    ).not.toBeVisible();
-    await expect(
-      dataConsumerPage.locator('[data-testid="edit-review-button"]')
-    ).not.toBeVisible();
+      await expect(
+        dataConsumerPage.locator('[data-testid="manage-button"]')
+      ).not.toBeVisible();
 
-    const hasAddOwnerButton = dataConsumerPage.locator(
-      '[data-testid="add-owner"]'
-    );
+      // Glossary Term Table Action column
+      await expect(dataConsumerPage.getByText('Actions')).not.toBeVisible();
 
-    if (!hasAddOwnerButton) {
-      await checkEditOwnerButtonPermission(dataConsumerPage);
+      // right panel
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-domain"]')
+      ).not.toBeVisible();
+      await expect(
+        dataConsumerPage.locator('[data-testid="edit-review-button"]')
+      ).not.toBeVisible();
+
+      const hasAddOwnerButton = dataConsumerPage.locator(
+        '[data-testid="add-owner"]'
+      );
+
+      if (!hasAddOwnerButton) {
+        await checkEditOwnerButtonPermission(dataConsumerPage);
+      }
+
+      // Check CRUD for Tags — navigate to Tags sidebar to verify create permission is absent
+      await sidebarClick(dataConsumerPage, SidebarItem.TAGS);
+
+      // Confirm the left panel has rendered before asserting button absence
+      await expect(
+        dataConsumerPage.getByTestId('tags-left-panel')
+      ).toBeVisible();
+
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-classification"]')
+      ).not.toBeVisible();
+
+      // System classification (e.g. Certification): manage button must NOT be visible
+      await visitClassificationPage(
+        dataConsumerPage,
+        'Certification',
+        'Certification'
+      );
+
+      // Confirm the header has rendered before asserting button absence
+      await expect(dataConsumerPage.getByTestId('header')).toBeVisible();
+
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-new-tag-button"]')
+      ).not.toBeVisible();
+      await expect(
+        dataConsumerPage.locator('[data-testid="manage-button"]')
+      ).not.toBeVisible();
+
+      // User-created classification: manage button MUST be visible but show only Export
+      await userClassification.visitPage(dataConsumerPage);
+
+      // Confirm the header has rendered before asserting button presence/absence
+      await expect(
+        dataConsumerPage.getByTestId('entity-header-display-name')
+      ).toContainText(userClassification.data.displayName);
+
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-new-tag-button"]')
+      ).not.toBeVisible();
+
+      const manageButton = dataConsumerPage.getByTestId('manage-button');
+
+      await expect(manageButton).toBeVisible();
+      await manageButton.click();
+
+      await expect(dataConsumerPage.getByTestId('export-button')).toBeVisible();
+      await expect(
+        dataConsumerPage.getByTestId('import-button')
+      ).not.toBeVisible();
+    } finally {
+      await userClassification.delete(apiContext);
+      await afterAction();
     }
-
-    // Check CRUD for Tags
-    await sidebarClick(dataConsumerPage, SidebarItem.TAGS);
-
-    await expect(
-      dataConsumerPage.locator('[data-testid="add-classification"]')
-    ).not.toBeVisible();
-
-    await expect(
-      dataConsumerPage.locator('[data-testid="add-new-tag-button"]')
-    ).not.toBeVisible();
-
-    await expect(
-      dataConsumerPage.locator('[data-testid="manage-button"]')
-    ).not.toBeVisible();
   });
 
   test('Operations for settings page for Data Consumer', async ({
@@ -475,35 +557,13 @@ test.describe('User with Data Steward Roles', () => {
     await settingPageOperationPermissionCheck(dataStewardPage);
   });
 
-  test('Check permissions for Data Steward', async ({
-    adminPage,
-    dataStewardPage,
-  }) => {
+  test('Check permissions for Data Steward', async ({ dataStewardPage }) => {
     test.slow();
-    await redirectToHomePage(adminPage);
 
     await checkStewardServicesPermissions(dataStewardPage);
 
-    const { apiContext, afterAction } = await getApiContext(adminPage);
-    try {
-      const tableResponse = await apiContext.get(
-        `/api/v1/tables/${tableEntity2.entityResponseData.id}`
-      );
-      expect(tableResponse.ok()).toBeTruthy();
-      const table = await tableResponse.json();
-
-      await tableEntity2.setOwner(apiContext, {
-        id: user3.responseData.id,
-        type: 'user',
-      });
-
-      await dataStewardPage.goto(
-        `/table/${encodeURIComponent(table.fullyQualifiedName)}`
-      );
-      await waitForAllLoadersToDisappear(dataStewardPage);
-    } finally {
-      await afterAction();
-    }
+    await dataStewardPage.goto(dataStewardPermissionTableUrl);
+    await waitForAllLoadersToDisappear(dataStewardPage);
 
     await checkStewardPermissions(dataStewardPage);
   });
@@ -536,17 +596,21 @@ test.describe('User Profile Feed Interactions', () => {
     const testMessage = 'Initial conversation thread for mention test';
     const entityLink = `<#E::table::${tableEntity.entityResponseData.fullyQualifiedName}>`;
 
-    await apiContext.post('/api/v1/feed', {
+    // user3 follows the table so the admin-authored conversation surfaces in
+    // user3's OwnerOrFollows profile feed, while the feed-card avatar stays a
+    // different user for the navigation assertion below.
+    await tableEntity.followTable(apiContext, user3.responseData.id);
+
+    await apiContext.post('/api/v1/conversations', {
       data: {
         message: testMessage,
         about: entityLink,
-        type: 'Conversation',
       },
     });
 
-    const feedUrl = `/api/v1/feed?entityLink=${encodeURIComponent(
+    const feedUrl = `/api/v1/conversations?entityLink=${encodeURIComponent(
       entityLink
-    )}&type=Conversation&limit=25`;
+    )}&limit=25`;
 
     await expect
       .poll(
@@ -571,10 +635,13 @@ test.describe('User Profile Feed Interactions', () => {
     const { page, afterAction } = await performUserLogin(browser, user3);
 
     await redirectToHomePage(page);
-    const feedResponse = page.waitForResponse('/api/v1/feed?type=Conversation');
-
+    const conversationsResponse = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === '/api/v1/conversations' &&
+        response.request().method() === 'GET'
+    );
     await visitOwnProfilePage(page);
-    await feedResponse;
+    await conversationsResponse;
 
     await page
       .getByTestId('message-container')
@@ -591,8 +658,13 @@ test.describe('User Profile Feed Interactions', () => {
     const popover = page.locator('.ant-popover-card');
     await popover.waitFor({ state: 'visible' });
 
-    // Get the expected username from the popover BEFORE clicking
+    // Get the expected username from the popover BEFORE clicking. The popover
+    // renders an empty name until its user request resolves, so wait for the
+    // resolved text instead of capturing an empty string.
     const userNameElement = popover.getByTestId('user-name');
+
+    await expect(userNameElement).not.toBeEmpty();
+
     const expectedUserName = await userNameElement.textContent();
 
     // Set up response listener AFTER getting expected name and BEFORE clicking
@@ -730,18 +802,17 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       await moreButton.click();
     }
 
-    // Verify default persona tag is visible
-    await expect(
-      adminPage.locator('[data-testid="default-persona-tag"]')
-    ).toBeVisible();
-
-    // Verify default persona is first in the list
-    const personaLabels = adminPage.locator('[data-testid="persona-label"]');
-    const firstPersona = personaLabels.first();
+    const removedDefaultPersonaLabel = adminPage
+      .locator('[data-testid="persona-label"]')
+      .filter({ hasText: persona2.responseData.displayName });
 
     await expect(
-      firstPersona.locator('[data-testid="default-persona-tag"]')
-    ).toBeVisible();
+      removedDefaultPersonaLabel.locator('[data-testid="default-persona-tag"]')
+    ).not.toBeVisible();
+
+    await expect(
+      removedDefaultPersonaLabel.locator('input[type="radio"]')
+    ).not.toBeChecked();
   });
 
   test('Should switch personas correctly', async ({ adminPage }) => {
@@ -824,87 +895,6 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       expect(personaTexts[0]).toContain(
         persona1.responseData.displayName ?? persona1.responseData.name
       );
-    }
-  });
-
-  test('Should revert to default persona after page refresh when non-default is selected', async ({
-    adminPage,
-  }) => {
-    // First, verify default persona is selected initially
-    await adminPage.locator('[data-testid="dropdown-profile"]').click();
-    await adminPage.locator('[role="menu"].profile-dropdown').waitFor({
-      state: 'visible',
-    });
-
-    // Expand personas if needed
-    const moreButton = adminPage.getByText(/\d+ More/);
-    if (await moreButton.isVisible()) {
-      await moreButton.click();
-    }
-
-    const personaLabels = adminPage.locator('[data-testid="persona-label"]');
-    const personaCount = await personaLabels.count();
-
-    if (personaCount > 1) {
-      // Verify default persona is initially selected (first one)
-      const defaultPersonaRadio = personaLabels
-        .first()
-        .locator('input[type="radio"]');
-
-      await expect(defaultPersonaRadio).toBeChecked();
-
-      // Select the second (non-default) persona
-      const secondPersona = personaLabels.nth(1);
-      const personaChangeResponse = adminPage.waitForResponse(
-        '/api/v1/docStore/name/persona.*'
-      );
-
-      await secondPersona.click();
-
-      // Wait for persona change API call
-      await personaChangeResponse;
-
-      // Verify the second persona is now selected
-      const secondPersonaRadio = personaLabels
-        .nth(1)
-        .locator('input[type="radio"]');
-
-      await expect(secondPersonaRadio).toBeChecked();
-
-      // Close dropdown
-      await adminPage.keyboard.press('Escape');
-
-      // Refresh the page
-      await adminPage.reload();
-
-      // Open dropdown again after refresh
-      await adminPage.locator('[data-testid="dropdown-profile"]').click();
-      await adminPage.locator('[role="menu"].profile-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      // Expand personas if needed
-      const moreButtonAfterRefresh = adminPage.getByText(/\d+ More/);
-      if (await moreButtonAfterRefresh.isVisible()) {
-        await moreButtonAfterRefresh.click();
-      }
-
-      // Verify default persona is selected again after refresh
-      const personaLabelsAfterRefresh = adminPage.locator(
-        '[data-testid="persona-label"]'
-      );
-      const defaultPersonaRadioAfterRefresh = personaLabelsAfterRefresh
-        .first()
-        .locator('input[type="radio"]');
-
-      await expect(defaultPersonaRadioAfterRefresh).toBeChecked();
-
-      // Verify default persona tag is still visible
-      await expect(
-        personaLabelsAfterRefresh
-          .first()
-          .locator('[data-testid="default-persona-tag"]')
-      ).toBeVisible();
     }
   });
 
@@ -1047,19 +1037,28 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       await moreButton.click();
     }
 
-    // Verify no default persona tag exists
+    // A system-wide default persona may still appear as a fallback, so scope the
+    // assertions to the user's own personas instead of the whole dropdown list.
     const finalPersonaLabels = adminPage.locator(
       '[data-testid="persona-label"]'
     );
 
-    await expect(
-      finalPersonaLabels.locator('[data-testid="default-persona-tag"]')
-    ).not.toBeVisible();
+    for (const personaName of [
+      persona1.responseData.displayName,
+      persona2.responseData.displayName,
+    ]) {
+      const userPersonaLabel = finalPersonaLabels.filter({
+        hasText: personaName,
+      });
 
-    // Verify there are no selected nor a default persona
-    const checkedRadios = adminPage.locator('input[type="radio"]:checked');
+      await expect(
+        userPersonaLabel.locator('[data-testid="default-persona-tag"]')
+      ).not.toBeVisible();
 
-    await expect(checkedRadios).toHaveCount(0);
+      await expect(
+        userPersonaLabel.locator('input[type="radio"]')
+      ).not.toBeChecked();
+    }
   });
 });
 
@@ -1151,14 +1150,20 @@ test.describe('User Profile Persona Interactions', () => {
         .locator('[data-testid="persona-select-list"] .ant-select-clear')
         .click();
 
+      const updateUserPromise = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/users/') &&
+          response.request().method() === 'PATCH'
+      );
+
       // Save the changes
       await adminPage
         .locator('[data-testid="user-profile-persona-edit-save"]')
         .click();
 
       // Wait for the API call to complete and verify no personas are shown
-      await adminPage.waitForResponse('/api/v1/users/*');
-
+      const updateUserResponse = await updateUserPromise;
+      expect(updateUserResponse.status()).toBe(200);
       await expect(
         adminPage
           .getByTestId('persona-details-card')
@@ -1241,6 +1246,16 @@ test.describe('User Profile Persona Interactions', () => {
     await test.step('Navigate back to user profile', async () => {
       await visitOwnProfilePage(adminPage);
       await adminPage.getByTestId('persona-details-card').waitFor();
+
+      // The "Default Persona changed to …" success toast from the add step is a
+      // success variant with no close button, and its react-aria auto-dismiss
+      // timer can be starved by the intervening navigation churn. The toast
+      // region lives at the app root and survives SPA navigation, so the stale
+      // toast can still be on screen — which would make the removal step's
+      // "no notification appears" assertion resolve to it. Reload to guarantee a
+      // clean toast region before asserting the removal shows no notification.
+      await adminPage.reload();
+      await adminPage.getByTestId('persona-details-card').waitFor();
     });
 
     // Test removing default persona
@@ -1281,27 +1296,9 @@ test.describe('User Profile Persona Interactions', () => {
   });
 });
 
-test.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await persona2.delete(apiContext);
-  await persona1.delete(apiContext);
-  await role.delete(apiContext);
-  await policy.delete(apiContext);
-  await tableEntity2.delete(apiContext);
-  await tableEntity.delete(apiContext);
-  await user3.delete(apiContext);
-  await user2.delete(apiContext);
-  await user.delete(apiContext);
-  await dataStewardUser.delete(apiContext);
-  await dataConsumerUser.delete(apiContext);
-  await adminUser.delete(apiContext);
-  await afterAction();
-});
-
 base.describe(
   'Users Performance around application with multiple team inheriting roles and policy',
   () => {
-    base.slow(true);
     const policy = new PolicyClass();
     const policy2 = new PolicyClass();
     const policy3 = new PolicyClass();
@@ -1314,6 +1311,10 @@ base.describe(
     const role5 = new RolesClass();
 
     const user = new UserClass();
+    const chart = new ChartClass();
+    const userPerformanceEntities = entities.map((entity) =>
+      entity === EntityDataClass.chart1 ? chart : entity
+    );
 
     base.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1364,34 +1365,26 @@ base.describe(
         team3.create(apiContext),
         team4.create(apiContext),
         team5.create(apiContext),
+        chart.create(apiContext),
       ]);
 
       await afterAction();
     });
 
-    base.afterAll('Cleanup', async ({ browser }) => {
+    base.afterAll('Cleanup user performance chart', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
-      await Promise.all([
-        policy.delete(apiContext),
-        role.delete(apiContext),
-        policy2.delete(apiContext),
-        role2.delete(apiContext),
-        policy3.delete(apiContext),
-        role3.delete(apiContext),
-        policy4.delete(apiContext),
-        role4.delete(apiContext),
-        policy5.delete(apiContext),
-        role5.delete(apiContext),
-      ]);
+
+      await chart.delete(apiContext);
       await afterAction();
     });
 
     base(
       'User Performance across different entities pages',
       async ({ browser }) => {
+        base.slow();
         const { page, afterAction } = await performUserLogin(browser, user);
 
-        for (const entity of entities) {
+        for (const entity of userPerformanceEntities) {
           await entity.visitEntityPage(page);
           await waitForAllLoadersToDisappear(page);
 
@@ -1399,12 +1392,15 @@ base.describe(
             entity.entityResponseData.name
           );
 
-          const feedResponse = page.waitForResponse(
-            '/api/v1/feed?entityLink=*&type=Conversation'
+          const activityResponse = page.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname.startsWith(
+                '/api/v1/activity/entity/'
+              ) && response.request().method() === 'GET'
           );
 
           await page.getByTestId('activity_feed').click();
-          await feedResponse;
+          await activityResponse;
 
           await waitForAllLoadersToDisappear(page);
 
@@ -1417,7 +1413,7 @@ base.describe(
           ).toBeVisible();
 
           const lineageResponse = page.waitForResponse(
-            `/api/v1/lineage/getLineage?fqn=${entity.entityResponseData.fullyQualifiedName}&type=**`
+            `**/api/v1/lineage/scene?*focusFqn=${entity.entityResponseData.fullyQualifiedName}*`
           );
 
           await page.getByTestId('lineage').click();

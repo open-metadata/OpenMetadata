@@ -20,10 +20,40 @@ import { Link } from 'react-router-dom';
 import { AnnouncementEntity } from '../../rest/announcementsAPI';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
+import { getEntityFQN, getEntityType } from '../../utils/FeedUtilsPure';
 import RichTextEditorPreviewerV1 from '../common/RichTextEditor/RichTextEditorPreviewerV1';
 import EditAnnouncementModal from '../Modals/AnnouncementModal/EditAnnouncementModal';
 import { AnnouncementFeedCardBodyProp } from './Announcement.interface';
+
+const getAnnouncementDisplayFields = (announcement: AnnouncementEntity) => ({
+  entityType: getEntityType(announcement.entityLink ?? ''),
+  entityFQN: getEntityFQN(announcement.entityLink ?? ''),
+  announcementTitle: announcement.displayName ?? announcement.name,
+});
+
+const AnnouncementEntityLinkLabel = ({
+  entityType,
+  entityFQN,
+  entityLink,
+}: {
+  entityType?: string;
+  entityFQN?: string;
+  entityLink: string;
+}) => {
+  if (!entityType || !entityFQN) {
+    return null;
+  }
+
+  return (
+    <Typography.Text className="text-grey-muted text-xs">
+      {entityLink ? (
+        <Link to={entityLink}>{entityFQN.split('.').pop()}</Link>
+      ) : (
+        entityFQN.split('.').pop()
+      )}
+    </Typography.Text>
+  );
+};
 
 const AnnouncementFeedCardBody = ({
   announcement,
@@ -33,9 +63,8 @@ const AnnouncementFeedCardBody = ({
 }: AnnouncementFeedCardBodyProp) => {
   const { t } = useTranslation();
   const [isEditAnnouncement, setIsEditAnnouncement] = useState(false);
-  const entityType = getEntityType(announcement.entityLink ?? '');
-  const entityFQN = getEntityFQN(announcement.entityLink ?? '');
-  const announcementTitle = announcement.displayName ?? announcement.name;
+  const { entityType, entityFQN, announcementTitle } =
+    getAnnouncementDisplayFields(announcement);
   const details = {
     description: announcement.description,
     startTime: announcement.startTime,
@@ -132,15 +161,11 @@ const AnnouncementFeedCardBody = ({
             <Typography.Text className="text-grey-muted text-xs">
               {formatDateTime(announcement.updatedAt ?? announcement.createdAt)}
             </Typography.Text>
-            {entityType && entityFQN && (
-              <Typography.Text className="text-grey-muted text-xs">
-                {entityLink ? (
-                  <Link to={entityLink}>{entityFQN.split('.').pop()}</Link>
-                ) : (
-                  entityFQN.split('.').pop()
-                )}
-              </Typography.Text>
-            )}
+            <AnnouncementEntityLinkLabel
+              entityFQN={entityFQN}
+              entityLink={entityLink}
+              entityType={entityType}
+            />
           </Space>
         </div>
         {dropdownItems.length > 0 && (

@@ -25,7 +25,9 @@ import { ReactComponent as TeamIcon } from '../../../../assets/svg/teams-grey.sv
 import { TERM_ADMIN, TERM_USER } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { handleKeyboardActivation } from '../../../../utils/KeyboardUtil';
+import navbarUtilClassBase from '../../../../utils/NavbarUtilClassBase';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
@@ -34,10 +36,17 @@ import {
   getTeamAndUserDetailsPath,
   getUserPath,
 } from '../../../../utils/RouterUtils';
-import { getEmptyTextFromUserProfileItem } from '../../../../utils/Users.util';
+import { getEmptyTextFromUserProfileItem } from '../../../../utils/UsersPureUtils';
+import InterfaceModeMenuItem from '../../../AppModeSwitcher/InterfaceModeMenuItem';
 import { useAuthProvider } from '../../../Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
+import ThemeModeSwitcher from '../../../ThemeModeSwitcher/ThemeModeSwitcher';
 import './user-profile-icon.less';
+
+// Toggle owns its label markup, so scope the typography override here to keep
+// the shared AI menu styling unchanged while matching the Classic mode row.
+const CLASSIC_THEME_SWITCHER_CLASS =
+  'tw:w-full tw:pl-6 tw:[&>div>p]:text-xs tw:[&>div>p]:font-semibold';
 
 type ListMenuItemProps = {
   listItems: EntityReference[];
@@ -160,7 +169,13 @@ export const UserProfileIcon = () => {
         <div
           className="w-full d-flex items-center persona-label cursor-pointer d-flex justify-between"
           data-testid="persona-label"
-          onClick={() => handleSelectedPersonaChange(item)}>
+          role="button"
+          tabIndex={0}
+          onClick={() => handleSelectedPersonaChange(item)}
+          onKeyDown={handleKeyboardActivation(
+            () => handleSelectedPersonaChange(item),
+            true
+          )}>
           <div className="d-flex items-center default-persona-container">
             <Typography.Text ellipsis={{ tooltip: true }}>
               {getEntityName(item)}
@@ -343,9 +358,6 @@ export const UserProfileIcon = () => {
         type: 'divider',
       },
       {
-        type: 'divider',
-      },
-      {
         key: 'teams',
         icon: '',
         children: renderLimitedListMenuItem({
@@ -363,6 +375,27 @@ export const UserProfileIcon = () => {
             </span>
           </div>
         ),
+        type: 'group',
+      },
+      {
+        type: 'divider',
+      },
+      {
+        key: 'app-mode',
+        icon: '',
+        label: <InterfaceModeMenuItem />,
+        type: 'group',
+      },
+      ...navbarUtilClassBase.getUserProfileExtraItems(),
+      {
+        type: 'divider',
+      },
+      // A group label keeps the embedded switch non-selectable so Ant Design
+      // does not close the dropdown while the user previews the new theme.
+      {
+        key: 'theme-mode',
+        icon: '',
+        label: <ThemeModeSwitcher className={CLASSIC_THEME_SWITCHER_CLASS} />,
         type: 'group',
       },
       {
@@ -413,6 +446,7 @@ export const UserProfileIcon = () => {
         data-testid="dropdown-profile"
         icon={
           isImgUrlValid ? (
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- onError load fallback
             <img
               alt={getEntityName(currentUser)}
               className="app-bar-user-profile-pic"

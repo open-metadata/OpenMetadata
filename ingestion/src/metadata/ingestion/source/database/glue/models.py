@@ -12,50 +12,54 @@
 Glue source models.
 """
 
-from typing import List, Optional
-
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class GlueSchema(BaseModel):
-    CatalogId: Optional[str] = None
+    CatalogId: str | None = None
     Name: str
-    Description: Optional[str] = None
+    Description: str | None = None
 
 
 class DatabasePage(BaseModel):
-    DatabaseList: Optional[List[GlueSchema]] = []
+    DatabaseList: list[GlueSchema] | None = []
 
 
 class TableParameters(BaseModel):
-    table_type: Optional[str] = None
+    # Glue table parameters are operator-authored key/values. A closed model drops every key but
+    # the one we branch on, which would leave nothing to ingest as custom properties.
+    model_config = ConfigDict(extra="allow")
+
+    table_type: str | None = None
 
 
 class Column(BaseModel):
     Type: str
     Name: str
-    Comment: Optional[str] = None
+    Comment: str | None = None
 
 
 class SerializationDetails(BaseModel):
-    SerializationLibrary: Optional[str] = None
-    Parameters: Optional[dict] = {}
+    SerializationLibrary: str | None = None
+    Parameters: dict | None = {}
 
 
 class StorageDetails(BaseModel):
-    Columns: Optional[List[Column]] = []
-    Location: Optional[str] = None
-    SerdeInfo: Optional[SerializationDetails] = SerializationDetails()
+    Columns: list[Column] | None = []
+    Location: str | None = None
+    SerdeInfo: SerializationDetails | None = SerializationDetails()
 
 
 class GlueTable(BaseModel):
-    Parameters: Optional[TableParameters] = None
+    Parameters: TableParameters | None = None
     Name: str
-    TableType: Optional[str] = None
-    Description: Optional[str] = None
-    StorageDescriptor: Optional[StorageDetails] = StorageDetails()
-    PartitionKeys: Optional[List[Column]] = []
+    TableType: str | None = None
+    Description: str | None = None
+    StorageDescriptor: StorageDetails | None = StorageDetails()
+    PartitionKeys: list[Column] | None = []
+    ViewOriginalText: str | None = None
+    ViewExpandedText: str | None = None
 
 
 class TablePage(BaseModel):
-    TableList: Optional[List[GlueTable]] = []
+    TableList: list[GlueTable] | None = []

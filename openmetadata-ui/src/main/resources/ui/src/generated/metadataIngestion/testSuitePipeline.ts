@@ -18,12 +18,7 @@ export interface TestSuitePipeline {
      * Fully qualified name of the entity to be tested, if we're working with a basic suite.
      */
     entityFullyQualifiedName?: string;
-    /**
-     * Percentage of data or no. of rows we want to execute the profiler and tests on
-     */
-    profileSample?:      number;
-    profileSampleType?:  ProfileSampleType;
-    samplingMethodType?: SamplingMethodType;
+    profileSampleConfig?:      ProfileSampleConfig;
     /**
      * Service connections to be used for the logical test suite.
      */
@@ -36,6 +31,43 @@ export interface TestSuitePipeline {
      * Pipeline type
      */
     type: TestSuiteConfigType;
+}
+
+/**
+ * Profile sample configuration supporting static and dynamic sampling strategies.
+ */
+export interface ProfileSampleConfig {
+    config?: ICSamplingConfig;
+    /**
+     * Type of sampling to apply. STATIC: fixed sample size. DYNAMIC: sample size determined at
+     * runtime based on row count thresholds.
+     */
+    sampleConfigType?: SampleConfigType;
+}
+
+/**
+ * Configuration for dynamic sampling based on table row count.
+ *
+ * Configuration for static sampling based on table row count.
+ */
+export interface ICSamplingConfig {
+    /**
+     * Set to true to dynamically determine sampling percentage based on row count thresholds.
+     * If false, the thresholds values passed will be used as the sampling configuration.
+     */
+    smartSampling?: boolean;
+    /**
+     * Row count thresholds for sampling. Evaluated in order from highest to lowest threshold.
+     * Tables below the lowest threshold are profiled at 100% (no sampling).
+     */
+    thresholds?: Threshold[];
+    /**
+     * Percentage of data or no. of rows used to compute the profiler metrics and run data
+     * quality tests
+     */
+    profileSample?:      number;
+    profileSampleType?:  ProfileSampleType;
+    samplingMethodType?: SamplingMethodType;
 }
 
 /**
@@ -52,6 +84,28 @@ export enum ProfileSampleType {
 export enum SamplingMethodType {
     Bernoulli = "BERNOULLI",
     System = "SYSTEM",
+}
+
+export interface Threshold {
+    /**
+     * Sample percentage or row count to use for tables at or above this threshold
+     */
+    profileSample:      number;
+    profileSampleType?: ProfileSampleType;
+    /**
+     * Minimum row count for this tier to apply
+     */
+    rowCountThreshold:   number;
+    samplingMethodType?: SamplingMethodType;
+}
+
+/**
+ * Type of sampling to apply. STATIC: fixed sample size. DYNAMIC: sample size determined at
+ * runtime based on row count thresholds.
+ */
+export enum SampleConfigType {
+    Dynamic = "DYNAMIC",
+    Static = "STATIC",
 }
 
 /**
@@ -93,7 +147,7 @@ export interface ServiceConnections {
  * MCP Service Connection.
  */
 export interface ServiceConnection {
-    config?: ConfigObject;
+    config?: any[] | boolean | number | null | Connection | string;
 }
 
 /**
@@ -141,7 +195,11 @@ export interface ServiceConnection {
  * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
  * create, deploy, and manage paginated reports
  *
+ * Rill Connection Config
+ *
  * SAP S/4HANA Connection Config for Embedded Analytics
+ *
+ * Omni BI connector: models, topics, workbooks/dashboards and lineage
  *
  * Google BigQuery Connection Config
  *
@@ -152,6 +210,8 @@ export interface ServiceConnection {
  * Azure SQL Connection Config
  *
  * Clickhouse Connection Config
+ *
+ * ClickZetta Database Connection Config
  *
  * Databricks Connection Config
  *
@@ -190,6 +250,8 @@ export interface ServiceConnection {
  * Redshift  Connection Config
  *
  * Salesforce Connection Config
+ *
+ * SAP SuccessFactors Connection Config
  *
  * SingleStore Database Connection Config
  *
@@ -253,11 +315,19 @@ export interface ServiceConnection {
  *
  * IOMETE Connection Config
  *
+ * QuestDB Connection Config
+ *
+ * Salesforce Data 360 (formerly DataCloud) Connection Config
+ *
+ * SAP BW/4HANA Database Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
  *
  * Kinesis Connection Config
+ *
+ * NATS Connection Config
  *
  * Google Cloud Pub/Sub Connection Config
  *
@@ -325,6 +395,10 @@ export interface ServiceConnection {
  *
  * Microsoft Fabric Data Factory Pipeline Connection Config
  *
+ * Salesforce Data 360 Pipeline Connection Config
+ *
+ * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
+ *
  * MlFlow Connection Config
  *
  * Sklearn Connection Config
@@ -365,7 +439,7 @@ export interface ServiceConnection {
  * MCP (Model Context Protocol) Service Connection for discovering and cataloging MCP
  * servers, their tools, resources, and prompts.
  */
-export interface ConfigObject {
+export interface Connection {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
@@ -398,10 +472,15 @@ export interface ConfigObject {
      * certificate. Paste the PEM content directly or upload the certificate file.
      *
      * SSL Configuration for OpenMetadata Server
+     *
+     * SSL Configuration for Prefect API connection.
      */
     sslConfig?: SSLConfigObject;
     /**
      * Supports Metadata Extraction.
+     *
+     * Spark metadata is pushed by the Spark Agent; pull-based metadata extraction is not
+     * supported.
      */
     supportsMetadataExtraction?: boolean;
     /**
@@ -411,9 +490,11 @@ export interface ConfigObject {
      *
      * Hex API token for authentication. Can be personal or workspace token.
      *
-     * To Connect to Dagster Cloud
+     * API token to authenticate with Rill.
      *
-     * Generated Token to connect to Databricks.
+     * API token to authenticate with Omni.
+     *
+     * To Connect to Dagster Cloud
      *
      * Generated Token to connect to DBTCloud.
      *
@@ -443,13 +524,15 @@ export interface ConfigObject {
      *
      * Custom search service type
      */
-    type?: ConfigType;
+    type?: AirflowConnectionType;
     /**
      * Client SSL verification. Make sure to configure the SSLConfig if enabled.
      *
      * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
      *
      * Client SSL verification.
+     *
+     * Boolean marking if we need to verify the SSL certs for Rill. Default to True.
      *
      * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
      * validation, 'validate' to verify against a CA certificate.
@@ -474,6 +557,8 @@ export interface ConfigObject {
      * Client ID for DOMO
      *
      * client_id for Sigma.
+     *
+     * OAuth2 Client ID. Required when authType is OAuth2Credentials.
      *
      * Azure Application (client) ID for service principal authentication.
      *
@@ -502,8 +587,17 @@ export interface ConfigObject {
     dashboardFilterPattern?: FilterPattern;
     /**
      * Regex exclude or include data models that matches the pattern.
+     *
+     * Regex to exclude or include data models (Omni topics) that matches the pattern.
      */
     dataModelFilterPattern?: FilterPattern;
+    /**
+     * Optional URL for human-facing Looker links when the API URL differs from the browser
+     * URL.
+     *
+     * Qlik Sense Base URL, used for genrating dashboard & chat url
+     */
+    displayUrl?: string;
     /**
      * Credentials to extract the .lkml files from a repository. This is required to get all the
      * lineage and definitions.
@@ -544,13 +638,20 @@ export interface ConfigObject {
      *
      * Host and Port of the Ssrs instance.
      *
+     * URL of a Rill Developer runtime or Rill Cloud project endpoint.
+     *
      * Base URL of the SAP S/4HANA instance (e.g. https://s4hana.example.com).
+     *
+     * URL of the Omni instance, e.g. `https://your-org.omniapp.co`. The `/api` path is added
+     * automatically.
      *
      * BigQuery APIs URL.
      *
      * Host and port of the AzureSQL service.
      *
      * Host and port of the Clickhouse service.
+     *
+     * Complete ClickZetta instance and service host, with an optional port.
      *
      * Host and port of the Databricks service.
      *
@@ -616,6 +717,10 @@ export interface ConfigObject {
      *
      * Host and port of the IOMETE service, e.g. dev.iomete.cloud:443
      *
+     * Host and port of the QuestDB service (default PostgreSQL wire protocol port is 8812).
+     *
+     * Host and port of the SAP HANA instance underlying BW/4HANA, e.g. hana-host:30015.
+     *
      * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
@@ -634,6 +739,9 @@ export interface ConfigObject {
      * Pipeline Service Management/UI URL.
      *
      * Spline REST Server Host & Port.
+     *
+     * Prefect API base URL. Use https://api.prefect.cloud for Prefect Cloud, or your
+     * self-hosted server's URL, e.g. http://localhost:4200.
      *
      * KafkaConnect Service Management/UI URI.
      *
@@ -706,6 +814,8 @@ export interface ConfigObject {
      *
      * Password to connect to Salesforce.
      *
+     * Password for BasicAuth authentication. Required when authType is BasicAuth.
+     *
      * Password to connect to SingleStore.
      *
      * Password to connect to Snowflake.
@@ -740,6 +850,8 @@ export interface ConfigObject {
      *
      * Password to connect to IOMETE.
      *
+     * Password for the HANA database user.
+     *
      * password to connect to the Amundsen Neo4j Connection.
      *
      * password to connect  to the Atlas.
@@ -763,6 +875,8 @@ export interface ConfigObject {
      *
      * Username to connect to Clickhouse. This user should have privileges to read all the
      * metadata in Clickhouse.
+     *
+     * Username to connect to ClickZetta.
      *
      * Username to connect to DB2. This user should have privileges to read all the metadata in
      * DB2.
@@ -804,6 +918,11 @@ export interface ConfigObject {
      *
      * Username to connect to Salesforce. This user should have privileges to read all the
      * metadata in Salesforce.
+     *
+     * SAP SuccessFactors user login name. For BasicAuth: used as the credential username. For
+     * OAuth2Credentials: used as the SAML NameID — the user on whose behalf the token is
+     * requested. The user must exist in the SF system and be permitted to use the OAuth2
+     * application.
      *
      * Username to connect to SingleStore. This user should have privileges to read all the
      * metadata in MySQL.
@@ -864,6 +983,10 @@ export interface ConfigObject {
      * metadata in Informix.
      *
      * Username to connect to IOMETE.
+     *
+     * Username to connect to QuestDB.
+     *
+     * HANA database username with access to BW metadata tables.
      *
      * username to connect to the Amundsen Neo4j Connection.
      *
@@ -936,13 +1059,15 @@ export interface ConfigObject {
      *
      * Matillion Auth Configuration
      */
-    connection?: ConfigConnection;
+    connection?: AirflowConnectionConnection;
     /**
      * Tableau API version. If not provided, the version will be used from the tableau server.
      *
      * Sigma API version.
      *
      * ThoughtSpot API version to use
+     *
+     * SAP SuccessFactors OData API version.
      *
      * OpenMetadata server API version to use.
      *
@@ -955,15 +1080,23 @@ export interface ConfigObject {
      * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
      * SAP S/4HANA Cloud.
      *
+     * Choose the ClickZetta authentication configuration.
+     *
      * Choose between different authentication types for Databricks.
      *
      * Choose Auth Config Type.
      *
      * Choose Auth Configuration Type.
      *
+     * Choose how to authenticate with SAP SuccessFactors OData API.
+     *
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      *
+     * NATS authentication method. Leave empty for anonymous authentication.
+     *
      * Types of methods used to authenticate to the alation instance
+     *
+     * Choose between Prefect Cloud or a self-hosted Prefect Server.
      *
      * Authentication type to connect to Apache Ranger.
      *
@@ -975,7 +1108,13 @@ export interface ConfigObject {
      *
      * Pagination limit used while querying the SAP ERP API for fetching the entities
      *
+     * Pagination limit used when fetching Data 360 objects. The default value is 10, and the
+     * valid range is 1-100
+     *
      * Pagination limit used for Alation APIs pagination
+     *
+     * Pagination limit used when fetching Data 360 objects. The default value is 10, and the
+     * valid range is 1-200
      */
     paginationLimit?: number;
     /**
@@ -1041,10 +1180,6 @@ export interface ConfigObject {
      */
     namespace?:    string;
     certificates?: QlikCertificatesBy;
-    /**
-     * Qlik Sense Base URL, used for genrating dashboard & chat url
-     */
-    displayUrl?: string;
     /**
      * User Directory.
      */
@@ -1142,6 +1277,8 @@ export interface ConfigObject {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      *
+     * Regex to only include or exclude matching databases.
+     *
      * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
      * Dremio Cloud, namespaces are mapped as databases.
      */
@@ -1154,6 +1291,8 @@ export interface ConfigObject {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      *
+     * Regex to only include or exclude matching schemas.
+     *
      * Regex to only include/exclude schemas that matches the pattern. System schemas
      * (information_schema, _statistics_, sys) are excluded by default.
      *
@@ -1164,6 +1303,8 @@ export interface ConfigObject {
      *
      * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
      * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
+     *
+     * Regex to only include/exclude InfoAreas that match the pattern.
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -1173,7 +1314,7 @@ export interface ConfigObject {
      *
      * Couchbase driver scheme options.
      */
-    scheme?: ConfigScheme;
+    scheme?: AirflowConnectionScheme;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
@@ -1192,11 +1333,16 @@ export interface ConfigObject {
     /**
      * Regex to only include/exclude tables that matches the pattern.
      *
+     * Regex to only include or exclude matching tables.
+     *
      * Regex to include/exclude FHIR resource types
      *
      * Regex to only include/exclude tables that match the pattern.
      *
      * Regex to only include/exclude dictionaries (tables) that matches the pattern.
+     *
+     * Regex to only include/exclude InfoProviders (ADSOs, CompositeProviders) that match the
+     * pattern.
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -1222,6 +1368,12 @@ export interface ConfigObject {
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
+     *
+     * ClickZetta workspace to ingest.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, the Glue Catalog ID
+     * (your AWS account ID) is used. This only names the database in OpenMetadata, it does not
+     * select which Glue database to ingest.
      *
      * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
@@ -1251,17 +1403,18 @@ export interface ConfigObject {
      */
     authenticationMode?: any[] | boolean | number | null | AuthenticationModeObject | string;
     /**
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
+     *
+     * Database of the data source.
+     *
      * Database of the data source. This is optional parameter, if you would like to restrict
      * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
      * attempts to scan all the databases.
      *
-     * Database of the data source.
-     *
      * Initial Redshift database to connect to. If you want to ingest all databases, set
      * ingestAllDatabases to true.
-     *
-     * Optional name to give to the database in OpenMetadata. If left blank, we will use default
-     * as the database name.
      *
      * Optional: Restrict metadata ingestion to a specific namespace (source/space). When left
      * blank, all namespaces will be ingested.
@@ -1311,6 +1464,8 @@ export interface ConfigObject {
      * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
      * attempts to scan all the schemas.
      *
+     * Optional schema restriction. When omitted, OpenMetadata attempts to scan all schemas.
+     *
      * databaseSchema of the data source. This is optional parameter, if you would like to
      * restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata
      * Ingestion attempts to scan all the databaseSchema.
@@ -1340,6 +1495,31 @@ export interface ConfigObject {
      */
     secure?: boolean;
     /**
+     * Protocol used to connect to ClickZetta.
+     *
+     * Protocol ( Connection Argument ) to connect to Presto.
+     */
+    protocol?: string;
+    /**
+     * Optional ClickZetta table or view used for usage and query-lineage extraction. Set this
+     * to information_schema.job_history for workspace-local native history or
+     * sys.information_schema.job_history for cross-workspace native history; the connector maps
+     * their native columns and scopes them to the configured workspace and schema. Custom
+     * tables or views must expose query_text, query_type, user_name, database_name,
+     * schema_name, start_time, end_time, duration, aborted, and cost columns.
+     *
+     * Table name to fetch the query history.
+     *
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
+     */
+    queryHistoryTable?: string;
+    /**
+     * ClickZetta virtual cluster used for metadata extraction.
+     */
+    virtualCluster?: string;
+    /**
      * Catalog of the data source(Example: hive_metastore). This is optional parameter, if you
      * would like to restrict the metadata reading to a single catalog. When left blank,
      * OpenMetadata Ingestion attempts to scan all the catalog.
@@ -1367,9 +1547,9 @@ export interface ConfigObject {
      */
     httpPath?: string;
     /**
-     * Table name to fetch the query history.
+     * Policy agent configuration for access control extraction.
      */
-    queryHistoryTable?: string;
+    policyAgentConfig?: PolicyAgentConfig;
     /**
      * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
      */
@@ -1435,6 +1615,11 @@ export interface ConfigObject {
      */
     encrypt?: boolean;
     /**
+     * Discover SQL Server synonyms and record them as alternate names (aliases) on the table
+     * they resolve to. Also enables alias resolution when building lineage.
+     */
+    includeSynonyms?: boolean;
+    /**
      * Trust the server certificate without validation. Set to false in production to validate
      * server certificates against the certificate authority.
      */
@@ -1490,25 +1675,40 @@ export interface ConfigObject {
      */
     queryStatementSource?: string;
     /**
-     * Protocol ( Connection Argument ) to connect to Presto.
-     */
-    protocol?: string;
-    /**
      * Verify ( Connection Argument for SSL ) to connect to Presto.
      *
      * Verify ( Connection Argument for SSL ) to connect to Trino.
      */
     verify?: string;
     /**
+     * Redshift cluster identifier. Leave empty for standard Redshift hostnames
+     * (*.redshift.amazonaws.com) - it is derived automatically. Set this ONLY when using IAM
+     * authentication through a PrivateLink/VPC endpoint (vpce-...) or a custom DNS name. Find
+     * it in AWS Console -> Amazon Redshift -> Clusters ('Cluster identifier' column).
+     */
+    clusterIdentifier?: string;
+    /**
+     * Redshift Serverless workgroup name. Leave empty for standard Redshift Serverless
+     * hostnames (*.redshift-serverless.amazonaws.com) - it is derived automatically. Set this
+     * ONLY when using IAM authentication through a PrivateLink/VPC endpoint (vpce-...) or a
+     * custom DNS name. Find it in AWS Console -> Amazon Redshift -> Redshift Serverless ->
+     * Workgroups.
+     */
+    workgroupName?: string;
+    /**
      * Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from
      * your Salesforce Connected App configuration. Required along with Consumer Secret for
      * OAuth authentication.
+     *
+     * Consumer key provided when you setup your Salesforce connected app
      */
     consumerKey?: string;
     /**
      * Salesforce Consumer Secret (Client Secret) for OAuth 2.0 authentication. This is obtained
      * from your Salesforce Connected App configuration. Required along with Consumer Key for
      * OAuth authentication.
+     *
+     * Consumer secret provided when you setup your Salesforce connected app
      */
     consumerSecret?: string;
     /**
@@ -1538,6 +1738,33 @@ export interface ConfigObject {
      */
     sobjectNames?: string[];
     /**
+     * SAP SuccessFactors OData API base URL. For example: https://api4.successfactors.com
+     */
+    baseUrl?: string;
+    /**
+     * SAP SuccessFactors Company ID (tenant identifier). Required for all API calls.
+     */
+    companyId?: string;
+    /**
+     * PEM-encoded RSA private key used to sign SAML assertions for OAuth2 SAML Bearer flow.
+     * Required when authType is OAuth2Credentials.
+     *
+     * Connection to Snowflake instance via Private Key
+     */
+    privateKey?: string;
+    /**
+     * OAuth2 Token endpoint URL. Required when authType is OAuth2Credentials. For example:
+     * https://api4.successfactors.com/oauth/token
+     */
+    tokenUrl?: string;
+    /**
+     * Number of days of ACCESS_HISTORY scanned per query when 'Use Access History for Lineage'
+     * is enabled. The lineage time window is split into chunks of this many days to keep each
+     * Snowflake query bounded and avoid client/server timeouts over long windows. Lower this
+     * value if queries still time out on very busy accounts.
+     */
+    accessHistoryChunkSize?: number;
+    /**
      * If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the
      * account is xyz1234.us-east-1.gcp
      *
@@ -1551,8 +1778,7 @@ export interface ConfigObject {
      */
     accountUsageSchema?: string;
     /**
-     * Optional configuration for ingestion to keep the client session active in case the
-     * ingestion process runs for longer durations.
+     * Keep the session alive for long-running scans.
      */
     clientSessionKeepAlive?: boolean;
     /**
@@ -1560,23 +1786,21 @@ export interface ConfigObject {
      */
     creditCost?: number;
     /**
-     * Optional configuration for ingestion of Snowflake stages (internal and external). By
-     * default, stages are not ingested.
+     * Ingest Snowflake semantic views as data assets.
+     */
+    includeSemanticViews?: boolean;
+    /**
+     * Ingest external and internal stages.
      */
     includeStages?: boolean;
     /**
-     * Optional configuration for ingestion of streams, By default, it will skip the streams.
+     * Ingest Snowflake streams as data assets.
      */
     includeStreams?: boolean;
     /**
-     * Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the
-     * TRANSIENT tables.
+     * Ingest transient tables alongside permanent ones.
      */
     includeTransientTables?: boolean;
-    /**
-     * Connection to Snowflake instance via Private Key
-     */
-    privateKey?: string;
     /**
      * Session query tag used to monitor usage on snowflake. To use a query tag snowflake user
      * should have enough privileges to alter the session.
@@ -1594,6 +1818,13 @@ export interface ConfigObject {
      * Snowflake source host for the Snowflake account.
      */
     snowflakeSourceHost?: string;
+    /**
+     * Use Snowflake's ACCOUNT_USAGE.ACCESS_HISTORY view as the source of query lineage.
+     * ACCESS_HISTORY provides Snowflake-computed table- and column-level lineage, including for
+     * queries OpenMetadata cannot parse. Enabled by default; if the configured role cannot read
+     * ACCESS_HISTORY, ingestion automatically falls back to the legacy query-log parser.
+     */
+    useAccessHistory?: boolean;
     /**
      * Snowflake warehouse.
      */
@@ -1728,6 +1959,11 @@ export interface ConfigObject {
      */
     dataPlane?: string;
     /**
+     * Schema name in HANA where BW/4HANA ABAP metadata tables reside (e.g. SAPHANADB). Check
+     * your system with: SELECT SCHEMA_NAME FROM SYS.TABLES WHERE TABLE_NAME = 'RSOADSO'.
+     */
+    abapSchema?: string;
+    /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
      */
@@ -1791,8 +2027,27 @@ export interface ConfigObject {
     securityProtocol?: KafkaSecurityProtocol;
     /**
      * Regex to only fetch topics that matches the pattern.
+     *
+     * Regex to only fetch subjects/streams that match the pattern.
      */
     topicFilterPattern?: FilterPattern;
+    /**
+     * Additional NATS client configuration options. See https://nats-io.github.io/nats.py/
+     */
+    additionalConfig?: { [key: string]: any };
+    /**
+     * NATS server URLs as comma-separated values. Ex: nats://host1:4222,nats://host2:4222
+     */
+    natsServers?: string;
+    /**
+     * Name of the JetStream KV bucket where schemas are stored. Keys must match stream names.
+     * Values should be Avro JSON, Protobuf (.proto) or JSON Schema text.
+     */
+    schemaKvBucket?: string;
+    /**
+     * TLS/SSL configuration for secure NATS connections.
+     */
+    tlsConfig?: ConsumerConfigSSLClass;
     /**
      * GCP credentials configuration for authenticating with Pub/Sub.
      */
@@ -2010,6 +2265,8 @@ export interface ConfigObject {
     glossaryFilterPattern?: FilterPattern;
     /**
      * Pipeline Service Number Of Status
+     *
+     * Number of past flow run statuses to ingest per flow.
      */
     numberOfStatus?: number;
     /**
@@ -2018,10 +2275,15 @@ export interface ConfigObject {
      * Regex to filter MuleSoft applications by name.
      *
      * Regex to only include/exclude pipelines that matches the pattern.
+     *
+     * Regex to only include/exclude Process Chains that match the pattern.
      */
     pipelineFilterPattern?: FilterPattern;
     /**
      * Underlying database connection
+     *
+     * Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only
+     * mode and run history is not extracted.
      */
     databaseConnection?: DatabaseConnectionClass;
     /**
@@ -2156,6 +2418,22 @@ export interface ConfigObject {
      */
     workspaceId?: string;
     /**
+     * Name of the Data 360 database service to use for lineage resolution
+     */
+    data360DbServiceName?: string;
+    /**
+     * Optional configuration to toggle the ingestion of Data Lake Object to Data Model Object
+     * lineage for every dataspace. This walks all Data Model Objects in the configured Data 360
+     * database service, so it is off by default.
+     */
+    includeBulkLineage?: boolean;
+    /**
+     * JSON object mapping a Data 360 connector or data source name to the OpenMetadata service
+     * that holds it, used to resolve the upstream entity of a Data Stream. Example:
+     * {"S3_Connector": "my-s3-service"}
+     */
+    serviceMapping?: string;
+    /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
     mlModelFilterPattern?: FilterPattern;
@@ -2184,6 +2462,10 @@ export interface ConfigObject {
      * Regex to only fetch containers that matches the pattern.
      */
     containerFilterPattern?: FilterPattern;
+    /**
+     * Container Name of the data source.
+     */
+    containerName?: string;
     /**
      * Connection Timeout in Seconds
      */
@@ -2334,6 +2616,14 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to exclude or include charts that matches the pattern.
  *
+ * Regex to exclude or include data models (Omni topics) that matches the pattern.
+ *
+ * Regex to only include or exclude matching databases.
+ *
+ * Regex to only include or exclude matching schemas.
+ *
+ * Regex to only include or exclude matching tables.
+ *
  * Regex to only fetch containers that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
@@ -2356,7 +2646,14 @@ export interface UsernamePasswordAuthentication {
  * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
  * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
  *
+ * Regex to only include/exclude InfoAreas that match the pattern.
+ *
+ * Regex to only include/exclude InfoProviders (ADSOs, CompositeProviders) that match the
+ * pattern.
+ *
  * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex to only fetch subjects/streams that match the pattern.
  *
  * Regex to only include/exclude domains that match the pattern.
  *
@@ -2367,6 +2664,8 @@ export interface UsernamePasswordAuthentication {
  * Regex to filter MuleSoft applications by name.
  *
  * Regex to only include/exclude pipelines that matches the pattern.
+ *
+ * Regex to only include/exclude Process Chains that match the pattern.
  *
  * Regex to only fetch MlModels with names matching the pattern.
  *
@@ -2483,6 +2782,12 @@ export enum AuthProvider {
  *
  * OAuth 2.0 client credentials for SAP S/4HANA Cloud.
  *
+ * Common Database Connection Config
+ *
+ * Choose the ClickZetta authentication configuration.
+ *
+ * Choose Auth Config Type.
+ *
  * Choose between different authentication types for Databricks.
  *
  * Personal Access Token authentication for Databricks.
@@ -2492,10 +2797,6 @@ export enum AuthProvider {
  *
  * Azure Active Directory authentication for Azure Databricks workspaces using Service
  * Principal.
- *
- * Choose Auth Config Type.
- *
- * Common Database Connection Config
  *
  * IAM Auth Database Connection Config
  *
@@ -2515,11 +2816,26 @@ export enum AuthProvider {
  * Authentication configuration for self-hosted Dremio Software using username and password.
  * Dremio Software is deployed on-premises or in your own cloud infrastructure.
  *
+ * NATS authentication method. Leave empty for anonymous authentication.
+ *
+ * Username and password authentication for NATS.
+ *
+ * Token-based authentication for NATS.
+ *
+ * NKey seed authentication for NATS.
+ *
  * ThoughtSpot authentication configuration
  *
  * Types of methods used to authenticate to the alation instance
  *
  * API Access Token Auth Credentials
+ *
+ * Choose between Prefect Cloud or a self-hosted Prefect Server.
+ *
+ * Authentication configuration for Prefect Cloud.
+ *
+ * Authentication configuration for a self-hosted Prefect Server. Leave Basic Auth String
+ * empty if the server has no auth enabled.
  *
  * Basic Auth Configuration for ElasticSearch
  *
@@ -2555,6 +2871,8 @@ export interface AuthenticationType {
      *
      * Password for the Dremio Software user account.
      *
+     * Password for NATS authentication.
+     *
      * Elastic Search Password for Login
      *
      * Ranger password to authenticate to the API.
@@ -2569,6 +2887,8 @@ export interface AuthenticationType {
      *
      * Username for authenticating with Dremio Software. This user should have appropriate
      * permissions to access metadata.
+     *
+     * Username for NATS authentication.
      *
      * Elastic Search Username for Login
      *
@@ -2610,6 +2930,8 @@ export interface AuthenticationType {
     /**
      * Generated Personal Access Token for Databricks workspace authentication. This token is
      * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
+     *
+     * Token for NATS authentication.
      */
     token?: string;
     /**
@@ -2663,13 +2985,32 @@ export interface AuthenticationType {
      */
     hostPort?: string;
     /**
+     * NKey seed for NATS authentication.
+     */
+    nkeySeed?: string;
+    /**
      * Access Token for the API
      */
     accessToken?: string;
     /**
+     * Prefect Cloud Account ID. Found in the URL: app.prefect.cloud/account/{accountId}.
+     */
+    accountId?: string;
+    /**
+     * Prefect Cloud API key for authentication.
+     *
      * Elastic Search API Key for API Authentication
      */
     apiKey?: string;
+    /**
+     * Prefect Cloud Workspace ID. Found in the URL after /workspaces/{workspaceId}.
+     */
+    workspaceId?: string;
+    /**
+     * Self-hosted Prefect Server Basic Auth credential (PREFECT_SERVER_API_AUTH_STRING), format
+     * 'user:password'. Leave empty if the server has no auth enabled.
+     */
+    authString?: string;
     /**
      * Elastic Search API Key ID for API Authentication
      */
@@ -2991,10 +3332,16 @@ export enum CloudRegion {
 }
 
 /**
+ * Choose how to authenticate with SAP SuccessFactors OData API.
+ *
+ * Authentication type to connect to SAP SuccessFactors.
+ *
  * Database Authentication types not requiring config.
  */
 export enum NoConfigAuthenticationTypes {
+    BasicAuth = "BasicAuth",
     OAuth2 = "OAuth2",
+    OAuth2Credentials = "OAuth2Credentials",
 }
 
 /**
@@ -3214,7 +3561,11 @@ export enum KafkaSecurityProtocol {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
+ * TLS/SSL configuration for secure NATS connections.
+ *
  * SSL Configuration for OpenMetadata Server
+ *
+ * SSL Configuration for Prefect API connection.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
@@ -3297,7 +3648,7 @@ export interface DeltaLakeConfigurationSource {
      *
      * Available sources to fetch files.
      */
-    connection?: Connection;
+    connection?: ConfigSourceConnection;
     /**
      * Bucket Name of the data source.
      */
@@ -3340,7 +3691,7 @@ export interface DeltaLakeConfigurationSource {
  *
  * DataLake S3 bucket will ingest metadata of files in bucket
  */
-export interface Connection {
+export interface ConfigSourceConnection {
     /**
      * Thrift connection to the metastore service. E.g., localhost:9083
      */
@@ -3526,7 +3877,7 @@ export interface SecurityConfigClass {
  *
  * Matillion Data Productivity Cloud Auth Config.
  */
-export interface ConfigConnection {
+export interface AirflowConnectionConnection {
     /**
      * Password for Superset.
      *
@@ -3579,11 +3930,15 @@ export interface ConfigConnection {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
+     *
+     * Database of the data source.
+     *
      * Database of the data source. This is optional parameter, if you would like to restrict
      * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
      * attempts to scan all the databases.
-     *
-     * Database of the data source.
      */
     database?: string;
     /**
@@ -3660,6 +4015,12 @@ export interface ConfigConnection {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
+     */
+    queryHistoryTable?: string;
     /**
      * Use slow logs to extract lineage.
      */
@@ -3960,7 +4321,11 @@ export enum ConnectionScheme {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
+ * TLS/SSL configuration for secure NATS connections.
+ *
  * SSL Configuration for OpenMetadata Server
+ *
+ * SSL Configuration for Prefect API connection.
  */
 export interface ConnectionSSLConfig {
     /**
@@ -4086,14 +4451,17 @@ export interface PurpleGCPCredentials {
  * Underlying database connection
  *
  * Mssql Database Connection Config
+ *
+ * Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only
+ * mode and run history is not extracted.
  */
 export interface DatabaseConnectionClass {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
      */
     database: string;
     /**
@@ -4113,6 +4481,11 @@ export interface DatabaseConnectionClass {
      * Host and port of the MSSQL service.
      */
     hostPort?: string;
+    /**
+     * Discover SQL Server synonyms and record them as alternate names (aliases) on the table
+     * they resolve to. Also enables alias resolution when building lineage.
+     */
+    includeSynonyms?: boolean;
     /**
      * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
      */
@@ -4314,9 +4687,9 @@ export interface HiveMetastoreConnectionDetails {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
      */
     database?: string;
     /**
@@ -4395,6 +4768,12 @@ export interface HiveMetastoreConnectionDetails {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
+     */
+    queryHistoryTable?: string;
     /**
      * Use slow logs to extract lineage.
      */
@@ -4596,6 +4975,28 @@ export interface BucketDetails {
 }
 
 /**
+ * Policy agent configuration for access control extraction.
+ */
+export interface PolicyAgentConfig {
+    /**
+     * Enable policy agent extraction.
+     */
+    enabled?: boolean;
+    /**
+     * Supports column-level access policy extraction.
+     */
+    supportsColumnAccess?: boolean;
+    /**
+     * Supports full access policy extraction.
+     */
+    supportsFullAccess?: boolean;
+    /**
+     * Supports masked access policy extraction.
+     */
+    supportsMaskedAccess?: boolean;
+}
+
+/**
  * This schema publisher run modes.
  */
 export enum RunMode {
@@ -4610,17 +5011,20 @@ export enum RunMode {
  *
  * Couchbase driver scheme options.
  */
-export enum ConfigScheme {
+export enum AirflowConnectionScheme {
     AwsathenaREST = "awsathena+rest",
     Bigquery = "bigquery",
     ClickhouseHTTP = "clickhouse+http",
     ClickhouseNative = "clickhouse+native",
+    Clickzetta = "clickzetta",
     CockroachdbPsycopg2 = "cockroachdb+psycopg2",
     Couchbase = "couchbase",
-    DatabricksConnector = "databricks+connector",
+    Databricks = "databricks",
     Db2IBMDB = "db2+ibm_db",
     Doris = "doris",
     Druid = "druid",
+    DruidHTTP = "druid+http",
+    DruidHTTPS = "druid+https",
     ExaWebsocket = "exa+websocket",
     Hana = "hana",
     Hive = "hive",
@@ -4637,6 +5041,7 @@ export enum ConfigScheme {
     MssqlPytds = "mssql+pytds",
     MysqlPymysql = "mysql+pymysql",
     OracleCxOracle = "oracle+cx_oracle",
+    OracleOracledb = "oracle+oracledb",
     PgspiderPsycopg2 = "pgspider+psycopg2",
     Pinot = "pinot",
     PinotHTTP = "pinot+http",
@@ -4715,15 +5120,18 @@ export interface MCPServerConfig {
      */
     apiKey?: string;
     /**
-     * Arguments to pass to the command
+     * Deprecated: Stdio transport has been removed; run the server over HTTP and set 'url'
+     * instead.
      */
     args?: string[];
     /**
-     * Command to execute for Stdio transport (e.g., 'npx', 'uvx', 'python')
+     * Deprecated: Stdio transport has been removed; run the server over HTTP and set 'url'
+     * instead.
      */
     command?: string;
     /**
-     * Environment variables for the server process
+     * Deprecated: Stdio transport has been removed; run the server over HTTP and set 'url'
+     * instead.
      */
     env?: { [key: string]: string };
     /**
@@ -4777,7 +5185,11 @@ export enum SpaceType {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
+ * TLS/SSL configuration for secure NATS connections.
+ *
  * SSL Configuration for OpenMetadata Server
+ *
+ * SSL Configuration for Prefect API connection.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  *
@@ -4932,6 +5344,8 @@ export enum TokenType {
  *
  * Custom pipeline service type
  *
+ * SAP BW/4HANA pipeline service type.
+ *
  * Custom Ml model service type
  *
  * S3 service type
@@ -4964,7 +5378,7 @@ export enum TokenType {
  *
  * Service type
  */
-export enum ConfigType {
+export enum AirflowConnectionType {
     Adls = "ADLS",
     Airbyte = "Airbyte",
     Airflow = "Airflow",
@@ -4979,6 +5393,7 @@ export enum ConfigType {
     BurstIQ = "BurstIQ",
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
+    Clickzetta = "Clickzetta",
     Cockroach = "Cockroach",
     Collibra = "Collibra",
     Couchbase = "Couchbase",
@@ -4992,6 +5407,8 @@ export enum ConfigType {
     CustomStorage = "CustomStorage",
     DBTCloud = "DBTCloud",
     Dagster = "Dagster",
+    Data360 = "Data360",
+    Data360Pipeline = "Data360Pipeline",
     DataFactory = "DataFactory",
     Databricks = "Databricks",
     DatabricksPipeline = "DatabricksPipeline",
@@ -5042,7 +5459,9 @@ export enum ConfigType {
     Mssql = "Mssql",
     Mulesoft = "Mulesoft",
     Mysql = "Mysql",
+    Nats = "Nats",
     Nifi = "Nifi",
+    Omni = "Omni",
     OpenLineage = "OpenLineage",
     OpenMetadata = "OpenMetadata",
     OpenSearch = "OpenSearch",
@@ -5051,25 +5470,31 @@ export enum ConfigType {
     Postgres = "Postgres",
     PowerBI = "PowerBI",
     PowerBIReportServer = "PowerBIReportServer",
+    Prefect = "Prefect",
     Presto = "Presto",
     PubSub = "PubSub",
     QlikCloud = "QlikCloud",
     QlikSense = "QlikSense",
+    QuestDB = "QuestDB",
     QuickSight = "QuickSight",
     REST = "Rest",
     Ranger = "Ranger",
     Redash = "Redash",
     Redpanda = "Redpanda",
     Redshift = "Redshift",
+    Rill = "Rill",
     S3 = "S3",
     SAS = "SAS",
     SFTP = "Sftp",
     SQLite = "SQLite",
     SageMaker = "SageMaker",
     Salesforce = "Salesforce",
+    SapBw4Hana = "SapBw4Hana",
+    SapBw4HanaPipeline = "SapBw4HanaPipeline",
     SapERP = "SapErp",
     SapHana = "SapHana",
     SapS4Hana = "SapS4Hana",
+    SapSuccessFactors = "SapSuccessFactors",
     ServiceNow = "ServiceNow",
     SharePoint = "SharePoint",
     Sigma = "Sigma",

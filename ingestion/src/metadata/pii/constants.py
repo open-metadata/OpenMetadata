@@ -11,6 +11,7 @@
 """
 PII constants
 """
+
 from collections import defaultdict
 
 from metadata.generated.schema.type.classificationLanguages import (

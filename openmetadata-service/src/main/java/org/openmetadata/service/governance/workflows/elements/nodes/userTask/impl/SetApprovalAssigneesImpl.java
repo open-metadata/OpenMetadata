@@ -25,18 +25,26 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class SetApprovalAssigneesImpl implements JavaDelegate {
+  private static final int ADMIN_PAGE_SIZE = 50;
   private Expression assigneesExpr;
   private Expression assigneesVarNameExpr;
   private Expression inputNamespaceMapExpr;
@@ -45,8 +53,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
   public void execute(DelegateExecution execution) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
-      Map<String, String> inputNamespaceMap =
-          JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
+      InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
       Map<String, Object> assigneesConfig =
           JsonUtils.readOrConvertValue(assigneesExpr.getValue(execution), Map.class);
 
@@ -55,7 +62,8 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
           MessageParser.EntityLink.parse(
               (String)
                   varHandler.getNamespacedVariable(
-                      inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
+                      inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
+                      RELATED_ENTITY_VARIABLE));
       EntityRepository<?> entityRepository = Entity.getEntityRepository(entityLink.getEntityType());
       boolean entitySupportsReviewers = entityRepository.isSupportsReviewers();
       String relationshipFields =
@@ -148,26 +156,35 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
               || execution.getVariable("taskEntityId") != null;
       List<String> assigneeList = new ArrayList<>(assignees);
 
-      // Prevent self-approval: Remove updatedBy user from assignees list
-      try {
-        String updatedBy =
-            (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);
-        if (updatedBy != null && !updatedBy.trim().isEmpty()) {
-          String updatedByEntityLink =
-              new MessageParser.EntityLink("user", FullyQualifiedName.quoteName(updatedBy))
-                  .getLinkString();
-          boolean removed = assigneeList.remove(updatedByEntityLink);
-          if (removed) {
-            LOG.debug(
-                "[Process: {}] Prevented self-approval: Removed updatedBy user '{}' from assignees",
-                execution.getProcessInstanceId(),
-                updatedBy);
-          }
+      // Prevent self-approval: remove the requester from the assignees. Task-managed workflows
+      // (DAR, GlossaryApproval, RequestApproval) publish the requester as `taskUpdatedBy`; entity
+      // workflows (glossary term / tag approval, certification changes, …) publish it as the
+      // global `updatedBy`. Both are checked because each variable is authoritative for its own
+      // workflow family — reading only one silently leaves the other's requester on the list. For
+      // non-workflow-managed tasks only, keep the requester when no one else is available so the
+      // task stays actionable; workflow-managed tasks rely on the admin fallback below instead.
+      Set<String> requesterEntityLinks = resolveRequesterEntityLinks(varHandler, execution);
+      List<String> preRemovalAssignees = new ArrayList<>(assigneeList);
+      boolean removedRequester = assigneeList.removeAll(requesterEntityLinks);
+      if (removedRequester && assigneeList.isEmpty() && !workflowManagedTask) {
+        assigneeList.addAll(preRemovalAssignees);
+      }
+
+      // Empty-assignee strategy: when nothing resolved (no reviewers/owners, or the only
+      // assignee was the requester and was stripped above), apply the node's configured
+      // fallback. ASSIGN_ADMINS routes to all platform admins, excluding the requester so
+      // self-approval can never happen. NONE keeps the default behavior.
+      String emptyAssigneeStrategy =
+          String.valueOf(assigneesConfig.getOrDefault("emptyAssigneeStrategy", "none"));
+      if (assigneeList.isEmpty() && "assignAdmins".equals(emptyAssigneeStrategy)) {
+        List<String> admins = resolveAdminAssignees();
+        admins.removeAll(requesterEntityLinks);
+        assigneeList.addAll(admins);
+        if (assigneeList.isEmpty()) {
+          LOG.warn(
+              "[Process: {}] Admin fallback resolved no assignees — the only platform admin is the requester; task left unassigned",
+              execution.getProcessInstanceId());
         }
-      } catch (Exception e) {
-        LOG.warn(
-            "Failed to retrieve updatedBy variable for self-approval prevention: {}",
-            e.getMessage());
       }
 
       // Persist the list as JSON array so TaskListener can read it.
@@ -219,6 +236,77 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
 
     // No recognised source found: return empty list, which causes the task to be auto-approved.
     return List.of();
+  }
+
+  /**
+   * Collects every possible requester entity-link surfaced by this execution. Task-managed
+   * workflows (DataAccessRequest, GlossaryApproval, RequestApproval) publish the requester as
+   * {@code taskUpdatedBy} via {@link
+   * org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables}; entity
+   * workflows (glossary-term / tag approval, certification changes, …) publish it as the global
+   * {@code updatedBy} variable set by the workflow trigger. Both are read every time — no
+   * fallback — so a workflow family that populates only one variable does not silently leak the
+   * requester onto its own approval task's assignees list.
+   */
+  private Set<String> resolveRequesterEntityLinks(
+      final WorkflowVariableHandler varHandler, final DelegateExecution execution) {
+    Set<String> requesterEntityLinks = new LinkedHashSet<>();
+    try {
+      // Flowable stores process variables as untyped Object; instanceof pattern-matches on String
+      // instead of a blind cast so a non-string / null variable does not throw and reintroduce the
+      // self-approval leak via the catch-all below (Copilot review, 2026-08-04).
+      Object taskUpdatedBy = execution.getVariable(WorkflowStartVariables.TASK_UPDATED_BY);
+      if (taskUpdatedBy instanceof String taskUpdatedByStr) {
+        addRequesterEntityLink(requesterEntityLinks, taskUpdatedByStr);
+      }
+      Object globalUpdatedBy =
+          varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);
+      if (globalUpdatedBy instanceof String globalUpdatedByStr) {
+        addRequesterEntityLink(requesterEntityLinks, globalUpdatedByStr);
+      }
+    } catch (Exception exc) {
+      LOG.warn(
+          "Failed to retrieve updatedBy variables for self-approval prevention: {}",
+          exc.getMessage());
+    }
+    return requesterEntityLinks;
+  }
+
+  private void addRequesterEntityLink(
+      final Set<String> requesterEntityLinks, final String updatedBy) {
+    if (updatedBy != null && !updatedBy.trim().isEmpty()) {
+      requesterEntityLinks.add(
+          new MessageParser.EntityLink("user", FullyQualifiedName.quoteName(updatedBy))
+              .getLinkString());
+    }
+  }
+
+  private List<String> resolveAdminAssignees() {
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    ListFilter listFilter = new ListFilter(Include.NON_DELETED);
+    listFilter.addQueryParam("isAdmin", "true");
+    List<String> admins = new ArrayList<>();
+    String after = null;
+    try {
+      do {
+        ResultList<User> page =
+            userRepository.listAfter(
+                null, EntityUtil.Fields.EMPTY_FIELDS, listFilter, ADMIN_PAGE_SIZE, after);
+        page.getData()
+            .forEach(
+                user ->
+                    admins.add(
+                        new MessageParser.EntityLink(Entity.USER, user.getFullyQualifiedName())
+                            .getLinkString()));
+        after = page.getPaging().getAfter();
+      } while (after != null);
+    } catch (Exception e) {
+      // Degrade gracefully: a transient admin-lookup failure must not fail the whole
+      // approval workflow. Return whatever was collected so the task is created (possibly
+      // unassigned) rather than raising a BpmnError.
+      LOG.warn("Failed to resolve admin assignees for empty-assignee fallback: {}", e.getMessage());
+    }
+    return admins;
   }
 
   private List<String> getEntityLinkStringFromEntityReference(List<EntityReference> assignees) {

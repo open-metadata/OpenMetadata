@@ -13,8 +13,6 @@
 Validator for column values to be not null test case
 """
 
-from typing import List, Optional
-
 from sqlalchemy import Column
 
 from metadata.data_quality.validations.base_test_handler import (
@@ -49,7 +47,7 @@ class ColumnValuesToBeNotNullValidator(
 ):
     """Validator for column values to be not null test case"""
 
-    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: Column) -> int | None:
         """compute result of the test case
 
         Args:
@@ -65,7 +63,7 @@ class ColumnValuesToBeNotNullValidator(
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> list[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation
 
         Calculates impact scores for all dimension values and aggregates
@@ -83,7 +81,6 @@ class ColumnValuesToBeNotNullValidator(
         dimension_results = []
 
         try:
-
             # Build metric expressions using enum names as keys
             metric_expressions = {}
             for metric_name, metric in metrics_to_compute.items():
@@ -91,13 +88,9 @@ class ColumnValuesToBeNotNullValidator(
                 metric_expressions[metric_name] = metric_instance.fn()
 
             metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = Metrics.rowCount().fn()
-            metric_expressions[DIMENSION_FAILED_COUNT_KEY] = metric_expressions[
-                Metrics.nullCount.name
-            ]
+            metric_expressions[DIMENSION_FAILED_COUNT_KEY] = metric_expressions[Metrics.nullCount.name]
 
-            normalized_dimension = self._get_normalized_dimension_expression(
-                dimension_col
-            )
+            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
             result_rows = self._run_dimensional_validation_query(
                 source=self.runner.dataset,
@@ -106,9 +99,7 @@ class ColumnValuesToBeNotNullValidator(
                 top_n=top_n,
             )
 
-            return self._process_dimension_rows(
-                result_rows, dimension_col.name, metrics_to_compute, test_params
-            )
+            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

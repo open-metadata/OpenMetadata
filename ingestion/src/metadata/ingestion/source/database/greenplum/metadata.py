@@ -11,9 +11,10 @@
 """
 Greenplum source module
 """
+
 import traceback
 from collections import namedtuple
-from typing import Iterable, Optional, Tuple
+from collections.abc import Iterable
 
 from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
@@ -43,6 +44,7 @@ from metadata.ingestion.source.database.common_db_source import (
 from metadata.ingestion.source.database.common_pg_mappings import (
     INTERVAL_TYPE_MAP,
     RELKIND_MAP,
+    PgMatviewMixin,
     ischema_names,
 )
 from metadata.ingestion.source.database.greenplum.queries import (
@@ -85,7 +87,7 @@ Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
 
-class GreenplumSource(CommonDbSourceService, MultiDBSource):
+class GreenplumSource(PgMatviewMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Greenplum Source
@@ -96,19 +98,15 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
         cls,
         config_dict,
         metadata: OpenMetadataConnection,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: str | None = None,
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: GreenplumConnection = config.serviceConnection.root.config
         if not isinstance(connection, GreenplumConnection):
-            raise InvalidSourceException(
-                f"Expected GreenplumConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected GreenplumConnection, but got {connection}")
         return cls(config, metadata)
 
-    def query_table_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Overwrite the inspector implementation to handle partitioned
         and foreign types
@@ -119,13 +117,10 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
         )
 
         return [
-            TableNameAndType(
-                name=name, type_=RELKIND_MAP.get(relkind, TableType.Regular)
-            )
-            for name, relkind in result
+            TableNameAndType(name=name, type_=RELKIND_MAP.get(relkind, TableType.Regular)) for name, relkind in result
         ]
 
-    def get_configured_database(self) -> Optional[str]:
+    def get_configured_database(self) -> str | None:
         if not self.service_connection.ingestAllDatabases:
             return self.service_connection.database
         return None
@@ -134,8 +129,8 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
         yield from self._execute_database_query(GREENPLUM_GET_DB_NAMES)
 
     def get_database_names(self) -> Iterable[str]:
-        if not self.config.serviceConnection.root.config.ingestAllDatabases:
-            configured_db = self.config.serviceConnection.root.config.database
+        if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]
+            configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
@@ -149,9 +144,7 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_database,
+                    database_fqn if self.source_config.useFqnForFiltering else new_database,
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
@@ -161,20 +154,14 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(
-                        f"Error trying to connect to database {new_database}: {exc}"
-                    )
+                    logger.error(f"Error trying to connect to database {new_database}: {exc}")
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, Optional[TablePartition]]:
+    ) -> tuple[bool, TablePartition | None]:
         with self.engine.connect() as conn:
             result = conn.execute(
-                text(
-                    GREENPLUM_PARTITION_DETAILS.format(
-                        table_name=table_name, schema_name=schema_name
-                    )
-                )
+                text(GREENPLUM_PARTITION_DETAILS.format(table_name=table_name, schema_name=schema_name))
             ).all()
 
         if result:

@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/metadataIngestion/databaseServiceMetadataPipeline.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DatabaseServiceMetadataPipeline",
   "description": "DatabaseService Metadata Pipeline Configuration.",
   "type": "object",
@@ -89,6 +89,12 @@
       "type": "boolean",
       "default": true,
       "title": "Include Tags"
+    },
+    "includeCustomProperties": {
+      "description": "Optional configuration to toggle the ingestion of source-specific custom properties (e.g. Iceberg table properties) onto the entity extension. When disabled, no custom property definitions are registered and no extension values are set.",
+      "type": "boolean",
+      "default": false,
+      "title": "Include Custom Properties"
     },
     "includeOwners":{
       "title": "Include Owners",

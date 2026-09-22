@@ -185,7 +185,7 @@ public final class AIApplications {
     }
 
     public AIApplicationFinder includeAll() {
-      includes.addAll(Arrays.asList("owners", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
       return this;
     }
 
@@ -212,6 +212,11 @@ public final class AIApplications {
 
     public AIApplicationDeleter delete() {
       return new AIApplicationDeleter(client, identifier);
+    }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<AIApplication> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.aiApplications(), identifier);
     }
   }
 
@@ -338,5 +343,15 @@ public final class AIApplications {
     public AIApplicationDeleter delete() {
       return new AIApplicationDeleter(client, entity.getId().toString());
     }
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().aiApplications().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().aiApplications().getContextByName(fqn);
   }
 }

@@ -35,8 +35,16 @@ export const PIPELINE_TYPE_LOCALIZATION = {
   [PipelineType.ElasticSearchReindex]: 'elastic-search-re-index',
   [PipelineType.Lineage]: 'lineage',
   [PipelineType.Metadata]: 'metadata',
+  [PipelineType.PolicyAgent]: 'policy-agent',
   [PipelineType.Profiler]: 'profiler',
   [PipelineType.TestSuite]: 'test-suite',
   [PipelineType.Usage]: 'usage',
   [PipelineType.Application]: 'application',
 };
+
+/**
+ * The only sortField the ingestion pipeline list endpoint accepts. Orders by the effective display
+ * name (`displayName` falling back to `name`) — the value the Name column renders — rather than the
+ * raw `name`, which is machine-generated for UI-created agents.
+ */
+export const SORT_FIELD_DISPLAY_NAME = 'displayName';

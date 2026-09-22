@@ -9,9 +9,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """PinotDb source module"""
-from typing import Iterable, Optional
 
-from pinotdb import sqlalchemy as pinot_sqlalchemy
+from collections.abc import Iterable
+
 from sqlalchemy import types
 from sqlalchemy.sql import sqltypes
 
@@ -24,6 +24,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from pinotdb import sqlalchemy as pinot_sqlalchemy
 
 DOUBLE_TYPE = getattr(types, "DOUBLE", getattr(sqltypes, "DOUBLE", types.Float))
 
@@ -63,15 +64,11 @@ class PinotdbSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: PinotDBConnection = config.serviceConnection.root.config
         if not isinstance(connection, PinotDBConnection):
-            raise InvalidSourceException(
-                f"Expected PinotdbConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected PinotdbConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_database_names(self) -> Iterable[str]:

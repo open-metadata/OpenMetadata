@@ -15,7 +15,7 @@ Test SQA Interface
 
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest import TestCase, mock
 from unittest.mock import Mock, patch
 from uuid import uuid4
@@ -55,8 +55,9 @@ from metadata.profiler.metrics.static.row_count import RowCount
 from metadata.profiler.processor.default import get_default_metrics
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.sampler.pandas.sampler import DatalakeSampler
+from metadata.utils.datalake.object_stats import ObjectStats
 
-if sys.version_info < (3, 9):
+if sys.version_info < (3, 9):  # noqa: UP036
     pytest.skip(
         "requires python 3.9+ due to incompatibility with object patch",
         allow_module_level=True,
@@ -90,7 +91,7 @@ class FakeConnection:
 class PandasInterfaceTest(TestCase):
     import pandas as pd
 
-    col_names = [
+    col_names = [  # noqa: RUF012
         "name",
         "fullname",
         "nickname",
@@ -102,14 +103,10 @@ class PandasInterfaceTest(TestCase):
         "json",
         "array",
     ]
-    root_dir = os.path.dirname(os.path.abspath(__file__))
+    root_dir = os.path.dirname(os.path.abspath(__file__))  # noqa: PTH100, PTH120
     csv_dir = "../custom_csv"
-    df1 = pd.read_csv(
-        os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"), names=col_names
-    )
-    df2 = pd.read_csv(
-        os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"), names=col_names
-    )
+    df1 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"), names=col_names)  # noqa: PTH118
+    df2 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"), names=col_names)  # noqa: PTH118
 
     table_entity = Table(
         id=uuid4(),
@@ -166,7 +163,7 @@ class PandasInterfaceTest(TestCase):
         return_value=FakeConnection(),
     )
     @mock.patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
+        "metadata.sampler.pandas.sampler.get_ssl_connection",
         return_value=FakeConnection(),
     )
     def setUp(cls, mock_get_connection, *_) -> None:
@@ -210,30 +207,20 @@ class PandasInterfaceTest(TestCase):
 
         cls.table = User
         cls.metrics = get_default_metrics(Metrics, cls.table)
-        cls.static_metrics = [
-            metric for metric in cls.metrics if issubclass(metric, StaticMetric)
-        ]
-        cls.composed_metrics = [
-            metric for metric in cls.metrics if issubclass(metric, ComposedMetric)
-        ]
+        cls.static_metrics = [metric for metric in cls.metrics if issubclass(metric, StaticMetric)]
+        cls.composed_metrics = [metric for metric in cls.metrics if issubclass(metric, ComposedMetric)]
         cls.window_metrics = [
-            metric
-            for metric in cls.metrics
-            if issubclass(metric, StaticMetric) and metric.is_window_metric()
+            metric for metric in cls.metrics if issubclass(metric, StaticMetric) and metric.is_window_metric()
         ]
         cls.query_metrics = [
-            metric
-            for metric in cls.metrics
-            if issubclass(metric, QueryMetric) and metric.is_col_metric()
+            metric for metric in cls.metrics if issubclass(metric, QueryMetric) and metric.is_col_metric()
         ]
 
     def test_get_all_metrics(self):
         table_metrics = [
             ThreadPoolMetrics(
                 metrics=[
-                    metric
-                    for metric in self.metrics
-                    if (not metric.is_col_metric() and not metric.is_system_metrics())
+                    metric for metric in self.metrics if (not metric.is_col_metric() and not metric.is_system_metrics())
                 ],
                 metric_type=MetricTypes.Table,
                 column=None,
@@ -259,7 +246,7 @@ class PandasInterfaceTest(TestCase):
                 )
             )
             for query_metric in self.query_metrics:
-                query_metrics.append(
+                query_metrics.append(  # noqa: PERF401
                     ThreadPoolMetrics(
                         metrics=query_metric,
                         metric_type=MetricTypes.Query,
@@ -269,11 +256,7 @@ class PandasInterfaceTest(TestCase):
                 )
             window_metrics.append(
                 ThreadPoolMetrics(
-                    metrics=[
-                        metric
-                        for metric in self.window_metrics
-                        if metric.is_window_metric()
-                    ],
+                    metrics=[metric for metric in self.window_metrics if metric.is_window_metric()],
                     metric_type=MetricTypes.Window,
                     column=col,
                     table=self.table_entity,
@@ -298,22 +281,12 @@ class PandasInterfaceTest(TestCase):
             timestamp=Timestamp(int(datetime.now().timestamp())),
         )
 
-        profile_request = CreateTableProfileRequest(
-            tableProfile=table_profile, columnProfile=column_profile
-        )
+        profile_request = CreateTableProfileRequest(tableProfile=table_profile, columnProfile=column_profile)
 
         assert profile_request.tableProfile.columnCount == 10
         assert profile_request.tableProfile.rowCount == 6
-        name_column_profile = [
-            profile
-            for profile in profile_request.columnProfile
-            if profile.name == "name"
-        ][0]
-        age_column_profile = [
-            profile
-            for profile in profile_request.columnProfile
-            if profile.name == "age"
-        ][0]
+        name_column_profile = [profile for profile in profile_request.columnProfile if profile.name == "name"][0]  # noqa: RUF015
+        age_column_profile = [profile for profile in profile_request.columnProfile if profile.name == "age"][0]  # noqa: RUF015
         assert name_column_profile.nullCount == 2.0
         assert age_column_profile.median == 31.0
 
@@ -323,9 +296,7 @@ class PandasInterfaceTest(TestCase):
 
         table_metric = ThreadPoolMetrics(
             metrics=[
-                metric
-                for metric in self.metrics
-                if (not metric.is_col_metric() and not metric.is_system_metrics())
+                metric for metric in self.metrics if (not metric.is_col_metric() and not metric.is_system_metrics())
             ],
             metric_type=MetricTypes.Table,
             column=None,
@@ -344,9 +315,7 @@ class PandasInterfaceTest(TestCase):
         col = list(inspect(User).c)[1]  # name column
         column_metric = ThreadPoolMetrics(
             metrics=[
-                metric
-                for metric in self.static_metrics
-                if metric.is_col_metric() and not metric.is_window_metric()
+                metric for metric in self.static_metrics if metric.is_col_metric() and not metric.is_window_metric()
             ],
             metric_type=MetricTypes.Static,
             column=col,
@@ -364,9 +333,7 @@ class PandasInterfaceTest(TestCase):
 
         table_metric = ThreadPoolMetrics(
             metrics=[
-                metric
-                for metric in self.metrics
-                if (not metric.is_col_metric() and not metric.is_system_metrics())
+                metric for metric in self.metrics if (not metric.is_col_metric() and not metric.is_system_metrics())
             ],
             metric_type=MetricTypes.Table,
             column=None,
@@ -378,9 +345,7 @@ class PandasInterfaceTest(TestCase):
 
         static_metric_name = ThreadPoolMetrics(
             metrics=[
-                metric
-                for metric in self.static_metrics
-                if metric.is_col_metric() and not metric.is_window_metric()
+                metric for metric in self.static_metrics if metric.is_col_metric() and not metric.is_window_metric()
             ],
             metric_type=MetricTypes.Static,
             column=col_name,
@@ -389,9 +354,7 @@ class PandasInterfaceTest(TestCase):
 
         static_metric_age = ThreadPoolMetrics(
             metrics=[
-                metric
-                for metric in self.static_metrics
-                if metric.is_col_metric() and not metric.is_window_metric()
+                metric for metric in self.static_metrics if metric.is_col_metric() and not metric.is_window_metric()
             ],
             metric_type=MetricTypes.Static,
             column=col_age,
@@ -414,9 +377,7 @@ class PandasInterfaceTest(TestCase):
 
         table_metric = ThreadPoolMetrics(
             metrics=[
-                metric
-                for metric in self.metrics
-                if (not metric.is_col_metric() and not metric.is_system_metrics())
+                metric for metric in self.metrics if (not metric.is_col_metric() and not metric.is_system_metrics())
             ],
             metric_type=MetricTypes.Table,
             column=None,
@@ -442,3 +403,92 @@ class PandasInterfaceTest(TestCase):
             assert len(self.datalake_profiler_interface.status.failures) == 1
         finally:
             self.datalake_profiler_interface._get_metric_fn = original_get_metric_fn
+
+
+@pytest.fixture
+def datalake_profiler_interface():
+    """A PandasProfilerInterface over the same fixture data, with the object store client mocked"""
+    import pandas as pd
+
+    with (
+        patch(
+            "metadata.profiler.interface.profiler_interface.get_ssl_connection",
+            return_value=FakeConnection(),
+        ),
+        patch("metadata.sampler.pandas.sampler.get_ssl_connection", return_value=FakeConnection()),
+        patch.object(
+            DatalakeSampler,
+            "get_dataframes",
+            return_value=DatalakeColumnWrapper(
+                dataframes=lambda: iter(
+                    [
+                        PandasInterfaceTest.df1,
+                        pd.concat([PandasInterfaceTest.df2, pd.DataFrame(index=PandasInterfaceTest.df1.index)]),
+                    ]
+                ),
+                columns=None,
+                raw_data=None,
+            ),
+        ),
+        patch.object(DatalakeSampler, "get_client", return_value=Mock()),
+    ):
+        sampler = DatalakeSampler(
+            service_connection_config=DatalakeConnection(configSource={}),
+            ometa_client=None,
+            entity=PandasInterfaceTest.table_entity,
+        )
+        yield PandasProfilerInterface(
+            service_connection_config=DatalakeConnection(configSource={}),
+            ometa_client=None,
+            entity=PandasInterfaceTest.table_entity,
+            source_config=None,
+            sampler=sampler,
+        )
+
+
+class TestPandasObjectStats:
+    """Storage level stats are merged into the table metrics"""
+
+    table_metrics = [  # noqa: RUF012
+        metric
+        for metric in get_default_metrics(Metrics, User)
+        if not metric.is_col_metric() and not metric.is_system_metrics()
+    ]
+
+    def _compute(self, interface):
+        return interface._compute_table_metrics(self.table_metrics, interface.dataset)
+
+    def test_stats_merged_with_table_metrics(self, datalake_profiler_interface):
+        created = datetime(2026, 8, 20, 10, 30, tzinfo=timezone.utc)
+        with patch(
+            "metadata.profiler.interface.pandas.profiler_interface.get_object_stats",
+            return_value=ObjectStats(size_in_bytes=1024, create_date_time=created),
+        ):
+            row = self._compute(datalake_profiler_interface)
+
+        assert row["sizeInBytes"] == 1024
+        assert row["createDateTime"] == created
+        # The stats must be merged next to the metrics, not on top of them
+        assert row[RowCount.name()] == 6
+        assert row["columnCount"] == 10
+
+    def test_stats_failure_does_not_fail_the_profile(self, datalake_profiler_interface):
+        with patch(
+            "metadata.profiler.interface.pandas.profiler_interface.get_object_stats",
+            side_effect=Exception("AccessDenied"),
+        ):
+            row = self._compute(datalake_profiler_interface)
+
+        assert row[RowCount.name()] == 6
+        assert "sizeInBytes" not in row
+        assert "createDateTime" not in row
+
+    def test_empty_stats_are_omitted(self, datalake_profiler_interface):
+        with patch(
+            "metadata.profiler.interface.pandas.profiler_interface.get_object_stats",
+            return_value=ObjectStats(),
+        ):
+            row = self._compute(datalake_profiler_interface)
+
+        assert "sizeInBytes" not in row
+        assert "createDateTime" not in row

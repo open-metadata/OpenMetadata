@@ -37,16 +37,16 @@ import {
   ListGlossaryTermsParams,
   patchGlossaryTerm,
 } from '../../rest/glossaryAPI';
-import { getEntityDeleteMessage } from '../../utils/CommonUtils';
-import { updateGlossaryTermByFqn } from '../../utils/GlossaryUtils';
+import { updateGlossaryTermByFqn } from '../../utils/GlossaryPureUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getGlossaryTermDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+import DeleteModal from '../common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import { GenericProvider } from '../Customization/GenericProvider/GenericProvider';
-import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import { GlossaryTermForm } from './AddGlossaryTermForm/AddGlossaryTermForm.interface';
 import GlossaryDetails from './GlossaryDetails/GlossaryDetails.component';
 import GlossaryTermModal from './GlossaryTermModal/GlossaryTermModal.component';
@@ -54,6 +54,29 @@ import GlossaryTermsV1 from './GlossaryTerms/GlossaryTermsV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './glossaryV1.less';
 import { ModifiedGlossary, useGlossaryStore } from './useGlossary.store';
+
+const getGlossaryCustomPageType = (isGlossaryActive: boolean) =>
+  isGlossaryActive ? PageType.Glossary : PageType.GlossaryTerm;
+
+const shouldShowGlossaryLoader = (
+  isLoading: boolean,
+  isPermissionLoading: boolean
+) => isLoading || isPermissionLoading;
+
+const shouldRenderGlossarySelectedData = (
+  isLoading: boolean,
+  isPermissionLoading: boolean,
+  selectedData: Glossary | GlossaryTerm
+) => !isLoading && !isPermissionLoading && !isEmpty(selectedData);
+
+const getActiveGlossaryPermission = (
+  isGlossaryActive: boolean,
+  glossaryPermission: OperationPermission,
+  glossaryTermPermission: OperationPermission
+) => (isGlossaryActive ? glossaryPermission : glossaryTermPermission);
+
+const getActiveGlossaryEntityType = (isGlossaryActive: boolean) =>
+  isGlossaryActive ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM;
 
 const GlossaryV1 = ({
   isGlossaryActive,
@@ -76,7 +99,7 @@ const GlossaryV1 = ({
     tab: string;
   }>();
   const { customizedPage } = useCustomPages(
-    isGlossaryActive ? PageType.Glossary : PageType.GlossaryTerm
+    getGlossaryCustomPageType(isGlossaryActive)
   );
   const navigate = useNavigate();
   const [activeGlossaryTerm, setActiveGlossaryTerm] =
@@ -321,8 +344,7 @@ const GlossaryV1 = ({
         newTermData.owners = owners;
         newTermData.references = references;
         newTermData.relatedTerms = relatedTerms?.map((term) => ({
-          id: term,
-          type: 'glossaryTerm',
+          term: { id: term, type: 'glossaryTerm' },
         }));
         await updateGlossaryTerm(activeGlossaryTerm, newTermData);
       }
@@ -364,16 +386,30 @@ const GlossaryV1 = ({
   };
 
   const initializeGlossary = async () => {
-    const permission = await initPermissions();
-    if (permission?.ViewAll || permission?.ViewBasic) {
-      // Only load terms if we're viewing a glossary term, not a glossary
-      // GlossaryTermTab handles pagination for glossaries
-      if (!isGlossaryActive) {
-        loadGlossaryTerms();
+    try {
+      const permission = await initPermissions();
+      // Derived from the just-fetched return value, not the `glossaryPermission`/
+      // `glossaryTermPermission` state: state updates are async, so reading state
+      // here would race the pending update and see the previous permission.
+      // `DEFAULT_ENTITY_PERMISSION` (all-false) fallback preserves the old
+      // `permission?.ViewAll || permission?.ViewBasic` behavior for an
+      // undefined/falsy return.
+      if (
+        getDerivedPermissionFlags(permission ?? DEFAULT_ENTITY_PERMISSION)
+          .hasViewAccess
+      ) {
+        // Only load terms if we're viewing a glossary term, not a glossary
+        // GlossaryTermTab handles pagination for glossaries
+        if (!isGlossaryActive) {
+          loadGlossaryTerms();
+        } else {
+          setIsLoading(false);
+        }
       } else {
         setIsLoading(false);
       }
-    } else {
+    } catch {
+      // Permission fetch already showed an error toast; ensure loading state is cleared
       setIsLoading(false);
     }
   };
@@ -408,8 +444,20 @@ const GlossaryV1 = ({
     setIsTabExpanded(!isTabExpanded);
   };
 
+  // Local derivation over the fetched `glossaryPermission` state — this file fetches
+  // its own permission (owner), but does so across two conditional resource types
+  // (GLOSSARY / GLOSSARY_TERM, chosen by `isGlossaryActive`) plus a static
+  // isVersionsView bypass, none of which fits the single-resource useEntityPermissions
+  // shape cleanly. Deferred: fetch mechanism left untouched (out of scope for this
+  // batch, per the DataQualityTab/TableProfilerProvider precedent), only the raw
+  // ViewAll/ViewBasic reads convert.
+  const glossaryFlags = useMemo(
+    () => getDerivedPermissionFlags(glossaryPermission),
+    [glossaryPermission]
+  );
+
   const glossaryContent = useMemo(() => {
-    if (!(glossaryPermission.ViewAll || glossaryPermission.ViewBasic)) {
+    if (!glossaryFlags.hasViewAccess) {
       return (
         <div className="full-height">
           <ErrorPlaceHolder
@@ -436,8 +484,7 @@ const GlossaryV1 = ({
       />
     );
   }, [
-    glossaryPermission.ViewAll,
-    glossaryPermission.ViewBasic,
+    glossaryFlags.hasViewAccess,
     isTabExpanded,
     isVersionsView,
     onGlossaryDelete,
@@ -445,9 +492,15 @@ const GlossaryV1 = ({
     updateVote,
   ]);
 
+  const shouldRenderSelectedData = shouldRenderGlossarySelectedData(
+    isLoading,
+    isPermissionLoading,
+    selectedData
+  );
+
   return (
     <>
-      {(isLoading || isPermissionLoading) && <Loader />}
+      {shouldShowGlossaryLoader(isLoading, isPermissionLoading) && <Loader />}
 
       <GenericProvider<Glossary | GlossaryTerm>
         currentVersionData={selectedData}
@@ -455,14 +508,14 @@ const GlossaryV1 = ({
         data={selectedData}
         isTabExpanded={isTabExpanded}
         isVersionView={isVersionsView}
-        permissions={
-          isGlossaryActive ? glossaryPermission : glossaryTermPermission
-        }
-        type={isGlossaryActive ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM}
+        permissions={getActiveGlossaryPermission(
+          isGlossaryActive,
+          glossaryPermission,
+          glossaryTermPermission
+        )}
+        type={getActiveGlossaryEntityType(isGlossaryActive)}
         onUpdate={handleGlossaryUpdate}>
-        {!isLoading &&
-          !isPermissionLoading &&
-          !isEmpty(selectedData) &&
+        {shouldRenderSelectedData &&
           (isGlossaryActive ? (
             glossaryContent
           ) : (
@@ -482,13 +535,14 @@ const GlossaryV1 = ({
       </GenericProvider>
 
       {selectedData && (
-        <EntityDeleteModal
-          bodyText={getEntityDeleteMessage(selectedData.name, '')}
-          entityName={selectedData.name}
-          entityType="Glossary"
-          visible={isDelete}
+        <DeleteModal
+          entityTitle={selectedData.name}
+          message={t('message.delete-entity-message', {
+            entity: selectedData.name,
+          })}
+          open={isDelete}
           onCancel={() => setIsDelete(false)}
-          onConfirm={handleDelete}
+          onDelete={handleDelete}
         />
       )}
 

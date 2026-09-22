@@ -13,7 +13,7 @@
 
 import { Image } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
-import { getEntityName } from '../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,

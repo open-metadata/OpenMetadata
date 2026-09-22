@@ -24,7 +24,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Worksheet } from '../../../generated/entity/data/worksheet';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -36,27 +37,31 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../utils/EntityUtils';
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
   createTagObject,
   updateCertificationTag,
   updateTierTag,
-} from '../../../utils/TagsUtils';
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import worksheetClassBase from '../../../utils/WorksheetClassBase';
@@ -71,7 +76,6 @@ import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interfa
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { WorksheetDetailsProps } from './WorksheetDetails.interface';
-
 const EntityLineageTab = lazy(() =>
   import('../../Lineage/EntityLineageTab/EntityLineageTab').then((module) => ({
     default: module.EntityLineageTab,
@@ -162,6 +166,8 @@ function WorksheetDetails({
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -169,6 +175,8 @@ function WorksheetDetails({
           entity: t('label.worksheet'),
         })
       );
+
+      return false;
     }
   };
 
@@ -253,19 +261,45 @@ function WorksheetDetails({
       handleFeedCount
     );
 
+  const fetchTaskCounts = useCallback(() => {
+    const fqn = worksheetDetails.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityTaskCountsInto(fqn, setFeedCount);
+    }
+  }, [worksheetDetails.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    const fqn = worksheetDetails.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityActivityCountInto(EntityType.WORKSHEET, fqn, setFeedCount);
+    }
+  }, [worksheetDetails.fullyQualifiedName]);
+
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.DRIVE_SERVICES,
+          getPartialNameFromTableFQN(
+            worksheetDetails.fullyQualifiedName ?? '',
+            [FqnPart.Service]
+          )
+        )
+      ),
+    [worksheetDetails.fullyQualifiedName]
   );
 
+  // editAllPermission/viewAllPermission (raw worksheetPermissions.EditAll/.ViewAll reads)
+  // dropped here: computed but never consumed anywhere in this component (only ever
+  // listed, unused, in the tabs useMemo's dependency array) — dead-code precedent
+  // (Task 7/8, e.g. CommonWidgets).
   const {
     editTagsPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
-    editAllPermission,
     editLineagePermission,
-    viewAllPermission,
     viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
@@ -289,13 +323,11 @@ function WorksheetDetails({
           worksheetPermissions,
           Operation.EditCustomFields
         ) && !deleted,
-      editAllPermission: worksheetPermissions.EditAll && !deleted,
       editLineagePermission:
         getPrioritizedEditPermission(
           worksheetPermissions,
           Operation.EditLineage
         ) && !deleted,
-      viewAllPermission: worksheetPermissions.ViewAll,
       viewCustomPropertiesPermission: getPrioritizedViewPermission(
         worksheetPermissions,
         Operation.ViewCustomFields
@@ -306,7 +338,8 @@ function WorksheetDetails({
 
   useEffect(() => {
     if (worksheetDetails.fullyQualifiedName) {
-      getEntityFeedCount();
+      fetchTaskCounts();
+      fetchActivityCount();
     }
   }, [worksheetPermissions, worksheetDetails.fullyQualifiedName]);
 
@@ -371,8 +404,6 @@ function WorksheetDetails({
     editDescriptionPermission,
     editCustomAttributePermission,
     editLineagePermission,
-    editAllPermission,
-    viewAllPermission,
     viewCustomPropertiesPermission,
   ]);
   const onCertificationUpdate = useCallback(

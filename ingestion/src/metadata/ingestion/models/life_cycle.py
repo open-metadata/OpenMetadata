@@ -11,7 +11,6 @@
 """
 Custom models for life cycle
 """
-from typing import Type
 
 from pydantic import BaseModel
 
@@ -20,6 +19,6 @@ from metadata.ingestion.api.models import Entity
 
 
 class OMetaLifeCycleData(BaseModel):
-    entity: Type[Entity]
+    entity: type[Entity]
     entity_fqn: str
     life_cycle: LifeCycle

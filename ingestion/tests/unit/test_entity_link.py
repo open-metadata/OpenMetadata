@@ -11,6 +11,7 @@
 """
 Test Entity Link build behavior
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -219,9 +220,5 @@ class TestEntityLink(TestCase):
         dashboard_link = get_entity_link(Dashboard, fqn="service.dashboard")
         self.assertEqual(dashboard_link, "<#E::dashboard::service.dashboard>")
 
-        column_link = get_entity_link(
-            Table, fqn="service.db.schema.table", column_name="col"
-        )
-        self.assertEqual(
-            column_link, "<#E::table::service.db.schema.table::columns::col>"
-        )
+        column_link = get_entity_link(Table, fqn="service.db.schema.table", column_name="col")
+        self.assertEqual(column_link, "<#E::table::service.db.schema.table::columns::col>")

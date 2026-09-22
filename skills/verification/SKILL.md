@@ -52,9 +52,9 @@ mvn verify -pl openmetadata-integration-tests -Dtest=<IntegrationTestClass>
 ```bash
 source env/bin/activate && cd ingestion
 
-# 1. Format and lint
+# 1. Format (apply) then lint check (verify)
 make py_format
-make lint
+make py_format_check
 
 # 2. Type check
 make static-checks

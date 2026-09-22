@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.security.Authorizer;
 
@@ -235,6 +236,54 @@ class PIIMaskerTest {
   }
 
   @Test
+  void getTestCasesTolerateTestCasesWhoseTableWasHardDeleted() {
+    String liveFqn = "service.db.schema.orders";
+    String orphanFqn = "service.db.schema.deleted_orders";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    Table live = table(liveFqn, List.of(column(liveFqn, "email", false)), false, List.of(owner));
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, null)).thenReturn(false);
+
+    TestCase orphan =
+        new TestCase()
+            .withName("email_not_null")
+            .withDescription("Should not leak sensitive details")
+            .withEntityLink(
+                new MessageParser.EntityLink(Entity.TABLE, orphanFqn, "columns", "email", null)
+                    .getLinkString())
+            .withParameterValues(
+                List.of(new TestCaseParameterValue().withName("min").withValue("1")))
+            .withTestCaseResult(new TestCaseResult());
+    TestCase liveCase =
+        new TestCase()
+            .withName("row_count")
+            .withEntityLink(new MessageParser.EntityLink(Entity.TABLE, liveFqn).getLinkString());
+    ResultList<TestCase> testCases = new ResultList<>(new ArrayList<>(List.of(orphan, liveCase)));
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, orphanFqn, "owners,tags,columns", Include.ALL))
+          .thenThrow(new EntityNotFoundException("Entity not found: table " + orphanFqn));
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityByName(Entity.TABLE, liveFqn, "owners,tags,columns", Include.ALL))
+          .thenReturn(live);
+
+      ResultList<TestCase> masked = PIIMasker.getTestCases(testCases, authorizer, securityContext);
+
+      // The orphan is masked rather than dropped or thrown on, and the rest of the page survives.
+      assertEquals("email_not_null [MASKED]", masked.getData().get(0).getName());
+      assertNull(masked.getData().get(0).getTestCaseResult());
+      assertEquals("row_count", masked.getData().get(1).getName());
+    }
+  }
+
+  @Test
   void getQueriesAndMaskUserHideSensitiveValuesForUnauthorizedUsers() {
     Authorizer authorizer = mock(Authorizer.class);
     SecurityContext securityContext = mock(SecurityContext.class);
@@ -261,6 +310,26 @@ class PIIMaskerTest {
     assertEquals(PIIMasker.MASKED_VALUE, maskedQueries.getData().get(0).getQuery());
     assertEquals("select city from customer", maskedQueries.getData().get(1).getQuery());
     assertEquals(PIIMasker.MASKED_MAIL, maskedUser.getEmail());
+  }
+
+  @Test
+  void getQueriesHandlesNullTagsForUnauthorizedUsers() {
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+
+    EntityReference owner = entityReference(Entity.USER, "owner");
+
+    Query query = new Query().withQuery("select email from customer").withOwners(List.of(owner));
+
+    query.setTags(null);
+
+    ResultList<Query> queries = new ResultList<>(new ArrayList<>(List.of(query)));
+
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(false);
+
+    ResultList<Query> result = PIIMasker.getQueries(queries, authorizer, securityContext);
+
+    assertEquals("select email from customer", result.getData().get(0).getQuery());
   }
 
   @Test

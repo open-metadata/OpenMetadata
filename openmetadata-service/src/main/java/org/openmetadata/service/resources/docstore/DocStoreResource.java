@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.docstore.PrivateDocumentType;
 import org.openmetadata.service.jdbi3.DocumentRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -99,7 +100,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load any existing rules from database, before loading seed data.
-    repository.initSeedDataFromResources();
+    repository.initSeedDataFromResourcesOnStartup();
   }
 
   @GET
@@ -150,7 +151,10 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
+    PrivateDocumentType.requirePublic(entityType);
     ListFilter filter = new ListFilter(Include.ALL);
+    filter.addQueryParam(
+        PrivateDocumentType.EXCLUDED_ENTITY_TYPE_FILTER, PrivateDocumentType.SPARQL_QUERY.value());
     if (entityType != null) {
       filter.addQueryParam("entityType", entityType);
     }
@@ -180,24 +184,9 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the Document", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    requirePublicDocument(id);
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -228,6 +217,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
+    requirePublicDocument(id);
     return getInternal(uriInfo, securityContext, id, "", include);
   }
 
@@ -262,6 +252,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
+    requirePublicDocument(name);
     return getByNameInternal(uriInfo, securityContext, name, "", include);
   }
 
@@ -294,6 +285,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
+    requirePublicDocument(id);
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -316,6 +308,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDocument cd) {
+    PrivateDocumentType.requirePublic(cd.getEntityType());
     Document doc = mapper.createToEntity(cd, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, doc);
   }
@@ -339,6 +332,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDocument cd) {
+    PrivateDocumentType.requirePublic(cd.getEntityType());
     Document doc = mapper.createToEntity(cd, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, doc);
   }
@@ -398,6 +392,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    requirePublicDocument(id);
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -427,6 +422,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    requirePublicDocument(fqn);
     return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
@@ -446,6 +442,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Parameter(description = "Id of the Document", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
+    requirePublicDocument(id);
     return delete(uriInfo, securityContext, id, false, true);
   }
 
@@ -465,6 +462,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Parameter(description = "Id of the Document", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
+    requirePublicDocument(id);
     return deleteByIdAsync(uriInfo, securityContext, id, false, true);
   }
 
@@ -486,7 +484,16 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Parameter(description = "Name of the Document", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
+    requirePublicDocument(name);
     return deleteByName(uriInfo, securityContext, name, false, true);
+  }
+
+  private void requirePublicDocument(UUID id) {
+    PrivateDocumentType.requirePublic(repository.find(id, Include.ALL));
+  }
+
+  private void requirePublicDocument(String fullyQualifiedName) {
+    PrivateDocumentType.requirePublic(repository.findByName(fullyQualifiedName, Include.ALL));
   }
 
   @POST

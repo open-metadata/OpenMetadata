@@ -13,75 +13,42 @@
 Databricks Source Model module
 """
 
-from typing import List, Optional, Union
+from typing import Union
 
 from pydantic import BaseModel
 
 
 class DatabricksTable(BaseModel):
-    name: Optional[str] = None
-    catalog_name: Optional[str] = None
-    schema_name: Optional[str] = None
-    table_type: Optional[str] = None
-    lineage_timestamp: Optional[str] = None
-
-
-class DatabricksColumn(BaseModel):
-    name: Optional[str] = None
-    catalog_name: Optional[str] = None
-    schema_name: Optional[str] = None
-    table_name: Optional[str] = None
-
-
-class FileInfo(BaseModel):
-    path: Optional[str] = None
-    has_permission: Optional[bool] = None
-    securable_name: Optional[str] = None
-    storage_location: Optional[str] = None
-    securable_type: Optional[str] = None
-    lineage_timestamp: Optional[str] = None
-
-
-class LineageEntity(BaseModel):
-    tableInfo: Optional[DatabricksTable] = None
-    fileInfo: Optional[FileInfo] = None
-
-
-class LineageTableStreams(BaseModel):
-    upstreams: Optional[List[LineageEntity]] = []
-    downstreams: Optional[List[LineageEntity]] = []
-
-
-class LineageColumnStreams(BaseModel):
-    upstream_cols: Optional[List[DatabricksColumn]] = []
-    downstream_cols: Optional[List[DatabricksColumn]] = []
+    name: str | None = None
+    catalog_name: str | None = None
+    schema_name: str | None = None
 
 
 class ForeignConstrains(BaseModel):
-    child_columns: Optional[List[str]] = []
-    parent_columns: Optional[List[str]] = []
+    child_columns: list[str] | None = []
+    parent_columns: list[str] | None = []
     parent_table: str
 
 
 class Metadata(BaseModel):
-    comment: Optional[str] = None
+    comment: str | None = None
 
 
 class ColumnJson(BaseModel):
-    name: Optional[str] = None
-    type: Optional[Union["Type", str]] = None
-    metadata: Optional[Metadata] = None
+    name: str | None = None
+    type: Union["Type", str] | None = None
+    metadata: Metadata | None = None
 
 
 class ElementType(BaseModel):
-    type: Optional[str] = None
-    fields: Optional[List[ColumnJson]] = None
+    type: str | None = None
+    fields: list[ColumnJson] | None = None
 
 
 class Type(BaseModel):
-    type: Optional[str] = None
-    elementType: Optional[Union[ElementType, str]] = None
-    fields: Optional[List[ColumnJson]] = None
+    type: str | None = None
+    elementType: ElementType | str | None = None  # noqa: N815
+    fields: list[ColumnJson] | None = None
 
 
 ColumnJson.model_rebuild()

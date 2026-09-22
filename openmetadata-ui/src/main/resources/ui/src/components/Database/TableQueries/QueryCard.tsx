@@ -17,7 +17,7 @@ import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
 import { Duration } from 'luxon';
 import Qs from 'qs';
-import { FC, useMemo, useState } from 'react';
+import { FC, lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
@@ -40,11 +40,15 @@ import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { parseSearchParams } from '../../../utils/Query/QueryUtils';
 import queryClassBase from '../../../utils/QueryClassBase';
 import { getEntityDetailsPath, getQueryPath } from '../../../utils/RouterUtils';
-import SchemaEditor from '../SchemaEditor/SchemaEditor';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.component';
 import QueryUsedByOtherTable from './QueryUsedByOtherTable/QueryUsedByOtherTable.component';
 import './table-queries.style.less';
 import { QueryCardProp } from './TableQueries.interface';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../SchemaEditor/SchemaEditor'))
+);
 
 const { Text } = Typography;
 
@@ -169,6 +173,54 @@ const QueryCard: FC<QueryCardProp> = ({
     onQuerySelection?.(query);
   };
 
+  const renderCardTitle = () => (
+    <Space className="font-normal p-y-xs" size={8}>
+      <Text className="text-sm">{queryDate}</Text>
+      {duration && (
+        <>
+          <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
+          <Text className="text-sm" data-testid="query-run-duration">
+            {duration}
+          </Text>
+        </>
+      )}
+    </Space>
+  );
+
+  const renderExpandIcon = () =>
+    isExpanded ? (
+      <Tooltip title={t('label.exit-fit-to-screen')}>
+        <ExitFullScreen height={16} width={16} />
+      </Tooltip>
+    ) : (
+      <Tooltip title={t('label.fit-to-screen')}>
+        <FullScreen height={16} width={16} />
+      </Tooltip>
+    );
+
+  const renderEditActions = () =>
+    isEditMode && (
+      <Space align="end" className="w-full justify-end p-r-md" size={16}>
+        <Button
+          data-testid="cancel-query-btn"
+          key="cancel"
+          size="small"
+          onClick={() => setIsEditMode(false)}>
+          {t('label.cancel')}
+        </Button>
+
+        <Button
+          data-testid="save-query-btn"
+          key="save"
+          loading={sqlQuery.isLoading}
+          size="small"
+          type="primary"
+          onClick={updateSqlQuery}>
+          {t('label.save')}
+        </Button>
+      </Space>
+    );
+
   return (
     <Row gutter={[0, 8]}>
       <Col span={isExpanded && QueryExtras ? 12 : 24}>
@@ -188,35 +240,13 @@ const QueryCard: FC<QueryCardProp> = ({
               onUpdateVote={onUpdateVote}
             />
           }
-          title={
-            <Space className="font-normal p-y-xs" size={8}>
-              <Text className="text-sm">{queryDate}</Text>
-              {duration && (
-                <>
-                  <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
-                  <Text className="text-sm" data-testid="query-run-duration">
-                    {duration}
-                  </Text>
-                </>
-              )}
-            </Space>
-          }
+          title={renderCardTitle()}
           onClick={handleCardClick}>
           <Space className="query-entity-button" size={8}>
             <Button
               className="flex-center bg-white"
               data-testid="query-entity-expand-button"
-              icon={
-                isExpanded ? (
-                  <Tooltip title={t('label.exit-fit-to-screen')}>
-                    <ExitFullScreen height={16} width={16} />
-                  </Tooltip>
-                ) : (
-                  <Tooltip title={t('label.fit-to-screen')}>
-                    <FullScreen height={16} width={16} />
-                  </Tooltip>
-                )
-              }
+              icon={renderExpandIcon()}
               onClick={handleExpandClick}
             />
             <Tooltip title={t('message.copy-to-clipboard')}>
@@ -260,32 +290,7 @@ const QueryCard: FC<QueryCardProp> = ({
                 onChange={(value) => setSelectedTables(value)}
               />
             </Col>
-            <Col span={4}>
-              {isEditMode && (
-                <Space
-                  align="end"
-                  className="w-full justify-end p-r-md"
-                  size={16}>
-                  <Button
-                    data-testid="cancel-query-btn"
-                    key="cancel"
-                    size="small"
-                    onClick={() => setIsEditMode(false)}>
-                    {t('label.cancel')}
-                  </Button>
-
-                  <Button
-                    data-testid="save-query-btn"
-                    key="save"
-                    loading={sqlQuery.isLoading}
-                    size="small"
-                    type="primary"
-                    onClick={updateSqlQuery}>
-                    {t('label.save')}
-                  </Button>
-                </Space>
-              )}
-            </Col>
+            <Col span={4}>{renderEditActions()}</Col>
           </Row>
         </Card>
       </Col>

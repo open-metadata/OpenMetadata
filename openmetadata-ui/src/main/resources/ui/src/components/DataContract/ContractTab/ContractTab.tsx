@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataContractTabMode } from '../../../constants/DataContract.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -26,14 +26,26 @@ import {
   deleteContractById,
   getContractByEntityId,
 } from '../../../rest/contractAPI';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import Loader from '../../common/Loader/Loader';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
-import AddDataContract from '../AddDataContract/AddDataContract';
-import { ContractDetail } from '../ContractDetailTab/ContractDetail';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import './contract-tab.less';
+
+const AddDataContract = withSuspenseFallback(
+  lazy(() => import('../AddDataContract/AddDataContract'))
+);
+
+const ContractDetail = withSuspenseFallback(
+  lazy(() =>
+    import('../ContractDetailTab/ContractDetail').then((m) => ({
+      default: m.ContractDetail,
+    }))
+  )
+);
 
 export const ContractTab = () => {
   const { data: entityData } = useGenericContext();
@@ -50,11 +62,19 @@ export const ContractTab = () => {
     useState<OperationPermission>();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { id, name: entityName } = entityData ?? {};
 
+  // Fetch mechanism (entity-level by id once a contract exists, else a resource-level
+  // Create check) is unchanged — only the raw `.EditAll` read is routed through the
+  // named-flag derivation, matching the KnowledgeCenterFilterPage/SchemaTablesTab
+  // precedent. Ungated: the old raw read never referenced `deleted`.
   const hasEditPermission = contract
-    ? Boolean(contractPermissions?.EditAll)
+    ? Boolean(
+        contractPermissions &&
+          getDerivedPermissionFlags(contractPermissions).canEditAll
+      )
     : Boolean(dataContractResourcePermissions?.Create);
 
   const fetchContractPermissions = async (contractId: string) => {
@@ -111,6 +131,7 @@ export const ContractTab = () => {
     if (!contract?.id) {
       return;
     }
+    setIsDeleting(true);
     try {
       await deleteContractById(contract.id);
       showSuccessToast(
@@ -120,11 +141,12 @@ export const ContractTab = () => {
       );
       fetchContract();
       setTabMode(DataContractTabMode.VIEW);
+      setIsDeleteModalVisible(false);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsDeleting(false);
     }
-
-    setIsDeleteModalVisible(false);
   };
 
   useEffect(() => {
@@ -187,14 +209,14 @@ export const ContractTab = () => {
   ) : (
     <div className="contract-tab-container">
       {content}
-      <DeleteWidgetModal
-        allowSoftDelete={false}
-        entityName={contract?.name ?? ''}
-        entityType={EntityType.DATA_CONTRACT}
-        visible={isDeleteModalVisible}
-        onCancel={() => {
-          setIsDeleteModalVisible(false);
-        }}
+      <DeleteModal
+        entityTitle={contract?.name ?? ''}
+        isDeleting={isDeleting}
+        message={t('message.are-you-sure-you-want-to-delete-this-entity', {
+          entity: t('label.contract'),
+        })}
+        open={isDeleteModalVisible}
+        onCancel={() => setIsDeleteModalVisible(false)}
         onDelete={handleContractDeleteConfirm}
       />
     </div>

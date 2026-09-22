@@ -17,13 +17,16 @@ import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventCon
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.ALERT_OFFSET_KEY;
 import static org.openmetadata.service.events.subscription.AlertUtil.getStartingOffset;
 
+import com.google.common.util.concurrent.Striped;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.locks.Lock;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.SneakyThrows;
@@ -48,10 +51,14 @@ import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.openmetadata.service.audit.AuditLogConsumer;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
+import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory.PoolWorkload;
+import org.openmetadata.service.jdbi3.QuartzConnectionProvider;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
+import org.openmetadata.service.util.ChangeEventJsonUtils;
 import org.openmetadata.service.util.DIContainer;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.Job;
@@ -68,6 +75,7 @@ import org.quartz.TriggerKey;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.spi.JobFactory;
 import org.quartz.spi.TriggerFiredBundle;
+import org.quartz.utils.DBConnectionManager;
 
 @Slf4j
 public class EventSubscriptionScheduler {
@@ -78,6 +86,25 @@ public class EventSubscriptionScheduler {
   @Getter private final Scheduler alertsScheduler;
   private static final String SCHEDULER_NAME = "OMEventSubScheduler";
   private static final int SCHEDULER_THREAD_COUNT = 10;
+
+  // Derived from the scheduler's instance name, which Quartz already requires to be unique per
+  // cluster. DBConnectionManager is a process-wide singleton whose registration is an unguarded
+  // map put, so two schedulers sharing a datasource name silently discard the first pool; keying
+  // off a name that is unique by construction makes that collision unrepresentable.
+  private static final String DATA_SOURCE_NAME = SCHEDULER_NAME + "DS";
+  private static final String POOL_NAME = SCHEDULER_NAME + "-pool";
+
+  // One connection per worker thread that may be doing job-store work, plus the misfire handler
+  // and the cluster manager, which each hold one while they run.
+  private static final int POOL_MAX_SIZE = SCHEDULER_THREAD_COUNT + 2;
+
+  // Bounded by construction rather than a per-id map that would grow with the catalog. Updates to
+  // one subscription serialize; different subscriptions only collide when they share a stripe.
+  private static final Striped<Lock> SUBSCRIPTION_LOCKS = Striped.lock(64);
+
+  // The reconcile re-reads after applying, so a peer committing mid-flight costs one more round.
+  // The bound stops a subscription being rewritten in a tight loop from spinning here forever.
+  private static final int SCHEDULE_SYNC_ATTEMPTS = 3;
 
   private record CustomJobFactory(DIContainer di) implements JobFactory {
 
@@ -111,15 +138,9 @@ public class EventSubscriptionScheduler {
     properties.put("org.quartz.jobStore.useProperties", "true");
     properties.put("org.quartz.jobStore.tablePrefix", "QRTZ_");
     properties.put("org.quartz.jobStore.isClustered", "true");
-    properties.put("org.quartz.jobStore.dataSource", "myDS");
-    properties.put("org.quartz.dataSource.myDS.maxConnections", "5");
-    properties.put("org.quartz.dataSource.myDS.validationQuery", "select 1");
-    properties.put(
-        "org.quartz.dataSource.myDS.driver", config.getDataSourceFactory().getDriverClass());
-    properties.put("org.quartz.dataSource.myDS.URL", config.getDataSourceFactory().getUrl());
-    properties.put("org.quartz.dataSource.myDS.user", config.getDataSourceFactory().getUser());
-    properties.put(
-        "org.quartz.dataSource.myDS.password", config.getDataSourceFactory().getPassword());
+    // No org.quartz.dataSource.* properties: those make Quartz build its own c3p0 pool from a
+    // captured static password. The pool is registered against this name below.
+    properties.put("org.quartz.jobStore.dataSource", DATA_SOURCE_NAME);
     if (ConnectionType.MYSQL.label.equals(config.getDataSourceFactory().getDriverClass())) {
       properties.put(
           "org.quartz.jobStore.driverDelegateClass",
@@ -132,6 +153,15 @@ public class EventSubscriptionScheduler {
 
     StdSchedulerFactory factory = new StdSchedulerFactory();
     factory.initialize(properties);
+    // Must precede getScheduler(): that is where the job store resolves its datasource name.
+    DBConnectionManager.getInstance()
+        .addConnectionProvider(
+            DATA_SOURCE_NAME,
+            new QuartzConnectionProvider(
+                config
+                    .getDataSourceFactory()
+                    .buildSubsystemPool(
+                        POOL_NAME, POOL_MAX_SIZE, null, PoolWorkload.SHORT_STATEMENTS)));
     this.alertsScheduler = factory.getScheduler();
 
     DIContainer di = new DIContainer();
@@ -173,6 +203,11 @@ public class EventSubscriptionScheduler {
     }
   }
 
+  /**
+   * @deprecated the schedule is reconciled from the committed row, so {@code reinstall} no longer
+   *     changes anything. Use {@link #addSubscriptionPublisher(EventSubscription)}.
+   */
+  @Deprecated(forRemoval = true)
   public void addSubscriptionPublisher(EventSubscription eventSubscription, boolean reinstall)
       throws SchedulerException,
           ClassNotFoundException,
@@ -180,48 +215,143 @@ public class EventSubscriptionScheduler {
           InvocationTargetException,
           InstantiationException,
           IllegalAccessException {
-    Class<? extends AbstractEventConsumer> defaultClass = AlertPublisher.class;
+    addSubscriptionPublisher(eventSubscription);
+  }
+
+  public void addSubscriptionPublisher(EventSubscription eventSubscription)
+      throws SchedulerException,
+          ClassNotFoundException,
+          NoSuchMethodException,
+          InvocationTargetException,
+          InstantiationException,
+          IllegalAccessException {
+    // Resolve the configured consumer on the calling thread so a bad className still fails the
+    // request instead of only surfacing when the job first fires.
+    newPublisher(eventSubscription);
+    SubscriptionStatus.Status status =
+        Boolean.FALSE.equals(eventSubscription.getEnabled())
+            ? SubscriptionStatus.Status.DISABLED
+            : SubscriptionStatus.Status.ACTIVE;
+    setDestinationStatuses(eventSubscription, status);
+    syncScheduledState(eventSubscription.getId());
+    LOG.info(
+        "Event Subscription started as {} : status {} for all Destinations",
+        eventSubscription.getName(),
+        status);
+  }
+
+  /**
+   * Bring the Quartz schedule in line with the subscription's committed state.
+   *
+   * <p>The decision cannot be taken from the entity a caller happens to hold. Two requests commit in
+   * one order and reach the scheduler in the other, so a disable that committed first but arrived
+   * second would delete the job a later enable had just installed, leaving the row enabled with
+   * nothing scheduled. Reading the committed row inside a per-subscription lock makes the last
+   * caller through the lock see the final state, so the schedule converges on it whichever order the
+   * requests arrive in.
+   *
+   * <p>A peer node holds its own lock and can still commit between this node's read and its write,
+   * so the row is read again after applying and applied once more when it moved. That settles on the
+   * last committed state no matter which node reached it first.
+   */
+  private void syncScheduledState(UUID subscriptionId)
+      throws SchedulerException,
+          ClassNotFoundException,
+          NoSuchMethodException,
+          InvocationTargetException,
+          InstantiationException,
+          IllegalAccessException {
+    Lock lock = SUBSCRIPTION_LOCKS.get(subscriptionId);
+    lock.lock();
+    try {
+      for (int attempt = 1; attempt <= SCHEDULE_SYNC_ATTEMPTS; attempt++) {
+        EventSubscription committed = readCommitted(subscriptionId);
+        applyScheduledState(subscriptionId, committed);
+        if (isSettled(subscriptionId, committed)) {
+          return;
+        }
+      }
+      LOG.warn(
+          "Event subscription {} kept changing while its schedule was applied; the next update reconciles it",
+          subscriptionId);
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  /** Settled means the row has not moved since the decision was taken and the job store agrees. */
+  private boolean isSettled(UUID subscriptionId, EventSubscription applied)
+      throws SchedulerException {
+    EventSubscription current = readCommitted(subscriptionId);
+    if (!Objects.equals(versionOf(applied), versionOf(current))) {
+      return false;
+    }
+    return alertsScheduler.checkExists(new JobKey(subscriptionId.toString(), ALERT_JOB_GROUP))
+        == shouldBeScheduled(current);
+  }
+
+  private void applyScheduledState(UUID subscriptionId, EventSubscription committed)
+      throws SchedulerException,
+          ClassNotFoundException,
+          NoSuchMethodException,
+          InvocationTargetException,
+          InstantiationException,
+          IllegalAccessException {
+    if (!shouldBeScheduled(committed)) {
+      removeAlertJob(subscriptionId);
+      return;
+    }
+    // The scheduled snapshot is what the status endpoint reads back, so stamp the destinations on
+    // it the way the caller's entity was stamped before it used to be serialised into job data.
+    setDestinationStatuses(committed, SubscriptionStatus.Status.ACTIVE);
+    JobDetail jobDetail = jobBuilder(newPublisher(committed), committed, subscriptionId.toString());
+    // Write the job and its trigger in a single job-store transaction rather than deleting the pair
+    // and re-adding it. Delete-then-add leaves a window in which the alert is not scheduled at all,
+    // and both halves race any other writer holding the same keys -- every peer node reaches this
+    // same clustered job store from initializeEventSubscriptions() as it starts up.
+    alertsScheduler.scheduleJob(jobDetail, Set.of(trigger(committed)), true);
+  }
+
+  private static boolean shouldBeScheduled(EventSubscription subscription) {
+    return subscription != null && !Boolean.FALSE.equals(subscription.getEnabled());
+  }
+
+  private static Double versionOf(EventSubscription subscription) {
+    return subscription == null ? null : subscription.getVersion();
+  }
+
+  /** The committed row, or null once the subscription has been deleted. */
+  private EventSubscription readCommitted(UUID subscriptionId) {
+    EntityRepository<? extends EntityInterface> repository =
+        Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
+    try {
+      return (EventSubscription) repository.get(null, subscriptionId, repository.getFields("*"));
+    } catch (EntityNotFoundException deleted) {
+      return null;
+    }
+  }
+
+  private AbstractEventConsumer newPublisher(EventSubscription eventSubscription)
+      throws ClassNotFoundException,
+          NoSuchMethodException,
+          InvocationTargetException,
+          InstantiationException,
+          IllegalAccessException {
     Class<? extends AbstractEventConsumer> clazz =
         Class.forName(
                 Optional.ofNullable(eventSubscription.getClassName())
-                    .orElse(defaultClass.getCanonicalName()))
+                    .orElse(AlertPublisher.class.getCanonicalName()))
             .asSubclass(AbstractEventConsumer.class);
-    AbstractEventConsumer publisher =
-        clazz.getDeclaredConstructor(DIContainer.class).newInstance(new DIContainer());
-    if (reinstall && isSubscriptionRegistered(eventSubscription)) {
-      deleteEventSubscriptionPublisher(eventSubscription);
-    }
-    if (Boolean.FALSE.equals(eventSubscription.getEnabled())) {
-      eventSubscription
-          .getDestinations()
-          .forEach(
-              sub ->
-                  sub.setStatusDetails(
-                      getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.DISABLED)));
-      LOG.info(
-          "Event Subscription started as {} : status {} for all Destinations",
-          eventSubscription.getName(),
-          SubscriptionStatus.Status.ACTIVE);
-    } else {
-      eventSubscription
-          .getDestinations()
-          .forEach(
-              sub ->
-                  sub.setStatusDetails(
-                      getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.ACTIVE)));
-      JobDetail jobDetail =
-          jobBuilder(
-              publisher,
-              eventSubscription,
-              String.format("%s", eventSubscription.getId().toString()));
-      Trigger trigger = trigger(eventSubscription);
-      alertsScheduler.scheduleJob(jobDetail, trigger);
+    return clazz.getDeclaredConstructor(DIContainer.class).newInstance(new DIContainer());
+  }
 
-      LOG.info(
-          "Event Subscription started as {} : status {} for all Destinations",
-          eventSubscription.getName(),
-          SubscriptionStatus.Status.ACTIVE);
-    }
+  private void setDestinationStatuses(
+      EventSubscription eventSubscription, SubscriptionStatus.Status status) {
+    eventSubscription
+        .getDestinations()
+        .forEach(
+            destination ->
+                destination.setStatusDetails(getSubscriptionStatusAtCurrentTime(status)));
   }
 
   public boolean isSubscriptionRegistered(EventSubscription eventSubscription) {
@@ -261,18 +391,51 @@ public class EventSubscriptionScheduler {
 
   @SneakyThrows
   public void updateEventSubscription(EventSubscription eventSubscription) {
-    deleteEventSubscriptionPublisher(eventSubscription);
+    // Only the enabled path reported destination status before, and that is what the response the
+    // caller is about to return carries; the schedule itself comes from the committed row.
     if (Boolean.TRUE.equals(eventSubscription.getEnabled())) {
-      addSubscriptionPublisher(eventSubscription, true);
+      setDestinationStatuses(eventSubscription, SubscriptionStatus.Status.ACTIVE);
     }
+    syncScheduledState(eventSubscription.getId());
   }
 
+  /**
+   * Remove the scheduled alert. Unlike an update this does not reconcile from the committed row:
+   * every caller runs it before the row is deleted, so the row still reads enabled and reconciling
+   * would reinstall the job being torn down. The per-subscription lock is still taken so a delete
+   * cannot interleave with an update's read-modify-write.
+   */
   public void deleteEventSubscriptionPublisher(EventSubscription deletedEntity)
       throws SchedulerException {
-    alertsScheduler.deleteJob(new JobKey(deletedEntity.getId().toString(), ALERT_JOB_GROUP));
-    alertsScheduler.unscheduleJob(
-        new TriggerKey(deletedEntity.getId().toString(), ALERT_TRIGGER_GROUP));
+    Lock lock = SUBSCRIPTION_LOCKS.get(deletedEntity.getId());
+    lock.lock();
+    try {
+      removeAlertJob(deletedEntity.getId());
+    } finally {
+      lock.unlock();
+    }
     LOG.info("Alert publisher deleted for {}", deletedEntity.getName());
+  }
+
+  /**
+   * {@link Scheduler#deleteJob} lists a job's triggers and then unschedules them in separate
+   * transactions, so it fails when a trigger it just listed is already gone. Dropping the trigger
+   * first leaves it nothing to unschedule. If it fails even so, a writer on another node has
+   * installed a pair under this key since, and deleting that would undo work newer than ours -- so
+   * stop rather than retry and let the reconcile in {@link #syncScheduledState} settle the outcome.
+   */
+  private void removeAlertJob(UUID subscriptionId) throws SchedulerException {
+    String id = subscriptionId.toString();
+    alertsScheduler.unscheduleJob(new TriggerKey(id, ALERT_TRIGGER_GROUP));
+    JobKey jobKey = new JobKey(id, ALERT_JOB_GROUP);
+    try {
+      alertsScheduler.deleteJob(jobKey);
+    } catch (SchedulerException lostRace) {
+      LOG.debug(
+          "Alert job {} changed while being deleted; leaving it to the reconcile",
+          jobKey,
+          lostRace);
+    }
   }
 
   public void deleteSuccessfulAndFailedEventsRecordByAlert(UUID id) {
@@ -366,7 +529,14 @@ public class EventSubscriptionScheduler {
   public long getRelevantUnprocessedEvents(UUID subscriptionId) {
     // Fetch subscription ONCE before the loop to avoid N+1 query problem
     // Previously, getEventSubscription was called for each event in the stream
-    FilteringRules filteringRules = getEventSubscription(subscriptionId).getFilteringRules();
+    EventSubscription subscription = getEventSubscription(subscriptionId);
+    FilteringRules filteringRules = subscription.getFilteringRules();
+    Long startingTimestamp =
+        AlertUtil.alertingWatermark(
+            subscription,
+            getEventSubscriptionOffset(subscriptionId)
+                .map(EventSubscriptionOffset::getStartingTimestamp)
+                .orElse(null));
 
     long offset =
         getEventSubscriptionOffset(subscriptionId)
@@ -376,8 +546,12 @@ public class EventSubscriptionScheduler {
     return Entity.getCollectionDAO().changeEventDAO().listUnprocessedEvents(offset).parallelStream()
         .map(
             eventJson -> {
-              ChangeEvent event = JsonUtils.readValue(eventJson, ChangeEvent.class);
-              return AlertUtil.checkIfChangeEventIsAllowed(event, filteringRules) ? event : null;
+              ChangeEvent event = ChangeEventJsonUtils.readOrNull(eventJson, ChangeEvent.class);
+              return event != null
+                      && AlertUtil.isChangeEventAllowed(
+                          event, filteringRules, startingTimestamp, AlertUtil.LOG_EVALUATION_ERROR)
+                  ? event
+                  : null;
             })
         .filter(Objects::nonNull)
         .count();
@@ -458,7 +632,14 @@ public class EventSubscriptionScheduler {
   public List<ChangeEvent> getRelevantUnprocessedEvents(
       UUID subscriptionId, int limit, int paginationOffset) {
     // Fetch subscription ONCE before the loop to avoid N+1 query problem
-    FilteringRules filteringRules = getEventSubscription(subscriptionId).getFilteringRules();
+    EventSubscription subscription = getEventSubscription(subscriptionId);
+    FilteringRules filteringRules = subscription.getFilteringRules();
+    Long startingTimestamp =
+        AlertUtil.alertingWatermark(
+            subscription,
+            getEventSubscriptionOffset(subscriptionId)
+                .map(EventSubscriptionOffset::getStartingTimestamp)
+                .orElse(null));
 
     long offset =
         getEventSubscriptionOffset(subscriptionId)
@@ -471,8 +652,12 @@ public class EventSubscriptionScheduler {
         .parallelStream()
         .map(
             eventJson -> {
-              ChangeEvent event = JsonUtils.readValue(eventJson, ChangeEvent.class);
-              return AlertUtil.checkIfChangeEventIsAllowed(event, filteringRules) ? event : null;
+              ChangeEvent event = ChangeEventJsonUtils.readOrNull(eventJson, ChangeEvent.class);
+              return event != null
+                      && AlertUtil.isChangeEventAllowed(
+                          event, filteringRules, startingTimestamp, AlertUtil.LOG_EVALUATION_ERROR)
+                  ? event
+                  : null;
             })
         .filter(Objects::nonNull)
         .toList();
@@ -489,7 +674,8 @@ public class EventSubscriptionScheduler {
         .changeEventDAO()
         .listUnprocessedEvents(offset, limit, paginationOffset)
         .parallelStream()
-        .map(eventJson -> JsonUtils.readValue(eventJson, ChangeEvent.class))
+        .map(eventJson -> ChangeEventJsonUtils.readOrNull(eventJson, ChangeEvent.class))
+        .filter(Objects::nonNull)
         .collect(Collectors.toList());
   }
 
@@ -557,7 +743,8 @@ public class EventSubscriptionScheduler {
             .getSuccessfulChangeEventBySubscriptionId(id.toString(), limit, paginationOffset);
 
     return successfullySentChangeEvents.stream()
-        .map(e -> JsonUtils.readValue(e, ChangeEvent.class))
+        .map(e -> ChangeEventJsonUtils.readOrNull(e, ChangeEvent.class))
+        .filter(Objects::nonNull)
         .collect(Collectors.toList());
   }
 
@@ -666,8 +853,8 @@ public class EventSubscriptionScheduler {
     }
   }
 
-  private static final String AUDIT_LOG_JOB_GROUP = "OMAuditLogJobGroup";
-  private static final String AUDIT_LOG_JOB_ID = "AuditLogConsumerJob";
+  static final String AUDIT_LOG_JOB_GROUP = "OMAuditLogJobGroup";
+  static final String AUDIT_LOG_JOB_ID = "AuditLogConsumerJob";
   private static final int AUDIT_LOG_POLL_INTERVAL_SECONDS = 5;
 
   /**
@@ -676,29 +863,35 @@ public class EventSubscriptionScheduler {
    * in multi-server setups.
    */
   public void scheduleAuditLogConsumer() throws SchedulerException {
+    ensureAuditLogConsumerScheduled(alertsScheduler);
+  }
+
+  /**
+   * (Re)arms the audit log consumer trigger on every startup. With the clustered {@code JobStoreTX}
+   * the job and trigger persist across restarts, so a plain existence check sees the job and skips
+   * rescheduling forever. That strands the consumer whenever the persisted trigger stops firing —
+   * not only in ERROR/BLOCKED/PAUSED states, but also while still reported as WAITING/NORMAL with a
+   * frozen past next-fire-time (an abandoned trigger after an unclean shutdown). We therefore always
+   * replace it with a fresh trigger. The consumer offset lives in {@code change_event_consumers},
+   * not in Quartz, so re-arming loses no progress; {@code replace=true} swaps atomically so
+   * concurrent cluster nodes don't race.
+   */
+  static void ensureAuditLogConsumerScheduled(Scheduler scheduler) throws SchedulerException {
     JobKey jobKey = new JobKey(AUDIT_LOG_JOB_ID, AUDIT_LOG_JOB_GROUP);
-
-    // Check if already scheduled
-    if (alertsScheduler.checkExists(jobKey)) {
-      LOG.info("Audit log consumer job already scheduled");
-      return;
-    }
-
     JobDetail jobDetail =
         JobBuilder.newJob(AuditLogConsumer.class).withIdentity(jobKey).storeDurably().build();
-
-    Trigger trigger =
-        TriggerBuilder.newTrigger()
-            .withIdentity(AUDIT_LOG_JOB_ID, AUDIT_LOG_JOB_GROUP)
-            .withSchedule(
-                SimpleScheduleBuilder.repeatSecondlyForever(AUDIT_LOG_POLL_INTERVAL_SECONDS))
-            .startNow()
-            .build();
-
-    alertsScheduler.scheduleJob(jobDetail, trigger);
+    scheduler.scheduleJob(jobDetail, Set.of(buildAuditLogTrigger()), true);
     LOG.info(
-        "Audit log consumer scheduled with poll interval: {} seconds",
+        "Audit log consumer (re)scheduled with poll interval: {} seconds",
         AUDIT_LOG_POLL_INTERVAL_SECONDS);
+  }
+
+  private static Trigger buildAuditLogTrigger() {
+    return TriggerBuilder.newTrigger()
+        .withIdentity(AUDIT_LOG_JOB_ID, AUDIT_LOG_JOB_GROUP)
+        .withSchedule(SimpleScheduleBuilder.repeatSecondlyForever(AUDIT_LOG_POLL_INTERVAL_SECONDS))
+        .startNow()
+        .build();
   }
 
   public static void shutDown() throws SchedulerException {

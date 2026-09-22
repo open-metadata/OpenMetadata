@@ -16,6 +16,7 @@ ConfigSource Reader Factory: Helps us choose the reader from
 - S3
 - GCS
 """
+
 from typing import Any
 
 from metadata.generated.schema.entity.services.connections.dashboard.powerbi.azureConfig import (
@@ -81,6 +82,4 @@ def get_reader(config_source: ConfigSource, client: Any) -> Reader:
     if config_source_type_name in CONFIG_SOURCE_READER:
         return CONFIG_SOURCE_READER[config_source_type_name](client)
 
-    raise NotImplementedError(
-        f"Reader for [{config_source_type_name}] is not implemented."
-    )
+    raise NotImplementedError(f"Reader for [{config_source_type_name}] is not implemented.")

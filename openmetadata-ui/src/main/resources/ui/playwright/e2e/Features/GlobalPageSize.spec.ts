@@ -28,21 +28,64 @@ test.describe('Table & Data Model columns table pagination', () => {
     await waitForAllLoadersToDisappear(page);
 
     // Change page size to 25
-    await page.getByTestId('page-size-selection-dropdown').click();
-    await page.getByRole('menuitem', { name: '25 / Page' }).click();
+    const tablePageSizeDropdown = page.getByTestId(
+      'page-size-selection-dropdown'
+    );
+    await tablePageSizeDropdown.scrollIntoViewIfNeeded();
+    await expect(tablePageSizeDropdown).toBeVisible();
+    const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
+    await expect(async () => {
+      await tablePageSizeDropdown.hover();
+      if (!(await menuItem.isVisible())) {
+        await tablePageSizeDropdown.click();
+      }
+      await expect(menuItem).toBeVisible({ timeout: 2_000 });
+      await menuItem.click();
+      await expect(tablePageSizeDropdown).toHaveText('25 / Page');
+    }).toPass({
+      timeout: 30_000,
+      intervals: [500, 1_000, 2_000],
+    });
 
     await waitForAllLoadersToDisappear(page);
 
-    // Go to Explore Page
+    // Go to Explore Page — its first search runs at the persisted page size,
+    // so wait for that size=25 response to settle before reading the value
+    // back off the dropdown, otherwise the assertion can race the search and
+    // read the pre-hydration default.
+    const exploreSearchAt25 = page.waitForResponse(
+      (res) =>
+        res.url().includes('/search/query') &&
+        new URL(res.url()).searchParams.get('size') === '25'
+    );
     await sidebarClick(page, SidebarItem.EXPLORE);
+    await exploreSearchAt25;
 
     await waitForAllLoadersToDisappear(page);
-
-    await expect(page.getByText('25 / page')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Records' })).toHaveText(
+      '25'
+    );
 
     // Change page size to 50
-    await page.locator('.ant-pagination-options-size-changer').click();
-    await page.getByTitle('50 / Page').click();
+    const menuItem1 = page.getByTestId('rows-per-page-option-50');
+    const pageSizeRecordBtn = page.getByRole('button', { name: 'Records' });
+    await expect(async () => {
+      if (!(await menuItem1.isVisible())) {
+        await pageSizeRecordBtn.click({ timeout: 2_000 });
+      }
+      await expect(menuItem1).toBeVisible({ timeout: 2_000 });
+      // The summary panel can resize the page and dismiss the popover. Let the
+      // outer retry reopen it if the option detaches during actionability checks.
+      await menuItem1.click({ timeout: 2_000 });
+      await expect(page.getByRole('button', { name: 'Records' })).toHaveText(
+        '50'
+      );
+    }).toPass({
+      timeout: 30_000,
+      intervals: [500, 1_000, 2_000],
+    });
+
+    await waitForAllLoadersToDisappear(page);
 
     // Go to Users Page
     await settingClick(page, GlobalSettingOptions.USERS);

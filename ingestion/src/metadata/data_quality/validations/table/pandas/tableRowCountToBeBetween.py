@@ -13,8 +13,6 @@
 Validator for table row count to be between test case
 """
 
-from typing import Optional
-
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
@@ -24,11 +22,9 @@ from metadata.data_quality.validations.table.base.tableRowCountToBeBetween impor
 from metadata.profiler.metrics.registry import Metrics
 
 
-class TableRowCountToBeBetweenValidator(
-    BaseTableRowCountToBeBetweenValidator, PandasValidatorMixin
-):
+class TableRowCountToBeBetweenValidator(BaseTableRowCountToBeBetweenValidator, PandasValidatorMixin):
     """Validator for table row count to be between test case"""
 
-    def _run_results(self, metric: Metrics) -> Optional[int]:
+    def _run_results(self, metric: Metrics) -> int | None:
         """compute result of the test case"""
         return self.run_dataframe_results(self.runner, metric)

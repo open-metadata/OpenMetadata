@@ -11,7 +11,7 @@
       "name": "QualityBotBotRule-Allow",
       "description" : "Allow updating sample data, profile data, and tests for all the resources.",
       "resources" : ["All"],
-      "operations": ["EditAll", "ViewAll"],
+      "operations": ["EditAll", "ViewAll", "Trigger"],
       "effect": "allow"
     },
     {

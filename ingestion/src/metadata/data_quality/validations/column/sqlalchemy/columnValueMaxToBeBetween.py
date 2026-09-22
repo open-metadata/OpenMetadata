@@ -12,8 +12,6 @@
 Validator for column value max to be between test case
 """
 
-from typing import List, Optional
-
 from sqlalchemy import Column
 
 from metadata.data_quality.validations.base_test_handler import (
@@ -32,12 +30,10 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
-class ColumnValueMaxToBeBetweenValidator(
-    BaseColumnValueMaxToBeBetweenValidator, SQAValidatorMixin
-):
+class ColumnValueMaxToBeBetweenValidator(BaseColumnValueMaxToBeBetweenValidator, SQAValidatorMixin):
     """Validator for column value max to be between test case"""
 
-    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: Column) -> int | None:
         """compute result of the test case
 
         Args:
@@ -59,7 +55,7 @@ class ColumnValueMaxToBeBetweenValidator(
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> list[DimensionResult]:
         """Execute dimensional validation for max with proper aggregation
 
         Uses the statistical aggregation helper to:
@@ -86,17 +82,11 @@ class ColumnValueMaxToBeBetweenValidator(
                 Metrics.max.name: max_expr,
             }
 
-            failed_count_builder = (
-                lambda cte, row_count_expr: self._get_validation_checker(
-                    test_params
-                ).build_agg_level_violation_sqa(
-                    [getattr(cte.c, Metrics.max.name)], row_count_expr
-                )
-            )
+            failed_count_builder = lambda cte, row_count_expr: self._get_validation_checker(  # noqa: E731
+                test_params
+            ).build_agg_level_violation_sqa([getattr(cte.c, Metrics.max.name)], row_count_expr)
 
-            normalized_dimension = self._get_normalized_dimension_expression(
-                dimension_col
-            )
+            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
             result_rows = self._run_dimensional_validation_query(
                 source=self.runner.dataset,
@@ -106,9 +96,7 @@ class ColumnValueMaxToBeBetweenValidator(
                 top_n=top_n,
             )
 
-            return self._process_dimension_rows(
-                result_rows, dimension_col.name, metrics_to_compute, test_params
-            )
+            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

@@ -23,8 +23,8 @@ import {
   SearchResponse,
 } from '../interface/search.interface';
 import { omitDeep } from '../utils/APIUtils';
-import { getQueryWithSlash } from '../utils/StringsUtils';
-import APIClient from './index';
+import { getQueryWithSlash } from '../utils/StringUtils';
+import APIClient from './axiosClient';
 
 const getSearchIndexParam: (
   si: SearchIndex | SearchIndex[] | undefined
@@ -96,25 +96,28 @@ export const formatSearchQueryResponse = <
     hits: {
       ..._data.hits,
       hits: isArray(_data.hits.hits)
-        ? _data.hits.hits.map((hit) =>
-            '_source' in hit
-              ? 'entityType' in hit._source
-                ? {
-                    ...hit,
-                    _source: {
-                      ...(hit._source as SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-                        ? SI[number]
-                        : SI]),
-                      type: (
-                        hit._source as SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-                          ? SI[number]
-                          : SI]
-                      ).entityType,
-                    },
-                  }
-                : hit
-              : hit
-          )
+        ? _data.hits.hits.map((hit) => {
+            if (!('_source' in hit)) {
+              return hit;
+            }
+            if (!('entityType' in hit._source)) {
+              return hit;
+            }
+
+            return {
+              ...hit,
+              _source: {
+                ...(hit._source as SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
+                  ? SI[number]
+                  : SI]),
+                type: (
+                  hit._source as SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
+                    ? SI[number]
+                    : SI]
+                ).entityType,
+              },
+            };
+          })
         : [],
     },
   };
@@ -171,18 +174,15 @@ export const rawSearchQuery = <
     postFilter,
     fetchSource,
     filters,
+    explain,
   } = req;
 
   const queryWithSlash = getQueryWithSlash(query || '');
   const includeDeletedParam =
     'includeDeleted' in req ? req.includeDeleted : false;
 
-  const apiQuery =
-    query && query !== '**'
-      ? filters
-        ? `${queryWithSlash} AND `
-        : queryWithSlash
-      : '';
+  const filteredQuery = filters ? `${queryWithSlash} AND ` : queryWithSlash;
+  const apiQuery = query && query !== '**' ? filteredQuery : '';
 
   const apiUrl = `/search/query?q=${apiQuery}${filters ?? ''}`;
 
@@ -202,6 +202,7 @@ export const rawSearchQuery = <
       sort_field: sortField,
       sort_order: sortOrder,
       track_total_hits: trackTotalHits,
+      explain,
       fetch_source: fetchSource,
       include_source_fields: req.fetchSource ? req.includeFields : undefined,
       exclude_source_fields: req.excludeSourceFields,
@@ -372,9 +373,45 @@ export const getSearchStats = async (): Promise<SearchStatsResponse> => {
   return response.data;
 };
 
+// Entity types that have a search index in this deployment, sorted. Server-driven so the
+// entity picker also lists distribution-specific (e.g. Collate-only) entity types.
+export const getSearchEntityTypes = async (): Promise<string[]> => {
+  const response: AxiosResponse<string[]> = await APIClient.get(
+    '/search/entityTypes'
+  );
+
+  return response.data;
+};
+
 export const cleanOrphanIndexes = async (): Promise<OrphanCleanupResponse> => {
   const response: AxiosResponse<OrphanCleanupResponse> = await APIClient.delete(
     '/search/stats/orphan'
+  );
+
+  return response.data;
+};
+
+export interface SearchExportAsyncResponse {
+  jobId: string;
+  message: string;
+}
+
+// Queues the export as a background job; the CSV is downloaded from
+// /csvAsyncJobs/{jobId}/result via the Background jobs tray when it completes.
+export const exportSearchResultsAsync = async (params: {
+  q?: string;
+  index?: string;
+  deleted?: boolean;
+  query_filter?: string;
+  post_filter?: string;
+  sort_field?: string;
+  sort_order?: string;
+  size?: number;
+  from?: number;
+}): Promise<SearchExportAsyncResponse> => {
+  const response = await APIClient.get<SearchExportAsyncResponse>(
+    '/search/export/async',
+    { params }
   );
 
   return response.data;

@@ -11,7 +11,6 @@
 """
 Mixin class for sending progress updates and operation metrics to OpenMetadata server.
 """
-from typing import Optional
 
 from metadata.generated.schema.entity.services.ingestionPipelines.operationMetrics import (
     OperationMetricsBatch,
@@ -23,6 +22,16 @@ from metadata.ingestion.ometa.client import REST
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
+
+RESPONSE_BODY_LOG_LIMIT = 500
+
+
+def error_detail(exc: Exception) -> str:
+    """Truncated server response body for a failed request, empty when unavailable."""
+    body = getattr(getattr(exc, "response", None), "text", None)
+    if not body:
+        return ""
+    return f" - response: {body.strip()[:RESPONSE_BODY_LOG_LIMIT]}"
 
 
 class OMetaProgressMixin:
@@ -36,9 +45,7 @@ class OMetaProgressMixin:
 
     client: REST
 
-    def send_progress_update(
-        self, pipeline_fqn: str, run_id: str, update: ProgressUpdate
-    ) -> None:
+    def send_progress_update(self, pipeline_fqn: str, run_id: str, update: ProgressUpdate) -> None:
         """
         Send a progress update to the OpenMetadata server.
 
@@ -51,14 +58,12 @@ class OMetaProgressMixin:
             encoded_fqn = pipeline_fqn.replace("/", "%2F")
             self.client.put(
                 f"/services/ingestionPipelines/progress/{encoded_fqn}/{run_id}",
-                update.model_dump(mode="json", exclude_none=True),
+                update.model_dump_json(exclude_none=True),
             )
         except Exception as exc:
-            logger.debug(f"Failed to send progress update: {exc}")
+            logger.debug("Failed to send progress update: %s%s", exc, error_detail(exc))
 
-    def send_operation_metrics_batch(
-        self, pipeline_fqn: str, run_id: str, batch: OperationMetricsBatch
-    ) -> None:
+    def send_operation_metrics_batch(self, pipeline_fqn: str, run_id: str, batch: OperationMetricsBatch) -> None:
         """
         Send a batch of operation metrics to the OpenMetadata server.
 
@@ -71,14 +76,12 @@ class OMetaProgressMixin:
             encoded_fqn = pipeline_fqn.replace("/", "%2F")
             self.client.post(
                 f"/services/ingestionPipelines/metrics/{encoded_fqn}/{run_id}",
-                batch.model_dump(mode="json", exclude_none=True),
+                batch.model_dump_json(exclude_none=True),
             )
         except Exception as exc:
-            logger.debug(f"Failed to send operation metrics batch: {exc}")
+            logger.debug("Failed to send operation metrics batch: %s%s", exc, error_detail(exc))
 
-    def get_progress_state(
-        self, pipeline_fqn: str, run_id: str
-    ) -> Optional[ProgressUpdate]:
+    def get_progress_state(self, pipeline_fqn: str, run_id: str) -> ProgressUpdate | None:
         """
         Get the current progress state for a pipeline run.
 
@@ -97,7 +100,7 @@ class OMetaProgressMixin:
             )
             if response:
                 return ProgressUpdate.model_validate(response)
-            return None
+            return None  # noqa: TRY300
         except Exception as exc:
-            logger.debug(f"Failed to get progress state: {exc}")
+            logger.debug("Failed to get progress state: %s%s", exc, error_detail(exc))
             return None

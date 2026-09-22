@@ -86,35 +86,51 @@ jest.mock('../../../assets/svg/book.svg', () => ({
   ReactComponent: () => <div data-testid="book-icon">Book</div>,
 }));
 
-// Mock GlossaryTermSelectableListV1
-jest.mock(
-  '../GlossaryTermSelectableList/GlossaryTermSelectableList.component',
-  () => ({
-    GlossaryTermSelectableList: jest
-      .fn()
-      .mockImplementation(
-        ({
-          onCancel,
-          onUpdate,
-          selectedTerms,
-          children,
-        }: {
-          onCancel?: () => void;
-          onUpdate?: (terms: TagLabel[]) => void;
-          selectedTerms: TagLabel[];
-          children: React.ReactNode;
-        }) => {
-          const defaultValue = selectedTerms.map((t) => t.tagFQN).join(',');
-
-          return (
-            <div data-default={defaultValue} data-testid="tag-select-form">
-              <button data-testid="tsf-cancel" onClick={() => onCancel?.()}>
+jest.mock('../GlossaryTermPicker/GlossaryTermPicker', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(
+      ({
+        isOpen,
+        value = [],
+        onChange,
+        onOpenChange,
+        renderTrigger,
+      }: {
+        isOpen?: boolean;
+        value?: TagLabel[];
+        onChange?: (terms: TagLabel[]) => void;
+        onOpenChange?: (open: boolean) => void;
+        renderTrigger?: (props: {
+          isOpen: boolean;
+          toggle: () => void;
+          open: () => void;
+          close: () => void;
+          selectedCount: number;
+        }) => React.ReactNode;
+      }) => (
+        <>
+          {renderTrigger?.({
+            isOpen: Boolean(isOpen),
+            toggle: () => onOpenChange?.(!isOpen),
+            open: () => onOpenChange?.(true),
+            close: () => onOpenChange?.(false),
+            selectedCount: value.length,
+          })}
+          {isOpen && (
+            <div
+              data-default={value.map((tag) => tag.tagFQN).join(',')}
+              data-testid="tag-select-form">
+              <button
+                data-testid="tsf-cancel"
+                onClick={() => onOpenChange?.(false)}>
                 Cancel
               </button>
               <button
                 data-testid="tsf-submit-strings"
                 onClick={() =>
-                  onUpdate?.([
+                  onChange?.([
                     {
                       tagFQN: 'g.term.1',
                       name: 'term.1',
@@ -136,7 +152,7 @@ jest.mock(
               <button
                 data-testid="tsf-submit-objects"
                 onClick={() =>
-                  onUpdate?.([
+                  onChange?.([
                     {
                       tagFQN: 'g.term.obj',
                       name: 'term',
@@ -151,20 +167,19 @@ jest.mock(
                 }>
                 SubmitObjects
               </button>
-              {children}
             </div>
-          );
-        }
-      ),
-  })
-);
+          )}
+        </>
+      )
+    ),
+}));
 
 // Utils mocks
 jest.mock('../../../utils/TagsUtils', () => ({
   fetchGlossaryList: jest.fn(),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation(
@@ -217,7 +232,7 @@ jest.mock('../../../hooks/useEntityRules', () => ({
 }));
 
 jest.requireMock('../../../utils/ToastUtils');
-const { getEntityName } = jest.requireMock('../../../utils/EntityUtils');
+const { getEntityName } = jest.requireMock('../../../utils/EntityNameUtils');
 
 const baseGlossaryTags = [
   {
@@ -354,7 +369,7 @@ describe('GlossaryTermsSection', () => {
         container.querySelector('.glossary-terms-list')
       ).toBeInTheDocument();
       expect(getEntityName).toHaveBeenCalled();
-      expect(screen.getAllByTestId('book-icon').length).toBeGreaterThan(0);
+      expect(screen.getAllByTestId('glossary-icon').length).toBeGreaterThan(0);
 
       expect(screen.getByText('Customer')).toBeInTheDocument();
       expect(screen.getByText('Order')).toBeInTheDocument();

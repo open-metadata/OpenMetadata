@@ -11,66 +11,65 @@
 """
 Spline connector API response models
 """
-from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
 
 class ExecutionEvent(BaseModel):
-    executionEventId: Optional[str] = None
-    executionPlanId: Optional[str] = None
-    applicationName: Optional[str] = None
+    executionEventId: str | None = None  # noqa: N815
+    executionPlanId: str | None = None  # noqa: N815
+    applicationName: str | None = None  # noqa: N815
 
 
 class ExecutionEvents(BaseModel):
-    items: Optional[List[ExecutionEvent]] = []
-    totalCount: Optional[int] = 0
-    pageNum: Optional[int] = 0
-    pageSize: Optional[int] = 0
+    items: list[ExecutionEvent] | None = []
+    totalCount: int | None = 0  # noqa: N815
+    pageNum: int | None = 0  # noqa: N815
+    pageSize: int | None = 0  # noqa: N815
 
 
 class Inputs(BaseModel):
-    source: Optional[str] = None
+    source: str | None = None
 
 
 class Output(BaseModel):
-    source: Optional[str] = None
+    source: str | None = None
 
 
 class AttributesNames(BaseModel):
-    id: Optional[str] = None
+    id: str | None = None
 
 
 class Extra(BaseModel):
-    attributes: Optional[List[AttributesNames]] = []
+    attributes: list[AttributesNames] | None = []
 
 
 class ExecutionPlan(BaseModel):
-    id: Optional[str] = Field(None, alias="_id")
-    name: Optional[str] = None
-    inputs: Optional[List[Inputs]] = []
-    output: Optional[Output] = None
-    extra: Optional[Extra] = None
+    id: str | None = Field(None, alias="_id")
+    name: str | None = None
+    inputs: list[Inputs] | None = []
+    output: Output | None = None
+    extra: Extra | None = None
 
 
 class ExecutionDetail(BaseModel):
-    executionPlan: Optional[ExecutionPlan] = None
+    executionPlan: ExecutionPlan | None = None  # noqa: N815
 
 
 class ColNodes(BaseModel):
-    id: Optional[str] = Field(None, alias="_id")
-    name: Optional[str] = None
+    id: str | None = Field(None, alias="_id")
+    name: str | None = None
 
 
 class ColLineage(BaseModel):
-    source: Optional[str] = None
-    target: Optional[str] = None
+    source: str | None = None
+    target: str | None = None
 
 
 class Lineage(BaseModel):
-    edges: Optional[List[ColLineage]] = []
-    nodes: Optional[List[ColNodes]] = []
+    edges: list[ColLineage] | None = []
+    nodes: list[ColNodes] | None = []
 
 
 class AttributeDetail(BaseModel):
-    lineage: Optional[Lineage] = None
+    lineage: Lineage | None = None

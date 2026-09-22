@@ -15,7 +15,6 @@ Exit handler safety net for Kubernetes ingestion pipeline jobs
 import logging
 import os
 from datetime import datetime
-from typing import Optional
 
 import yaml
 from kubernetes import client, config
@@ -52,8 +51,8 @@ class FailureDiagnostics(BaseModel):
         has_diagnostics: True if any diagnostic information was successfully gathered
     """
 
-    pod_logs: Optional[str] = None
-    pod_description: Optional[str] = None
+    pod_logs: str | None = None
+    pod_description: str | None = None
 
     @property
     def has_diagnostics(self) -> bool:
@@ -84,7 +83,7 @@ TERMINAL_PIPELINE_STATES = {
 logger = ometa_logger()
 
 
-def get_kubernetes_client() -> Optional[client.CoreV1Api]:
+def get_kubernetes_client() -> client.CoreV1Api | None:
     """
     Initialize and return Kubernetes client.
     First tries in-cluster config, then falls back to local kubeconfig.
@@ -104,10 +103,8 @@ def get_kubernetes_client() -> Optional[client.CoreV1Api]:
                 f"Failed to initialize Kubernetes client - in-cluster: {in_cluster_error}, kubeconfig: {kubeconfig_error}"
             )
             return None
-    except Exception as unexpected_error:
-        logger.error(
-            f"Unexpected error initializing Kubernetes client: {unexpected_error}"
-        )
+    except Exception as unexpected_error:  # noqa: B025
+        logger.error(f"Unexpected error initializing Kubernetes client: {unexpected_error}")
         return None
 
 
@@ -120,10 +117,10 @@ POD_TYPE_MAIN = "main"
 
 def find_main_pod(
     k8s_client: client.CoreV1Api,
-    job_name: Optional[str],
+    job_name: str | None,
     namespace: str,
-    pipeline_run_id: Optional[str] = None,
-) -> Optional[V1Pod]:
+    pipeline_run_id: str | None = None,
+) -> V1Pod | None:
     """
     Find the main ingestion pod for the given Kubernetes job.
     This function is fault-tolerant and will not raise exceptions.
@@ -145,7 +142,6 @@ def find_main_pod(
                 [
                     f"{LABEL_JOB_NAME}={job_name}",
                     f"{LABEL_OMJOB_NAME}={job_name},{LABEL_POD_TYPE}={POD_TYPE_MAIN}",
-                    f"{LABEL_OMJOB_NAME}={job_name}",
                 ]
             )
 
@@ -153,19 +149,14 @@ def find_main_pod(
             label_selectors.extend(
                 [
                     f"{LABEL_APP_RUN_ID}={pipeline_run_id},{LABEL_POD_TYPE}={POD_TYPE_MAIN}",
-                    f"{LABEL_APP_RUN_ID}={pipeline_run_id}",
                 ]
             )
 
         for label_selector in label_selectors:
             try:
-                pods = k8s_client.list_namespaced_pod(
-                    namespace=namespace, label_selector=label_selector
-                )
+                pods = k8s_client.list_namespaced_pod(namespace=namespace, label_selector=label_selector)
             except Exception as list_error:
-                logger.warning(
-                    f"Failed to list pods with selector '{label_selector}': {list_error}"
-                )
+                logger.warning(f"Failed to list pods with selector '{label_selector}': {list_error}")
                 continue
 
             if not pods or not pods.items:
@@ -174,25 +165,30 @@ def find_main_pod(
             for pod in pods.items:
                 try:
                     if pod.metadata and pod.metadata.name:
-                        logger.info(
-                            f"Found main pod: {pod.metadata.name} (selector: {label_selector})"
-                        )
+                        labels = pod.metadata.labels or {}
+                        pod_type = labels.get(LABEL_POD_TYPE)
+                        if pod_type != POD_TYPE_MAIN:
+                            logger.info(
+                                "Skipping non-main pod %s (pod-type=%s)",
+                                pod.metadata.name,
+                                pod_type,
+                            )
+                            continue
+                        logger.info(f"Found main pod: {pod.metadata.name} (selector: {label_selector})")
                         return pod
                 except Exception as pod_error:
                     logger.warning(f"Error checking pod metadata: {pod_error}")
                     continue
 
         logger.warning(f"No main pod found for job {job_name}")
-        return None
+        return None  # noqa: TRY300
 
     except Exception as e:
         logger.error(f"Failed to find main pod for job {job_name}: {e}")
         return None
 
 
-def get_main_pod_logs(
-    k8s_client: client.CoreV1Api, main_pod: V1Pod, namespace: str
-) -> Optional[str]:
+def get_main_pod_logs(k8s_client: client.CoreV1Api, main_pod: V1Pod, namespace: str) -> str | None:
     """
     Fetch logs from the main ingestion pod.
     This function is fault-tolerant and will not raise exceptions.
@@ -213,14 +209,12 @@ def get_main_pod_logs(
         pod_name = main_pod.metadata.name
         logger.info(f"Fetching logs from pod '{pod_name}'")
 
-        logs = k8s_client.read_namespaced_pod_log(
-            name=pod_name, namespace=namespace, container="main", tail_lines=500
-        )
+        logs = k8s_client.read_namespaced_pod_log(name=pod_name, namespace=namespace, container="main", tail_lines=500)
 
         if logs:
             logger.info(f"Successfully fetched {len(logs.splitlines())} lines of logs")
             return logs
-        else:
+        else:  # noqa: RET505
             logger.info("No logs found for pod")
             return None
 
@@ -231,9 +225,7 @@ def get_main_pod_logs(
         return None
 
 
-def get_main_pod_description(
-    k8s_client: client.CoreV1Api, main_pod: V1Pod, namespace: str
-) -> Optional[str]:
+def get_main_pod_description(k8s_client: client.CoreV1Api, main_pod: V1Pod, namespace: str) -> str | None:  # noqa: C901
     """
     Get detailed pod description for the main ingestion pod.
     This function is fault-tolerant and will not raise exceptions.
@@ -272,10 +264,7 @@ def get_main_pod_description(
                     description_parts.append(f"Message: {main_pod.status.message}")
 
                 # Safely log container statuses
-                if (
-                    hasattr(main_pod.status, "container_statuses")
-                    and main_pod.status.container_statuses
-                ):
+                if hasattr(main_pod.status, "container_statuses") and main_pod.status.container_statuses:
                     description_parts.append("\nContainer Statuses:")
                     for container_status in main_pod.status.container_statuses:
                         try:
@@ -296,9 +285,7 @@ def get_main_pod_description(
                                         f"    State: Terminated - Reason: {container_status.state.terminated.reason}, ExitCode: {container_status.state.terminated.exit_code}"
                                     )
                         except Exception as container_error:
-                            logger.warning(
-                                f"Error processing container status: {container_error}"
-                            )
+                            logger.warning(f"Error processing container status: {container_error}")
                             continue
         except Exception as status_error:
             logger.warning(f"Error processing pod status: {status_error}")
@@ -311,16 +298,10 @@ def get_main_pod_description(
 
             if events and events.items:
                 description_parts.append(f"\nEvents ({len(events.items)} found):")
-                for event in events.items[
-                    -10:
-                ]:  # Limit to last 10 events (most recent)
+                for event in events.items[-10:]:  # Limit to last 10 events (most recent)
                     try:
-                        event_time = (
-                            event.last_timestamp or event.first_timestamp or "Unknown"
-                        )
-                        description_parts.append(
-                            f"  {event_time} - {event.type}: {event.reason}"
-                        )
+                        event_time = event.last_timestamp or event.first_timestamp or "Unknown"
+                        description_parts.append(f"  {event_time} - {event.type}: {event.reason}")
                         if event.message:
                             description_parts.append(f"    {event.message}")
                     except Exception as event_error:
@@ -336,16 +317,14 @@ def get_main_pod_description(
 
         description = "\n".join(description_parts)
         logger.info("Pod description created successfully")
-        return description if description_parts else None
+        return description if description_parts else None  # noqa: TRY300
 
     except Exception as e:
         logger.error(f"Failed to get pod description: {e}")
         return None
 
 
-def create_pod_diagnostics(
-    main_pod_logs: Optional[str], pod_description: Optional[str]
-) -> StepSummary:
+def create_pod_diagnostics(main_pod_logs: str | None, pod_description: str | None) -> StepSummary:
     """
     Create a StepSummary with pod diagnostics for failed workflows.
     """
@@ -356,9 +335,7 @@ def create_pod_diagnostics(
     if main_pod_logs:
         summary_parts.append("\nPod Logs: \n" + main_pod_logs)
 
-    stack_trace = (
-        "\n".join(summary_parts) if summary_parts else "No diagnostics available"
-    )
+    stack_trace = "\n".join(summary_parts) if summary_parts else "No diagnostics available"
 
     return StepSummary(
         name="Pod Diagnostics",
@@ -391,14 +368,12 @@ def create_workflow_config(config: str, pipeline_run_id: str):
     if raw_workflow_config.get("sourcePythonClass"):
         logger.info("Creating OpenMetadataApplicationConfig")
         return OpenMetadataApplicationConfig.model_validate(raw_workflow_config)
-    else:
+    else:  # noqa: RET505
         logger.info("Creating OpenMetadataWorkflowConfig")
         return OpenMetadataWorkflowConfig.model_validate(raw_workflow_config)
 
 
-def get_or_create_pipeline_status(
-    metadata: OpenMetadata, workflow_config
-) -> PipelineStatus:
+def get_or_create_pipeline_status(metadata: OpenMetadata, workflow_config) -> PipelineStatus:
     """
     Retrieve existing pipeline status or create a new one.
 
@@ -430,7 +405,9 @@ def get_or_create_pipeline_status(
 
 
 def gather_failure_diagnostics(
-    job_name: Optional[str], namespace: str, pipeline_run_id: Optional[str] = None
+    job_name: str | None,
+    namespace: str,
+    pipeline_run_id: str | None = None,
 ) -> FailureDiagnostics:
     """
     Gather diagnostic information from failed Kubernetes job pods.
@@ -465,9 +442,7 @@ def gather_failure_diagnostics(
             return FailureDiagnostics()
 
         if not main_pod:
-            logger.warning(
-                f"Could not find main pod for job {job_name} - skipping diagnostics"
-            )
+            logger.warning(f"Could not find main pod for job {job_name} - skipping diagnostics")
             return FailureDiagnostics()
 
         # Try to get pod logs - continue even if this fails
@@ -487,12 +462,10 @@ def gather_failure_diagnostics(
             logger.warning(f"Failed to fetch pod description: {e}")
 
         # Create and return diagnostics object
-        diagnostics = FailureDiagnostics(
-            pod_logs=pod_logs, pod_description=pod_description
-        )
+        diagnostics = FailureDiagnostics(pod_logs=pod_logs, pod_description=pod_description)
 
         logger.info(diagnostics.summary)
-        return diagnostics
+        return diagnostics  # noqa: TRY300
 
     except Exception as e:
         # Catch-all for any unexpected errors - diagnostics should never break the exit handler
@@ -517,25 +490,17 @@ def update_pipeline_status_with_diagnostics(
             logger.info("No diagnostics available to add to pipeline status")
             return
 
-        error_step = create_pod_diagnostics(
-            diagnostics.pod_logs, diagnostics.pod_description
-        )
+        error_step = create_pod_diagnostics(diagnostics.pod_logs, diagnostics.pod_description)
 
         try:
             if pipeline_status.status:
-                existing_steps = (
-                    pipeline_status.status.root
-                    if hasattr(pipeline_status.status, "root")
-                    else []
-                )
+                existing_steps = pipeline_status.status.root if hasattr(pipeline_status.status, "root") else []
                 existing_steps.append(error_step)
                 pipeline_status.status = IngestionStatus(existing_steps)
             else:
                 pipeline_status.status = IngestionStatus([error_step])
 
-            logger.info(
-                f"Successfully added diagnostics to pipeline status - {diagnostics.summary}"
-            )
+            logger.info(f"Successfully added diagnostics to pipeline status - {diagnostics.summary}")
         except Exception as e:
             logger.warning(f"Failed to update pipeline status with diagnostics: {e}")
 
@@ -561,15 +526,15 @@ def main():
     - if exists, update with `Failed` status
     """
     # Parse environment variables (adapted for K8s Job environment)
-    config = os.getenv("config")
+    config = os.getenv("config")  # noqa: SIM112
     if not config:
         error_msg = "Missing environment variable `config`. This is needed to configure the Workflow."
         raise RuntimeError(error_msg)
 
-    pipeline_run_id = os.getenv("pipelineRunId")
-    raw_pipeline_status = os.getenv("pipelineStatus")
-    job_name = os.getenv("jobName")  # Changed from workflowName to jobName
-    namespace = os.getenv("namespace")  # Changed from workflowNamespace to namespace
+    pipeline_run_id = os.getenv("pipelineRunId")  # noqa: SIM112
+    raw_pipeline_status = os.getenv("pipelineStatus")  # noqa: SIM112
+    job_name = os.getenv("jobName")  # Changed from workflowName to jobName  # noqa: SIM112
+    namespace = os.getenv("namespace")  # Changed from workflowNamespace to namespace  # noqa: SIM112
 
     logger.info(
         f"Environment variables - pipelineRunId: {pipeline_run_id}, pipelineStatus: {raw_pipeline_status}, jobName: {job_name}, namespace: {namespace}"
@@ -579,14 +544,12 @@ def main():
     workflow_config = create_workflow_config(config, pipeline_run_id)
 
     # Initialize OpenMetadata client
-    metadata = OpenMetadata(
-        config=workflow_config.workflowConfig.openMetadataServerConfig
-    )
+    metadata = OpenMetadata(config=workflow_config.workflowConfig.openMetadataServerConfig)
 
     # Update pipeline status if all required fields are present
     if workflow_config.ingestionPipelineFQN and pipeline_run_id and raw_pipeline_status:
         logger.info(
-            f"Sending status to Ingestion Pipeline {workflow_config.ingestionPipelineFQN} for run ID {str(workflow_config.pipelineRunId.root)}"
+            f"Sending status to Ingestion Pipeline {workflow_config.ingestionPipelineFQN} for run ID {str(workflow_config.pipelineRunId.root)}"  # noqa: RUF010
         )
 
         # Get or create pipeline status
@@ -603,37 +566,25 @@ def main():
         # Update pipeline status with final state
         pipeline_status.endDate = Timestamp(int(datetime.now().timestamp() * 1000))
         pipeline_status.pipelineState = (
-            PipelineState.failed
-            if raw_pipeline_status not in SUCCESS_STATES
-            else PipelineState.success
+            PipelineState.failed if raw_pipeline_status not in SUCCESS_STATES else PipelineState.success
         )
 
         # Try to gather diagnostics for failed jobs - but never let this block status reporting
         if raw_pipeline_status not in SUCCESS_STATES and job_name:
             try:
                 logger.info("Attempting to gather failure diagnostics")
-                diagnostics = gather_failure_diagnostics(
-                    job_name, namespace, pipeline_run_id
-                )
+                diagnostics = gather_failure_diagnostics(job_name, namespace, pipeline_run_id)
                 update_pipeline_status_with_diagnostics(pipeline_status, diagnostics)
             except Exception as e:
                 # Log the error but continue - diagnostics should never prevent status updates
-                logger.error(
-                    f"Failed to gather or add diagnostics, continuing with status update: {e}"
-                )
+                logger.error(f"Failed to gather or add diagnostics, continuing with status update: {e}")
 
         # Send updated status to OpenMetadata - this is the critical operation that must succeed
         try:
-            metadata.create_or_update_pipeline_status(
-                workflow_config.ingestionPipelineFQN, pipeline_status
-            )
-            logger.info(
-                f"Successfully updated pipeline status to {pipeline_status.pipelineState.value}"
-            )
+            metadata.create_or_update_pipeline_status(workflow_config.ingestionPipelineFQN, pipeline_status)
+            logger.info(f"Successfully updated pipeline status to {pipeline_status.pipelineState.value}")
         except Exception as e:
-            logger.error(
-                f"CRITICAL: Failed to send pipeline status update to OpenMetadata: {e}"
-            )
+            logger.error(f"CRITICAL: Failed to send pipeline status update to OpenMetadata: {e}")
             raise
     else:
         logger.info("Missing required fields - not updating pipeline status")

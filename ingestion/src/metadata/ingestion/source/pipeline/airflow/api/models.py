@@ -13,7 +13,6 @@ Pydantic models for Airflow REST API responses
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -22,43 +21,43 @@ class AirflowApiTask(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     task_id: str
-    downstream_task_ids: Optional[List[str]] = None
-    owner: Optional[str] = None
-    doc_md: Optional[str] = None
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
-    class_ref: Optional[Dict[str, str]] = None
+    downstream_task_ids: list[str] | None = None
+    owner: str | None = None
+    doc_md: str | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+    class_ref: dict[str, str] | None = None
 
 
 class AirflowApiDagDetails(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     dag_id: str
-    description: Optional[str] = None
-    fileloc: Optional[str] = None
-    is_paused: Optional[bool] = None
-    owners: Optional[List[str]] = None
-    tags: Optional[List[str]] = None
-    schedule_interval: Optional[str] = None
-    max_active_runs: Optional[int] = None
-    start_date: Optional[datetime] = None
-    tasks: List[AirflowApiTask] = []
+    description: str | None = None
+    fileloc: str | None = None
+    is_paused: bool | None = None
+    owners: list[str] | None = None
+    tags: list[str] | None = None
+    schedule_interval: str | None = None
+    max_active_runs: int | None = None
+    start_date: datetime | None = None
+    tasks: list[AirflowApiTask] = []
 
 
 class AirflowApiDagRun(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     dag_run_id: str
-    state: Optional[str] = None
-    execution_date: Optional[datetime] = None
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
+    state: str | None = None
+    execution_date: datetime | None = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
 
 
 class AirflowApiTaskInstance(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     task_id: str
-    state: Optional[str] = None
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
+    state: str | None = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None

@@ -12,12 +12,12 @@
  */
 @import (reference) '../../styles/variables.less';
 .scim-token-card {
-  background-color: @white;
+  background-color: var(--tw-color-bg-primary);
   padding: @size-mlg @size-md;
   border-radius: @size-sm;
   border: 1px solid @grey-15;
   .ant-card-body {
-    padding: 0px;
+    padding: 0;
   }
   .ant-input-affix-wrapper {
     border-radius: @size-xs;
@@ -25,7 +25,7 @@
   .card-title {
     color: @grey-700;
     font-style: normal;
-    font-weight: 600;
+    font-weight: var(--om-font-weight-semibold);
     line-height: @size-lg;
     margin-bottom: @size-xs;
     font-size: @font-size-base;
@@ -40,19 +40,19 @@
   }
   .token-label {
     color: @text-color-tertiary;
-    font-weight: 600;
+    font-weight: var(--om-font-weight-semibold);
     margin-bottom: @size-md;
   }
   .created-by-label,
   .created-on-label {
     color: @grey-400;
-    font-weight: 500;
+    font-weight: var(--om-font-weight-medium);
     margin-right: @size-3xl;
   }
 
   .created-by-value,
   .created-on-value {
-    font-weight: 500;
+    font-weight: var(--om-font-weight-medium);
   }
   .generate-scim-token-btn {
     width: @size-3xl * 2 + @size-lg;
@@ -92,7 +92,7 @@
   }
 
   .scim-modal-delete-title {
-    font-weight: 600;
+    font-weight: var(--om-font-weight-semibold);
   }
 
   .scim-modal-delete-desc {
@@ -129,7 +129,7 @@
     padding: 0;
   }
   .scim-modal-cancel-button {
-    background-color: @white;
+    background-color: var(--tw-color-bg-primary);
     color: @black;
     border: 1px solid @grey-400;
     padding: @size-sm - 2px @size-xl;
@@ -139,14 +139,14 @@
   }
   .scim-modal-delete-button {
     background-color: @red-14;
-    color: @white;
+    color: var(--tw-color-text-white);
     padding: @size-sm - 2px @size-xl;
     border-radius: @size-xs;
     width: @size-3xl * 2 + @size-lg + @size-sm;
   }
 }
 .enable-sso-card-container {
-  background-color: @white;
+  background-color: var(--tw-color-bg-primary);
   padding: @size-md;
   border-radius: @border-rad-sm;
   margin: @size-xs 0 @size-lg 0;
@@ -183,13 +183,13 @@
       width: @size-md;
       height: @size-md;
       border-radius: 50%;
-      background-color: @white;
+      background-color: var(--tw-color-bg-primary);
       box-shadow: @box-shadow-small-dark;
       top: @size-xxs / 2;
       left: @size-xxs / 2;
       border: none;
       position: absolute;
-      transition: all 0.2s ease;
+      transition: all var(--om-duration-200) ease;
 
       &::before {
         display: none;
@@ -201,7 +201,7 @@
 
       .ant-switch-handle {
         left: calc(100% - @size-md - @size-xxs / 2);
-        background-color: @white;
+        background-color: var(--tw-color-bg-primary);
       }
     }
 
@@ -226,15 +226,18 @@
   border: 1px solid @grey-15;
   border-radius: @size-sm;
   padding: @size-lg;
-  height: calc(100vh - (@om-navbar-height + @size-2xl));
+  height: calc(
+    100vh - var(--ant-navbar-height, 80px) - @size-2xl -
+      var(--page-alert-offset, 0px)
+  );
   margin-top: @size-xs;
-  transition: height 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: height var(--om-duration-500) cubic-bezier(0.25, 0.46, 0.45, 0.94);
 
   // Tab styling for configured SSO
   .ant-tabs .ant-tabs-tab {
     .ant-tabs-tab-btn {
       color: @grey-700;
-      font-weight: 500;
+      font-weight: var(--om-font-weight-medium);
       font-size: @font-size-base;
     }
   }
@@ -242,24 +245,17 @@
   // Active tab styling for configured SSO
   .ant-tabs .ant-tabs-tab.ant-tabs-tab-active {
     color: @blue-34;
-    padding: 0px;
+    padding: 0;
 
     .ant-tabs-tab-btn {
       color: @blue-34;
-      font-weight: 500;
+      font-weight: var(--om-font-weight-medium);
       font-size: @font-size-base;
     }
   }
 
   .ant-tabs .ant-tabs-ink-bar {
     background-color: @blue-34;
-  }
-}
-
-// When alert is visible with configured SSO, adjust container height
-.sso-settings-page:has(#page-alert) {
-  .settings-sso {
-    height: calc(100vh - (@om-navbar-height + @size-2xl) - 78px) !important;
   }
 }
 
@@ -276,19 +272,11 @@
   }
 }
 
-// SSO-specific breadcrumb styling - only applies within SSO settings page
 .sso-settings-page {
   .content-height-with-resizable-panel {
-    height: calc(100vh - var(--ant-navbar-height) - @size-2xl + @size-md);
-  }
-}
-
-// When alert is visible in SSO settings page, adjust container height
-.sso-settings-page:has(#page-alert) {
-  .content-height-with-resizable-panel {
-    height: calc(
-      100vh - var(--ant-navbar-height) - @size-2xl + @size-md - 78px
-    ) !important;
+    // 48px page header/breadcrumb minus the 16px the page does not pad;
+    // alert handling comes from --page-alert-offset (page-layout.less).
+    --content-panel-offset: 32px;
   }
 }
 
@@ -327,7 +315,7 @@
       }
 
       span.text-sm.font-regular.p-x-xs.text-grey-muted {
-        font-size: 12px;
+        font-size: var(--om-font-size-xs);
         line-height: 18px;
       }
 

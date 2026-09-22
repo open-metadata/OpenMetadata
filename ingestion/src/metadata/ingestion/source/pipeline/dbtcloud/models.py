@@ -13,26 +13,35 @@
 DBTCloud Source Model module
 """
 
-from typing import List, Optional
+from pydantic import BaseModel, ConfigDict, Field
 
-from pydantic import BaseModel, Field
+
+class AliasedModel(BaseModel):
+    """
+    Base for the models whose dbt Cloud payload keys collide with Python names.
+    Without `populate_by_name` the aliased fields can only be populated by their
+    API key, so constructing an instance with the Python field name silently
+    leaves the field as None.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class DBTSchedule(BaseModel):
-    cron: Optional[str] = None
+    cron: str | None = None
 
 
 class DBTJob(BaseModel):
     id: int
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     created_at: str
-    updated_at: Optional[str] = None
+    updated_at: str | None = None
     state: int
-    job_type: Optional[str] = None
-    schedule: Optional[DBTSchedule] = None
+    job_type: str | None = None
+    schedule: DBTSchedule | None = None
     project_id: int
-    environment_id: Optional[int] = None
+    environment_id: int | None = None
 
 
 class Pagination(BaseModel):
@@ -41,50 +50,51 @@ class Pagination(BaseModel):
 
 
 class Extra(BaseModel):
-    pagination: Optional[Pagination] = None
+    pagination: Pagination | None = None
 
 
-class DBTJobList(BaseModel):
-    Jobs: List[DBTJob] = Field(alias="data")
-    extra: Optional[Extra] = None
+class DBTJobList(AliasedModel):
+    Jobs: list[DBTJob] = Field(alias="data")
+    extra: Extra | None = None
 
 
-class DBTRun(BaseModel):
-    id: Optional[int] = None
+class DBTRun(AliasedModel):
+    id: int | None = None
     status: int
-    status_message: Optional[str] = None
-    state: Optional[str] = Field(None, alias="status_humanized")
-    href: Optional[str] = None
-    started_at: Optional[str] = None
-    finished_at: Optional[str] = None
-    duration: Optional[str] = None
+    status_message: str | None = None
+    state: str | None = Field(None, alias="status_humanized")
+    href: str | None = None
+    started_at: str | None = None
+    finished_at: str | None = None
+    duration: str | None = None
 
 
-class DBTRunList(BaseModel):
-    Runs: Optional[List[DBTRun]] = Field([], alias="data")
-    extra: Optional[Extra] = None
+class DBTRunList(AliasedModel):
+    Runs: list[DBTRun] | None = Field([], alias="data")
+    extra: Extra | None = None
 
 
-class DBTSources(BaseModel):
-    uniqueId: Optional[str] = None
-    name: Optional[str] = None
-    dbtschema: Optional[str] = Field(None, alias="schema")
-    database: Optional[str] = None
-    runGeneratedAt: Optional[str] = None
-    extra: Optional[Extra] = None
+class DBTSources(AliasedModel):
+    uniqueId: str | None = None  # noqa: N815
+    name: str | None = None
+    dbtschema: str | None = Field(None, alias="schema")
+    database: str | None = None
+    runGeneratedAt: str | None = None  # noqa: N815
+    extra: Extra | None = None
 
 
-class DBTModel(BaseModel):
-    uniqueId: Optional[str] = None
-    name: Optional[str] = None
-    dbtschema: Optional[str] = Field(None, alias="schema")
-    database: Optional[str] = None
-    runGeneratedAt: Optional[str] = None
-    dependsOn: Optional[List[str]] = None
+class DBTModel(AliasedModel):
+    uniqueId: str | None = None  # noqa: N815
+    name: str | None = None
+    dbtschema: str | None = Field(None, alias="schema")
+    database: str | None = None
+    runGeneratedAt: str | None = None  # noqa: N815
+    dependsOn: list[str] | None = None  # noqa: N815
+    compiledCode: str | None = None  # noqa: N815
 
 
 class DBTModelList(BaseModel):
-    models: Optional[List[DBTModel]] = []
-    seeds: Optional[List[DBTModel]] = []
-    sources: Optional[List[DBTModel]] = []
-    extra: Optional[Extra] = None
+    models: list[DBTModel] | None = []
+    seeds: list[DBTModel] | None = []
+    sources: list[DBTModel] | None = []
+    extra: Extra | None = None

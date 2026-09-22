@@ -11,8 +11,9 @@
 """
 MicroStrategy Models
 """
+
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -37,13 +38,13 @@ class MstrProject(BaseModel):
     status: int
     alias: str
     description: str
-    dateCreated: datetime
-    dateModified: datetime
+    dateCreated: datetime  # noqa: N815
+    dateModified: datetime  # noqa: N815
     owner: MstrOwner
 
 
 class MstrProjectList(BaseModel):
-    projects: Optional[List[MstrProject]] = None
+    projects: list[MstrProject] | None = None
 
 
 class MstrSearchResult(BaseModel):
@@ -54,23 +55,23 @@ class MstrSearchResult(BaseModel):
     name: str
     id: str
     type: int
-    description: Optional[str] = None
+    description: str | None = None
     subtype: int
-    dateCreated: str
-    dateModified: str
+    dateCreated: str  # noqa: N815
+    dateModified: str  # noqa: N815
     version: str
     acg: int
     owner: MstrOwner
-    extType: int
-    viewMedia: int
-    certifiedInfo: dict
-    templateInfo: dict
-    projectId: str
+    extType: int  # noqa: N815
+    viewMedia: int  # noqa: N815
+    certifiedInfo: dict  # noqa: N815
+    templateInfo: dict  # noqa: N815
+    projectId: str  # noqa: N815
 
 
 class MstrSearchResultList(BaseModel):
-    totalItems: Optional[int] = 0
-    result: Optional[List[MstrSearchResult]] = None
+    totalItems: int | None = 0  # noqa: N815
+    result: list[MstrSearchResult] | None = None
 
 
 class MstrDashboard(BaseModel):
@@ -81,23 +82,23 @@ class MstrDashboard(BaseModel):
     name: str
     id: str
     type: int
-    description: Optional[str] = None
+    description: str | None = None
     subtype: int
-    dateCreated: str
-    dateModified: str
+    dateCreated: str  # noqa: N815
+    dateModified: str  # noqa: N815
     version: str
     acg: int
     owner: MstrOwner
-    extType: int
-    viewMedia: int
-    certifiedInfo: dict
-    templateInfo: dict
-    projectId: str
-    projectName: str
+    extType: int  # noqa: N815
+    viewMedia: int  # noqa: N815
+    certifiedInfo: dict  # noqa: N815
+    templateInfo: dict  # noqa: N815
+    projectId: str  # noqa: N815
+    projectName: str  # noqa: N815
 
 
 class MstrDashboardList(BaseModel):
-    dashboards: Optional[List[MstrDashboard]] = None
+    dashboards: list[MstrDashboard] | None = None
 
 
 class MstrAttribute(BaseModel):
@@ -115,46 +116,46 @@ class MstrMetric(BaseModel):
 class MstrVisualization(BaseModel):
     key: str
     name: str
-    visualizationType: str
+    visualizationType: str  # noqa: N815
 
 
 class MstrPage(BaseModel):
     key: str
     name: str
-    visualizations: List[MstrVisualization]
+    visualizations: list[MstrVisualization]
 
 
 class MstrChapter(BaseModel):
     key: str
     name: str
-    pages: List[MstrPage]
+    pages: list[MstrPage]
 
 
 class MstrAvailableObject(BaseModel):
     id: str
     name: str
     type: str
-    forms: Optional[List[Dict[str, Any]]] = None
+    forms: list[dict[str, Any]] | None = None
 
 
 class MstrDataset(BaseModel):
     id: str
     name: str
-    availableObjects: Optional[List[MstrAvailableObject]] = None
-    rows: Optional[List[Dict[str, Any]]] = None
-    columns: Optional[List[Dict[str, Any]]] = None
-    pageBy: Optional[List[Dict[str, Any]]] = None
-    sqlStatement: Optional[str] = None
+    availableObjects: list[MstrAvailableObject] | None = None  # noqa: N815
+    rows: list[dict[str, Any]] | None = None
+    columns: list[dict[str, Any]] | None = None
+    pageBy: list[dict[str, Any]] | None = None  # noqa: N815
+    sqlStatement: str | None = None  # noqa: N815
 
 
 class MstrDashboardDetails(BaseModel):
     id: str
     name: str
-    projectId: str
-    projectName: str
-    currentChapter: str
-    chapters: List[MstrChapter]
-    datasets: List[MstrDataset]
+    projectId: str  # noqa: N815
+    projectName: str  # noqa: N815
+    currentChapter: str  # noqa: N815
+    chapters: list[MstrChapter]
+    datasets: list[MstrDataset]
 
 
 class AuthHeaderCookie(BaseModel):

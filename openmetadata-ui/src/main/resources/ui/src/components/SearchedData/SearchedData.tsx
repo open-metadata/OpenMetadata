@@ -11,19 +11,15 @@
  *  limitations under the License.
  */
 
+import { Badge } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { isNumber } from 'lodash';
-import Qs from 'qs';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
-import { pluralize } from '../../utils/CommonUtils';
-import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
+import { pluralize } from '../../utils/StringUtils';
 import ErrorPlaceHolderES from '../common/ErrorWithPlaceholder/ErrorPlaceHolderES';
 import Loader from '../common/Loader/Loader';
 import ExploreSearchCard from '../ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import PaginationComponent from '../PaginationComponent/PaginationComponent';
 import { SearchedDataProps } from './SearchedData.interface';
 
 const ASSETS_NAME = new Set([
@@ -37,7 +33,6 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   children,
   data,
   isLoading = false,
-  onPaginationChange,
   showResultCount = false,
   totalValue,
   isFilterSelected,
@@ -45,67 +40,81 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   selectedEntityId,
   handleSummaryPanelDisplay,
   filter,
+  showRankingDetails,
 }) => {
-  const {
-    preferences: { globalPageSize },
-  } = useCurrentUserPreferences();
-
   const searchResultCards = useMemo(() => {
-    return data.map(({ _source: table, highlight }, index) => {
-      const matches = highlight
-        ? Object.entries(highlight)
-            .filter(([key]) => !key.includes('.ngram'))
-            .map(([key, value]) => ({ key, value: value?.length || 1 }))
-            .filter((d) => !ASSETS_NAME.has(d.key))
-        : [];
+    return data.map(
+      ({
+        _source: table,
+        highlight,
+        _id,
+        _score,
+        _explanation,
+        matched_queries,
+      }) => {
+        const matches = highlight
+          ? Object.entries(highlight)
+              .filter(([key]) => !key.includes('.ngram'))
+              .map(([key, value]) => ({ key, value: value?.length || 1 }))
+              .filter((d) => !ASSETS_NAME.has(d.key))
+          : [];
 
-      const source = highlightEntityNameAndDescription(table, highlight);
-
-      return (
-        <div className="m-b-md" key={`tabledatacard${index}`}>
+        return (
           <ExploreSearchCard
+            showEntityIcon
             className={classNames(
               table.id === selectedEntityId && isSummaryPanelVisible
                 ? 'highlight-card'
                 : ''
             )}
             handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-            id={`tabledatacard${index}`}
+            highlight={highlight}
+            id={`search-card-${_id}`}
+            key={_id}
+            matchedQueries={showRankingDetails ? matched_queries : undefined}
             matches={matches}
-            searchValue={filter?.search as string}
+            score={showRankingDetails ? _score : undefined}
+            scoreExplanation={showRankingDetails ? _explanation : undefined}
             showTags={false}
-            source={source}
+            source={table}
           />
-        </div>
-      );
-    });
+        );
+      }
+    );
   }, [
     data,
     isSummaryPanelVisible,
     handleSummaryPanelDisplay,
     selectedEntityId,
+    showRankingDetails,
   ]);
 
-  const ResultCount = () => {
-    if (showResultCount && (isFilterSelected || filter?.quickFilter)) {
-      if (MAX_RESULT_HITS === totalValue) {
-        return <div>{`About ${totalValue} results`}</div>;
-      } else {
-        return <div>{pluralize(totalValue, 'result')}</div>;
+  const ResultCount = useCallback(
+    (total: number) => {
+      if (!showResultCount) {
+        return null;
       }
-    } else {
-      return null;
-    }
-  };
-
-  const { page = 1, size = globalPageSize } = useMemo(
-    () =>
-      Qs.parse(
-        location.search.startsWith('?')
-          ? location.search.substring(1)
-          : location.search
-      ),
-    [location.search]
+      if (isFilterSelected || filter?.quickFilter) {
+        if (MAX_RESULT_HITS === total) {
+          return (
+            <Badge color="blue" type="color">
+              <span data-testid="search-results-count">{`${total} results`}</span>
+            </Badge>
+          );
+        } else {
+          return (
+            <Badge color="blue" type="color">
+              <span data-testid="search-results-count">
+                {pluralize(total, 'result')}
+              </span>
+            </Badge>
+          );
+        }
+      } else {
+        return null;
+      }
+    },
+    [isFilterSelected, filter, showResultCount]
   );
 
   return (
@@ -117,21 +126,8 @@ const SearchedData: React.FC<SearchedDataProps> = ({
           {totalValue > 0 ? (
             <>
               {children}
-              <ResultCount />
-              <div data-testid="search-results">
-                {searchResultCards}
-                <PaginationComponent
-                  className="text-center p-b-box"
-                  current={isNumber(Number(page)) ? Number(page) : 1}
-                  pageSize={
-                    size && isNumber(Number(size))
-                      ? Number(size)
-                      : globalPageSize
-                  }
-                  total={totalValue}
-                  onChange={onPaginationChange}
-                />
-              </div>
+              <div className="tw:mb-4">{ResultCount(totalValue)}</div>
+              <div data-testid="search-results">{searchResultCards}</div>
             </>
           ) : (
             <div className="flex-center h-full">

@@ -40,7 +40,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.BulkColumnUpdatePreview;
 import org.openmetadata.schema.api.data.BulkColumnUpdateRequest;
-import org.openmetadata.schema.api.data.ColumnGridItem;
 import org.openmetadata.schema.api.data.ColumnGridResponse;
 import org.openmetadata.schema.api.data.ColumnMetadata;
 import org.openmetadata.schema.api.data.ColumnOccurrence;
@@ -56,6 +55,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
@@ -96,39 +96,77 @@ public class ColumnRepository {
   public ColumnGridResponse getColumnGridPaginated(
       SecurityContext securityContext, ColumnAggregator.ColumnAggregationRequest request)
       throws IOException {
-    ColumnGridResponse response = columnAggregator.aggregateColumns(request);
-
-    if (Boolean.TRUE.equals(request.getHasConflicts())) {
-      response.setColumns(
-          response.getColumns().stream()
-              .filter(ColumnGridItem::getHasVariations)
-              .collect(Collectors.toList()));
-    }
-
-    if (Boolean.TRUE.equals(request.getHasMissingMetadata())) {
-      response.setColumns(
-          response.getColumns().stream()
-              .filter(this::hasMissingMetadata)
-              .collect(Collectors.toList()));
-    }
-
-    // Filter by INCONSISTENT status (requires post-aggregation filtering)
-    if ("INCONSISTENT".equalsIgnoreCase(request.getMetadataStatus())) {
-      response.setColumns(
-          response.getColumns().stream()
-              .filter(ColumnGridItem::getHasVariations)
-              .collect(Collectors.toList()));
-    }
-
-    return response;
+    // Row-level filters (metadataStatus / hasConflicts / hasMissingMetadata) are applied inside the
+    // aggregator over the fully-grouped columns, before pagination, so page counts and per-page
+    // size stay correct (#26824). Nothing to post-process here.
+    return columnAggregator.aggregateColumns(request);
   }
 
-  private boolean hasMissingMetadata(ColumnGridItem item) {
-    return item.getGroups().stream()
-        .anyMatch(
-            group ->
-                (group.getDescription() == null || group.getDescription().isEmpty())
-                    || (group.getTags() == null || group.getTags().isEmpty()));
+  public Column getColumnByFQN(
+      SecurityContext securityContext,
+      String columnFQN,
+      String entityType,
+      String fieldsParam,
+      Include include) {
+    Objects.requireNonNull(columnFQN, "columnFQN cannot be null");
+    validateEntityType(entityType);
+    String parentFQN = extractParentFQN(columnFQN, entityType);
+    return switch (entityType) {
+      case TABLE -> fetchTableColumnByFQN(
+          columnFQN, parentFQN, fieldsParam, include, securityContext);
+      case DASHBOARD_DATA_MODEL -> fetchDataModelColumnByFQN(
+          columnFQN, parentFQN, fieldsParam, include, securityContext);
+      default -> throw new IllegalStateException("Unexpected entity type: " + entityType);
+    };
+  }
+
+  private Column fetchTableColumnByFQN(
+      String columnFQN,
+      String parentFQN,
+      String fieldsParam,
+      Include include,
+      SecurityContext securityContext) {
+    TableRepository tableRepo = (TableRepository) Entity.getEntityRepository(TABLE);
+    Table table =
+        tableRepo.getByName(null, parentFQN, tableRepo.getFields("owners"), include, false);
+    ResourceContext<Table> resourceContext = new ResourceContext<>(TABLE, table, tableRepo);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(TABLE, MetadataOperation.VIEW_BASIC),
+        resourceContext);
+
+    ColumnUtil.setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
+    Column column =
+        findColumnInHierarchy(table.getColumns(), columnFQN)
+            .orElseThrow(
+                () -> new EntityNotFoundException("Column not found: %s".formatted(columnFQN)));
+    return tableRepo.enrichSingleColumnFields(
+        table, column, fieldsParam, table.getOwners(), authorizer, securityContext);
+  }
+
+  private Column fetchDataModelColumnByFQN(
+      String columnFQN,
+      String parentFQN,
+      String fieldsParam,
+      Include include,
+      SecurityContext securityContext) {
+    DashboardDataModelRepository dataModelRepo =
+        (DashboardDataModelRepository) Entity.getEntityRepository(DASHBOARD_DATA_MODEL);
+    DashboardDataModel dataModel =
+        dataModelRepo.getByName(null, parentFQN, dataModelRepo.getFields("owners"), include, false);
+    ResourceContext<DashboardDataModel> resourceContext =
+        new ResourceContext<>(DASHBOARD_DATA_MODEL, dataModel, dataModelRepo);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(DASHBOARD_DATA_MODEL, MetadataOperation.VIEW_BASIC),
+        resourceContext);
+
+    setDataModelColumnFQN(dataModel.getFullyQualifiedName(), dataModel.getColumns());
+    Column column =
+        findColumnInHierarchy(dataModel.getColumns(), columnFQN)
+            .orElseThrow(
+                () -> new EntityNotFoundException("Column not found: %s".formatted(columnFQN)));
+    return dataModelRepo.enrichSingleColumnFields(dataModel, column, fieldsParam);
   }
 
   public Column updateColumnByFQN(
@@ -321,6 +359,7 @@ public class ColumnRepository {
     }
     columns.forEach(
         c -> {
+          FullyQualifiedName.validateFqnName(c.getName());
           String columnFqn = FullyQualifiedName.add(parentFQN, c.getName());
           c.setFullyQualifiedName(columnFqn);
           if (c.getChildren() != null) {

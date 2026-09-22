@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Page } from '@playwright/test';
 import path from 'path';
 
 import {
@@ -35,12 +36,20 @@ const INVALID_SAML_XML = path.join(
   __dirname,
   '../../test-data/saml-metadata-invalid.xml'
 );
+const OKTA_SAML_XML = path.join(
+  __dirname,
+  '../../test-data/saml-metadata-okta.xml'
+);
 
 const EXPECTED_ENTITY_ID =
   'https://sts.example.com/00000000-0000-0000-0000-000000000000/';
 const EXPECTED_SSO_LOGIN_URL =
   'https://sso.example.com/00000000-0000-0000-0000-000000000000/saml2';
 const EXPECTED_CERT_PREFIX = '-----BEGIN CERTIFICATE-----';
+
+const OKTA_ENTITY_ID = 'http://www.okta.com/exk1a2b3c4d5';
+const IDP_CERT_FIELD_PATH =
+  'authenticationConfiguration.samlConfiguration.idp.idpX509Certificate';
 
 const { expect } = test;
 
@@ -120,6 +129,7 @@ test.describe('SSO Configuration Tests', () => {
       await verifyProviderFields(page, SSO_COMMON_FIELDS);
 
       // Verify OIDC specific fields with OIDC prefix in labels
+      await page.getByText(/advanced config/i).click();
 
       for (const field of OIDC_COMMON_FIELDS) {
         const fieldElement = page.getByLabel(field);
@@ -146,6 +156,8 @@ test.describe('SSO Configuration Tests', () => {
       await verifyProviderFields(page, SSO_COMMON_FIELDS);
 
       // Verify OIDC specific fields with OIDC prefix in labels
+      await page.getByText(/advanced config/i).click();
+
       const oidcFields = [...OIDC_COMMON_FIELDS, 'OIDC Tenant'];
 
       for (const field of oidcFields) {
@@ -173,6 +185,8 @@ test.describe('SSO Configuration Tests', () => {
       await verifyProviderFields(page, SSO_COMMON_FIELDS);
 
       // Verify OIDC specific fields with OIDC prefix in labels
+      await page.getByText(/advanced config/i).click();
+
       const oidcFields = [...OIDC_COMMON_FIELDS, 'OIDC Tenant'];
 
       for (const field of oidcFields) {
@@ -779,16 +793,24 @@ test.describe('SSO Configuration Tests', () => {
 
       // Typing filters the visible options
       await field.click();
+      const dataRoleSearchResponse = page.waitForResponse(
+        '/api/v1/roles/search?*'
+      );
       await field.locator('input').fill('Data');
+      await dataRoleSearchResponse;
       await expect(
         dropdown.locator(
           '.ant-select-item-option:not(.ant-select-item-option-disabled)'
         )
-      ).not.toHaveCount(0);
+      ).not.toHaveCount(0, { timeout: 15000 });
 
       // Pressing Enter on a non-existent value does not create an arbitrary tag
       await field.locator('input').clear();
+      const missingRoleSearchResponse = page.waitForResponse(
+        '/api/v1/roles/search?*'
+      );
       await field.locator('input').fill('NonExistentRoleXYZ123');
+      await missingRoleSearchResponse;
       await field.locator('input').press('Enter');
       await expect(field.locator('.ant-select-selection-item')).toHaveCount(0);
     });
@@ -901,6 +923,62 @@ test.describe('SAML Metadata XML Upload', () => {
       ).toHaveValue('');
     });
   });
+
+  // Issue #28619: metadata.xml parsing happens in the browser, so provider-specific certificate
+  // rules are only reached once the form is submitted. Okta signs with CN=<org short name> against
+  // an Entity ID of http://www.okta.com/{appId}; requiring those to match rejected every valid
+  // Okta configuration at this exact step.
+  test('should accept an Okta metadata XML upload when the form is submitted', async ({
+    page,
+  }) => {
+    test.slow();
+
+    // Never persist: this test drives real backend validation but must not repoint the running
+    // instance at an unreachable IdP. Only the write is stubbed — the page's own GET must reach the
+    // server, since enableSSOEditMode branches on whether a configuration already exists.
+    await page.route('**/api/v1/system/security/config', (route) =>
+      route.request().method() === 'PUT'
+        ? route.fulfill({ status: 200, json: {} })
+        : route.fallback()
+    );
+
+    await redirectToHomePage(page);
+    await enableSSOEditMode(page);
+    await selectSSOProvider(page, 'saml');
+
+    await test.step('Upload Okta SAML metadata XML', async () => {
+      await expect(page.getByTestId('file-upload-drop-zone')).toBeVisible();
+
+      await page.getByTestId('file-uploader').setInputFiles(OKTA_SAML_XML);
+
+      await expect(page.getByTestId('change-metadata-xml-btn')).toBeVisible();
+      await expect(
+        page.locator(
+          '[id="root/authenticationConfiguration/samlConfiguration/idp/entityId"]'
+        )
+      ).toHaveValue(OKTA_ENTITY_ID);
+    });
+
+    await test.step('Submit and assert the IdP certificate is accepted', async () => {
+      const validateResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/system/security/validate') &&
+          response.request().method() === 'POST'
+      );
+
+      await page.getByTestId('save-sso-configuration').click();
+
+      const errors = (await (await validateResponse).json())?.errors ?? [];
+      const certificateError = errors.find(
+        (error: { field: string }) => error.field === IDP_CERT_FIELD_PATH
+      );
+
+      expect(
+        certificateError,
+        `Okta certificate was rejected: ${certificateError?.error}`
+      ).toBeUndefined();
+    });
+  });
 });
 
 test.describe('SSO Back Navigation', () => {
@@ -1007,5 +1085,81 @@ test.describe('SSO Back Navigation', () => {
     await expect(page.locator('.provider-selector-container')).toBeVisible();
 
     expect(page.url()).not.toContain('provider=');
+  });
+});
+
+test.describe('SSO Test Configuration', () => {
+  const VALIDATE_URL = '**/system/security/validate';
+
+  const mockValidate = (page: Page, body: Record<string, unknown>) =>
+    page.route(VALIDATE_URL, async (route) => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(body),
+        });
+      } else {
+        await route.continue();
+      }
+    });
+
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+    await enableSSOEditMode(page);
+  });
+
+  test('should show the Test Configuration button and lockout warning for a new configuration', async ({
+    page,
+  }) => {
+    await selectSSOProvider(page, 'google');
+
+    await expect(page.getByTestId('test-sso-configuration')).toBeVisible();
+    await expect(page.locator('.sso-save-warning')).toBeVisible();
+  });
+
+  test('should validate the configuration without saving and show a success banner', async ({
+    page,
+  }) => {
+    await mockValidate(page, { status: 'success' });
+    await selectSSOProvider(page, 'google');
+
+    const validateResponse = page.waitForResponse(VALIDATE_URL);
+    await page.getByTestId('test-sso-configuration').click();
+    await validateResponse;
+
+    await expect(page.locator('.sso-test-result.success-alert')).toBeVisible();
+    await expect(page.locator('.sso-test-result')).toContainText(
+      /valid and reachable/i
+    );
+
+    // Testing must never sign the admin out or leave the form
+    await expect(page).toHaveURL(/settings\/sso/);
+    await expect(page.getByTestId('save-sso-configuration')).toBeVisible();
+  });
+
+  test('should surface validation errors when the test fails', async ({
+    page,
+  }) => {
+    await mockValidate(page, {
+      status: 'failed',
+      errors: [
+        {
+          field: 'authenticationConfiguration.authority',
+          error: 'Authority is required',
+        },
+      ],
+    });
+    await selectSSOProvider(page, 'google');
+
+    const validateResponse = page.waitForResponse(VALIDATE_URL);
+    await page.getByTestId('test-sso-configuration').click();
+    await validateResponse;
+
+    await expect(page.locator('.sso-test-result.error-alert')).toBeVisible();
+    await expect(page.locator('.sso-test-result')).toContainText(
+      /validation failed/i
+    );
+    await expect(page).toHaveURL(/settings\/sso/);
   });
 });

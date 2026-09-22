@@ -22,6 +22,7 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.ingestion.source.pipeline.databrickspipeline.metadata import (
     DatabrickspipelineSource,
 )
+from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 
 
 class TestKafkaTopicDiscovery(unittest.TestCase):
@@ -36,25 +37,17 @@ class TestKafkaTopicDiscovery(unittest.TestCase):
         with patch.object(DatabrickspipelineSource, "__init__", lambda x, y, z: None):
             self.source = DatabrickspipelineSource(None, None)
             self.source.metadata = self.mock_metadata
-            self.source._table_lookup_cache = {}
-            self.source._dlt_table_cache = {}
+            self.source._table_lookup_cache = LRUCache(capacity=LRU_CACHE_SIZE)
+            self.source._dlt_table_cache = LRUCache(capacity=LRU_CACHE_SIZE)
 
     def test_find_topic_simple_name(self):
         """Test finding topic with simple name (no dots)"""
         # Mock ES response
-        es_response = {
-            "hits": {
-                "hits": [
-                    {"_source": {"fullyQualifiedName": "Confluent Kafka.events_topic"}}
-                ]
-            }
-        }
+        es_response = {"hits": {"hits": [{"_source": {"fullyQualifiedName": "Confluent Kafka.events_topic"}}]}}
 
         # Mock topic entity
         mock_topic = MagicMock(spec=Topic)
-        mock_topic.fullyQualifiedName = FullyQualifiedEntityName(
-            "Confluent Kafka.events_topic"
-        )
+        mock_topic.fullyQualifiedName = FullyQualifiedEntityName("Confluent Kafka.events_topic")
 
         self.mock_metadata.client.get.return_value = es_response
         self.mock_metadata.get_by_name.return_value = mock_topic
@@ -74,11 +67,7 @@ class TestKafkaTopicDiscovery(unittest.TestCase):
         es_response = {
             "hits": {
                 "hits": [
-                    {
-                        "_source": {
-                            "fullyQualifiedName": 'Confluent Kafka."dev.example.transactions.customerEvent_v1"'
-                        }
-                    }
+                    {"_source": {"fullyQualifiedName": 'Confluent Kafka."dev.example.transactions.customerEvent_v1"'}}
                 ]
             }
         }
@@ -92,9 +81,7 @@ class TestKafkaTopicDiscovery(unittest.TestCase):
         self.mock_metadata.get_by_name.return_value = mock_topic
 
         # Test
-        result = self.source._find_kafka_topic(
-            "dev.example.transactions.customerEvent_v1"
-        )
+        result = self.source._find_kafka_topic("dev.example.transactions.customerEvent_v1")
 
         # Verify
         self.assertIsNotNone(result)
@@ -140,8 +127,8 @@ class TestDatabricksServiceCaching(unittest.TestCase):
             self.source.metadata = self.mock_metadata
             self.source._databricks_services_cached = False
             self.source._databricks_services = []
-            self.source._table_lookup_cache = {}
-            self.source._dlt_table_cache = {}
+            self.source._table_lookup_cache = LRUCache(capacity=LRU_CACHE_SIZE)
+            self.source._dlt_table_cache = LRUCache(capacity=LRU_CACHE_SIZE)
 
     def test_get_databricks_services_caches_result(self):
         """Test that databricks services are cached"""
@@ -217,8 +204,8 @@ class TestDLTTableDiscovery(unittest.TestCase):
             self.source.metadata = self.mock_metadata
             self.source._databricks_services_cached = True
             self.source._databricks_services = ["databricks-prod", "databricks-dev"]
-            self.source._table_lookup_cache = {}
-            self.source._dlt_table_cache = {}
+            self.source._table_lookup_cache = LRUCache(capacity=LRU_CACHE_SIZE)
+            self.source._dlt_table_cache = LRUCache(capacity=LRU_CACHE_SIZE)
 
     def test_find_dlt_table_exact_match(self):
         """Test finding table with exact case match"""
@@ -233,9 +220,7 @@ class TestDLTTableDiscovery(unittest.TestCase):
         self.mock_metadata.get_by_name.side_effect = [None, mock_table]
 
         # Test
-        result = self.source._find_dlt_table(
-            table_name="customerEvent", catalog="datamesh_dev", schema="transactions"
-        )
+        result = self.source._find_dlt_table(table_name="customerEvent", catalog="datamesh_dev", schema="transactions")
 
         # Verify
         self.assertIsNotNone(result)
@@ -258,9 +243,7 @@ class TestDLTTableDiscovery(unittest.TestCase):
         ]
 
         # Test
-        result = self.source._find_dlt_table(
-            table_name="customerEvent", catalog="datamesh_dev", schema="transactions"
-        )
+        result = self.source._find_dlt_table(table_name="customerEvent", catalog="datamesh_dev", schema="transactions")
 
         # Verify
         self.assertIsNotNone(result)
@@ -284,9 +267,7 @@ class TestDLTTableDiscovery(unittest.TestCase):
 
         # Mock fallback to get_db_service_names
         with patch.object(self.source, "get_db_service_names", return_value=[]):
-            result = self.source._find_dlt_table(
-                table_name="test_table", catalog="test_catalog", schema="test_schema"
-            )
+            result = self.source._find_dlt_table(table_name="test_table", catalog="test_catalog", schema="test_schema")
 
         # Should return None
         self.assertIsNone(result)
@@ -299,9 +280,7 @@ class TestDLTTableDiscovery(unittest.TestCase):
         self.source._databricks_services_cached = False
 
         mock_table = MagicMock(spec=Table)
-        mock_table.fullyQualifiedName = FullyQualifiedEntityName(
-            "configured-databricks.catalog.schema.test_table"
-        )
+        mock_table.fullyQualifiedName = FullyQualifiedEntityName("configured-databricks.catalog.schema.test_table")
 
         # Mock list_all_entities to return empty (simulating no Databricks services)
         self.mock_metadata.list_all_entities.return_value = []
@@ -310,12 +289,8 @@ class TestDLTTableDiscovery(unittest.TestCase):
         self.mock_metadata.get_by_name.return_value = mock_table
 
         # Mock fallback to configured services
-        with patch.object(
-            self.source, "get_db_service_names", return_value=["configured-databricks"]
-        ):
-            result = self.source._find_dlt_table(
-                table_name="test_table", catalog="catalog", schema="schema"
-            )
+        with patch.object(self.source, "get_db_service_names", return_value=["configured-databricks"]):
+            result = self.source._find_dlt_table(table_name="test_table", catalog="catalog", schema="schema")
 
         # Should find table using configured service
         self.assertIsNotNone(result)
@@ -335,8 +310,8 @@ class TestKafkaLineageIntegration(unittest.TestCase):
             self.source.client = self.mock_client
             self.source._databricks_services_cached = True
             self.source._databricks_services = ["databricks-prod"]
-            self.source._table_lookup_cache = {}
-            self.source._dlt_table_cache = {}
+            self.source._table_lookup_cache = LRUCache(capacity=LRU_CACHE_SIZE)
+            self.source._dlt_table_cache = LRUCache(capacity=LRU_CACHE_SIZE)
 
     def test_lineage_creation_flow(self):
         """Test complete flow: parse notebook -> find topic -> find table -> create lineage"""
@@ -392,31 +367,21 @@ class TestKafkaLineageIntegration(unittest.TestCase):
         self.mock_metadata.client.get.return_value = {
             "hits": {
                 "hits": [
-                    {
-                        "_source": {
-                            "fullyQualifiedName": 'Confluent Kafka."dev.example.transactions.customerEvent_v1"'
-                        }
-                    }
+                    {"_source": {"fullyQualifiedName": 'Confluent Kafka."dev.example.transactions.customerEvent_v1"'}}
                 ]
             }
         }
         self.mock_metadata.get_by_name.side_effect = [mock_topic, mock_table]
 
         # Test - call lineage extraction
-        lineage_results = list(
-            self.source._yield_kafka_lineage(mock_pipeline_details, mock_pipeline)
-        )
+        lineage_results = list(self.source._yield_kafka_lineage(mock_pipeline_details, mock_pipeline))
 
         # Verify lineage was created
         self.assertGreater(len(lineage_results), 0)
 
         # Verify correct methods were called
-        self.mock_client.get_pipeline_details.assert_called_once_with(
-            "test-pipeline-123"
-        )
-        self.mock_client.export_notebook_source.assert_called_once_with(
-            "/notebooks/dlt_pipeline"
-        )
+        self.mock_client.get_pipeline_details.assert_called_once_with("test-pipeline-123")
+        self.mock_client.export_notebook_source.assert_called_once_with("/notebooks/dlt_pipeline")
 
 
 if __name__ == "__main__":

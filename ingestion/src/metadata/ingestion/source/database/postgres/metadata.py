@@ -11,9 +11,10 @@
 """
 Postgres source module
 """
+
 import traceback
 from collections import namedtuple
-from typing import Iterable, Optional, Tuple
+from collections.abc import Iterable
 
 from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
@@ -42,7 +43,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import (
     EntityName,
-    FullyQualifiedEntityName,
     Markdown,
 )
 from metadata.ingestion.api.models import Either
@@ -56,11 +56,14 @@ from metadata.ingestion.source.database.common_db_source import (
 from metadata.ingestion.source.database.common_pg_mappings import (
     INTERVAL_TYPE_MAP,
     RELKIND_MAP,
+    PgMatviewMixin,
     ischema_names,
 )
-from metadata.ingestion.source.database.mssql.models import STORED_PROC_LANGUAGE_MAP
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
-from metadata.ingestion.source.database.postgres.models import PostgresStoredProcedure
+from metadata.ingestion.source.database.postgres.models import (
+    POSTGRES_STORED_PROC_LANGUAGE_MAP,
+    PostgresStoredProcedure,
+)
 from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_ALL_TABLE_PG_POLICY,
     POSTGRES_GET_DB_NAMES,
@@ -92,7 +95,6 @@ from metadata.utils.sqlalchemy_utils import (
     get_schema_descriptions,
     get_table_ddl,
 )
-from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
 import_side_effects(
     "metadata.ingestion.source.database.postgres.converter_orm",
@@ -123,7 +125,7 @@ PGDialect.get_foreign_keys = get_foreign_keys
 PGDialect.get_schema_names = get_schema_names
 
 
-class PostgresSource(CommonDbSourceService, MultiDBSource):
+class PostgresSource(PgMatviewMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Postgres Source
@@ -134,31 +136,23 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         self.schema_desc_map = {}
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: PostgresConnection = config.serviceConnection.root.config
         if not isinstance(connection, PostgresConnection):
-            raise InvalidSourceException(
-                f"Expected PostgresConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected PostgresConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_schema_description(self, schema_name: str) -> Optional[str]:
+    def get_schema_description(self, schema_name: str) -> str | None:
         """
         Method to fetch the schema description
         """
         return self.schema_desc_map.get(schema_name)
 
     def set_schema_description_map(self) -> None:
-        self.schema_desc_map = get_schema_descriptions(
-            self.engine, POSTGRES_SCHEMA_COMMENTS
-        )
+        self.schema_desc_map = get_schema_descriptions(self.engine, POSTGRES_SCHEMA_COMMENTS)
 
-    def query_table_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Overwrite the inspector implementation to handle partitioned
         and foreign types
@@ -169,13 +163,10 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         )
 
         return [
-            TableNameAndType(
-                name=name, type_=RELKIND_MAP.get(relkind, TableType.Regular)
-            )
-            for name, relkind in result
+            TableNameAndType(name=name, type_=RELKIND_MAP.get(relkind, TableType.Regular)) for name, relkind in result
         ]
 
-    def get_configured_database(self) -> Optional[str]:
+    def get_configured_database(self) -> str | None:
         if not self.service_connection.ingestAllDatabases:
             return self.service_connection.database
         return None
@@ -184,8 +175,8 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         yield from self._execute_database_query(POSTGRES_GET_DB_NAMES)
 
     def get_database_names(self) -> Iterable[str]:
-        if not self.config.serviceConnection.root.config.ingestAllDatabases:
-            configured_db = self.config.serviceConnection.root.config.database
+        if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]
+            configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
             self.set_inspector(database_name=configured_db)
             self.set_schema_description_map()
             yield configured_db
@@ -200,11 +191,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    (
-                        database_fqn
-                        if self.source_config.useFqnForFiltering
-                        else new_database
-                    ),
+                    (database_fqn if self.source_config.useFqnForFiltering else new_database),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
@@ -215,13 +202,9 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(
-                        f"Error trying to connect to database {new_database}: {exc}"
-                    )
+                    logger.error(f"Error trying to connect to database {new_database}: {exc}")
 
-    def get_table_partition_details(
-        self, table_name: str, schema_name: str, inspector
-    ) -> Tuple[bool, TablePartition]:
+    def get_table_partition_details(self, table_name: str, schema_name: str, inspector) -> tuple[bool, TablePartition]:
         with self.engine.connect() as conn:
             result = conn.execute(
                 text(POSTGRES_PARTITION_DETAILS),
@@ -233,9 +216,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 columns=[
                     PartitionColumnDetails(
                         columnName=row.column_name,
-                        intervalType=INTERVAL_TYPE_MAP.get(
-                            row.partition_strategy, PartitionIntervalTypes.COLUMN_VALUE
-                        ),
+                        intervalType=INTERVAL_TYPE_MAP.get(row.partition_strategy, PartitionIntervalTypes.COLUMN_VALUE),
                         interval=None,
                     )
                     for row in result
@@ -245,36 +226,44 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
             return True, partition_details
         return False, None
 
-    def yield_tag(
-        self, schema_name: str
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         Fetch Tags
         """
         try:
             with self.engine.connect() as conn:
                 result = conn.execute(
-                    text(
-                        POSTGRES_GET_ALL_TABLE_PG_POLICY.format(
-                            database_name=self.context.get().database,
-                            schema_name=schema_name,
-                        )
-                    )
+                    text(POSTGRES_GET_ALL_TABLE_PG_POLICY),
+                    {
+                        "schema_name": schema_name,
+                        "database_name": self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                    },
                 ).all()
             for res in result:
                 row = list(res)
                 fqn_elements = [name for name in row[2:] if name]
-                yield from get_ometa_tag_and_classification(
-                    tag_fqn=FullyQualifiedEntityName(
-                        fqn._build(  # pylint: disable=protected-access
-                            self.context.get().database_service, *fqn_elements
-                        )
-                    ),
-                    tags=[row[1]],
-                    classification_name=self.service_connection.classificationName,
-                    tag_description="Postgres Tag Value",
-                    classification_description="Postgres Tag Name",
+                entity_fqn = fqn._build(  # pylint: disable=protected-access
+                    self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                    *fqn_elements,
                 )
+                try:
+                    tag = self.define_tag(
+                        classification_name=self.service_connection.classificationName,
+                        tag_name=row[1],
+                        tag_description="Postgres Tag Value",
+                        classification_description="Postgres Tag Name",
+                    )
+                    if tag:
+                        self.attach_tag(entity_fqn=entity_fqn, tag=tag)
+                except Exception as exc:
+                    yield Either(
+                        left=StackTraceError(
+                            name=row[1],
+                            error=f"Error yielding tag [{row[1]}]: [{exc}]",
+                            stackTrace=traceback.format_exc(),
+                        ),
+                        right=None,
+                    )
 
         except Exception as exc:
             yield Either(
@@ -285,9 +274,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 )
             )
 
-    def _get_stored_procedures_internal(
-        self, query: str
-    ) -> Iterable[PostgresStoredProcedure]:
+    def _get_stored_procedures_internal(self, query: str) -> Iterable[PostgresStoredProcedure]:
         with self.engine.connect() as conn:
             results = conn.execute(text(query)).all()
         for row in results:
@@ -299,12 +286,13 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                     continue
                 yield stored_procedure
             except Exception as exc:
-                logger.error()
+                stack_trace = traceback.format_exc()
+                logger.debug(stack_trace)
                 self.status.failed(
                     error=StackTraceError(
-                        name=row._asdict().get("name", "UNKNOWN"),
+                        name=row._asdict().get("procedure_name", "UNKNOWN"),
                         error=f"Error parsing Stored Procedure payload: {exc}",
-                        stackTrace=traceback.format_exc(),
+                        stackTrace=stack_trace,
                     )
                 )
 
@@ -312,28 +300,20 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         """List stored procedures"""
         if self.source_config.includeStoredProcedures:
             yield from self._get_stored_procedures_internal(
-                POSTGRES_GET_STORED_PROCEDURES.format(
-                    schema_name=self.context.get().database_schema
-                )
+                POSTGRES_GET_STORED_PROCEDURES.format(schema_name=self.context.get().database_schema)
             )
             yield from self._get_stored_procedures_internal(
-                POSTGRES_GET_FUNCTIONS.format(
-                    schema_name=self.context.get().database_schema
-                )
+                POSTGRES_GET_FUNCTIONS.format(schema_name=self.context.get().database_schema)
             )
 
-    def yield_stored_procedure(
-        self, stored_procedure
-    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+    def yield_stored_procedure(self, stored_procedure) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Prepare the stored procedure payload"""
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
                 name=EntityName(stored_procedure.name),
-                description=Markdown(stored_procedure.description)
-                if stored_procedure.description
-                else None,
+                description=Markdown(stored_procedure.description) if stored_procedure.description else None,
                 storedProcedureCode=StoredProcedureCode(
-                    language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
+                    language=POSTGRES_STORED_PROC_LANGUAGE_MAP.get((stored_procedure.language or "").lower()),
                     code=stored_procedure.definition,
                 ),
                 databaseSchema=fqn.build(

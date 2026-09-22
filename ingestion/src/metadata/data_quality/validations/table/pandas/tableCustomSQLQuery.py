@@ -13,8 +13,6 @@
 Validator for table custom SQL Query test case
 """
 
-from typing import Optional
-
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
@@ -27,22 +25,16 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
-class TableCustomSQLQueryValidator(
-    BaseTableCustomSQLQueryValidator, PandasValidatorMixin
-):
+class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, PandasValidatorMixin):
     """Validator for table custom SQL Query test case"""
 
     def _run_results(self, sql_expression: str, strategy: Strategy = Strategy.ROWS):
         """compute result of the test case"""
         return sum(  # pylint: disable=consider-using-generator
-            [
-                len(runner.query(sql_expression))
-                for runner in self.runner
-                if len(runner.query(sql_expression))
-            ]
+            [len(runner.query(sql_expression)) for runner in self.runner if len(runner.query(sql_expression))]
         )
 
-    def compute_row_count(self) -> Optional[int]:
+    def compute_row_count(self) -> int | None:
         """Compute row count for the given column
 
         Returns:
@@ -53,11 +45,7 @@ class TableCustomSQLQueryValidator(
 
         total_rows = 0
         partition_expression = next(
-            (
-                param.value
-                for param in self.test_case.parameterValues
-                if param.name == "partitionExpression"
-            ),
+            (param.value for param in self.test_case.parameterValues if param.name == "partitionExpression"),
             None,
         )
         for dataframe in self.runner:

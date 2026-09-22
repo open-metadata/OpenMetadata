@@ -9,9 +9,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """mlflow integration tests"""
+
 import logging
 import os
 import time
+from pathlib import Path
 from urllib.parse import urlparse
 
 import mlflow
@@ -48,14 +50,20 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ....integration_base import generate_name
+from ....integration_base import generate_name  # noqa: TID252
 
 MODEL_HYPERPARAMS = {
     "alpha": {"name": "alpha", "value": "0.5", "description": None},
     "l1_ratio": {"name": "l1_ratio", "value": "1.0", "description": None},
 }
 
+# An earlier registered version with distinct hyperparameters. Ingestion must
+# surface the newest version's run, so these values must never reach the entity;
+# seeing them would mean the connector selected a stale version.
+PREVIOUS_HYPERPARAMS = {"alpha": "0.2", "l1_ratio": "0.3"}
+
 MODEL_NAME = "ElasticnetWineModel"
+MODEL_DESCRIPTION = "ElasticNet model predicting wine quality"
 
 
 def eval_metrics(actual, pred):
@@ -65,39 +73,67 @@ def eval_metrics(actual, pred):
     return rmse, mae, r2
 
 
+def log_registered_model(model, signature):
+    """Log a model version under MODEL_NAME, retrying transient artifact errors."""
+    tracking_url_type_store = urlparse(mlflow.get_tracking_uri()).scheme
+
+    for attempt in range(5):
+        try:
+            if tracking_url_type_store != "file":
+                mlflow.sklearn.log_model(
+                    model,
+                    "model",
+                    registered_model_name=MODEL_NAME,
+                    signature=signature,
+                )
+            else:
+                mlflow.sklearn.log_model(model, "model")
+            break
+        except Exception as exc:
+            if attempt < 4:
+                logging.getLogger(__name__).warning(
+                    "Retry %d/5: log_model failed (%s: %s), retrying...", attempt + 1, type(exc).__name__, exc
+                )
+                time.sleep(5 * (attempt + 1))
+            else:
+                raise
+
+
 @pytest.fixture(scope="module")
 def create_data(mlflow_environment):
     mlflow_uri = f"http://localhost:{mlflow_environment.mlflow_configs.exposed_port}"
     mlflow.set_tracking_uri(mlflow_uri)
 
-    minio_endpoint = f"http://localhost:{mlflow_environment.minio_configs.exposed_port}"
-    os.environ["AWS_ACCESS_KEY_ID"] = mlflow_environment.minio_configs.access_key
-    os.environ["AWS_SECRET_ACCESS_KEY"] = mlflow_environment.minio_configs.secret_key
-    os.environ["MLFLOW_S3_ENDPOINT_URL"] = minio_endpoint
+    s3_endpoint = f"http://localhost:{mlflow_environment.s3_configs.exposed_port}"
+    os.environ["AWS_ACCESS_KEY_ID"] = mlflow_environment.s3_configs.access_key
+    os.environ["AWS_SECRET_ACCESS_KEY"] = mlflow_environment.s3_configs.secret_key
+    os.environ["MLFLOW_S3_ENDPOINT_URL"] = s3_endpoint
     os.environ["MLFLOW_BOTO_CLIENT_ADDRESSING_STYLE"] = "path"
 
-    # Reset boto3's cached default session so it picks up the MinIO env vars above.
+    # Reset boto3's cached default session so it picks up the S3 env vars above.
     # Earlier tests (e.g. test_ometa_secrets_manager) may have created DEFAULT_SESSION
-    # which caches credentials from ~/.aws/credentials — sending real AWS creds to MinIO
-    # instead of "minio"/"password", causing InvalidAccessKeyId.
+    # which caches credentials from ~/.aws/credentials — sending real AWS creds to the
+    # test S3 container instead of its own, causing InvalidAccessKeyId.
     import boto3
 
     boto3.DEFAULT_SESSION = None
 
-    # Verify MinIO is reachable before proceeding (may be slow under Docker load)
+    # Verify object storage is reachable before proceeding (may be slow under Docker
+    # load). S3Proxy has no health endpoint; an unauthenticated GET / answers 403 once
+    # it is serving, which is all we need here.
     import requests
 
     for _ in range(15):
         try:
-            requests.get(f"{minio_endpoint}/minio/health/live", timeout=5)
+            requests.get(s3_endpoint, timeout=5)
             break
         except Exception:
             time.sleep(2)
 
     np.random.seed(40)
 
-    csv_url = "https://raw.githubusercontent.com/open-metadata/openmetadata-demo/main/resources/winequality-red.csv"
-    data = pd.read_csv(csv_url, sep=";")
+    csv_path = Path(__file__).parent / "data" / "winequality-red.csv"
+    data = pd.read_csv(csv_path, sep=";")
 
     train, test = train_test_split(data)
 
@@ -108,12 +144,24 @@ def create_data(mlflow_environment):
 
     alpha = float(MODEL_HYPERPARAMS["alpha"]["value"])
     l1_ratio = float(MODEL_HYPERPARAMS["l1_ratio"]["value"])
+    prev_alpha = float(PREVIOUS_HYPERPARAMS["alpha"])
+    prev_l1_ratio = float(PREVIOUS_HYPERPARAMS["l1_ratio"])
+
+    signature = infer_signature(train_x, ElasticNet().fit(train_x, train_y).predict(train_x))
+
+    # Register an older version first so the model carries more than one version.
+    # latest_versions only ever holds the newest, so ingestion must surface the
+    # version 2 run below — never these hyperparameters.
+    with mlflow.start_run():
+        lr_prev = ElasticNet(alpha=prev_alpha, l1_ratio=prev_l1_ratio, random_state=42)
+        lr_prev.fit(train_x, train_y)
+        mlflow.log_param("alpha", prev_alpha)
+        mlflow.log_param("l1_ratio", prev_l1_ratio)
+        log_registered_model(lr_prev, signature)
 
     with mlflow.start_run():
         lr = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=42)
         lr.fit(train_x, train_y)
-
-        signature = infer_signature(train_x, lr.predict(train_x))
 
         predicted_qualities = lr.predict(test_x)
 
@@ -125,28 +173,11 @@ def create_data(mlflow_environment):
         mlflow.log_metric("r2", r2)
         mlflow.log_metric("mae", mae)
 
-        tracking_url_type_store = urlparse(mlflow.get_tracking_uri()).scheme
+        log_registered_model(lr, signature)
 
-        for attempt in range(5):
-            try:
-                if tracking_url_type_store != "file":
-                    mlflow.sklearn.log_model(
-                        lr,
-                        "model",
-                        registered_model_name=MODEL_NAME,
-                        signature=signature,
-                    )
-                else:
-                    mlflow.sklearn.log_model(lr, "model")
-                break
-            except Exception:
-                if attempt < 4:
-                    logging.getLogger(__name__).warning(
-                        "Retry %d/5: S3 upload failed, retrying...", attempt + 1
-                    )
-                    time.sleep(5 * (attempt + 1))
-                else:
-                    raise
+    # Describing the model bumps RegisteredModel.last_updated_timestamp past the
+    # version's, which must not hide the version from the registry listing.
+    mlflow.MlflowClient().update_registered_model(MODEL_NAME, description=MODEL_DESCRIPTION)
 
 
 @pytest.fixture(scope="module")
@@ -193,9 +224,7 @@ def test_mlflow(ingest_mlflow, metadata, service):
     ml_models = metadata.list_all_entities(entity=MlModel)
 
     # Check we only get the same amount of models we should have ingested
-    filtered_ml_models = [
-        ml_model for ml_model in ml_models if ml_model.service.name == service.name.root
-    ]
+    filtered_ml_models = [ml_model for ml_model in ml_models if ml_model.service.name == service.name.root]
 
     assert len(filtered_ml_models) == 1
 
@@ -205,6 +234,8 @@ def test_mlflow(ingest_mlflow, metadata, service):
     # Assert name is as expected
     assert model.name.root == MODEL_NAME
 
+    assert model.description.root == MODEL_DESCRIPTION
+
     # Assert HyperParameters are as expected
     assert len(model.mlHyperParameters) == 2
 
@@ -212,6 +243,11 @@ def test_mlflow(ingest_mlflow, metadata, service):
         assert model.mlHyperParameters[i].name == hp["name"]
         assert model.mlHyperParameters[i].value == hp["value"]
         assert model.mlHyperParameters[i].description == hp["description"]
+
+    # The model has two versions; ingestion must surface the newest one's run,
+    # so the older version's hyperparameters must be absent.
+    ingested_values = {hp.value for hp in model.mlHyperParameters}
+    assert not ingested_values & set(PREVIOUS_HYPERPARAMS.values())
 
     # Assert MLStore is as expected
     assert "mlops.local.com" in model.mlStore.storage

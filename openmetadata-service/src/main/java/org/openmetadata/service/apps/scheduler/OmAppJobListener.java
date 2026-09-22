@@ -4,8 +4,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_CONFIG_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -15,6 +13,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -24,6 +23,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdent
 import org.openmetadata.service.apps.logging.AppRunLogAppender;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.PerRequestContextCleaner;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
@@ -41,10 +41,50 @@ public class OmAppJobListener implements JobListener {
   public static final String JOB_LISTENER_NAME = "OM_JOB_LISTENER";
   public static final String SERVICES_FIELD = "services";
   public static final String APP_ID = "appId";
+  public static final String TRIGGER_TYPE_KEY = "triggerType";
   private static final String APP_RUN_LOG_ID = "appRunLogId";
 
   protected OmAppJobListener() {
     this.repository = new AppRepository();
+  }
+
+  /**
+   * Populate {@code endTime} and {@code executionTime} on a terminal-state run record. Each field
+   * is filled independently and only if currently null:
+   *
+   * <ul>
+   *   <li>{@code endTime} defaults to {@code System.currentTimeMillis()} if absent.
+   *   <li>{@code executionTime} is computed from {@code endTime - startTime} if absent and both
+   *       endpoints are available — this means callers that pre-populated {@code endTime} (e.g.
+   *       from {@code job.getCompletedAt()}) still get an accurate {@code executionTime}.
+   * </ul>
+   *
+   * <p>The method is a no-op for non-terminal statuses, so it is safe to call from progress
+   * listeners that may persist before {@link #jobWasExecuted} runs. Without this, mid-flight
+   * writes by progress listeners (e.g. {@code QuartzProgressListener} firing {@code onJobFailed})
+   * would persist a terminal status to the DB without timings; if the job dies before {@code
+   * jobWasExecuted} fires, polling consumers would see {@code status=FAILED} with no
+   * {@code endTime} / {@code executionTime}.
+   */
+  public static void fillTerminalTimings(AppRunRecord record) {
+    if (record == null || record.getStatus() == null || !isTerminalStatus(record.getStatus())) {
+      return;
+    }
+    if (record.getEndTime() == null) {
+      record.withEndTime(System.currentTimeMillis());
+    }
+    if (record.getExecutionTime() == null
+        && record.getStartTime() != null
+        && record.getEndTime() != null) {
+      record.setExecutionTime(record.getEndTime() - record.getStartTime());
+    }
+  }
+
+  private static boolean isTerminalStatus(AppRunRecord.Status status) {
+    return switch (status) {
+      case SUCCESS, FAILED, ACTIVE_ERROR, STOPPED, COMPLETED -> true;
+      default -> false;
+    };
   }
 
   @Override
@@ -52,11 +92,20 @@ public class OmAppJobListener implements JobListener {
     return JOB_LISTENER_NAME;
   }
 
+  /**
+   * Quartz worker threads are long lived and never pass through the JAX-RS response filter, so a
+   * per-request ThreadLocal cache left behind by an earlier job is served to this one. The App is
+   * read below with {@code fromCache = true}, so without this the app runs with whatever
+   * appConfiguration was current the first time this particular worker ran it — for the life of the
+   * process, and differing between workers. {@code AbstractEventConsumer} brackets its tick the same
+   * way.
+   */
   @Override
   public void jobToBeExecuted(JobExecutionContext jobExecutionContext) {
+    PerRequestContextCleaner.clear();
     try {
       String runType =
-          (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
+          (String) jobExecutionContext.getJobDetail().getJobDataMap().get(TRIGGER_TYPE_KEY);
       String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
       App jobApp =
           repository.getByName(
@@ -186,10 +235,11 @@ public class OmAppJobListener implements JobListener {
           context = runRecord.getFailureContext();
         }
         if (jobException != null) {
-          Map<String, Object> failure = new HashMap<>();
-          failure.put("message", jobException.getMessage());
-          failure.put("jobStackTrace", ExceptionUtils.getStackTrace(jobException));
-          context.withAdditionalProperty("failure", failure);
+          context.withFailure(
+              new IndexingError()
+                  .withErrorSource(IndexingError.ErrorSource.JOB)
+                  .withMessage(jobException.getMessage())
+                  .withStackTrace(ExceptionUtils.getStackTrace(jobException)));
         }
 
         runRecord.setFailureContext(context);
@@ -208,6 +258,8 @@ public class OmAppJobListener implements JobListener {
       LOG.error("OmAppJobListener.jobWasExecuted failed unexpectedly", e);
     } finally {
       cleanupLogCapture(jobExecutionContext);
+      // Leave the worker clean however this exits, so the next job on it starts from the database.
+      PerRequestContextCleaner.clear();
     }
   }
 

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
@@ -63,8 +63,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
           name: `Test Task - ${Date.now()}`,
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [assigneeUser.responseData.name],
@@ -95,15 +94,11 @@ test.describe('Task Resolution - Approve/Reject', () => {
     await assigneeUser.login(page);
     await table.visitEntityPage(page);
 
+    // Stay on the default "All" activity-feed view (do NOT switch to the
+    // Tasks-only split layout) — there each task renders as a single
+    // task-feed-card with its approve/reject buttons inline.
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
-
-    // Navigate to Tasks tab
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
 
     const taskCard = page.locator('[data-testid="task-feed-card"]').first();
 
@@ -126,7 +121,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -152,8 +147,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
 
     const taskResponse = await apiContext.post('/api/v1/tasks', {
       data: {
-        about: table.entityResponseData?.fullyQualifiedName,
-        aboutType: 'table',
+        about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
         type: 'DescriptionUpdate',
         category: 'MetadataUpdate',
         assignees: [assigneeUser.responseData.name],
@@ -172,7 +166,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -215,8 +209,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
     try {
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: tableFqn,
-          aboutType: 'table',
+          about: `<#E::table::${tableFqn}>`,
           type: 'DataQualityReview',
           category: 'Review',
           assignees: [createdByName],
@@ -259,6 +252,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
           data: {
             resolutionType: 'Rejected',
             newValue: 'rejected',
+            comment: 'Rejecting via automated test',
           },
         }
       );
@@ -317,8 +311,7 @@ test.describe('Task Resolution - Team Assignee', () => {
       // Create task assigned to team
       await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [team.responseData.name],
@@ -356,7 +349,7 @@ test.describe('Task Resolution - Team Assignee', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -381,7 +374,7 @@ test.describe('Task Resolution - Team Assignee', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -446,8 +439,7 @@ test.describe('Task Resolution - Permission Validation', () => {
       // Create task assigned to user without edit permission
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [userWithoutEditPermission.responseData.name],
@@ -494,8 +486,7 @@ test.describe('Task Resolution - Permission Validation', () => {
       // Create task assigned to owner (who has edit permission)
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [userWithEditPermission.responseData.name],
@@ -573,8 +564,7 @@ test.describe('Task Resolution - Close by Creator', () => {
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
           name: `Test Task Close - ${Date.now()}`,
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           priority: 'Medium',
@@ -604,34 +594,23 @@ test.describe('Task Resolution - Close by Creator', () => {
           data: {
             resolutionType: 'Rejected',
             newValue: '',
+            comment: 'Rejecting via automated test',
           },
         }
       );
 
-      if (!resolveResponse.ok()) {
-        // Try PATCH as fallback
-        const closeResponse = await apiContext.patch(
-          `/api/v1/tasks/${task.id}`,
-          {
-            data: [
-              {
-                op: 'replace',
-                path: '/status',
-                value: 'Closed',
-              },
-            ],
-            headers: { 'Content-Type': 'application/json-patch+json' },
-          }
-        );
-        expect(closeResponse.ok()).toBe(true);
-      }
+      // Creator closes their own task by rejecting via /resolve — the only
+      // supported path. The previous PATCH fallback to /status was writing an
+      // invalid TaskEntityStatus (Closed, later Cancelled — both blocked by
+      // H4's workflow-decision status guard once the refactor to
+      // JsonUtils.applyPatch made Jackson's enum validation visible). Assert
+      // the primary /resolve call succeeded and drop the dead fallback.
+      expect(resolveResponse.ok()).toBe(true);
 
-      // Verify task is resolved/closed
+      // Verify task landed in the expected resolved state
       const getTaskResponse = await apiContext.get(`/api/v1/tasks/${task.id}`);
       const closedTask = await getTaskResponse.json();
-
-      // Task should be in a closed/completed state
-      expect(['Completed', 'Closed', 'Rejected']).toContain(closedTask.status);
+      expect(['Completed', 'Rejected']).toContain(closedTask.status);
     } finally {
       await afterAction();
     }

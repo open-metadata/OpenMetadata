@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { expect, test, type Browser } from '@playwright/test';
+import { type Browser } from '@playwright/test';
 import { VIEW_ONLY_RULE } from '../../../constant/permission';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
@@ -142,8 +143,7 @@ test.describe('Task Permissions - Assignee Must Have Edit Permission', () => {
     browser,
   }) => {
     const task = await createTaskAsAdmin(browser, {
-      about: table.entityResponseData?.fullyQualifiedName,
-      aboutType: 'table',
+      about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
       type: 'DescriptionUpdate',
       category: 'MetadataUpdate',
       assignees: [assigneeWithoutEdit.responseData.name],
@@ -183,8 +183,7 @@ test.describe('Task Permissions - Assignee Must Have Edit Permission', () => {
 
   test('owner (has EditDescription) CAN resolve task', async ({ browser }) => {
     const task = await createTaskAsAdmin(browser, {
-      about: table.entityResponseData?.fullyQualifiedName,
-      aboutType: 'table',
+      about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
       type: 'DescriptionUpdate',
       category: 'MetadataUpdate',
       assignees: [ownerUser.responseData.name],
@@ -216,8 +215,7 @@ test.describe('Task Permissions - Assignee Must Have Edit Permission', () => {
 
   test('admin CAN resolve any task', async ({ browser }) => {
     const task = await createTaskAsAdmin(browser, {
-      about: table.entityResponseData?.fullyQualifiedName,
-      aboutType: 'table',
+      about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
       type: 'DescriptionUpdate',
       category: 'MetadataUpdate',
       assignees: [assigneeWithoutEdit.responseData.name],
@@ -248,8 +246,7 @@ test.describe('Task Permissions - Assignee Must Have Edit Permission', () => {
     browser,
   }) => {
     const task = await createTaskAsAdmin(browser, {
-      about: table.entityResponseData?.fullyQualifiedName,
-      aboutType: 'table',
+      about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
       type: 'TagUpdate',
       category: 'MetadataUpdate',
       assignees: [assigneeWithoutEdit.responseData.name],
@@ -309,8 +306,7 @@ test.describe('Task Permissions - UI Button Visibility', () => {
       // Create task assigned to owner
       await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -346,7 +342,7 @@ test.describe('Task Permissions - UI Button Visibility', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -373,7 +369,7 @@ test.describe('Task Permissions - UI Button Visibility', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -398,7 +394,7 @@ test.describe('Task Permissions - UI Button Visibility', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -461,8 +457,7 @@ test.describe('Task Permissions - Team Assignment', () => {
       // Create task assigned to team
       await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [team.responseData.name],
@@ -499,7 +494,7 @@ test.describe('Task Permissions - Team Assignment', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -522,7 +517,7 @@ test.describe('Task Permissions - Team Assignment', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -590,8 +585,7 @@ test.describe('Task Permissions - Task Creator', () => {
       // Create task as admin (simulating creator)
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [assigneeUser.responseData.name],
@@ -616,8 +610,7 @@ test.describe('Task Permissions - Task Creator', () => {
     // Create task as admin
     const taskResponse = await apiContext.post('/api/v1/tasks', {
       data: {
-        about: table.entityResponseData?.fullyQualifiedName,
-        aboutType: 'table',
+        about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
         type: 'DescriptionUpdate',
         category: 'MetadataUpdate',
         assignees: [assigneeUser.responseData.name],
@@ -635,7 +628,7 @@ test.describe('Task Permissions - Task Creator', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -689,8 +682,7 @@ test.describe('Task Permissions - Edge Cases', () => {
       // Create and close task
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [adminUser.responseData.name],
@@ -750,8 +742,7 @@ test.describe('Task Permissions - Edge Cases', () => {
       // Create task without assignees
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           // No assignees specified

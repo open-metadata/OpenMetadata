@@ -11,6 +11,7 @@
 """
 Test Airflow related operations
 """
+
 import datetime
 import os
 import shutil
@@ -53,22 +54,12 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 if "AIRFLOW_HOME" not in os.environ:
     os.environ["AIRFLOW_HOME"] = "/tmp/airflow"
 if "AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS" not in os.environ:
-    os.environ[
-        "AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS"
-    ] = "/tmp/airflow"
+    os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS"] = "/tmp/airflow"
 if "AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_RUNNER_TEMPLATE" not in os.environ:
-    template_path = (
-        Path(__file__).parent.parent.parent.parent
-        / "openmetadata_managed_apis/resources/dag_runner.j2"
-    )
+    template_path = Path(__file__).parent.parent.parent.parent / "openmetadata_managed_apis/resources/dag_runner.j2"
     if not template_path.exists():
-        template_path = (
-            Path(__file__).parent.parent.parent.parent
-            / "src/plugins/dag_templates/dag_runner.j2"
-        )
-    os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_RUNNER_TEMPLATE"] = str(
-        template_path.absolute()
-    )
+        template_path = Path(__file__).parent.parent.parent.parent / "src/plugins/dag_templates/dag_runner.j2"
+    os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_RUNNER_TEMPLATE"] = str(template_path.absolute())
 
 from airflow import DAG
 from airflow.models import DagBag, DagModel
@@ -82,6 +73,11 @@ try:
     from airflow.providers.standard.operators.bash import BashOperator
 except ImportError:
     from airflow.operators.bash import BashOperator
+from flask import Flask
+
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig,
+)
 from openmetadata_managed_apis.operations.delete import delete_dag_id
 from openmetadata_managed_apis.operations.deploy import DagDeployer
 from openmetadata_managed_apis.operations.kill_all import kill_all
@@ -89,14 +85,11 @@ from openmetadata_managed_apis.operations.state import disable_dag, enable_dag
 from openmetadata_managed_apis.operations.status import status
 from openmetadata_managed_apis.operations.trigger import trigger
 
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
-    OpenMetadataJWTClientConfig,
-)
-
 
 class TestAirflowOps(TestCase):
     dagbag: DagBag
     dag: DAG
+    _app_ctx = None
 
     conn = OpenMetadataConnection(
         hostPort=os.getenv("OPENMETADATA_HOST_PORT", "http://localhost:8585/api"),
@@ -112,10 +105,13 @@ class TestAirflowOps(TestCase):
         """
         Prepare ingredients
         """
+        cls._app_ctx = Flask(__name__).app_context()
+        cls._app_ctx.push()
+
         # Initialize Airflow database if it doesn't exist
         from airflow.utils.db import initdb
 
-        try:
+        try:  # noqa: SIM105
             initdb()
         except Exception:
             # Database might already be initialized
@@ -141,11 +137,7 @@ class TestAirflowOps(TestCase):
             with create_session() as session:
                 from airflow.models.dagbundle import DagBundleModel
 
-                bundle = (
-                    session.query(DagBundleModel)
-                    .filter(DagBundleModel.name == "")
-                    .first()
-                )
+                bundle = session.query(DagBundleModel).filter(DagBundleModel.name == "").first()
                 if not bundle:
                     bundle = DagBundleModel(name="", version=None)
                     session.add(bundle)
@@ -159,12 +151,17 @@ class TestAirflowOps(TestCase):
                 session.merge(dag_model)
                 session.commit()
 
-        cls.dagbag = DagBag(include_examples=False)
+        import inspect
+
+        # Airflow 3.3 dropped `include_examples` from DagBag.__init__: DAG discovery
+        # is bundle based there, so example DAGs are no longer a constructor flag.
+        dagbag_kwargs = {}
+        if "include_examples" in inspect.signature(DagBag.__init__).parameters:
+            dagbag_kwargs["include_examples"] = False
+        cls.dagbag = DagBag(**dagbag_kwargs)
 
         # In Airflow 2.x, bag_dag() requires root_dag parameter
         # In Airflow 3.x, it doesn't accept root_dag parameter
-        import inspect
-
         bag_dag_sig = inspect.signature(cls.dagbag.bag_dag)
         if "root_dag" in bag_dag_sig.parameters:
             # Airflow 2.x
@@ -178,10 +175,11 @@ class TestAirflowOps(TestCase):
         """
         Clean up
         """
+        if cls._app_ctx is not None:
+            cls._app_ctx.pop()
+
         try:
-            service = cls.metadata.get_by_name(
-                entity=DatabaseService, fqn="test-service-ops"
-            )
+            service = cls.metadata.get_by_name(entity=DatabaseService, fqn="test-service-ops")
             if service:
                 service_id = str(service.id.root)
                 cls.metadata.delete(
@@ -196,7 +194,7 @@ class TestAirflowOps(TestCase):
         if hasattr(cls, "_temp_dag_file") and cls._temp_dag_file.exists():
             cls._temp_dag_file.unlink()
 
-        if os.path.exists("/tmp/airflow"):
+        if os.path.exists("/tmp/airflow"):  # noqa: PTH110
             shutil.rmtree("/tmp/airflow")
 
     def test_dag_status(self):
@@ -263,7 +261,8 @@ class TestAirflowOps(TestCase):
         res = kill_all(dag_id="dag_status")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(
-            res.json, {"message": f"Workflow [dag_status] has been killed"}
+            res.json,
+            {"message": f"Workflow [dag_status] has been killed"},  # noqa: F541
         )
 
         res = status(dag_id="dag_status")
@@ -322,9 +321,7 @@ class TestAirflowOps(TestCase):
             sourceConfig=SourceConfig(config=DatabaseServiceMetadataPipeline()),
             openMetadataServerConnection=self.conn,
             airflowConfig=AirflowConfig(),
-            service=EntityReference(
-                id=service.id, type="databaseService", name="test-service-ops"
-            ),
+            service=EntityReference(id=service.id, type="databaseService", name="test-service-ops"),
         )
 
         # Create the DAG
@@ -332,9 +329,7 @@ class TestAirflowOps(TestCase):
         res = deployer.deploy()
 
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(
-            res.json, {"message": "Workflow [my_new_dag] has been created"}
-        )
+        self.assertEqual(res.json, {"message": "Workflow [my_new_dag] has been created"})
 
         from airflow.configuration import conf as airflow_conf
 
@@ -362,9 +357,7 @@ class TestAirflowOps(TestCase):
         from airflow.utils.session import create_session
 
         with create_session() as session:
-            bundle = (
-                session.query(DagBundleModel).filter(DagBundleModel.name == "").first()
-            )
+            bundle = session.query(DagBundleModel).filter(DagBundleModel.name == "").first()
             if not bundle:
                 bundle = DagBundleModel(name="", version=None)
                 session.add(bundle)
@@ -385,16 +378,14 @@ class TestAirflowOps(TestCase):
                 dag_model = dag_model_obj
 
         serialized_stub = LazyDeserializedDAG.from_dag(stub_dag)
-        SerializedDagModel.write_dag(
-            serialized_stub, bundle_name="", bundle_version=None
-        )
+        SerializedDagModel.write_dag(serialized_stub, bundle_name="", bundle_version=None)
 
         self.assertIsNotNone(dag_model)
 
-        res = trigger(dag_id="my_new_dag", run_id=None)
+        trigger_payload, trigger_status = trigger(dag_id="my_new_dag", run_id=None)
 
-        self.assertEqual(res.status_code, 200)
-        self.assertIn("Workflow [my_new_dag] has been triggered", res.json["message"])
+        self.assertEqual(trigger_status, 200)
+        self.assertIn("Workflow [my_new_dag] has been triggered", trigger_payload["message"])
 
         # Delete it
         res = delete_dag_id("my_new_dag")

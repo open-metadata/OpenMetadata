@@ -6,29 +6,49 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.search.Aggregation;
 import org.openmetadata.schema.api.search.AllowedSearchFields;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.Field;
 import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.GlobalSettings;
+import org.openmetadata.schema.api.search.RankingConfiguration;
+import org.openmetadata.schema.api.search.RankingSignals;
+import org.openmetadata.schema.api.search.RankingStage;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.search.HighlightFieldClassifier;
+import org.openmetadata.service.search.IndexMappingProperties;
+import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.util.EntityUtil;
 
 class SearchSettingsHandlerTest {
 
   private SearchSettingsHandler searchSettingsHandler;
   private SearchSettings defaultSearchSettings;
+
+  @BeforeAll
+  static void loadIndexMappings() throws IOException {
+    // The highlight-field check classifies against the real index mappings; without this the
+    // classifier cannot see any mapping and reports every field as supported.
+    IndexMappingLoader.init();
+  }
 
   @BeforeEach
   void setUp() throws IOException {
@@ -96,6 +116,254 @@ class SearchSettingsHandlerTest {
           allowedFieldEntityTypes.contains(assetType),
           "Asset type '" + assetType + "' has no corresponding allowedFields entry");
     }
+  }
+
+  @Test
+  void shippedDefaultHighlightFieldsAreAllHighlightable() {
+    // The seed is what every fresh cluster saves, so it must pass the check an admin's payload has
+    // to pass. If a mapping change makes a shipped highlight field unhighlightable, this fails
+    // before the setting reaches a cluster.
+    searchSettingsHandler.validateHighlightFields(defaultSearchSettings);
+  }
+
+  @Test
+  void annotateMarksHighlightabilityFromTheIndexMapping() {
+    searchSettingsHandler.annotateHighlightableFields(defaultSearchSettings);
+
+    assertEquals(
+        Boolean.TRUE,
+        allowedField("table", "description").getHighlight(),
+        "An analyzed text field must be offered the highlight toggle");
+    assertEquals(
+        Boolean.FALSE,
+        allowedField("table", "extension.someCustomProperty").getHighlight(),
+        "A custom property lives under enabled:false `extension` and can never be highlighted");
+  }
+
+  @Test
+  void everyConfiguredSearchFieldGetsAHighlightVerdict() {
+    // allowedFields is not a complete list of configurable fields — table configures name.keyword,
+    // name.compound, displayName.compound and columnNamesFuzzy with no allowedFields entry. The UI
+    // renders a row per search field and reads the verdict from allowedFields, so a missing entry
+    // silently disabled those toggles.
+    searchSettingsHandler.annotateHighlightableFields(defaultSearchSettings);
+
+    List<String> withoutVerdict = new ArrayList<>();
+    for (AssetTypeConfiguration assetConfig : defaultSearchSettings.getAssetTypeConfigurations()) {
+      Set<String> annotated =
+          defaultSearchSettings.getAllowedFields().stream()
+              .filter(
+                  allowed -> assetConfig.getAssetType().equalsIgnoreCase(allowed.getEntityType()))
+              .flatMap(allowed -> allowed.getFields().stream())
+              .map(Field::getName)
+              .collect(Collectors.toSet());
+      CommonUtil.listOrEmpty(assetConfig.getSearchFields()).stream()
+          .map(FieldBoost::getField)
+          .filter(field -> !annotated.contains(field))
+          .forEach(field -> withoutVerdict.add(assetConfig.getAssetType() + ":" + field));
+    }
+
+    assertTrue(
+        withoutVerdict.isEmpty(),
+        "every configured search field must carry a highlight verdict: " + withoutVerdict);
+    assertEquals(
+        Boolean.TRUE,
+        allowedField("table", "name.keyword").getHighlight(),
+        "name.keyword is a keyword multi-field and is highlightable");
+  }
+
+  @Test
+  void annotatedFlagAgreesWithWhatTheSavePathAccepts() {
+    // The UI decides what to offer from this flag while the API decides what to accept from the
+    // classifier. If they ever disagreed, the UI would offer a toggle whose save 400s.
+    searchSettingsHandler.annotateHighlightableFields(defaultSearchSettings);
+
+    List<String> disagreements = new ArrayList<>();
+    for (AllowedSearchFields allowed : defaultSearchSettings.getAllowedFields()) {
+      for (Field field : allowed.getFields()) {
+        boolean saveAccepts = saveAccepts(allowed.getEntityType(), field.getName());
+        if (!Boolean.valueOf(saveAccepts).equals(field.getHighlight())) {
+          disagreements.add(allowed.getEntityType() + ":" + field.getName());
+        }
+      }
+    }
+
+    assertTrue(
+        disagreements.isEmpty(),
+        "highlight flag disagrees with what validateHighlightFields accepts: " + disagreements);
+  }
+
+  private boolean saveAccepts(String entityType, String fieldName) {
+    boolean accepted = true;
+    try {
+      searchSettingsHandler.validateHighlightFields(highlightSettings(entityType, fieldName));
+    } catch (SystemSettingsException e) {
+      accepted = false;
+    }
+    return accepted;
+  }
+
+  private Field allowedField(String entityType, String fieldName) {
+    return defaultSearchSettings.getAllowedFields().stream()
+        .filter(allowed -> entityType.equals(allowed.getEntityType()))
+        .flatMap(allowed -> allowed.getFields().stream())
+        .filter(field -> fieldName.equals(field.getName()))
+        .findFirst()
+        .orElseGet(
+            () -> {
+              // Not every probe field is shipped in allowedFields; annotate one so the assertion
+              // still exercises the classifier rather than silently passing on a missing entry.
+              Field probe = new Field().withName(fieldName).withDescription("probe");
+              AllowedSearchFields allowed =
+                  new AllowedSearchFields()
+                      .withEntityType(entityType)
+                      .withFields(new ArrayList<>(List.of(probe)));
+              searchSettingsHandler.annotateHighlightableFields(
+                  new SearchSettings().withAllowedFields(new ArrayList<>(List.of(allowed))));
+              return probe;
+            });
+  }
+
+  @Test
+  void queryTimeGuardKeepsEveryShippedHighlightField() {
+    // The OpenSearch guard classifies without knowing the target index, so it uses the union of
+    // unsupported paths across all mappings. That union must never swallow a field the product
+    // actually ships — a name that is enabled:false in one index but analyzed in another would be
+    // dropped from highlights everywhere.
+    List<String> dropped =
+        defaultSearchSettings.getAssetTypeConfigurations().stream()
+            .flatMap(config -> CommonUtil.listOrEmpty(config.getHighlightFields()).stream())
+            .distinct()
+            .filter(HighlightFieldClassifier::isHighlightUnsafeField)
+            .toList();
+
+    assertTrue(
+        dropped.isEmpty(), "Shipped highlight fields dropped by the query-time guard: " + dropped);
+  }
+
+  @Test
+  void saveIsRejectedForNonIndexedHighlightField() {
+    SearchSettings settings = highlightSettings("table", "extension.someCustomProperty");
+
+    SystemSettingsException exception =
+        assertThrows(
+            SystemSettingsException.class,
+            () -> searchSettingsHandler.validateHighlightFields(settings));
+
+    assertTrue(
+        exception.getMessage().contains("extension.someCustomProperty"),
+        "Message must name the offending field: " + exception.getMessage());
+    assertTrue(
+        exception.getMessage().contains("not indexed"),
+        "Message must explain why: " + exception.getMessage());
+  }
+
+  @Test
+  void saveIsRejectedForFlattenedHighlightField() {
+    SearchSettings settings = highlightSettings("aiApplication", "aiGovernance.complianceStatus");
+
+    SystemSettingsException exception =
+        assertThrows(
+            SystemSettingsException.class,
+            () -> searchSettingsHandler.validateHighlightFields(settings));
+
+    assertTrue(
+        exception.getMessage().contains("flattened"),
+        "Message must explain why: " + exception.getMessage());
+  }
+
+  @Test
+  void aHighlightFieldThisClusterAlreadyStoredIsDroppedRatherThanRejected() {
+    // A cluster upgraded from before this check carries the bad value, and the UI round-trips the
+    // whole highlightFields array on every save (a disabled toggle does not remove the entry).
+    // Rejecting would 400 every future save — including unrelated edits — with an error the admin
+    // cannot clear from the UI. Dropping it self-heals on the next save.
+    SearchSettings stored = highlightSettings("table", "extension.someCustomProperty");
+    SearchSettings incoming = highlightSettings("table", "extension.someCustomProperty");
+    incoming.getAssetTypeConfigurations().get(0).getHighlightFields().add("description");
+
+    searchSettingsHandler.validateHighlightFields(incoming, stored);
+
+    assertEquals(
+        List.of("description"),
+        incoming.getAssetTypeConfigurations().get(0).getHighlightFields(),
+        "the legacy value must be dropped and the good one kept");
+  }
+
+  @Test
+  void aNewlyAddedUnsupportedHighlightFieldIsStillRejectedWhenOthersWereStored() {
+    // Dropping legacy values must not become a blanket amnesty — a value this payload introduces is
+    // still refused even when the same asset type already carries a different bad one.
+    SearchSettings stored = highlightSettings("table", "extension.alreadyThere");
+    SearchSettings incoming = highlightSettings("table", "extension.alreadyThere");
+    incoming.getAssetTypeConfigurations().get(0).getHighlightFields().add("extension.brandNew");
+
+    SystemSettingsException exception =
+        assertThrows(
+            SystemSettingsException.class,
+            () -> searchSettingsHandler.validateHighlightFields(incoming, stored));
+
+    assertTrue(
+        exception.getMessage().contains("extension.brandNew"),
+        "the newly added field must be the one rejected: " + exception.getMessage());
+  }
+
+  @Test
+  void saveIsAcceptedForAnalyzedHighlightField() {
+    searchSettingsHandler.validateHighlightFields(highlightSettings("table", "description"));
+  }
+
+  private SearchSettings highlightSettings(String assetType, String highlightField) {
+    AssetTypeConfiguration assetConfig =
+        new AssetTypeConfiguration()
+            .withAssetType(assetType)
+            .withHighlightFields(new ArrayList<>(List.of(highlightField)));
+    return new SearchSettings().withAssetTypeConfigurations(new ArrayList<>(List.of(assetConfig)));
+  }
+
+  @Test
+  void testNameKeywordPresentForTopLevelNameSearchableAssets() {
+    // Top-level name-searchable assets must expose name.keyword for exact-match search,
+    // matching databaseSchema and table.
+    List<String> assetTypes = List.of("database", "storedProcedure", "query", "metric");
+    for (String assetType : assetTypes) {
+      AssetTypeConfiguration config = findAssetConfig(defaultSearchSettings, assetType);
+      assertNotNull(
+          config, "searchSettings.json must contain " + assetType + " assetTypeConfiguration");
+      Set<String> fieldNames =
+          config.getSearchFields().stream().map(FieldBoost::getField).collect(Collectors.toSet());
+      assertTrue(
+          fieldNames.contains("name.keyword"),
+          assetType + " searchFields must include 'name.keyword' for exact-match search");
+    }
+  }
+
+  @Test
+  void testAllowedFieldsCoverAllDefaultSearchFields() {
+    // A removed search field must stay re-addable: the UI add-field menu is sourced from
+    // allowedFields, so every default searchField must be present in allowedFields.
+    Map<String, Set<String>> allowedByEntity =
+        defaultSearchSettings.getAllowedFields().stream()
+            .collect(
+                Collectors.toMap(
+                    AllowedSearchFields::getEntityType,
+                    allowed ->
+                        allowed.getFields().stream()
+                            .map(Field::getName)
+                            .collect(Collectors.toSet())));
+
+    List<String> missing = new ArrayList<>();
+    for (AssetTypeConfiguration config : defaultSearchSettings.getAssetTypeConfigurations()) {
+      Set<String> allowed = allowedByEntity.getOrDefault(config.getAssetType(), Set.of());
+      for (FieldBoost searchField : config.getSearchFields()) {
+        if (!allowed.contains(searchField.getField())) {
+          missing.add(config.getAssetType() + " -> " + searchField.getField());
+        }
+      }
+    }
+    assertTrue(
+        missing.isEmpty(),
+        "Every default searchField must be re-addable via allowedFields. Missing: " + missing);
   }
 
   @Test
@@ -238,6 +506,28 @@ class SearchSettingsHandlerTest {
   }
 
   @Test
+  void testRankingSignalsMaxBoostMustBePositive() {
+    AssetTypeConfiguration config = createAssetConfig("table", "name", 10.0);
+    config.setRanking(
+        new RankingConfiguration()
+            .withEnabled(true)
+            .withStages(
+                List.of(
+                    new RankingStage()
+                        .withName("exactName")
+                        .withFields(List.of("name"))
+                        .withWeight(1.0)))
+            .withSignals(new RankingSignals().withMaxBoost(0.0)));
+
+    SystemSettingsException exception =
+        assertThrows(
+            SystemSettingsException.class,
+            () -> searchSettingsHandler.validateAssetTypeConfiguration(config));
+
+    assertTrue(exception.getMessage().contains("maxBoost must be positive"));
+  }
+
+  @Test
   void testMergeWithMultipleNewAndExistingAssetTypes() {
     SearchSettings defaults = createBaseSettings(5000);
     defaults.setAssetTypeConfigurations(
@@ -279,6 +569,141 @@ class SearchSettingsHandlerTest {
 
     assertNotNull(merged.getDefaultConfiguration());
     assertEquals("default", merged.getDefaultConfiguration().getAssetType());
+  }
+
+  @Test
+  void everyConfiguredAggregationFieldExistsInItsIndexMapping() {
+    // A terms aggregation over an unmapped field returns no buckets without raising an error, so a
+    // typo in the configured aggregation field is a silent misconfiguration — the aggregation is
+    // emitted with `{ "buckets": [] }` forever. This is exactly the `fieldsNames` regression: the
+    // topic and apiEndpoint `fieldNames` aggregations pointed at a field that exists in no mapping.
+    // Resolve each configured field the same way the builder does, then assert it names a real
+    // field in the asset's own index mapping, including `.keyword` multi-fields.
+    Map<String, Map<String, Object>> entityIndexMapping =
+        IndexMappingLoader.getInstance().getEntityIndexMapping();
+
+    // Pre-existing misconfigurations this guard discovered, scoped out as follow-ups separate from
+    // the topic/apiEndpoint `fieldNames` fix because each needs its own product decision (a mapping
+    // change for `queryType`; a retarget/casing decision for `glossaryTerm.status`). Remove an
+    // entry
+    // here once its field is mapped/aggregatable — the stale-allowlist assertion below enforces
+    // that.
+    Set<String> pendingMappingFix = Set.of("query|queryType", "glossaryTerm|status");
+
+    Map<String, String> missingByAssetAggregation = new java.util.LinkedHashMap<>();
+    for (AssetTypeConfiguration assetConfig : defaultSearchSettings.getAssetTypeConfigurations()) {
+      Map<String, Object> mapping = entityIndexMapping.get(assetConfig.getAssetType());
+      if (mapping == null) {
+        // Asset type has no index mapping to validate against; nothing to check here.
+        continue;
+      }
+      Set<String> mappedPaths = collectMappingPaths(mapping);
+      for (Aggregation aggregation : CommonUtil.listOrEmpty(assetConfig.getAggregations())) {
+        if (CommonUtil.nullOrEmpty(aggregation.getField())) {
+          continue;
+        }
+        String resolved =
+            SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(aggregation.getField());
+        if (!mappedPaths.contains(resolved)) {
+          missingByAssetAggregation.put(
+              assetConfig.getAssetType() + "|" + aggregation.getName(),
+              assetConfig.getAssetType()
+                  + " aggregation '"
+                  + aggregation.getName()
+                  + "' references unmapped field '"
+                  + resolved
+                  + "'");
+        }
+      }
+    }
+
+    List<String> unguarded =
+        missingByAssetAggregation.entrySet().stream()
+            .filter(entry -> !pendingMappingFix.contains(entry.getKey()))
+            .map(Map.Entry::getValue)
+            .toList();
+    assertTrue(
+        unguarded.isEmpty(),
+        "Configured aggregation fields must exist in their index mapping, otherwise terms "
+            + "aggregations silently return no buckets: "
+            + unguarded);
+
+    List<String> staleAllowlist =
+        pendingMappingFix.stream()
+            .filter(key -> !missingByAssetAggregation.containsKey(key))
+            .toList();
+    assertTrue(
+        staleAllowlist.isEmpty(),
+        "pendingMappingFix lists aggregation fields that are now mapped; remove them so the guard "
+            + "catches regressions on them too: "
+            + staleAllowlist);
+  }
+
+  @Test
+  void everyGlobalAggregationFieldExistsInAtLeastOneIndexMapping() {
+    // Global aggregations run against every search, so a field mapped in no index at all is dead
+    // configuration that always returns empty buckets everywhere. A field mapped in some indexes
+    // but not others is fine — terms aggregations over a field absent from the targeted index
+    // return no buckets by design.
+    Map<String, Map<String, Object>> entityIndexMapping =
+        IndexMappingLoader.getInstance().getEntityIndexMapping();
+
+    Set<String> allMappedPaths = new HashSet<>();
+    for (Map<String, Object> mapping : entityIndexMapping.values()) {
+      allMappedPaths.addAll(collectMappingPaths(mapping));
+    }
+
+    List<String> missing = new ArrayList<>();
+    for (Aggregation aggregation :
+        CommonUtil.listOrEmpty(defaultSearchSettings.getGlobalSettings().getAggregations())) {
+      if (CommonUtil.nullOrEmpty(aggregation.getField())) {
+        continue;
+      }
+      String resolved =
+          SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(aggregation.getField());
+      if (!allMappedPaths.contains(resolved)) {
+        missing.add(resolved);
+      }
+    }
+
+    assertTrue(
+        missing.isEmpty(),
+        "Global aggregation fields must be mapped in at least one index: " + missing);
+  }
+
+  /**
+   * Collects every dotted field path declared by an index mapping, descending both {@code
+   * properties} (object fields) and {@code fields} (multi-fields such as {@code name.keyword}),
+   * since the addressable aggregation paths include both.
+   */
+  private static Set<String> collectMappingPaths(Map<String, Object> mapping) {
+    Set<String> paths = new HashSet<>();
+    collectMappingPaths(IndexMappingProperties.topLevel(JsonUtils.valueToTree(mapping)), "", paths);
+    return paths;
+  }
+
+  private static void collectMappingPaths(JsonNode properties, String prefix, Set<String> paths) {
+    if (properties == null || !properties.isObject()) {
+      return;
+    }
+    Iterator<String> fieldNames = properties.fieldNames();
+    while (fieldNames.hasNext()) {
+      String name = fieldNames.next();
+      JsonNode field = properties.path(name);
+      String path = prefix.isEmpty() ? name : prefix + "." + name;
+      paths.add(path);
+      JsonNode childProperties = field.path("properties");
+      if (!childProperties.isMissingNode()) {
+        collectMappingPaths(childProperties, path, paths);
+      }
+      JsonNode multiFields = field.path("fields");
+      if (!multiFields.isMissingNode() && multiFields.isObject()) {
+        Iterator<String> subFieldNames = multiFields.fieldNames();
+        while (subFieldNames.hasNext()) {
+          paths.add(path + "." + subFieldNames.next());
+        }
+      }
+    }
   }
 
   private SearchSettings createBaseSettings(int maxResultHits) {

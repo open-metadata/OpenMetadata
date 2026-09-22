@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -22,7 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
-import Loader from '../../components/common/Loader/Loader';
+import { PageLoader } from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
@@ -30,52 +31,56 @@ import { QueryVote } from '../../components/Database/TableQueries/TableQueries.i
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
-import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
+  searchIndexQueryFn,
+  searchIndexQueryKey,
+} from '../../rest/queries/searchIndexQuery';
+import {
   addFollower,
-  getSearchIndexDetailsByFQN,
   patchSearchIndexDetails,
   removeFollower,
   restoreSearchIndex,
   updateSearchIndexVotes,
 } from '../../rest/SearchIndexAPI';
-import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+} from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
+import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import searchIndexClassBase from '../../utils/SearchIndexDetailsClassBase';
 import { defaultFields } from '../../utils/SearchIndexUtils';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TablePureUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
 function SearchIndexDetailsPage() {
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab: activeTab = EntityTabs.FIELDS } = useRequiredParams<{
     tab: EntityTabs;
   }>();
@@ -85,47 +90,84 @@ function SearchIndexDetailsPage() {
   const { t } = useTranslation();
 
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
-  const [loading, setLoading] = useState<boolean>(true);
-  const [searchIndexDetails, setSearchIndexDetails] = useState<SearchIndex>();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
   const { customizedPage, isLoading } = useCustomPages(PageType.SearchIndex);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
-  const [searchIndexPermissions, setSearchIndexPermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
-  const viewPermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(searchIndexPermissions, Operation.ViewBasic),
-    [searchIndexPermissions]
+  // Two useEntityPermissions calls in this component, partitioned by deleted-sensitivity —
+  // see the analogous comment in TableDetailsPageV1.tsx for the general pattern. This
+  // view-tier call must run before {@code searchIndexDetails} exists: {@code viewPermission}
+  // gates the entity {@code useQuery}'s `enabled` below, and {@code searchIndexDetails} is
+  // that query's own result — a real ordering cycle, not a shortcut. The edit-tier call
+  // (only the two canEdit* flags that need `deleted`) lives further down, at the earliest
+  // point `deleted` exists; see the comment there. Both calls share one React Query cache
+  // entry (same queryKey), so having two costs an extra derivation, not an extra fetch —
+  // never diverges into two fetches as long as both pass the identical (resource,
+  // identifier) pair.
+  const {
+    permissions: searchIndexPermissions, // children consume the raw OperationPermission prop
+    isLoading: isPermissionsLoading,
+    canViewBasic: viewPermission,
+    canViewAll: viewAllPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+    canViewSampleData: viewSampleDataPermission,
+  } = useEntityPermissions(ResourceEntity.SEARCH_INDEX, decodedSearchIndexFQN);
+
+  const searchIndexCacheKey = useMemo(
+    () => searchIndexQueryKey(decodedSearchIndexFQN, defaultFields),
+    [decodedSearchIndexFQN]
   );
 
-  const fetchSearchIndexDetails = async () => {
-    setLoading(true);
-    try {
-      const fields = defaultFields;
-      const details = await getSearchIndexDetailsByFQN(decodedSearchIndexFQN, {
-        fields,
-      });
+  const {
+    data: searchIndexDetails,
+    isLoading: searchIndexLoading,
+    error: searchIndexError,
+  } = useQuery({
+    queryKey: searchIndexCacheKey,
+    queryFn: searchIndexQueryFn(decodedSearchIndexFQN, defaultFields),
+    enabled: Boolean(
+      decodedSearchIndexFQN && viewPermission && !isPermissionsLoading
+    ),
+  });
 
-      setSearchIndexDetails(details);
-      addToRecentViewed({
-        displayName: getEntityName(details),
-        entityType: EntityType.SEARCH_INDEX,
-        fqn: details.fullyQualifiedName ?? '',
-        serviceType: details.serviceType,
-        timestamp: 0,
-        id: details.id,
-      });
-    } catch {
-      // Error here
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (!searchIndexDetails) {
+      return;
     }
-  };
+    addToRecentViewed({
+      displayName: getEntityName(searchIndexDetails),
+      entityType: EntityType.SEARCH_INDEX,
+      fqn: searchIndexDetails.fullyQualifiedName ?? '',
+      serviceType: searchIndexDetails.serviceType,
+      timestamp: 0,
+      id: searchIndexDetails.id,
+    });
+  }, [searchIndexDetails]);
+
+  const setSearchIndexDetails = useCallback(
+    (
+      updater:
+        | SearchIndex
+        | undefined
+        | ((prev: SearchIndex | undefined) => SearchIndex | undefined)
+    ) => {
+      queryClient.setQueryData<SearchIndex | undefined>(
+        searchIndexCacheKey,
+        updater
+      );
+    },
+    [queryClient, searchIndexCacheKey]
+  );
+
+  const refetchSearchIndexDetails = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: searchIndexCacheKey }),
+    [queryClient, searchIndexCacheKey]
+  );
 
   const {
     searchIndexTags,
@@ -155,75 +197,19 @@ function SearchIndexDetailsPage() {
     };
   }, [searchIndexDetails, searchIndexDetails?.tags]);
 
+  // Edit-tier useEntityPermissions call — the counterpart to the view-tier call near the
+  // top of this component (see its comment for why this component calls the hook twice).
+  // This is the earliest point `deleted` exists (destructured just above, from
+  // {@code searchIndexDetails} resolved by the entity useQuery): both canEdit* flags this
+  // page uses are gated on it — don't destructure a canEdit* flag or `can` from the
+  // view-tier call above, it was captured before `deleted` existed and would silently
+  // return an ungated edit permission.
   const {
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
-    editCustomAttributePermission,
-    editLineagePermission,
-    viewSampleDataPermission,
-    viewAllPermission,
-    viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editTagsPermission:
-        getPrioritizedEditPermission(
-          searchIndexPermissions,
-          Operation.EditTags
-        ) && !deleted,
-      editGlossaryTermsPermission:
-        getPrioritizedEditPermission(
-          searchIndexPermissions,
-          Operation.EditGlossaryTerms
-        ) && !deleted,
-      editDescriptionPermission:
-        getPrioritizedEditPermission(
-          searchIndexPermissions,
-          Operation.EditDescription
-        ) && !deleted,
-      editCustomAttributePermission:
-        getPrioritizedEditPermission(
-          searchIndexPermissions,
-          Operation.EditCustomFields
-        ) && !deleted,
-      editLineagePermission:
-        getPrioritizedEditPermission(
-          searchIndexPermissions,
-          Operation.EditLineage
-        ) && !deleted,
-      viewSampleDataPermission: getPrioritizedViewPermission(
-        searchIndexPermissions,
-        Operation.ViewSampleData
-      ),
-      viewAllPermission: searchIndexPermissions.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        searchIndexPermissions,
-        Operation.ViewCustomFields
-      ),
-    }),
-    [
-      searchIndexPermissions,
-      deleted,
-      getPrioritizedEditPermission,
-      getPrioritizedViewPermission,
-    ]
-  );
-
-  const fetchResourcePermission = useCallback(
-    async (entityFQN: string) => {
-      try {
-        const searchIndexPermission = await getEntityPermissionByFqn(
-          ResourceEntity.SEARCH_INDEX,
-          entityFQN
-        );
-
-        setSearchIndexPermissions(searchIndexPermission);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [getEntityPermissionByFqn]
-  );
+    canEditCustomFields: editCustomAttributePermission,
+    canEditLineage: editLineagePermission,
+  } = useEntityPermissions(ResourceEntity.SEARCH_INDEX, decodedSearchIndexFQN, {
+    deleted: Boolean(deleted),
+  });
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -235,6 +221,22 @@ function SearchIndexDetailsPage() {
       decodedSearchIndexFQN,
       handleFeedCount
     );
+
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedSearchIndexFQN) {
+      fetchEntityTaskCountsInto(decodedSearchIndexFQN, setFeedCount);
+    }
+  }, [decodedSearchIndexFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedSearchIndexFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.SEARCH_INDEX,
+        decodedSearchIndexFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedSearchIndexFQN]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
@@ -344,7 +346,7 @@ function SearchIndexDetailsPage() {
       feedCount,
       activeTab,
       getEntityFeedCount,
-      fetchSearchIndexDetails,
+      fetchSearchIndexDetails: refetchSearchIndexDetails,
       handleFeedCount,
       viewSampleDataPermission,
       deleted: deleted ?? false,
@@ -376,9 +378,7 @@ function SearchIndexDetailsPage() {
     searchIndexDetails,
     searchIndexDetails?.extension,
     onDescriptionUpdate,
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
+    refetchSearchIndexDetails,
   ]);
 
   const onTierUpdate = useCallback(
@@ -422,6 +422,8 @@ function SearchIndexDetailsPage() {
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -429,78 +431,98 @@ function SearchIndexDetailsPage() {
           entity: t('label.search-index'),
         })
       );
+
+      return false;
     }
   };
 
-  const followSearchIndex = useCallback(async () => {
-    try {
-      const res = await addFollower(searchIndexId, USERId);
-      const { newValue } = res.changeDescription.fieldsAdded[0];
-      const newFollowers = [...(followers ?? []), ...newValue];
-      setSearchIndexDetails((prev) => {
-        if (!prev) {
-          return prev;
-        }
+  const isFollowing = useMemo(
+    () => followers?.some(({ id }) => id === USERId),
+    [followers, USERId]
+  );
 
-        return { ...prev, followers: newFollowers };
-      });
-    } catch (error) {
+  const followMutation = useMutation<
+    void,
+    AxiosError,
+    void,
+    { previous: SearchIndex | undefined }
+  >({
+    mutationFn: async () => {
+      if (!searchIndexId) {
+        return;
+      }
+      if (isFollowing) {
+        await removeFollower(searchIndexId, USERId);
+      } else {
+        await addFollower(searchIndexId, USERId);
+      }
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: searchIndexCacheKey });
+      const previous = queryClient.getQueryData<SearchIndex | undefined>(
+        searchIndexCacheKey
+      );
+      queryClient.setQueryData<SearchIndex | undefined>(
+        searchIndexCacheKey,
+        (prev) => {
+          if (!prev) {
+            return prev;
+          }
+          const currentFollowers = prev.followers ?? [];
+          if (isFollowing) {
+            return {
+              ...prev,
+              followers: currentFollowers.filter(({ id }) => id !== USERId),
+            };
+          }
+
+          return {
+            ...prev,
+            followers: [
+              ...currentFollowers,
+              { id: USERId, type: 'user' },
+            ] as SearchIndex['followers'],
+          };
+        }
+      );
+
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData<SearchIndex | undefined>(
+          searchIndexCacheKey,
+          context.previous
+        );
+      }
       showErrorToast(
         error as AxiosError,
-        t('server.entity-follow-error', {
-          entity: getEntityName(searchIndexDetails),
-        })
+        isFollowing
+          ? t('server.entity-unfollow-error', {
+              entity: getEntityName(searchIndexDetails),
+            })
+          : t('server.entity-follow-error', {
+              entity: getEntityName(searchIndexDetails),
+            })
       );
-    }
-  }, [USERId, searchIndexId]);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: searchIndexCacheKey });
+    },
+  });
 
-  const unFollowSearchIndex = useCallback(async () => {
-    try {
-      const res = await removeFollower(searchIndexId, USERId);
-      const { oldValue } = res.changeDescription.fieldsDeleted[0];
-      setSearchIndexDetails((pre) => {
-        if (!pre) {
-          return pre;
-        }
-
-        return {
-          ...pre,
-          followers: pre.followers?.filter(
-            (follower) => follower.id !== oldValue[0].id
-          ),
-        };
-      });
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-unfollow-error', {
-          entity: getEntityName(searchIndexDetails),
-        })
-      );
-    }
-  }, [USERId, searchIndexId]);
+  const handleFollowSearchIndex = useCallback(async () => {
+    await followMutation.mutateAsync();
+  }, [followMutation]);
 
   const onUpdateVote = async (data: QueryVote, id: string) => {
     try {
       await updateSearchIndexVotes(id, data);
-      const details = await getSearchIndexDetailsByFQN(decodedSearchIndexFQN, {
-        fields: defaultFields,
-      });
-      setSearchIndexDetails(details);
+      await queryClient.invalidateQueries({ queryKey: searchIndexCacheKey });
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
-
-  const { isFollowing } = useMemo(() => {
-    return {
-      isFollowing: followers?.some(({ id }) => id === USERId),
-    };
-  }, [followers, USERId]);
-
-  const handleFollowSearchIndex = useCallback(async () => {
-    isFollowing ? await unFollowSearchIndex() : await followSearchIndex();
-  }, [isFollowing, unFollowSearchIndex, followSearchIndex]);
 
   const versionHandler = useCallback(() => {
     version &&
@@ -514,29 +536,33 @@ function SearchIndexDetailsPage() {
   }, [version]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.SEARCH_SERVICES,
+          getPartialNameFromTableFQN(decodedSearchIndexFQN, [FqnPart.Service])
+        )
+      ),
+    [decodedSearchIndexFQN]
   );
 
-  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
-    const updatedData = data as SearchIndex;
+  const afterDomainUpdateAction = useCallback(
+    (data: DataAssetWithDomains) => {
+      const updatedData = data as SearchIndex;
 
-    setSearchIndexDetails((data) => ({
-      ...(updatedData ?? data),
-      version: updatedData.version,
-    }));
-  }, []);
-
-  useEffect(() => {
-    if (decodedSearchIndexFQN) {
-      fetchResourcePermission(decodedSearchIndexFQN);
-    }
-  }, [decodedSearchIndexFQN]);
+      setSearchIndexDetails((prev) => ({
+        ...(updatedData ?? prev),
+        version: updatedData.version,
+      }));
+    },
+    [setSearchIndexDetails]
+  );
 
   useEffect(() => {
     if (viewPermission) {
-      fetchSearchIndexDetails();
-      getEntityFeedCount();
+      fetchTaskCounts();
+      fetchActivityCount();
     }
   }, [decodedSearchIndexFQN, viewPermission]);
 
@@ -564,23 +590,33 @@ function SearchIndexDetailsPage() {
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.SearchIndex),
     [tabs[0], activeTab]
   );
-  if (isLoading || loading) {
-    return <Loader />;
+  const getLoadingOrPermissionContent = () => {
+    if (isLoading || isPermissionsLoading || searchIndexLoading) {
+      return <PageLoader />;
+    }
+
+    if (!viewPermission) {
+      return (
+        <ErrorPlaceHolder
+          className="border-none"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.search-index'),
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
+      );
+    }
+
+    return null;
+  };
+
+  const loadingOrPermissionContent = getLoadingOrPermissionContent();
+
+  if (loadingOrPermissionContent) {
+    return loadingOrPermissionContent;
   }
 
-  if (!viewPermission) {
-    return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.search-index'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
-    );
-  }
-
-  if (!searchIndexDetails) {
+  if (searchIndexError || !searchIndexDetails) {
     return <ErrorPlaceHolder className="m-0" />;
   }
 

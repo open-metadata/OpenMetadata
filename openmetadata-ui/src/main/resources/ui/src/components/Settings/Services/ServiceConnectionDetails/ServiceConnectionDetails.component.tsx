@@ -31,6 +31,7 @@ import {
   ConfigData,
   ExtraInfoType,
 } from '../../../../interface/service.interface';
+import { getOwnHandler } from '../../../../utils/RecordUtils';
 import { getKeyValues } from '../../../../utils/ServiceConnectionDetailsUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import './service-connection-details.less';
@@ -42,114 +43,100 @@ type ServiceConnectionDetailsProps = {
   extraInfo?: ExtraInfoType | null;
 };
 
+const SERVICE_CONFIG_LOADER_BY_CATEGORY: Partial<
+  Record<
+    EntityType,
+    (serviceFQN: string) => Promise<{ schema: Record<string, unknown> }>
+  >
+> = {
+  [EntityType.DATABASE_SERVICE]: (serviceFQN) =>
+    serviceUtilClassBase.getDatabaseServiceConfig(
+      serviceFQN as DatabaseServiceType
+    ),
+  [EntityType.DASHBOARD_SERVICE]: (serviceFQN) =>
+    serviceUtilClassBase.getDashboardServiceConfig(
+      serviceFQN as DashboardServiceType
+    ),
+  [EntityType.MESSAGING_SERVICE]: (serviceFQN) =>
+    serviceUtilClassBase.getMessagingServiceConfig(
+      serviceFQN as MessagingServiceType
+    ),
+  [EntityType.PIPELINE_SERVICE]: (serviceFQN) =>
+    serviceUtilClassBase.getPipelineServiceConfig(
+      serviceFQN as PipelineServiceType
+    ),
+  [EntityType.MLMODEL_SERVICE]: (serviceFQN) =>
+    serviceUtilClassBase.getMlModelServiceConfig(
+      serviceFQN as MlModelServiceType
+    ),
+  [EntityType.METADATA_SERVICE]: (serviceFQN) =>
+    serviceUtilClassBase.getMetadataServiceConfig(
+      serviceFQN as MetadataServiceType
+    ),
+  [EntityType.STORAGE_SERVICE]: (serviceFQN) =>
+    serviceUtilClassBase.getStorageServiceConfig(
+      serviceFQN as StorageServiceType
+    ),
+  [EntityType.SEARCH_SERVICE]: (serviceFQN) =>
+    serviceUtilClassBase.getSearchServiceConfig(
+      serviceFQN as SearchServiceType
+    ),
+  [EntityType.API_SERVICE]: (serviceFQN) =>
+    serviceUtilClassBase.getAPIServiceConfig(serviceFQN as APIServiceType),
+  [EntityType.SECURITY_SERVICE]: (serviceFQN) =>
+    serviceUtilClassBase.getSecurityServiceConfig(
+      serviceFQN as SecurityServiceType
+    ),
+  [EntityType.DRIVE_SERVICE]: (serviceFQN) =>
+    serviceUtilClassBase.getDriveServiceConfig(serviceFQN as DriveServiceType),
+};
+
+const loadSchemaForServiceCategory = (
+  serviceCategory: string,
+  serviceFQN: string
+): Promise<{ schema: Record<string, unknown> }> => {
+  const loader = getOwnHandler(
+    SERVICE_CONFIG_LOADER_BY_CATEGORY,
+    serviceCategory.slice(0, -1)
+  );
+
+  return loader ? loader(serviceFQN) : Promise.resolve({ schema: {} });
+};
+
 const ServiceConnectionDetails = ({
   connectionDetails,
   serviceCategory,
   serviceFQN,
   extraInfo,
 }: Readonly<ServiceConnectionDetailsProps>) => {
-  const [schema, setSchema] = useState<Record<string, any>>({});
+  const [schema, setSchema] = useState<Record<string, unknown>>({});
   const [data, setData] = useState<ReactNode>();
 
   useEffect(() => {
-    switch (serviceCategory.slice(0, -1)) {
-      case EntityType.DATABASE_SERVICE:
-        setSchema(
-          serviceUtilClassBase.getDatabaseServiceConfig(
-            serviceFQN as DatabaseServiceType
-          ).schema
-        );
+    let cancelled = false;
+    loadSchemaForServiceCategory(serviceCategory, serviceFQN)
+      .then((result) => {
+        if (!cancelled) {
+          setSchema(result.schema);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSchema({});
+        }
+      });
 
-        break;
-      case EntityType.DASHBOARD_SERVICE:
-        setSchema(
-          serviceUtilClassBase.getDashboardServiceConfig(
-            serviceFQN as DashboardServiceType
-          ).schema
-        );
-
-        break;
-      case EntityType.MESSAGING_SERVICE:
-        setSchema(
-          serviceUtilClassBase.getMessagingServiceConfig(
-            serviceFQN as MessagingServiceType
-          ).schema
-        );
-
-        break;
-      case EntityType.PIPELINE_SERVICE:
-        setSchema(
-          serviceUtilClassBase.getPipelineServiceConfig(
-            serviceFQN as PipelineServiceType
-          ).schema
-        );
-
-        break;
-      case EntityType.MLMODEL_SERVICE:
-        setSchema(
-          serviceUtilClassBase.getMlModelServiceConfig(
-            serviceFQN as MlModelServiceType
-          ).schema
-        );
-
-        break;
-      case EntityType.METADATA_SERVICE:
-        setSchema(
-          serviceUtilClassBase.getMetadataServiceConfig(
-            serviceFQN as MetadataServiceType
-          ).schema
-        );
-
-        break;
-      case EntityType.STORAGE_SERVICE:
-        setSchema(
-          serviceUtilClassBase.getStorageServiceConfig(
-            serviceFQN as StorageServiceType
-          ).schema
-        );
-
-        break;
-      case EntityType.SEARCH_SERVICE:
-        setSchema(
-          serviceUtilClassBase.getSearchServiceConfig(
-            serviceFQN as SearchServiceType
-          ).schema
-        );
-
-        break;
-
-      case EntityType.API_SERVICE:
-        setSchema(
-          serviceUtilClassBase.getAPIServiceConfig(serviceFQN as APIServiceType)
-            .schema
-        );
-
-        break;
-      case EntityType.SECURITY_SERVICE:
-        setSchema(
-          serviceUtilClassBase.getSecurityServiceConfig(
-            serviceFQN as SecurityServiceType
-          ).schema
-        );
-
-        break;
-      case EntityType.DRIVE_SERVICE:
-        setSchema(
-          serviceUtilClassBase.getDriveServiceConfig(
-            serviceFQN as DriveServiceType
-          ).schema
-        );
-
-        break;
-    }
+    return () => {
+      cancelled = true;
+    };
   }, [serviceCategory, serviceFQN]);
 
   useEffect(() => {
     if (!isEmpty(schema)) {
       setData(
         getKeyValues({
-          obj: connectionDetails,
-          schemaPropertyObject: schema.properties,
+          obj: connectionDetails as unknown as Record<string, unknown>,
+          schemaPropertyObject: schema.properties as Record<string, unknown>,
           schema,
           serviceCategory,
         })

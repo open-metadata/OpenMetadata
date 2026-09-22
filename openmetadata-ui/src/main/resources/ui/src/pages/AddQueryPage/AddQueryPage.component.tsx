@@ -14,14 +14,15 @@ import { Button, Form, FormProps, Space, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { filter, isEmpty } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
+import getEntityLabel from '../../components/Entity/EntityLabel/EntityLabel.component';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import {
   INITIAL_PAGING_VALUE,
@@ -42,16 +43,17 @@ import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { postQuery } from '../../rest/queryAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
-import { getPartialNameFromFQN } from '../../utils/CommonUtils';
 import { getCurrentMillis } from '../../utils/date-time/DateTimeUtils';
-import {
-  getEntityBreadcrumbs,
-  getEntityLabel,
-  getEntityName,
-} from '../../utils/EntityUtils';
+import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { getField } from '../../utils/formUtils';
+import { getPartialNameFromFQN } from '../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../components/Database/SchemaEditor/SchemaEditor'))
+);
 
 const AddQueryPage = () => {
   const { currentUser } = useApplicationStore();

@@ -14,7 +14,7 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Glossary } from '../../../generated/entity/data/glossary';
-import { GlossaryTermRelationType } from '../../../rest/settingConfigAPI';
+import { RelationshipType } from '../../../generated/entity/data/relationshipType';
 import {
   LayoutEngine,
   RELATION_COLORS,
@@ -35,6 +35,9 @@ import {
   ASSET_RELATION_TYPE,
   GLOSSARY_COLORS,
   METRIC_NODE_TYPE,
+  OBSERVED_LINEAGE_EDGE_KIND,
+  projectOntologyRelationsToAssets,
+  SEMANTIC_PROJECTION_EDGE_KIND,
 } from '../utils/graphBuilders';
 import { computeGraphSearchHighlight } from '../utils/graphSearchHighlight';
 import { buildHierarchyGraphs } from '../utils/hierarchyGraphBuilder';
@@ -48,9 +51,10 @@ export interface UseOntologyGraphDerivedOptions {
   filters: GraphFilters;
   explorationMode: ExplorationMode;
   glossaries: Glossary[];
-  relationTypes: GlossaryTermRelationType[];
+  relationTypes: RelationshipType[];
   settings: GraphSettings;
   scope: OntologyExplorerProps['scope'];
+  entityId?: string;
   glossaryId?: string;
   termGlossaryId?: string;
   dataSource: 'rdf' | 'database';
@@ -67,6 +71,7 @@ export function useOntologyGraphDerived({
   relationTypes,
   settings,
   scope,
+  entityId,
   glossaryId,
   termGlossaryId,
   dataSource,
@@ -83,15 +88,29 @@ export function useOntologyGraphDerived({
   }, [glossaries]);
 
   const loadedAssetCountPerTerm = useMemo(() => {
-    const counts: Record<string, number> = {};
-    assetGraphData?.edges.forEach((e) => {
-      if (e.relationType === ASSET_RELATION_TYPE) {
-        counts[e.to] = (counts[e.to] ?? 0) + 1;
+    const assetsByTerm = new Map<string, Set<string>>();
+    const nodeTypeById = new Map(
+      [...(graphData?.nodes ?? []), ...(assetGraphData?.nodes ?? [])].map(
+        (node) => [node.id, node.type]
+      )
+    );
+    [...(graphData?.edges ?? []), ...(assetGraphData?.edges ?? [])].forEach(
+      (e) => {
+        if (e.relationType === ASSET_RELATION_TYPE) {
+          const fromType = nodeTypeById.get(e.from);
+          const termId = fromType === ASSET_NODE_TYPE ? e.to : e.from;
+          const assetId = fromType === ASSET_NODE_TYPE ? e.from : e.to;
+          const assets = assetsByTerm.get(termId) ?? new Set<string>();
+          assets.add(assetId);
+          assetsByTerm.set(termId, assets);
+        }
       }
-    });
+    );
 
-    return counts;
-  }, [assetGraphData]);
+    return Object.fromEntries(
+      [...assetsByTerm].map(([termId, assetIds]) => [termId, assetIds.size])
+    );
+  }, [assetGraphData, graphData]);
 
   const combinedGraphData = useMemo(() => {
     if (!graphData) {
@@ -116,7 +135,10 @@ export function useOntologyGraphDerived({
       });
 
       if (!assetGraphData) {
-        return { nodes: nodesWithAssetCounts, edges: graphData.edges };
+        return projectOntologyRelationsToAssets({
+          nodes: nodesWithAssetCounts,
+          edges: graphData.edges,
+        });
       }
 
       const mergedNodeIds = new Set(nodesWithAssetCounts.map((n) => n.id));
@@ -129,7 +151,7 @@ export function useOntologyGraphDerived({
       });
 
       const edgeKey = (e: OntologyEdge) =>
-        `${e.from}-${e.to}-${e.relationType}`;
+        `${e.from}-${e.to}-${e.relationType}-${e.edgeKind ?? ''}`;
       const mergedEdgeKeys = new Set(graphData.edges.map(edgeKey));
       const mergedEdges = [...graphData.edges];
       assetGraphData.edges.forEach((e) => {
@@ -140,7 +162,10 @@ export function useOntologyGraphDerived({
         }
       });
 
-      return { nodes: mergedNodes, edges: mergedEdges };
+      return projectOntologyRelationsToAssets({
+        nodes: mergedNodes,
+        edges: mergedEdges,
+      });
     }
 
     return graphData;
@@ -182,7 +207,7 @@ export function useOntologyGraphDerived({
       );
 
       const edgeKey = (e: OntologyEdge) =>
-        `${e.from}-${e.to}-${e.relationType}`;
+        `${e.from}-${e.to}-${e.relationType}-${e.edgeKind ?? ''}`;
       const glossaryNeighborIds = new Set<string>(glossaryTermIds);
       const glossaryEdgeKeys = new Set<string>();
 
@@ -195,6 +220,16 @@ export function useOntologyGraphDerived({
         glossaryNeighborIds.add(edge.from);
         glossaryNeighborIds.add(edge.to);
         glossaryEdgeKeys.add(edgeKey(edge));
+      });
+      filteredEdges.forEach((edge) => {
+        if (
+          (edge.edgeKind === SEMANTIC_PROJECTION_EDGE_KIND ||
+            edge.edgeKind === OBSERVED_LINEAGE_EDGE_KIND) &&
+          glossaryNeighborIds.has(edge.from) &&
+          glossaryNeighborIds.has(edge.to)
+        ) {
+          glossaryEdgeKeys.add(edgeKey(edge));
+        }
       });
 
       filteredNodes = filteredNodes.filter((n) => {
@@ -224,14 +259,15 @@ export function useOntologyGraphDerived({
       filteredEdges = filteredEdges.filter((e) => {
         const fromType = nodeTypeMap.get(e.from);
         const toType = nodeTypeMap.get(e.to);
-        if (
-          explorationMode === 'data' &&
-          (fromType === ASSET_NODE_TYPE ||
-            fromType === METRIC_NODE_TYPE ||
-            toType === ASSET_NODE_TYPE ||
-            toType === METRIC_NODE_TYPE)
-        ) {
-          return true;
+        const involvesAssetOrMetric =
+          fromType === ASSET_NODE_TYPE ||
+          fromType === METRIC_NODE_TYPE ||
+          toType === ASSET_NODE_TYPE ||
+          toType === METRIC_NODE_TYPE;
+        if (explorationMode === 'data' && involvesAssetOrMetric) {
+          return e.edgeKind === SEMANTIC_PROJECTION_EDGE_KIND
+            ? relationTypeFilterIds.includes(e.relationType)
+            : true;
         }
 
         return relationTypeFilterIds.includes(e.relationType);
@@ -285,10 +321,26 @@ export function useOntologyGraphDerived({
       );
     }
 
-    return { nodes: filteredNodes, edges: filteredEdges };
-  }, [combinedGraphData, filters, explorationMode]);
+    if (scope === 'term' && entityId) {
+      const termEdges = filteredEdges.filter(
+        (e) => e.from === entityId || e.to === entityId
+      );
+      const visibleNodeIds = new Set<string>([entityId]);
+      termEdges.forEach((e) => {
+        visibleNodeIds.add(e.from);
+        visibleNodeIds.add(e.to);
+      });
+      filteredNodes = filteredNodes.filter((n) => visibleNodeIds.has(n.id));
+      filteredEdges = termEdges;
+    }
 
-  const isHierarchyView = filters.viewMode === 'hierarchy';
+    return { nodes: filteredNodes, edges: filteredEdges };
+  }, [combinedGraphData, filters, explorationMode, scope, entityId]);
+
+  const isHierarchyView = useMemo(
+    () => filters.viewMode === 'hierarchy',
+    [filters.viewMode]
+  );
 
   const hierarchyGraphData = useMemo(() => {
     if (!isHierarchyView || !filteredGraphData) {
@@ -312,27 +364,11 @@ export function useOntologyGraphDerived({
     return buildHierarchyGraphs({
       terms,
       relations,
-      relationSettings: { relationTypes },
+      relationTypes,
       relationColors: RELATION_COLORS,
       glossaryNames,
     });
   }, [isHierarchyView, filteredGraphData, relationTypes, glossaries]);
-
-  const graphDataToShow = useMemo(() => {
-    if (isHierarchyView && hierarchyGraphData) {
-      return {
-        nodes: hierarchyGraphData.nodes,
-        edges: hierarchyGraphData.edges.map((e) => ({
-          from: e.from,
-          to: e.to,
-          relationType: e.relationType,
-          label: e.relationType,
-        })),
-      };
-    }
-
-    return filteredGraphData;
-  }, [isHierarchyView, hierarchyGraphData, filteredGraphData]);
 
   const hierarchyBakedPositions = useMemo(() => {
     if (!isHierarchyView || !hierarchyGraphData) {
@@ -347,25 +383,67 @@ export function useOntologyGraphDerived({
   }, [hierarchyGraphData, isHierarchyView, settings.layout]);
 
   const graphSearchHighlight = useMemo(() => {
-    if (!graphDataToShow) {
+    const baseData =
+      isHierarchyView && hierarchyGraphData
+        ? hierarchyGraphData
+        : filteredGraphData;
+
+    if (!baseData) {
       return null;
     }
 
     return computeGraphSearchHighlight(
-      graphDataToShow.nodes,
-      graphDataToShow.edges,
+      baseData.nodes,
+      baseData.edges,
       filters.searchQuery,
       glossaries,
       relationTypes
     );
-  }, [graphDataToShow, filters.searchQuery, glossaries, relationTypes]);
+  }, [
+    filteredGraphData,
+    hierarchyGraphData,
+    isHierarchyView,
+    filters.searchQuery,
+    glossaries,
+    relationTypes,
+  ]);
 
-  const exportableGlossaryId =
-    scope === 'glossary'
-      ? glossaryId
-      : scope === 'term'
-      ? termGlossaryId
-      : undefined;
+  const graphDataToShow = useMemo(() => {
+    let data: OntologyGraphData | null;
+
+    if (isHierarchyView && hierarchyGraphData) {
+      data = {
+        nodes: hierarchyGraphData.nodes,
+        edges: hierarchyGraphData.edges.map((e) => ({
+          from: e.from,
+          to: e.to,
+          relationType: e.relationType,
+          ...(e.inverseRelationType
+            ? { inverseRelationType: e.inverseRelationType }
+            : {}),
+          label: e.relationType,
+        })),
+      };
+    } else {
+      data = filteredGraphData;
+    }
+
+    return data;
+  }, [isHierarchyView, hierarchyGraphData, filteredGraphData]);
+
+  const selectedGlossaryIds = withoutOntologyAutocompleteAll(
+    filters.glossaryIds
+  );
+  let exportableGlossaryId: string | undefined;
+  if (scope === 'glossary') {
+    exportableGlossaryId = glossaryId;
+  } else if (scope === 'term') {
+    exportableGlossaryId = termGlossaryId;
+  } else if (selectedGlossaryIds.length === 1) {
+    exportableGlossaryId = selectedGlossaryIds[0];
+  } else {
+    exportableGlossaryId = undefined;
+  }
 
   const exportableGlossaryName = exportableGlossaryId
     ? glossaries.find((g) => g.id === exportableGlossaryId)?.name ??
@@ -412,6 +490,7 @@ export function useOntologyGraphDerived({
   }, [graphDataToShow, dataSource, explorationMode, t]);
 
   return {
+    combinedGraphData,
     filteredGraphData,
     hierarchyGraphData,
     graphDataToShow,

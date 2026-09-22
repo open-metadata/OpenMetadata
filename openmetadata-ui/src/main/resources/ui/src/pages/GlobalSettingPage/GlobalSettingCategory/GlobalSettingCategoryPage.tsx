@@ -10,10 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button, Tooltip } from '@openmetadata/ui-core-components';
 import { Col, Row, Space } from 'antd';
+import { isEmpty } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import ButtonSkeleton from '../../../components/common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
@@ -23,10 +26,15 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { ALL_SERVICES_CATEGORY } from '../../../constants/Services.constant';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from '../../../enums/ElasticSearch.enum';
 import { TeamType } from '../../../generated/entity/teams/team';
+import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useAuth } from '../../../hooks/authHooks';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import globalSettingsClassBase from '../../../utils/GlobalSettingsClassBase';
 import {
   getSettingPageEntityBreadCrumb,
@@ -37,11 +45,13 @@ import {
   getSettingsPathWithFqn,
   getTeamsWithFqnPath,
 } from '../../../utils/RouterUtils';
+import { canCreateAnyServiceCategory } from '../../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import '../global-setting-page.style.less';
 
 const GlobalSettingCategoryPage = () => {
   const { t } = useTranslation();
+  const { isFetchingStatus } = useAirflowStatus();
   const navigate = useNavigate();
   const { settingCategory } = useRequiredParams<{
     settingCategory: GlobalSettingsMenuCategory;
@@ -49,10 +59,40 @@ const GlobalSettingCategoryPage = () => {
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
 
-  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
-    () => getSettingPageEntityBreadCrumb(settingCategory),
-    [settingCategory]
-  );
+  const { pathname } = useLocation();
+  const isEmbedded = pathname.startsWith('/askCollate');
+  // This landing page spans every service category, so the wizard opens on the `all` sentinel:
+  // every category's connectors in one grid, none pre-selected.
+  const handleAddServiceClick = () => {
+    navigate(
+      connectionsRouterClassBase.getAddServicePath(ALL_SERVICES_CATEGORY)
+    );
+  };
+
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(() => {
+    const crumbs = getSettingPageEntityBreadCrumb(settingCategory);
+    if (isEmbedded) {
+      const categoryName = crumbs[crumbs.length - 1]?.name ?? '';
+
+      return [
+        {
+          name: t('label.ask-collate'),
+          url: '/askCollate',
+        },
+        {
+          name: t('label.connection-plural'),
+          url: '/askCollate/connections',
+        },
+        {
+          name: categoryName,
+          url: '',
+          activeTitle: true,
+        },
+      ];
+    }
+
+    return crumbs;
+  }, [settingCategory, isEmbedded, t]);
 
   const settingCategoryData: SettingMenuItem | undefined = useMemo(() => {
     let categoryItem = globalSettingsClassBase
@@ -68,6 +108,13 @@ const GlobalSettingCategoryPage = () => {
 
     return categoryItem;
   }, [settingCategory, permissions, isAdminUser]);
+
+  // Being able to create any one category is enough for this page's button — checking a single
+  // hardcoded category would hide it from a user who can only create, say, API services.
+  const addServicePermission = useMemo(
+    () => !isEmpty(permissions) && canCreateAnyServiceCategory(permissions),
+    [permissions]
+  );
 
   const handleSettingItemClick = useCallback((key: string) => {
     const [category, option] = key.split('.');
@@ -96,7 +143,14 @@ const GlobalSettingCategoryPage = () => {
 
         break;
       default:
-        navigate(getSettingPath(category, option));
+        if (
+          connectionsRouterClassBase.isEmbeddedMode() &&
+          category === GlobalSettingsMenuCategory.SERVICES
+        ) {
+          navigate(connectionsRouterClassBase.getSettingsServicesPath(option));
+        } else {
+          navigate(getSettingPath(category, option));
+        }
 
         break;
     }
@@ -104,6 +158,7 @@ const GlobalSettingCategoryPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.setting-plural')}>
+      {isEmbedded && <div className="tw:h-4" />}
       <Row gutter={[0, 20]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
@@ -117,6 +172,38 @@ const GlobalSettingCategoryPage = () => {
                 subHeader: settingCategoryData?.description ?? '',
               }}
             />
+            {settingCategoryData?.key ===
+              GlobalSettingsMenuCategory.SERVICES && (
+              <>
+                {isFetchingStatus ? (
+                  <ButtonSkeleton size="default" />
+                ) : (
+                  <Tooltip
+                    placement="left"
+                    title={
+                      addServicePermission
+                        ? t('label.add-entity', {
+                            entity: t('label.service'),
+                          })
+                        : t(NO_PERMISSION_FOR_ACTION)
+                    }>
+                    {addServicePermission && (
+                      <LimitWrapper resource="dataAssets">
+                        <Button
+                          className="m-b-xs"
+                          data-testid="add-service-button"
+                          type="primary"
+                          onClick={handleAddServiceClick}>
+                          {t('label.add-new-entity', {
+                            entity: t('label.service'),
+                          })}
+                        </Button>
+                      </LimitWrapper>
+                    )}
+                  </Tooltip>
+                )}
+              </>
+            )}
           </Space>
         </Col>
 

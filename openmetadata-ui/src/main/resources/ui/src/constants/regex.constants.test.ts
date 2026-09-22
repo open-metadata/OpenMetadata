@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  CUSTOM_PROPERTY_NAME_REGEX,
   ENTITY_NAME_REGEX,
   TAG_NAME_REGEX,
   TEST_CASE_NAME_REGEX,
@@ -162,6 +163,13 @@ describe('Test Regex', () => {
   it('EntityName regex should fail for the invalid entity name', () => {
     // conatines :: in the name should fail
     expect(ENTITY_NAME_REGEX.test('Hello::World')).toEqual(false);
+    expect(ENTITY_NAME_REGEX.test('name>bad')).toEqual(false);
+    expect(ENTITY_NAME_REGEX.test('name"bad')).toEqual(false);
+    expect(ENTITY_NAME_REGEX.test('name\nbad')).toEqual(false);
+    expect(ENTITY_NAME_REGEX.test('name\rbad')).toEqual(false);
+    expect(ENTITY_NAME_REGEX.test('name\x00bad')).toEqual(false);
+    expect(ENTITY_NAME_REGEX.test('name<bad')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('name|bad')).toEqual(true);
   });
 
   describe('TAG_NAME_REGEX', () => {
@@ -236,6 +244,44 @@ describe('Test Regex', () => {
       expect(TEST_CASE_NAME_REGEX.test('TestCase-WithHyphens')).toEqual(true);
       expect(TEST_CASE_NAME_REGEX.test('test.case.with.dots')).toEqual(true);
       expect(TEST_CASE_NAME_REGEX.test('test_case_!@#$%^&*()')).toEqual(true);
+    });
+  });
+
+  describe('CUSTOM_PROPERTY_NAME_REGEX', () => {
+    // Mirrors the Playwright CUSTOM_PROPERTY_INVALID_NAMES matrix that used to
+    // drive 12 separate browser tests. The rule is a pure client regex, so the
+    // matrix belongs here rather than in an E2E form-fill.
+    it.each([
+      ['starts with a non-alphanumeric character', '_invalidName'],
+      ['contains a colon', 'name:with:colon'],
+      ['contains a dollar sign', 'name$invalid'],
+      ['contains a caret', 'name^invalid'],
+      ['contains a double quote', 'name"invalid'],
+      ['contains a backslash', String.raw`name\invalid`],
+      ['contains a less-than sign', 'name<<invalid'],
+      ['contains a greater-than sign', 'name>>invalid'],
+      ['contains an ampersand', 'name&invalid'],
+      ['contains an asterisk', 'name*invalid'],
+      ['contains a forward slash', 'name/invalid'],
+      ['contains a tilde', 'name~invalid'],
+    ])('should reject a name that %s', (_, name) => {
+      expect(CUSTOM_PROPERTY_NAME_REGEX.test(name)).toEqual(false);
+    });
+
+    it('should reject an empty name', () => {
+      expect(CUSTOM_PROPERTY_NAME_REGEX.test('')).toEqual(false);
+    });
+
+    it('should accept a valid name starting with a letter or number', () => {
+      expect(CUSTOM_PROPERTY_NAME_REGEX.test('validName_123')).toEqual(true);
+      expect(CUSTOM_PROPERTY_NAME_REGEX.test('9name')).toEqual(true);
+      expect(CUSTOM_PROPERTY_NAME_REGEX.test('A')).toEqual(true);
+    });
+
+    it('should accept a valid name with allowed special characters', () => {
+      expect(
+        CUSTOM_PROPERTY_NAME_REGEX.test("valid Name.!@#%`()_-=+{}[]|;',.?")
+      ).toEqual(true);
     });
   });
 });

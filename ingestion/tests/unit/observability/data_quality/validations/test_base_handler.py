@@ -46,9 +46,7 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
     ],
 )
 def test_get_test_case_param_value(param_values, name, type_, default, expected):
-    result = BaseTestValidator.get_test_case_param_value(
-        param_values, name, type_, default
-    )
+    result = BaseTestValidator.get_test_case_param_value(param_values, name, type_, default)
     assert result == expected
 
 
@@ -124,9 +122,7 @@ class TestBaseTestValidator:
             (["dimension_col"], True),
         ],
     )
-    def test_is_dimensional_test(
-        self, validator, mock_test_case, dimension_columns, expected
-    ):
+    def test_is_dimensional_test(self, validator, mock_test_case, dimension_columns, expected):
         """Test is_dimensional_test method with various dimension column configurations"""
         # Set up the test case with dimension columns
         mock_test_case.dimensionColumns = dimension_columns
@@ -195,9 +191,7 @@ class TestBaseTestValidator:
             (1000, (75.0, 25.0)),  # Normal case
         ],
     )
-    def test_get_dimension_result_object_edge_cases(
-        self, validator, total_rows, expected_percentages
-    ):
+    def test_get_dimension_result_object_edge_cases(self, validator, total_rows, expected_percentages):
         """Test get_dimension_result_object with edge cases"""
         dimension_values = {"test": "value"}
         passed_rows = int(total_rows * 0.75) if total_rows > 0 else 0
@@ -245,9 +239,7 @@ class TestBaseTestValidator:
         # Verify dimensional validation was NOT called
         validator._run_dimensional_validation.assert_not_called()
 
-    def test_run_validation_dimensions_configured_no_results(
-        self, validator, mock_test_case
-    ):
+    def test_run_validation_dimensions_configured_no_results(self, validator, mock_test_case):
         """Test: When dimensions configured but returns empty results, dimensionResults should be None"""
         # Setup: Configure dimension columns
         mock_test_case.dimensionColumns = ["region", "category"]
@@ -268,9 +260,7 @@ class TestBaseTestValidator:
         # Verify dimensional validation WAS called
         validator._run_dimensional_validation.assert_called_once()
 
-    def test_run_validation_dimensions_configured_with_results(
-        self, validator, mock_test_case
-    ):
+    def test_run_validation_dimensions_configured_with_results(self, validator, mock_test_case):
         """Test: When dimensions configured and returns results, dimensionResults should contain them"""
         # Setup: Configure dimension columns
         mock_test_case.dimensionColumns = ["region", "category"]
@@ -341,9 +331,7 @@ class TestBaseTestValidator:
         # Verify dimensional validation WAS called
         validator._run_dimensional_validation.assert_called_once()
 
-    def test_run_validation_dimensional_not_implemented(
-        self, validator, mock_test_case
-    ):
+    def test_run_validation_dimensional_not_implemented(self, validator, mock_test_case):
         """Test: When dimensional validation raises NotImplementedError, main test still succeeds"""
         # Setup: Configure dimension columns
         mock_test_case.dimensionColumns = ["region"]
@@ -359,16 +347,12 @@ class TestBaseTestValidator:
         # Verify: Main test should still succeed despite NotImplementedError
         assert isinstance(result, TestCaseResult)
         assert result.testCaseStatus == TestCaseStatus.Success
-        assert (
-            result.dimensionResults is None
-        )  # No dimension results due to NotImplementedError
+        assert result.dimensionResults is None  # No dimension results due to NotImplementedError
 
         # Verify dimensional validation WAS attempted
         validator._run_dimensional_validation.assert_called_once()
 
-    def test_run_validation_dimensional_raises_exception(
-        self, validator, mock_test_case
-    ):
+    def test_run_validation_dimensional_raises_exception(self, validator, mock_test_case):
         """Test: When dimensional validation raises Exception, main test still succeeds"""
         # Setup: Configure dimension columns
         mock_test_case.dimensionColumns = ["region", "category"]
@@ -489,9 +473,7 @@ def test_evaluate_test_condition_not_implemented_error():
     with pytest.raises(NotImplementedError) as exc_info:
         validator._evaluate_test_condition(metric_values)
 
-    assert "MockTestValidator must implement _evaluate_test_condition()" in str(
-        exc_info.value
-    )
+    assert "MockTestValidator must implement _evaluate_test_condition()" in str(exc_info.value)
 
 
 def test_format_result_message_not_implemented_error():
@@ -511,9 +493,7 @@ def test_format_result_message_not_implemented_error():
     with pytest.raises(NotImplementedError) as exc_info:
         validator._format_result_message(metric_values)
 
-    assert "MockTestValidator must implement _format_result_message()" in str(
-        exc_info.value
-    )
+    assert "MockTestValidator must implement _format_result_message()" in str(exc_info.value)
 
 
 class TestProcessDimensionRows:
@@ -534,8 +514,8 @@ class TestProcessDimensionRows:
             "failed_rows": 100 - metric_values.get("VALUE", 0),
             "total_rows": 100,
         }
-        v._format_result_message = (
-            lambda metric_values, dimension_info=None, test_params=None: f"value={metric_values.get('VALUE')}"
+        v._format_result_message = lambda metric_values, dimension_info=None, test_params=None: (
+            f"value={metric_values.get('VALUE')}"
         )
         v._get_test_result_values = lambda metric_values: []
         return v
@@ -557,24 +537,18 @@ class TestProcessDimensionRows:
                 "VALUE": 30,
             },
         ]
-        results = validator._process_dimension_rows(
-            rows, "dim_col", {"VALUE": None}, {}
-        )
+        results = validator._process_dimension_rows(rows, "dim_col", {"VALUE": None}, {})
         assert len(results) == 2
         assert all(isinstance(r, DimensionResult) for r in results)
 
     def test_skips_rows_where_hook_returns_none(self, validator):
-        validator._build_dimension_metric_values = MagicMock(
-            side_effect=[{"VALUE": 80}, None, {"VALUE": 60}]
-        )
+        validator._build_dimension_metric_values = MagicMock(side_effect=[{"VALUE": 80}, None, {"VALUE": 60}])
         rows = [
             {DIMENSION_VALUE_KEY: "A", DIMENSION_IMPACT_SCORE_KEY: 0.8},
             {DIMENSION_VALUE_KEY: "B", DIMENSION_IMPACT_SCORE_KEY: 0.5},
             {DIMENSION_VALUE_KEY: "C", DIMENSION_IMPACT_SCORE_KEY: 0.3},
         ]
-        results = validator._process_dimension_rows(
-            rows, "dim_col", {"VALUE": None}, {}
-        )
+        results = validator._process_dimension_rows(rows, "dim_col", {"VALUE": None}, {})
         assert len(results) == 2
 
     def test_default_hook_delegates_to_build_metric_values_from_row(self, validator):
@@ -586,11 +560,6 @@ class TestProcessDimensionRows:
         validator._build_dimension_metric_values = MagicMock(
             side_effect=[None, {"VALUE": 70}, None, {"VALUE": 90}, {"VALUE": 10}]
         )
-        rows = [
-            {DIMENSION_VALUE_KEY: f"D{i}", DIMENSION_IMPACT_SCORE_KEY: 0.5}
-            for i in range(5)
-        ]
-        results = validator._process_dimension_rows(
-            rows, "dim_col", {"VALUE": None}, {}
-        )
+        rows = [{DIMENSION_VALUE_KEY: f"D{i}", DIMENSION_IMPACT_SCORE_KEY: 0.5} for i in range(5)]
+        results = validator._process_dimension_rows(rows, "dim_col", {"VALUE": None}, {})
         assert len(results) == 3

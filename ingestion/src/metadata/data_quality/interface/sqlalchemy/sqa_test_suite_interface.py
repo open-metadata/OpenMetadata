@@ -14,8 +14,6 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from typing import Union
-
 from sqlalchemy.orm.util import AliasedClass
 
 from metadata.data_quality.builders.validator_builder import (
@@ -55,9 +53,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         table_entity: Table = None,
         **kwargs,
     ):
-        super().__init__(
-            service_connection_config, ometa_client, sampler, table_entity, **kwargs
-        )
+        super().__init__(service_connection_config, ometa_client, sampler, table_entity, **kwargs)
         self.source_type = SourceType.SQL
         self.create_session()
 
@@ -70,21 +66,17 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         self._runner = self._create_runner()
 
     def create_session(self):
-        self.session = create_and_bind_session(
-            get_ssl_connection(self.service_connection_config)
-        )
+        self.session = create_and_bind_session(get_ssl_connection(self.service_connection_config))
 
     @property
-    def dataset(self) -> Union[type, AliasedClass]:
+    def dataset(self) -> type | AliasedClass:
         """_summary_
 
         Returns:
             Union[type, AliasedClass]: _description_
         """
         if not self.sampler:
-            raise RuntimeError(
-                "You must create a sampler first `<instance>.create_sampler(...)`."
-            )
+            raise RuntimeError("You must create a sampler first `<instance>.create_sampler(...)`.")
 
         return self.sampler.get_dataset()
 
@@ -110,17 +102,13 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
             )
         )
 
-    def _get_validator_builder(
-        self, test_case: TestCase, entity_type: str
-    ) -> ValidatorBuilder:
+    def _get_validator_builder(self, test_case: TestCase, entity_type: str) -> ValidatorBuilder:
         test_definition = self.ometa_client.get_by_name(
             entity=TestDefinition,
             fqn=test_case.testDefinition.fullyQualifiedName,
         )
         if test_definition is None:
-            raise ValueError(
-                f"Cannot find TestDefinition for test case {test_case.fullyQualifiedName}"
-            )
+            raise ValueError(f"Cannot find TestDefinition for test case {test_case.fullyQualifiedName}")
 
         return self.validator_builder_class(
             runner=self.runner,

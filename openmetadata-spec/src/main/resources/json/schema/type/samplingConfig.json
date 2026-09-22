@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/samplingConfig.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SamplingConfig",
   "description": "Sampling configuration types for the profiler.",
   "definitions": {
@@ -15,7 +15,7 @@
           "description": "Type of sampling to apply. STATIC: fixed sample size. DYNAMIC: sample size determined at runtime based on row count thresholds.",
           "type": "string",
           "enum": ["STATIC", "DYNAMIC"],
-          "default": "STATIC"
+          "default": "DYNAMIC"
         },
         "config": {
           "oneOf": [

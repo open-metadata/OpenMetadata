@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -24,6 +25,19 @@ import org.springframework.expression.spel.support.SimpleEvaluationContext;
 @Slf4j
 public class CompiledRule extends Rule {
   private static final SpelExpressionParser EXPRESSION_PARSER = new SpelExpressionParser();
+
+  // Sensitive operations that must be granted by name - never matched by the ALL/EditAll/ViewAll
+  // subsumption. Impersonation lets a bot act as any user, so a broad god-mode policy must not
+  // grant it implicitly; enablement stays the admin-only allowImpersonation flag.
+  private static final Set<MetadataOperation> EXPLICIT_GRANT_ONLY_OPERATIONS =
+      Set.of(MetadataOperation.IMPERSONATE);
+
+  // Operations an allow rule must name, while deny rules still match them through ALL subsumption.
+  // Agent SPARQL reads the whole RDF dataset without asset-level filtering, so an existing All/All
+  // policy must not open it, yet a broad deny must keep closing it.
+  private static final Set<MetadataOperation> EXPLICIT_ALLOW_OPERATIONS =
+      Set.of(MetadataOperation.EXECUTE_SPARQL_QUERY);
+
   @JsonIgnore private Expression expression;
 
   public CompiledRule(Rule rule) {
@@ -213,22 +227,40 @@ public class CompiledRule extends Rule {
   }
 
   private boolean matchOperation(MetadataOperation operation) {
-    List<MetadataOperation> operations = getOperations();
+    return operationMatches(getOperations(), getEffect(), operation);
+  }
+
+  /**
+   * Shared with PermissionDebugService so the debug tool reports exactly what enforcement
+   * evaluates, including the explicit-match exemptions.
+   */
+  static boolean operationMatches(
+      final List<MetadataOperation> operations,
+      final Rule.Effect effect,
+      final MetadataOperation operation) {
+    if (EXPLICIT_GRANT_ONLY_OPERATIONS.contains(operation)
+        || (EXPLICIT_ALLOW_OPERATIONS.contains(operation) && effect != Rule.Effect.DENY)) {
+      return operations.contains(operation);
+    }
+    return matchesBySubsumption(operations, operation) || operations.contains(operation);
+  }
+
+  private static boolean matchesBySubsumption(
+      final List<MetadataOperation> operations, final MetadataOperation operation) {
+    boolean matched = false;
     if (operations.contains(MetadataOperation.ALL)) {
       LOG.debug("matched all operations");
-      return true; // Match all operations
-    }
-    if (operations.contains(MetadataOperation.EDIT_ALL)
+      matched = true;
+    } else if (operations.contains(MetadataOperation.EDIT_ALL)
         && OperationContext.isEditOperation(operation)) {
       LOG.debug("matched editAll operations");
-      return true;
-    }
-    if (operations.contains(MetadataOperation.VIEW_ALL)
+      matched = true;
+    } else if (operations.contains(MetadataOperation.VIEW_ALL)
         && OperationContext.isViewOperation(operation)) {
       LOG.debug("matched viewAll operations");
-      return true;
+      matched = true;
     }
-    return getOperations().contains(operation);
+    return matched;
   }
 
   private boolean matchExpression(

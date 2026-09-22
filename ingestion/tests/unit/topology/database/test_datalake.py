@@ -17,7 +17,9 @@ Unit tests for datalake source
 from copy import deepcopy
 from types import SimpleNamespace
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column
@@ -33,6 +35,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.readers.dataframe.avro import AvroDataFrameReader
 from metadata.readers.dataframe.json import JSONDataFrameReader
+from metadata.readers.file.base import ReadException
 from metadata.utils.datalake.datalake_utils import (
     GenericDataFrameColumnParser,
     JsonDataFrameColumnParser,
@@ -463,10 +466,8 @@ class DatalakeUnitTest(TestCase):
     Datalake Source Unit Tests
     """
 
-    @patch(
-        "metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection"
-    )
-    def __init__(self, methodName, test_connection) -> None:
+    @patch("metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection")
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_datalake_config)
@@ -474,16 +475,25 @@ class DatalakeUnitTest(TestCase):
             mock_datalake_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.datalake_source.context.get().__dict__[
-            "database"
-        ] = MOCK_DATABASE.name.root
-        self.datalake_source.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
+        self.datalake_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.datalake_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
 
     def test_s3_schema_filer(self):
         self.datalake_source.client._client.list_buckets = lambda: MOCK_S3_SCHEMA
         assert list(self.datalake_source.get_database_schema_names()) == EXPECTED_SCHEMA
+
+    def test_get_database_schema_names_propagates_discovery_error(self):
+        """A permission/discovery error must raise (so the topology producer
+        wrapper records a clean StackTraceError) instead of yielding an
+        Either(left=...) that downstream code mis-reads as a schema name and
+        turns into a masked TypeError."""
+        self.datalake_source.client = MagicMock()
+        self.datalake_source.client.get_database_schema_names.side_effect = PermissionError(
+            "This request is not authorized to perform this operation."
+        )
+
+        with pytest.raises(PermissionError):
+            list(self.datalake_source.get_database_schema_names())
 
     def test_json_file_parse(self):
         import tempfile
@@ -504,15 +514,11 @@ class DatalakeUnitTest(TestCase):
         )
         exp_df_obj = pd.DataFrame.from_records([sample_dict])
 
-        with tempfile.NamedTemporaryFile(
-            mode="wb", suffix=".json", delete=False
-        ) as tmp1:
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=".json", delete=False) as tmp1:
             tmp1.write(EXAMPLE_JSON_TEST_1)
             tmp1_path = tmp1.name
 
-        with tempfile.NamedTemporaryFile(
-            mode="wb", suffix=".json", delete=False
-        ) as tmp2:
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=".json", delete=False) as tmp2:
             tmp2.write(EXAMPLE_JSON_TEST_2)
             tmp2_path = tmp2.name
 
@@ -521,23 +527,21 @@ class DatalakeUnitTest(TestCase):
             reader = JSONDataFrameReader(config, None)
 
             result1 = reader._read(key=tmp1_path, bucket_name="")
-            actual_df_1 = list(result1.dataframes())[0]
+            actual_df_1 = list(result1.dataframes())[0]  # noqa: RUF015
             assert actual_df_1.compare(exp_df_list).empty
 
             result2 = reader._read(key=tmp2_path, bucket_name="")
-            actual_df_2 = list(result2.dataframes())[0]
+            actual_df_2 = list(result2.dataframes())[0]  # noqa: RUF015
             assert actual_df_2.compare(exp_df_obj).empty
         finally:
             import os
 
-            os.unlink(tmp1_path)
-            os.unlink(tmp2_path)
+            os.unlink(tmp1_path)  # noqa: PTH108
+            os.unlink(tmp2_path)  # noqa: PTH108
 
         Column.__eq__ = custom_column_compare
 
-        with tempfile.NamedTemporaryFile(
-            mode="wb", suffix=".json", delete=False
-        ) as tmp3:
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=".json", delete=False) as tmp3:
             tmp3.write(EXAMPLE_JSON_TEST_3)
             tmp3_path = tmp3.name
 
@@ -551,11 +555,9 @@ class DatalakeUnitTest(TestCase):
         finally:
             import os
 
-            os.unlink(tmp3_path)
+            os.unlink(tmp3_path)  # noqa: PTH108
 
-        with tempfile.NamedTemporaryFile(
-            mode="wb", suffix=".json", delete=False
-        ) as tmp4:
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=".json", delete=False) as tmp4:
             tmp4.write(EXAMPLE_JSON_TEST_4)
             tmp4_path = tmp4.name
 
@@ -569,11 +571,9 @@ class DatalakeUnitTest(TestCase):
         finally:
             import os
 
-            os.unlink(tmp4_path)
+            os.unlink(tmp4_path)  # noqa: PTH108
 
-        json_parser = JsonDataFrameColumnParser(
-            pd.DataFrame(), raw_data=EXAMPLE_JSON_TEST_5
-        )
+        json_parser = JsonDataFrameColumnParser(pd.DataFrame(), raw_data=EXAMPLE_JSON_TEST_5)
         actual_cols_5 = json_parser.get_columns()
         assert actual_cols_5 == EXAMPLE_JSON_COL_5
 
@@ -586,9 +586,7 @@ class DatalakeUnitTest(TestCase):
 
         Column.__eq__ = custom_column_compare
 
-        with tempfile.NamedTemporaryFile(
-            mode="wb", suffix=".avro", delete=False
-        ) as tmp1:
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=".avro", delete=False) as tmp1:
             tmp1.write(AVRO_SCHEMA_FILE)
             tmp1_path = tmp1.name
 
@@ -598,26 +596,24 @@ class DatalakeUnitTest(TestCase):
 
             result1 = reader._read(key=tmp1_path, bucket_name="")
             if result1.columns:
-                assert EXPECTED_AVRO_COL_1 == result1.columns
+                assert EXPECTED_AVRO_COL_1 == result1.columns  # noqa: SIM300
         finally:
             import os
 
-            os.unlink(tmp1_path)
+            os.unlink(tmp1_path)  # noqa: PTH108
 
-        with tempfile.NamedTemporaryFile(
-            mode="wb", suffix=".avro", delete=False
-        ) as tmp2:
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=".avro", delete=False) as tmp2:
             tmp2.write(AVRO_DATA_FILE)
             tmp2_path = tmp2.name
 
         try:
             result2 = reader._read(key=tmp2_path, bucket_name="")
             if result2.columns:
-                assert EXPECTED_AVRO_COL_2 == result2.columns
+                assert EXPECTED_AVRO_COL_2 == result2.columns  # noqa: SIM300
         finally:
             import os
 
-            os.unlink(tmp2_path)
+            os.unlink(tmp2_path)  # noqa: PTH108
 
 
 mock_datalake_gcs_config = {
@@ -662,9 +658,9 @@ mock_datalake_gcs_config = {
 
 mock_multiple_project_id = deepcopy(mock_datalake_gcs_config)
 
-mock_multiple_project_id["source"]["serviceConnection"]["config"]["configSource"][
-    "securityConfig"
-]["gcpConfig"]["projectId"] = ["project_id", "project_id2"]
+mock_multiple_project_id["source"]["serviceConnection"]["config"]["configSource"]["securityConfig"]["gcpConfig"][
+    "projectId"
+] = ["project_id", "project_id2"]
 
 
 class DatalakeGCSUnitTest(TestCase):
@@ -672,50 +668,33 @@ class DatalakeGCSUnitTest(TestCase):
     Datalake Source Unit Tests
     """
 
-    @patch(
-        "metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection")
     @patch("metadata.utils.credentials.validate_private_key")
     @patch("google.cloud.storage.Client")
-    def __init__(self, methodName, _, __, test_connection) -> None:
+    def __init__(self, methodName, _, __, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.model_validate(
-            mock_datalake_gcs_config
-        )
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_datalake_gcs_config)
         self.datalake_source = DatalakeSource.create(
             mock_datalake_gcs_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.datalake_source.context.get().__dict__[
-            "database"
-        ] = MOCK_DATABASE.name.root
-        self.datalake_source.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
+        self.datalake_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.datalake_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
 
-    @patch(
-        "metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection")
     @patch("google.cloud.storage.Client")
     @patch("metadata.utils.credentials.validate_private_key")
-    def test_multiple_project_id_implementation(
-        self, validate_private_key, storage_client, test_connection
-    ):
-        print(mock_multiple_project_id)
+    def test_multiple_project_id_implementation(self, validate_private_key, storage_client, test_connection):
+        print(mock_multiple_project_id)  # noqa: T201
         self.datalake_source_multiple_project_id = DatalakeSource.create(
             mock_multiple_project_id["source"],
-            OpenMetadataWorkflowConfig.model_validate(
-                mock_multiple_project_id
-            ).workflowConfig.openMetadataServerConfig,
+            OpenMetadataWorkflowConfig.model_validate(mock_multiple_project_id).workflowConfig.openMetadataServerConfig,
         )
 
     def test_gcs_schema_filer(self):
         self.datalake_source.client._client.list_buckets = lambda: MOCK_GCS_SCHEMA
-        assert (
-            list(self.datalake_source.get_database_schema_names())
-            == EXPECTED_GCS_SCHEMA
-        )
+        assert list(self.datalake_source.get_database_schema_names()) == EXPECTED_GCS_SCHEMA
 
 
 class DatalakeYieldTableNameTest(TestCase):
@@ -725,9 +704,7 @@ class DatalakeYieldTableNameTest(TestCase):
     CreateTableRequest name/displayName logic is exercised.
     """
 
-    @patch(
-        "metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection")
     def setUp(self, _test_connection):
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_datalake_config)
         self.source = DatalakeSource.create(
@@ -735,9 +712,7 @@ class DatalakeYieldTableNameTest(TestCase):
             self.config.workflowConfig.openMetadataServerConfig,
         )
         self.source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-        self.source.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
+        self.source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         self.source.context.get().__dict__["database_schema"] = "my_bucket"
 
     def _yield_table_request(self, table_name):
@@ -751,9 +726,7 @@ class DatalakeYieldTableNameTest(TestCase):
 
         mock_df = MagicMock()
         mock_column_parser = MagicMock()
-        mock_column_parser.get_columns.return_value = [
-            Column(name="id", dataType="INT", dataTypeDisplay="INT")
-        ]
+        mock_column_parser.get_columns.return_value = [Column(name="id", dataType="INT", dataTypeDisplay="INT")]
 
         with (
             patch(
@@ -769,9 +742,7 @@ class DatalakeYieldTableNameTest(TestCase):
                 return_value="local_datalake.default.my_bucket",
             ),
         ):
-            results = list(
-                self.source.yield_table((table_name, TableType.Regular, None, None))
-            )
+            results = list(self.source.yield_table((table_name, TableType.Regular, None, None, None)))
 
         rights = [r.right for r in results if r.right is not None]
         return rights[0] if rights else None
@@ -800,3 +771,81 @@ class DatalakeYieldTableNameTest(TestCase):
         self.assertEqual(request.name.root, expected_hash)
         self.assertEqual(len(request.name.root), 32)
         self.assertEqual(request.displayName, table_name)
+
+
+@pytest.fixture
+def datalake_manifest_source():
+    with patch("metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection"):
+        config = OpenMetadataWorkflowConfig.model_validate(mock_datalake_config)
+        source = DatalakeSource.create(
+            mock_datalake_config["source"],
+            config.workflowConfig.openMetadataServerConfig,
+        )
+
+    source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+    source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+    source.context.get().__dict__["database_schema"] = "my_bucket"
+    source.client = MagicMock()
+    source.client.get_table_names.return_value = [("semicolon.csv", 32)]
+    source.reader = MagicMock()
+    return source
+
+
+def discover_table_and_schema_wrapper(source):
+    discovered_table = next(source.get_tables_name_and_type())
+
+    with patch(
+        "metadata.ingestion.source.database.datalake.metadata.fetch_dataframe_first_chunk",
+        return_value=(None, None),
+    ) as fetch_dataframe:
+        assert list(source.yield_table(discovered_table)) == []
+
+    return discovered_table, fetch_dataframe.call_args.kwargs["file_fqn"]
+
+
+def test_manifest_separator_reaches_schema_inference(datalake_manifest_source):
+    datalake_manifest_source.reader.read.return_value = """
+    {
+      "entries": [
+        {
+          "dataPath": "semicolon.csv",
+          "structureFormat": "csv",
+          "separator": ";"
+        }
+      ]
+    }
+    """
+
+    discovered_table, schema_wrapper = discover_table_and_schema_wrapper(datalake_manifest_source)
+
+    assert discovered_table[-1] == ";"
+    assert schema_wrapper.separator == ";"
+
+
+@pytest.mark.parametrize(
+    "manifest_response",
+    [
+        """
+        {
+          "entries": [
+            {
+              "dataPath": "another.csv",
+              "structureFormat": "csv",
+              "separator": ";"
+            }
+          ]
+        }
+        """,
+        ReadException("openmetadata.json not found"),
+    ],
+)
+def test_missing_manifest_separator_uses_default(datalake_manifest_source, manifest_response):
+    if isinstance(manifest_response, ReadException):
+        datalake_manifest_source.reader.read.side_effect = manifest_response
+    else:
+        datalake_manifest_source.reader.read.return_value = manifest_response
+
+    discovered_table, schema_wrapper = discover_table_and_schema_wrapper(datalake_manifest_source)
+
+    assert discovered_table[-1] is None
+    assert schema_wrapper.separator is None

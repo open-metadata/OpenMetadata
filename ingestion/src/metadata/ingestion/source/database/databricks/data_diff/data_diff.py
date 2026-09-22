@@ -9,4 +9,4 @@ class DatabricksTableParameter(DatabricksBaseTableParameter):
     """Databricks table parameter setter - uses Databricks connection
     which is databricks-based for data diff operations"""
 
-    pass
+    pass  # noqa: PIE790

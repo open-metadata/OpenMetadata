@@ -10,16 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { find, first, isString, last, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Cell, Pie, PieChart, Tooltip } from 'recharts';
+import { Cell, Pie, PieChart, Tooltip as RechartsTooltip } from 'recharts';
 import {
   GREEN_3,
-  GREY_200,
   RED_3,
   YELLOW_2,
 } from '../../../../constants/Color.constants';
@@ -32,11 +32,12 @@ import {
   ColumnProfile,
 } from '../../../../generated/entity/data/container';
 import { Table } from '../../../../generated/entity/data/table';
+import { useChartColors } from '../../../../hooks/useChartColors';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { getColumnProfilerList } from '../../../../rest/tableAPI';
-import { formatNumberWithComma } from '../../../../utils/CommonUtils';
 import documentationLinksClassBase from '../../../../utils/DocumentationLinksClassBase';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
+import { formatNumberWithComma } from '../../../../utils/NumberUtils';
 import {
   calculateColumnProfilerMetrics,
   calculateCustomMetrics,
@@ -62,6 +63,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
   activeColumnFqn,
   tableDetails,
 }) => {
+  const { emptyFill } = useChartColors();
   const location = useCustomLocation();
   const {
     isProfilerDataLoading,
@@ -123,17 +125,21 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
     return isProfilingEnabled ? (
       t('message.profiler-is-enabled-but-no-data-available')
     ) : (
-      <Transi18next
-        i18nKey="message.no-profiler-card-message-with-link"
-        renderElement={
-          <a
-            href={profilerDocsLink}
-            rel="noreferrer"
-            target="_blank"
-            title="Profiler Documentation"
+      <Tooltip title={t('label.documentation')}>
+        <span>
+          <Transi18next
+            i18nKey="message.no-profiler-card-message-with-link"
+            renderElement={
+              <a
+                aria-label={t('label.documentation')}
+                href={profilerDocsLink}
+                rel="noreferrer"
+                target="_blank"
+              />
+            }
           />
-        }
-      />
+        </span>
+      </Tooltip>
     );
   }, [isProfilingEnabled]);
   const columnCustomMetrics = useMemo(
@@ -251,7 +257,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                       // to hide tooltip when there is no data
                       pointerEvents="none"
                       startAngle={90}>
-                      <Cell fill={GREY_200} />
+                      <Cell fill={emptyFill} />
                     </Pie>
                     <Pie
                       cx="50%"
@@ -266,7 +272,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                       // to hide tooltip when there is no data
                       pointerEvents="none"
                       startAngle={90}>
-                      <Cell fill={GREY_200} />
+                      <Cell fill={emptyFill} />
                     </Pie>
                     <Pie
                       cx="50%"
@@ -278,11 +284,11 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                       outerRadius={70}
                       paddingAngle={0}
                       startAngle={90}>
-                      {columnTestData.map((entry, index) => (
-                        <Cell fill={entry.color} key={`cell-${index}`} />
+                      {columnTestData.map((entry) => (
+                        <Cell fill={entry.color} key={`cell-${entry.name}`} />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <RechartsTooltip />
                     <text
                       className="chart-center-text-header"
                       dominantBaseline="middle"
@@ -309,7 +315,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                         className="tw:mb-1 tw:flex tw:items-center tw:justify-between"
                         key={item.name}>
                         <span
-                          className="tw:text-[13px] tw:text-secondary"
+                          className="tw:text-sm tw:text-secondary"
                           style={{
                             borderLeft: `4px solid ${item.color}`,
                             paddingLeft: '8px',
@@ -317,7 +323,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                           }}>
                           {item.name}
                         </span>
-                        <span className="tw:text-[13px] tw:font-medium tw:text-primary">
+                        <span className="tw:text-sm tw:font-medium tw:text-primary">
                           {formatNumberWithComma(item.value)}
                         </span>
                       </div>

@@ -12,16 +12,16 @@
 """
 Test dashboard connectors with CLI
 """
+
 from abc import abstractmethod
-from typing import List
 from unittest import TestCase
 
 import pytest
 
 from metadata.ingestion.api.status import Status
 
-from .e2e_types import E2EType
-from .test_cli import CliBase
+from .e2e_types import E2EType  # noqa: TID252
+from .test_cli import CliBase  # noqa: TID252
 
 
 class CliDashboardBase(TestCase):
@@ -98,9 +98,7 @@ class CliDashboardBase(TestCase):
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_for_vanilla_ingestion(
-            self, source_status: Status, sink_status: Status
-        ) -> None:
+        def assert_for_vanilla_ingestion(self, source_status: Status, sink_status: Status) -> None:
             raise NotImplementedError()
 
         @abstractmethod
@@ -109,32 +107,32 @@ class CliDashboardBase(TestCase):
 
         @staticmethod
         @abstractmethod
-        def get_includes_dashboards() -> List[str]:
+        def get_includes_dashboards() -> list[str]:
             raise NotImplementedError()
 
         @staticmethod
         @abstractmethod
-        def get_excludes_dashboards() -> List[str]:
+        def get_excludes_dashboards() -> list[str]:
             raise NotImplementedError()
 
         @staticmethod
         @abstractmethod
-        def get_includes_charts() -> List[str]:
+        def get_includes_charts() -> list[str]:
             raise NotImplementedError()
 
         @staticmethod
         @abstractmethod
-        def get_excludes_charts() -> List[str]:
+        def get_excludes_charts() -> list[str]:
             raise NotImplementedError()
 
         @staticmethod
         @abstractmethod
-        def get_includes_datamodels() -> List[str]:
+        def get_includes_datamodels() -> list[str]:
             raise NotImplementedError()
 
         @staticmethod
         @abstractmethod
-        def get_excludes_datamodels() -> List[str]:
+        def get_excludes_datamodels() -> list[str]:
             raise NotImplementedError()
 
         @staticmethod

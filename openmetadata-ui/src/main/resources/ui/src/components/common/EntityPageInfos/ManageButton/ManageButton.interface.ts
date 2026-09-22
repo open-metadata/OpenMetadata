@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { ReactNode } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import { DeleteOption } from '../../DeleteWidget/DeleteWidget.interface';
 
 export interface ManageButtonProps {
+  trigger?: (onClick: () => void) => ReactNode;
   allowSoftDelete?: boolean;
   afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
   buttonClassName?: string;
@@ -29,10 +31,12 @@ export interface ManageButtonProps {
   softDeleteMessagePostFix?: string;
   hardDeleteMessagePostFix?: string;
   canDelete?: boolean;
+  canRestore?: boolean;
   isAsyncDelete?: boolean;
   extraDropdownContent?: ItemType[];
   onAnnouncementClick?: () => void;
-  onRestoreEntity?: () => Promise<void>;
+  /** Return true only after the entity has been restored successfully. */
+  onRestoreEntity?: () => Promise<boolean>;
   deleted?: boolean;
   editDisplayNamePermission?: boolean;
   onEditDisplayName?: (data: EntityName) => Promise<void>;

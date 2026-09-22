@@ -1,6 +1,5 @@
 import json
 import uuid
-from typing import List
 from unittest.mock import create_autospec
 
 import pytest
@@ -39,9 +38,7 @@ from metadata.sampler.sampler_interface import SamplerInterface
 
 
 @pytest.fixture
-def metadata(
-    service1: DatabaseService, table1: Table, service2: DatabaseService, table2: Table
-) -> OpenMetadata:
+def metadata(service1: DatabaseService, table1: Table, service2: DatabaseService, table2: Table) -> OpenMetadata:
     mock = create_autospec(OpenMetadata, spec_set=True, instance=True)
 
     objects_by_entity_and_id = {
@@ -54,10 +51,10 @@ def metadata(
     }
 
     def mock_get_by_id(entity, entity_id, **kwargs):
-        return objects_by_entity_and_id.get((entity, entity_id), None)
+        return objects_by_entity_and_id.get((entity, entity_id), None)  # noqa: SIM910
 
     def mock_get_by_name(entity, fqn, **kwargs):
-        return objects_by_entity_and_name.get((entity, fqn), None)
+        return objects_by_entity_and_name.get((entity, fqn), None)  # noqa: SIM910
 
     mock.get_by_id.side_effect = mock_get_by_id
     mock.get_by_name.side_effect = mock_get_by_name
@@ -104,9 +101,7 @@ def table1() -> Table:
     return Table.model_construct(
         id=uuid.uuid4(),
         name="table1",
-        fullyQualifiedName=FullyQualifiedEntityName(
-            root="TestService1.test_db.test_schema.table1"
-        ),
+        fullyQualifiedName=FullyQualifiedEntityName(root="TestService1.test_db.test_schema.table1"),
         service=EntityReference.model_construct(id=uuid.uuid4(), name="test_service1"),
         columns=[
             Column.model_construct(
@@ -126,9 +121,7 @@ def table2() -> Table:
     return Table.model_construct(
         id=uuid.uuid4(),
         name="table2",
-        fullyQualifiedName=FullyQualifiedEntityName(
-            root="TestService2.test_db.test_schema.table2"
-        ),
+        fullyQualifiedName=FullyQualifiedEntityName(root="TestService2.test_db.test_schema.table2"),
         service=EntityReference.model_construct(id=uuid.uuid4(), name="test_service2"),
         columns=[
             Column.model_construct(
@@ -143,9 +136,7 @@ def table2() -> Table:
     )
 
 
-def fake_get_service_url(
-    param_setter: TableParameterSetter, service: DatabaseService
-) -> str:
+def fake_get_service_url(param_setter: TableParameterSetter, service: DatabaseService) -> str:
     return "postgresql+psycopg2://test:test@localhost/test"
 
 
@@ -166,16 +157,13 @@ def setter(
 
 
 @pytest.fixture
-def parameter_values() -> List[TestCaseParameterValue]:
-    return [
-        TestCaseParameterValue(
-            name="table2", value="TestService2.test_db.test_schema.table2"
-        )
-    ]
+def parameter_values() -> list[TestCaseParameterValue]:
+    return [TestCaseParameterValue(name="table2", value="TestService2.test_db.test_schema.table2")]
 
 
 def test_setter_gets_default_key_columns(
-    setter: TableDiffParamsSetter, parameter_values: List[TestCaseParameterValue]
+    setter: TableDiffParamsSetter,
+    parameter_values: list[TestCaseParameterValue],
 ) -> None:
     test_case = TestCase.model_construct(
         parameterValues=[
@@ -184,9 +172,7 @@ def test_setter_gets_default_key_columns(
         ],
     )
 
-    assert setter.get_parameters(test_case) == IsInstance(
-        TableDiffRuntimeParameters
-    ) & HasAttributes(
+    assert setter.get_parameters(test_case) == IsInstance(TableDiffRuntimeParameters) & HasAttributes(
         keyColumns=["id"],
         extraColumns=IsListOrTuple("name", "table_id", check_order=False),
         table1=IsInstance(TableParameter)
@@ -201,21 +187,18 @@ def test_setter_gets_default_key_columns(
 
 
 def test_setter_gets_per_table_key_columns(
-    setter: TableDiffParamsSetter, parameter_values: List[TestCaseParameterValue]
+    setter: TableDiffParamsSetter,
+    parameter_values: list[TestCaseParameterValue],
 ) -> None:
     test_case = TestCase.model_construct(
         parameterValues=[
             *parameter_values,
             TestCaseParameterValue(name="keyColumns", value=json.dumps(["id"])),
-            TestCaseParameterValue(
-                name="table2.keyColumns", value=json.dumps(["table_id"])
-            ),
+            TestCaseParameterValue(name="table2.keyColumns", value=json.dumps(["table_id"])),
         ]
     )
 
-    assert setter.get_parameters(test_case) == IsInstance(
-        TableDiffRuntimeParameters
-    ) & HasAttributes(
+    assert setter.get_parameters(test_case) == IsInstance(TableDiffRuntimeParameters) & HasAttributes(
         keyColumns=["id"],
         extraColumns=IsListOrTuple("name", check_order=False),
         table1=IsInstance(TableParameter)
@@ -241,9 +224,7 @@ class TestForSnowflake:
         )
 
     @pytest.fixture
-    def service1(
-        self, service_connection_config: SnowflakeConnection
-    ) -> DatabaseService:
+    def service1(self, service_connection_config: SnowflakeConnection) -> DatabaseService:
         return DatabaseService.model_construct(
             id=uuid.uuid4(),
             name="TestService1",
@@ -253,9 +234,7 @@ class TestForSnowflake:
         )
 
     @pytest.fixture
-    def service2(
-        self, service_connection_config: SnowflakeConnection
-    ) -> DatabaseService:
+    def service2(self, service_connection_config: SnowflakeConnection) -> DatabaseService:
         return DatabaseService.model_construct(
             id=uuid.uuid4(),
             name="TestService2",
@@ -282,18 +261,14 @@ class TestForSnowflake:
     def test_setter_gets_parameters_for_snowflake(
         self,
         setter: TableDiffParamsSetter,
-        parameter_values: List[TestCaseParameterValue],
+        parameter_values: list[TestCaseParameterValue],
     ) -> None:
         test_case = TestCase.model_construct(
             parameterValues=[
                 *parameter_values,
                 TestCaseParameterValue(name="keyColumns", value=json.dumps(["id"])),
-                TestCaseParameterValue(
-                    name="table2.keyColumns", value=json.dumps(["table_id"])
-                ),
+                TestCaseParameterValue(name="table2.keyColumns", value=json.dumps(["table_id"])),
             ],
         )
 
-        assert setter.get_parameters(test_case) == IsInstance(
-            TableDiffRuntimeParameters
-        )
+        assert setter.get_parameters(test_case) == IsInstance(TableDiffRuntimeParameters)

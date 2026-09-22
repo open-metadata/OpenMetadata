@@ -16,27 +16,24 @@ import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, startCase } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import { usePageHeader } from '../../components/common/atoms/navigation/usePageHeader';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import AddCustomProperty from '../../components/Settings/CustomProperty/AddCustomProperty/AddCustomProperty';
 import { CustomPropertyTable } from '../../components/Settings/CustomProperty/CustomPropertyTable';
 import { ENTITY_PATH } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Type } from '../../generated/entity/type';
 import { CustomProperty } from '../../generated/type/customProperty';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   addPropertyToEntity,
   getTypeByFQN,
@@ -45,10 +42,13 @@ import {
 import { getCustomPropertyPageHeaderFromEntity } from '../../utils/CustomProperty.utils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './custom-properties-pageV1.less';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../components/Database/SchemaEditor/SchemaEditor'))
+);
 
 const CustomEntityDetailV1 = () => {
   const { t } = useTranslation();
@@ -66,11 +66,6 @@ const CustomEntityDetailV1 = () => {
 
   const tabAttributePath = useMemo(() => ENTITY_PATH[tab], [tab]);
 
-  const { getEntityPermission } = usePermissionProvider();
-
-  const [propertyPermission, setPropertyPermission] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
@@ -80,22 +75,21 @@ const CustomEntityDetailV1 = () => {
     [tab]
   );
 
-  const fetchPermission = async () => {
-    try {
-      const response = await getEntityPermission(
-        ResourceEntity.TYPE,
-        selectedEntityTypeDetail.id as string
-      );
-      setPropertyPermission(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+  // Fetch-owner, by id — old code fetched only once selectedEntityTypeDetail.id was known
+  // (an effect gated on `selectedEntityTypeDetail?.id`); `enabled` mirrors that gate.
+  // Ungated: the old raw `EditAll` read never referenced `deleted`.
+  const { canEditAll: editPermission, error: permissionsError } =
+    useEntityPermissions(
+      ResourceEntity.TYPE,
+      { id: selectedEntityTypeDetail.id ?? '' },
+      { enabled: Boolean(selectedEntityTypeDetail?.id) }
+    );
 
-  const editPermission = useMemo(
-    () => propertyPermission.EditAll,
-    [propertyPermission, tab]
-  );
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
 
   const fetchTypeDetail = useCallback(async (typeFQN: string) => {
     setIsLoading(true);
@@ -205,12 +199,6 @@ const CustomEntityDetailV1 = () => {
       fetchTypeDetail(tabAttributePath);
     }
   }, [tabAttributePath]);
-
-  useEffect(() => {
-    if (selectedEntityTypeDetail?.id) {
-      fetchPermission();
-    }
-  }, [selectedEntityTypeDetail]);
 
   const tabs = useMemo(() => {
     const { customProperties, schema } = selectedEntityTypeDetail;

@@ -12,18 +12,21 @@
 Constants for Kafka Connect connector configuration keys and mappings
 """
 
+# Re-exported so existing kafkaconnect imports keep working
+from metadata.ingestion.lineage.topic_lineage import CDC_ENVELOPE_FIELDS  # noqa: F401
+
 
 class ConnectorConfigKeys:
     """Configuration keys for various Kafka Connect connectors"""
 
-    TABLE_KEYS = [
+    TABLE_KEYS = [  # noqa: RUF012
         "table",  # Generic: Often used in simple JDBC source/sink configs
         "table.name.format",  # JDBC Sink: Defines the target table name (e.g., "kafka_${topic}")
         "collection",  # MongoDB: The Mongo equivalent of a Table
         "sanitizeTopics",  # BigQuery: Often used to map/clean topic names into Table names
     ]
 
-    TABLE_LIST_KEYS = [
+    TABLE_LIST_KEYS = [  # noqa: RUF012
         "table.whitelist",  # JDBC (Legacy): List of specific tables to ingest
         "table.include.list",  # Debezium/JDBC (Modern): Regex or list of tables to include
         "tables.include",  # Generic: Variation often seen in custom connectors
@@ -31,50 +34,61 @@ class ConnectorConfigKeys:
         "iceberg.tables",  # Iceberg Sink: Explicit list of target tables
     ]
 
-    TABLE_MAPPING_KEYS = [
+    TABLE_MAPPING_KEYS = [  # noqa: RUF012
         "snowflake.topic2table.map",  # Snowflake Sink: Critical mapping (e.g., "topicA:tableA, topicB:tableB")
     ]
 
-    DATABASE_KEYS = [
+    # Both key forms the Snowflake sink accepts, most specific first. Spliced into the
+    # generic lists below and read by SnowflakeSinkResolver, so the dedicated resolver
+    # cannot recognise fewer keys than the generic key-list search it replaces.
+    SNOWFLAKE_DATABASE_KEYS = [  # noqa: RUF012
+        "snowflake.database.name",  # Snowflake: The target database
+        "snowflake.database",  # Snowflake: Variation
+    ]
+
+    SNOWFLAKE_SCHEMA_KEYS = [  # noqa: RUF012
+        "snowflake.schema.name",  # Snowflake: The Schema (e.g. "PUBLIC")
+        "snowflake.schema",  # Snowflake variation
+    ]
+
+    DATABASE_KEYS = [  # noqa: RUF012
         "database",  # Generic: Common in simple JDBC configs
         "db.name",  # Generic: Common variation
         "database.dbname",  # PostgreSQL/JDBC: The physical database name
         "topic.prefix",  # Debezium: The "Logical Server Name".
-        "snowflake.database.name",  # Snowflake: The target database
-        "snowflake.database",  # Snowflake: Variation
+        *SNOWFLAKE_DATABASE_KEYS,
         "defaultDataset",  # BigQuery: The Dataset (Equivalent to a Database/Schema)
         "mongodb.database",  # MongoDB: The specific database to watch/write to
         "cassandra.keyspace",  # Cassandra: Keyspace is the Cassandra equivalent of a Database
     ]
 
-    DATABASE_LIST_KEYS = [
+    DATABASE_LIST_KEYS = [  # noqa: RUF012
         "database.names",  # SQL Server: List of databases to monitor
         "databases.include",  # Variation (likely MongoDB or older configs)
         "database.include.list",  # Debezium: Explicit whitelist of databases
         "database.whitelist",  # Debezium (Legacy): Legacy whitelist
     ]
 
-    SCHEMA_KEYS = [
-        "snowflake.schema.name",  # Snowflake: The Schema (e.g. "PUBLIC")
-        "snowflake.schema",  # Snowflake variation
+    SCHEMA_KEYS = [  # noqa: RUF012
+        *SNOWFLAKE_SCHEMA_KEYS,
         "schema.name",  # Generic JDBC: Schema namespace
     ]
 
-    BUCKET_KEYS = [
+    BUCKET_KEYS = [  # noqa: RUF012
         "s3.bucket.name",
         "s3.bucket",
         "gcs.bucket.name",
         "azure.container.name",
     ]
 
-    PREFIX_KEYS = [
+    PREFIX_KEYS = [  # noqa: RUF012
         "topics.dir",
         "s3.prefix",
         "gcs.prefix",
         "directory.path",
     ]
 
-    TOPIC_KEYS = ["kafka.topic", "topics", "topic"]
+    TOPIC_KEYS = ["kafka.topic", "topics", "topic"]  # noqa: RUF012
 
 
 SUPPORTED_DATASETS = {
@@ -147,6 +161,3 @@ STORAGE_ENDPOINT_KEYS = {
     "gcs": ["gcs.credentials.path"],
     "azure": ["azure.storage.account.name", "azblob.account.name"],
 }
-
-# CDC envelope field names used for Debezium detection and parsing
-CDC_ENVELOPE_FIELDS = {"after", "before", "op"}

@@ -11,8 +11,8 @@
 """
 GCS custom pydantic models
 """
+
 from datetime import datetime
-from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -31,7 +31,7 @@ class GCSBucketResponse(BaseModel):
 
     name: str = Field(..., description="Bucket name")
     project_id: str = Field(..., description="Project ID")
-    creation_date: Optional[datetime] = Field(
+    creation_date: datetime | None = Field(
         None,
         description="Timestamp of Bucket creation in ISO format",
     )
@@ -48,43 +48,33 @@ class GCSContainerDetails(BaseModel):
 
     name: str = Field(..., description="Bucket name")
     prefix: str = Field(..., description="Prefix for the container")
-    description: Optional[basic.Markdown] = Field(
-        None, description="Description of the container instance."
-    )
-    number_of_objects: Optional[float] = Field(
+    description: basic.Markdown | None = Field(None, description="Description of the container instance.")
+    number_of_objects: float | None = Field(
         None,
         description="Total nr. of objects",
     )
-    size: Optional[float] = Field(
+    size: float | None = Field(
         None,
         description="Total size in bytes of all objects",
         title="Total size(bytes) of objects",
     )
-    file_formats: Optional[List[FileFormat]] = Field(
+    file_formats: list[FileFormat] | None = Field(
         None,
         description="File formats",
     )
-    data_model: Optional[ContainerDataModel] = Field(
+    data_model: ContainerDataModel | None = Field(
         None,
         description="Data Model of the container",
     )
-    creation_date: Optional[str] = Field(
+    creation_date: str | None = Field(
         None,
         description="Timestamp of Bucket creation in ISO format",
     )
-    parent: Optional[EntityReference] = Field(
+    parent: EntityReference | None = Field(
         None,
         description="Reference to the parent container",
     )
-    sourceUrl: Optional[basic.SourceUrl] = Field(
-        None, description="Source URL of the container."
-    )
-    fullPath: Optional[str] = Field(
-        None, description="Full path of the container/file."
-    )
-    container_fqn: Optional[str] = Field(
-        None, description="Fully qualified name of the container."
-    )
-    leaf_container: Optional[bool] = Field(
-        None, description="Whether this is a leaf container."
-    )
+    sourceUrl: basic.SourceUrl | None = Field(None, description="Source URL of the container.")  # noqa: N815
+    fullPath: str | None = Field(None, description="Full path of the container/file.")  # noqa: N815
+    container_fqn: str | None = Field(None, description="Fully qualified name of the container.")
+    leaf_container: bool | None = Field(None, description="Whether this is a leaf container.")

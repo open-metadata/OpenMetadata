@@ -28,9 +28,7 @@ from metadata.utils.sqa_utils import (
 )
 
 
-class TableRowInsertedCountToBeBetweenValidator(
-    BaseTableRowInsertedCountToBeBetweenValidator, SQAValidatorMixin
-):
+class TableRowInsertedCountToBeBetweenValidator(BaseTableRowInsertedCountToBeBetweenValidator, SQAValidatorMixin):
     """Validator for table row inserted count to be between test case"""
 
     def _get_column_name(self):

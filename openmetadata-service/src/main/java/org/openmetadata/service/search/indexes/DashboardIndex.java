@@ -32,6 +32,13 @@ public class DashboardIndex implements DataAssetIndex {
     return Set.of("dataModels");
   }
 
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
+    fields.add("charts");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     return doc;
   }

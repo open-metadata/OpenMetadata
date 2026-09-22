@@ -12,8 +12,10 @@
 """
 Datalake Base Client
 """
+
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Iterable, Optional, Tuple
+from collections.abc import Callable, Iterable
+from typing import Any
 
 
 class DatalakeBaseClient(ABC):
@@ -45,16 +47,16 @@ class DatalakeBaseClient(ABC):
         """Returns the Database Names, based on the underlying client."""
 
     @abstractmethod
-    def get_database_schema_names(self, bucket_name: Optional[str]) -> Iterable[str]:
+    def get_database_schema_names(self, bucket_name: str | None) -> Iterable[str]:
         """Returns the RAW database schema names, based on the underlying client."""
 
     @abstractmethod
     def get_table_names(
         self,
         bucket_name: str,
-        prefix: Optional[str],
+        prefix: str | None,
         skip_cold_storage: bool = False,
-    ) -> Iterable[Tuple[str, Optional[int]]]:
+    ) -> Iterable[tuple[str, int | None]]:
         """Returns (key, file_size_bytes) tuples. Size may be None if unavailable."""
 
     @abstractmethod
@@ -62,5 +64,5 @@ class DatalakeBaseClient(ABC):
         """Closes the Client connection."""
 
     @abstractmethod
-    def get_test_list_buckets_fn(self, bucket_name: Optional[str]) -> Callable:
+    def get_test_list_buckets_fn(self, bucket_name: str | None) -> Callable:
         """Returns a Callable used to test the ListBuckets condition."""

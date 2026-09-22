@@ -16,6 +16,10 @@ import '../../../test/unit/mocks/recharts.mock';
 import { CustomBarChartProps } from './Chart.interface';
 import OperationDateBarChart from './OperationDateBarChart';
 
+jest.mock('../../../hooks/useChartColors', () => ({
+  useChartColors: jest.fn().mockReturnValue({ grid: '#234567' }),
+}));
+
 const mockCustomBarChartProp: CustomBarChartProps = {
   chartCollection: {
     information: [
@@ -35,7 +39,7 @@ const mockCustomBarChartProp: CustomBarChartProps = {
   },
   name: 'testChart',
 };
-jest.mock('../../../utils/DataInsightUtils', () => {
+jest.mock('../../../utils/DataInsightChartUtils', () => {
   return jest.fn().mockImplementation(() => {
     return <div>CustomTooltip</div>;
   });

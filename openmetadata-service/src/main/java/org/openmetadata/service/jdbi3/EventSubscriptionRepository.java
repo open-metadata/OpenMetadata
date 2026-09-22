@@ -23,9 +23,13 @@ import static org.openmetadata.service.util.EntityUtil.objectMatch;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.Argument;
@@ -39,17 +43,27 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.URLValidator;
 
 @Slf4j
 public class EventSubscriptionRepository extends EntityRepository<EventSubscription> {
+  private static final EnumSet<SubscriptionDestination.SubscriptionType> WEBHOOK_TYPES =
+      EnumSet.of(
+          SubscriptionDestination.SubscriptionType.WEBHOOK,
+          SubscriptionDestination.SubscriptionType.SLACK,
+          SubscriptionDestination.SubscriptionType.MS_TEAMS,
+          SubscriptionDestination.SubscriptionType.G_CHAT);
+
   static final String ALERT_PATCH_FIELDS =
       "trigger,enabled,batchSize,notificationTemplate,destinations";
   static final String ALERT_UPDATE_FIELDS =
@@ -142,7 +156,50 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       }
     }
 
+    validateDestinationEndpoints(entity, update);
     validateFilterRules(entity);
+  }
+
+  /**
+   * Runs for create, PUT and PATCH alike, and for every category rather than only External, so an
+   * endpoint cannot be introduced through a path that skips the resource's own checks. An endpoint
+   * already stored is left alone: refusing it here would make an existing subscription uneditable
+   * after an upgrade, and the request it would produce is refused when it is dispatched anyway.
+   */
+  private void validateDestinationEndpoints(EventSubscription entity, boolean update) {
+    Set<String> stored = update ? storedEndpoints(entity.getId()) : Set.of();
+    for (SubscriptionDestination destination : listOrEmpty(entity.getDestinations())) {
+      String endpoint = webhookEndpoint(destination);
+      if (endpoint != null && !stored.contains(endpoint)) {
+        URLValidator.validateURL(endpoint);
+      }
+    }
+  }
+
+  private Set<String> storedEndpoints(UUID id) {
+    if (id == null) {
+      return Set.of();
+    }
+    try {
+      EventSubscription existing = find(id, Include.ALL);
+      return listOrEmpty(existing.getDestinations()).stream()
+          .map(EventSubscriptionRepository::webhookEndpoint)
+          .filter(Objects::nonNull)
+          .collect(Collectors.toSet());
+    } catch (EntityNotFoundException e) {
+      // Nothing stored to compare against, so every endpoint in the request is new.
+      return Set.of();
+    }
+  }
+
+  private static String webhookEndpoint(SubscriptionDestination destination) {
+    if (!WEBHOOK_TYPES.contains(destination.getType()) || destination.getConfig() == null) {
+      return null;
+    }
+    Webhook webhook = JsonUtils.convertValue(destination.getConfig(), Webhook.class);
+    return webhook == null || webhook.getEndpoint() == null
+        ? null
+        : webhook.getEndpoint().toString();
   }
 
   private void validateFilterRules(EventSubscription entity) {
@@ -154,6 +211,11 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
         AlertUtil.validateExpression(rule.getCondition(), Boolean.class);
       }
       rules.sort(Comparator.comparing(EventFilterRule::getName));
+      if (!rules.isEmpty()) {
+        // Validate the combined condition too (each rule is validated above), so a bad
+        // combination is caught here instead of when it is first compiled at runtime.
+        AlertUtil.validateExpression(AlertUtil.buildCompleteCondition(rules), Boolean.class);
+      }
     }
   }
 
@@ -173,6 +235,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
         new EventSubscriptionOffset()
             .withCurrentOffset(latestOffset)
             .withStartingOffset(latestOffset)
+            .withStartingTimestamp(currentTime)
             .withTimestamp(currentTime);
 
     Entity.getCollectionDAO()

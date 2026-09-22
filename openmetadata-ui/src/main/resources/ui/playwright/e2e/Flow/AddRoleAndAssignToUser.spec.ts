@@ -15,7 +15,7 @@ import test, { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
   createNewPage,
-  descriptionBox,
+  fillDescriptionBox,
   generateRandomUsername,
   redirectToHomePage,
   uuid,
@@ -51,7 +51,7 @@ test.describe.serial('Add role and assign it to the user', () => {
     await page.click('[data-testid="add-role"]');
 
     await page.fill('[data-testid="name"]', roleName);
-    await page.locator(descriptionBox).fill(`description for ${roleName}`);
+    await fillDescriptionBox(page, `description for ${roleName}`);
 
     await page.click('[data-testid="policies"]');
     await page.click('[title="Data Consumer Policy"]');
@@ -79,11 +79,13 @@ test.describe.serial('Add role and assign it to the user', () => {
   test('Create new user and assign new role to him', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.USERS);
 
+    const initialRolesResponse = page.waitForResponse('/api/v1/roles/search?*');
     await page.click('[data-testid="add-user"]');
+    await initialRolesResponse;
 
     await page.fill('[data-testid="email"]', user.email);
     await page.fill('[data-testid="displayName"]', userDisplayName);
-    await page.locator(descriptionBox).fill('Adding user');
+    await fillDescriptionBox(page, 'Adding user');
     const generatePasswordResponse = page.waitForResponse(
       `/api/v1/users/generateRandomPwd`
     );
@@ -96,7 +98,9 @@ test.describe.serial('Add role and assign it to the user', () => {
     await page.locator('.ant-select-dropdown').waitFor({
       state: 'visible',
     });
+    const rolesSearchResponse = page.waitForResponse('/api/v1/roles/search?*');
     await page.fill('#roles', roleName);
+    await rolesSearchResponse;
     await page.click(`[title="${roleName}"]`);
 
     await page.keyboard.press('Escape');

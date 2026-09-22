@@ -11,7 +11,6 @@
 """
 Pub/Sub Models
 """
-from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -21,10 +20,10 @@ class PubSubBigQueryConfig(BaseModel):
     Model for BigQuery subscription configuration
     """
 
-    table: Optional[str] = None
-    use_topic_schema: Optional[bool] = None
-    write_metadata: Optional[bool] = None
-    drop_unknown_fields: Optional[bool] = None
+    table: str | None = None
+    use_topic_schema: bool | None = None
+    write_metadata: bool | None = None
+    drop_unknown_fields: bool | None = None
 
 
 class PubSubSubscription(BaseModel):
@@ -33,13 +32,13 @@ class PubSubSubscription(BaseModel):
     """
 
     name: str
-    ack_deadline_seconds: Optional[int] = None
-    message_retention_duration: Optional[float] = None
-    dead_letter_topic: Optional[str] = None
-    push_endpoint: Optional[str] = None
-    filter: Optional[str] = None
-    bigquery_config: Optional[PubSubBigQueryConfig] = None
-    enable_exactly_once_delivery: Optional[bool] = None
+    ack_deadline_seconds: int | None = None
+    message_retention_duration: float | None = None
+    dead_letter_topic: str | None = None
+    push_endpoint: str | None = None
+    filter: str | None = None
+    bigquery_config: PubSubBigQueryConfig | None = None
+    enable_exactly_once_delivery: bool | None = None
 
 
 class PubSubSchemaInfo(BaseModel):
@@ -49,8 +48,8 @@ class PubSubSchemaInfo(BaseModel):
 
     name: str
     schema_type: str
-    definition: Optional[str] = None
-    revision_id: Optional[str] = None
+    definition: str | None = None
+    revision_id: str | None = None
 
 
 class PubSubTopicMetadata(BaseModel):
@@ -59,9 +58,9 @@ class PubSubTopicMetadata(BaseModel):
     """
 
     name: str
-    labels: Optional[Dict[str, str]] = None
-    message_retention_duration: Optional[float] = None
-    schema_settings: Optional[PubSubSchemaInfo] = None
-    subscriptions: Optional[List[PubSubSubscription]] = None
+    labels: dict[str, str] | None = None
+    message_retention_duration: float | None = None
+    schema_settings: PubSubSchemaInfo | None = None
+    subscriptions: list[PubSubSubscription] | None = None
     ordering_enabled: bool = False
-    kms_key_name: Optional[str] = None
+    kms_key_name: str | None = None

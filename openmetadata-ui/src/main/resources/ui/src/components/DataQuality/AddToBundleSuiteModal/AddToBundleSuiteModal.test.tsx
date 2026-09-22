@@ -21,6 +21,7 @@ import {
   addTestCasesToLogicalTestSuiteBulk,
   getListTestSuitesBySearch,
 } from '../../../rest/testAPI';
+import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import AddToBundleSuiteModal from './AddToBundleSuiteModal.component';
 import { AddToBundleSuiteModalProps } from './AddToBundleSuiteModal.interface';
 
@@ -79,6 +80,7 @@ jest.mock('antd', () => ({
   Select: ({ onChange, onSearch, 'data-testid': testId }: MockSelectProps) => (
     <div>
       <input
+        aria-label="Search"
         data-testid={testId}
         onChange={(e) => onSearch?.(e.target.value)}
       />
@@ -155,7 +157,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     }) => (
       <>
         {isOpen && (
-          <div data-testid="modal-overlay" onClick={() => onOpenChange(false)}>
+          <div
+            aria-label="Modal overlay"
+            data-testid="modal-overlay"
+            role="button"
+            tabIndex={0}
+            onClick={() => onOpenChange(false)}
+            onKeyDown={() => onOpenChange(false)}>
             {children}
           </div>
         )}
@@ -191,7 +199,7 @@ describe('AddToBundleSuiteModal', () => {
     render(<AddToBundleSuiteModal {...mockProps} />);
 
     expect(getListTestSuitesBySearch).toHaveBeenCalledWith({
-      q: '*',
+      q: undefined,
       limit: 15,
       testSuiteType: 'logical',
       includeEmptyTestSuites: true,
@@ -308,7 +316,7 @@ describe('AddToBundleSuiteModal', () => {
 
     expect(getListTestSuitesBySearch).toHaveBeenCalledWith(
       expect.objectContaining({
-        q: '*bundle*',
+        q: 'bundle',
       })
     );
 
@@ -338,5 +346,24 @@ describe('AddToBundleSuiteModal', () => {
 
     expect(mockOnCancel).toHaveBeenCalled();
     expect(addTestCasesToLogicalTestSuiteBulk).not.toHaveBeenCalled();
+  });
+
+  describe('observabilityRouterClassBase migration', () => {
+    it('should navigate using observabilityRouterClassBase.getTestSuitePath after success', async () => {
+      render(<AddToBundleSuiteModal {...mockProps} />);
+
+      fireEvent.click(await screen.findByTestId('bundle-suite-select-option'));
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('add-button'));
+      });
+
+      const expectedFqn = mockTestSuites[0].fullyQualifiedName ?? '';
+      const expectedPath =
+        observabilityRouterClassBase.getTestSuitePath(expectedFqn);
+
+      expect(mockNavigate).toHaveBeenCalledWith(expectedPath);
+      expect(mockNavigate).toHaveBeenCalledWith(`/test-suites/${expectedFqn}`);
+    });
   });
 });

@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/lineage/entityCountLineageRequest.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "EntityCountLineageRequest",
   "description": "Request schema for getting lineage with entity count based pagination",
   "javaType": "org.openmetadata.schema.api.lineage.EntityCountLineageRequest",
@@ -86,6 +86,14 @@
         "type": "string"
       },
       "uniqueItems": true
+    },
+    "startTime": {
+      "description": "Filter lineage edges by observed time window (epoch millis), inclusive lower bound; matched via range overlap on edge createdAt/updatedAt. Note: the window is applied as a hard prune during graph traversal (point-in-time semantics) - an out-of-window edge severs discovery of everything reachable only through it, in both upstream and downstream directions. This means preservePaths does NOT extend to the time window: a node is shown only if it is reachable from the root through edges that are all in-window. Legacy edges with no timestamps always match any window (back-compat); a window query over mixed legacy and temporal data therefore returns all legacy edges.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "endTime": {
+      "description": "Filter lineage edges by observed time window (epoch millis), inclusive upper bound; matched via range overlap on edge createdAt/updatedAt. Set endTime alone (startTime unset) for an as-of/point-in-time query: edges that existed on or before this instant. See startTime for the hard-prune and preservePaths interaction notes.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
     }
   },
   "required": ["fqn", "direction"],

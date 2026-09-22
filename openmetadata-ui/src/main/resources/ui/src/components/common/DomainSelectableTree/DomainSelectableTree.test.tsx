@@ -10,13 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { createTheme, ThemeProvider } from '@mui/material';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { AxiosError } from 'axios';
 import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Domain, DomainType } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import * as domainAPI from '../../../rest/domainAPI';
+import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import DomainSelectableTree from './DomainSelectableTree';
 
 const mockDomains: Domain[] = [
@@ -87,10 +89,13 @@ jest.mock('../../../utils/DomainUtils', () => ({
         : undefined,
     }))
   ),
+}));
+
+jest.mock('../../../utils/DomainFilterUtils', () => ({
   isDomainExist: jest.fn().mockReturnValue(false),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityReferenceUtils', () => ({
   getEntityReferenceFromEntity: jest
     .fn()
     .mockImplementation((entity: Domain) => ({
@@ -102,9 +107,14 @@ jest.mock('../../../utils/EntityUtils', () => ({
     })),
 }));
 
-jest.mock('../../../utils/StringsUtils', () => ({
+jest.mock('../../../utils/StringUtils', () => ({
   escapeESReservedCharacters: jest.fn().mockImplementation((value) => value),
   getEncodedFqn: jest.fn().mockImplementation((value) => value),
+  getErrorText: jest
+    .fn()
+    .mockImplementation(
+      (error, fallback) => error?.response?.data?.message ?? fallback
+    ),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -121,18 +131,6 @@ jest.mock('../Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
 
-const mockTheme = createTheme({
-  palette: {
-    primary: {
-      main: '#1890ff',
-      dark: '#096dd9',
-    },
-  },
-  typography: {
-    fontWeightMedium: 500,
-  },
-});
-
 const renderComponent = (props = {}) => {
   const defaultProps = {
     value: [],
@@ -144,11 +142,7 @@ const renderComponent = (props = {}) => {
     ...props,
   };
 
-  return render(
-    <ThemeProvider theme={mockTheme}>
-      <DomainSelectableTree {...defaultProps} />
-    </ThemeProvider>
-  );
+  return render(<DomainSelectableTree {...defaultProps} />);
 };
 
 describe('DomainSelectableTree', () => {
@@ -369,27 +363,23 @@ describe('DomainSelectableTree', () => {
 
   it('should handle visible prop change', async () => {
     const { rerender } = render(
-      <ThemeProvider theme={mockTheme}>
-        <DomainSelectableTree
-          isMultiple={false}
-          value={[]}
-          visible={false}
-          onCancel={mockOnCancel}
-          onSubmit={mockOnSubmit}
-        />
-      </ThemeProvider>
+      <DomainSelectableTree
+        isMultiple={false}
+        value={[]}
+        visible={false}
+        onCancel={mockOnCancel}
+        onSubmit={mockOnSubmit}
+      />
     );
 
     rerender(
-      <ThemeProvider theme={mockTheme}>
-        <DomainSelectableTree
-          visible
-          isMultiple={false}
-          value={[]}
-          onCancel={mockOnCancel}
-          onSubmit={mockOnSubmit}
-        />
-      </ThemeProvider>
+      <DomainSelectableTree
+        visible
+        isMultiple={false}
+        value={[]}
+        onCancel={mockOnCancel}
+        onSubmit={mockOnSubmit}
+      />
     );
 
     await waitFor(() => {
@@ -407,6 +397,154 @@ describe('DomainSelectableTree', () => {
 
     await waitFor(() => {
       expect(domainAPI.getDomainChildrenPaginated).toHaveBeenCalled();
+    });
+  });
+
+  it('should only render allowed domains when restrictedDomains is provided', async () => {
+    const allowedDomain: EntityReference = {
+      id: '1',
+      name: 'Engineering',
+      fullyQualifiedName: 'Engineering',
+      type: EntityType.DOMAIN,
+    };
+
+    renderComponent({ restrictedDomains: [allowedDomain] });
+
+    await waitFor(() => {
+      expect(domainAPI.getDomainChildrenPaginated).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      const lastCall = (convertDomainsToTreeOptions as jest.Mock).mock.calls.at(
+        -1
+      );
+      const renderedDomains = lastCall?.[0] as Domain[];
+
+      expect(
+        renderedDomains.map((domain) => domain.fullyQualifiedName)
+      ).toEqual(['Engineering']);
+    });
+  });
+
+  it('should render empty state when restrictedDomains filters out everything', async () => {
+    const foreignDomain: EntityReference = {
+      id: '99',
+      name: 'Finance',
+      fullyQualifiedName: 'Finance',
+      type: EntityType.DOMAIN,
+    };
+
+    renderComponent({ restrictedDomains: [foreignDomain] });
+
+    await waitFor(() => {
+      expect(screen.getByText('label.no-entity-available')).toBeInTheDocument();
+    });
+  });
+
+  it('should show an inline error inside the list when a search fails', async () => {
+    const error = new AxiosError('Request failed with status code 400');
+    jest.spyOn(domainAPI, 'searchDomains').mockRejectedValueOnce(error);
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.queryByText('Loader')).not.toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: 'a||||b' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('domain-search-error')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('retry-domain-search')).toBeInTheDocument();
+    expect(screen.queryByText('Loader')).not.toBeInTheDocument();
+    expect(showErrorToast).not.toHaveBeenCalled();
+    // no message on the error, so the static fallback is shown
+    expect(screen.getByText('server.entity-fetch-error')).toBeInTheDocument();
+  });
+
+  it("should show the server's own message when the response carries one", async () => {
+    const error = new AxiosError('Request failed with status code 400');
+    error.response = {
+      status: 400,
+      data: { code: 400, message: 'Invalid field name childrenCount' },
+    } as never;
+    jest.spyOn(domainAPI, 'searchDomains').mockRejectedValueOnce(error);
+
+    renderComponent();
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: 'eng' },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Invalid field name childrenCount')
+      ).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByText('server.entity-fetch-error')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should retry the search from the inline error and recover', async () => {
+    jest
+      .spyOn(domainAPI, 'searchDomains')
+      .mockRejectedValueOnce(
+        new AxiosError('Request failed with status code 400')
+      )
+      .mockResolvedValueOnce([mockDomains[0]]);
+
+    renderComponent();
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: 'Engineering' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('domain-search-error')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('retry-domain-search'));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId('domain-search-error')
+      ).not.toBeInTheDocument();
+    });
+
+    expect(domainAPI.searchDomains).toHaveBeenCalledTimes(2);
+  });
+
+  it('should clear the inline error when the search box is cleared', async () => {
+    jest
+      .spyOn(domainAPI, 'searchDomains')
+      .mockRejectedValueOnce(
+        new AxiosError('Request failed with status code 400')
+      );
+
+    renderComponent();
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: 'a||||b' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('domain-search-error')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: '' },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId('domain-search-error')
+      ).not.toBeInTheDocument();
     });
   });
 });

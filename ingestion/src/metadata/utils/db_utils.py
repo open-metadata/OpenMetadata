@@ -12,11 +12,11 @@
 """
 Helpers module for db sources
 """
+
 import time
 import traceback
-from typing import Iterable, List, Union
+from collections.abc import Callable, Iterable
 
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
@@ -32,15 +32,19 @@ from metadata.ingestion.lineage.sql_lineage import (
     get_lineage_by_query,
     get_lineage_via_table_entity,
 )
+from metadata.ingestion.models.ometa_lineage import LineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
-from metadata.utils.execution_time_tracker import calculate_execution_time_generator
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
 PUBLIC_SCHEMA = "public"
+
+# Extra view lineage a connector contributes on top of what the parsers report, called
+# with (metadata, view, view_entity, service_names, masked_query) as keyword arguments.
+ViewLineageExtension = Callable[..., Iterable[Either[LineageRequest]]]
 
 
 def get_host_from_host_port(uri: str) -> str:
@@ -48,22 +52,25 @@ def get_host_from_host_port(uri: str) -> str:
     if uri is like "localhost:9000"
     then return the host "localhost"
     """
-    return uri.split(":")[0]
+    return uri.split(":")[0]  # noqa: PLC0207
 
 
 #  pylint: disable=too-many-locals
-@calculate_execution_time_generator()
 def get_view_lineage(
     view: TableView,
     metadata: OpenMetadata,
-    service_names: Union[str, List[str]],
+    service_names: str | list[str],
     connection_type: str,
     timeout_seconds: int,
     parser_type: QueryParserType,
-) -> Iterable[Either[AddLineageRequest]]:
+    extension: ViewLineageExtension | None = None,
+) -> Iterable[Either[LineageRequest]]:
     """
     Method to generate view lineage
     Now supports cross-database lineage by accepting a list of service names.
+
+    `extension` lets a connector contribute the edges its dialect expresses outside of
+    the query the parsers see -- see `LineageSource.get_view_lineage_extension`.
     """
     if isinstance(service_names, str):
         service_names = [service_names]
@@ -107,40 +114,61 @@ def get_view_lineage(
             schema_name = PUBLIC_SCHEMA
             schema_fallback = True
 
+        if table_entity.serviceType == DatabaseServiceType.Dremio:
+            # Dremio folders nest arbitrarily deep and are flattened into a single dotted
+            # schema name (`folder.subfolder`), but a Dremio query spells every folder out
+            # as its own path segment. The SQL parser keeps only the first two segments as
+            # the qualifier, so for anything nested two or more folders deep the parsed
+            # schema can never match the ingested one. Fall back to a schema wildcard.
+            schema_fallback = True
+
         end_time = time.time()
         logger.debug(
             f"[{query_hash}] Time taken to parse view lineage for: {table_fqn} is {end_time - start_time} seconds"
         )
         if lineage_parser.source_tables and lineage_parser.target_tables:
-            yield from get_lineage_by_query(
-                metadata,
-                query=view_definition,
-                service_names=service_names,
-                database_name=db_name,
-                schema_name=schema_name,
-                dialect=dialect,
-                timeout_seconds=timeout_seconds,
-                lineage_source=LineageSource.ViewLineage,
-                lineage_parser=lineage_parser,
-                schema_fallback=schema_fallback,
-            ) or []
+            yield from (
+                get_lineage_by_query(
+                    metadata,
+                    query=view_definition,
+                    service_names=service_names,
+                    database_name=db_name,
+                    schema_name=schema_name,
+                    dialect=dialect,
+                    timeout_seconds=timeout_seconds,
+                    lineage_source=LineageSource.ViewLineage,
+                    lineage_parser=lineage_parser,
+                    schema_fallback=schema_fallback,
+                )
+                or []
+            )
 
         else:
-            yield from get_lineage_via_table_entity(
-                metadata,
-                table_entity=table_entity,
+            yield from (
+                get_lineage_via_table_entity(
+                    metadata,
+                    table_entity=table_entity,
+                    service_names=service_names,
+                    database_name=db_name,
+                    schema_name=schema_name,
+                    query=view_definition,
+                    dialect=dialect,
+                    timeout_seconds=timeout_seconds,
+                    lineage_source=LineageSource.ViewLineage,
+                    lineage_parser=lineage_parser,
+                    schema_fallback=schema_fallback,
+                )
+                or []
+            )
+
+        if extension:
+            yield from extension(
+                metadata=metadata,
+                view=view,
+                view_entity=table_entity,
                 service_names=service_names,
-                database_name=db_name,
-                schema_name=schema_name,
-                query=view_definition,
-                dialect=dialect,
-                timeout_seconds=timeout_seconds,
-                lineage_source=LineageSource.ViewLineage,
-                lineage_parser=lineage_parser,
-                schema_fallback=schema_fallback,
-            ) or []
+                masked_query=lineage_parser.masked_query,
+            )
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(
-            f"Could not parse query [{view_definition}] ingesting lineage failed: {exc}"
-        )
+        logger.warning(f"Could not parse query [{view_definition}] ingesting lineage failed: {exc}")

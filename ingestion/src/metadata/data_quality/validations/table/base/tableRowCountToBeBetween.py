@@ -47,7 +47,7 @@ class BaseTableRowCountToBeBetweenValidator(BaseTestValidator):
         except ValueError as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
-            logger.warning(msg)
+            logger.error(msg)
             return self.get_test_case_result_object(
                 self.execution_date,
                 TestCaseStatus.Aborted,
@@ -55,8 +55,7 @@ class BaseTableRowCountToBeBetweenValidator(BaseTestValidator):
                 [TestResultValue(name=ROW_COUNT, value=None)],
             )
 
-        min_bound = self.get_min_bound("minValue")
-        max_bound = self.get_max_bound("maxValue")
+        min_bound, max_bound = self.get_bounds("minValue", "maxValue")
 
         return self.get_test_case_result_object(
             self.execution_date,

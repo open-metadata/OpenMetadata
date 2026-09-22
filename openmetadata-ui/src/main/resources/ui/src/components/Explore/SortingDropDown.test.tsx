@@ -12,7 +12,61 @@
  */
 
 import { act, fireEvent, render } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import {
+  columnSortingFields,
+  INITIAL_SORT_FIELD,
+} from '../../constants/explore.constants';
 import SortingDropDown from './SortingDropDown';
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest
+    .fn()
+    .mockImplementation(
+      ({ children, hideFocusOutline, iconTrailing, size, ...props }) => (
+        <button
+          data-hide-focus-outline={hideFocusOutline}
+          data-size={size}
+          {...props}>
+          {children}
+          {iconTrailing}
+        </button>
+      )
+    ),
+  Dropdown: {
+    Root: jest.fn().mockImplementation(({ children, ...props }) => (
+      <div data-testid="dropdown" {...props}>
+        {children}
+      </div>
+    )),
+    Popover: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+    Menu: jest.fn().mockImplementation(({ children, ...props }) => (
+      <div role="menu" {...props}>
+        {children}
+      </div>
+    )),
+    Item: jest.fn().mockImplementation(({ children, onClick, ...props }) => (
+      <div
+        role="menuitem"
+        tabIndex={0}
+        onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            onClick?.(e);
+          }
+        }}
+        {...props}>
+        {children}
+      </div>
+    )),
+  },
+}));
+
+jest.mock('@untitledui/icons', () => ({
+  ChevronDown: () => <span>ChevronDown</span>,
+}));
 
 const handleFieldDropDown = jest.fn();
 const fieldList = [
@@ -24,7 +78,7 @@ const fieldList = [
 ];
 const sortField = '';
 
-const mockPorps = {
+const mockProps = {
   fieldList,
   sortField,
   handleFieldDropDown,
@@ -32,41 +86,60 @@ const mockPorps = {
 
 describe('Test Sorting DropDown Component', () => {
   it('Should render dropdown component', async () => {
-    const { findByTestId, findByRole, findAllByTestId } = render(
-      <SortingDropDown {...mockPorps} />
+    const { findByTestId, findByRole } = render(
+      <MemoryRouter>
+        <SortingDropDown {...mockProps} />
+      </MemoryRouter>
     );
 
-    const dropdownLabel = await findByTestId('sorting-dropdown-label');
+    const dropdown = await findByTestId('dropdown');
 
-    expect(dropdownLabel).toBeInTheDocument();
+    expect(dropdown).toBeInTheDocument();
 
-    fireEvent.click(dropdownLabel);
+    const dropdownButton = dropdown.querySelector(
+      'button'
+    ) as HTMLButtonElement;
+
+    expect(dropdownButton).toBeInTheDocument();
+    expect(dropdownButton).toHaveAttribute('data-size', 'sm');
+    expect(dropdownButton).toHaveAttribute('data-hide-focus-outline', 'true');
+    expect(dropdownButton).not.toHaveClass('quick-filter-dropdown-trigger-btn');
+
+    fireEvent.click(dropdownButton);
 
     const dropdownMenu = await findByRole('menu');
 
     expect(dropdownMenu).toBeInTheDocument();
 
-    const menuItems = await findAllByTestId('dropdown-menu-item');
+    const menuItems = dropdownMenu.querySelectorAll('[role="menuitem"]');
 
     expect(menuItems).toHaveLength(fieldList.length);
   });
 
   it('Should call onSelect method on onClick option', async () => {
-    const { findByTestId, findByRole, findAllByTestId } = render(
-      <SortingDropDown {...mockPorps} />
+    const { findByTestId, findByRole } = render(
+      <MemoryRouter>
+        <SortingDropDown {...mockProps} />
+      </MemoryRouter>
     );
 
-    const dropdownLabel = await findByTestId('sorting-dropdown-label');
+    const dropdown = await findByTestId('dropdown');
 
-    expect(dropdownLabel).toBeInTheDocument();
+    expect(dropdown).toBeInTheDocument();
 
-    fireEvent.click(dropdownLabel);
+    const dropdownButton = dropdown.querySelector(
+      'button'
+    ) as HTMLButtonElement;
+
+    expect(dropdownButton).toBeInTheDocument();
+
+    fireEvent.click(dropdownButton);
 
     const dropdownMenu = await findByRole('menu');
 
     expect(dropdownMenu).toBeInTheDocument();
 
-    const menuItems = await findAllByTestId('dropdown-menu-item');
+    const menuItems = dropdownMenu.querySelectorAll('[role="menuitem"]');
 
     expect(menuItems).toHaveLength(fieldList.length);
 
@@ -75,5 +148,29 @@ describe('Test Sorting DropDown Component', () => {
     });
 
     expect(handleFieldDropDown).toHaveBeenCalledWith('totalVotes');
+  });
+
+  it('Should not render a blank label for the production Columns tab mismatch', async () => {
+    // Regression for #32645: the Columns tab default sort (INITIAL_SORT_FIELD =
+    // 'totalVotes') is not a member of columnSortingFields, so a naive lookup
+    // rendered a blank trigger label. Assert with the REAL production constants.
+    expect(
+      columnSortingFields.some((field) => field.value === INITIAL_SORT_FIELD)
+    ).toBe(false);
+
+    const { findByTestId } = render(
+      <MemoryRouter>
+        <SortingDropDown
+          fieldList={columnSortingFields}
+          handleFieldDropDown={handleFieldDropDown}
+          sortField={INITIAL_SORT_FIELD}
+        />
+      </MemoryRouter>
+    );
+
+    const label = await findByTestId('sorting-dropdown-label');
+
+    expect(label.textContent).not.toBe('');
+    expect(label.textContent).toContain(columnSortingFields[0].name);
   });
 });

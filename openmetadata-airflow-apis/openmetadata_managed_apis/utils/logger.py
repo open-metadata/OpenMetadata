@@ -1,7 +1,6 @@
 import logging
 from enum import Enum
 from logging.handlers import RotatingFileHandler
-from typing import Union
 
 from airflow.configuration import conf
 
@@ -13,9 +12,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.utils.logger import set_loggers_level
 
-BASE_LOGGING_FORMAT = (
-    "[%(asctime)s] %(levelname)-8s {%(name)s:%(module)s:%(lineno)d} - %(message)s"
-)
+BASE_LOGGING_FORMAT = "[%(asctime)s] %(levelname)-8s {%(name)s:%(module)s:%(lineno)d} - %(message)s"
 
 
 class Loggers(Enum):
@@ -62,9 +59,7 @@ def utils_logger():
     return build_logger(Loggers.UTILS.value)
 
 
-def set_operator_logger(
-    workflow_config: Union[OpenMetadataWorkflowConfig, OpenMetadataApplicationConfig]
-) -> None:
+def set_operator_logger(workflow_config: OpenMetadataWorkflowConfig | OpenMetadataApplicationConfig) -> None:
     """
     Handle logging for the Python Operator that
     will execute the ingestion

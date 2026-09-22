@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { Domain } from '../../../support/domain/Domain';
 import { PipelineClass } from '../../../support/entity/PipelineClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 
@@ -88,8 +88,7 @@ test.describe('Task Creation and Resolution - Pipeline Entity', () => {
       // Create DescriptionUpdate task for entity level
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: pipeline.entityResponseData?.fullyQualifiedName,
-          aboutType: 'pipeline',
+          about: `<#E::pipeline::${pipeline.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -151,8 +150,7 @@ test.describe('Task Creation and Resolution - Pipeline Entity', () => {
       // Format: tasks::taskName::description
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: pipeline.entityResponseData?.fullyQualifiedName,
-          aboutType: 'pipeline',
+          about: `<#E::pipeline::${pipeline.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -205,8 +203,7 @@ test.describe('Task Creation and Resolution - Pipeline Entity', () => {
       // Create OwnershipUpdate task
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: pipeline.entityResponseData?.fullyQualifiedName,
-          aboutType: 'pipeline',
+          about: `<#E::pipeline::${pipeline.entityResponseData?.fullyQualifiedName}>`,
           type: 'OwnershipUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -254,8 +251,7 @@ test.describe('Task Creation and Resolution - Pipeline Entity', () => {
       // Create TierUpdate task
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: pipeline.entityResponseData?.fullyQualifiedName,
-          aboutType: 'pipeline',
+          about: `<#E::pipeline::${pipeline.entityResponseData?.fullyQualifiedName}>`,
           type: 'TierUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -306,8 +302,7 @@ test.describe('Task Creation and Resolution - Pipeline Entity', () => {
       // Create DomainUpdate task
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: pipeline.entityResponseData?.fullyQualifiedName,
-          aboutType: 'pipeline',
+          about: `<#E::pipeline::${pipeline.entityResponseData?.fullyQualifiedName}>`,
           type: 'DomainUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],

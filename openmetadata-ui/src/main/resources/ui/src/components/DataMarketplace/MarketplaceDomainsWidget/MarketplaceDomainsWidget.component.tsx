@@ -12,17 +12,16 @@
  */
 
 import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
-import { useForm } from 'antd/lib/form/Form';
+import { Globe01, Plus } from '@untitledui/icons';
 import { isEmpty, noop } from 'lodash';
-import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
@@ -31,11 +30,17 @@ import { addDomains, patchDomains } from '../../../rest/domainAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
 import dataMarketplaceClassBase from '../../../utils/DataMarketplace/DataMarketplaceClassBase';
+import { submitAndClose } from '../../../utils/FormDrawerUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { getDomainDetailsPath } from '../../../utils/RouterUtils';
-import { useFormDrawerWithRef } from '../../common/atoms/drawer';
+import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
+import CreatePlaceholder from '../../common/EmptyPlaceholder/CreatePlaceholder';
 import Loader from '../../common/Loader/Loader';
-import AddDomainForm from '../../Domain/AddDomainForm/AddDomainForm.component';
+import AddDomainForm, {
+  DOMAIN_FORM_DEFAULTS,
+  transformDomainFormData,
+} from '../../Domain/AddDomainForm/AddDomainForm.component';
+import { DomainFormValues } from '../../Domain/AddDomainForm/AddDomainForm.interface';
 import { DomainFormType } from '../../Domain/DomainPage.interface';
 import '../marketplace-widget-shared.less';
 import MarketplaceItemCard from '../MarketplaceItemCard/MarketplaceItemCard.component';
@@ -50,8 +55,9 @@ const MarketplaceDomainsWidget = ({
   const navigate = useNavigate();
   const { domainBasePath } = useMarketplaceStore();
   const { permissions } = usePermissionProvider();
-  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
-  const [form] = useForm();
+  const form = useForm<DomainFormValues>({
+    defaultValues: DOMAIN_FORM_DEFAULTS,
+  });
   const [domains, setDomains] = useState<Domain[]>(
     isEditView ? dataMarketplaceClassBase.getDummyDomains() : []
   );
@@ -88,52 +94,57 @@ const MarketplaceDomainsWidget = ({
     fetchDomains();
   }, [fetchDomains]);
 
-  const { formDrawer, openDrawer, closeDrawer } = useFormDrawerWithRef({
-    title: t('label.add-entity', { entity: t('label.domain') }),
-    width: 670,
-    closeOnEscape: false,
-    className: 'tw:z-[20]',
-    onCancel: () => {
-      form.resetFields();
+  const handleDomainSubmit = useCallback(
+    async (data: DomainFormValues) => {
+      const formData = transformDomainFormData(
+        data,
+        DomainFormType.DOMAIN
+      ) as CreateDomain;
+      setIsFormLoading(true);
+      try {
+        await createEntityWithCoverImage({
+          formData,
+          entityType: EntityType.DOMAIN,
+          entityLabel: t('label.domain'),
+          entityPluralLabel: 'domains',
+          createEntity: addDomains,
+          patchEntity: patchDomains,
+          onSuccess: () => {
+            form.reset();
+          },
+          t,
+        });
+      } finally {
+        setIsFormLoading(false);
+      }
     },
-    form: (
-      <AddDomainForm
-        isFormInDialog
-        formRef={form}
-        loading={isFormLoading}
-        type={DomainFormType.DOMAIN}
-        onCancel={() => {
-          // No-op: handled by useFormDrawerWithRef
-        }}
-        onSubmit={async (formData: CreateDomain | CreateDataProduct) => {
-          setIsFormLoading(true);
-          try {
-            await createEntityWithCoverImage({
-              formData: formData as CreateDomain,
-              entityType: EntityType.DOMAIN,
-              entityLabel: t('label.domain'),
-              entityPluralLabel: 'domains',
-              createEntity: addDomains,
-              patchEntity: patchDomains,
-              onSuccess: () => {
-                closeDrawer();
-                fetchDomains();
-              },
-              enqueueSnackbar,
-              closeSnackbar,
-              t,
-            });
-          } finally {
-            setIsFormLoading(false);
+    [form, t]
+  );
+
+  const { formDrawer, openDrawer, closeDrawer } =
+    useFormDrawerWithHook<DomainFormValues>({
+      title: t('label.add-entity', { entity: t('label.domain') }),
+      width: 670,
+      closeOnEscape: false,
+      className: 'tw:z-[20]',
+      hookForm: form,
+      form: (
+        <AddDomainForm
+          isFormInDialog
+          form={form}
+          loading={isFormLoading}
+          type={DomainFormType.DOMAIN}
+          onCancel={() => {
+            // No-op: handled by useFormDrawerWithHook
+          }}
+          onSubmit={(data: DomainFormValues): Promise<void> =>
+            submitAndClose(data, handleDomainSubmit, closeDrawer, fetchDomains)
           }
-        }}
-      />
-    ),
-    formRef: form,
-    onSubmit: () => {
-      form.submit();
-    },
-  });
+        />
+      ),
+      onSubmit: (data: DomainFormValues): Promise<void> =>
+        submitAndClose(data, handleDomainSubmit, closeDrawer, fetchDomains),
+    });
 
   const handleClick = useCallback(
     (domain: Domain) => {
@@ -197,7 +208,11 @@ const MarketplaceDomainsWidget = ({
             weight="semibold">
             {t('label.new')} {t('label.domain-plural')}
           </Typography>
-          <Typography as="span" className="tw:text-xs tw:text-text-tertiary">
+          <Typography
+            as="span"
+            className="tw:text-text-secondary"
+            size="text-sm"
+            weight="regular">
             {t('label.recently-created-entity', {
               entity: t('label.domain-plural'),
             })}
@@ -226,10 +241,28 @@ const MarketplaceDomainsWidget = ({
         )}
       </div>
       {isEmpty(domains) ? (
-        <div className="tw:flex tw:items-center tw:justify-center tw:min-h-16">
-          <Typography as="span" className="tw:text-sm tw:text-text-tertiary">
-            {t('label.no-entity', { entity: t('label.domain-plural') })}
-          </Typography>
+        <div className="tw:relative tw:flex tw:min-h-60 tw:items-center tw:justify-center">
+          <CreatePlaceholder
+            actions={
+              !isEditView && permissions.domain?.Create
+                ? [
+                    {
+                      key: 'add',
+                      label: t('label.new-entity', {
+                        entity: t('label.domain'),
+                      }),
+                      color: 'primary',
+                      iconLeading: Plus,
+                      onPress: openDrawer,
+                    },
+                  ]
+                : undefined
+            }
+            data-testid="marketplace-domains-empty-state"
+            description={t('label.no-domains-yet-description')}
+            icon={<Globe01 className="tw:text-fg-brand-primary" />}
+            title={t('label.no-domains-yet')}
+          />
         </div>
       ) : (
         cardList

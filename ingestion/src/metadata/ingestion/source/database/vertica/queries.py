@@ -14,6 +14,13 @@ SQL Queries used during ingestion
 
 import textwrap
 
+# Issued by the dialect while it initializes, on the first engine.connect().
+# sqlalchemy-vertica hands both to Connection.scalar() as bare strings, which
+# SQLAlchemy 2.x refuses to execute, so we re-issue them wrapped in text().
+VERTICA_GET_SERVER_VERSION = "SELECT version()"
+
+VERTICA_GET_CURRENT_SCHEMA = "SELECT current_schema()"
+
 # Column comments in Vertica can only happen on Projections
 #   https://forum.vertica.com/discussion/238945/vertica-try-to-create-comment
 # And Vertica projections follow this naming:
@@ -54,6 +61,47 @@ VERTICA_GET_COLUMNS = textwrap.dedent(
         FROM v_catalog.view_columns
         WHERE lower(table_name) = '{table}'
         AND {schema_condition}
+    """  # noqa: W291
+)
+
+# v_catalog.comments gained child_object in Vertica 10. Before that the join
+# above cannot be expressed at all, and the whole column read fails rather than
+# just losing comments, which leaves tables with no schema definition. This
+# variant drops the join so older servers still reflect their columns.
+VERTICA_GET_COLUMNS_WITHOUT_COMMENTS = textwrap.dedent(
+    """
+        select
+          column_name,
+          data_type,
+          column_default,
+          is_nullable,
+          '' AS comment
+        from
+          v_catalog.columns col
+        WHERE
+          lower(table_name) = '{table}'
+          AND {schema_condition}
+        UNION ALL
+        SELECT
+          column_name,
+          data_type,
+          '' AS column_default,
+          true AS is_nullable,
+          ''  AS comment
+        FROM v_catalog.view_columns
+        WHERE lower(table_name) = '{table}'
+        AND {schema_condition}
+    """
+)
+
+# Referencing the column is the only reliable probe. v_catalog.columns lists
+# user tables only, so looking the system catalog up there always reports
+# absent, on every version. Selecting no rows keeps this cheap.
+VERTICA_SUPPORTS_COLUMN_COMMENTS = textwrap.dedent(
+    """
+        SELECT child_object
+        FROM v_catalog.comments
+        LIMIT 0
     """
 )
 
@@ -134,4 +182,4 @@ FROM query_profiles p
       ON p.TRANSACTION_ID = r.TRANSACTION_ID
      AND p.STATEMENT_ID = r.STATEMENT_ID
 LIMIT 1
-"""
+"""  # noqa: W291

@@ -4,9 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.util.TestUtils.assertFieldDoesNotExist;
 import static org.openmetadata.service.util.TestUtils.assertFieldExists;
@@ -16,15 +14,18 @@ import com.jayway.jsonpath.JsonPath;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.RoleRepository;
+import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
@@ -32,6 +33,7 @@ import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.security.policyevaluator.TeamGraphFixture;
 import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 
 class OpenSearchRBACConditionEvaluatorTest {
@@ -40,10 +42,42 @@ class OpenSearchRBACConditionEvaluatorTest {
   private User mockUser;
   private SubjectContext mockSubjectContext;
 
+  /**
+   * TeamHierarchyResolver reads the team graph out of entity_relationship rather than loading a
+   * Team per node, so tests that exercise hasAnyRole() or inAnyTeam() register the graph here.
+   * Installed once because this class runs its tests concurrently and each of them uses fresh ids.
+   */
+  @BeforeAll
+  static void installTeamGraph() {
+    TeamRepository teamRepository = mock(TeamRepository.class);
+    RoleRepository roleRepository = mock(RoleRepository.class);
+    Entity.registerEntity(Team.class, Entity.TEAM, teamRepository);
+    Entity.registerEntity(Role.class, Entity.ROLE, roleRepository);
+    TeamGraphFixture.install();
+    TeamGraphFixture.stubReferences(teamRepository, Entity.TEAM);
+    TeamGraphFixture.stubReferences(roleRepository, Entity.ROLE);
+  }
+
+  private static EntityReference reference(String entityType, String name) {
+    return new EntityReference().withId(UUID.randomUUID()).withType(entityType).withName(name);
+  }
+
   @BeforeEach
   public void setUp() {
     QueryBuilderFactory queryBuilderFactory = new OpenSearchQueryBuilderFactory();
     evaluator = new RBACConditionEvaluator(queryBuilderFactory);
+
+    SearchRepository mockSearchRepository = mock(SearchRepository.class);
+    when(mockSearchRepository.getIndexOrAliasName(anyString()))
+        .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
+    when(mockSearchRepository.getChildIndexAliases(anyString()))
+        .thenReturn(Collections.emptyList());
+    Entity.setSearchRepository(mockSearchRepository);
+  }
+
+  @AfterEach
+  public void tearDown() {
+    Entity.setSearchRepository(null);
   }
 
   private void setupMockPolicies(String expression, String effect) {
@@ -163,6 +197,32 @@ class OpenSearchRBACConditionEvaluatorTest {
   }
 
   @Test
+  void testHasDomainRestrictsDomainIndexToOwnDomains() {
+    setupMockPolicies("hasDomain()", "ALLOW");
+
+    EntityReference domain = new EntityReference();
+    domain.setId(UUID.randomUUID());
+    domain.setName("Finance");
+    when(mockUser.getDomains()).thenReturn(List.of(domain));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    String generatedQuery = ((OpenSearchQueryBuilder) finalQuery).build().toJsonString();
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.terms['id.keyword'])]",
+        "a Domain entity must be matchable by its own id so the domain index hides foreign domains");
+    assertTrue(
+        generatedQuery.contains(domain.getId().toString()),
+        "The id terms clause should contain the user's domain id.");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.bool.must_not[?(@.term['entityType'].value=='domain')])]",
+        "the no-domain clause must exclude Domain documents so foreign domains do not leak");
+  }
+
+  @Test
   void testOpenSearchNegationWithDomainAndOwnerChecks() {
     setupMockPolicies("!hasDomain() && isOwner()", "ALLOW");
     when(mockUser.getId()).thenReturn(UUID.randomUUID());
@@ -244,35 +304,18 @@ class OpenSearchRBACConditionEvaluatorTest {
     teamRef.setName("EngineeringTeam");
     when(mockUser.getTeams()).thenReturn(List.of(teamRef));
 
-    Team mockTeam = mock(Team.class);
-    EntityReference inheritedRole = new EntityReference();
-    inheritedRole.setName("DataSteward");
-    when(mockTeam.getDefaultRoles()).thenReturn(List.of(inheritedRole));
-    when(mockTeam.getParents()).thenReturn(List.of());
+    TeamGraphFixture.registerTeam(
+        teamRef, List.of(), List.of(reference(Entity.ROLE, "DataSteward")), List.of());
 
-    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      entityMock
-          .when(
-              () -> Entity.getEntity(eq(Entity.TEAM), eq(teamId), anyString(), any(Include.class)))
-          .thenReturn(mockTeam);
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
+    String generatedQuery = openSearchQuery.toJsonString();
 
-      SearchRepository mockSearchRepository = mock(SearchRepository.class);
-      when(mockSearchRepository.getIndexOrAliasName(anyString()))
-          .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
-      when(mockSearchRepository.getChildIndexAliases(anyString()))
-          .thenReturn(Collections.emptyList());
-      entityMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepository);
-
-      OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-      Query openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
-      String generatedQuery = openSearchQuery.toJsonString();
-
-      assertTrue(
-          generatedQuery.contains("match_all"),
-          "Query should contain match_all since user inherits DataSteward role from team");
-      assertTrue(generatedQuery.contains("Sensitive"), "Query should contain tag condition");
-      assertFalse(generatedQuery.contains("match_none"), "Query should not be match_none");
-    }
+    assertTrue(
+        generatedQuery.contains("match_all"),
+        "Query should contain match_all since user inherits DataSteward role from team");
+    assertTrue(generatedQuery.contains("Sensitive"), "Query should contain tag condition");
+    assertFalse(generatedQuery.contains("match_none"), "Query should not be match_none");
   }
 
   @Test
@@ -285,49 +328,19 @@ class OpenSearchRBACConditionEvaluatorTest {
     childTeamRef.setName("ChildTeam");
     when(mockUser.getTeams()).thenReturn(List.of(childTeamRef));
 
-    UUID parentTeamId = UUID.randomUUID();
-    Team mockChildTeam = mock(Team.class);
-    when(mockChildTeam.getName()).thenReturn("ChildTeam");
-    EntityReference parentTeamRef = new EntityReference();
-    parentTeamRef.setId(parentTeamId);
-    parentTeamRef.setName("ParentTeam");
-    when(mockChildTeam.getParents()).thenReturn(List.of(parentTeamRef));
+    EntityReference parentTeamRef = reference(Entity.TEAM, "ParentTeam");
+    TeamGraphFixture.registerTeam(parentTeamRef, List.of(), List.of(), List.of());
+    TeamGraphFixture.registerTeam(childTeamRef, List.of(parentTeamRef), List.of(), List.of());
 
-    Team mockParentTeam = mock(Team.class);
-    when(mockParentTeam.getName()).thenReturn("ParentTeam");
-    when(mockParentTeam.getParents()).thenReturn(List.of());
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
+    String generatedQuery = openSearchQuery.toJsonString();
 
-    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      entityMock
-          .when(
-              () ->
-                  Entity.getEntity(
-                      eq(Entity.TEAM), eq(childTeamId), anyString(), any(Include.class)))
-          .thenReturn(mockChildTeam);
-      entityMock
-          .when(
-              () ->
-                  Entity.getEntity(
-                      eq(Entity.TEAM), eq(parentTeamId), anyString(), any(Include.class)))
-          .thenReturn(mockParentTeam);
-
-      SearchRepository mockSearchRepository = mock(SearchRepository.class);
-      when(mockSearchRepository.getIndexOrAliasName(anyString()))
-          .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
-      when(mockSearchRepository.getChildIndexAliases(anyString()))
-          .thenReturn(Collections.emptyList());
-      entityMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepository);
-
-      OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-      Query openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
-      String generatedQuery = openSearchQuery.toJsonString();
-
-      assertTrue(
-          generatedQuery.contains("match_all"),
-          "Query should contain match_all since user's team is child of ParentTeam");
-      assertTrue(generatedQuery.contains("Confidential"), "Query should contain tag condition");
-      assertFalse(generatedQuery.contains("match_none"), "Query should not be match_none");
-    }
+    assertTrue(
+        generatedQuery.contains("match_all"),
+        "Query should contain match_all since user's team is child of ParentTeam");
+    assertTrue(generatedQuery.contains("Confidential"), "Query should contain tag condition");
+    assertFalse(generatedQuery.contains("match_none"), "Query should not be match_none");
   }
 
   @Test
@@ -342,33 +355,16 @@ class OpenSearchRBACConditionEvaluatorTest {
     teamRef.setName("RegularTeam");
     when(mockUser.getTeams()).thenReturn(List.of(teamRef));
 
-    Team mockTeam = mock(Team.class);
-    EntityReference nonMatchingRole = new EntityReference();
-    nonMatchingRole.setName("Viewer");
-    when(mockTeam.getDefaultRoles()).thenReturn(List.of(nonMatchingRole));
-    when(mockTeam.getParents()).thenReturn(List.of());
+    TeamGraphFixture.registerTeam(
+        teamRef, List.of(), List.of(reference(Entity.ROLE, "Viewer")), List.of());
 
-    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      entityMock
-          .when(
-              () -> Entity.getEntity(eq(Entity.TEAM), eq(teamId), anyString(), any(Include.class)))
-          .thenReturn(mockTeam);
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
+    String generatedQuery = openSearchQuery.toJsonString();
 
-      SearchRepository mockSearchRepository = mock(SearchRepository.class);
-      when(mockSearchRepository.getIndexOrAliasName(anyString()))
-          .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
-      when(mockSearchRepository.getChildIndexAliases(anyString()))
-          .thenReturn(Collections.emptyList());
-      entityMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepository);
-
-      OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-      Query openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
-      String generatedQuery = openSearchQuery.toJsonString();
-
-      assertTrue(
-          generatedQuery.contains("must_not") && generatedQuery.contains("match_all"),
-          "Query should result in match_nothing since user doesn't have Admin role");
-    }
+    assertTrue(
+        generatedQuery.contains("must_not") && generatedQuery.contains("match_all"),
+        "Query should result in match_nothing since user doesn't have Admin role");
   }
 
   @Test

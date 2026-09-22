@@ -1,7 +1,6 @@
 """DashboardServices entity SDK."""
-from __future__ import annotations
 
-from typing import Type
+from __future__ import annotations
 
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
@@ -14,5 +13,5 @@ class DashboardServices(BaseEntity[DashboardService, CreateDashboardServiceReque
     """Fluent facade for dashboard service operations."""
 
     @classmethod
-    def entity_type(cls) -> Type[DashboardService]:
+    def entity_type(cls) -> type[DashboardService]:
         return DashboardService

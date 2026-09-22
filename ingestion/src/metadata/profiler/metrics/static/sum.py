@@ -12,8 +12,10 @@
 """
 SUM Metric definition
 """
+
+from collections.abc import Callable
 from functools import partial
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import column
 
@@ -73,26 +75,20 @@ class Sum(StaticMetric):
             try:
                 accumulator = computation.update_accumulator(accumulator, df)
             except Exception as err:
-                logger.debug(
-                    f"Error while computing min for column {self.col.name}: {err}"
-                )
+                logger.debug(f"Error while computing min for column {self.col.name}: {err}")
                 return None
         return computation.aggregate_accumulator(accumulator)
 
     def get_pandas_computation(self) -> PandasComputation:
         """Returns the logic to compute this metrics using Pandas"""
-        return PandasComputation[Optional[float], Optional[float]](
+        return PandasComputation[float | None, float | None](
             create_accumulator=lambda: None,
-            update_accumulator=lambda acc, df: Sum.update_accumulator(
-                acc, df, self.col
-            ),
+            update_accumulator=lambda acc, df: Sum.update_accumulator(acc, df, self.col),
             aggregate_accumulator=lambda acc: acc,
         )
 
     @staticmethod
-    def update_accumulator(
-        current_sum: Optional[float], df: "pd.DataFrame", column
-    ) -> Optional[float]:
+    def update_accumulator(current_sum: float | None, df: "pd.DataFrame", column) -> float | None:
         """Computes one DataFrame chunk and updates the running maximum
 
         Maintains a single maximum value (not a list). Compares chunk's max
@@ -122,7 +118,7 @@ class Sum(StaticMetric):
             return current_sum + chunk_sum
         return None
 
-    def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:
+    def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], T | None]:
         """nosql function"""
         if is_quantifiable(self.col.type):
             return partial(adaptor.sum, column=self.col)

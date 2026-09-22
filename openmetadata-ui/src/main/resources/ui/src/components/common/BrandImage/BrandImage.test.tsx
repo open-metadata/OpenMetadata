@@ -48,7 +48,7 @@ describe('Test Brand Logo', () => {
     const image = screen.getByTestId('brand-logo-image');
 
     expect(image).toBeInTheDocument();
-    expect(image).toHaveAttribute('alt', 'OpenMetadata Logo');
+    expect(image).toHaveAttribute('alt', 'label.brand-name-logo');
     expect(image).toHaveAttribute('height', 'auto');
     expect(image).toHaveAttribute('width', '152');
     expect(image).toHaveAttribute('id', 'brand-image');

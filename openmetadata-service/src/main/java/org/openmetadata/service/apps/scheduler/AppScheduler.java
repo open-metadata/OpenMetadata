@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.scheduler;
 
 import static com.cronutils.model.CronType.UNIX;
 import static org.openmetadata.service.apps.AbstractNativeApplication.getAppRuntime;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.TRIGGER_TYPE_KEY;
 import static org.quartz.impl.matchers.GroupMatcher.jobGroupEquals;
 
 import com.cronutils.mapper.CronMapper;
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -31,7 +33,10 @@ import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.NativeApplication;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory.PoolWorkload;
+import org.openmetadata.service.jdbi3.QuartzConnectionProvider;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -49,19 +54,35 @@ import org.quartz.TriggerBuilder;
 import org.quartz.TriggerKey;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.matchers.GroupMatcher;
+import org.quartz.utils.DBConnectionManager;
 
 @Slf4j
 public class AppScheduler {
+  private static final int SCHEDULER_THREAD_COUNT = 10;
+  private static final String SCHEDULER_INSTANCE_NAME = "AppScheduler";
+
+  // Derived from the scheduler's instance name, which Quartz already requires to be unique per
+  // cluster. DBConnectionManager is a process-wide singleton whose registration is an unguarded
+  // map put, so two schedulers sharing a datasource name silently discard the first pool; keying
+  // off a name that is unique by construction makes that collision unrepresentable.
+  private static final String DATA_SOURCE_NAME = SCHEDULER_INSTANCE_NAME + "DS";
+  private static final String POOL_NAME = SCHEDULER_INSTANCE_NAME + "-pool";
+
+  // One connection per worker thread that may be doing job-store work, plus the misfire handler
+  // and the cluster manager, which each hold one while they run.
+  private static final int POOL_MAX_SIZE = SCHEDULER_THREAD_COUNT + 2;
+
   private static final Map<String, String> defaultAppScheduleConfig = new HashMap<>();
   public static final String ON_DEMAND_JOB = "OnDemandJob";
 
   static {
-    defaultAppScheduleConfig.put("org.quartz.scheduler.instanceName", "AppScheduler");
+    defaultAppScheduleConfig.put("org.quartz.scheduler.instanceName", SCHEDULER_INSTANCE_NAME);
     defaultAppScheduleConfig.put("org.quartz.scheduler.instanceId", "AUTO");
     defaultAppScheduleConfig.put("org.quartz.scheduler.skipUpdateCheck", "true");
     defaultAppScheduleConfig.put(
         "org.quartz.threadPool.class", "org.quartz.simpl.SimpleThreadPool");
-    defaultAppScheduleConfig.put("org.quartz.threadPool.threadCount", "10");
+    defaultAppScheduleConfig.put(
+        "org.quartz.threadPool.threadCount", String.valueOf(SCHEDULER_THREAD_COUNT));
     defaultAppScheduleConfig.put("org.quartz.threadPool.threadPriority", "5");
     defaultAppScheduleConfig.put("org.quartz.jobStore.misfireThreshold", "60000");
     defaultAppScheduleConfig.put(
@@ -69,9 +90,9 @@ public class AppScheduler {
     defaultAppScheduleConfig.put("org.quartz.jobStore.useProperties", "false");
     defaultAppScheduleConfig.put("org.quartz.jobStore.tablePrefix", "QRTZ_");
     defaultAppScheduleConfig.put("org.quartz.jobStore.isClustered", "true");
-    defaultAppScheduleConfig.put("org.quartz.jobStore.dataSource", "myDS");
-    defaultAppScheduleConfig.put("org.quartz.dataSource.myDS.maxConnections", "5");
-    defaultAppScheduleConfig.put("org.quartz.dataSource.myDS.validationQuery", "select 1");
+    // No org.quartz.dataSource.* properties: those make Quartz build its own c3p0 pool from a
+    // captured static password. The pool is registered against this name in the constructor.
+    defaultAppScheduleConfig.put("org.quartz.jobStore.dataSource", DATA_SOURCE_NAME);
   }
 
   public static final String APPS_JOB_GROUP = "OMAppsJobGroup";
@@ -83,6 +104,7 @@ public class AppScheduler {
   private static AppScheduler instance;
   private static volatile boolean initialized = false;
   @Getter private final Scheduler scheduler;
+  private final ScheduledExecutorService errorTriggerResetScheduler;
   private static final @Getter CronMapper cronMapper = CronMapper.fromUnixToQuartz();
   private static final @Getter CronParser cronParser =
       new CronParser(CronDefinitionBuilder.instanceDefinitionFor(UNIX));
@@ -97,6 +119,15 @@ public class AppScheduler {
     properties.putAll(defaultAppScheduleConfig);
     StdSchedulerFactory factory = new StdSchedulerFactory();
     factory.initialize(properties);
+    // Must precede getScheduler(): that is where the job store resolves its datasource name.
+    DBConnectionManager.getInstance()
+        .addConnectionProvider(
+            DATA_SOURCE_NAME,
+            new QuartzConnectionProvider(
+                config
+                    .getDataSourceFactory()
+                    .buildSubsystemPool(
+                        POOL_NAME, POOL_MAX_SIZE, null, PoolWorkload.SHORT_STATEMENTS)));
     this.scheduler = factory.getScheduler();
 
     this.scheduler.setJobFactory(new CustomJobFactory(dao, searchClient));
@@ -106,10 +137,14 @@ public class AppScheduler {
         .getListenerManager()
         .addJobListener(new OmAppJobListener(), jobGroupEquals(APPS_JOB_GROUP));
 
-    ScheduledExecutorService threadScheduler =
+    // Daemon thread + retained reference so shutDown() can stop it. Previously this pool was a
+    // local with a non-daemon thread that was never shut down, so it survived shutDown() and
+    // blocked JVM exit (and leaked another pool on each re-initialize in embedded/test contexts).
+    this.errorTriggerResetScheduler =
         Executors.newScheduledThreadPool(
-            1, Thread.ofPlatform().name("om-app-error-trigger-reset").factory());
-    threadScheduler.scheduleAtFixedRate(this::resetErrorTriggers, 0, 24, TimeUnit.HOURS);
+            1, Thread.ofPlatform().daemon().name("om-app-error-trigger-reset").factory());
+    this.errorTriggerResetScheduler.scheduleAtFixedRate(
+        this::resetErrorTriggers, 0, 24, TimeUnit.HOURS);
   }
 
   public void start() throws SchedulerException {
@@ -152,14 +187,6 @@ public class AppScheduler {
   }
 
   private void overrideDefaultConfig(OpenMetadataApplicationConfig config) {
-    defaultAppScheduleConfig.put(
-        "org.quartz.dataSource.myDS.driver", config.getDataSourceFactory().getDriverClass());
-    defaultAppScheduleConfig.put(
-        "org.quartz.dataSource.myDS.URL", config.getDataSourceFactory().getUrl());
-    defaultAppScheduleConfig.put(
-        "org.quartz.dataSource.myDS.user", config.getDataSourceFactory().getUser());
-    defaultAppScheduleConfig.put(
-        "org.quartz.dataSource.myDS.password", config.getDataSourceFactory().getPassword());
     if (ConnectionType.MYSQL.label.equals(config.getDataSourceFactory().getDriverClass())) {
       defaultAppScheduleConfig.put(
           "org.quartz.jobStore.driverDelegateClass",
@@ -217,7 +244,7 @@ public class AppScheduler {
     JobDataMap dataMap = new JobDataMap();
     dataMap.put(APP_NAME, app.getName());
     dataMap.put(
-        "triggerType",
+        TRIGGER_TYPE_KEY,
         Optional.ofNullable(app.getAppSchedule())
             .map(v -> v.getScheduleTimeline().value())
             .orElse(null));
@@ -231,16 +258,33 @@ public class AppScheduler {
     return jobBuilder.build();
   }
 
+  /**
+   * Heavy full-reindex apps skip every misfire and wait for the next scheduled trigger,
+   * regardless of their cron frequency. Quartz's default catch-up policy could otherwise launch
+   * a multi-hour reindex during deployment or recovery. Other apps retain the default policy.
+   */
+  static final Set<String> SKIP_MISSED_RUN_APPS =
+      Set.of("SearchIndexingApplication", "RdfIndexApp");
+
+  static CronScheduleBuilder scheduleFor(App app) {
+    CronScheduleBuilder schedule = getCronSchedule(app.getAppSchedule());
+    if (SKIP_MISSED_RUN_APPS.contains(app.getName())) {
+      schedule = schedule.withMisfireHandlingInstructionDoNothing();
+    }
+    return schedule;
+  }
+
   private Trigger trigger(App app) {
     return TriggerBuilder.newTrigger()
         .withIdentity(app.getName(), APPS_TRIGGER_GROUP)
-        .withSchedule(getCronSchedule(app.getAppSchedule()))
+        .withSchedule(scheduleFor(app))
         .build();
   }
 
   public static void shutDown() throws SchedulerException {
     if (instance != null) {
       instance.scheduler.shutdown();
+      instance.errorTriggerResetScheduler.shutdownNow();
     }
   }
 
@@ -279,7 +323,8 @@ public class AppScheduler {
       String triggerIdentity;
 
       String uniqueId = getUniqueJobIdentifier(config);
-      if (allowConcurrent && uniqueId != null) {
+      boolean concurrentJob = allowConcurrent && uniqueId != null;
+      if (concurrentJob) {
         // For apps that allow concurrent execution, use a unique identifier per job
         jobIdentity = String.format("%s-%s-%s", application.getName(), ON_DEMAND_JOB, uniqueId);
         triggerIdentity = String.format("%s-%s-%s", application.getName(), ON_DEMAND_JOB, uniqueId);
@@ -318,7 +363,7 @@ public class AppScheduler {
       }
 
       JobDetail newJobDetail = jobBuilder(application, jobIdentity);
-      newJobDetail.getJobDataMap().put("triggerType", ON_DEMAND_JOB);
+      newJobDetail.getJobDataMap().put(TRIGGER_TYPE_KEY, ON_DEMAND_JOB);
       // Use the application name for lookup consistency in OmAppJobListener
       newJobDetail.getJobDataMap().put(APP_NAME, application.getName());
       newJobDetail.getJobDataMap().put(APP_CONFIG_KEY, config);
@@ -328,11 +373,115 @@ public class AppScheduler {
               .withIdentity(triggerIdentity, APPS_TRIGGER_GROUP)
               .startNow()
               .build();
-      scheduler.scheduleJob(newJobDetail, trigger);
+      scheduleOnDemandJob(application, newJobDetail, trigger, triggerIdentity, concurrentJob);
     } catch (ObjectAlreadyExistsException ex) {
       throw new UnhandledServerException("Job is already running, please wait for it to complete.");
     } catch (SchedulerException | ClassNotFoundException ex) {
       LOG.error("Failed in running job", ex);
+      throw new UnhandledServerException(
+          "Could not queue application " + application.getName(), ex);
+    }
+  }
+
+  /**
+   * Schedule the on-demand job, recovering from a stale Quartz entry left by a crashed pod.
+   *
+   * <p>The on-demand job is non-durable, so a clean run auto-deletes its {@code JobDetail}. But a
+   * pod that crashed (or was wedged) mid-execution leaves the persisted {@code QRTZ_*} job/trigger
+   * behind. Because the store is clustered, a retrigger from <em>any</em> pod then hits
+   * {@link ObjectAlreadyExistsException} and is rejected with "Job is already running" even though
+   * nothing is actually running. We distinguish the two cases using the DB-backed {@link
+   * AppRunRecord} (cross-pod truth): if the latest run is genuinely active we rethrow; otherwise the
+   * entry is stale, so we clear it and reschedule once.
+   *
+   * <p>Recovery is applied only to non-concurrent jobs. Concurrent jobs use a unique identity per
+   * run, so a collision there is not a stale entry and the app-wide latest run record is not a
+   * reliable signal for a specific run.
+   *
+   * <p>The check-then-act (read run record → delete → reschedule) is not atomic across a clustered
+   * deployment. If two pods race, the recovery {@code scheduleJob} may itself collide; we treat that
+   * second collision as "another pod won" and rethrow so the caller reports the standard message
+   * rather than deleting a job the other pod just scheduled.
+   *
+   * <p>"Active" is defined by {@link #TERMINAL_RUN_STATUSES}: any non-terminal status (including
+   * {@code ACTIVE_ERROR}, which is in-flight — set by apps that are still progressing and only
+   * normalized to {@code FAILED} when the run actually finishes) is treated as a live run we must
+   * not clear. Erring toward "active" is deliberate: leaving a stale entry is recoverable, while
+   * deleting a job another pod is genuinely running risks a duplicate/disrupted execution.
+   */
+  private void scheduleOnDemandJob(
+      App application,
+      JobDetail jobDetail,
+      Trigger trigger,
+      String triggerIdentity,
+      boolean concurrent)
+      throws SchedulerException {
+    try {
+      scheduler.scheduleJob(jobDetail, trigger);
+    } catch (ObjectAlreadyExistsException ex) {
+      if (concurrent || hasActiveAppRun(application)) {
+        throw ex;
+      }
+      LOG.warn(
+          "Stale Quartz job/trigger for app {} with no active run record; clearing and rescheduling",
+          application.getName());
+      scheduler.deleteJob(jobDetail.getKey());
+      scheduler.unscheduleJob(new TriggerKey(triggerIdentity, APPS_TRIGGER_GROUP));
+      scheduler.scheduleJob(jobDetail, trigger);
+    }
+  }
+
+  /** Statuses that mean a run has finished; anything else (incl. ACTIVE_ERROR) is in-flight. */
+  private static final Set<AppRunRecord.Status> TERMINAL_RUN_STATUSES =
+      Set.of(
+          AppRunRecord.Status.SUCCESS,
+          AppRunRecord.Status.FAILED,
+          AppRunRecord.Status.STOPPED,
+          AppRunRecord.Status.COMPLETED);
+
+  private boolean hasActiveAppRun(App application) {
+    boolean active;
+    try {
+      active =
+          new AppRepository()
+              .getLatestAppRunsOptional(application)
+              .map(
+                  run ->
+                      run.getStatus() != null && !TERMINAL_RUN_STATUSES.contains(run.getStatus()))
+              .orElse(false);
+    } catch (Exception e) {
+      LOG.warn(
+          "Could not read latest run for app {}; treating as active to avoid clearing a live job",
+          application.getName(),
+          e);
+      active = true;
+    }
+    return active;
+  }
+
+  /**
+   * Clears a persisted on-demand job/trigger for the given app from the Quartz store so a fresh
+   * on-demand trigger can be scheduled without hitting "Job is already running". Used by the CLI
+   * reindex commands to remove a leftover from a previous run that died before completing. A job
+   * that is currently executing is left untouched, so a genuinely running run is never cleared.
+   */
+  public void deleteOnDemandJob(App app) {
+    JobKey onDemandJobKey =
+        new JobKey(String.format("%s-%s", app.getName(), ON_DEMAND_JOB), APPS_JOB_GROUP);
+    try {
+      for (JobExecutionContext context : scheduler.getCurrentlyExecutingJobs()) {
+        if (context.getJobDetail().getKey().equals(onDemandJobKey)) {
+          LOG.info(
+              "On-demand job for app {} is currently executing; leaving it in place.",
+              app.getName());
+          return;
+        }
+      }
+      scheduler.deleteJob(onDemandJobKey);
+      scheduler.unscheduleJob(
+          new TriggerKey(String.format("%s-%s", app.getName(), ON_DEMAND_JOB), APPS_TRIGGER_GROUP));
+    } catch (SchedulerException ex) {
+      LOG.warn("Could not clear existing on-demand job for app {}", app.getName(), ex);
     }
   }
 
@@ -465,7 +614,7 @@ public class AppScheduler {
       if (runRecord != null) {
         // Update status to STOPPED
         runRecord.withStatus(AppRunRecord.Status.STOPPED);
-        runRecord.withEndTime(System.currentTimeMillis());
+        OmAppJobListener.fillTerminalTimings(runRecord);
 
         // Get WebSocket channel name
         String webSocketChannelName =

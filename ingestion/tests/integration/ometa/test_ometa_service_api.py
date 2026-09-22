@@ -66,14 +66,9 @@ class TestOMetaServiceAPI:
         )
         assert service
         assert service.serviceType == DatabaseServiceType.Mysql
-        assert (
-            service.connection.config.authType.password.get_secret_value()
-            == "openmetadata_password"
-        )
+        assert service.connection.config.authType.password.get_secret_value() == "openmetadata_password"
 
-        assert service == metadata_ingestion_bot.get_service_or_create(
-            entity=DatabaseService, config=workflow_source
-        )
+        assert service == metadata_ingestion_bot.get_service_or_create(entity=DatabaseService, config=workflow_source)
 
         metadata_ingestion_bot.delete(
             entity=DatabaseService,
@@ -108,14 +103,9 @@ class TestOMetaServiceAPI:
         )
         assert service
         assert service.serviceType == DatabaseServiceType.Mssql
-        assert (
-            service.connection.config.password.get_secret_value()
-            == "openmetadata_password"
-        )
+        assert service.connection.config.password.get_secret_value() == "openmetadata_password"
 
-        assert service == metadata_ingestion_bot.get_service_or_create(
-            entity=DatabaseService, config=workflow_source
-        )
+        assert service == metadata_ingestion_bot.get_service_or_create(entity=DatabaseService, config=workflow_source)
 
         metadata_ingestion_bot.delete(
             entity=DatabaseService,
@@ -161,9 +151,7 @@ class TestOMetaServiceAPI:
         assert service
         assert service.serviceType == DatabaseServiceType.BigQuery
 
-        assert service == metadata_ingestion_bot.get_service_or_create(
-            entity=DatabaseService, config=workflow_source
-        )
+        assert service == metadata_ingestion_bot.get_service_or_create(entity=DatabaseService, config=workflow_source)
 
         metadata_ingestion_bot.delete(
             entity=DatabaseService,
@@ -199,9 +187,7 @@ class TestOMetaServiceAPI:
         assert service.serviceType == DashboardServiceType.Looker
         assert service.connection.config.clientSecret.get_secret_value() == "secret"
 
-        assert service == metadata_ingestion_bot.get_service_or_create(
-            entity=DashboardService, config=workflow_source
-        )
+        assert service == metadata_ingestion_bot.get_service_or_create(entity=DashboardService, config=workflow_source)
 
         metadata_ingestion_bot.delete(
             entity=DashboardService,
@@ -235,13 +221,9 @@ class TestOMetaServiceAPI:
         )
         assert service
         assert service.serviceType == DashboardServiceType.Tableau
-        assert (
-            service.connection.config.authType.password.get_secret_value() == "tb_pwd"
-        )
+        assert service.connection.config.authType.password.get_secret_value() == "tb_pwd"
 
-        assert service == metadata_ingestion_bot.get_service_or_create(
-            entity=DashboardService, config=workflow_source
-        )
+        assert service == metadata_ingestion_bot.get_service_or_create(entity=DashboardService, config=workflow_source)
 
         metadata_ingestion_bot.delete(
             entity=DashboardService,
@@ -257,9 +239,7 @@ class TestOMetaServiceAPI:
         data = {
             "type": "kafka",
             "serviceName": "local_kafka",
-            "serviceConnection": {
-                "config": {"type": "Kafka", "bootstrapServers": "localhost:9092"}
-            },
+            "serviceConnection": {"config": {"type": "Kafka", "bootstrapServers": "localhost:9092"}},
             "sourceConfig": {"config": {}},
         }
 
@@ -271,9 +251,7 @@ class TestOMetaServiceAPI:
         assert service
         assert service.serviceType == MessagingServiceType.Kafka
 
-        assert service == metadata_ingestion_bot.get_service_or_create(
-            entity=MessagingService, config=workflow_source
-        )
+        assert service == metadata_ingestion_bot.get_service_or_create(entity=MessagingService, config=workflow_source)
 
         metadata_ingestion_bot.delete(
             entity=MessagingService,
@@ -311,9 +289,7 @@ class TestOMetaServiceAPI:
         assert service.serviceType == DatabaseServiceType.Mysql
         assert service.connection is None
 
-        assert service == metadata_no_password.get_service_or_create(
-            entity=DatabaseService, config=workflow_source
-        )
+        assert service == metadata_no_password.get_service_or_create(entity=DatabaseService, config=workflow_source)
 
         metadata_no_password.delete(
             entity=DatabaseService,
@@ -351,9 +327,7 @@ class TestOMetaServiceAPI:
         assert service.serviceType == DashboardServiceType.Tableau
         assert service.connection is None
 
-        assert service == metadata_no_password.get_service_or_create(
-            entity=DashboardService, config=workflow_source
-        )
+        assert service == metadata_no_password.get_service_or_create(entity=DashboardService, config=workflow_source)
 
         metadata_no_password.delete(
             entity=DashboardService,

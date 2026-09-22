@@ -28,8 +28,8 @@ import {
   IngestionPipeline,
   PipelineType,
 } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getLoadingStatus } from '../../../../../../utils/CommonUtils';
-import { getEntityName } from '../../../../../../utils/EntityUtils';
+import { getLoadingStatus } from '../../../../../../utils/EntityDisplayPureUtils';
+import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
   getEditIngestionPath,
   getTestSuiteIngestionPath,
@@ -66,14 +66,23 @@ function PipelineActionsDropdown({
     id = '',
   } = useMemo(() => ingestion, [ingestion]);
 
-  const { editPermission, deletePermission } = useMemo(() => {
-    const pipelinePermission = ingestionPipelinePermissions?.[name];
-
+  const {
+    editPermission,
+    deletePermission,
+    deployPermission,
+    triggerPermission,
+  } = useMemo(() => {
     return {
-      editPermission: pipelinePermission?.[Operation.EditAll],
-      deletePermission: pipelinePermission?.[Operation.Delete],
+      editPermission: ingestionPipelinePermissions?.[Operation.EditAll],
+      deletePermission: ingestionPipelinePermissions?.[Operation.Delete],
+      deployPermission:
+        ingestionPipelinePermissions?.[Operation.EditAll] ||
+        ingestionPipelinePermissions?.[Operation.Deploy] ||
+        false,
+      triggerPermission:
+        ingestionPipelinePermissions?.[Operation.Trigger] ?? false,
     };
-  }, [ingestionPipelinePermissions, name]);
+  }, [ingestionPipelinePermissions]);
 
   const handleTriggerIngestion = useCallback(
     async (id: string, displayName: string) => {
@@ -165,7 +174,7 @@ function PipelineActionsDropdown({
                 id,
                 <RunIcon height={12} width={12} />
               ),
-              hidden: !editPermission,
+              hidden: !triggerPermission,
               onClick: () =>
                 handleTriggerIngestion(id, getEntityName(ingestion)),
               key: 'run-button',
@@ -178,7 +187,7 @@ function PipelineActionsDropdown({
                 id,
                 <ReloadIcon height={12} width={12} />
               ),
-              hidden: !editPermission,
+              hidden: !deployPermission,
               onClick: () =>
                 handleDeployIngestion(id, getEntityName(ingestion)),
               key: 're-deploy-button',
@@ -193,14 +202,21 @@ function PipelineActionsDropdown({
                 id,
                 <DeployIcon height={12} width={12} />
               ),
-              hidden: !editPermission,
+              hidden: !deployPermission,
               onClick: () =>
                 handleDeployIngestion(id, getEntityName(ingestion)),
               key: 'deploy-button',
               'data-testid': 'deploy-button',
             },
           ],
-    [ingestion, currTrigger, id, currDeploy, editPermission]
+    [
+      ingestion,
+      currTrigger,
+      id,
+      currDeploy,
+      triggerPermission,
+      deployPermission,
+    ]
   );
 
   const menuItems = useMemo(() => {

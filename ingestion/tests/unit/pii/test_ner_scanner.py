@@ -11,6 +11,8 @@
 """
 Test Column Name Scanner
 """
+
+from collections import defaultdict
 from typing import Any
 
 import pytest
@@ -28,7 +30,7 @@ def test_scanner_none(scanner):
     assert scanner.scan(list(range(100))) is None
     assert (
         scanner.scan(
-            " ".split(
+            " ".split(  # noqa: SIM905
                 "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam consequat quam sagittis convallis cursus."
             )
         )
@@ -46,10 +48,7 @@ def test_scanner_sensitive(scanner):
         ).tag_fqn
         == "PII.Sensitive"
     )
-    assert (
-        scanner.scan(["im ok", "saratimithi@godesign.com", "not sensitive"]).tag_fqn
-        == "PII.Sensitive"
-    )
+    assert scanner.scan(["im ok", "saratimithi@godesign.com", "not sensitive"]).tag_fqn == "PII.Sensitive"
 
 
 def test_scanner_nonsensitive(scanner):
@@ -79,6 +78,30 @@ def test_get_highest_score_label(scanner):
             "PII.NonSensitive": StringAnalysis(score=1.0, appearances=1),
         }
     ) == ("PII.Sensitive", 1.0)
+
+    # Equal weighted totals (0.3 * 5 == 0.5 * 3) must resolve to the higher confidence,
+    # not to whichever entity was recorded first: a weak pattern matching every row
+    # reaches the same total as a strong one matching a subset.
+    assert scanner.get_highest_score_label(
+        {
+            "US_DRIVER_LICENSE": StringAnalysis(score=0.3, appearances=5),
+            "US_SSN": StringAnalysis(score=0.5, appearances=3),
+        }
+    ) == ("US_SSN", 0.5)
+
+
+def test_masked_ssn_column_is_not_a_driving_licence(scanner):
+    """A column of SSNs that mostly fail Presidio's validator still reads as US_SSN.
+
+    The SSN-shaped driving-licence pattern matches every row unconditionally, so at an
+    equal score it outweighed the SSN match whenever fewer than 60% of the values
+    validated -- masked, placeholder or synthetic SSNs.
+    """
+    entities_score = defaultdict(lambda: StringAnalysis(score=0, appearances=0))
+    for row in ("000-12-3456", "666-45-6789", "111-00-2222", "333-44-0000", "543-21-0987"):
+        scanner.process_data(row=row, entities_score=entities_score)
+
+    assert scanner.get_highest_score_label(entities_score)[0] == "US_SSN"
 
 
 @pytest.mark.parametrize(
@@ -128,9 +151,7 @@ def test_scanner_with_lists(scanner):
 
     assert scanner.scan(["foo", "bar", "biz"]) is None
 
-    assert (
-        scanner.scan(["foo", "bar", "johndoe@example.com"]).tag_fqn == "PII.Sensitive"
-    )
+    assert scanner.scan(["foo", "bar", "johndoe@example.com"]).tag_fqn == "PII.Sensitive"
 
     assert (
         scanner.scan(
@@ -161,5 +182,5 @@ def test_scan_entities(scanner):
     ]
     assert scanner.scan(ssn_numbers).tag_fqn == "PII.Sensitive"
 
-    nif_numbers = ["12345678A", "87654321B", "23456789C", "98765432D", "34567890E"]
+    nif_numbers = ["12345678Z", "87654321X", "23456789D", "98765432M", "34567890V"]
     assert scanner.scan(nif_numbers).tag_fqn == "PII.Sensitive"

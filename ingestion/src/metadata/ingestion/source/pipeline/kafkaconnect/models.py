@@ -14,7 +14,6 @@ KafkaConnect Source Model module
 """
 
 from enum import Enum
-from typing import List, Optional, Type, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -33,30 +32,20 @@ class ConnectorType(str, Enum):
 
 class KafkaConnectTasks(BaseModel):
     id: int = Field(..., description="ID of the task")
-    state: Optional[str] = Field(
-        default="UNASSIGNED", description="State of the task (e.g., RUNNING, STOPPED)"
-    )
-    worker_id: Optional[str] = Field(
-        default=None, description="ID of the worker running the task"
-    )
+    state: str | None = Field(default="UNASSIGNED", description="State of the task (e.g., RUNNING, STOPPED)")
+    worker_id: str | None = Field(default=None, description="ID of the worker running the task")
 
 
 class KafkaConnectTopics(BaseModel):
     name: str = Field(..., description="Name of the topic (e.g., random-source-avro)")
-    fqn: Optional[str] = Field(
-        default=None, description="Fully qualified name of the topic in OpenMetadata"
-    )
+    fqn: str | None = Field(default=None, description="Fully qualified name of the topic in OpenMetadata")
 
 
 class ServiceResolutionResult(BaseModel):
     """Result of service name resolution from connector config"""
 
-    database_service_name: Optional[str] = Field(
-        default=None, description="Resolved database service name"
-    )
-    messaging_service_name: Optional[str] = Field(
-        default=None, description="Resolved messaging service name"
-    )
+    database_service_name: str | None = Field(default=None, description="Resolved database service name")
+    messaging_service_name: str | None = Field(default=None, description="Resolved messaging service name")
 
 
 class TopicResolutionResult(BaseModel):
@@ -64,12 +53,29 @@ class TopicResolutionResult(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    topics: List[KafkaConnectTopics] = Field(
-        default_factory=list, description="List of discovered/parsed topics"
-    )
-    topic_entity_map: dict[str, Optional[Topic]] = Field(
+    topics: list[KafkaConnectTopics] = Field(default_factory=list, description="List of discovered/parsed topics")
+    topic_entity_map: dict[str, Topic | None] = Field(
         default_factory=dict, description="Map of topic name to resolved Topic entity"
     )
+
+
+class ConfluentTelemetryRow(BaseModel):
+    """
+    One topic/client pair from Confluent's telemetry Data Flow dataset.
+
+    The API returns its group_by fields under dotted names, which are not valid Python
+    identifiers, so both are read through aliases. The metric value is deliberately absent:
+    only the pairing carries meaning here, since the question is which client wrote to
+    which topic and not how much it wrote.
+
+    Both halves are required and non-empty, because a row missing either one attributes a
+    topic to no connector or a connector to no topic, and neither can become lineage.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    client_id: str = Field(..., min_length=1, alias="metric.client_id", description="Producer or consumer client id")
+    topic: str = Field(..., min_length=1, alias="metric.topic", description="Topic the client wrote to")
 
 
 class KafkaConnectColumnMapping(BaseModel):
@@ -84,17 +90,28 @@ class KafkaConnectDatasetDetails(BaseModel):
     Details about the dataset from kafkaconnect configuration
     """
 
-    table: Optional[str] = None
-    database: Optional[str] = None
-    schema: Optional[str] = None
-    parent_container: Optional[str] = None
-    container_name: Optional[str] = None
-    column_mappings: List[KafkaConnectColumnMapping] = Field(
+    table: str | None = None
+    database: str | None = None
+    schema: str | None = None
+    parent_container: str | None = None
+    container_name: str | None = None
+    source_topic: str | None = Field(
+        default=None,
+        description="Topic this dataset was derived from. Set by resolvers that know the "
+        "topic->table pairing, so matching does not have to re-derive it by name.",
+    )
+    fully_qualified: bool = Field(
+        default=False,
+        description="True when database is a real Snowflake-style name, so the table FQN uses "
+        "the database slot even when schema is missing. CDC resolvers leave this False because their "
+        "'database' is a logical server name.",
+    )
+    column_mappings: list[KafkaConnectColumnMapping] = Field(
         default_factory=list, description="Column-level mappings if available"
     )
 
     @property
-    def dataset_type(self) -> Optional[Type[Union[Table, Container]]]:
+    def dataset_type(self) -> type[Table | Container] | None:
         if self.table or self.database:
             return Table
         if self.container_name or self.parent_container:
@@ -106,19 +123,17 @@ class KafkaConnectPipelineDetails(BaseModel):
     """
     Details about a Kafka Connect pipeline/connector"""
 
-    name: str = Field(
-        ..., description="Name of the status source (e.g., random-source-json)"
-    )
-    status: Optional[str] = Field(
+    name: str = Field(..., description="Name of the status source (e.g., random-source-json)")
+    status: str | None = Field(
         default="UNASSIGNED",
         description="State of the connector (e.g., RUNNING, STOPPED)",
     )
-    tasks: Optional[List[KafkaConnectTasks]] = Field(default_factory=list)
-    topics: Optional[List[KafkaConnectTopics]] = Field(default_factory=list)
-    conn_type: Optional[str] = Field(default="UNKNOWN", alias="type")
-    description: Optional[str] = None
-    datasets: Optional[List[KafkaConnectDatasetDetails]] = Field(default_factory=list)
-    config: Optional[dict] = Field(default_factory=dict)
+    tasks: list[KafkaConnectTasks] | None = Field(default_factory=list)
+    topics: list[KafkaConnectTopics] | None = Field(default_factory=list)
+    conn_type: str | None = Field(default="UNKNOWN", alias="type")
+    description: str | None = None
+    datasets: list[KafkaConnectDatasetDetails] | None = Field(default_factory=list)
+    config: dict | None = Field(default_factory=dict)
 
     @field_validator("conn_type", mode="before")
     @classmethod
@@ -128,6 +143,6 @@ class KafkaConnectPipelineDetails(BaseModel):
             value_lower = value.lower()
             if value_lower == "source":
                 return ConnectorType.SOURCE.value
-            elif value_lower == "sink":
+            elif value_lower == "sink":  # noqa: RET505
                 return ConnectorType.SINK.value
         return ConnectorType.UNKNOWN.value

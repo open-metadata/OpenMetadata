@@ -161,7 +161,7 @@ public final class Dashboards {
     }
 
     public DashboardFinder includeAll() {
-      includes.addAll(Arrays.asList("owner", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
       return this;
     }
 
@@ -182,6 +182,11 @@ public final class Dashboards {
 
     public DashboardDeleter delete() {
       return new DashboardDeleter(client, identifier);
+    }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Dashboard> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.dashboards(), identifier);
     }
   }
 
@@ -303,5 +308,15 @@ public final class Dashboards {
       modified = true;
       return this;
     }
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().dashboards().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().dashboards().getContextByName(fqn);
   }
 }

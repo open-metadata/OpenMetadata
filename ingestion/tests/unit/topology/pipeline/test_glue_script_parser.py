@@ -11,6 +11,7 @@
 """
 Tests for Glue PySpark/GlueContext script lineage parser
 """
+
 from unittest import TestCase
 
 from metadata.ingestion.source.pipeline.gluepipeline.script_parser import (
@@ -62,9 +63,7 @@ glueContext.write_dynamic_frame.from_jdbc_conf(
         result = parse_glue_script(script)
         self.assertTrue(result.has_lineage)
         self.assertEqual(len(result.jdbc_targets), 1)
-        self.assertEqual(
-            result.jdbc_targets[0].connection_name, "Redshift - Jdbc connection"
-        )
+        self.assertEqual(result.jdbc_targets[0].connection_name, "Redshift - Jdbc connection")
         self.assertEqual(result.jdbc_targets[0].table, "customer_sample")
         self.assertEqual(result.jdbc_targets[0].database, "dev")
 
@@ -118,9 +117,7 @@ job.commit()
             result.s3_sources,
         )
         self.assertEqual(len(result.jdbc_targets), 1)
-        self.assertEqual(
-            result.jdbc_targets[0].connection_name, "Redshift - Jdbc connection"
-        )
+        self.assertEqual(result.jdbc_targets[0].connection_name, "Redshift - Jdbc connection")
         self.assertEqual(result.jdbc_targets[0].table, "customer_sample")
         self.assertEqual(result.jdbc_targets[0].database, "dev")
 
@@ -190,9 +187,7 @@ df = spark.read.jdbc("jdbc:postgresql://myhost:5432/mydb", "public.users")
         result = parse_glue_script(script)
         self.assertTrue(result.has_lineage)
         self.assertEqual(len(result.jdbc_sources), 1)
-        self.assertEqual(
-            result.jdbc_sources[0].jdbc_url, "jdbc:postgresql://myhost:5432/mydb"
-        )
+        self.assertEqual(result.jdbc_sources[0].jdbc_url, "jdbc:postgresql://myhost:5432/mydb")
         self.assertEqual(result.jdbc_sources[0].table, "public.users")
 
     def test_spark_read_table(self):
@@ -330,9 +325,7 @@ class TestParseJdbcUrl(TestCase):
             GluepipelineSource,
         )
 
-        result = GluepipelineSource._parse_jdbc_url(
-            "jdbc:postgresql://myhost:5432/mydb"
-        )
+        result = GluepipelineSource._parse_jdbc_url("jdbc:postgresql://myhost:5432/mydb")
         self.assertIsNotNone(result)
         self.assertEqual(result["database"], "mydb")
 

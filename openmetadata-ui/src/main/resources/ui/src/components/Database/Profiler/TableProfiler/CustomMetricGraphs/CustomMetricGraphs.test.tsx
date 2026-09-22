@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 import { queryByAttribute, render, screen } from '@testing-library/react';
-import '../../../../../test/unit/mocks/mui.mock';
 import { useTableProfiler } from '../TableProfilerProvider';
 import CustomMetricGraphs from './CustomMetricGraphs.component';
+
+jest.mock('../../../../../hooks/useChartColors', () => ({
+  useChartColors: jest.fn().mockReturnValue({
+    grid: '#234567',
+    primary: '#345678',
+    primaryArea: '#456789',
+  }),
+}));
 
 const mockProps = {
   customMetricsGraphData: {
@@ -65,8 +72,8 @@ jest.mock(
 jest.mock('../../../Profiler/ProfilerLatestValue/ProfilerLatestValue', () => {
   return jest.fn().mockImplementation(() => <div>ProfilerLatestValue</div>);
 });
-jest.mock('../../../../common/DeleteWidget/DeleteWidgetModal', () => {
-  return jest.fn().mockImplementation(() => <div>DeleteWidgetModal</div>);
+jest.mock('../../../../common/DeleteWidget/DeleteEntityModal', () => {
+  return jest.fn().mockImplementation(() => <div>DeleteEntityModal</div>);
 });
 jest.mock('../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>);

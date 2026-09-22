@@ -22,7 +22,7 @@ import { LineageDirection } from '../../../generated/api/lineage/lineageDirectio
 import { DataType } from '../../../generated/entity/data/table';
 import { ColumnTestSummaryDefinition } from '../../../generated/tests/testCase';
 import { useLineageStore } from '../../../hooks/useLineageStore';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnDataTypeIcon } from '../../../utils/TableUtils';
 import { EntityChildrenItem } from './NodeChildren/NodeChildren.interface';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
@@ -108,7 +108,10 @@ const ExpandHandle = ({
           ? 'react-flow__handle-right'
           : 'react-flow__handle-left'
       )}
+      role="presentation"
+      onBlur={handleLineageNodeHandleMouseOut}
       onClick={handleLineageNodeHandleClick}
+      onFocus={handleLineageNodeHandleMouseOver}
       onMouseOut={handleLineageNodeHandleMouseOut}
       onMouseOver={handleLineageNodeHandleMouseOver}>
       <Plus
@@ -206,6 +209,8 @@ interface ColumnContentProps {
   summary?: ColumnTestSummaryDefinition;
   depth?: number;
   className?: string;
+  onColumnHover?: (columnFqn?: string) => void;
+  onColumnSelect?: (columnFqn?: string) => void;
 }
 
 const ColumnContentInner = ({
@@ -216,6 +221,8 @@ const ColumnContentInner = ({
   summary,
   depth = 0,
   className = '',
+  onColumnHover,
+  onColumnSelect,
 }: ColumnContentProps) => {
   const { onColumnMouseEnter } = useLineageProvider();
   const {
@@ -234,23 +241,26 @@ const ColumnContentInner = ({
     (e: React.MouseEvent) => {
       e.stopPropagation();
       setSelectedColumn(fullyQualifiedName ?? '');
+      onColumnSelect?.(fullyQualifiedName);
     },
-    [fullyQualifiedName, setSelectedColumn]
+    [fullyQualifiedName, onColumnSelect, setSelectedColumn]
   );
 
   const handleMouseEnter = useCallback(() => {
     if (selectedColumn) {
       return;
     }
+    onColumnHover?.(fullyQualifiedName);
     onColumnMouseEnter(fullyQualifiedName ?? '');
-  }, [selectedColumn, fullyQualifiedName, onColumnMouseEnter]);
+  }, [fullyQualifiedName, onColumnHover, onColumnMouseEnter, selectedColumn]);
 
   const handleMouseLeave = useCallback(() => {
     if (selectedColumn) {
       return;
     }
+    onColumnHover?.(undefined);
     setTracedColumns(new Set());
-  }, [selectedColumn, setTracedColumns]);
+  }, [onColumnHover, selectedColumn, setTracedColumns]);
 
   const columnNameContentRender = useMemo(
     () => getColumnNameContent(column, isLoading),
@@ -276,6 +286,7 @@ const ColumnContentInner = ({
         'custom-node-header-column-tracing': isColumnTraced,
       })}
       data-testid={`column-${fullyQualifiedName}`}
+      role="presentation"
       style={{
         paddingLeft: depth * DEPTH_INDENT_PX + 8, // 8px is base padding
       }}
@@ -313,17 +324,43 @@ const ColumnContentInner = ({
   );
 };
 
-export const ColumnContent = memo(
-  ColumnContentInner,
-  (prev, next) =>
+export const ColumnContent = memo(ColumnContentInner, (prev, next) => {
+  const coreColumnPropsEqual =
     prev.column === next.column &&
     prev.isConnectable === next.isConnectable &&
     prev.isLoading === next.isLoading &&
-    prev.showDataObservabilitySummary === next.showDataObservabilitySummary &&
+    prev.showDataObservabilitySummary === next.showDataObservabilitySummary;
+  const renderPropsEqual =
     prev.summary === next.summary &&
     prev.depth === next.depth &&
-    prev.className === next.className
-);
+    prev.className === next.className;
+  const columnCallbacksEqual =
+    prev.onColumnHover === next.onColumnHover &&
+    prev.onColumnSelect === next.onColumnSelect;
+
+  return coreColumnPropsEqual && renderPropsEqual && columnCallbacksEqual;
+});
+
+/**
+ * Split across two named booleans so neither expression exceeds
+ * sonarjs/expression-complexity, and kept out of CustomNodeV1 so its operators
+ * do not count against that component's cyclomatic-complexity budget.
+ */
+export function shouldShowNodeRemoveButton({
+  isSelected,
+  isEditMode,
+  isRootNode,
+  isNodeRemovable,
+}: {
+  isSelected: boolean;
+  isEditMode: boolean;
+  isRootNode: boolean;
+  isNodeRemovable: boolean;
+}) {
+  const isRemovableSelection = isSelected && isEditMode;
+
+  return isRemovableSelection && !isRootNode && isNodeRemovable;
+}
 
 export function getNodeClassNames({
   isSelected,

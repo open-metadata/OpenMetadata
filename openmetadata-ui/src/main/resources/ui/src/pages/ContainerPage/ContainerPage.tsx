@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -20,7 +21,8 @@ import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
-import Loader from '../../components/common/Loader/Loader';
+import { PageLoader } from '../../components/common/Loader/Loader';
+import { ContainerChildrenCountContext } from '../../components/Container/ContainerChildren/ContainerChildrenCountContext';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
@@ -30,29 +32,31 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
 import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
+  FqnPart,
   TabSpecificField,
 } from '../../enums/entity.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Container } from '../../generated/entity/data/container';
 import { Column } from '../../generated/entity/data/table';
-import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
-import { Include } from '../../generated/type/include';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
+import {
+  containerQueryFn,
+  containerQueryKey,
+  CONTAINER_DEFAULT_FIELDS,
+} from '../../rest/queries/containerQuery';
 import {
   addContainerFollower,
   getContainerByName,
@@ -62,35 +66,35 @@ import {
   restoreContainer,
   updateContainerVotes,
 } from '../../rest/storageAPI';
-import {
-  addToRecentViewed,
-  getEntityMissingError,
-  getFeedCounts,
-} from '../../utils/CommonUtils';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import containerDetailsClassBase from '../../utils/ContainerDetailsClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityName } from '../../utils/EntityUtils';
-import Fqn from '../../utils/Fqn';
+} from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../utils/FeedUtilsPure';
+import Fqn from '../../utils/Fqn';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
+import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
-import { flattenColumns } from '../../utils/TableUtils';
-import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
+import { flattenColumns } from '../../utils/TablePureUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-
 const ContainerPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const { customizedPage, isLoading: loading } = useCustomPages(
     PageType.Container
@@ -98,23 +102,180 @@ const ContainerPage = () => {
   const { entityFqn: decodedEntityFqn } = useFqn({
     type: EntityType.CONTAINER,
   });
+  const queryClient = useQueryClient();
 
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [hasError, setHasError] = useState<boolean>(false);
+  // {@code resolvedEntityFqn} is the FQN we successfully resolved permissions for. When a
+  // deep link points at a column ({@code container.column}), the initial permission lookup
+  // 404s and we walk up to the parent container; this stores the parent we ultimately
+  // landed on so {@code useQuery} keys cleanly against a stable FQN.
   const [resolvedEntityFqn, setResolvedEntityFqn] = useState<string>('');
   const [activeColumnFqn, setActiveColumnFqn] = useState<string | undefined>(
     undefined
   );
 
-  const [containerData, setContainerData] = useState<Container>();
-  const [containerPermissions, setContainerPermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
   const [childrenCount, setChildrenCount] = useState<number>(0);
+
+  // Two useEntityPermissions calls in this component, partitioned by deleted-sensitivity —
+  // see the analogous comment in TableDetailsPageV1.tsx for the general pattern. This
+  // view-tier call must run before {@code containerData} exists: {@code viewBasicPermission}
+  // gates the entity {@code useQuery}'s `enabled` below, and {@code containerData} is that
+  // query's own result — a real ordering cycle, not a shortcut. Both calls are keyed on
+  // {@code resolvedEntityFqn} (not the raw URL {@code decodedEntityFqn}) — see its
+  // declaration above: a column deep-link resolves to its parent container's FQN, and
+  // permissions must be re-derived for that resolved FQN, not the original URL segment.
+  // The edit-tier call (only the two canEdit* flags that need `deleted`) lives further
+  // down, at the earliest point `deleted` exists; see the comment there.
+  const {
+    permissions: containerPermissions, // children consume the raw OperationPermission prop
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    canViewBasic: viewBasicPermission,
+    canViewAll: viewAllPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+    canViewSampleData: viewSampleDataPermission,
+  } = useEntityPermissions(ResourceEntity.CONTAINER, resolvedEntityFqn);
+
+  const containerCacheKey = useMemo(
+    () => containerQueryKey(resolvedEntityFqn, CONTAINER_DEFAULT_FIELDS),
+    [resolvedEntityFqn]
+  );
+
+  const {
+    data: containerData,
+    isLoading: containerLoading,
+    error: containerError,
+  } = useQuery({
+    queryKey: containerCacheKey,
+    queryFn: containerQueryFn(resolvedEntityFqn, CONTAINER_DEFAULT_FIELDS),
+    enabled: Boolean(
+      resolvedEntityFqn && viewBasicPermission && !isPermissionsLoading
+    ),
+  });
+
+  const isError = useMemo(
+    () => (containerError as AxiosError | undefined)?.response?.status === 404,
+    [containerError]
+  );
+
+  useEffect(() => {
+    if (!containerError) {
+      return;
+    }
+    const status = (containerError as AxiosError | undefined)?.response?.status;
+    if (status === ClientErrors.FORBIDDEN) {
+      navigate(ROUTES.FORBIDDEN, { replace: true });
+
+      return;
+    }
+    // Column-deep-link fallback: the URL was a column FQN like
+    // {@code service.container.column}. Permission resolution succeeded for the column
+    // FQN (the permission backend returns an empty permission object rather than a 404),
+    // so {@code resolvedEntityFqn} was committed as the column FQN and the {@link
+    // useQuery} fired a GET that 404'd because columns aren't containers. Walk up to
+    // the parent container FQN and re-resolve, marking the original FQN as the active
+    // column so {@code GenericProvider} can deep-link the side panel.
+    if (
+      status === ClientErrors.NOT_FOUND &&
+      !activeColumnFqn &&
+      resolvedEntityFqn === decodedEntityFqn
+    ) {
+      const parentParts = Fqn.split(resolvedEntityFqn).slice(0, -1);
+      if (parentParts.length > 0) {
+        setActiveColumnFqn(resolvedEntityFqn);
+        setResolvedEntityFqn(Fqn.build(...parentParts));
+
+        return;
+      }
+    }
+    if (status !== ClientErrors.NOT_FOUND) {
+      showErrorToast(containerError as AxiosError);
+    }
+    setHasError(true);
+  }, [
+    containerError,
+    navigate,
+    activeColumnFqn,
+    resolvedEntityFqn,
+    decodedEntityFqn,
+  ]);
+
+  // Counterpart to the containerError fallback above, for the (per the comment there,
+  // rarely-hit-in-practice) case where the permission lookup itself 404s rather than
+  // silently returning an empty permission object. Same walk-up-to-parent shape, driven by
+  // the early useEntityPermissions call's `error` instead of a try/catch — a real 404 here
+  // is undistinguishable in effect from the containerError-driven fallback, just triggered
+  // one step earlier in the resolution flow.
+  useEffect(() => {
+    if (!permissionsError) {
+      return;
+    }
+    const status = (permissionsError as AxiosError | undefined)?.response
+      ?.status;
+    if (
+      status === ClientErrors.NOT_FOUND &&
+      !activeColumnFqn &&
+      resolvedEntityFqn === decodedEntityFqn
+    ) {
+      const parentParts = Fqn.split(resolvedEntityFqn).slice(0, -1);
+      if (parentParts.length > 0) {
+        setActiveColumnFqn(resolvedEntityFqn);
+        setResolvedEntityFqn(Fqn.build(...parentParts));
+
+        return;
+      }
+    }
+    showErrorToast(
+      t('server.fetch-entity-permissions-error', {
+        entity: t('label.asset-lowercase'),
+      })
+    );
+    setHasError(true);
+  }, [permissionsError, activeColumnFqn, resolvedEntityFqn, decodedEntityFqn]);
+
+  useEffect(() => {
+    if (!containerData) {
+      return;
+    }
+    addToRecentViewed({
+      displayName: getEntityName(containerData),
+      entityType: EntityType.CONTAINER,
+      fqn: containerData.fullyQualifiedName ?? '',
+      serviceType: containerData.serviceType,
+      timestamp: 0,
+      id: containerData.id,
+    });
+  }, [containerData]);
+
+  const setContainerData = useCallback(
+    (
+      updater:
+        | Container
+        | undefined
+        | ((prev: Container | undefined) => Container | undefined)
+    ) => {
+      queryClient.setQueryData<Container | undefined>(
+        containerCacheKey,
+        updater
+      );
+    },
+    [queryClient, containerCacheKey]
+  );
+
+  const refetchContainerData = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: containerCacheKey }),
+    [queryClient, containerCacheKey]
+  );
+
+  const fetchContainerDetail = useCallback(
+    () => refetchContainerData(),
+    [refetchContainerData]
+  );
 
   const handleFeedCount = useCallback(
     (data: FeedCounts) => setFeedCount(data),
@@ -124,117 +285,19 @@ const ContainerPage = () => {
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.CONTAINER, resolvedEntityFqn, handleFeedCount);
 
-  const fetchContainerDetail = async (containerFQN: string) => {
-    setIsLoading(true);
-    try {
-      const response = await getContainerByName(containerFQN, {
-        fields: [
-          TabSpecificField.PARENT,
-          TabSpecificField.DATAMODEL,
-          TabSpecificField.OWNERS,
-          TabSpecificField.TAGS,
-          TabSpecificField.FOLLOWERS,
-          TabSpecificField.EXTENSION,
-          TabSpecificField.DOMAINS,
-          TabSpecificField.DATA_PRODUCTS,
-          TabSpecificField.VOTES,
-        ],
-        include: Include.All,
-      });
-      addToRecentViewed({
-        displayName: getEntityName(response),
-        entityType: EntityType.CONTAINER,
-        fqn: response.fullyQualifiedName ?? '',
-        serviceType: response.serviceType,
-        timestamp: 0,
-        id: response.id,
-      });
-      setContainerData(response);
-    } catch (error) {
-      if ((error as AxiosError)?.response?.status === ClientErrors.NOT_FOUND) {
-        throw error;
-      }
-      showErrorToast(error as AxiosError);
-      setHasError(true);
-      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        navigate(ROUTES.FORBIDDEN, { replace: true });
-      }
-    } finally {
-      setIsLoading(false);
+  const fetchTaskCounts = useCallback(() => {
+    if (resolvedEntityFqn) {
+      fetchEntityTaskCountsInto(resolvedEntityFqn, setFeedCount);
     }
-  };
+  }, [resolvedEntityFqn]);
 
-  const fetchResourcePermission = async (
-    containerFQN: string,
-    isFallback = false
-  ) => {
-    setIsLoading(true);
-    setHasError(false);
-    try {
-      const entityPermission = await getEntityPermissionByFqn(
-        ResourceEntity.CONTAINER,
-        containerFQN
+  const fetchActivityCount = useCallback(() => {
+    if (resolvedEntityFqn) {
+      fetchEntityActivityCountInto(
+        EntityType.CONTAINER,
+        resolvedEntityFqn,
+        setFeedCount
       );
-
-      setContainerPermissions(entityPermission);
-
-      const viewBasicPermission = getPrioritizedViewPermission(
-        entityPermission,
-        Operation.ViewBasic
-      );
-
-      if (viewBasicPermission) {
-        await fetchContainerDetail(containerFQN);
-      } else {
-        setIsLoading(false);
-      }
-
-      setResolvedEntityFqn(containerFQN);
-
-      // If we successfully resolved using fallback, the remainder is the column
-      if (isFallback) {
-        // decodedEntityFqn is the full FQN "A.B.Column", containerFQN is "A.B"
-        setActiveColumnFqn(decodedEntityFqn);
-      } else {
-        setActiveColumnFqn(undefined);
-      }
-    } catch (error) {
-      if (
-        (error as AxiosError)?.response?.status === ClientErrors.NOT_FOUND &&
-        !isFallback
-      ) {
-        const parentParts = Fqn.split(containerFQN).slice(0, -1);
-        if (parentParts.length > 0) {
-          const parentFqn = Fqn.build(...parentParts);
-          await fetchResourcePermission(parentFqn, true);
-
-          return;
-        }
-      }
-
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: t('label.asset-lowercase'),
-        })
-      );
-      setHasError(true);
-      setIsLoading(false);
-    }
-  };
-
-  // Fetch children count to show it in Tab label
-  const fetchContainerChildren = useCallback(async () => {
-    // Use resolvedEntityFqn for children
-    if (!resolvedEntityFqn) {
-      return;
-    }
-    try {
-      const { paging } = await getContainerChildrenByName(resolvedEntityFqn, {
-        limit: 0,
-      });
-      setChildrenCount(paging.total);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
     }
   }, [resolvedEntityFqn]);
 
@@ -248,56 +311,18 @@ const ContainerPage = () => {
     };
   }, [containerData]);
 
+  // Edit-tier useEntityPermissions call — the counterpart to the view-tier call near the
+  // top of this component (see its comment for why this component calls the hook twice).
+  // This is the earliest point `deleted` exists (destructured just above, from
+  // {@code containerData}): both canEdit* flags this page uses are gated on it — don't
+  // destructure a canEdit* flag or `can` from the view-tier call above, it was captured
+  // before `deleted` existed and would silently return an ungated edit permission.
   const {
-    editCustomAttributePermission,
-    editLineagePermission,
-    viewBasicPermission,
-    viewAllPermission,
-    viewCustomPropertiesPermission,
-    viewSampleDataPermission,
-  } = useMemo(
-    () => ({
-      editTagsPermission:
-        getPrioritizedEditPermission(
-          containerPermissions,
-          Operation.EditTags
-        ) && !deleted,
-      editGlossaryTermsPermission:
-        getPrioritizedEditPermission(
-          containerPermissions,
-          Operation.EditGlossaryTerms
-        ) && !deleted,
-      editDescriptionPermission:
-        getPrioritizedEditPermission(
-          containerPermissions,
-          Operation.EditDescription
-        ) && !deleted,
-      editCustomAttributePermission:
-        getPrioritizedEditPermission(
-          containerPermissions,
-          Operation.EditCustomFields
-        ) && !deleted,
-      editLineagePermission:
-        getPrioritizedEditPermission(
-          containerPermissions,
-          Operation.EditLineage
-        ) && !deleted,
-      viewBasicPermission: getPrioritizedViewPermission(
-        containerPermissions,
-        Operation.ViewBasic
-      ),
-      viewAllPermission: containerPermissions.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        containerPermissions,
-        Operation.ViewCustomFields
-      ),
-      viewSampleDataPermission: getPrioritizedViewPermission(
-        containerPermissions,
-        Operation.ViewSampleData
-      ),
-    }),
-    [containerPermissions, deleted]
-  );
+    canEditCustomFields: editCustomAttributePermission,
+    canEditLineage: editLineagePermission,
+  } = useEntityPermissions(ResourceEntity.CONTAINER, resolvedEntityFqn, {
+    deleted: Boolean(deleted),
+  });
 
   const isDataModelEmpty = useMemo(
     () => isEmpty(containerData?.dataModel),
@@ -357,99 +382,170 @@ const ContainerPage = () => {
     }
   };
 
-  const handleFollowContainer = async () => {
-    const followerId = currentUser?.id ?? '';
-    const containerId = containerData?.id ?? '';
-    try {
-      if (isUserFollowing) {
-        const response = await removeContainerFollower(containerId, followerId);
-        const { oldValue } = response.changeDescription.fieldsDeleted[0];
-
-        setContainerData((prev) => ({
-          ...(prev as Container),
-          followers: (containerData?.followers ?? []).filter(
-            (follower) => follower.id !== oldValue[0].id
-          ),
-        }));
-      } else {
-        const response = await addContainerFollower(containerId, followerId);
-        const { newValue } = response.changeDescription.fieldsAdded[0];
-
-        setContainerData((prev) => ({
-          ...(prev as Container),
-          followers: [...(containerData?.followers ?? []), ...newValue],
-        }));
+  const followContainerMutation = useMutation<
+    void,
+    AxiosError,
+    void,
+    { previous: Container | undefined }
+  >({
+    mutationFn: async () => {
+      const containerId = containerData?.id ?? '';
+      const followerId = currentUser?.id ?? '';
+      if (!containerId) {
+        return;
       }
-    } catch (error) {
+      if (isUserFollowing) {
+        await removeContainerFollower(containerId, followerId);
+      } else {
+        await addContainerFollower(containerId, followerId);
+      }
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: containerCacheKey });
+      const previous = queryClient.getQueryData<Container | undefined>(
+        containerCacheKey
+      );
+      queryClient.setQueryData<Container | undefined>(
+        containerCacheKey,
+        (prev) => {
+          if (!prev) {
+            return prev;
+          }
+          const currentFollowers = prev.followers ?? [];
+          const userId = currentUser?.id ?? '';
+          if (isUserFollowing) {
+            return {
+              ...prev,
+              followers: currentFollowers.filter(({ id }) => id !== userId),
+            };
+          }
+
+          return {
+            ...prev,
+            followers: [
+              ...currentFollowers,
+              { id: userId, type: 'user' },
+            ] as Container['followers'],
+          };
+        }
+      );
+
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData<Container | undefined>(
+          containerCacheKey,
+          context.previous
+        );
+      }
       showErrorToast(error as AxiosError);
-    }
-  };
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: containerCacheKey });
+    },
+  });
+
+  const handleFollowContainer = useCallback(async () => {
+    await followContainerMutation.mutateAsync();
+  }, [followContainerMutation]);
 
   const handleUpdateOwner = useCallback(
     async (updatedOwner?: Container['owners']) => {
+      if (!containerData) {
+        return;
+      }
       try {
         const { owners: newOwner, version } = await handleUpdateContainerData({
-          ...(containerData as Container),
+          ...containerData,
           owners: updatedOwner,
         });
 
-        setContainerData((prev) => ({
-          ...(prev as Container),
-          owners: newOwner,
-          version,
-        }));
+        setContainerData((prev) => {
+          if (!prev) {
+            return prev;
+          }
+
+          return {
+            ...prev,
+            owners: newOwner,
+            version,
+          };
+        });
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [containerData, containerData?.owners]
+    [containerData, handleUpdateContainerData, setContainerData]
   );
 
   const handleUpdateTier = async (updatedTier?: Tag) => {
+    if (!containerData) {
+      return;
+    }
     try {
-      const tierTag = updateTierTag(containerData?.tags ?? [], updatedTier);
+      const tierTag = updateTierTag(containerData.tags ?? [], updatedTier);
       const { tags: newTags, version } = await handleUpdateContainerData({
-        ...(containerData as Container),
+        ...containerData,
         tags: tierTag,
       });
 
-      setContainerData((prev) => ({
-        ...(prev as Container),
-        tags: newTags,
-        version,
-      }));
+      setContainerData((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          tags: newTags,
+          version,
+        };
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
 
-  const handleToggleDelete = (version?: number) => {
-    setContainerData((prev) => {
-      if (!prev) {
-        return prev;
-      }
+  const handleToggleDelete = useCallback(
+    (version?: number) => {
+      setContainerData((prev) => {
+        if (!prev) {
+          return prev;
+        }
 
-      return {
-        ...prev,
-        deleted: !prev?.deleted,
-        ...(version ? { version } : {}),
-      };
-    });
-  };
-
-  const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+        return {
+          ...prev,
+          deleted: !prev?.deleted,
+          ...(version ? { version } : {}),
+        };
+      });
+    },
+    [setContainerData]
   );
 
-  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
-    const updatedData = data as Container;
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.STORAGE_SERVICES,
+          getPartialNameFromTableFQN(decodedEntityFqn, [FqnPart.Service])
+        )
+      ),
+    [decodedEntityFqn]
+  );
 
-    setContainerData((data) => ({
-      ...(updatedData ?? data),
-      version: updatedData.version,
-    }));
-  }, []);
+  const afterDomainUpdateAction = useCallback(
+    (data: DataAssetWithDomains) => {
+      const updatedData = data as Container;
+
+      setContainerData((prev) => ({
+        ...(updatedData ?? prev),
+        version: updatedData.version,
+      }));
+    },
+    [setContainerData]
+  );
 
   const handleRestoreContainer = async () => {
     try {
@@ -462,6 +558,8 @@ const ContainerPage = () => {
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -469,6 +567,8 @@ const ContainerPage = () => {
           entity: t('label.container'),
         })
       );
+
+      return false;
     }
   };
 
@@ -628,15 +728,56 @@ const ContainerPage = () => {
       return;
     }
 
-    // On mount or when URL FQN changes, start permission fetch
-    fetchResourcePermission(decodedEntityFqn);
+    // Column-deep-link already resolved: one of the fallback effects above walked up to a
+    // parent that owns this column and set {@code activeColumnFqn} to the URL's full FQN.
+    // When the React Query container fetch is still in flight, this effect re-runs (because
+    // {@code containerData} reference changes) — without this guard it would re-commit
+    // {@code decodedEntityFqn} as {@code resolvedEntityFqn} below, undoing the walk-up and
+    // cancelling the in-flight container fetch, looping until 15s test timeout.
+    if (resolvedEntityFqn && activeColumnFqn === decodedEntityFqn) {
+      return;
+    }
+
+    // On mount or when URL FQN changes, start a new resolution: commit the URL FQN as the
+    // one useEntityPermissions (above) and the container useQuery both key off. Permission
+    // fetching itself now lives in useEntityPermissions — this effect's job is only to seed
+    // (and, via the fallback effects above, walk up) {@code resolvedEntityFqn}.
+    setHasError(false);
+    setActiveColumnFqn(undefined);
+    setResolvedEntityFqn(decodedEntityFqn);
   }, [decodedEntityFqn, resolvedEntityFqn, containerData, activeColumnFqn]);
 
   useEffect(() => {
-    if (resolvedEntityFqn) {
-      fetchContainerChildren();
-      getEntityFeedCount();
+    if (!resolvedEntityFqn) {
+      return;
     }
+    // Reset so a stale value from the previous container isn't shown.
+    setChildrenCount(0);
+    fetchTaskCounts();
+    fetchActivityCount();
+
+    // Eager-fetch the children total so the tab badge is correct even before
+    // the user opens the Children tab. ContainerChildren is lazily mounted, so
+    // its onChildrenCountChange callback only fires once the tab is clicked —
+    // for containers that default to a different tab (e.g. dataModel-bearing
+    // ones that open the Schema tab), the badge would otherwise stay at 0
+    // until the user navigates. limit=0 returns just paging.total without any
+    // row payload.
+    let cancelled = false;
+    getContainerChildrenByName(resolvedEntityFqn, { limit: 0 })
+      .then((resp) => {
+        if (!cancelled) {
+          setChildrenCount(resp?.paging?.total ?? 0);
+        }
+      })
+      .catch(() => {
+        // Non-critical; the count will populate when the user opens the tab
+        // and ContainerChildren reports it via the context setter.
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [resolvedEntityFqn]);
 
   const toggleTabExpanded = () => {
@@ -667,11 +808,11 @@ const ContainerPage = () => {
     [containerData, handleContainerUpdate]
   );
   // Rendering
-  if (isLoading || loading) {
-    return <Loader />;
+  if (isPermissionsLoading || containerLoading || loading) {
+    return <PageLoader />;
   }
 
-  if (hasError) {
+  if (hasError || isError) {
     return (
       <ErrorPlaceHolder>
         {getEntityMissingError(t('label.container'), decodedEntityFqn)}
@@ -694,6 +835,15 @@ const ContainerPage = () => {
   if (!containerData) {
     return <ErrorPlaceHolder />;
   }
+
+  const renderTabBarExtraContent = () =>
+    isExpandViewSupported && (
+      <AlignRightIconButton
+        className={isTabExpanded ? 'rotate-180' : ''}
+        title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+        onClick={toggleTabExpanded}
+      />
+    );
 
   return (
     <PageLayoutV1 pageTitle={getEntityName(containerData)}>
@@ -726,26 +876,18 @@ const ContainerPage = () => {
           permissions={containerPermissions}
           type={EntityType.CONTAINER as CustomizeEntityType}
           onUpdate={handleContainerUpdate}>
-          <Col className="entity-details-page-tabs" span={24}>
-            <Tabs
-              activeKey={tab}
-              className="tabs-new"
-              data-testid="tabs"
-              items={tabs}
-              tabBarExtraContent={
-                isExpandViewSupported && (
-                  <AlignRightIconButton
-                    className={isTabExpanded ? 'rotate-180' : ''}
-                    title={
-                      isTabExpanded ? t('label.collapse') : t('label.expand')
-                    }
-                    onClick={toggleTabExpanded}
-                  />
-                )
-              }
-              onChange={handleTabChange}
-            />
-          </Col>
+          <ContainerChildrenCountContext.Provider value={setChildrenCount}>
+            <Col className="entity-details-page-tabs" span={24}>
+              <Tabs
+                activeKey={tab}
+                className="tabs-new"
+                data-testid="tabs"
+                items={tabs}
+                tabBarExtraContent={renderTabBarExtraContent()}
+                onChange={handleTabChange}
+              />
+            </Col>
+          </ContainerChildrenCountContext.Provider>
         </GenericProvider>
 
         <LimitWrapper resource="container">

@@ -11,8 +11,16 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitForElementToBeRemoved,
+} from '@testing-library/react';
 import AddCustomProperty from './AddCustomProperty';
+
+const NAME_VALIDATION_ERROR = 'message.custom-property-name-validation';
+const NAME_LENGTH_ERROR = 'message.entity-size-in-between';
 
 const mockNavigate = jest.fn();
 
@@ -195,11 +203,6 @@ jest.mock('../../../../rest/metadataTypeAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockPropertyTypes })),
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
-  errorMsg: jest.fn(),
-  requiredField: jest.fn(),
-}));
-
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
@@ -219,15 +222,6 @@ jest.mock('../../../common/ResizablePanels/ResizablePanels', () =>
 
 jest.mock('../../../common/ServiceDocPanel/ServiceDocPanel', () =>
   jest.fn().mockImplementation(() => <div>ServiceDocPanel.component</div>)
-);
-
-jest.mock('../../../common/MUISelect/MUISelect', () =>
-  jest.fn(({ label }) => (
-    <div data-testid="propertyType">
-      <label>{label}</label>
-      <select />
-    </div>
-  ))
 );
 
 describe('Test Add Custom Property Component', () => {
@@ -266,5 +260,81 @@ describe('Test Add Custom Property Component', () => {
     fireEvent.click(backButton);
 
     expect(mockNavigate).toHaveBeenCalledWith(-1);
+  });
+});
+
+describe('Custom property name validation', () => {
+  // These assertions previously lived as 15 Playwright browser tests
+  // (Pages/CustomProperties.spec.ts). The rules are the real antd Form rules
+  // wired in AddCustomProperty (pattern: CUSTOM_PROPERTY_NAME_REGEX + max: 256),
+  // so they are exercised here against the real generated form fields.
+  it.each([
+    ['starts with a non-alphanumeric character', '_invalidName'],
+    ['contains a colon', 'name:with:colon'],
+    ['contains a dollar sign', 'name$invalid'],
+    ['contains a caret', 'name^invalid'],
+    ['contains a double quote', 'name"invalid'],
+    ['contains a backslash', String.raw`name\invalid`],
+    ['contains a less-than sign', 'name<<invalid'],
+    ['contains a greater-than sign', 'name>>invalid'],
+    ['contains an ampersand', 'name&invalid'],
+    ['contains an asterisk', 'name*invalid'],
+    ['contains a forward slash', 'name/invalid'],
+    ['contains a tilde', 'name~invalid'],
+  ])('should show the name error when the name %s', async (_, value) => {
+    render(<AddCustomProperty />);
+
+    fireEvent.change(screen.getByTestId('name'), { target: { value } });
+
+    expect(await screen.findByText(NAME_VALIDATION_ERROR)).toBeInTheDocument();
+  });
+
+  it('should show the length error when the name exceeds 256 characters', async () => {
+    render(<AddCustomProperty />);
+
+    fireEvent.change(screen.getByTestId('name'), {
+      target: { value: 'a'.repeat(257) },
+    });
+
+    expect(await screen.findByText(NAME_LENGTH_ERROR)).toBeInTheDocument();
+  });
+
+  // Seed an invalid value and wait for the error before typing the valid one, so
+  // the assertion runs only after Ant Design's async validation has settled -
+  // asserting absence right after render would pass before validation even runs.
+  it('should clear the name error once a valid name replaces an invalid one', async () => {
+    render(<AddCustomProperty />);
+
+    const nameInput = screen.getByTestId('name');
+
+    fireEvent.change(nameInput, { target: { value: 'name:with:colon' } });
+
+    await screen.findByText(NAME_VALIDATION_ERROR);
+
+    fireEvent.change(nameInput, { target: { value: 'validName_123' } });
+
+    await waitForElementToBeRemoved(() =>
+      screen.queryByText(NAME_VALIDATION_ERROR)
+    );
+
+    expect(screen.queryByText(NAME_LENGTH_ERROR)).not.toBeInTheDocument();
+  });
+
+  it('should clear the name error for a valid name with allowed special characters', async () => {
+    render(<AddCustomProperty />);
+
+    const nameInput = screen.getByTestId('name');
+
+    fireEvent.change(nameInput, { target: { value: 'name:with:colon' } });
+
+    await screen.findByText(NAME_VALIDATION_ERROR);
+
+    fireEvent.change(nameInput, {
+      target: { value: "valid Name.!@#%`()_-=+{}[]|;',.?" },
+    });
+
+    await waitForElementToBeRemoved(() =>
+      screen.queryByText(NAME_VALIDATION_ERROR)
+    );
   });
 });

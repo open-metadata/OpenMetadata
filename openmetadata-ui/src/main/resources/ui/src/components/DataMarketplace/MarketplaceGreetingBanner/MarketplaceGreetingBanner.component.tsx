@@ -12,6 +12,7 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
+import { startCase } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 
@@ -19,7 +20,9 @@ const MarketplaceGreetingBanner = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
 
-  const displayName = currentUser?.displayName || currentUser?.name || '';
+  const displayName = startCase(
+    currentUser?.displayName || currentUser?.name || ''
+  );
 
   return (
     <div className="text-center p-b-sm" data-testid="marketplace-greeting">

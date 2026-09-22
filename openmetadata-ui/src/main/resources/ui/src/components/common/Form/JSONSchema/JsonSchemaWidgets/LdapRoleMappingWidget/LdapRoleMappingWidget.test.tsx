@@ -19,27 +19,24 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { getRoles } from '../../../../../../rest/rolesAPIV1';
+import { searchRoles } from '../../../../../../rest/rolesAPIV1';
 import LdapRoleMappingWidget from './LdapRoleMappingWidget';
 
 jest.mock('../../../../../../rest/rolesAPIV1', () => ({
-  getRoles: jest.fn(),
+  searchRoles: jest.fn(),
 }));
 
 jest.mock('../../../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-const mockGetRoles = getRoles as jest.Mock;
+const mockSearchRoles = searchRoles as jest.Mock;
 
-const mockRoles = {
-  data: [
-    { name: 'Admin', displayName: 'Administrator' },
-    { name: 'DataSteward', displayName: 'Data Steward' },
-    { name: 'DataConsumer', displayName: 'Data Consumer' },
-  ],
-  paging: { total: 3 },
-};
+const mockRoles = [
+  { name: 'Admin', displayName: 'Administrator' },
+  { name: 'DataSteward', displayName: 'Data Steward' },
+  { name: 'DataConsumer', displayName: 'Data Consumer' },
+];
 
 const mockOnChange = jest.fn();
 const mockOnFocus = jest.fn();
@@ -65,7 +62,7 @@ const baseProps: WidgetProps = {
 describe('LdapRoleMappingWidget', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetRoles.mockResolvedValue(mockRoles);
+    mockSearchRoles.mockResolvedValue(mockRoles);
   });
 
   describe('Rendering Tests', () => {
@@ -79,13 +76,7 @@ describe('LdapRoleMappingWidget', () => {
       });
 
       expect(screen.queryByText(/label.ldap-group-dn/)).not.toBeInTheDocument();
-      expect(mockGetRoles).toHaveBeenCalledWith(
-        '*',
-        undefined,
-        undefined,
-        true,
-        1000
-      );
+      expect(mockSearchRoles).toHaveBeenCalledWith('');
     });
 
     it('should render with existing mappings', async () => {
@@ -559,18 +550,12 @@ describe('LdapRoleMappingWidget', () => {
       });
 
       await waitFor(() => {
-        expect(mockGetRoles).toHaveBeenCalledWith(
-          '*',
-          undefined,
-          undefined,
-          true,
-          1000
-        );
+        expect(mockSearchRoles).toHaveBeenCalledWith('');
       });
     });
 
     it('should handle API errors', async () => {
-      mockGetRoles.mockRejectedValueOnce(new Error('API Error'));
+      mockSearchRoles.mockRejectedValueOnce(new Error('API Error'));
 
       await act(async () => {
         render(<LdapRoleMappingWidget {...baseProps} />);
@@ -582,7 +567,7 @@ describe('LdapRoleMappingWidget', () => {
     });
 
     it('should show loading state while fetching roles', async () => {
-      mockGetRoles.mockImplementationOnce(() => newPromise);
+      mockSearchRoles.mockImplementationOnce(() => newPromise);
 
       await act(async () => {
         render(<LdapRoleMappingWidget {...baseProps} />);

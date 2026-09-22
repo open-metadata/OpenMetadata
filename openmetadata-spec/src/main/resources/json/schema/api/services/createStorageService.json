@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/services/createStorageService.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CreateStorageServiceRequest",
   "description": "Create Storage Service entity request",
   "type": "object",
@@ -33,6 +33,9 @@
         "$ref": "../../type/tagLabel.json"
       },
       "default": null
+    },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
     },
     "owners": {
       "description": "Owners of this object store service.",

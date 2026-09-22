@@ -11,7 +11,6 @@
 """
 Hive lineage module
 """
-from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
@@ -33,14 +32,10 @@ class HiveLineageSource(LineageSource):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: HiveConnection = config.serviceConnection.root.config
         if not isinstance(connection, HiveConnection):
-            raise InvalidSourceException(
-                f"Expected HiveConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected HiveConnection, but got {connection}")
         return cls(config, metadata)

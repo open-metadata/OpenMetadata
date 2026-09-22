@@ -16,13 +16,13 @@ To extract basic metadata (catalogs, schemas, tables, views) from Databricks, th
 
 ```sql
 -- Grant USE CATALOG on catalog
-GRANT USE CATALOG ON CATALOG <catalog_name> TO `<user_or_service_principal>`;
+GRANT USE CATALOG ON CATALOG <catalog_name> TO '<user_or_service_principal>';
 
 -- Grant USE SCHEMA on schemas
-GRANT USE SCHEMA ON SCHEMA <schema_name> TO `<user_or_service_principal>`;
+GRANT USE SCHEMA ON SCHEMA <schema_name> TO '<user_or_service_principal>';
 
 -- Grant SELECT on tables and views
-GRANT SELECT ON TABLE <table_name> TO `<user_or_service_principal>`;
+GRANT SELECT ON TABLE <table_name> TO '<user_or_service_principal>';
 ```
 
 ### View Definitions (Optional)
@@ -31,7 +31,7 @@ To extract view definitions from `INFORMATION_SCHEMA.VIEWS`, ensure the user has
 
 ```sql
 -- Grant SELECT on INFORMATION_SCHEMA.VIEWS
-GRANT SELECT ON VIEW information_schema.views TO `<user_or_service_principal>`;
+GRANT SELECT ON VIEW information_schema.views TO '<user_or_service_principal>';
 ```
 
 ### Unity Catalog Tags (Optional)
@@ -40,16 +40,16 @@ To extract tags at different levels (catalog, schema, table, column), the user n
 
 ```sql
 -- For catalog-level tags
-GRANT SELECT ON TABLE system.information_schema.catalog_tags TO `<user_or_service_principal>`;
+GRANT SELECT ON TABLE system.information_schema.catalog_tags TO '<user_or_service_principal>';
 
 -- For schema-level tags
-GRANT SELECT ON TABLE system.information_schema.schema_tags TO `<user_or_service_principal>`;
+GRANT SELECT ON TABLE system.information_schema.schema_tags TO '<user_or_service_principal>';
 
 -- For table-level tags
-GRANT SELECT ON TABLE system.information_schema.table_tags TO `<user_or_service_principal>`;
+GRANT SELECT ON TABLE system.information_schema.table_tags TO '<user_or_service_principal>';
 
 -- For column-level tags
-GRANT SELECT ON TABLE system.information_schema.column_tags TO `<user_or_service_principal>`;
+GRANT SELECT ON TABLE system.information_schema.column_tags TO '<user_or_service_principal>';
 ```
 
 $$note
@@ -62,20 +62,37 @@ To extract table and column-level lineage from Unity Catalog system tables, the 
 
 ```sql
 -- For table lineage
-GRANT SELECT ON TABLE system.access.table_lineage TO `<user_or_service_principal>`;
+GRANT SELECT ON TABLE system.access.table_lineage TO '<user_or_service_principal>';
 
 -- For column lineage
-GRANT SELECT ON TABLE system.access.column_lineage TO `<user_or_service_principal>`;
+GRANT SELECT ON TABLE system.access.column_lineage TO '<user_or_service_principal>';
 ```
 
 $$note
 Access to `system.access` tables is restricted by default. These grants must be executed by an **account administrator** in the Databricks account console. Regular workspace admins cannot grant access to system tables.
 $$
 
+To also show the SQL that produced each lineage edge, grant access to the query history:
+
+```sql
+GRANT USE CATALOG ON CATALOG system TO '<user_or_service_principal>';
+GRANT USE SCHEMA ON SCHEMA system.query TO '<user_or_service_principal>';
+GRANT SELECT ON TABLE system.query.history TO '<user_or_service_principal>';
+```
+
+$$note
+The SQL Query of an edge is the latest statement recorded for that source-target pair
+within the lineage lookback window, so a single statement may not explain every column
+mapping of the edge. Databricks only records the statement for queries run on a SQL
+warehouse, and its text can be empty or `<REDACTED>` depending on the principal's access
+and the workspace's encryption settings. Lineage is always ingested; when the query
+history cannot be read, it is ingested without SQL and a message is logged.
+$$
+
 ### Usage & Lineage
 
 $$note
-To get Query Usage and Lineage details, you need a Databricks Premium account, since we will be extracting this information from your SQL Warehouse's history API.
+To get Query Usage details, you need a Databricks Premium account, since we will be extracting this information from your SQL Warehouse's history API.
 $$
 
 ### Profiler & Data Quality

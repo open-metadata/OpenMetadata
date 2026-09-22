@@ -92,6 +92,16 @@ export const SERVICE_CATEGORY_OPTIONS = map(ServiceCategory, (value) => ({
   value,
 }));
 
+// Sentinel for "no specific category chosen" on the add-service wizard's category-agnostic entry
+// points (the All Connections tab, the /settings/services landing page) — deliberately not a
+// ServiceCategory member, since that enum is consumed exhaustively elsewhere (search index maps,
+// resource-permission maps, entity-type maps) and a fake member would force all of those to handle
+// a non-category. Mirrors Collate's own `ConnectionsCategory = ConnectionsServiceCategory | 'all'`.
+export const ALL_SERVICES_CATEGORY = 'all' as const;
+export type ServiceCategoryParam =
+  | ServiceCategory
+  | typeof ALL_SERVICES_CATEGORY;
+
 export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
   {
     name: 'label.select-field',
@@ -99,18 +109,12 @@ export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
     step: 1,
   },
   {
-    name: 'label.configure-entity',
-    nameData: { entity: 'label.service' },
+    name: 'label.connect',
     step: 2,
   },
   {
-    name: 'label.connection-entity',
-    nameData: { entity: 'label.detail-plural' },
+    name: 'label.what-to-ingest',
     step: 3,
-  },
-  {
-    name: 'label.set-default-filters',
-    step: 4,
   },
 ];
 
@@ -180,19 +184,28 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Ssas,
   DatabaseServiceType.Epic,
   DashboardServiceType.Hex,
+  DashboardServiceType.Omni,
+  DatabaseServiceType.SapSuccessFactors,
   DatabaseServiceType.ServiceNow,
   DatabaseServiceType.Dremio,
   MetadataServiceType.Collibra,
   PipelineServiceType.Mulesoft,
-  DatabaseServiceType.MicrosoftFabric,
-  PipelineServiceType.MicrosoftFabricPipeline,
   DatabaseServiceType.BurstIQ,
   DatabaseServiceType.StarRocks,
   DriveServiceType.SFTP,
   DriveServiceType.GoogleDrive,
   DatabaseServiceType.Informix,
   DatabaseServiceType.MicrosoftAccess,
+  DatabaseServiceType.QuestDB,
+  MessagingServiceType.Nats,
   DashboardServiceType.SapS4Hana,
+  DatabaseServiceType.Data360,
+  PipelineServiceType.Data360Pipeline,
+  DatabaseServiceType.SapBw4Hana,
+  PipelineServiceType.SapBw4HanaPipeline,
+  PipelineServiceType.Prefect,
+  DatabaseServiceType.Iomete,
+  DatabaseServiceType.Clickzetta,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =
@@ -212,6 +225,8 @@ export const TEST_CONNECTION_WARNING_MESSAGE =
 export const ADVANCED_PROPERTIES = [
   'connectionArguments',
   'connectionOptions',
+  'useAccessHistory',
+  'accessHistoryChunkSize',
   'scheme',
   'sampleDataStorageConfig',
   'computeTableMetrics',
@@ -235,7 +250,66 @@ export const ADVANCED_PROPERTIES = [
   'maxClockSkew',
   'tokenValidity',
   'maxAge',
-  'sessionExpiry',
+];
+
+export const CONNECTION_AUTH_TYPE_PROPERTY = 'authType';
+
+// Optional identity fields that belong in the Connection section (next to
+// host/database) even when the schema doesn't mark them required.
+export const OPTIONAL_CONNECTION_PROPERTIES = new Set([
+  'billingProjectId',
+  'hostPort',
+  'username',
+  'clientId',
+]);
+
+export const OPTIONAL_SCOPE_PROPERTIES = new Set([
+  'apiCollectionFilterPattern',
+  'apiEndpointFilterPattern',
+  'chartFilterPattern',
+  'containerFilterPattern',
+  'dashboardFilterPattern',
+  'dataModelFilterPattern',
+  'databaseFilterPattern',
+  'databaseName',
+  'directoryFilterPattern',
+  'domainFilterPattern',
+  'fileFilterPattern',
+  'glossaryFilterPattern',
+  'mlModelFilterPattern',
+  'modelFilterPattern',
+  'pipelineFilterPattern',
+  'projectFilterPattern',
+  'schemaFilterPattern',
+  'searchIndexFilterPattern',
+  'serverFilterPattern',
+  'sobjectNames',
+  'spreadsheetFilterPattern',
+  'storedProcedureFilterPattern',
+  'supportsMetadataExtraction',
+  'tableFilterPattern',
+  'topicFilterPattern',
+  'worksheetFilterPattern',
+]);
+
+export const INGESTION_BOOLEAN_CONFIG_FIELDS = [
+  'includeTables',
+  'includeViews',
+  'includeTags',
+  'includeCustomProperties',
+  'includeOwners',
+  'includeStoredProcedures',
+  'includeDDL',
+  'markDeletedTables',
+  'markDeletedStoredProcedures',
+  'markDeletedSchemas',
+  'markDeletedDatabases',
+  'overrideMetadata',
+  'enableDebugLog',
+  'dbtUpdateDescriptions',
+  'dbtUpdateOwners',
+  'overrideLineage',
+  'searchAcrossDatabases',
 ];
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';
@@ -263,6 +337,7 @@ export const SERVICE_INGESTION_PIPELINE_TYPES = [
   PipelineType.Profiler,
   PipelineType.AutoClassification,
   PipelineType.Dbt,
+  PipelineType.PolicyAgent,
 ];
 
 export const SERVICE_AUTOPILOT_AGENT_TYPES = [
@@ -292,4 +367,6 @@ export const SERVICE_TYPE_WITH_DISPLAY_NAME = new Map<string, string>([
   [SearchServiceType.ElasticSearch, 'Elasticsearch'],
   [DatabaseServiceType.MicrosoftFabric, 'Microsoft Fabric'],
   [PipelineServiceType.MicrosoftFabricPipeline, 'Microsoft Fabric Pipeline'],
+  [DatabaseServiceType.Data360, 'Salesforce Data 360'],
+  [PipelineServiceType.Data360Pipeline, 'Salesforce Data 360 Pipeline'],
 ]);

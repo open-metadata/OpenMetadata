@@ -21,16 +21,10 @@ import {
 import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { getDataQualityPagePath } from '../../../utils/RouterUtils';
 import { IncidentTimeMetricsType } from '../DataQuality.interface';
 import DataQualityDashboard from './DataQualityDashboard.component';
-
-const mockGetTags = jest.fn().mockResolvedValue({
-  data: [
-    { id: '1', name: 'Tier1', fullyQualifiedName: 'Tier.Tier1' },
-    { id: '2', name: 'Tier2', fullyQualifiedName: 'Tier.Tier2' },
-  ],
-});
 
 const mockSearchQuery = jest.fn().mockResolvedValue({
   hits: {
@@ -101,10 +95,6 @@ jest.mock('../../../components/PageHeader/PageHeader.component', () =>
   jest.fn().mockImplementation(() => <div data-testid="page-header" />)
 );
 
-jest.mock('../../../rest/tagAPI', () => ({
-  getTags: () => mockGetTags(),
-}));
-
 jest.mock('../../../rest/searchAPI', () => ({
   searchQuery: (...args: unknown[]) => mockSearchQuery(...args),
 }));
@@ -139,28 +129,30 @@ jest.mock(
   })
 );
 
-jest.mock('../../../components/SearchDropdown/SearchDropdown', () =>
-  jest
-    .fn()
-    .mockImplementation(({ label, onChange, onSearch, selectedKeys }) => (
-      <div>
-        <button
-          data-testid={`search-dropdown-${label}`}
-          onClick={() => onChange([{ key: 'tag1', label: 'Tag 1' }])}>
-          {label} SearchDropdown
-        </button>
-        {onSearch && (
+jest.mock(
+  '../../../components/common/FilterSelectDropdown/FilterSelectDropdown',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ label, onChange, onSearch, selectedKeys }) => (
+        <div>
           <button
-            data-testid={`search-dropdown-search-${label}`}
-            onClick={() => onSearch('pii')}>
-            Search {label}
+            data-testid={`search-dropdown-${label}`}
+            onClick={() => onChange([{ key: 'tag1', label: 'Tag 1' }])}>
+            {label} SearchDropdown
           </button>
-        )}
-        {selectedKeys
-          .map((option: SearchDropdownOption) => option.label)
-          .join(', ')}
-      </div>
-    ))
+          {onSearch && (
+            <button
+              data-testid={`search-dropdown-search-${label}`}
+              onClick={() => onSearch('pii')}>
+              Search {label}
+            </button>
+          )}
+          {selectedKeys
+            .map((option: SearchDropdownOption) => option.label)
+            .join(', ')}
+        </div>
+      ))
 );
 jest.mock('../../../utils/AdvancedSearchUtils', () => {
   return {
@@ -454,7 +446,9 @@ describe('DataQualityDashboard', () => {
         expect.objectContaining({
           redirectPath: {
             pathname: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
-            search: 'testCaseStatus=Success',
+            search: expect.stringContaining(
+              'testCaseStatus=Success&lastRunRange'
+            ),
           },
         })
       );
@@ -464,7 +458,9 @@ describe('DataQualityDashboard', () => {
         expect.objectContaining({
           redirectPath: {
             pathname: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
-            search: 'testCaseStatus=Failed',
+            search: expect.stringContaining(
+              'testCaseStatus=Failed&lastRunRange'
+            ),
           },
         })
       );
@@ -530,6 +526,48 @@ describe('DataQualityDashboard', () => {
           title: 'label.resolution-time',
         })
       );
+    });
+
+    describe('observabilityRouterClassBase migration', () => {
+      it('open-incident widget redirectPath.pathname should be observabilityRouterClassBase.getIncidentManagerPath()', async () => {
+        render(<DataQualityDashboard />, { wrapper: MemoryRouter });
+
+        await waitFor(() => {
+          expect(mockIncidentTypeAreaChartWidget).toHaveBeenCalled();
+        });
+
+        const expectedPath =
+          observabilityRouterClassBase.getIncidentManagerPath();
+
+        expect(mockIncidentTypeAreaChartWidget).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: 'open-incident',
+            redirectPath: expect.objectContaining({
+              pathname: expectedPath,
+            }),
+          })
+        );
+      });
+
+      it('resolved-incident widget redirectPath.pathname should be observabilityRouterClassBase.getIncidentManagerPath()', async () => {
+        render(<DataQualityDashboard />, { wrapper: MemoryRouter });
+
+        await waitFor(() => {
+          expect(mockIncidentTypeAreaChartWidget).toHaveBeenCalled();
+        });
+
+        const expectedPath =
+          observabilityRouterClassBase.getIncidentManagerPath();
+
+        expect(mockIncidentTypeAreaChartWidget).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: 'resolved-incident',
+            redirectPath: expect.objectContaining({
+              pathname: expectedPath,
+            }),
+          })
+        );
+      });
     });
   });
 
@@ -629,7 +667,7 @@ describe('DataQualityDashboard', () => {
     });
 
     it('should handle API errors gracefully for tag fetching', async () => {
-      mockGetTags.mockRejectedValueOnce(new Error('API Error'));
+      mockSearchQuery.mockRejectedValueOnce(new Error('API Error'));
 
       render(<DataQualityDashboard />, { wrapper: MemoryRouter });
 
@@ -798,7 +836,6 @@ describe('DataQualityDashboard', () => {
         ).toBeInTheDocument();
       });
 
-      expect(mockGetTags).not.toHaveBeenCalled();
       expect(mockSearchQuery).not.toHaveBeenCalled();
     });
 
@@ -813,7 +850,6 @@ describe('DataQualityDashboard', () => {
         ).toBeInTheDocument();
       });
 
-      expect(mockGetTags).not.toHaveBeenCalled();
       expect(mockSearchQuery).not.toHaveBeenCalled();
     });
 
@@ -821,7 +857,6 @@ describe('DataQualityDashboard', () => {
       render(<DataQualityDashboard />, { wrapper: MemoryRouter });
 
       await waitFor(() => {
-        expect(mockGetTags).toHaveBeenCalled();
         expect(mockSearchQuery).toHaveBeenCalled();
       });
     });
@@ -1045,10 +1080,11 @@ describe('DataQualityDashboard', () => {
       ).toBeInTheDocument();
     });
 
-    it('does not call getTags API when tier is in hiddenFilters', async () => {
-      render(<DataQualityDashboard hiddenFilters={['tier']} />, {
-        wrapper: MemoryRouter,
-      });
+    it('does not fetch Tier or Certification when both are in hiddenFilters', async () => {
+      render(
+        <DataQualityDashboard hiddenFilters={['tier', 'certification']} />,
+        { wrapper: MemoryRouter }
+      );
 
       await waitFor(() => {
         expect(
@@ -1056,7 +1092,56 @@ describe('DataQualityDashboard', () => {
         ).toBeInTheDocument();
       });
 
-      expect(mockGetTags).not.toHaveBeenCalled();
+      expect(mockSearchQuery).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          filters: 'disabled:false AND classification.name:Tier',
+        })
+      );
+      expect(mockSearchQuery).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          filters: 'disabled:false AND classification.name:Certification',
+        })
+      );
+    });
+
+    it('fetches Certification but not Tier when tier is in hiddenFilters', async () => {
+      render(<DataQualityDashboard hiddenFilters={['tier']} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(mockSearchQuery).toHaveBeenCalledWith(
+          expect.objectContaining({
+            filters: 'disabled:false AND classification.name:Certification',
+          })
+        );
+      });
+
+      expect(mockSearchQuery).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          filters: 'disabled:false AND classification.name:Tier',
+        })
+      );
+    });
+
+    it('fetches Tier but not Certification when certification is in hiddenFilters', async () => {
+      render(<DataQualityDashboard hiddenFilters={['certification']} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(mockSearchQuery).toHaveBeenCalledWith(
+          expect.objectContaining({
+            filters: 'disabled:false AND classification.name:Tier',
+          })
+        );
+      });
+
+      expect(mockSearchQuery).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          filters: 'disabled:false AND classification.name:Certification',
+        })
+      );
     });
 
     it('does not call tag search API when tags is in hiddenFilters', async () => {
@@ -1073,8 +1158,8 @@ describe('DataQualityDashboard', () => {
         ).toBeInTheDocument();
       });
 
-      // only glossaryTerms fetch runs — searchQuery called once, not twice
-      expect(mockSearchQuery).toHaveBeenCalledTimes(1);
+      // tier + certification + glossaryTerms fetches run — searchQuery called 3x
+      expect(mockSearchQuery).toHaveBeenCalledTimes(3);
     });
 
     it('does not call glossary term search API when glossaryTerms is in hiddenFilters', async () => {
@@ -1093,8 +1178,8 @@ describe('DataQualityDashboard', () => {
         ).toBeInTheDocument();
       });
 
-      // only tags fetch runs — searchQuery called once, not twice
-      expect(mockSearchQuery).toHaveBeenCalledTimes(1);
+      // tier + certification + tags fetches run — searchQuery called 3x
+      expect(mockSearchQuery).toHaveBeenCalledTimes(3);
     });
 
     it('hideFilterBar is a hard override — hides the entire bar even when hiddenFilters is set', () => {
@@ -1166,7 +1251,7 @@ describe('DataQualityDashboard', () => {
       });
 
       expect(
-        container.querySelectorAll(String.raw`.tw\:ring-0.tw\:shadow-none`)
+        container.querySelectorAll(String.raw`.tw\:shadow-none`)
       ).toHaveLength(4);
     });
 
@@ -1176,7 +1261,7 @@ describe('DataQualityDashboard', () => {
       });
 
       expect(
-        container.querySelector(String.raw`.tw\:ring-0.tw\:shadow-none`)
+        container.querySelector(String.raw`.tw\:shadow-none`)
       ).not.toBeInTheDocument();
     });
 
@@ -1316,7 +1401,7 @@ describe('DataQualityDashboard', () => {
           (args[0] as Record<string, unknown>).query === '***'
       );
 
-      expect(wildcardCalls.length).toBeGreaterThanOrEqual(3); // tags + glossaryTerms + data products
+      expect(wildcardCalls.length).toBeGreaterThanOrEqual(4); // tags + glossaryTerms + data products + certification
       expect(tripleStarCalls).toHaveLength(0);
     });
 

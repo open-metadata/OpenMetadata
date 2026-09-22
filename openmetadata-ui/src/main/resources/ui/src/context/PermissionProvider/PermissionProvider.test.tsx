@@ -10,18 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import { CookieStorage } from 'cookie-storage';
+import { BrowserRouter } from 'react-router-dom';
+import { REDIRECT_PATHNAME } from '../../constants/router.constants';
+import { permissionQueryKeys } from '../../hooks/useEntityPermissions/permissionQueryKeys';
+import { queryClient } from '../../queryClient';
 import {
   getEntityPermissionByFqn,
   getEntityPermissionById,
   getLoggedInUserPermissions,
   getResourcePermission,
 } from '../../rest/permissionAPI';
-import PermissionProvider from './PermissionProvider';
-
-jest.mock('react-router-dom', () => ({
-  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
-}));
+import PermissionProvider, {
+  usePermissionProvider,
+} from './PermissionProvider';
+import { ResourceEntity } from './PermissionProvider.interface';
 
 jest.mock('../../rest/permissionAPI', () => ({
   getLoggedInUserPermissions: jest
@@ -30,9 +34,14 @@ jest.mock('../../rest/permissionAPI', () => ({
   getEntityPermissionById: jest
     .fn()
     .mockImplementation(() => Promise.resolve({})),
+  // Shaped as a ResourcePermission so getOperationPermissions (called from
+  // the provider's fetchQuery queryFn) can reduce over `.permissions`
+  // without throwing.
   getEntityPermissionByFqn: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({})),
+    .mockImplementation(() =>
+      Promise.resolve({ resource: 'table', permissions: [] })
+    ),
   getResourcePermission: jest
     .fn()
     .mockImplementation(() => Promise.resolve({})),
@@ -56,11 +65,22 @@ jest.mock('../../components/common/Loader/Loader', () => {
 });
 
 describe('PermissionProvider', () => {
+  beforeEach(() => {
+    currentUser = { id: '123', name: 'Test User' };
+    window.history.replaceState(null, '', '/');
+    new CookieStorage().removeItem(REDIRECT_PATHNAME, { path: '/' });
+  });
+
+  afterEach(() => {
+    new CookieStorage().removeItem(REDIRECT_PATHNAME, { path: '/' });
+  });
+
   it('Should render loader and call getLoggedInUserPermissions', async () => {
     render(
       <PermissionProvider>
         <div data-testid="children">Children</div>
-      </PermissionProvider>
+      </PermissionProvider>,
+      { wrapper: BrowserRouter }
     );
 
     // Verify that the API methods were called
@@ -73,7 +93,8 @@ describe('PermissionProvider', () => {
     render(
       <PermissionProvider>
         <div data-testid="children">Children</div>
-      </PermissionProvider>
+      </PermissionProvider>,
+      { wrapper: BrowserRouter }
     );
 
     // Verify that the API methods were called
@@ -90,7 +111,8 @@ describe('PermissionProvider', () => {
     render(
       <PermissionProvider>
         <div data-testid="children">Children</div>
-      </PermissionProvider>
+      </PermissionProvider>,
+      { wrapper: BrowserRouter }
     );
 
     // Verify that the API methods were not called
@@ -101,5 +123,97 @@ describe('PermissionProvider', () => {
 
     expect(screen.queryByText('Loader')).not.toBeInTheDocument();
     expect(await screen.findByTestId('children')).toBeInTheDocument();
+  });
+
+  it('preserves the current graph view when permissions replay its pathname', async () => {
+    const pathname = '/table/warehouse.orders/knowledge_graph';
+    const search = '?fullscreen=true&graphMode=ontology';
+    window.history.replaceState(null, '', pathname + search + '#graph');
+    new CookieStorage().setItem(REDIRECT_PATHNAME, pathname, { path: '/' });
+
+    render(
+      <PermissionProvider>
+        <div data-testid="children">Children</div>
+      </PermissionProvider>,
+      { wrapper: BrowserRouter }
+    );
+
+    expect(await screen.findByTestId('children')).toBeInTheDocument();
+    expect(window.location.pathname).toBe(pathname);
+    expect(window.location.search).toBe(search);
+    expect(window.location.hash).toBe('#graph');
+  });
+
+  it('redirects to the stored pathname when permissions load on another page', async () => {
+    const pathname = '/table/warehouse.orders/knowledge_graph';
+    window.history.replaceState(null, '', '/signin');
+    new CookieStorage().setItem(REDIRECT_PATHNAME, pathname, { path: '/' });
+
+    render(
+      <PermissionProvider>
+        <div data-testid="children">Children</div>
+      </PermissionProvider>,
+      { wrapper: BrowserRouter }
+    );
+
+    expect(await screen.findByTestId('children')).toBeInTheDocument();
+    expect(window.location.pathname).toBe(pathname);
+  });
+});
+
+const Probe = () => {
+  const { getEntityPermissionByFqn: fetchByFqn } = usePermissionProvider();
+
+  return (
+    <button
+      aria-label="fetch"
+      data-testid="fetch"
+      onClick={() => fetchByFqn(ResourceEntity.TABLE, 'fqn1')}
+    />
+  );
+};
+
+describe('PermissionProvider on the React Query cache', () => {
+  beforeEach(() => {
+    // A prior test in this file (`current user is undefined`) mutates the
+    // shared `currentUser` closure and never restores it — reset here so
+    // this block doesn't depend on suite execution order.
+    currentUser = { id: '123', name: 'Test User' };
+    queryClient.clear();
+    jest.clearAllMocks();
+  });
+
+  it('caches through queryClient: second fetch is free, invalidation forces a refetch', async () => {
+    render(
+      <PermissionProvider>
+        <Probe />
+      </PermissionProvider>,
+      { wrapper: BrowserRouter }
+    );
+
+    await waitFor(() => screen.getByTestId('fetch'));
+
+    await act(async () => screen.getByTestId('fetch').click());
+    await act(async () => screen.getByTestId('fetch').click()); // warm cache
+
+    expect(getEntityPermissionByFqn).toHaveBeenCalledTimes(1);
+
+    // The cache entry lives under the SHARED key — the same one
+    // useEntityPermissions uses — so hook-side invalidation reaches it.
+    expect(
+      queryClient.getQueryData(
+        permissionQueryKeys.entity(ResourceEntity.TABLE, 'fqn1')
+      )
+    ).toBeDefined();
+
+    await act(async () => {
+      await queryClient.invalidateQueries({
+        queryKey: permissionQueryKeys.entity(ResourceEntity.TABLE, 'fqn1'),
+      });
+    });
+
+    await act(async () => screen.getByTestId('fetch').click());
+
+    expect(getEntityPermissionByFqn).toHaveBeenCalledTimes(2);
   });
 });

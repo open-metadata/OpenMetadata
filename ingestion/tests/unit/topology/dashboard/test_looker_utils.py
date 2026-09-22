@@ -12,6 +12,7 @@
 """
 Test looker utils
 """
+
 import os
 import shutil
 from unittest import TestCase
@@ -49,12 +50,8 @@ class LookerUtilsTest(TestCase):
         """
         # Test with https protocol
         self.assertEqual(_extract_hostname("https://github.com"), "github.com")
-        self.assertEqual(
-            _extract_hostname("https://git.company.com"), "git.company.com"
-        )
-        self.assertEqual(
-            _extract_hostname("https://gitlab.example.org"), "gitlab.example.org"
-        )
+        self.assertEqual(_extract_hostname("https://git.company.com"), "git.company.com")
+        self.assertEqual(_extract_hostname("https://gitlab.example.org"), "gitlab.example.org")
 
         # Test with http protocol
         self.assertEqual(
@@ -66,9 +63,7 @@ class LookerUtilsTest(TestCase):
         self.assertEqual(_extract_hostname("git.company.com"), "git.company.com")
 
         # Test with port numbers
-        self.assertEqual(
-            _extract_hostname("https://git.company.com:8080"), "git.company.com:8080"
-        )
+        self.assertEqual(_extract_hostname("https://git.company.com:8080"), "git.company.com:8080")
         self.assertEqual(_extract_hostname("http://localhost:3000"), "localhost:3000")
 
     def test_is_azure_devops_host(self):
@@ -89,16 +84,12 @@ class LookerUtilsTest(TestCase):
         """
         mock_isdir.return_value = False
 
-        github_creds = GitHubCredentials(
-            repositoryOwner="owner", repositoryName="repo", token="test_token"
-        )
+        github_creds = GitHubCredentials(repositoryOwner="owner", repositoryName="repo", token="test_token")
 
         _clone_repo("owner/repo", "/test/path", github_creds)
 
         expected_url = "https://x-oauth-basic:test_token@github.com/owner/repo.git"
-        mock_clone_from.assert_called_once_with(
-            expected_url, "/test/path", allow_unsafe_protocols=False
-        )
+        mock_clone_from.assert_called_once_with(expected_url, "/test/path", allow_unsafe_protocols=False)
 
     @patch.object(Repo, "clone_from")
     @patch.object(os.path, "isdir")
@@ -118,9 +109,7 @@ class LookerUtilsTest(TestCase):
         _clone_repo("owner/repo", "/test/path", github_creds)
 
         expected_url = "https://x-oauth-basic:test_token@git.company.com/owner/repo.git"
-        mock_clone_from.assert_called_once_with(
-            expected_url, "/test/path", allow_unsafe_protocols=False
-        )
+        mock_clone_from.assert_called_once_with(expected_url, "/test/path", allow_unsafe_protocols=False)
 
     @patch.object(Repo, "clone_from")
     @patch.object(os.path, "isdir")
@@ -140,14 +129,10 @@ class LookerUtilsTest(TestCase):
         )
 
         # repo_name passed from __init_repo: "{repositoryOwner}/{repositoryName}"
-        _clone_repo(
-            "payoneer/data-platform/Looker_Custom_Queries", "/test/path", azure_creds
-        )
+        _clone_repo("payoneer/data-platform/Looker_Custom_Queries", "/test/path", azure_creds)
 
         expected_url = "https://my_pat_token@dev.azure.com/payoneer/data-platform/_git/Looker_Custom_Queries"
-        mock_clone_from.assert_called_once_with(
-            expected_url, "/test/path", allow_unsafe_protocols=False
-        )
+        mock_clone_from.assert_called_once_with(expected_url, "/test/path", allow_unsafe_protocols=False)
 
     @patch.object(Repo, "clone_from")
     @patch.object(os.path, "isdir")
@@ -166,12 +151,8 @@ class LookerUtilsTest(TestCase):
 
         _clone_repo("myorg/myproject/MyRepo", "/test/path", azure_creds)
 
-        expected_url = (
-            "https://my_pat_token@myorg.visualstudio.com/myorg/myproject/_git/MyRepo"
-        )
-        mock_clone_from.assert_called_once_with(
-            expected_url, "/test/path", allow_unsafe_protocols=False
-        )
+        expected_url = "https://my_pat_token@myorg.visualstudio.com/myorg/myproject/_git/MyRepo"
+        mock_clone_from.assert_called_once_with(expected_url, "/test/path", allow_unsafe_protocols=False)
 
     @patch.object(Repo, "clone_from")
     @patch.object(os.path, "isdir")
@@ -181,16 +162,12 @@ class LookerUtilsTest(TestCase):
         """
         mock_isdir.return_value = False
 
-        gitlab_creds = GitlabCredentials(
-            repositoryOwner="owner", repositoryName="repo", token="test_token"
-        )
+        gitlab_creds = GitlabCredentials(repositoryOwner="owner", repositoryName="repo", token="test_token")
 
         _clone_repo("owner/repo", "/test/path", gitlab_creds)
 
         expected_url = "https://x-token-auth:test_token@gitlab.com/owner/repo.git"
-        mock_clone_from.assert_called_once_with(
-            expected_url, "/test/path", allow_unsafe_protocols=False
-        )
+        mock_clone_from.assert_called_once_with(expected_url, "/test/path", allow_unsafe_protocols=False)
 
     @patch.object(Repo, "clone_from")
     @patch.object(os.path, "isdir")
@@ -209,12 +186,8 @@ class LookerUtilsTest(TestCase):
 
         _clone_repo("owner/repo", "/test/path", gitlab_creds)
 
-        expected_url = (
-            "https://x-token-auth:test_token@gitlab.internal.company.com/owner/repo.git"
-        )
-        mock_clone_from.assert_called_once_with(
-            expected_url, "/test/path", allow_unsafe_protocols=False
-        )
+        expected_url = "https://x-token-auth:test_token@gitlab.internal.company.com/owner/repo.git"
+        mock_clone_from.assert_called_once_with(expected_url, "/test/path", allow_unsafe_protocols=False)
 
     @patch.object(Repo, "clone_from")
     @patch.object(os.path, "isdir")
@@ -234,9 +207,7 @@ class LookerUtilsTest(TestCase):
         _clone_repo("owner/repo", "/test/path", bitbucket_creds)
 
         expected_url = "https://x-token-auth:test_token@bitbucket.org/owner/repo.git"
-        mock_clone_from.assert_called_once_with(
-            expected_url, "/test/path", allow_unsafe_protocols=True
-        )
+        mock_clone_from.assert_called_once_with(expected_url, "/test/path", allow_unsafe_protocols=True)
 
     @patch.object(Repo, "clone_from")
     @patch.object(os.path, "isdir")
@@ -256,12 +227,8 @@ class LookerUtilsTest(TestCase):
 
         _clone_repo("owner/repo", "/test/path", bitbucket_creds)
 
-        expected_url = (
-            "https://x-token-auth:test_token@bitbucket.company.com/owner/repo.git"
-        )
-        mock_clone_from.assert_called_once_with(
-            expected_url, "/test/path", allow_unsafe_protocols=True
-        )
+        expected_url = "https://x-token-auth:test_token@bitbucket.company.com/owner/repo.git"
+        mock_clone_from.assert_called_once_with(expected_url, "/test/path", allow_unsafe_protocols=True)
 
     @patch.object(Repo, "clone_from")
     @patch.object(os.path, "isdir")
@@ -280,12 +247,8 @@ class LookerUtilsTest(TestCase):
 
         _clone_repo("owner/repo", "/test/path", github_creds)
 
-        expected_url = (
-            "https://x-oauth-basic:test_token@git.company.com:8080/owner/repo.git"
-        )
-        mock_clone_from.assert_called_once_with(
-            expected_url, "/test/path", allow_unsafe_protocols=False
-        )
+        expected_url = "https://x-oauth-basic:test_token@git.company.com:8080/owner/repo.git"
+        mock_clone_from.assert_called_once_with(expected_url, "/test/path", allow_unsafe_protocols=False)
 
     @patch.object(Repo, "clone_from")
     @patch.object(os.path, "isdir")
@@ -304,12 +267,8 @@ class LookerUtilsTest(TestCase):
 
         _clone_repo("owner/repo", "/test/path", github_creds)
 
-        expected_url = (
-            "https://x-oauth-basic:test_token@internal-git.company.com/owner/repo.git"
-        )
-        mock_clone_from.assert_called_once_with(
-            expected_url, "/test/path", allow_unsafe_protocols=False
-        )
+        expected_url = "https://x-oauth-basic:test_token@internal-git.company.com/owner/repo.git"
+        mock_clone_from.assert_called_once_with(expected_url, "/test/path", allow_unsafe_protocols=False)
 
     @patch.object(os.path, "isdir")
     def test_clone_repo_directory_exists(self, mock_isdir):
@@ -318,9 +277,7 @@ class LookerUtilsTest(TestCase):
         """
         mock_isdir.return_value = True
 
-        github_creds = GitHubCredentials(
-            repositoryOwner="owner", repositoryName="repo", token="test_token"
-        )
+        github_creds = GitHubCredentials(repositoryOwner="owner", repositoryName="repo", token="test_token")
 
         with patch.object(Repo, "clone_from") as mock_clone_from:
             _clone_repo("owner/repo", "/test/path", github_creds)
@@ -336,17 +293,13 @@ class LookerUtilsTest(TestCase):
         # The rmtree call will remove the directory, so isdir should return False after rmtree is called
         mock_isdir.return_value = False
 
-        github_creds = GitHubCredentials(
-            repositoryOwner="owner", repositoryName="repo", token="test_token"
-        )
+        github_creds = GitHubCredentials(repositoryOwner="owner", repositoryName="repo", token="test_token")
 
         _clone_repo("owner/repo", "/test/path", github_creds, overwrite=True)
 
         mock_rmtree.assert_called_once_with("/test/path", ignore_errors=True)
         expected_url = "https://x-oauth-basic:test_token@github.com/owner/repo.git"
-        mock_clone_from.assert_called_once_with(
-            expected_url, "/test/path", allow_unsafe_protocols=False
-        )
+        mock_clone_from.assert_called_once_with(expected_url, "/test/path", allow_unsafe_protocols=False)
 
     @patch.object(Repo, "clone_from")
     @patch.object(os.path, "isdir")
@@ -364,16 +317,13 @@ class LookerUtilsTest(TestCase):
 
     @patch.object(Repo, "clone_from")
     @patch.object(os.path, "isdir")
-    def test_clone_repo_error_does_not_leak_credentials(
-        self, mock_isdir, mock_clone_from
-    ):
+    def test_clone_repo_error_does_not_leak_credentials(self, mock_isdir, mock_clone_from):
         """
         When git clone fails, the error log must not expose the PAT or token.
         """
         mock_isdir.return_value = False
         mock_clone_from.side_effect = Exception(
-            "fatal: could not read Password for "
-            "'https://my_secret_pat@dev.azure.com': No such device or address"
+            "fatal: could not read Password for 'https://my_secret_pat@dev.azure.com': No such device or address"
         )
 
         azure_creds = GitHubCredentials(
@@ -383,9 +333,7 @@ class LookerUtilsTest(TestCase):
             gitHostURL="https://dev.azure.com",
         )
 
-        with patch(
-            "metadata.ingestion.source.dashboard.looker.utils.logger"
-        ) as mock_logger:
+        with patch("metadata.ingestion.source.dashboard.looker.utils.logger") as mock_logger:
             _clone_repo("org/project/repo", "/test/path", azure_creds)
             error_call_args = mock_logger.error.call_args[0][0]
             assert "my_secret_pat" not in error_call_args
@@ -393,9 +341,7 @@ class LookerUtilsTest(TestCase):
 
     @patch.object(Repo, "clone_from")
     @patch.object(os.path, "isdir")
-    def test_clone_repo_error_sanitizes_all_credential_formats(
-        self, mock_isdir, mock_clone_from
-    ):
+    def test_clone_repo_error_sanitizes_all_credential_formats(self, mock_isdir, mock_clone_from):
         """
         Credential sanitization should work for all URL formats
         (PAT@host, x-oauth-basic:token@host, x-token-auth:token@host).
@@ -411,9 +357,7 @@ class LookerUtilsTest(TestCase):
             token="secret_token",
         )
 
-        with patch(
-            "metadata.ingestion.source.dashboard.looker.utils.logger"
-        ) as mock_logger:
+        with patch("metadata.ingestion.source.dashboard.looker.utils.logger") as mock_logger:
             _clone_repo("owner/repo", "/test/path", github_creds)
             error_call_args = mock_logger.error.call_args[0][0]
             assert "secret_token" not in error_call_args

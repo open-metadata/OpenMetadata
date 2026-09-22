@@ -1,0 +1,313 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { Space, Typography } from 'antd';
+import { DefaultOptionType } from 'antd/lib/select';
+import { debounce, isEmpty } from 'lodash';
+import { useCallback, useMemo, useState } from 'react';
+import { WILD_CARD_CHAR } from '../../../constants/char.constants';
+import {
+  AGGREGATE_PAGE_SIZE_LARGE,
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  TIER_CATEGORY,
+} from '../../../constants/constants';
+import {
+  TEST_CASE_DIMENSIONS_OPTION,
+  TEST_CASE_DIMENSION_LABELS,
+  TEST_CASE_FILTERS,
+} from '../../../constants/profiler.constant';
+import { DataQualityDimensions } from '../../../enums/DataQuality.enum';
+import { SearchIndex } from '../../../enums/search.enum';
+import { getDataQualityDimensions } from '../../../rest/dataQualityDimensionAPI';
+import { searchQuery } from '../../../rest/searchAPI';
+import { getTags } from '../../../rest/tagAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import tagClassBase from '../../../utils/TagClassBase';
+
+export interface FetchedOption extends DefaultOptionType {
+  /** Plain name kept alongside the rich antd JSX label for renderer reuse. */
+  name?: string;
+  subLabel?: string;
+}
+
+/** The unset marker. It has no dimension entity of its own, so it is spelled out here. */
+const NO_DIMENSION_OPTION: FetchedOption = {
+  label: TEST_CASE_DIMENSION_LABELS[DataQualityDimensions.NoDimension],
+  name: TEST_CASE_DIMENSION_LABELS[DataQualityDimensions.NoDimension],
+  value: DataQualityDimensions.NoDimension,
+};
+
+/** Dimension options carry the plain name alongside the label; both paths must set it. */
+const withName = (option: { label: string; value: string }): FetchedOption => ({
+  ...option,
+  name: option.label,
+});
+
+const optionLabel = (name: string, fqn?: string, testId?: string) => (
+  <Space data-testid={testId ?? fqn} direction="vertical" size={0}>
+    {fqn && (
+      <Typography.Text className="text-xs text-grey-muted">
+        {fqn}
+      </Typography.Text>
+    )}
+    <Typography.Text className="text-sm">{name}</Typography.Text>
+  </Space>
+);
+
+/**
+ * Owns the async filter-OPTIONS cluster: the per-filter option lists, their
+ * loading flag, every fetcher (tier/tag/search-backed table/service/data
+ * product), the debounced search fetchers and the by-key lookup maps. The
+ * shared {@link getInitialOptions} prefetcher is returned so both the filters
+ * concern and the data concern can drive it.
+ */
+export const useTestCaseFilterOptions = () => {
+  const [tableOptions, setTableOptions] = useState<FetchedOption[]>([]);
+  const [tagOptions, setTagOptions] = useState<FetchedOption[]>([]);
+  const [tierOptions, setTierOptions] = useState<FetchedOption[]>([]);
+  const [serviceOptions, setServiceOptions] = useState<FetchedOption[]>([]);
+  const [dataProductOptions, setDataProductOptions] = useState<FetchedOption[]>(
+    []
+  );
+  const [dimensionOptions, setDimensionOptions] = useState<FetchedOption[]>([]);
+  const [isOptionsLoading, setIsOptionsLoading] = useState(false);
+
+  /**
+   * Dimensions are entities now, so the filter has to list whatever is in Settings >
+   * Preferences > Data Quality rather than the shipped eight — otherwise a custom dimension
+   * can be created and assigned to test cases but never filtered on. "No Dimension" stays a
+   * hand-written entry: it is the unset marker and has no dimension entity of its own. Same
+   * fetch the test case and test definition forms already do.
+   */
+  const fetchDimensionOptions = async () => {
+    setIsOptionsLoading(true);
+    try {
+      const { data } = await getDataQualityDimensions({
+        limit: AGGREGATE_PAGE_SIZE_LARGE,
+      });
+      setDimensionOptions([
+        NO_DIMENSION_OPTION,
+        ...data.map((dimension) =>
+          withName({ label: getEntityName(dimension), value: dimension.name })
+        ),
+      ]);
+    } catch {
+      // Degrade to the shipped dimensions rather than to an empty dropdown.
+      setDimensionOptions(TEST_CASE_DIMENSIONS_OPTION.map(withName));
+    } finally {
+      setIsOptionsLoading(false);
+    }
+  };
+
+  const fetchTierOptions = async () => {
+    try {
+      setIsOptionsLoading(true);
+      const { data } = await getTags({
+        parent: 'Tier',
+        limit: PAGE_SIZE_LARGE,
+      });
+      setTierOptions(
+        data.map((hit) => ({
+          label: optionLabel(getEntityName(hit), hit.fullyQualifiedName),
+          name: getEntityName(hit),
+          subLabel: hit.fullyQualifiedName,
+          value: hit.fullyQualifiedName,
+        }))
+      );
+    } catch {
+      setTierOptions([]);
+    } finally {
+      setIsOptionsLoading(false);
+    }
+  };
+
+  const fetchTagOptions = async (search?: string) => {
+    setIsOptionsLoading(true);
+    try {
+      const { data } = await tagClassBase.getTags(search ?? '', 1);
+      setTagOptions(
+        data
+          .filter(
+            ({ data: { classification } }) =>
+              classification?.name !== TIER_CATEGORY
+          )
+          .map(({ label, value }) => ({
+            label: optionLabel(label, value, value),
+            name: label,
+            subLabel: value,
+            value,
+          }))
+      );
+    } catch {
+      setTagOptions([]);
+    } finally {
+      setIsOptionsLoading(false);
+    }
+  };
+
+  const fetchSearchOptions = async (
+    searchIndex: SearchIndex,
+    setter: (options: FetchedOption[]) => void,
+    valueKey: 'name' | 'fullyQualifiedName',
+    query: string
+  ) => {
+    setIsOptionsLoading(true);
+    try {
+      const response = await searchQuery({
+        query,
+        pageNumber: 1,
+        pageSize: PAGE_SIZE_BASE,
+        searchIndex,
+        fetchSource: true,
+        includeFields: ['name', 'fullyQualifiedName', 'displayName'],
+      });
+      setter(
+        response.hits.hits.map((hit) => ({
+          label: optionLabel(
+            getEntityName(hit._source),
+            hit._source.fullyQualifiedName,
+            valueKey === 'name'
+              ? hit._source.name
+              : hit._source.fullyQualifiedName
+          ),
+          name: getEntityName(hit._source),
+          subLabel: hit._source.fullyQualifiedName,
+          value: hit._source[valueKey] ?? hit._source.name,
+        }))
+      );
+    } catch {
+      setter([]);
+    } finally {
+      setIsOptionsLoading(false);
+    }
+  };
+
+  const fetchTableData = (search = WILD_CARD_CHAR) =>
+    fetchSearchOptions(
+      SearchIndex.TABLE,
+      setTableOptions,
+      'fullyQualifiedName',
+      `*${search}*`
+    );
+
+  const fetchServiceOptions = (search = WILD_CARD_CHAR) =>
+    fetchSearchOptions(
+      SearchIndex.DATABASE_SERVICE,
+      setServiceOptions,
+      'name',
+      `*${search}*`
+    );
+
+  const fetchDataProductOptions = (search = WILD_CARD_CHAR) =>
+    fetchSearchOptions(
+      SearchIndex.DATA_PRODUCT,
+      setDataProductOptions,
+      'fullyQualifiedName',
+      search === WILD_CARD_CHAR ? search : `*${search}*`
+    );
+
+  const initialOptionsConfig: Record<
+    string,
+    { options: FetchedOption[]; fetch: () => void }
+  > = {
+    [TEST_CASE_FILTERS.tier]: { options: tierOptions, fetch: fetchTierOptions },
+    [TEST_CASE_FILTERS.table]: { options: tableOptions, fetch: fetchTableData },
+    [TEST_CASE_FILTERS.tags]: { options: tagOptions, fetch: fetchTagOptions },
+    [TEST_CASE_FILTERS.service]: {
+      options: serviceOptions,
+      fetch: fetchServiceOptions,
+    },
+    [TEST_CASE_FILTERS.dataProduct]: {
+      options: dataProductOptions,
+      fetch: fetchDataProductOptions,
+    },
+    [TEST_CASE_FILTERS.dimension]: {
+      options: dimensionOptions,
+      fetch: fetchDimensionOptions,
+    },
+  };
+
+  const getInitialOptions = (key: string, isLengthCheck = false) => {
+    const entry = initialOptionsConfig[key];
+    if (entry && (isEmpty(entry.options) || !isLengthCheck)) {
+      entry.fetch();
+    }
+  };
+
+  const debounceFetchTableData = useCallback(
+    debounce(fetchTableData, 1000),
+    []
+  );
+  const debounceFetchTagOptions = useCallback(
+    debounce(fetchTagOptions, 1000),
+    []
+  );
+  const debounceFetchServiceOptions = useCallback(
+    debounce(fetchServiceOptions, 1000),
+    []
+  );
+  const debounceFetchDataProductOptions = useCallback(
+    debounce(fetchDataProductOptions, 1000),
+    []
+  );
+
+  const asyncOptionsByKey = useMemo<Record<string, FetchedOption[]>>(
+    () => ({
+      [TEST_CASE_FILTERS.table]: tableOptions,
+      [TEST_CASE_FILTERS.tags]: tagOptions,
+      [TEST_CASE_FILTERS.tier]: tierOptions,
+      [TEST_CASE_FILTERS.service]: serviceOptions,
+      [TEST_CASE_FILTERS.dataProduct]: dataProductOptions,
+      [TEST_CASE_FILTERS.dimension]: dimensionOptions,
+    }),
+    [
+      tableOptions,
+      tagOptions,
+      tierOptions,
+      serviceOptions,
+      dataProductOptions,
+      dimensionOptions,
+    ]
+  );
+
+  const onSearchByKey: Record<string, (search: string) => void> = {
+    [TEST_CASE_FILTERS.table]: debounceFetchTableData,
+    [TEST_CASE_FILTERS.tags]: debounceFetchTagOptions,
+    [TEST_CASE_FILTERS.service]: debounceFetchServiceOptions,
+    [TEST_CASE_FILTERS.dataProduct]: debounceFetchDataProductOptions,
+  };
+
+  return {
+    tableOptions,
+    tagOptions,
+    tierOptions,
+    serviceOptions,
+    dataProductOptions,
+    dimensionOptions,
+    isOptionsLoading,
+    fetchDimensionOptions,
+    fetchTierOptions,
+    fetchTagOptions,
+    fetchSearchOptions,
+    fetchTableData,
+    fetchServiceOptions,
+    fetchDataProductOptions,
+    getInitialOptions,
+    debounceFetchTableData,
+    debounceFetchTagOptions,
+    debounceFetchServiceOptions,
+    debounceFetchDataProductOptions,
+    asyncOptionsByKey,
+    onSearchByKey,
+  };
+};

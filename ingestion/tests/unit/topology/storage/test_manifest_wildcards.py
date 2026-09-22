@@ -17,7 +17,6 @@ Covers the ``expand_entry`` / ``expand_entries`` helpers on
 ``dataPath`` into one or more concrete entries. Literal paths must
 pass through unchanged for backwards compatibility.
 """
-from typing import List, Tuple
 
 import pytest
 
@@ -38,10 +37,10 @@ class _Stub:
     without needing to instantiate the full Source, which requires a
     live workflow config and connection."""
 
-    def __init__(self, keys: List[Tuple[str, int]]):
+    def __init__(self, keys: list[tuple[str, int]]):
         self._keys = keys
 
-    def list_keys(self, bucket, prefix):  # noqa: ARG002 — test stub
+    def list_keys(self, bucket, prefix):
         for key, size in self._keys:
             if key.startswith(prefix):
                 yield key, size
@@ -50,7 +49,7 @@ class _Stub:
     expand_entries = StorageServiceSource.expand_entries
 
 
-def _names(entries: List[MetadataEntry]) -> List[str]:
+def _names(entries: list[MetadataEntry]) -> list[str]:
     return [e.dataPath for e in entries]
 
 
@@ -105,9 +104,7 @@ class TestGlobExpansion:
                 ("data/eu/events/f1.parquet", 150),
             ]
         )
-        entry = MetadataEntry(
-            dataPath="data/*/events/*.parquet", structureFormat="parquet"
-        )
+        entry = MetadataEntry(dataPath="data/*/events/*.parquet", structureFormat="parquet")
         expanded = list(stub.expand_entry("bucket", entry))
         paths = _names(expanded)
         assert len(paths) == 2
@@ -173,9 +170,7 @@ class TestAutoPartitionDetection:
             dataPath="data/events/**/*.parquet",
             structureFormat="parquet",
             autoPartitionDetection=True,
-            partitionColumns=[
-                PartitionColumn(name="explicit_year", dataType=DataType.INT)
-            ],
+            partitionColumns=[PartitionColumn(name="explicit_year", dataType=DataType.INT)],
         )
         expanded = list(stub.expand_entry("bucket", entry))
         assert len(expanded) == 1
@@ -284,12 +279,8 @@ class TestResolveManifestEntriesPrecedence:
         resolver._manifest_entries_to_metadata_entries_by_container = (
             StorageServiceSource._manifest_entries_to_metadata_entries_by_container
         )
-        resolver._parsed_default_manifest = (
-            StorageServiceSource._parsed_default_manifest.__get__(resolver)
-        )
-        resolver._resolve_manifest_entries = (
-            StorageServiceSource._resolve_manifest_entries.__get__(resolver)
-        )
+        resolver._parsed_default_manifest = StorageServiceSource._parsed_default_manifest.__get__(resolver)
+        resolver._resolve_manifest_entries = StorageServiceSource._resolve_manifest_entries.__get__(resolver)
         return resolver
 
     def test_bucket_manifest_wins_over_default(self):
@@ -299,9 +290,7 @@ class TestResolveManifestEntriesPrecedence:
             StorageContainerConfig,
         )
 
-        bucket_cfg = StorageContainerConfig(
-            entries=[MetadataEntry(dataPath="from/bucket", structureFormat="parquet")]
-        )
+        bucket_cfg = StorageContainerConfig(entries=[MetadataEntry(dataPath="from/bucket", structureFormat="parquet")])
         default_json = _json.dumps(
             {
                 "entries": [
@@ -362,13 +351,9 @@ class TestParsedDefaultManifest:
         resolver = SimpleNamespace()
         resolver.source_config = SimpleNamespace(defaultManifest=raw_manifest)
         if with_status:
-            resolver.status = SimpleNamespace(
-                warning=lambda *a, **kw: resolver._warnings.append((a, kw))
-            )
+            resolver.status = SimpleNamespace(warning=lambda *a, **kw: resolver._warnings.append((a, kw)))
             resolver._warnings = []
-        resolver._parsed_default_manifest = (
-            StorageServiceSource._parsed_default_manifest.__get__(resolver)
-        )
+        resolver._parsed_default_manifest = StorageServiceSource._parsed_default_manifest.__get__(resolver)
         return resolver
 
     def test_returns_none_when_unset(self):
@@ -467,22 +452,18 @@ class TestContainerFilterAppliesToManifestEntries:
         resolver.list_keys = lambda *a, **kw: iter(())  # no globs here
         resolver.expand_entry = StorageServiceSource.expand_entry.__get__(resolver)
         resolver.expand_entries = StorageServiceSource.expand_entries.__get__(resolver)
-        resolver.filter_manifest_entries = (
-            StorageServiceSource.filter_manifest_entries.__get__(resolver)
-        )
+        resolver.filter_manifest_entries = StorageServiceSource.filter_manifest_entries.__get__(resolver)
         resolver.status = SimpleNamespace(filter=lambda *a, **kw: None)
         return resolver
 
-    def test_exclude_matches_dataPath(self):
+    def test_exclude_matches_dataPath(self):  # noqa: N802
         """Entries whose dataPath matches the exclude pattern must be
         dropped before any sample-file fetch happens. containerFilter
         patterns are left-anchored regex (``re.match``), so ``.*_SUCCESS``
         matches any path ending with _SUCCESS."""
         from metadata.generated.schema.type.filterPattern import FilterPattern
 
-        resolver = self._stub(
-            container_filter_pattern=FilterPattern(excludes=[".*_SUCCESS"])
-        )
+        resolver = self._stub(container_filter_pattern=FilterPattern(excludes=[".*_SUCCESS"]))
         entries = [
             MetadataEntry(dataPath="data/events", structureFormat="parquet"),
             # These would match the user-provided exclude but also hit
@@ -498,9 +479,7 @@ class TestContainerFilterAppliesToManifestEntries:
     def test_include_takes_precedence(self):
         from metadata.generated.schema.type.filterPattern import FilterPattern
 
-        resolver = self._stub(
-            container_filter_pattern=FilterPattern(includes=["data/events"])
-        )
+        resolver = self._stub(container_filter_pattern=FilterPattern(includes=["data/events"]))
         entries = [
             MetadataEntry(dataPath="data/events", structureFormat="parquet"),
             MetadataEntry(dataPath="data/other", structureFormat="parquet"),
@@ -529,46 +508,34 @@ class TestContainerFilterAppliesToManifestEntries:
             MetadataEntry(dataPath="data/_delta_log/00000", structureFormat="parquet"),
             MetadataEntry(dataPath="data/.tmp/x", structureFormat="parquet"),
         ]
-        paths = [
-            e.dataPath for e in resolver.filter_manifest_entries("bucket", entries)
-        ]
+        paths = [e.dataPath for e in resolver.filter_manifest_entries("bucket", entries)]
         assert paths == ["data/events"]
 
     def test_multiple_exclude_patterns(self):
         """Each entry in ``excludes`` is evaluated independently."""
         from metadata.generated.schema.type.filterPattern import FilterPattern
 
-        resolver = self._stub(
-            container_filter_pattern=FilterPattern(excludes=[".*staging", ".*archive"])
-        )
+        resolver = self._stub(container_filter_pattern=FilterPattern(excludes=[".*staging", ".*archive"]))
         entries = [
             MetadataEntry(dataPath="data/events", structureFormat="parquet"),
             MetadataEntry(dataPath="data/staging", structureFormat="parquet"),
             MetadataEntry(dataPath="data/archive", structureFormat="parquet"),
             MetadataEntry(dataPath="data/orders", structureFormat="parquet"),
         ]
-        paths = [
-            e.dataPath for e in resolver.filter_manifest_entries("bucket", entries)
-        ]
+        paths = [e.dataPath for e in resolver.filter_manifest_entries("bucket", entries)]
         assert sorted(paths) == ["data/events", "data/orders"]
 
     def test_multiple_include_patterns(self):
         """Any include match keeps the entry."""
         from metadata.generated.schema.type.filterPattern import FilterPattern
 
-        resolver = self._stub(
-            container_filter_pattern=FilterPattern(
-                includes=["data/events", "data/orders"]
-            )
-        )
+        resolver = self._stub(container_filter_pattern=FilterPattern(includes=["data/events", "data/orders"]))
         entries = [
             MetadataEntry(dataPath="data/events", structureFormat="parquet"),
             MetadataEntry(dataPath="data/orders", structureFormat="parquet"),
             MetadataEntry(dataPath="data/other", structureFormat="parquet"),
         ]
-        paths = sorted(
-            e.dataPath for e in resolver.filter_manifest_entries("bucket", entries)
-        )
+        paths = sorted(e.dataPath for e in resolver.filter_manifest_entries("bucket", entries))
         assert paths == ["data/events", "data/orders"]
 
     def test_includes_and_excludes_together(self):
@@ -587,25 +554,19 @@ class TestContainerFilterAppliesToManifestEntries:
             MetadataEntry(dataPath="data/staging", structureFormat="parquet"),
             MetadataEntry(dataPath="other/x", structureFormat="parquet"),
         ]
-        paths = sorted(
-            e.dataPath for e in resolver.filter_manifest_entries("bucket", entries)
-        )
+        paths = sorted(e.dataPath for e in resolver.filter_manifest_entries("bucket", entries))
         assert paths == ["data/events"]
 
     def test_filter_is_case_insensitive(self):
         """``filter_by_container`` uses ``re.IGNORECASE``."""
         from metadata.generated.schema.type.filterPattern import FilterPattern
 
-        resolver = self._stub(
-            container_filter_pattern=FilterPattern(excludes=[".*STAGING"])
-        )
+        resolver = self._stub(container_filter_pattern=FilterPattern(excludes=[".*STAGING"]))
         entries = [
             MetadataEntry(dataPath="data/staging", structureFormat="parquet"),
             MetadataEntry(dataPath="data/events", structureFormat="parquet"),
         ]
-        paths = [
-            e.dataPath for e in resolver.filter_manifest_entries("bucket", entries)
-        ]
+        paths = [e.dataPath for e in resolver.filter_manifest_entries("bucket", entries)]
         assert paths == ["data/events"]
 
     def test_empty_includes_and_excludes_lists_are_noops(self):
@@ -613,9 +574,7 @@ class TestContainerFilterAppliesToManifestEntries:
         as 'no pattern'."""
         from metadata.generated.schema.type.filterPattern import FilterPattern
 
-        resolver = self._stub(
-            container_filter_pattern=FilterPattern(includes=[], excludes=[])
-        )
+        resolver = self._stub(container_filter_pattern=FilterPattern(includes=[], excludes=[]))
         entries = [
             MetadataEntry(dataPath="data/events", structureFormat="parquet"),
             MetadataEntry(dataPath="data/orders", structureFormat="parquet"),
@@ -693,17 +652,11 @@ class TestFilterAppliesToExpandedGlobEntries:
             defaultManifest=None,
             containerFilterPattern=container_filter_pattern,
         )
-        resolver.list_keys = lambda bucket, prefix: iter(
-            (k, s) for k, s in keys if k.startswith(prefix or "")
-        )
+        resolver.list_keys = lambda bucket, prefix: iter((k, s) for k, s in keys if k.startswith(prefix or ""))
         resolver.expand_entry = StorageServiceSource.expand_entry.__get__(resolver)
         resolver.expand_entries = StorageServiceSource.expand_entries.__get__(resolver)
-        resolver.filter_manifest_entries = (
-            StorageServiceSource.filter_manifest_entries.__get__(resolver)
-        )
-        resolver.status = SimpleNamespace(
-            filter=lambda *a, **kw: None, warning=lambda *a, **kw: None
-        )
+        resolver.filter_manifest_entries = StorageServiceSource.filter_manifest_entries.__get__(resolver)
+        resolver.status = SimpleNamespace(filter=lambda *a, **kw: None, warning=lambda *a, **kw: None)
         return resolver
 
     def test_glob_expansion_then_filter_drops_excluded(self):
@@ -801,14 +754,10 @@ class TestManifestEntryPartitionColumnConversion:
         )
 
     def test_explicit_partition_columns_converted_to_metadata_entry(self):
-        manifest = self._manifest_with_partition_cols(
-            [{"name": "dt", "dataType": DataType.DATE}]
-        )
+        manifest = self._manifest_with_partition_cols([{"name": "dt", "dataType": DataType.DATE}])
 
-        entries = (
-            StorageServiceSource._manifest_entries_to_metadata_entries_by_container(
-                container_name="bucket-a", manifest=manifest
-            )
+        entries = StorageServiceSource._manifest_entries_to_metadata_entries_by_container(
+            container_name="bucket-a", manifest=manifest
         )
 
         assert len(entries) == 1
@@ -818,17 +767,14 @@ class TestManifestEntryPartitionColumnConversion:
         assert cols[0].name == "dt"
         assert cols[0].dataType == DataType.DATE
         assert type(cols[0]).__module__ == (
-            "metadata.generated.schema.metadataIngestion.storage."
-            "containerMetadataConfig"
+            "metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig"
         )
 
     def test_partition_columns_none_stays_none(self):
         manifest = self._manifest_with_partition_cols([])
 
-        entries = (
-            StorageServiceSource._manifest_entries_to_metadata_entries_by_container(
-                container_name="bucket-a", manifest=manifest
-            )
+        entries = StorageServiceSource._manifest_entries_to_metadata_entries_by_container(
+            container_name="bucket-a", manifest=manifest
         )
 
         assert entries[0].partitionColumns is None
@@ -846,10 +792,8 @@ class TestManifestEntryPartitionColumnConversion:
             ]
         )
 
-        entries = (
-            StorageServiceSource._manifest_entries_to_metadata_entries_by_container(
-                container_name="bucket-a", manifest=manifest
-            )
+        entries = StorageServiceSource._manifest_entries_to_metadata_entries_by_container(
+            container_name="bucket-a", manifest=manifest
         )
 
         cols = entries[0].partitionColumns

@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/data/glossaryTerm.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "GlossaryTerm",
   "description": "This schema defines te Glossary term entities.",
   "$comment": "@om-entity-type",
@@ -21,44 +21,6 @@
           "format": "uri"
         }
       },
-      "additionalProperties": false
-    },
-    "conceptMappingType": {
-      "description": "Type of mapping used to align this term with an external concept.",
-      "type": "string",
-      "enum": [
-        "EXACT_MATCH",
-        "CLOSE_MATCH",
-        "BROAD_MATCH",
-        "NARROW_MATCH",
-        "RELATED_MATCH",
-        "SAME_AS"
-      ]
-    },
-    "conceptMapping": {
-      "description": "Mapping to an external concept (e.g., SKOS concept IRI).",
-      "type": "object",
-      "properties": {
-        "conceptIri": {
-          "description": "External concept IRI to map this glossary term to.",
-          "type": "string",
-          "format": "uri"
-        },
-        "mappingType": {
-          "description": "Type of mapping used for the external concept alignment.",
-          "$ref": "#/definitions/conceptMappingType"
-        },
-        "schemeIri": {
-          "description": "Optional external concept scheme IRI for the mapped concept.",
-          "type": "string",
-          "format": "uri"
-        },
-        "source": {
-          "description": "Optional source label or catalog for the external concept.",
-          "type": "string"
-        }
-      },
-      "required": ["conceptIri", "mappingType"],
       "additionalProperties": false
     }
   },
@@ -85,6 +47,11 @@
     "fullyQualifiedName": {
       "description": "A unique name that identifies a glossary term. It captures name hierarchy of glossary of terms in the form of `glossaryName.parentTerm.childTerm`.",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "iri": {
+      "description": "Canonical IRI of this term in its source ontology (e.g., `http://example.com/ontology/hcp#HealthcareProvider`). Preserves identity across ontology import/export round-trips and is used as the RDF subject when present. Empty for terms not sourced from an external ontology.",
+      "type": "string",
+      "format": "uri"
     },
     "synonyms": {
       "description": "Alternate names that are synonyms or near-synonyms for the glossary term.",
@@ -124,9 +91,41 @@
       "description": "Optional mappings to external concepts (e.g., SKOS alignments).",
       "type": "array",
       "items": {
-        "$ref": "../../entity/data/glossaryTerm.json#/definitions/conceptMapping"
+        "$ref": "../../type/conceptMapping.json"
       },
       "default": []
+    },
+    "attributes": {
+      "description": "Typed properties governed by this ontology concept.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyAttribute.json"
+      },
+      "default": []
+    },
+    "effectiveAttributes": {
+      "description": "Attributes declared by this concept together with those inherited from its ancestors through subsumption. Computed by the server on read and never stored; inherited entries carry `inherited` and `declaringTerm`.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyAttribute.json"
+      },
+      "default": []
+    },
+    "realizedIn": {
+      "description": "Data assets that physically realize this concept. Distinct from tag labels, which only record that an asset references the concept.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/assetRealization.json"
+      },
+      "default": []
+    },
+    "conceptType": {
+      "description": "Vocabulary the source ontology used to assert this concept. Defaults to `BOTH`, which emits the term as an `owl:Class` and a `skos:Concept`.",
+      "$ref": "../../type/ontologyConceptType.json"
+    },
+    "ontologySource": {
+      "description": "Pinned source provenance when this term belongs to an application ontology subset.",
+      "$ref": "../../type/ontologySourceProvenance.json"
     },
     "version": {
       "description": "Metadata version of the entity.",

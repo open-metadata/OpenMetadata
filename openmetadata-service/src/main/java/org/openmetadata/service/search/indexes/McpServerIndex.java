@@ -22,6 +22,9 @@ public class McpServerIndex implements TaggableIndex, LineageIndex {
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
+    AIGovernanceIndexProjection.project(
+        doc, mcpServer.getGovernanceMetadata(), mcpServer.getServerType());
+
     return doc;
   }
 }

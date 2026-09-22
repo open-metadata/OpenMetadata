@@ -18,6 +18,7 @@ Covers:
     search, preventing "AI Product" from being returned when "AI Products" is
     requested.
 """
+
 import json
 from unittest.mock import MagicMock
 from urllib.parse import unquote
@@ -67,14 +68,10 @@ class TestNameSearchQueryEsUrlEncoding:
         )
         assert "query_filter=" in query
         raw_filter = query.split("query_filter=")[1].split("&from=")[0]
-        assert (
-            "&" not in raw_filter
-        ), "Unencoded '&' in query_filter would break URL parameter parsing"
+        assert "&" not in raw_filter, "Unencoded '&' in query_filter would break URL parameter parsing"
         decoded = unquote(raw_filter)
         parsed = json.loads(decoded)
-        assert (
-            "Risk & Compliance Engineering" in parsed["query"]["query_string"]["query"]
-        )
+        assert "Risk & Compliance Engineering" in parsed["query"]["query_string"]["query"]
 
     def test_plain_name_is_still_valid(self):
         query = OMetaUserMixin.name_search_query_es(
@@ -90,9 +87,7 @@ class TestNameSearchQueryEsUrlEncoding:
 
     def test_other_special_characters_are_encoded(self):
         name = "R&D / Operations"
-        query = OMetaUserMixin.name_search_query_es(
-            entity=Team, name=name, from_=0, size=1
-        )
+        query = OMetaUserMixin.name_search_query_es(entity=Team, name=name, from_=0, size=1)
         raw_filter = query.split("query_filter=")[1].split("&from=")[0]
         assert "&" not in raw_filter
         assert "/" not in raw_filter
@@ -142,9 +137,7 @@ class TestGetReferenceByNameExactMatch:
         mixin.get_by_name = MagicMock(return_value=special_team)
         mixin._search_by_name = MagicMock(return_value=None)
 
-        result = mixin.get_reference_by_name(
-            name="Risk & Compliance Engineering", is_owner=True
-        )
+        result = mixin.get_reference_by_name(name="Risk & Compliance Engineering", is_owner=True)
 
         assert result is not None
         assert result.root[0].name == "Risk & Compliance Engineering"
@@ -181,14 +174,10 @@ class TestGetReferenceByNameExactMatch:
         mixin._search_by_name = MagicMock()
 
         with caplog.at_level(logging.WARNING):
-            result = mixin.get_reference_by_name.__wrapped__(
-                mixin, name="SomeTeam", is_owner=True
-            )
+            result = mixin.get_reference_by_name.__wrapped__(mixin, name="SomeTeam", is_owner=True)
 
         assert result is None
-        assert any(
-            "Failed to resolve owner reference" in r.message for r in caplog.records
-        )
+        assert any("Failed to resolve owner reference" in r.message for r in caplog.records)
         mixin._search_by_name.assert_not_called()
 
     def test_search_failure_returns_none_and_logs_warning(self, caplog):
@@ -196,19 +185,13 @@ class TestGetReferenceByNameExactMatch:
 
         mixin = _make_mixin()
         mixin.get_by_name = MagicMock(return_value=None)
-        mixin._search_by_name = MagicMock(
-            side_effect=RuntimeError("ES search index unavailable")
-        )
+        mixin._search_by_name = MagicMock(side_effect=RuntimeError("ES search index unavailable"))
 
         with caplog.at_level(logging.WARNING):
-            result = mixin.get_reference_by_name.__wrapped__(
-                mixin, name="SomeTeam", is_owner=True
-            )
+            result = mixin.get_reference_by_name.__wrapped__(mixin, name="SomeTeam", is_owner=True)
 
         assert result is None
-        assert any(
-            "Failed to resolve owner reference" in r.message for r in caplog.records
-        )
+        assert any("Failed to resolve owner reference" in r.message for r in caplog.records)
 
     def test_user_exact_match_preferred_over_fuzzy(self):
         mixin = _make_mixin()

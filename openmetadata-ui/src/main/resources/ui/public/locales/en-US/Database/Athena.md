@@ -48,11 +48,9 @@ And is defined as:
 ```
 
 
-{% note %}
-
+$$note
 If you have external services other than glue and facing permission issues, add the permissions to the list above.
-
-{% /note %}
+$$
 
 
 You can find further information on the Athena connector in the <a href="https://docs.open-metadata.org/connectors/database/athena" target="_blank">docs</a>.

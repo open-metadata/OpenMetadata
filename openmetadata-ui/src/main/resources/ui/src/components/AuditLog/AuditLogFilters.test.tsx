@@ -70,7 +70,7 @@ const capturedOnChange: Record<
 > = {};
 const capturedOnGetInitialOptions: Record<string, (key: string) => void> = {};
 
-jest.mock('../SearchDropdown/SearchDropdown', () =>
+jest.mock('../common/FilterSelectDropdown/FilterSelectDropdown', () =>
   jest
     .fn()
     .mockImplementation(
@@ -149,7 +149,7 @@ jest.mock('../../utils/APIUtils', () => ({
     ),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation(

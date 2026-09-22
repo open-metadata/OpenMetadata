@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/schema.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Topic",
   "$comment": "@om-entity-type",
   "description": "This schema defines the Topic entity. A topic is a feed into which message are published to by publishers and read from by consumers in a messaging service.",
@@ -66,7 +66,8 @@
       "description": "Local name (not fully qualified name) of the field. ",
       "type": "string",
       "minLength": 1,
-      "maxLength": 128
+      "maxLength": 128,
+      "pattern": "^((?!::)[^>\"\\x00-\\x1f])*$"
     },
     "field": {
       "type": "object",

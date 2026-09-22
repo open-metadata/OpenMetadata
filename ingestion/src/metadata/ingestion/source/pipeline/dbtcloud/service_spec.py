@@ -1,4 +1,5 @@
+from metadata.ingestion.source.pipeline.dbtcloud.connection import DBTCloudConnection
 from metadata.ingestion.source.pipeline.dbtcloud.metadata import DbtcloudSource
 from metadata.utils.service_spec import BaseSpec
 
-ServiceSpec = BaseSpec(metadata_source_class=DbtcloudSource)
+ServiceSpec = BaseSpec(metadata_source_class=DbtcloudSource, connection_class=DBTCloudConnection)  # pyright: ignore[reportArgumentType]

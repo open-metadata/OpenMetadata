@@ -13,81 +13,121 @@
 Airbyte Source Model module
 """
 
-from typing import List, Optional
-
 from pydantic import BaseModel, ConfigDict
 
 
 class AirbyteWorkspace(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    workspaceId: str
-    name: Optional[str] = None
+    workspaceId: str  # noqa: N815
+    name: str | None = None
 
 
 class AirbyteStream(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     name: str
-    namespace: Optional[str] = None
+    namespace: str | None = None
 
 
 class AirbyteSyncCatalogEntry(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    stream: Optional[AirbyteStream] = None
+    stream: AirbyteStream | None = None
 
 
 class AirbyteSyncCatalog(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    streams: Optional[List[AirbyteSyncCatalogEntry]] = None
+    streams: list[AirbyteSyncCatalogEntry] | None = None
 
 
 class AirbyteConnectionModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    connectionId: str
-    name: Optional[str] = None
-    sourceId: Optional[str] = None
-    destinationId: Optional[str] = None
-    syncCatalog: Optional[AirbyteSyncCatalog] = None
+    connectionId: str  # noqa: N815
+    name: str | None = None
+    sourceId: str | None = None  # noqa: N815
+    destinationId: str | None = None  # noqa: N815
+    # Internal API (`api/v1`) returns a full `syncCatalog`; the public API
+    # (`api/public/v1`) returns the stream list under `configurations.streams`.
+    syncCatalog: AirbyteSyncCatalog | None = None  # noqa: N815
+    configurations: dict | None = None
+
+    @property
+    def resolved_streams(self) -> list[AirbyteStream]:
+        """Streams from whichever API responded (cf. resolved_type/resolved_configuration).
+
+        A database source's public-API entries carry `name` + `namespace`;
+        schemaless sources omit `namespace`. Issue #26993.
+        """
+        if self.syncCatalog and self.syncCatalog.streams:
+            return [entry.stream for entry in self.syncCatalog.streams if entry.stream]
+        return [
+            AirbyteStream(name=s["name"], namespace=s.get("namespace"))
+            for s in (self.configurations or {}).get("streams") or []
+            if isinstance(s, dict) and s.get("name")
+        ]
 
 
 class AirbyteJobAttempt(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     status: str
-    createdAt: Optional[int] = None
-    endedAt: Optional[int] = None
+    createdAt: int | None = None  # noqa: N815
+    endedAt: int | None = None  # noqa: N815
 
 
 class AirbyteSelfHostedJob(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    attempts: Optional[List[AirbyteJobAttempt]] = None
+    attempts: list[AirbyteJobAttempt] | None = None
 
 
 class AirbyteCloudJob(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     status: str
-    startTime: Optional[str] = None
-    lastUpdatedAt: Optional[str] = None
+    startTime: str | None = None  # noqa: N815
+    lastUpdatedAt: str | None = None  # noqa: N815
 
 
 class AirbyteSourceResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    sourceName: Optional[str] = None
-    connectionConfiguration: Optional[dict] = None
+    # Internal API (`/sources/get`) returns `sourceName` + `connectionConfiguration`;
+    # the public API (`/api/public/v1/sources/{id}`) returns `sourceType` + `configuration`.
+    sourceName: str | None = None  # noqa: N815
+    sourceType: str | None = None  # noqa: N815
+    connectionConfiguration: dict | None = None  # noqa: N815
+    configuration: dict | None = None
+
+    @property
+    def resolved_type(self) -> str | None:
+        """Connector type from whichever API responded (display name or slug)."""
+        return self.sourceName or self.sourceType
+
+    @property
+    def resolved_configuration(self) -> dict:
+        """Connection config from whichever API responded."""
+        return self.connectionConfiguration or self.configuration or {}
 
 
 class AirbyteDestinationResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    destinationName: Optional[str] = None
-    connectionConfiguration: Optional[dict] = None
+    destinationName: str | None = None  # noqa: N815
+    destinationType: str | None = None  # noqa: N815
+    connectionConfiguration: dict | None = None  # noqa: N815
+    configuration: dict | None = None
+
+    @property
+    def resolved_type(self) -> str | None:
+        return self.destinationName or self.destinationType
+
+    @property
+    def resolved_configuration(self) -> dict:
+        return self.connectionConfiguration or self.configuration or {}
 
 
 # --- Internal API list wrappers ---
@@ -96,19 +136,19 @@ class AirbyteDestinationResponse(BaseModel):
 class AirbyteWorkspaceList(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    workspaces: List[AirbyteWorkspace] = []
+    workspaces: list[AirbyteWorkspace] = []
 
 
 class AirbyteConnectionList(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    connections: List[AirbyteConnectionModel] = []
+    connections: list[AirbyteConnectionModel] = []
 
 
 class AirbyteSelfHostedJobList(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    jobs: List[AirbyteSelfHostedJob] = []
+    jobs: list[AirbyteSelfHostedJob] = []
 
 
 # --- Public API paginated list wrappers ---
@@ -117,19 +157,19 @@ class AirbyteSelfHostedJobList(BaseModel):
 class AirbytePublicWorkspaceList(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    data: List[AirbyteWorkspace] = []
-    next: Optional[str] = None
+    data: list[AirbyteWorkspace] = []
+    next: str | None = None
 
 
 class AirbytePublicConnectionList(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    data: List[AirbyteConnectionModel] = []
-    next: Optional[str] = None
+    data: list[AirbyteConnectionModel] = []
+    next: str | None = None
 
 
 class AirbytePublicCloudJobList(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    data: List[AirbyteCloudJob] = []
-    next: Optional[str] = None
+    data: list[AirbyteCloudJob] = []
+    next: str | None = None

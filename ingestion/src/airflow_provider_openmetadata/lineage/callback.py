@@ -12,9 +12,10 @@
 """
 OpenMetadata Airflow Lineage Backend
 """
+
 import logging
 import traceback
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING
 
 from airflow_provider_openmetadata.lineage.config.loader import get_lineage_config
 from airflow_provider_openmetadata.lineage.status import add_status
@@ -26,7 +27,7 @@ if TYPE_CHECKING:
     from airflow.models.baseoperator import BaseOperator
 
 
-def failure_callback(context: Dict[str, str]) -> None:
+def failure_callback(context: dict[str, str]) -> None:
     """
     Add this function to the args of your DAG or Task
     as the value of `on_failure_callback` to track
@@ -38,8 +39,8 @@ def failure_callback(context: Dict[str, str]) -> None:
         config = get_lineage_config()
         metadata = OpenMetadata(config.metadata_config)
 
-        operator: "BaseOperator" = context["task"]
-        dag: "DAG" = context["dag"]
+        operator: "BaseOperator" = context["task"]  # noqa: UP037
+        dag: "DAG" = context["dag"]  # noqa: F821, UP037
 
         operator.log.info("Updating pipeline status on error...")
 
@@ -68,7 +69,7 @@ def failure_callback(context: Dict[str, str]) -> None:
         logging.error("Lineage Callback exception %s", exc)
 
 
-def success_callback(context: Dict[str, str]) -> None:
+def success_callback(context: dict[str, str]) -> None:
     """
     Add this function to the args of your DAG or Task
     as the value of `on_success_callback` to track
@@ -80,8 +81,8 @@ def success_callback(context: Dict[str, str]) -> None:
         config = get_lineage_config()
         metadata = OpenMetadata(config.metadata_config)
 
-        operator: "BaseOperator" = context["task"]
-        dag: "DAG" = context["dag"]
+        operator: "BaseOperator" = context["task"]  # noqa: UP037
+        dag: "DAG" = context["dag"]  # noqa: F821, UP037
 
         operator.log.info("Updating pipeline status on success...")
 

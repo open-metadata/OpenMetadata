@@ -1,0 +1,10 @@
+{
+  "title": "No Config Authentication Types",
+  "javaType": "org.openmetadata.schema.services.connections.database.common.NoConfigAuthenticationTypes",
+  "description": "Database Authentication types not requiring config.",
+  "type": "string",
+  "enum": [
+    "OAuth2"
+  ],
+  "default": "OAuth2"
+}

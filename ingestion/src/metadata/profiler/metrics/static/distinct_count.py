@@ -74,11 +74,10 @@ class DistinctCount(StaticMetric):
                         for value in df_col_value:
                             counter.update([json.dumps(value)])
                     else:
-                        raise err
+                        raise err  # noqa: TRY201
             return len(counter.keys())
         except Exception as err:
             logger.debug(
-                f"Don't know how to process type {self.col.type}"
-                f" when computing Distinct Count.\n Error: {err}"
+                f"Don't know how to process type {self.col.type} when computing Distinct Count.\n Error: {err}"
             )
             return 0

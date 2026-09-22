@@ -19,12 +19,11 @@ client-facing task API surface without reviving the removed legacy suggestions A
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Annotated, Any
 
 from pydantic import ConfigDict, Field
-from typing_extensions import Annotated
 
-from metadata.generated.schema.type import basic, entityReference, tagLabel
+from metadata.generated.schema.type import basic, entityReference, tagLabel  # noqa: TC001
 from metadata.ingestion.models.custom_pydantic import BaseModel
 
 
@@ -51,6 +50,7 @@ class TaskEntityType(str, Enum):
     IncidentResolution = "IncidentResolution"
     PipelineReview = "PipelineReview"
     DataQualityReview = "DataQualityReview"
+    RecognizerFeedbackApproval = "RecognizerFeedbackApproval"
     CustomTask = "CustomTask"
 
 
@@ -86,20 +86,20 @@ class TaskExternalReference(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     system: str
-    externalId: str
-    externalUrl: Optional[basic.Href] = None
-    syncStatus: Optional[str] = None
-    lastSyncedAt: Optional[basic.Timestamp] = None
+    externalId: str  # noqa: N815
+    externalUrl: basic.Href | None = None  # noqa: N815
+    syncStatus: str | None = None  # noqa: N815
+    lastSyncedAt: basic.Timestamp | None = None  # noqa: N815
 
 
 class TaskResolution(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    type: Optional[TaskResolutionType] = None
-    resolvedBy: Optional[entityReference.EntityReference] = None
-    resolvedAt: Optional[basic.Timestamp] = None
-    comment: Optional[str] = None
-    newValue: Optional[str] = None
+    type: TaskResolutionType | None = None
+    resolvedBy: entityReference.EntityReference | None = None  # noqa: N815
+    resolvedAt: basic.Timestamp | None = None  # noqa: N815
+    comment: str | None = None
+    newValue: str | None = None  # noqa: N815
 
 
 class TaskComment(BaseModel):
@@ -108,7 +108,7 @@ class TaskComment(BaseModel):
     id: basic.Uuid
     message: str
     author: entityReference.EntityReference
-    createdAt: basic.Timestamp
+    createdAt: basic.Timestamp  # noqa: N815
 
 
 class TaskAvailableTransition(BaseModel):
@@ -116,80 +116,79 @@ class TaskAvailableTransition(BaseModel):
 
     id: str
     label: str
-    targetStageId: str
-    targetTaskStatus: TaskEntityStatus
-    resolutionType: Optional[TaskResolutionType] = None
-    formRef: Optional[str] = None
-    requiresComment: Optional[bool] = None
+    targetStageId: str  # noqa: N815
+    targetTaskStatus: TaskEntityStatus  # noqa: N815
+    resolutionType: TaskResolutionType | None = None  # noqa: N815
+    formRef: str | None = None  # noqa: N815
+    requiresComment: bool | None = None  # noqa: N815
 
 
 class Task(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     id: basic.Uuid
-    taskId: Optional[str] = None
-    name: Optional[basic.EntityName] = None
-    displayName: Optional[str] = None
-    fullyQualifiedName: Optional[basic.FullyQualifiedEntityName] = None
-    description: Optional[basic.Markdown] = None
+    taskId: str | None = None  # noqa: N815
+    name: basic.EntityName | None = None
+    displayName: str | None = None  # noqa: N815
+    fullyQualifiedName: basic.FullyQualifiedEntityName | None = None  # noqa: N815
+    description: basic.Markdown | None = None
     category: TaskCategory
     type: TaskEntityType
-    status: Optional[TaskEntityStatus] = None
-    priority: Optional[TaskPriority] = None
-    about: Optional[entityReference.EntityReference] = None
-    aboutFqnHash: Optional[str] = None
-    domains: Optional[List[entityReference.EntityReference]] = None
-    createdBy: Optional[entityReference.EntityReference] = None
-    createdById: Optional[str] = None
-    assignees: Optional[List[entityReference.EntityReference]] = None
-    reviewers: Optional[List[entityReference.EntityReference]] = None
-    watchers: Optional[List[entityReference.EntityReference]] = None
-    payload: Optional[Dict[str, Any]] = None
-    dueDate: Optional[basic.Timestamp] = None
-    externalReference: Optional[TaskExternalReference] = None
-    tags: Optional[List[tagLabel.TagLabel]] = None
-    comments: Optional[List[TaskComment]] = None
-    resolution: Optional[TaskResolution] = None
-    workflowDefinitionId: Optional[basic.Uuid] = None
-    workflowInstanceId: Optional[basic.Uuid] = None
-    workflowStageId: Optional[str] = None
-    availableTransitions: Optional[List[TaskAvailableTransition]] = None
-    createdAt: Optional[basic.Timestamp] = None
-    updatedAt: Optional[basic.Timestamp] = None
-    updatedBy: Optional[str] = None
-    version: Optional[float] = None
-    href: Optional[basic.Href] = None
-    deleted: Optional[bool] = None
+    status: TaskEntityStatus | None = None
+    priority: TaskPriority | None = None
+    about: entityReference.EntityReference | None = None
+    aboutFqnHash: str | None = None  # noqa: N815
+    domains: list[entityReference.EntityReference] | None = None
+    createdBy: entityReference.EntityReference | None = None  # noqa: N815
+    createdById: str | None = None  # noqa: N815
+    assignees: list[entityReference.EntityReference] | None = None
+    reviewers: list[entityReference.EntityReference] | None = None
+    watchers: list[entityReference.EntityReference] | None = None
+    payload: dict[str, Any] | None = None
+    dueDate: basic.Timestamp | None = None  # noqa: N815
+    externalReference: TaskExternalReference | None = None  # noqa: N815
+    tags: list[tagLabel.TagLabel] | None = None
+    comments: list[TaskComment] | None = None
+    resolution: TaskResolution | None = None
+    workflowDefinitionId: basic.Uuid | None = None  # noqa: N815
+    workflowInstanceId: basic.Uuid | None = None  # noqa: N815
+    workflowStageId: str | None = None  # noqa: N815
+    availableTransitions: list[TaskAvailableTransition] | None = None  # noqa: N815
+    createdAt: basic.Timestamp | None = None  # noqa: N815
+    updatedAt: basic.Timestamp | None = None  # noqa: N815
+    updatedBy: str | None = None  # noqa: N815
+    version: float | None = None
+    href: basic.Href | None = None
+    deleted: bool | None = None
 
 
 class CreateTaskRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    name: Optional[basic.EntityName] = None
-    displayName: Optional[str] = None
-    description: Optional[basic.Markdown] = None
+    name: basic.EntityName | None = None
+    displayName: str | None = None  # noqa: N815
+    description: basic.Markdown | None = None
     category: TaskCategory
     type: TaskEntityType
-    priority: Optional[TaskPriority] = None
-    about: Optional[str] = None
-    aboutType: Optional[str] = None
-    domain: Optional[str] = None
-    assignees: Optional[List[str]] = None
-    reviewers: Optional[List[str]] = None
-    payload: Optional[Dict[str, Any]] = None
-    dueDate: Optional[basic.Timestamp] = None
-    externalReference: Optional[TaskExternalReference] = None
-    tags: Optional[List[tagLabel.TagLabel]] = None
+    priority: TaskPriority | None = None
+    about: basic.EntityLink | None = None
+    domain: str | None = None
+    assignees: list[str] | None = None
+    reviewers: list[str] | None = None
+    payload: dict[str, Any] | None = None
+    dueDate: basic.Timestamp | None = None  # noqa: N815
+    externalReference: TaskExternalReference | None = None  # noqa: N815
+    tags: list[tagLabel.TagLabel] | None = None
 
 
 class ResolveTaskRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    transitionId: Optional[str] = None
-    resolutionType: Optional[TaskResolutionType] = None
-    comment: Optional[str] = None
-    newValue: Optional[str] = None
-    payload: Optional[Dict[str, Any]] = None
+    transitionId: str | None = None  # noqa: N815
+    resolutionType: TaskResolutionType | None = None  # noqa: N815
+    comment: str | None = None
+    newValue: str | None = None  # noqa: N815
+    payload: dict[str, Any] | None = None
 
 
 class BulkTaskOperationType(str, Enum):
@@ -203,31 +202,31 @@ class BulkTaskOperationType(str, Enum):
 class BulkTaskOperationParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    comment: Optional[str] = None
-    assignees: Optional[List[str]] = None
-    priority: Optional[TaskPriority] = None
+    comment: str | None = None
+    assignees: list[str] | None = None
+    priority: TaskPriority | None = None
 
 
 class BulkTaskOperationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    taskIds: Annotated[List[str], Field(min_length=1)]
+    taskIds: Annotated[list[str], Field(min_length=1)]  # noqa: N815
     operation: BulkTaskOperationType
-    params: Optional[BulkTaskOperationParams] = None
+    params: BulkTaskOperationParams | None = None
 
 
 class BulkTaskOperationResultItem(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    taskId: Optional[str] = None
-    status: Optional[str] = None
-    error: Optional[str] = None
+    taskId: str | None = None  # noqa: N815
+    status: str | None = None
+    error: str | None = None
 
 
 class BulkTaskOperationResult(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    totalRequested: Optional[int] = None
-    successful: Optional[int] = None
-    failed: Optional[int] = None
-    results: Optional[List[BulkTaskOperationResultItem]] = None
+    totalRequested: int | None = None  # noqa: N815
+    successful: int | None = None
+    failed: int | None = None
+    results: list[BulkTaskOperationResultItem] | None = None

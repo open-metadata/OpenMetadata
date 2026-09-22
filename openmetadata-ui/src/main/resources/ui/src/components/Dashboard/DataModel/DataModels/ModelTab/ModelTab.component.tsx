@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { groupBy, isEmpty, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
 import {
@@ -31,32 +30,31 @@ import { TagLabel, TagSource } from '../../../../../generated/type/tagLabel';
 import { usePaging } from '../../../../../hooks/paging/usePaging';
 import { useFqn } from '../../../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../../../hooks/useFqnDeepLink';
+import { useTreeTagFilter } from '../../../../../hooks/useTreeTagFilter';
 import {
   getDataModelColumnsByFQN,
   searchDataModelColumnsByFQN,
   updateDataModelColumn,
 } from '../../../../../rest/dataModelsAPI';
-import {
-  getColumnSorter,
-  getEntityName,
-} from '../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { getColumnSorter } from '../../../../../utils/EntitySortUtils';
+import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
 import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
 import {
-  getAllTags,
-  searchTagInData,
-} from '../../../../../utils/TableTags/TableTags.utils';
-import {
   getHighlightedRowClassName,
-  getTableExpandableConfig,
   pruneEmptyChildren,
   updateColumnInNestedStructure,
-} from '../../../../../utils/TableUtils';
+} from '../../../../../utils/TablePureUtils';
+import { getAllTags } from '../../../../../utils/TableTags/TableTags.utils';
+import { getTableExpandableConfig } from '../../../../../utils/TableUtils';
+import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import DisplayName from '../../../../common/DisplayName/DisplayName';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
-import Table from '../../../../common/Table/Table';
-import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
+import { ColumnsType } from '../../../../common/Table/Table.interface';
+import Table from '../../../../common/Table/TableV2';
+import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../../Database/TableTags/TableTags.component';
@@ -64,7 +62,14 @@ import {
   EntityName,
   EntityNameWithAdditionFields,
 } from '../../../../Modals/EntityNameModal/EntityNameModal.interface';
-import { ModalWithMarkdownEditor } from '../../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor'
+    ).then((m) => ({ default: m.ModalWithMarkdownEditor }))
+  )
+);
 
 const ModelTab = () => {
   const { t } = useTranslation();
@@ -169,6 +174,19 @@ const ModelTab = () => {
     }),
     [dataModel]
   );
+  // Consumer via useGenericContext() (Task 8 rule 2). Two derivations, not one: the old code
+  // never gated description/tags/glossary-term edit on `deleted` (the columns that consume
+  // them separately receive `isReadOnly={isReadOnly}` and handle the deleted case there), but
+  // DID gate the display-name edit on it — folding all four into one `deleted`-gated
+  // derivation would regress the first three on a soft-deleted data model.
+  const ungatedFlags = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
+  const gatedFlags = useMemo(
+    () => getDerivedPermissionFlags(permissions, Boolean(deleted)),
+    [permissions, deleted]
+  );
   const {
     hasEditDescriptionPermission,
     hasEditTagsPermission,
@@ -176,15 +194,12 @@ const ModelTab = () => {
     editDisplayNamePermission,
   } = useMemo(() => {
     return {
-      hasEditDescriptionPermission:
-        permissions.EditAll || permissions.EditDescription,
-      hasEditTagsPermission: permissions.EditAll || permissions.EditTags,
-      hasEditGlossaryTermPermission:
-        permissions.EditAll || permissions.EditGlossaryTerms,
-      editDisplayNamePermission:
-        (permissions.EditDisplayName || permissions.EditAll) && !deleted,
+      hasEditDescriptionPermission: ungatedFlags.canEditDescription,
+      hasEditTagsPermission: ungatedFlags.canEditTags,
+      hasEditGlossaryTermPermission: ungatedFlags.canEditGlossaryTerms,
+      editDisplayNamePermission: gatedFlags.canEditDisplayName,
     };
-  }, [permissions]);
+  }, [ungatedFlags, gatedFlags]);
 
   const tagFilter = useMemo(() => {
     const tags = getAllTags(data ?? []);
@@ -324,6 +339,9 @@ const ModelTab = () => {
       handlePageSizeChange,
     ]
   );
+  const { tagFilterState, filteredData, handleTableChange } =
+    useTreeTagFilter(data);
+
   const tableColumn: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -394,7 +412,7 @@ const ModelTab = () => {
         filters: tagFilter.Classification,
         filterIcon: columnFilterIcon,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? null,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={entityFqn ?? ''}
@@ -417,7 +435,7 @@ const ModelTab = () => {
         filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={entityFqn ?? ''}
@@ -437,6 +455,7 @@ const ModelTab = () => {
       entityFqn,
       isReadOnly,
       tagFilter,
+      tagFilterState,
       hasEditTagsPermission,
       hasEditGlossaryTermPermission,
       editColumnDescription,
@@ -455,7 +474,7 @@ const ModelTab = () => {
         columns={tableColumn}
         customPaginationProps={paginationProps}
         data-testid="data-model-column-table"
-        dataSource={data}
+        dataSource={filteredData}
         defaultVisibleColumns={DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS}
         expandable={{
           ...getTableExpandableConfig<Column>(false, 'text-link-color'),
@@ -472,6 +491,7 @@ const ModelTab = () => {
         searchProps={searchProps}
         size="small"
         staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+        onChange={handleTableChange}
       />
 
       {editColumnDescription && (

@@ -26,7 +26,7 @@ import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { startCase, upperCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
@@ -64,43 +64,67 @@ import {
   shouldRequestPermission,
 } from '../../utils/BrowserNotificationUtils';
 import { getCustomPropertyEntityPathname } from '../../utils/CustomProperty.utils';
+import { getDomainDisplayName } from '../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getDomainDisplayName } from '../../utils/EntityUtils';
 import {
   getEntityFQN,
   getEntityType,
   prepareFeedLink,
-} from '../../utils/FeedUtils';
+} from '../../utils/FeedUtilsPure';
 import { languageSelectOptions } from '../../utils/i18next/i18nextUtil';
 import i18n from '../../utils/i18next/LocalUtil';
 import localUtilClassBase from '../../utils/i18next/LocalUtilClassBase';
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
+import { getSettingPath, isLandingPagePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import DomainSelectableList from '../common/DomainSelectableList/DomainSelectableList.component';
+import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
 import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { CSVExportWebsocketResponse } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { GlobalSearchBar } from '../GlobalSearchBar/GlobalSearchBar';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
+import { NotificationBoxProp } from '../NotificationBox/NotificationBox.interface';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
 import './nav-bar.less';
 import popupAlertsCardsClassBase from './PopupAlertClassBase';
+const DomainSelectableList = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../common/DomainSelectableList/DomainSelectableList.component')
+  )
+);
 
 const cookieStorage = new CookieStorage();
+
+const renderNotificationBox = (props: NotificationBoxProp) => (
+  <NotificationBox {...props} />
+);
 
 const NavBar = () => {
   const { isTourOpen: isTourRoute } = useTourProvider();
   const { onUpdateCSVExportJob } = useEntityExportModalProvider();
   const { handleDeleteEntityWebsocketResponse } = useAsyncDeleteProvider();
-  const Logo = useMemo(() => brandClassBase.getMonogram().src, []);
+  // handleDeleteEntityWebsocketResponse is recreated every render (it closes
+  // over asyncDeleteJob) but the socket listener is registered once. Read it
+  // through a ref so the handler always uses the latest state instead of a
+  // stale closure — without re-registering the socket listener each render.
+  const handleDeleteEntityResponseRef = useRef(
+    handleDeleteEntityWebsocketResponse
+  );
+  handleDeleteEntityResponseRef.current = handleDeleteEntityWebsocketResponse;
+  const Logo = brandClassBase.getMonogram().src;
   const [showVersionMissMatchAlert, setShowVersionMissMatchAlert] =
     useState(false);
   const location = useCustomLocation();
   const navigate = useNavigate();
-  const { activeDomain, activeDomainEntityRef, updateActiveDomain } =
-    useDomainStore();
+  const {
+    activeDomain,
+    activeDomainEntityRef,
+    updateActiveDomain,
+    userDomains,
+    isDomainRestricted,
+  } = useDomainStore();
   const { t } = useTranslation();
   const searchRef = useRef<InputRef>(null);
   const [hasTaskNotification, setHasTaskNotification] =
@@ -115,12 +139,11 @@ const NavBar = () => {
     setPreference,
   } = useCurrentUserPreferences();
 
-  // Check if current route is home page
-  const isHomePage = useMemo(() => {
-    const pathname = location.pathname;
-
-    return pathname === ROUTES.MY_DATA;
-  }, [location.pathname]);
+  // Check if current route is the landing page (either `/` or `/my-data`)
+  const isHomePage = useMemo(
+    () => isLandingPagePath(location.pathname),
+    [location.pathname]
+  );
 
   const isTourPage = useMemo(() => {
     const pathname = location.pathname;
@@ -255,7 +278,7 @@ const NavBar = () => {
                 isAxiosError: true,
                 message: 'Invalid job arguments: entityType is required',
               } as AxiosError,
-              t('message.unexpected-error')
+              t('server.unexpected-error')
             );
 
             break;
@@ -275,10 +298,13 @@ const NavBar = () => {
         break;
       }
     }
-    const notification = new Notification('Notification From OpenMetadata', {
-      body: body,
-      icon: Logo,
-    });
+    const notification = new Notification(
+      t('label.notification-from-brand-name'),
+      {
+        body: body,
+        icon: Logo,
+      }
+    );
     notification.onclick = () => {
       const isChrome = globalThis.navigator.userAgent.indexOf('Chrome');
       // Applying logic to open a new window onclick of browser notification from chrome
@@ -346,69 +372,91 @@ const NavBar = () => {
   }, [isTourRoute, version]);
 
   useEffect(() => {
+    const handleTaskNotification = (newActivity: string) => {
+      if (newActivity) {
+        const activity = JSON.parse(newActivity);
+        setHasTaskNotification(true);
+        showBrowserNotification(
+          activity.about,
+          activity.createdBy,
+          activity.type
+        );
+      }
+    };
+
+    const handleMentionNotification = (newActivity: string) => {
+      if (newActivity) {
+        const activity = JSON.parse(newActivity);
+        setHasMentionNotification(true);
+        showBrowserNotification(
+          activity.about,
+          activity.createdBy,
+          activity.type
+        );
+      }
+    };
+
+    const handleCSVExportNotification = (exportResponse: string) => {
+      if (exportResponse) {
+        const exportResponseData = JSON.parse(
+          exportResponse
+        ) as CSVExportWebsocketResponse;
+
+        onUpdateCSVExportJob(exportResponseData);
+      }
+    };
+
+    const handleBackgroundJobNotification = (jobResponse: string) => {
+      if (jobResponse) {
+        const jobResponseData: BackgroundJob = JSON.parse(jobResponse);
+        showBrowserNotification(
+          '',
+          jobResponseData.createdBy,
+          'BackgroundJob',
+          jobResponseData
+        );
+      }
+    };
+
+    const handleDeleteEntityNotification = (deleteResponse: string) => {
+      if (deleteResponse) {
+        const deleteResponseData = JSON.parse(
+          deleteResponse
+        ) as AsyncDeleteWebsocketResponse;
+        handleDeleteEntityResponseRef.current(deleteResponseData);
+      }
+    };
+
     if (socket) {
-      socket.on(SOCKET_EVENTS.TASK_CHANNEL, (newActivity) => {
-        if (newActivity) {
-          const activity = JSON.parse(newActivity);
-          setHasTaskNotification(true);
-          showBrowserNotification(
-            activity.about,
-            activity.createdBy,
-            activity.type
-          );
-        }
-      });
-
-      socket.on(SOCKET_EVENTS.MENTION_CHANNEL, (newActivity) => {
-        if (newActivity) {
-          const activity = JSON.parse(newActivity);
-          setHasMentionNotification(true);
-          showBrowserNotification(
-            activity.about,
-            activity.createdBy,
-            activity.type
-          );
-        }
-      });
-
-      socket.on(SOCKET_EVENTS.CSV_EXPORT_CHANNEL, (exportResponse) => {
-        if (exportResponse) {
-          const exportResponseData = JSON.parse(
-            exportResponse
-          ) as CSVExportWebsocketResponse;
-
-          onUpdateCSVExportJob(exportResponseData);
-        }
-      });
-      socket.on(SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL, (jobResponse) => {
-        if (jobResponse) {
-          const jobResponseData: BackgroundJob = JSON.parse(jobResponse);
-          showBrowserNotification(
-            '',
-            jobResponseData.createdBy,
-            'BackgroundJob',
-            jobResponseData
-          );
-        }
-      });
-
-      socket.on(SOCKET_EVENTS.DELETE_ENTITY_CHANNEL, (deleteResponse) => {
-        if (deleteResponse) {
-          const deleteResponseData = JSON.parse(
-            deleteResponse
-          ) as AsyncDeleteWebsocketResponse;
-          handleDeleteEntityWebsocketResponse(deleteResponseData);
-        }
-      });
+      socket.on(SOCKET_EVENTS.TASK_CHANNEL, handleTaskNotification);
+      socket.on(SOCKET_EVENTS.MENTION_CHANNEL, handleMentionNotification);
+      socket.on(SOCKET_EVENTS.CSV_EXPORT_CHANNEL, handleCSVExportNotification);
+      socket.on(
+        SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL,
+        handleBackgroundJobNotification
+      );
+      socket.on(
+        SOCKET_EVENTS.DELETE_ENTITY_CHANNEL,
+        handleDeleteEntityNotification
+      );
     }
 
     return () => {
       if (socket) {
-        socket.off(SOCKET_EVENTS.TASK_CHANNEL);
-        socket.off(SOCKET_EVENTS.MENTION_CHANNEL);
-        socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
-        socket.off(SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL);
-        socket.off(SOCKET_EVENTS.DELETE_ENTITY_CHANNEL);
+        socket.off(SOCKET_EVENTS.TASK_CHANNEL, handleTaskNotification);
+        socket.off(SOCKET_EVENTS.MENTION_CHANNEL, handleMentionNotification);
+        socket.off(
+          SOCKET_EVENTS.CSV_EXPORT_CHANNEL,
+          handleCSVExportNotification
+        );
+        socket.off(
+          SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL,
+          handleBackgroundJobNotification
+        );
+        socket.off(
+          SOCKET_EVENTS.DELETE_ENTITY_CHANNEL,
+          handleDeleteEntityNotification
+        );
       }
     };
   }, [socket, onUpdateCSVExportJob]);
@@ -438,6 +486,16 @@ const NavBar = () => {
     [activeDomainEntityRef, activeDomain, t]
   );
 
+  const showAllDomains = !isDomainRestricted;
+  const isSingleDomainUser = useMemo(
+    () => isDomainRestricted && userDomains.length === 1,
+    [isDomainRestricted, userDomains]
+  );
+  const restrictedDomains = useMemo(
+    () => (isDomainRestricted ? userDomains : undefined),
+    [isDomainRestricted, userDomains]
+  );
+
   const handleLanguageChange = useCallback(async ({ key }: MenuInfo) => {
     await localUtilClassBase.loadLocales(key);
     await i18n.changeLanguage(key);
@@ -448,26 +506,55 @@ const NavBar = () => {
     ? upperCase(i18n.language.split('-')[0])
     : '';
 
+  const headerStyle = useMemo(
+    () =>
+      isDataMarketplacePage
+        ? {
+            background: 'transparent',
+            marginBottom: 'calc(-1 * var(--ant-navbar-height))',
+            position: 'relative' as const,
+            zIndex: 10,
+          }
+        : undefined,
+    [isDataMarketplacePage]
+  );
+
+  const sidebarTooltipTitle = useMemo(
+    () => (isSidebarCollapsed ? t('label.expand') : t('label.collapse')),
+    [isSidebarCollapsed, t]
+  );
+
+  const versionMismatchAlert = useMemo(
+    () =>
+      showVersionMissMatchAlert ? (
+        <Alert
+          showIcon
+          action={
+            <Button
+              size="small"
+              type="link"
+              onClick={() => {
+                navigate(0);
+              }}>
+              {t('label.refresh')}
+            </Button>
+          }
+          className="refresh-alert slide-in-top"
+          description="For a seamless experience recommend you to refresh the page"
+          icon={<RefreshIcon />}
+          message="A new version is available"
+          type="info"
+        />
+      ) : null,
+    [showVersionMissMatchAlert, navigate, t]
+  );
+
   return (
     <>
-      <Header
-        style={
-          isDataMarketplacePage
-            ? {
-                background: 'transparent',
-                marginBottom: 'calc(-1 * var(--ant-navbar-height))',
-                position: 'relative' as const,
-                zIndex: 10,
-              }
-            : undefined
-        }>
+      <Header style={headerStyle}>
         <div className="navbar-container">
           <div className="flex-center gap-2">
-            <Tooltip
-              placement="right"
-              title={
-                isSidebarCollapsed ? t('label.expand') : t('label.collapse')
-              }>
+            <Tooltip placement="right" title={sidebarTooltipTitle}>
               <Button
                 className="w-6 h-6 p-0 flex-center"
                 data-testid="sidebar-toggle"
@@ -490,39 +577,49 @@ const NavBar = () => {
                 <GlobalSearchBar />
                 <DomainSelectableList
                   hasPermission
-                  showAllDomains
+                  disabled={isSingleDomainUser}
                   popoverProps={{
                     open: isDomainDropdownOpen,
                     onOpenChange: (open) => {
                       setIsDomainDropdownOpen(open);
                     },
                   }}
+                  restrictedDomains={restrictedDomains}
                   selectedDomain={activeDomainEntityRef}
+                  showAllDomains={showAllDomains}
                   wrapInButton={false}
                   onCancel={() => setIsDomainDropdownOpen(false)}
                   onUpdate={handleDomainChange}>
-                  <Button
-                    className={classNames(
-                      'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium',
-                      {
-                        'domain-active': activeDomain !== DEFAULT_DOMAIN_VALUE,
-                      }
-                    )}
-                    data-testid="domain-dropdown"
-                    onClick={() =>
-                      setIsDomainDropdownOpen(!isDomainDropdownOpen)
+                  <Tooltip
+                    title={
+                      isSingleDomainUser
+                        ? t('message.domain-access-restricted')
+                        : undefined
                     }>
-                    <DomainIcon
-                      className="d-flex"
-                      height={20}
-                      name="domain"
-                      width={20}
-                    />
-                    <Typography.Text ellipsis className="domain-text">
-                      {domainDisplayName}
-                    </Typography.Text>
-                    <DropDownIcon width={12} />
-                  </Button>
+                    <Button
+                      className={classNames(
+                        'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium',
+                        {
+                          'domain-active':
+                            activeDomain !== DEFAULT_DOMAIN_VALUE,
+                        }
+                      )}
+                      data-testid="domain-dropdown"
+                      onClick={() =>
+                        setIsDomainDropdownOpen(!isDomainDropdownOpen)
+                      }>
+                      <DomainIcon
+                        className="d-flex"
+                        height={20}
+                        name="domain"
+                        width={20}
+                      />
+                      <Typography.Text ellipsis className="domain-text">
+                        {domainDisplayName}
+                      </Typography.Text>
+                      {!isSingleDomainUser && <DropDownIcon width={12} />}
+                    </Button>
+                  </Tooltip>
                 </DomainSelectableList>
               </>
             )}
@@ -548,18 +645,17 @@ const NavBar = () => {
             <Dropdown
               destroyPopupOnHide
               className="cursor-pointer"
-              dropdownRender={() => (
-                <NotificationBox
-                  activeTab={activeTab}
-                  hasMentionNotification={hasMentionNotification}
-                  hasTaskNotification={hasTaskNotification}
-                  onMarkMentionsNotificationRead={
-                    handleMentionsNotificationRead
-                  }
-                  onMarkTaskNotificationRead={handleTaskNotificationRead}
-                  onTabChange={handleActiveTab}
-                />
-              )}
+              dropdownRender={() =>
+                renderNotificationBox({
+                  activeTab,
+                  hasMentionNotification,
+                  hasTaskNotification,
+                  onMarkMentionsNotificationRead:
+                    handleMentionsNotificationRead,
+                  onMarkTaskNotificationRead: handleTaskNotificationRead,
+                  onTabChange: handleActiveTab,
+                })
+              }
               overlayStyle={{
                 width: '425px',
                 minHeight: '375px',
@@ -599,26 +695,7 @@ const NavBar = () => {
           </div>
         </div>
       </Header>
-      {showVersionMissMatchAlert && (
-        <Alert
-          showIcon
-          action={
-            <Button
-              size="small"
-              type="link"
-              onClick={() => {
-                navigate(0);
-              }}>
-              {t('label.refresh')}
-            </Button>
-          }
-          className="refresh-alert slide-in-top"
-          description="For a seamless experience recommend you to refresh the page"
-          icon={<RefreshIcon />}
-          message="A new version is available"
-          type="info"
-        />
-      )}
+      {versionMismatchAlert}
       {renderAlertCards}
     </>
   );

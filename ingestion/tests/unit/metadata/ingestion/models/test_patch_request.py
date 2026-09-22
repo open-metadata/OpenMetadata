@@ -12,13 +12,22 @@
 """
 Check the JSONPatch operations work as expected
 """
+
+import uuid
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
 import jsonpatch
 from pydantic import BaseModel
 
-from metadata.ingestion.models.patch_request import JsonPatchUpdater, build_patch
+from metadata.generated.schema.entity.data.table import Table
+from metadata.ingestion.models.patch_request import (
+    ALLOWED_COMMON_PATCH_FIELDS,
+    ARRAY_ENTITY_FIELDS,
+    RESTRICT_UPDATE_LIST,
+    JsonPatchUpdater,
+    build_patch,
+)
 
 
 class JsonPatchUpdaterTest(TestCase):
@@ -40,9 +49,7 @@ class JsonPatchUpdaterTest(TestCase):
         )
         restrict_update_fields = []
 
-        json_patch_updater = JsonPatchUpdater.from_restrict_update_fields(
-            restrict_update_fields
-        )
+        json_patch_updater = JsonPatchUpdater.from_restrict_update_fields(restrict_update_fields)
 
         updated_operations = json_patch_updater.update(json_patch)
 
@@ -73,9 +80,7 @@ class JsonPatchUpdaterTest(TestCase):
             {"op": "remove", "path": "/foo/2"},
         ]
 
-        json_patch_updater = JsonPatchUpdater.from_restrict_update_fields(
-            restrict_update_fields
-        )
+        json_patch_updater = JsonPatchUpdater.from_restrict_update_fields(restrict_update_fields)
 
         updated_operations = json_patch_updater.update(json_patch)
 
@@ -99,9 +104,7 @@ class JsonPatchUpdaterTest(TestCase):
             {"op": "remove", "path": "/attribute"},
         ]
 
-        json_patch_updater = JsonPatchUpdater.from_restrict_update_fields(
-            restrict_update_fields
-        )
+        json_patch_updater = JsonPatchUpdater.from_restrict_update_fields(restrict_update_fields)
 
         updated_operations = json_patch_updater.update(json_patch)
 
@@ -128,15 +131,11 @@ class BuildPatchTest(TestCase):
         """Test that build_patch returns None when skip_on_failure=True and exception occurs."""
 
         # Mock jsonpatch.make_patch to raise an exception
-        with patch(
-            "metadata.ingestion.models.patch_request.jsonpatch.make_patch"
-        ) as mock_make_patch:
+        with patch("metadata.ingestion.models.patch_request.jsonpatch.make_patch") as mock_make_patch:
             mock_make_patch.side_effect = Exception("Test exception")
 
             # Test with skip_on_failure=True (default)
-            result = build_patch(
-                source=self.source, destination=self.destination, skip_on_failure=True
-            )
+            result = build_patch(source=self.source, destination=self.destination, skip_on_failure=True)
 
             self.assertIsNone(result)
             mock_make_patch.assert_called_once()
@@ -145,9 +144,7 @@ class BuildPatchTest(TestCase):
         """Test that build_patch raises exception when skip_on_failure=False and exception occurs."""
 
         # Mock jsonpatch.make_patch to raise an exception
-        with patch(
-            "metadata.ingestion.models.patch_request.jsonpatch.make_patch"
-        ) as mock_make_patch:
+        with patch("metadata.ingestion.models.patch_request.jsonpatch.make_patch") as mock_make_patch:
             mock_make_patch.side_effect = Exception("Test exception")
 
             # Test with skip_on_failure=False
@@ -166,9 +163,7 @@ class BuildPatchTest(TestCase):
         """Test that build_patch defaults to skip_on_failure=True."""
 
         # Mock jsonpatch.make_patch to raise an exception
-        with patch(
-            "metadata.ingestion.models.patch_request.jsonpatch.make_patch"
-        ) as mock_make_patch:
+        with patch("metadata.ingestion.models.patch_request.jsonpatch.make_patch") as mock_make_patch:
             mock_make_patch.side_effect = Exception("Test exception")
 
             # Test without explicitly setting skip_on_failure (should default to True)
@@ -181,9 +176,7 @@ class BuildPatchTest(TestCase):
         """Test that build_patch works normally when skip_on_failure=False and no exception occurs."""
 
         # Create a real patch to test successful operation
-        result = build_patch(
-            source=self.source, destination=self.destination, skip_on_failure=False
-        )
+        result = build_patch(source=self.source, destination=self.destination, skip_on_failure=False)
 
         self.assertIsNotNone(result)
         self.assertIsInstance(result, jsonpatch.JsonPatch)
@@ -202,9 +195,7 @@ class BuildPatchTest(TestCase):
         """Test that build_patch works normally when skip_on_failure=True and no exception occurs."""
 
         # Create a real patch to test successful operation
-        result = build_patch(
-            source=self.source, destination=self.destination, skip_on_failure=True
-        )
+        result = build_patch(source=self.source, destination=self.destination, skip_on_failure=True)
 
         self.assertIsNotNone(result)
         self.assertIsInstance(result, jsonpatch.JsonPatch)
@@ -251,3 +242,199 @@ class BuildPatchTest(TestCase):
 
             self.assertIn("JsonPatchUpdater exception", str(context.exception))
             self.assertIn("Failed to build patch", str(context.exception))
+
+
+class BuildPatchEntityReferenceListTest(TestCase):
+    def setUp(self):
+        from metadata.generated.schema.entity.data.table import Table
+        from metadata.generated.schema.type.entityReference import EntityReference
+        from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+
+        self.Table = Table
+        self.EntityReference = EntityReference
+        self.EntityReferenceList = EntityReferenceList
+
+    def _mk_table(self, name):
+        return self.Table(
+            id=str(uuid.uuid4()),
+            name=name,
+            columns=[],
+            fullyQualifiedName=f"svc.db.schema.{name}",
+        )
+
+    def test_empty_to_populated_data_products(self):
+        source = self._mk_table("t1")
+        source.dataProducts = self.EntityReferenceList(root=[])
+
+        dest = source.model_copy(deep=True)
+        dest.dataProducts = self.EntityReferenceList(
+            root=[self.EntityReference(id=str(uuid.uuid4()), type="dataProduct", name="dp1")]
+        )
+
+        result = build_patch(
+            source=source,
+            destination=dest,
+            array_entity_fields=["dataProducts"],
+            skip_on_failure=False,
+        )
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.patch[0]["path"], "/dataProducts")
+        self.assertEqual(len(result.patch[0]["value"]), 1)
+        self.assertEqual(result.patch[0]["value"][0]["name"], "dp1")
+
+    def test_replace_data_products(self):
+        source = self._mk_table("t2")
+        dp_id1, dp_id2 = str(uuid.uuid4()), str(uuid.uuid4())
+        source.dataProducts = self.EntityReferenceList(
+            root=[self.EntityReference(id=dp_id1, type="dataProduct", name="dp1")]
+        )
+
+        dest = source.model_copy(deep=True)
+        dest.dataProducts = self.EntityReferenceList(
+            root=[self.EntityReference(id=dp_id2, type="dataProduct", name="dp2")]
+        )
+
+        result = build_patch(
+            source=source,
+            destination=dest,
+            array_entity_fields=["dataProducts"],
+            skip_on_failure=False,
+        )
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.patch[0]["value"][0]["name"], "dp2")
+
+    def test_same_data_products_no_patch(self):
+        source = self._mk_table("t3")
+        dp_id = str(uuid.uuid4())
+        source.dataProducts = self.EntityReferenceList(
+            root=[self.EntityReference(id=dp_id, type="dataProduct", name="dp1")]
+        )
+
+        dest = source.model_copy(deep=True)
+        dest.dataProducts = self.EntityReferenceList(
+            root=[self.EntityReference(id=dp_id, type="dataProduct", name="dp1")]
+        )
+
+        result = build_patch(
+            source=source,
+            destination=dest,
+            array_entity_fields=["dataProducts"],
+            skip_on_failure=False,
+        )
+        self.assertIsNone(result)
+
+    def test_empty_to_populated_domains(self):
+        source = self._mk_table("t4")
+        source.domains = self.EntityReferenceList(root=[])
+
+        dest = source.model_copy(deep=True)
+        dest.domains = self.EntityReferenceList(
+            root=[self.EntityReference(id=str(uuid.uuid4()), type="domain", name="Analysis")]
+        )
+
+        result = build_patch(
+            source=source,
+            destination=dest,
+            array_entity_fields=["domains"],
+            skip_on_failure=False,
+        )
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.patch[0]["path"], "/domains")
+        self.assertEqual(result.patch[0]["value"][0]["name"], "Analysis")
+
+    def test_both_domains_and_data_products(self):
+        source = self._mk_table("t5")
+        source.domains = self.EntityReferenceList(root=[])
+        source.dataProducts = self.EntityReferenceList(root=[])
+
+        dest = source.model_copy(deep=True)
+        dest.domains = self.EntityReferenceList(
+            root=[self.EntityReference(id=str(uuid.uuid4()), type="domain", name="Analysis")]
+        )
+        dest.dataProducts = self.EntityReferenceList(
+            root=[self.EntityReference(id=str(uuid.uuid4()), type="dataProduct", name="dp1")]
+        )
+
+        result = build_patch(
+            source=source,
+            destination=dest,
+            array_entity_fields=["domains", "dataProducts"],
+            skip_on_failure=False,
+        )
+
+        self.assertIsNotNone(result)
+        paths = {op["path"] for op in result.patch}
+        self.assertIn("/domains", paths)
+        self.assertIn("/dataProducts", paths)
+
+    def test_no_array_entity_fields_still_works(self):
+        source = self._mk_table("t6")
+        dest = source.model_copy(deep=True)
+        dest.dataProducts = self.EntityReferenceList(
+            root=[self.EntityReference(id=str(uuid.uuid4()), type="dataProduct", name="dp1")]
+        )
+
+        result = build_patch(source=source, destination=dest, skip_on_failure=False)
+        self.assertIsNotNone(result)
+
+
+class TestBuildPatchTableAliases:
+    """Table.aliases has to survive the allow-listed patch the sink actually sends.
+
+    `metadata_rest.patch_entity` passes ALLOWED_COMMON_PATCH_FIELDS, and `build_patch`
+    diffs the models through `include=allowed_fields`. A field missing from that list
+    can never produce an operation, so a connector that recomputes aliases every run
+    would silently drop them on every table that already exists in OpenMetadata.
+    """
+
+    @staticmethod
+    def _table(aliases):
+        return Table(
+            id=str(uuid.uuid4()),
+            name="orders",
+            columns=[],
+            fullyQualifiedName="svc.db.schema.orders",
+            aliases=aliases,
+        )
+
+    def _patch_ops(self, source_aliases, destination_aliases):
+        """Diff two alias states through the exact call the sink makes."""
+        result = build_patch(
+            source=self._table(source_aliases),
+            destination=self._table(destination_aliases),
+            allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
+            restrict_update_fields=RESTRICT_UPDATE_LIST,
+            array_entity_fields=ARRAY_ENTITY_FIELDS,
+            skip_on_failure=False,
+        )
+
+        return result.patch if result else []
+
+    def test_aliases_are_patchable(self):
+        """The allow-list carries aliases at all."""
+        assert "aliases" in ALLOWED_COMMON_PATCH_FIELDS
+
+    def test_first_alias_is_added(self):
+        assert self._patch_ops(None, ["svc.db.schema.orders_syn"]) == [
+            {"op": "add", "path": "/aliases", "value": ["svc.db.schema.orders_syn"]}
+        ]
+
+    def test_further_alias_is_added(self):
+        ops = self._patch_ops(
+            ["svc.db.schema.orders_syn"],
+            ["svc.db.schema.orders_syn", "svc.db.reporting.orders_v"],
+        )
+
+        assert ops == [{"op": "add", "path": "/aliases/1", "value": "svc.db.reporting.orders_v"}]
+
+    def test_dropped_alias_is_removed(self):
+        """Aliases are source-managed: dropping the synonym has to clear the field."""
+        ops = self._patch_ops(["svc.db.schema.orders_syn"], None)
+
+        assert ops == [{"op": "remove", "path": "/aliases"}]
+
+    def test_unchanged_aliases_produce_no_operation(self):
+        assert self._patch_ops(["svc.db.schema.orders_syn"], ["svc.db.schema.orders_syn"]) == []

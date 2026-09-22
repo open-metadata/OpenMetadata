@@ -11,7 +11,6 @@
 """
 Source connection handler
 """
-from typing import Optional
 
 from sqlalchemy.engine import Engine
 
@@ -47,14 +46,11 @@ class MyDbConnection(BaseConnection[MyDbConnectionConfig, Engine]):
             get_connection_args_fn=get_connection_args_common,
         )
 
-    def get_connection_dict(self) -> dict:
-        raise NotImplementedError("get_connection_dict is not implemented for MyDb")
-
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,
-        timeout_seconds: Optional[int] = THREE_MIN,
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         return test_connection_db_schema_sources(
             metadata=metadata,

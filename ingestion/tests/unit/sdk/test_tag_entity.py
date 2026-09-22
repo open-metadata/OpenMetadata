@@ -1,6 +1,7 @@
 """
 Comprehensive unit tests for Tag entity.
 """
+
 import unittest
 from unittest.mock import MagicMock
 from uuid import UUID
@@ -51,9 +52,7 @@ class TestTagEntity(unittest.TestCase):
         result = Tags.retrieve(self.entity_id)
 
         self.assertEqual(str(result.id), self.entity_id)
-        self.mock_ometa.get_by_id.assert_called_once_with(
-            entity=TagEntity, entity_id=self.entity_id, fields=None
-        )
+        self.mock_ometa.get_by_id.assert_called_once_with(entity=TagEntity, entity_id=self.entity_id, fields=None)
 
     def test_retrieve_tag_by_name(self):
         """Test retrieving a tag by name"""
@@ -65,9 +64,7 @@ class TestTagEntity(unittest.TestCase):
         result = Tags.retrieve_by_name(self.entity_fqn)
 
         self.assertEqual(result.fullyQualifiedName, self.entity_fqn)
-        self.mock_ometa.get_by_name.assert_called_once_with(
-            entity=TagEntity, fqn=self.entity_fqn, fields=None
-        )
+        self.mock_ometa.get_by_name.assert_called_once_with(entity=TagEntity, fqn=self.entity_fqn, fields=None)
 
     def test_update_tag(self):
         """Test updating a tag"""
@@ -77,11 +74,7 @@ class TestTagEntity(unittest.TestCase):
 
         # Mock the get_by_id to return the current state
         current_entity = MagicMock(spec=type(entity_to_update))
-        current_entity.id = (
-            entity_to_update.id
-            if hasattr(entity_to_update, "id")
-            else UUID(self.entity_id)
-        )
+        current_entity.id = entity_to_update.id if hasattr(entity_to_update, "id") else UUID(self.entity_id)
         self.mock_ometa.get_by_id.return_value = current_entity
 
         # Mock the patch to return the updated entity

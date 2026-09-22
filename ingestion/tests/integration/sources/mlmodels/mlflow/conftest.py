@@ -16,30 +16,31 @@ The following steps are taken:
 2. Get a testcontainer Container for
     - MlFlow Image
     - MySQL
-    - MinIO
+    - S3 (S3Proxy)
     * For each container, an open port is found to be able to reach it from the host.
 3. A Docker Network is created so that they can reach each other easily without the need to use the host.
 4. The containers are started
 5. Any specific configuration is done
 6. Needed configurations are yielded back to the test.
 """
+
 import io
 import time
 import uuid
+from contextlib import suppress
 from dataclasses import dataclass
-from typing import Optional
 
 import pymysql
 import pytest
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.docker_client import DockerClient
 
-from ....containers import (
-    MinioContainerConfigs,
+from ....containers import (  # noqa: TID252
     MySqlContainerConfigs,
+    S3ContainerConfigs,
     get_docker_network,
-    get_minio_container,
     get_mysql_container,
+    get_s3_container,
 )
 
 
@@ -50,7 +51,7 @@ class MlflowContainerConfigs:
     backend_uri: str = "mysql+pymysql://mlflow:password@mlflow-db:3306/experiments"
     artifact_bucket: str = "mlops.local.com"
     port: int = 6000
-    exposed_port: Optional[int] = None
+    exposed_port: int | None = None
 
     def with_exposed_port(self, container):
         self.exposed_port = container.get_exposed_port(self.port)
@@ -65,7 +66,7 @@ class MlflowTestConfiguration:
             password="password",
             dbname="experiments",
         )
-        self.minio_configs = MinioContainerConfigs()
+        self.s3_configs = S3ContainerConfigs()
         self.mlflow_configs = MlflowContainerConfigs()
 
 
@@ -79,30 +80,29 @@ def mlflow_environment():
     config = MlflowTestConfiguration()
     mysql_container_name = f"mlflow-db-{unique_id}"
     config.mysql_configs.container_name = mysql_container_name
-    config.minio_configs.container_name = f"mlflow-artifact-{unique_id}"
-    config.mlflow_configs.backend_uri = (
-        f"mysql+pymysql://mlflow:password@{mysql_container_name}:3306/experiments"
-    )
+    config.s3_configs.container_name = f"mlflow-artifact-{unique_id}"
+    config.mlflow_configs.backend_uri = f"mysql+pymysql://mlflow:password@{mysql_container_name}:3306/experiments"
 
     docker_network = get_docker_network(name=f"docker_mlflow_test_nw_{unique_id}")
 
-    minio_container = get_minio_container(config.minio_configs)
+    s3_container = get_s3_container(config.s3_configs)
     mysql_container = get_mysql_container(config.mysql_configs)
-    mlflow_container = build_and_get_mlflow_container(
-        config.mlflow_configs, config.minio_configs, unique_id
-    )
+    # mlflow 3.8.1+ creates a trigger at backend init; with binlog on (mysql:8
+    # default) this needs SUPER unless log_bin_trust_function_creators=1.
+    mysql_container.with_command("mysqld --log-bin-trust-function-creators=1")
+    mlflow_container = build_and_get_mlflow_container(config.mlflow_configs, config.s3_configs, unique_id)
 
     with docker_network:
-        minio_container.with_network(docker_network)
+        s3_container.with_network(docker_network)
         mysql_container.with_network(docker_network)
         mlflow_container.with_network(docker_network)
-        with mysql_container, minio_container, mlflow_container:
-            # minio setup
-            minio_client = minio_container.get_client()
-            minio_client.make_bucket(config.mlflow_configs.artifact_bucket)
+        with mysql_container, s3_container, mlflow_container:
+            # object storage setup
+            s3_client = s3_container.get_client()
+            s3_client.make_bucket(config.mlflow_configs.artifact_bucket)
 
             config.mysql_configs.with_exposed_port(mysql_container)
-            config.minio_configs.with_exposed_port(minio_container)
+            config.s3_configs.with_exposed_port(s3_container)
             config.mlflow_configs.with_exposed_port(mlflow_container)
 
             # Wait for MySQL to be ready
@@ -127,12 +127,10 @@ def mlflow_environment():
 
             mlflow_port = config.mlflow_configs.exposed_port
             for _ in range(30):
-                try:
-                    response = requests.get(f"http://localhost:{mlflow_port}/health")
-                    if response.status_code == 200:
+                with suppress(Exception):
+                    if requests.get(f"http://localhost:{mlflow_port}/health").status_code == 200:
                         break
-                except Exception:
-                    time.sleep(2)
+                time.sleep(2)
             else:
                 raise RuntimeError("MLflow server did not become ready in time.")
 
@@ -141,16 +139,19 @@ def mlflow_environment():
 
 def build_and_get_mlflow_container(
     mlflow_config: MlflowContainerConfigs,
-    minio_config: MinioContainerConfigs,
+    s3_config: S3ContainerConfigs,
     unique_id: str,
 ):
     docker_client = DockerClient()
 
+    # anyio 4.15 lazily imports its submodules without exposing from_thread, which
+    # starlette's WSGIMiddleware calls, so every mlflow server response 500s. Drop the
+    # bound once anyio restores the attribute or starlette imports the submodule.
     dockerfile = io.BytesIO(
         b"""
         FROM python:3.10-slim-buster
         RUN python -m pip install --upgrade pip
-        RUN pip install cryptography "mlflow~=3.6.0" boto3 pymysql
+        RUN pip install cryptography "mlflow>=3.10.0,<3.11" boto3 pymysql "anyio<4.15"
         """
     )
 
@@ -159,11 +160,11 @@ def build_and_get_mlflow_container(
 
     container = DockerContainer(image_tag)
     container.with_exposed_ports(mlflow_config.port)
-    container.with_env("AWS_ACCESS_KEY_ID", minio_config.access_key)
-    container.with_env("AWS_SECRET_ACCESS_KEY", minio_config.secret_key)
+    container.with_env("AWS_ACCESS_KEY_ID", s3_config.access_key)
+    container.with_env("AWS_SECRET_ACCESS_KEY", s3_config.secret_key)
     container.with_env(
         "MLFLOW_S3_ENDPOINT_URL",
-        f"http://{minio_config.container_name}:{minio_config.port}",
+        f"http://{s3_config.container_name}:{s3_config.port}",
     )
     container.with_env("MLFLOW_BOTO_CLIENT_ADDRESSING_STYLE", "path")
     container.with_command(

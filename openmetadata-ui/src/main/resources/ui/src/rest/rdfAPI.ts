@@ -11,66 +11,271 @@
  *  limitations under the License.
  */
 
-import { GraphEdge, GraphFilterOptions } from '../types/knowledgeGraph.types';
-import APIClient from './index';
+import type {
+  RDFIndexFailure as RdfIndexFailure,
+  RDFReindexFailuresResponse as RdfReindexFailuresResponse,
+} from '../generated/api/rdf/rdfReindexFailuresResponse';
+import { RDFStatus } from '../generated/api/rdf/rdfStatus';
+import {
+  SavedSparqlQueries as SavedSparqlQueriesResponse,
+  SavedSparqlQuery as SavedSparqlQueryResponse,
+} from '../generated/api/rdf/savedSparqlQueries';
+import {
+  Format as SparqlResultFormat,
+  Inference as SparqlInferenceLevel,
+} from '../generated/api/rdf/sparqlQuery';
+import { SparqlResponse } from '../generated/api/rdf/sparqlResponse';
+import {
+  SavedSparqlQuery as SparqlQueryTemplateResponse,
+  SparqlQuerySettings,
+} from '../generated/configuration/sparqlQuerySettings';
+import { SettingType } from '../generated/settings/settings';
+import APIClient from './axiosClient';
+import {
+  EntityGraphExportFormat,
+  EntityGraphParams,
+  GlossaryGraphParams,
+  GraphData,
+} from './rdfAPI.interface';
 
-export interface GraphNode {
+const MIME_TEXT_TURTLE = 'text/turtle';
+const MIME_APPLICATION_LD_JSON = 'application/ld+json';
+
+export type SparqlPlaygroundFormat = `${SparqlResultFormat}`;
+export type SparqlPlaygroundInference = `${SparqlInferenceLevel}`;
+
+export interface SparqlPlaygroundParams {
+  query: string;
+  format?: SparqlPlaygroundFormat;
+  inference?: SparqlPlaygroundInference;
+}
+
+export interface SparqlPlaygroundResult {
+  format: SparqlPlaygroundFormat;
+  body: string;
+  parsed?: SparqlResponse;
+  contentType: string;
+  durationMs: number;
+}
+
+export interface SavedSparqlQuery {
   id: string;
-  label: string;
-  type: string;
-  group?: string;
-  title?: string;
-  fullyQualifiedName?: string;
-  description?: string;
-  isolated?: boolean;
+  name: string;
+  query: string;
+  format: SparqlPlaygroundFormat;
+  inference: SparqlPlaygroundInference;
+  savedAt: number;
 }
 
-export interface GraphData {
-  nodes: GraphNode[];
-  edges: GraphEdge[];
-  filterOptions?: GraphFilterOptions;
-  totalNodes?: number;
-  totalEdges?: number;
-  source?: string;
-  error?: string;
+interface PersistedSparqlQuery {
+  id: string;
+  name: string;
+  query: string;
+  format: string;
+  inference: string;
+  savedAt: number;
 }
 
-export interface EntityGraphParams {
-  entityId: string;
-  entityType: string;
-  depth?: number;
-  entityTypes?: string[];
-  relationshipTypes?: string[];
+interface SparqlQuerySettingsUpdate {
+  config_type: SettingType.SparqlQuerySettings;
+  config_value: SparqlQuerySettings;
 }
 
-export type EntityGraphExportFormat = 'turtle' | 'jsonld';
+const SPARQL_RESULT_MIME: Record<SparqlPlaygroundFormat, string> = {
+  json: 'application/sparql-results+json',
+  xml: 'application/sparql-results+xml',
+  csv: 'text/csv',
+  tsv: 'text/tab-separated-values',
+  turtle: MIME_TEXT_TURTLE,
+  rdfxml: 'application/rdf+xml',
+  ntriples: 'application/n-triples',
+  jsonld: MIME_APPLICATION_LD_JSON,
+};
 
-export interface GlossaryGraphParams {
-  glossaryId?: string;
-  relationTypes?: string;
-  limit?: number;
-  offset?: number;
-  includeIsolated?: boolean;
-}
+const normalizeSparqlFormat = (format: string): SparqlPlaygroundFormat => {
+  switch (format) {
+    case 'xml':
+    case 'csv':
+    case 'tsv':
+    case 'turtle':
+    case 'rdfxml':
+    case 'ntriples':
+    case 'jsonld':
+      return format;
+    default:
+      return 'json';
+  }
+};
+
+const normalizeSparqlInference = (
+  inference: string
+): SparqlPlaygroundInference => {
+  switch (inference) {
+    case 'rdfs':
+    case 'owl':
+    case 'custom':
+      return inference;
+    default:
+      return 'none';
+  }
+};
+
+const normalizeSavedSparqlQuery = (
+  savedQuery: PersistedSparqlQuery
+): SavedSparqlQuery => ({
+  id: savedQuery.id,
+  name: savedQuery.name,
+  query: savedQuery.query,
+  format: normalizeSparqlFormat(savedQuery.format),
+  inference: normalizeSparqlInference(savedQuery.inference),
+  savedAt: savedQuery.savedAt,
+});
+
+export const getSavedSparqlQueries = async (): Promise<SavedSparqlQuery[]> => {
+  const response = await APIClient.get<SavedSparqlQueriesResponse>(
+    '/rdf/queries/saved'
+  );
+
+  return response.data.queries.map((savedQuery: SavedSparqlQueryResponse) =>
+    normalizeSavedSparqlQuery(savedQuery)
+  );
+};
+
+export const replaceSavedSparqlQueries = async (
+  queries: SavedSparqlQuery[]
+): Promise<SavedSparqlQuery[]> => {
+  const response = await APIClient.put<SavedSparqlQueriesResponse>(
+    '/rdf/queries/saved',
+    { queries }
+  );
+
+  return response.data.queries.map((savedQuery: SavedSparqlQueryResponse) =>
+    normalizeSavedSparqlQuery(savedQuery)
+  );
+};
+
+export const getSparqlQueryTemplates = async (): Promise<
+  SavedSparqlQuery[]
+> => {
+  const response = await APIClient.get<SparqlQuerySettings>(
+    '/rdf/queries/templates'
+  );
+
+  return response.data.queryTemplates.map(
+    (queryTemplate: SparqlQueryTemplateResponse) =>
+      normalizeSavedSparqlQuery(queryTemplate)
+  );
+};
+
+export const replaceSparqlQueryTemplates = async (
+  queryTemplates: SavedSparqlQuery[]
+): Promise<SavedSparqlQuery[]> => {
+  const response = await APIClient.put<SparqlQuerySettingsUpdate>(
+    '/system/settings',
+    {
+      config_type: SettingType.SparqlQuerySettings,
+      config_value: { queryTemplates },
+    }
+  );
+
+  return response.data.config_value.queryTemplates.map(
+    (queryTemplate: SparqlQueryTemplateResponse) =>
+      normalizeSavedSparqlQuery(queryTemplate)
+  );
+};
+
+/**
+ * POST /v1/rdf/sparql. The server returns the result body in the requested
+ * SPARQL serialization (JSON/XML/CSV/TSV for SELECT/ASK; Turtle/N-Triples/
+ * RDF-XML/JSON-LD for CONSTRUCT/DESCRIBE).
+ */
+const executeSparqlQuery = async (
+  path: string,
+  params: SparqlPlaygroundParams
+): Promise<SparqlPlaygroundResult> => {
+  const format: SparqlPlaygroundFormat = params.format ?? 'json';
+  const inference: SparqlPlaygroundInference = params.inference ?? 'none';
+  const acceptMime = SPARQL_RESULT_MIME[format];
+  const start = performance.now();
+  const response = await APIClient.post(
+    path,
+    {
+      query: params.query,
+      format,
+      inference,
+    },
+    {
+      headers: { Accept: acceptMime },
+      transformResponse: [(data) => data],
+      responseType: 'text',
+    }
+  );
+  const durationMs = Math.round(performance.now() - start);
+  const body = typeof response.data === 'string' ? response.data : '';
+  let parsed: SparqlResponse | undefined;
+  if (format === 'json') {
+    try {
+      parsed = JSON.parse(body) as SparqlResponse;
+    } catch (e) {
+      parsed = undefined;
+    }
+  }
+
+  return {
+    format,
+    body,
+    parsed,
+    contentType:
+      typeof response.headers['content-type'] === 'string'
+        ? response.headers['content-type']
+        : acceptMime,
+    durationMs,
+  };
+};
+
+export const runSparqlQuery = (
+  params: SparqlPlaygroundParams
+): Promise<SparqlPlaygroundResult> => executeSparqlQuery('/rdf/sparql', params);
+
+export const runGlossarySparqlQuery = (
+  glossaryId: string,
+  params: SparqlPlaygroundParams
+): Promise<SparqlPlaygroundResult> =>
+  executeSparqlQuery(`/glossaries/${glossaryId}/sparql`, params);
+
+export const EXPORT_FORMAT_TO_ACCEPT_HEADER: Record<string, string> = {
+  jsonld: MIME_APPLICATION_LD_JSON,
+  turtle: MIME_TEXT_TURTLE,
+  rdfxml: 'application/rdf+xml',
+  ntriples: 'application/n-triples',
+};
+
+export const EXPORT_FORMAT_TO_FILE_EXTENSION: Record<string, string> = {
+  jsonld: 'jsonld',
+  turtle: 'ttl',
+  rdfxml: 'rdf',
+  ntriples: 'nt',
+};
 
 export const checkRdfEnabled = async (): Promise<boolean> => {
   try {
-    const response = await APIClient.get('/rdf/status');
+    const response = await APIClient.get<RDFStatus>('/rdf/status');
 
-    return response.data?.enabled ?? false;
+    return response.data.enabled;
   } catch (error) {
     return false;
   }
 };
 
-export const fetchRdfConfig = async (): Promise<{ enabled: boolean }> => {
-  const response = await APIClient.get<{ enabled: boolean }>('/rdf/status');
+export const fetchRdfConfig = async (): Promise<RDFStatus> => {
+  const response = await APIClient.get<RDFStatus>('/rdf/status');
 
   return response.data;
 };
 
 export const getEntityGraphData = async (
-  params: EntityGraphParams
+  params: EntityGraphParams,
+  options?: { signal?: AbortSignal }
 ): Promise<GraphData> => {
   const {
     entityId,
@@ -89,6 +294,7 @@ export const getEntityGraphData = async (
         ? relationshipTypes.join(',')
         : undefined,
     },
+    signal: options?.signal,
   });
 
   return response.data;
@@ -121,7 +327,7 @@ export const exportEntityGraph = async (
     },
     responseType: 'blob',
     headers: {
-      Accept: format === 'jsonld' ? 'application/ld+json' : 'text/turtle',
+      Accept: format === 'jsonld' ? MIME_APPLICATION_LD_JSON : MIME_TEXT_TURTLE,
     },
   });
 
@@ -136,13 +342,13 @@ export const downloadEntityGraph = async (
 ): Promise<void> => {
   const { entityName, format = 'turtle', ...graphParams } = params;
   const blob = await exportEntityGraph({ ...graphParams, format });
-  const safeFilename = entityName.replace(/[^a-zA-Z0-9-_]/g, '_');
+  const safeFilename = entityName.replaceAll(/[^a-zA-Z0-9-_]/g, '_');
   const extension = format === 'jsonld' ? 'jsonld' : 'ttl';
   const filename = `${safeFilename}_knowledge_graph.${extension}`;
   const downloadBlob =
     blob instanceof Blob ? blob : new Blob([blob], { type: 'text/plain' });
 
-  const url = window.URL.createObjectURL(downloadBlob);
+  const url = globalThis.URL.createObjectURL(downloadBlob);
   const link = document.createElement('a');
   link.href = url;
   link.download = filename;
@@ -151,8 +357,8 @@ export const downloadEntityGraph = async (
   link.click();
 
   setTimeout(() => {
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    link.remove();
+    globalThis.URL.revokeObjectURL(url);
   }, 100);
 };
 
@@ -161,6 +367,7 @@ export const getGlossaryTermGraph = async (
 ): Promise<GraphData> => {
   const {
     glossaryId,
+    glossaryTermId,
     relationTypes,
     limit = 500,
     offset = 0,
@@ -170,6 +377,7 @@ export const getGlossaryTermGraph = async (
   const response = await APIClient.get<GraphData>('/rdf/glossary/graph', {
     params: {
       glossaryId,
+      glossaryTermId,
       relationTypes,
       limit,
       offset,
@@ -192,6 +400,8 @@ export const exportGlossaryAsOntology = async (
   params: ExportGlossaryParams
 ): Promise<Blob> => {
   const { glossaryId, format = 'turtle', includeRelations = true } = params;
+  const acceptHeader =
+    EXPORT_FORMAT_TO_ACCEPT_HEADER[format] || MIME_APPLICATION_LD_JSON;
 
   const response = await APIClient.get(`/rdf/glossary/${glossaryId}/export`, {
     params: {
@@ -200,16 +410,37 @@ export const exportGlossaryAsOntology = async (
     },
     responseType: 'blob',
     headers: {
-      Accept:
-        format === 'turtle'
-          ? 'text/turtle'
-          : format === 'rdfxml'
-          ? 'application/rdf+xml'
-          : format === 'ntriples'
-          ? 'application/n-triples'
-          : 'application/ld+json',
+      Accept: acceptHeader,
     },
   });
+
+  return response.data;
+};
+
+export type RdfIndexFailureRecord = RdfIndexFailure;
+export type { RdfReindexFailuresResponse };
+
+export interface GetRdfReindexFailuresParams {
+  offset?: number;
+  limit?: number;
+  entityType?: string;
+}
+
+export const getRdfReindexFailures = async (
+  params: GetRdfReindexFailuresParams = {}
+): Promise<RdfReindexFailuresResponse> => {
+  const { offset = 0, limit = 50, entityType } = params;
+
+  const response = await APIClient.get<RdfReindexFailuresResponse>(
+    '/rdf/reindex/failures',
+    {
+      params: {
+        offset,
+        limit,
+        entityType: entityType || undefined,
+      },
+    }
+  );
 
   return response.data;
 };
@@ -221,23 +452,16 @@ export const downloadGlossaryOntology = async (
 ): Promise<void> => {
   const blob = await exportGlossaryAsOntology({ glossaryId, format });
 
-  const extension =
-    format === 'turtle'
-      ? 'ttl'
-      : format === 'rdfxml'
-      ? 'rdf'
-      : format === 'ntriples'
-      ? 'nt'
-      : 'jsonld';
+  const extension = EXPORT_FORMAT_TO_FILE_EXTENSION[format] || 'jsonld';
 
-  const safeFilename = glossaryName.replace(/[^a-zA-Z0-9-_]/g, '_');
+  const safeFilename = glossaryName.replaceAll(/[^a-zA-Z0-9-_]/g, '_');
   const filename = `${safeFilename}_ontology.${extension}`;
 
   // Create blob if response is text
   const downloadBlob =
     blob instanceof Blob ? blob : new Blob([blob], { type: 'text/plain' });
 
-  const url = window.URL.createObjectURL(downloadBlob);
+  const url = globalThis.URL.createObjectURL(downloadBlob);
   const link = document.createElement('a');
   link.href = url;
   link.download = filename;
@@ -249,7 +473,32 @@ export const downloadGlossaryOntology = async (
 
   // Cleanup
   setTimeout(() => {
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    link.remove();
+    globalThis.URL.revokeObjectURL(url);
   }, 100);
+};
+
+export interface ShaclValidationResult {
+  conforms: boolean;
+  report: string;
+}
+
+export const validateOntologyShapes = async (params?: {
+  entityUri?: string;
+  format?: 'turtle' | 'jsonld';
+}): Promise<ShaclValidationResult> => {
+  const { entityUri, format = 'turtle' } = params ?? {};
+  const response = await APIClient.post<string>('/rdf/validate', null, {
+    headers: {
+      Accept: format === 'jsonld' ? MIME_APPLICATION_LD_JSON : MIME_TEXT_TURTLE,
+    },
+    params: { entityUri, format },
+    responseType: 'text',
+  });
+
+  return {
+    conforms:
+      String(response.headers['om-shacl-conforms']).toLowerCase() === 'true',
+    report: response.data,
+  };
 };

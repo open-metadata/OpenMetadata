@@ -18,6 +18,7 @@ from metadata.generated.schema.entity.data.table import TableType
 from metadata.ingestion.source.database.common_db_source import TableNameAndType
 from metadata.ingestion.source.database.trino.metadata import (
     TrinoSource,
+    _get_columns,
     get_view_definition,
 )
 
@@ -34,9 +35,7 @@ class TestTrinoMetadata(unittest.TestCase):
 
     def _set_execute_side_effect(self, primary_result, fallback_result=None):
         """Helper to mock connection.execute for primary and fallback queries"""
-        results = iter(
-            [self._mock_result(primary_result), self._mock_result(fallback_result)]
-        )
+        results = iter([self._mock_result(primary_result), self._mock_result(fallback_result)])
         self.mock_connection.execute.side_effect = lambda *args, **kwargs: next(results)
 
     @staticmethod
@@ -66,9 +65,7 @@ class TestTrinoMetadata(unittest.TestCase):
 
     def test_view_definition_with_create_view_not_modified(self):
         """Test that a definition already containing CREATE VIEW is returned as-is"""
-        self._set_execute_side_effect(
-            "CREATE VIEW test_catalog.test_schema.test_view AS SELECT * FROM table1"
-        )
+        self._set_execute_side_effect("CREATE VIEW test_catalog.test_schema.test_view AS SELECT * FROM table1")
 
         result = get_view_definition(
             self.mock_self,
@@ -85,9 +82,7 @@ class TestTrinoMetadata(unittest.TestCase):
 
     def test_view_definition_with_create_or_replace_not_modified(self):
         """Test that CREATE OR REPLACE VIEW is not double-prefixed"""
-        self._set_execute_side_effect(
-            "CREATE OR REPLACE VIEW test_view AS SELECT * FROM table1"
-        )
+        self._set_execute_side_effect("CREATE OR REPLACE VIEW test_view AS SELECT * FROM table1")
 
         result = get_view_definition(
             self.mock_self,
@@ -96,9 +91,7 @@ class TestTrinoMetadata(unittest.TestCase):
             schema="test_schema",
         )
 
-        self.assertEqual(
-            result, "CREATE OR REPLACE VIEW test_view AS SELECT * FROM table1"
-        )
+        self.assertEqual(result, "CREATE OR REPLACE VIEW test_view AS SELECT * FROM table1")
 
     def test_view_definition_fallback_when_primary_returns_none(self):
         """Test that SHOW CREATE VIEW is used when information_schema returns None"""
@@ -134,9 +127,7 @@ class TestTrinoMetadata(unittest.TestCase):
             schema="test_schema",
         )
 
-        self.assertEqual(
-            result, "CREATE VIEW test_catalog.test_schema.test_view AS SELECT 1"
-        )
+        self.assertEqual(result, "CREATE VIEW test_catalog.test_schema.test_view AS SELECT 1")
         self.assertEqual(self.mock_connection.execute.call_count, 2)
 
     def test_view_definition_returns_none_when_both_queries_empty(self):
@@ -247,6 +238,42 @@ class TestTrinoIcebergDetection(unittest.TestCase):
         mock_self.inspector.get_table_names.return_value = ["orders"]
         result = TrinoSource.query_table_names_and_types(mock_self, "test_schema")
         assert result == [TableNameAndType(name="orders", type_=TableType.Regular)]
+
+
+class TestTrinoColumnComments:
+    """`SHOW COLUMNS` reports an unset column comment as '', which must not become a description"""
+
+    @staticmethod
+    def _mock_connection(records):
+        connection = Mock()
+        connection.dialect.identifier_preparer.quote.side_effect = lambda value: f'"{value}"'
+        connection.execute.return_value = records
+        return connection
+
+    @staticmethod
+    def _record(name, comment):
+        record = Mock()
+        record.Column = name
+        record.Type = "varchar"
+        record.Comment = comment
+        return record
+
+    def _columns_for(self, records):
+        mock_self = Mock()
+        mock_self._get_default_schema_name.return_value = "test_schema"
+        return _get_columns(mock_self, self._mock_connection(records), "test_table", "test_schema")
+
+    def test_unset_comment_is_none(self):
+        columns = self._columns_for([self._record("id", "")])
+        assert columns[0]["comment"] is None
+
+    def test_populated_comment_is_preserved(self):
+        columns = self._columns_for([self._record("name", "Name of the student")])
+        assert columns[0]["comment"] == "Name of the student"
+
+    def test_null_comment_is_none(self):
+        columns = self._columns_for([self._record("age", None)])
+        assert columns[0]["comment"] is None
 
 
 if __name__ == "__main__":

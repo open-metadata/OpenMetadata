@@ -11,15 +11,19 @@
 """
 Client to interact with BurstIQ LifeGraph APIs
 """
+
 import traceback
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from metadata.generated.schema.entity.services.connections.database.burstIQConnection import (
     BurstIQConnection,
 )
+from metadata.ingestion.api.step import WorkflowFatalError
 from metadata.ingestion.source.database.burstiq.models import (
     BurstIQDictionary,
     BurstIQEdge,
@@ -32,7 +36,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 AUTH_TIMEOUT = (10, 30)
-API_TIMEOUT = (10, 120)
+API_TIMEOUT = (30, 120)  # (connect, read); connect was 10s — TLS handshakes to a loaded BurstIQ API timed out
 
 AUTH_SERVER_BASE = "https://auth.burstiq.com"
 API_BASE_URL = "https://api.burstiq.com"
@@ -48,9 +52,21 @@ class BurstIQClient:
         self.config = config
         self.api_base_url = getattr(config, "apiUrl", API_BASE_URL).rstrip("/")
 
-        self.access_token: Optional[str] = None
-        self.token_expires_at: Optional[datetime] = None
-        self._chain_metrics: Optional[Dict[str, int]] = None
+        self.access_token: str | None = None
+        self.token_expires_at: datetime | None = None
+        self._chain_metrics: dict[str, int] | None = None
+
+        self.session = requests.Session()
+        retry = Retry(
+            total=3,
+            connect=3,
+            read=3,
+            backoff_factor=1,  # sleeps 1s, 2s, 4s between tries
+            status_forcelist=(502, 503, 504),
+            allowed_methods=None,  # retry POST too — TQL queries are read-only
+            respect_retry_after_header=False,  # ignore server Retry-After; cap total wait by our backoff, not the server
+        )
+        self.session.mount("https://", HTTPAdapter(max_retries=retry))
 
     def test_authenticate(self):
         """
@@ -77,9 +93,7 @@ class BurstIQClient:
 
         auth_server_url = getattr(self.config, "authServerUrl", AUTH_SERVER_BASE)
         client_id = getattr(self.config, "clientId", "burst")
-        token_url = (
-            f"{auth_server_url}/realms/{realm_name}/protocol/openid-connect/token"
-        )
+        token_url = f"{auth_server_url}/realms/{realm_name}/protocol/openid-connect/token"
 
         payload = {
             "client_id": client_id,
@@ -100,31 +114,26 @@ class BurstIQClient:
 
             token = TokenResponse.model_validate(response.json())
             self.access_token = token.access_token
-            self.token_expires_at = datetime.now() + timedelta(
-                seconds=token.expires_in - 60
-            )
+            self.token_expires_at = datetime.now() + timedelta(seconds=token.expires_in - 60)
 
             customer_name = getattr(self.config, "biqCustomerName", None)
             sdz_name = getattr(self.config, "biqSdzName", None)
 
-            logger.info(
-                f"Authentication successful. Token expires in {token.expires_in} seconds"
-            )
+            logger.info(f"Authentication successful. Token expires in {token.expires_in} seconds")
             if customer_name and sdz_name:
                 logger.info(f"Customer: {customer_name}, SDZ: {sdz_name}")
 
+        except requests.exceptions.HTTPError as exc:
+            if exc.response is not None:
+                logger.error(f"Authentication HTTP {exc.response.status_code} error. Response: {exc.response.text}")
+            logger.debug(traceback.format_exc())
+            raise Exception("Failed to authenticate with BurstIQ") from exc  # noqa: TRY002
         except Exception as exc:
             logger.error(f"Authentication failed: {exc}")
             logger.debug(traceback.format_exc())
-            raise Exception("Failed to authenticate with BurstIQ") from exc
+            raise Exception("Failed to authenticate with BurstIQ") from exc  # noqa: TRY002
 
-    def _get_auth_header(self) -> Dict[str, str]:
-        """
-        Get authentication headers, refreshing the token if necessary.
-
-        Returns:
-            Dictionary of headers
-        """
+    def _get_auth_header(self) -> dict[str, str]:
         if not self.access_token:
             logger.info("No access token found, authenticating...")
             self._authenticate()
@@ -140,18 +149,15 @@ class BurstIQClient:
 
         customer_name = getattr(self.config, "biqCustomerName", None)
         sdz_name = getattr(self.config, "biqSdzName", None)
-        system_wallet_id = getattr(self.config, "biqSystemWalletId", None)
 
         if customer_name:
             headers["biq_customer_name"] = customer_name
         if sdz_name:
             headers["biq_sdz_name"] = sdz_name
-        if system_wallet_id:
-            headers["biq_system_wallet_id"] = system_wallet_id
 
         return headers
 
-    def _make_request(self, method: str, endpoint: str, **kwargs) -> Optional[Any]:
+    def _make_request(self, method: str, endpoint: str, **kwargs) -> Any | None:
         """
         Make HTTP request to BurstIQ API
 
@@ -176,14 +182,10 @@ class BurstIQClient:
 
         try:
             start_time = time.time()
-            response = requests.request(
-                method, url, headers=headers, timeout=API_TIMEOUT, **kwargs
-            )
+            response = self.session.request(method, url, headers=headers, timeout=API_TIMEOUT, **kwargs)
             elapsed_time = time.time() - start_time
 
-            logger.debug(
-                f"Request completed in {elapsed_time:.2f}s - Status: {response.status_code}"
-            )
+            logger.debug(f"Request completed in {elapsed_time:.2f}s - Status: {response.status_code}")
 
             response.raise_for_status()
 
@@ -194,7 +196,7 @@ class BurstIQClient:
             else:
                 logger.debug("Received single item response")
 
-            return json_data
+            return json_data  # noqa: TRY300
 
         except requests.exceptions.Timeout as exc:
             logger.error(f"Request timeout after {API_TIMEOUT}s for {url}: {exc}")
@@ -207,15 +209,42 @@ class BurstIQClient:
             logger.error(f"Connection error for {url}: {exc}")
             logger.debug(traceback.format_exc())
             raise ConnectionError(
-                f"Failed to connect to BurstIQ API at {url}. "
-                "Please verify the API URL and network connectivity."
+                f"Failed to connect to BurstIQ API at {url}. Please verify the API URL and network connectivity."
             ) from exc
+        except requests.exceptions.HTTPError as exc:
+            if exc.response is not None:
+                logger.error(f"HTTP {exc.response.status_code} error for {url}. Response: {exc.response.text}")
+            logger.debug(traceback.format_exc())
+            raise
         except Exception as exc:
             logger.error(f"API request failed for {url}: {exc}")
             logger.debug(traceback.format_exc())
             raise
 
-    def get_dictionaries(self, limit: Optional[int] = None) -> List[BurstIQDictionary]:
+    def validate_system_wallet(self) -> None:
+        """Probe metadata endpoint with wallet header to detect invalid wallet early."""
+        wallet_id = getattr(self.config, "biqSystemWalletId", None)
+        if not wallet_id:
+            raise ConnectionError("biqSystemWalletId not configured. Profiling data will not be accessible.")
+        try:
+            self._make_request(
+                "GET",
+                "/api/metadata/dictionary",
+                params={"limit": 1},
+                headers={"biq_system_wallet_id": wallet_id},
+            )
+        except Exception as exc:
+            body = getattr(getattr(exc, "response", None), "text", "") or ""
+            if not body:
+                raise
+            if "system wallet" in body.lower():
+                raise ConnectionError(
+                    f"BurstIQ system wallet '{wallet_id}' is invalid or does not exist. "
+                    f"Verify biqSystemWalletId in the connection configuration. BurstIQ response: {body[:200]}"
+                ) from exc
+            logger.debug(f"System wallet validation deferred to GetDictionaries (non-wallet error): {exc}")
+
+    def get_dictionaries(self, limit: int | None = None) -> list[BurstIQDictionary]:
         """
         Fetch all data dictionaries from BurstIQ
 
@@ -240,7 +269,7 @@ class BurstIQClient:
         logger.info(f"Found {len(dictionaries)} dictionaries")
         return dictionaries
 
-    def get_dictionary_by_name(self, name: str) -> Optional[BurstIQDictionary]:
+    def get_dictionary_by_name(self, name: str) -> BurstIQDictionary | None:
         """
         Get a specific dictionary by name
 
@@ -258,12 +287,12 @@ class BurstIQClient:
 
     def get_edges(
         self,
-        name: Optional[str] = None,
-        from_dictionary: Optional[str] = None,
-        to_dictionary: Optional[str] = None,
-        limit: Optional[int] = None,
-        skip: Optional[int] = None,
-    ) -> List[BurstIQEdge]:
+        name: str | None = None,
+        from_dictionary: str | None = None,
+        to_dictionary: str | None = None,
+        limit: int | None = None,
+        skip: int | None = None,
+    ) -> list[BurstIQEdge]:
         """
         Query edge definitions (lineage relationships) from BurstIQ
 
@@ -289,9 +318,7 @@ class BurstIQClient:
         if skip:
             params["skip"] = skip
 
-        logger.info(
-            f"Fetching edges from BurstIQ (filters: name={name}, from={from_dictionary}, to={to_dictionary})"
-        )
+        logger.info(f"Fetching edges from BurstIQ (filters: name={name}, from={from_dictionary}, to={to_dictionary})")
         data = self._make_request("GET", "/api/metadata/edge", params=params)
 
         if data is None:
@@ -302,7 +329,7 @@ class BurstIQClient:
         logger.info(f"Found {len(edges)} edge definitions")
         return edges
 
-    def get_chain_metrics(self) -> Dict[str, int]:
+    def get_chain_metrics(self) -> dict[str, int]:
         """
         Fetch asset counts per chain from BurstIQ metrics endpoint.
 
@@ -316,14 +343,10 @@ class BurstIQClient:
         if data is None:
             return {}
         metrics = SdzMetricsResponse.model_validate(data)
-        self._chain_metrics = {
-            name: chain.assets for name, chain in metrics.chainMetrics.items()
-        }
+        self._chain_metrics = {name: chain.assets for name, chain in metrics.chainMetrics.items()}
         return self._chain_metrics
 
-    def get_records_by_tql(
-        self, chain: str, limit: int, skip: int = 0
-    ) -> List[Dict[str, Any]]:
+    def get_records_by_tql(self, chain: str, limit: int, skip: int = 0) -> list[dict[str, Any]]:
         """
         Fetch data records from a chain using TQL (Temporal Query Language).
 
@@ -337,22 +360,30 @@ class BurstIQClient:
         """
         tql = f"FROM {chain} SKIP {skip} LIMIT {limit} SELECT data.*"
         logger.info(f"Fetching records for chain '{chain}' via TQL (limit={limit})")
+        system_wallet_id = getattr(self.config, "biqSystemWalletId", None)
+        if not system_wallet_id:
+            raise WorkflowFatalError(
+                "biqSystemWalletId is required to profile BurstIQ data. "
+                "Without it BurstIQ returns HTTP 200 with zero rows and profiles are silently empty."
+            )
         try:
             raw = self._make_request(
-                "POST", "/api/graphchain/query", json={"query": tql}
+                "POST",
+                "/api/graphchain/query",
+                json={"query": tql},
+                headers={"biq_system_wallet_id": system_wallet_id},
             )
-        except Exception as exc:
-            logger.warning(f"TQL query failed for chain '{chain}': {exc}")
-            return []
-
+        except requests.exceptions.HTTPError as exc:
+            body = getattr(getattr(exc, "response", None), "text", "") or ""
+            if "system wallet" in body.lower():
+                raise WorkflowFatalError(
+                    f"BurstIQ system wallet '{system_wallet_id}' is invalid: {body[:200]}"
+                ) from exc
+            raise
         if not isinstance(raw, list):
             return []
 
-        records = [
-            TQLRecord.model_validate(item).to_record()
-            for item in raw
-            if isinstance(item, dict)
-        ]
+        records = [TQLRecord.model_validate(item).to_record() for item in raw if isinstance(item, dict)]
         logger.info(f"Fetched {len(records)} records for chain '{chain}'")
         return records
 

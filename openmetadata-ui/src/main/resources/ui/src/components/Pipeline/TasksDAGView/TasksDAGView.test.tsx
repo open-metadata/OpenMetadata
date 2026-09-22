@@ -61,13 +61,15 @@ const TasksDAGViewProps = {
   tasks,
 };
 
-jest.mock('../../../utils/EntityLineageUtils', () => ({
-  dragHandle: jest.fn(),
+jest.mock('../../../utils/EntityLineageLayoutUtils', () => ({
   getLayoutedElements: jest.fn().mockImplementation(() => ({
     node: mockNodes,
     edge: mockEdges,
   })),
-  getModalBodyText: jest.fn(),
+}));
+
+jest.mock('../../../utils/EntityLineagePureUtils', () => ({
+  dragHandle: jest.fn(),
   onLoad: jest.fn(),
   onNodeContextMenu: jest.fn(),
   onNodeMouseEnter: jest.fn(),

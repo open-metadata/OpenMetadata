@@ -47,6 +47,7 @@ test_cases = {
     },
 }
 
+
 # Mock class that inherits from PowerBiApiClient
 class MockPowerBiApiClient(PowerBiApiClient):
     def __init__(self):

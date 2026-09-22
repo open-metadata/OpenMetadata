@@ -7,9 +7,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -34,6 +42,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
@@ -186,19 +195,6 @@ public class DashboardDataModelResourceIT
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().dashboardDataModels().getVersionList(id);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().dashboardDataModels().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient()
-        .dashboardDataModels()
-        .getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override
@@ -843,5 +839,170 @@ public class DashboardDataModelResourceIT
     CreateDashboardDataModel request = new CreateDashboardDataModel();
     request.setName(ns.prefix("invalid_data_model"));
     return request;
+  }
+
+  // ===================================================================
+  // CONCURRENT CASCADE HARD-DELETE
+  // (regression for flaky "does not have expected relationship contains")
+  // ===================================================================
+
+  private static final String EXPECTED_RELATIONSHIP_ERROR_FRAGMENT =
+      "does not have expected relationship contains";
+
+  /**
+   * Regression for the flaky {@code dashboardDataModel <id> does not have expected relationship
+   * contains to/from entity type null}. A reader loads the data model row, then resolves its required
+   * {@code service} parent via {@code getContainer} in a separate statement; if the data model is
+   * cascade-hard-deleted in between, the row was seen but its CONTAINS row is gone, and
+   * {@code getContainer} used to 500. The fix makes {@code getContainer} tolerate the
+   * concurrently-deleted relationship (returns null instead of throwing), mirroring how
+   * {@code getFromEntityRef} already tolerates the parent entity itself being concurrently deleted.
+   *
+   * <p>Reproduces the real flake: while a pool of readers continuously GETs the data models (each
+   * GET resolves the required {@code service} relationship), the parent service is hard-deleted,
+   * cascading through {@code bulkHardDeleteSubtree}. A reader now only ever sees the data model with
+   * its service resolved or fully gone (404) — never a 500 — so no reader observes the relationship
+   * error. The completed cascade delete also leaves no entities behind.
+   */
+  @Test
+  void hardDelete_serviceCascade_concurrentReadsNeverSeePartialState(TestNamespace ns)
+      throws InterruptedException {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createLooker(ns);
+
+    List<String> dataModelIds = new ArrayList<>();
+    for (int i = 0; i < 12; i++) {
+      CreateDashboardDataModel request =
+          new CreateDashboardDataModel()
+              .withName(ns.prefix("race_dm_" + i))
+              .withService(service.getFullyQualifiedName())
+              .withDataModelType(DataModelType.LookMlView)
+              .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+      dataModelIds.add(client.dashboardDataModels().create(request).getId().toString());
+    }
+
+    AtomicBoolean reading = new AtomicBoolean(true);
+    List<String> relationshipErrors = new CopyOnWriteArrayList<>();
+    ExecutorService readers = Executors.newFixedThreadPool(4);
+    for (int i = 0; i < 4; i++) {
+      readers.submit(() -> hammerReadsUntilStopped(dataModelIds, reading, relationshipErrors));
+    }
+
+    Map<String, String> params = new HashMap<>();
+    params.put("hardDelete", "true");
+    params.put("recursive", "true");
+    client.dashboardServices().delete(service.getId().toString(), params);
+
+    reading.set(false);
+    readers.shutdown();
+    assertTrue(
+        readers.awaitTermination(60, TimeUnit.SECONDS), "Reader threads did not finish in time");
+    assertTrue(
+        relationshipErrors.isEmpty(),
+        "Concurrent readers observed a partial cascade-delete state (row present, CONTAINS "
+            + "relationship already gone): "
+            + relationshipErrors);
+  }
+
+  private void hammerReadsUntilStopped(
+      List<String> dataModelIds, AtomicBoolean reading, List<String> relationshipErrors) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    while (reading.get()) {
+      for (String id : dataModelIds) {
+        readOnce(client, id, relationshipErrors);
+      }
+    }
+  }
+
+  private void readOnce(OpenMetadataClient client, String id, List<String> relationshipErrors) {
+    try {
+      client.dashboardDataModels().get(id);
+    } catch (OpenMetadataException e) {
+      String message = e.getMessage();
+      if (message != null && message.contains(EXPECTED_RELATIONSHIP_ERROR_FRAGMENT)) {
+        relationshipErrors.add(message);
+      }
+    }
+  }
+
+  /**
+   * Issue #30639: a column whose dataType changes is recorded as deleted + re-added rather than
+   * updated, because EntityUtil.columnMatch compares dataType. updateColumns then removes the
+   * deleted column's tag_usage rows, so the carry-forward must move user-applied tags onto the
+   * re-added column, which occupies the same FQN. The Tableau connector hits this when it promotes
+   * a physical column's type onto the field it mirrors (RECORD -> STRING).
+   */
+  @Test
+  void test_columnTagsSurviveDataTypeChange(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String shortId = ns.shortPrefix();
+
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName("cls_" + shortId)
+                    .withDescription("Test classification"));
+    Tag columnTag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("ct_" + shortId)
+                    .withClassification(classification.getName())
+                    .withDescription("Column level tag"));
+    TagLabel columnTagLabel =
+        new TagLabel()
+            .withTagFQN(columnTag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    DashboardService service = DashboardServiceTestFactory.createLooker(ns);
+    String name = ns.prefix("dm_coltype");
+
+    DashboardDataModel created =
+        createEntity(
+            new CreateDashboardDataModel()
+                .withName(name)
+                .withService(service.getFullyQualifiedName())
+                .withDataModelType(DataModelType.LookMlView)
+                .withColumns(
+                    List.of(
+                        new Column()
+                            .withName("customer_name")
+                            .withDataType(ColumnDataType.RECORD)
+                            .withTags(List.of(columnTagLabel)))));
+
+    String entityId = created.getId().toString();
+    DashboardDataModel tagged = getEntityWithFields(entityId, "columns,tags");
+    assertEquals(
+        1,
+        tagged.getColumns().get(0).getTags().size(),
+        "Column tag should be present after create");
+
+    // Re-ingest the same column with the physical type promoted onto it and no tags in the
+    // payload, which is what a connector sends.
+    BulkOperationResult result =
+        executeBulkAsBot(
+            List.of(
+                new CreateDashboardDataModel()
+                    .withName(name)
+                    .withService(service.getFullyQualifiedName())
+                    .withDataModelType(DataModelType.LookMlView)
+                    .withColumns(
+                        List.of(
+                            new Column()
+                                .withName("customer_name")
+                                .withDataType(ColumnDataType.STRING)))),
+            false);
+    assertNotNull(result);
+
+    DashboardDataModel afterTypeChange = getEntityWithFields(entityId, "columns,tags");
+    Column column = afterTypeChange.getColumns().get(0);
+    assertEquals(ColumnDataType.STRING, column.getDataType(), "dataType should have changed");
+    assertNotNull(column.getTags(), "Column tags must survive a dataType change");
+    assertEquals(
+        1, column.getTags().size(), "User-applied column tag must survive a dataType change");
+    assertEquals(columnTag.getFullyQualifiedName(), column.getTags().get(0).getTagFQN());
   }
 }

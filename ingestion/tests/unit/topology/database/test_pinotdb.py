@@ -17,6 +17,7 @@ Complex types (struct, map, array) are excluded: ARRAY requires a
 constructor argument and their BLOB/ARRAY mappings are covered by
 the generic column_type_parser tests.
 """
+
 import pytest
 
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser

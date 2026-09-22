@@ -23,10 +23,13 @@ import {
   IngestionPipeline,
   PipelineType,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getScheduleDescriptionTexts } from './date-time/DateTimeUtils';
-import { getEntityName, highlightSearchText } from './EntityUtils';
+import { useScheduleDescriptionTexts } from '../hooks/useScheduleDescriptionTexts';
+import { getEntityName } from './EntityNameUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from './EntitySearchUtils';
 import { t } from './i18next/LocalUtil';
-import { stringToHTML } from './StringsUtils';
 
 export const renderNameField =
   (searchText?: string) => (_: string, record: IngestionPipeline) =>
@@ -34,7 +37,9 @@ export const renderNameField =
       <Typography.Text
         className="m-b-0 d-block break-word"
         data-testid="pipeline-name">
-        {stringToHTML(highlightSearchText(getEntityName(record), searchText))}
+        {renderHighlightedText(
+          highlightSearchText(getEntityName(record), searchText)
+        )}
       </Typography.Text>
     );
 
@@ -49,7 +54,7 @@ export const renderTypeField =
       <Typography.Text
         className="m-b-0 d-block break-word"
         data-testid="pipeline-type">
-        {stringToHTML(highlightSearchText(typeText, searchText))}
+        {renderHighlightedText(highlightSearchText(typeText, searchText))}
       </Typography.Text>
     );
   };
@@ -70,6 +75,43 @@ export const renderStatusField = (_: string, record: IngestionPipeline) => {
   );
 };
 
+const ScheduleFieldCell = ({
+  scheduleInterval,
+}: {
+  scheduleInterval: string;
+}) => {
+  const { descriptionFirstPart, descriptionSecondPart } =
+    useScheduleDescriptionTexts(scheduleInterval);
+
+  return (
+    <Row gutter={[8, 8]} wrap={false}>
+      <Col flex="none">
+        <TimeDateIcon className="m-t-xss" height={20} width={20} />
+      </Col>
+      <Col className="tw:min-w-0" flex="auto">
+        <Row className="line-height-16">
+          <Col span={24}>
+            <Typography.Text
+              className="font-medium"
+              data-testid="schedule-primary-details"
+              ellipsis={{ tooltip: descriptionFirstPart }}>
+              {descriptionFirstPart}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            <Typography.Text
+              className="text-xs text-grey-muted"
+              data-testid="schedule-secondary-details"
+              ellipsis={{ tooltip: descriptionSecondPart }}>
+              {descriptionSecondPart}
+            </Typography.Text>
+          </Col>
+        </Row>
+      </Col>
+    </Row>
+  );
+};
+
 export const renderScheduleField = (_: string, record: IngestionPipeline) => {
   if (isUndefined(record.airflowConfig?.scheduleInterval)) {
     return (
@@ -78,32 +120,10 @@ export const renderScheduleField = (_: string, record: IngestionPipeline) => {
       </Typography.Text>
     );
   }
-  const { descriptionFirstPart, descriptionSecondPart } =
-    getScheduleDescriptionTexts(record.airflowConfig.scheduleInterval);
 
   return (
-    <Row gutter={[8, 8]} wrap={false}>
-      <Col>
-        <TimeDateIcon className="m-t-xss" height={20} width={20} />
-      </Col>
-      <Col>
-        <Row className="line-height-16">
-          <Col span={24}>
-            <Typography.Text
-              className="font-medium"
-              data-testid="schedule-primary-details">
-              {descriptionFirstPart}
-            </Typography.Text>
-          </Col>
-          <Col span={24}>
-            <Typography.Text
-              className="text-xs text-grey-muted"
-              data-testid="schedule-secondary-details">
-              {descriptionSecondPart}
-            </Typography.Text>
-          </Col>
-        </Row>
-      </Col>
-    </Row>
+    <ScheduleFieldCell
+      scheduleInterval={record.airflowConfig.scheduleInterval}
+    />
   );
 };

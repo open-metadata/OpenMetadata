@@ -30,12 +30,12 @@ const TooltipRow: FC<TooltipRowProps> = ({ label, value }) => {
     <div className="heatmap-cell-tooltip__row tw:flex tw:items-center tw:justify-between">
       <Typography
         as="span"
-        className="heatmap-cell-tooltip__label tw:whitespace-nowrap tw:text-[12px] tw:text-gray-700">
+        className="heatmap-cell-tooltip__label tw:whitespace-nowrap tw:text-[12px] tw:text-secondary">
         {label}
       </Typography>
       <Typography
         as="span"
-        className="heatmap-cell-tooltip__value tw:font-medium tw:text-[12px] tw:text-gray-900">
+        className="heatmap-cell-tooltip__value tw:font-medium tw:text-[12px] tw:text-primary">
         {value}
       </Typography>
     </div>
@@ -87,15 +87,15 @@ export const HeatmapCellTooltip: FC<HeatmapCellTooltipProps> = ({ cell }) => {
   );
 
   return (
-    <div className="tw:rounded-lg tw:bg-white tw:p-2.5 tw:shadow-sm">
+    <div className="tw:rounded-lg tw:bg-primary tw:p-2.5 tw:shadow-sm">
       <Typography
         as="span"
-        className="tw:block tw:text-[13px] tw:font-medium tw:text-gray-900">
+        className="tw:block tw:text-sm tw:font-medium tw:text-primary">
         {cell.date}
       </Typography>
       <div
         aria-hidden
-        className="tw:my-2 tw:border-b tw:border-dashed tw:border-gray-300"
+        className="tw:my-2 tw:border-b tw:border-dashed tw:border-secondary"
       />
       <div className="tw:flex tw:flex-col tw:gap-2">
         {rows.map(

@@ -15,7 +15,6 @@ Validator for column values to not match regex test case
 
 import traceback
 from abc import abstractmethod
-from typing import List, Optional, Union
 
 from sqlalchemy import Column
 
@@ -55,7 +54,7 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self.get_column()
+            column: SQALikeColumn | Column = self.get_column()
             not_match_count = self._run_results(
                 Metrics.notRegexCount,
                 column,
@@ -64,12 +63,12 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
 
             metric_values = {Metrics.notRegexCount.name: not_match_count}
 
-            if self.test_case.computePassedFailedRowCount:
+            if self._needs_row_count():
                 metric_values[Metrics.rowCount.name] = self.get_row_count()
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
-            logger.warning(msg)
+            logger.error(msg)
             return self.get_test_case_result_object(
                 self.execution_date,
                 TestCaseStatus.Aborted,
@@ -78,9 +77,7 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
             )
 
         evaluation = self._evaluate_test_condition(metric_values, test_params)
-        result_message = self._format_result_message(
-            metric_values, test_params=test_params
-        )
+        result_message = self._format_result_message(metric_values, test_params=test_params)
         test_result_values = self._get_test_result_values(metric_values)
 
         return self.get_test_case_result_object(
@@ -123,18 +120,26 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
             Metrics.notRegexCount.name: Metrics.notRegexCount,
         }
 
-        if self.test_case.computePassedFailedRowCount:
+        if self._needs_row_count():
             metrics[Metrics.rowCount.name] = Metrics.rowCount
 
         return metrics
 
-    def _evaluate_test_condition(
-        self, metric_values: dict, test_params: Optional[dict] = None
-    ) -> TestEvaluation:
+    def _evaluate_test_condition(self, metric_values: dict, test_params: dict | None = None) -> TestEvaluation:
         """Evaluate the not regex match test condition
 
-        For not regex match test, pass if NO values match the forbidden regex pattern
-        (not_match_count == 0).
+        For not regex match test, pass if the values matching the forbidden regex pattern
+        stay within the failure threshold, counted against the table row count. With the
+        default threshold, that means not_match_count == 0.
+
+        The denominator is the table row count here while columnValuesToMatchRegex counts
+        against the non-null values, and that asymmetry is intended. NULLs violate neither
+        test, but they sit on opposite sides of the two metric pairs: notRegexCount only
+        counts the rows that actually match the forbidden pattern, so keeping NULLs in the
+        denominator leaves them as non-violating rows, exactly as the passed/failed row
+        counts below report them. columnValuesToMatchRegex instead counts the values that
+        failed to match, which NULLs never do, so dividing those by the row count would
+        report a mostly NULL column as mostly failing.
 
         Args:
             metric_values: Dictionary with keys from Metrics enum names
@@ -150,13 +155,11 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
                 - total_rows: int - total row count for reporting
         """
         if test_params is None:
-            raise ValueError(
-                "test_params is required for columnValuesToNotMatchRegex._evaluate_test_condition"
-            )
+            raise ValueError("test_params is required for columnValuesToNotMatchRegex._evaluate_test_condition")
         not_match_count = metric_values[Metrics.notRegexCount.name]
         total_rows = metric_values.get(Metrics.rowCount.name)
 
-        matched = not_match_count == 0
+        matched = self._apply_row_threshold(not_match_count, total_rows)
         failed_count = not_match_count
         if total_rows is not None:
             passed_count = total_rows - failed_count
@@ -173,8 +176,8 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
     def _format_result_message(
         self,
         metric_values: dict,
-        dimension_info: Optional[DimensionInfo] = None,
-        test_params: Optional[dict] = None,
+        dimension_info: DimensionInfo | None = None,
+        test_params: dict | None = None,
     ) -> str:
         """Format the result message for not regex match test
 
@@ -193,10 +196,10 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
                 f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
                 f"Found {not_match_count} value(s) matching the forbidden regex pattern."
             )
-        else:
+        else:  # noqa: RET505
             return f"Found {not_match_count} value(s) matching the forbidden regex pattern."
 
-    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:
+    def _get_test_result_values(self, metric_values: dict) -> list[TestResultValue]:
         """Get test result values for not regex match test
 
         Args:
@@ -213,13 +216,11 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
         ]
 
     @abstractmethod
-    def _run_results(
-        self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs
-    ):
+    def _run_results(self, metric: Metrics, column: SQALikeColumn | Column, **kwargs):
         raise NotImplementedError
 
     @abstractmethod
-    def compute_row_count(self, column: Union[SQALikeColumn, Column]):
+    def compute_row_count(self, column: SQALikeColumn | Column):
         """Compute row count for the given column
 
         Args:

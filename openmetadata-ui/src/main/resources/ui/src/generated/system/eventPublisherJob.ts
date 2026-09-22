@@ -28,6 +28,19 @@ export interface EventPublisherJob {
      */
     batchSize?: number;
     /**
+     * Build a full RDF rebuild into an idle dataset and switch to it only after the run
+     * succeeds, instead of clearing the served graph up front. Requires roughly twice the
+     * dataset size on disk, since two datasets alternate. Ignored by apps that do not rebuild
+     * an RDF store.
+     */
+    blueGreenRebuild?: boolean;
+    /**
+     * Override settings applied to staged indexes during bulk reindex. Unset fields fall back
+     * to: replicas=0, refresh=-1, translog durability=async, translog sync=30s,
+     * forceMergeOnPromote=false.
+     */
+    bulkIndexSettings?: BulkIndexOverrides;
+    /**
      * Number of consumer threads to use for reindexing
      */
     consumerThreads?: number;
@@ -48,6 +61,17 @@ export interface EventPublisherJob {
      */
     initialBackoff?: number;
     /**
+     * Index settings applied to staged indexes before alias swap (live serving values). Unset
+     * fields fall back to OS/ES defaults: shards=1, replicas=1, refresh=1s, translog
+     * durability=request.
+     */
+    liveIndexSettings?: IndexSettings;
+    /**
+     * Override liveIndexSettings for specific entity types. Useful for very large or
+     * specialized entities. Keys are entity type names (e.g. 'container', 'table').
+     */
+    liveIndexSettingsByEntity?: { [key: string]: IndexSettings };
+    /**
      * Maximum backoff time in milliseconds
      */
     maxBackoff?: number;
@@ -59,6 +83,14 @@ export interface EventPublisherJob {
      * Maximum number of retries for a failed request
      */
     maxRetries?: number;
+    /**
+     * Minimum per-entity success ratio (successRecords / totalRecords) required to mark a
+     * per-entity reindex as fully successful. Below this threshold the per-entity run is
+     * flagged as not fully successful; promotion still proceeds when the staged index contains
+     * at least one document, through the existing doc-count rescue in DefaultRecreateHandler.
+     * Default 0.95.
+     */
+    minSuccessRatio?: number;
     /**
      * Name of the result
      */
@@ -81,9 +113,18 @@ export interface EventPublisherJob {
      */
     queueSize?: number;
     /**
+     * Server-selected target dataset shared by all participants in an RDF rebuild.
+     */
+    rdfBuildDataset?: string;
+    /**
+     * Server-generated generation identifier that fences writes from an older RDF rebuild.
+     */
+    rdfRebuildId?: string;
+    /**
      * This schema publisher run modes.
      */
-    recreateIndex?: boolean;
+    recreateIndex?:                    boolean;
+    relationshipIsolationMaxFailures?: number;
     /**
      * Recreate Indexes with updated Language
      */
@@ -123,6 +164,36 @@ export interface EventPublisherJob {
 }
 
 /**
+ * Override settings applied to staged indexes during bulk reindex. Unset fields fall back
+ * to: replicas=0, refresh=-1, translog durability=async, translog sync=30s,
+ * forceMergeOnPromote=false.
+ *
+ * Overrides applied to a staged index DURING bulk reindex for write throughput. Reverted to
+ * indexSettings before alias swap. Nothing reads from the staged index, so refresh=-1 and
+ * replicas=0 are safe here.
+ */
+export interface BulkIndexOverrides {
+    /**
+     * Run _forcemerge to 1 segment before swapping the alias. Improves post-reindex query
+     * performance at the cost of build time.
+     */
+    forceMergeOnPromote?:  boolean;
+    numberOfReplicas?:     number;
+    refreshInterval?:      string;
+    translogDurability?:   TranslogDurability;
+    translogSyncInterval?: string;
+}
+
+/**
+ * 'request' = fsync per write (durable). 'async' = fsync on interval (faster, can lose
+ * <syncInterval seconds on crash).
+ */
+export enum TranslogDurability {
+    Async = "async",
+    Request = "request",
+}
+
+/**
  * Failure for the job
  *
  * This schema defines Event Publisher Job Error Schema. Additional properties exist for
@@ -154,6 +225,38 @@ export enum ErrorSource {
 export interface EntityError {
     entity?:  any;
     message?: string;
+}
+
+/**
+ * Index settings applied to staged indexes before alias swap (live serving values). Unset
+ * fields fall back to OS/ES defaults: shards=1, replicas=1, refresh=1s, translog
+ * durability=request.
+ *
+ * Index settings applied to live (post-promote) search indexes. Tune for read freshness,
+ * durability, and HA. These do not affect bulk reindex throughput; bulkIndexOverrides
+ * controls that. number_of_shards is intentionally omitted — it can only be set at index
+ * creation time and the staged-index reindex flow uses the static mapping JSON for creation.
+ */
+export interface IndexSettings {
+    /**
+     * Replica shard count. 1 for HA on multi-node clusters; 0 for single-node.
+     */
+    numberOfReplicas?: number;
+    /**
+     * How often new writes become searchable. '1s' = near-real-time (default; required if
+     * users/agents read-after-write). Higher values reduce CPU/segment churn but delay search
+     * visibility.
+     */
+    refreshInterval?: string;
+    /**
+     * 'request' = fsync per write (durable). 'async' = fsync on interval (faster, can lose
+     * <syncInterval seconds on crash).
+     */
+    translogDurability?: TranslogDurability;
+    /**
+     * Translog fsync cadence when durability=async. Ignored when durability=request.
+     */
+    translogSyncInterval?: string;
 }
 
 /**
@@ -214,6 +317,25 @@ export interface StepStats {
      */
     failedRecords?: number;
     /**
+     * Per-entity Process (doc-build / RDF translation) cumulative time in ms, summed across the
+     * concurrent translation pool. Aggregate work, not wall-clock: with many translation
+     * threads this can exceed the run duration.
+     */
+    processTimeMs?: number;
+    /**
+     * Per-entity Reader (DB) cumulative time in ms, summed across concurrent readers and
+     * therefore aggregate rather than wall-clock. Populated only on per-entity StepStats inside
+     * Stats.entityStats so the UI can show Reader latency per entity. Job-level Reader time
+     * uses Stats.readerStats.totalTimeMs.
+     */
+    readerTimeMs?: number;
+    /**
+     * Per-entity Sink (search bulk, or RDF storage writes) cumulative time in ms, summed across
+     * writers. For RDF the sink is serialized to one in-flight write, so this stage is close to
+     * wall-clock; reader and process are not.
+     */
+    sinkTimeMs?: number;
+    /**
      * Count of Total Successfully Records
      */
     successRecords?: number;
@@ -222,6 +344,15 @@ export interface StepStats {
      */
     totalRecords?: number;
     /**
+     * Cumulative time (ms) spent in this stage, SUMMED ACROSS CONCURRENT WORKERS. Reader,
+     * process and sink stages overlap, so this is aggregate work done, not elapsed wall-clock
+     * time, and it can legitimately exceed a run's duration. Use it to compare where a run
+     * spent effort; take elapsed time from the run record's startTime/endTime. UI computes avg
+     * latency = totalTimeMs / successRecords and throughput = successRecords / (totalTimeMs /
+     * 1000).
+     */
+    totalTimeMs?: number;
+    /**
      * Count of records with failed vector embeddings
      */
     vectorFailedRecords?: number;
@@ -229,6 +360,10 @@ export interface StepStats {
      * Count of records with successful vector embeddings
      */
     vectorSuccessRecords?: number;
+    /**
+     * Per-entity Vector (embedding API) cumulative time in ms.
+     */
+    vectorTimeMs?: number;
     /**
      * Count of Records with Warnings (e.g., stale references that were skipped)
      */

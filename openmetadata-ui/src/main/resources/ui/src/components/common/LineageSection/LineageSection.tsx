@@ -18,7 +18,7 @@ import { ReactComponent as DownstreamIcon } from '../../../assets/svg/lineage-do
 import { ReactComponent as UpstreamIcon } from '../../../assets/svg/lineage-upstream-icon.svg';
 import { LineagePagingInfo } from '../../../components/LineageTable/LineageTable.interface';
 import { getLineagePagingData } from '../../../rest/lineageAPI';
-import { getEntityCountAtDepth } from '../../../utils/EntityLineageUtils';
+import { getEntityCountAtDepth } from '../../../utils/EntityLineageNodeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
 import {
@@ -43,12 +43,12 @@ const LineageItem = React.memo<LineageItemProps>(function LineageItem({
       size="sm"
       onClick={onClick}>
       <div className="tw:flex tw:flex-row tw:gap-1">
-        <Typography as="p" className="tw:text-blue-700 tw:font-normal">
+        <Typography as="p" className="tw:text-utility-blue-700 tw:font-normal">
           {t('label.-with-colon', { text: t(`label.${type}`) })}
         </Typography>
         <Typography
           as="p"
-          className="tw:text-blue-700 tw:font-normal"
+          className="tw:text-utility-blue-700 tw:font-normal"
           data-testid={`${type}-count`}>
           {count}
         </Typography>
@@ -121,7 +121,7 @@ const LineageSection: React.FC<LineageSectionProps> = ({
 
     if (!hasLineage) {
       return (
-        <Typography as="span" className="tw:text-gray-500 tw:text-xs">
+        <Typography as="span" className="tw:text-quaternary tw:text-xs">
           {t('message.no-lineage-available')}
         </Typography>
       );
@@ -148,7 +148,7 @@ const LineageSection: React.FC<LineageSectionProps> = ({
 
   return (
     <div
-      className="tw:px-3.25 tw:pb-4 tw:border-b-[0.6px] tw:border-gray-200"
+      className="tw:px-3.25 tw:pb-4 tw:border-b-[0.6px] tw:border-secondary"
       data-testid="lineage-section">
       <div className="tw:mb-3">
         <Typography as="p" className="tw:font-semibold">

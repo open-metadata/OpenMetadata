@@ -34,7 +34,6 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.type.EntityReference;
@@ -44,14 +43,10 @@ import org.openmetadata.schema.type.MlFeatureSource;
 import org.openmetadata.schema.type.MlHyperParameter;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.mlmodels.MlModelResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -74,6 +69,10 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         MODEL_UPDATE_FIELDS,
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
+    // Covered by the parent service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
+    // the root cleanup() FQN prefix. See EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("dashboard", this::fetchAndSetDashboards);
@@ -194,13 +193,26 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID mlModelId = UUID.fromString(record.getToId());
-      EntityReference serviceRef =
-          Entity.getEntityReferenceById(
-              Entity.MLMODEL_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
-      serviceMap.put(mlModelId, serviceRef);
+      EntityReference serviceRef = resolveServiceRefLeniently(UUID.fromString(record.getFromId()));
+      if (serviceRef != null) {
+        serviceMap.put(mlModelId, serviceRef);
+      }
     }
 
     return serviceMap;
+  }
+
+  private EntityReference resolveServiceRefLeniently(UUID serviceId) {
+    EntityReference serviceRef = null;
+    try {
+      serviceRef = Entity.getEntityReferenceById(Entity.MLMODEL_SERVICE, serviceId, NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      // The parent service can be hard-deleted concurrently (e.g. a sibling test's cascade delete)
+      // between the relationship lookup above and this resolution. The ml model row is mid-cascade
+      // and about to be removed, so tolerate the missing service rather than failing the read.
+      LOG.debug("MlModel service {} not found (concurrent delete); skipping", serviceId);
+    }
+    return serviceRef;
   }
 
   @Override
@@ -219,6 +231,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   private void setMlFeatureSourcesFQN(List<MlFeatureSource> mlSources) {
     mlSources.forEach(
         s -> {
+          FullyQualifiedName.validateFqnName(s.getName());
           if (s.getDataSource() != null) {
             s.setFullyQualifiedName(
                 FullyQualifiedName.add(s.getDataSource().getFullyQualifiedName(), s.getName()));
@@ -231,6 +244,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   private void setMlFeatureFQN(String parentFQN, List<MlFeature> mlFeatures) {
     mlFeatures.forEach(
         f -> {
+          FullyQualifiedName.validateFqnName(f.getName());
           String featureFqn = FullyQualifiedName.add(parentFQN, f.getName());
           f.setFullyQualifiedName(featureFqn);
           if (f.getFeatureSources() != null) {
@@ -404,58 +418,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       }
     }
     return allTags;
-  }
-
-  @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("mlFeatures")) {
-      TaskType taskType = threadContext.getThread().getTask().getType();
-      if (EntityUtil.isDescriptionTask(taskType)) {
-        return new MlFeatureDescriptionTaskWorkflow(threadContext);
-      } else if (EntityUtil.isTagTask(taskType)) {
-        return new MlFeatureTagTaskWorkflow(threadContext);
-      } else {
-        throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
-      }
-    }
-    return super.getTaskWorkflow(threadContext);
-  }
-
-  static class MlFeatureDescriptionTaskWorkflow extends DescriptionTaskWorkflow {
-    private final MlFeature mlFeature;
-
-    MlFeatureDescriptionTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      MlModel mlModel = (MlModel) threadContext.getAboutEntity();
-      mlFeature =
-          findMlFeature(mlModel.getMlFeatures(), threadContext.getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      mlFeature.setDescription(resolveTask.getNewValue());
-      return threadContext.getAboutEntity();
-    }
-  }
-
-  static class MlFeatureTagTaskWorkflow extends TagTaskWorkflow {
-    private final MlFeature mlFeature;
-
-    MlFeatureTagTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      MlModel mlModel = (MlModel) threadContext.getAboutEntity();
-      mlFeature =
-          findMlFeature(mlModel.getMlFeatures(), threadContext.getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
-      mlFeature.setTags(tags);
-      return threadContext.getAboutEntity();
-    }
   }
 
   private void populateService(MlModel mlModel) {

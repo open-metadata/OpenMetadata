@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Col, Row, Skeleton, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
@@ -27,7 +28,7 @@ import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
-import Loader from '../../components/common/Loader/Loader';
+import { PageLoader } from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
@@ -35,6 +36,7 @@ import ProfilerSettings from '../../components/Database/Profiler/ProfilerSetting
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
@@ -42,25 +44,22 @@ import {
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
+  FqnPart,
   TabSpecificField,
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -72,32 +71,40 @@ import {
   restoreDatabaseSchema,
   updateDatabaseSchemaVotes,
 } from '../../rest/databaseAPI';
+import {
+  databaseSchemaQueryFn,
+  databaseSchemaQueryKey,
+  DATABASE_SCHEMA_DEFAULT_FIELDS,
+} from '../../rest/queries/databaseSchemaQuery';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { getTableList } from '../../rest/tableAPI';
-import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../utils/CustomizePage/CustomizePageUtils';
+} from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import databaseSchemaClassBase from '../../utils/DatabaseSchemaClassBase';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
 import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
-import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-
 const DatabaseSchemaPage: FunctionComponent = () => {
   const { t } = useTranslation();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
+  const queryClient = useQueryClient();
 
   const { setFilters, filters } = useTableFilters(INITIAL_TABLE_FILTERS);
   const { tab: activeTab = EntityTabs.TABLE } = useRequiredParams<{
@@ -108,32 +115,158 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   });
   const navigate = useNavigate();
 
-  const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
-  const [databaseSchema, setDatabaseSchema] = useState<DatabaseSchema>(
-    {} as DatabaseSchema
-  );
-  const [isSchemaDetailsLoading, setIsSchemaDetailsLoading] =
-    useState<boolean>(true);
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
   const [isTabExpanded, setIsTabExpanded] = useState(false);
   const { customizedPage } = useCustomPages(PageType.DatabaseSchema);
-  const [databaseSchemaPermission, setDatabaseSchemaPermission] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [storedProcedureCount, setStoredProcedureCount] = useState(0);
   const [tableCount, setTableCount] = useState(0);
 
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
 
-  const { isFollowing, followers = [] } = useMemo(
-    () => ({
-      isFollowing: databaseSchema?.followers?.some(
-        ({ id }) => id === currentUser?.id
+  // View-tier useEntityPermissions call — ungated (none of these named flags ever gated on
+  // `deleted` in the old code). Runs before {@code databaseSchema} exists because
+  // {@code databaseSchemaFields}/the entity {@code useQuery}'s `enabled` below need these
+  // view flags to even run that query (a real ordering cycle, TableDetailsPageV1.tsx
+  // precedent). `canViewBasic` (not `hasViewAccess`) matches the old code's own
+  // `getPrioritizedViewPermission(perms, Operation.ViewBasic)` call exactly — this page never
+  // used the bare ViewBasic-or-ViewAll OR.
+  const {
+    permissions: databaseSchemaPermission,
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    canViewBasic: viewDatabaseSchemaPermission,
+    canViewUsage: viewUsagePermission,
+    canViewAll: viewAllPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+  } = useEntityPermissions(
+    ResourceEntity.DATABASE_SCHEMA,
+    decodedDatabaseSchemaFQN,
+    { enabled: Boolean(decodedDatabaseSchemaFQN) }
+  );
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
+
+  const databaseSchemaFields = useMemo(() => {
+    // {@code DATABASE_SCHEMA_DEFAULT_FIELDS} matches the order
+    // {@code [OWNERS, TAGS, DOMAINS, VOTES, EXTENSION, FOLLOWERS, DATA_PRODUCTS]}; when the
+    // viewer has {@code ViewUsage}, we splice in {@code USAGE_SUMMARY} immediately after
+    // {@code OWNERS} to match the legacy fetch order the tests assert against.
+    if (viewUsagePermission) {
+      return [
+        TabSpecificField.OWNERS,
+        TabSpecificField.USAGE_SUMMARY,
+        TabSpecificField.TAGS,
+        TabSpecificField.DOMAINS,
+        TabSpecificField.VOTES,
+        TabSpecificField.EXTENSION,
+        TabSpecificField.FOLLOWERS,
+        TabSpecificField.DATA_PRODUCTS,
+      ].join(',');
+    }
+
+    return DATABASE_SCHEMA_DEFAULT_FIELDS;
+  }, [viewUsagePermission]);
+
+  const databaseSchemaCacheKey = useMemo(
+    () =>
+      databaseSchemaQueryKey(decodedDatabaseSchemaFQN, databaseSchemaFields),
+    [decodedDatabaseSchemaFQN, databaseSchemaFields]
+  );
+
+  const isDatabaseSchemaQueryEnabled = useMemo(
+    () =>
+      Boolean(
+        decodedDatabaseSchemaFQN &&
+          viewDatabaseSchemaPermission &&
+          !isPermissionsLoading
       ),
-      followers: databaseSchema?.followers ?? [],
-    }),
+    [
+      decodedDatabaseSchemaFQN,
+      viewDatabaseSchemaPermission,
+      isPermissionsLoading,
+    ]
+  );
+
+  const {
+    data: databaseSchema,
+    isLoading: databaseSchemaLoading,
+    error: databaseSchemaError,
+  } = useQuery({
+    queryKey: databaseSchemaCacheKey,
+    queryFn: databaseSchemaQueryFn(
+      decodedDatabaseSchemaFQN,
+      databaseSchemaFields
+    ),
+    enabled: isDatabaseSchemaQueryEnabled,
+  });
+
+  const isError = useMemo(
+    () =>
+      (databaseSchemaError as AxiosError | undefined)?.response?.status === 404,
+    [databaseSchemaError]
+  );
+
+  useEffect(() => {
+    const status = (databaseSchemaError as AxiosError | undefined)?.response
+      ?.status;
+    if (status === ClientErrors.FORBIDDEN) {
+      navigate(ROUTES.FORBIDDEN, { replace: true });
+    } else if (status && status !== 404) {
+      showErrorToast(
+        databaseSchemaError as AxiosError,
+        t('server.entity-details-fetch-error', {
+          entityType: t('label.database-schema'),
+          entityName: decodedDatabaseSchemaFQN,
+        })
+      );
+    }
+  }, [databaseSchemaError, navigate, decodedDatabaseSchemaFQN, t]);
+
+  const setDatabaseSchema = useCallback(
+    (
+      updater:
+        | DatabaseSchema
+        | undefined
+        | ((prev: DatabaseSchema | undefined) => DatabaseSchema | undefined)
+    ) => {
+      queryClient.setQueryData<DatabaseSchema | undefined>(
+        databaseSchemaCacheKey,
+        updater
+      );
+    },
+    [queryClient, databaseSchemaCacheKey]
+  );
+
+  const refetchDatabaseSchema = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: databaseSchemaCacheKey }),
+    [queryClient, databaseSchemaCacheKey]
+  );
+
+  const fetchDatabaseSchemaDetails = useCallback(
+    () => refetchDatabaseSchema(),
+    [refetchDatabaseSchema]
+  );
+
+  // Sync filters when the fetched schema is deleted.
+  useEffect(() => {
+    if (databaseSchema?.deleted) {
+      setFilters({
+        showDeletedTables: databaseSchema.deleted,
+      });
+    }
+  }, [databaseSchema?.deleted]);
+
+  const isFollowing = useMemo(
+    () =>
+      databaseSchema?.followers?.some(({ id }) => id === currentUser?.id) ??
+      false,
     [currentUser, databaseSchema]
   );
   const extraDropdownContent = useMemo(
@@ -142,7 +275,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         EntityType.DATABASE_SCHEMA,
         decodedDatabaseSchemaFQN,
         databaseSchemaPermission,
-        databaseSchema,
+        databaseSchema ?? ({} as DatabaseSchema),
         navigate
       ),
     [
@@ -153,41 +286,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   const { version: currentVersion, id: databaseSchemaId = '' } = useMemo(
-    () => databaseSchema,
+    () => databaseSchema ?? ({} as DatabaseSchema),
     [databaseSchema]
-  );
-
-  const fetchDatabaseSchemaPermission = useCallback(async () => {
-    setIsPermissionsLoading(true);
-    try {
-      const response = await getEntityPermissionByFqn(
-        ResourceEntity.DATABASE_SCHEMA,
-        decodedDatabaseSchemaFQN
-      );
-      setDatabaseSchemaPermission(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsPermissionsLoading(false);
-    }
-  }, [decodedDatabaseSchemaFQN]);
-
-  const viewDatabaseSchemaPermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        databaseSchemaPermission,
-        PermissionOperation.ViewBasic
-      ),
-    [databaseSchemaPermission]
-  );
-
-  const viewUsagePermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        databaseSchemaPermission,
-        PermissionOperation.ViewUsage
-      ),
-    [databaseSchemaPermission]
   );
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -202,40 +302,21 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     );
   }, [decodedDatabaseSchemaFQN, handleFeedCount]);
 
-  const fetchDatabaseSchemaDetails = useCallback(async () => {
-    try {
-      setIsSchemaDetailsLoading(true);
-      const response = await getDatabaseSchemaDetailsByFQN(
-        decodedDatabaseSchemaFQN,
-        {
-          fields: [
-            TabSpecificField.OWNERS,
-            ...(viewUsagePermission ? [TabSpecificField.USAGE_SUMMARY] : []),
-            TabSpecificField.TAGS,
-            TabSpecificField.DOMAINS,
-            TabSpecificField.VOTES,
-            TabSpecificField.EXTENSION,
-            TabSpecificField.FOLLOWERS,
-            TabSpecificField.DATA_PRODUCTS,
-          ].join(','),
-          include: Include.All,
-        }
-      );
-      setDatabaseSchema(response);
-      if (response.deleted) {
-        setFilters({
-          showDeletedTables: response.deleted,
-        });
-      }
-    } catch (err) {
-      // Error
-      if ((err as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        navigate(ROUTES.FORBIDDEN, { replace: true });
-      }
-    } finally {
-      setIsSchemaDetailsLoading(false);
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedDatabaseSchemaFQN) {
+      fetchEntityTaskCountsInto(decodedDatabaseSchemaFQN, setFeedCount);
     }
-  }, [decodedDatabaseSchemaFQN, viewUsagePermission]);
+  }, [decodedDatabaseSchemaFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedDatabaseSchemaFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.DATABASE_SCHEMA,
+        decodedDatabaseSchemaFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedDatabaseSchemaFQN]);
 
   const saveUpdatedDatabaseSchemaData = useCallback(
     (updatedData: DatabaseSchema) => {
@@ -269,6 +350,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const handleUpdateOwner = useCallback(
     async (owners: DatabaseSchema['owners']) => {
+      if (!databaseSchema) {
+        return;
+      }
       try {
         const updatedData = {
           ...databaseSchema,
@@ -289,11 +373,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         );
       }
     },
-    [databaseSchema, databaseSchema?.owners]
+    [databaseSchema, saveUpdatedDatabaseSchemaData, setDatabaseSchema, t]
   );
 
   const handleUpdateTier = useCallback(
     async (newTier?: Tag) => {
+      if (!databaseSchema) {
+        return;
+      }
       const tierTag = updateTierTag(databaseSchema?.tags ?? [], newTier);
       const updatedSchemaDetails = {
         ...databaseSchema,
@@ -305,7 +392,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       );
       setDatabaseSchema(res);
     },
-    [saveUpdatedDatabaseSchemaData, databaseSchema]
+    [saveUpdatedDatabaseSchemaData, databaseSchema, setDatabaseSchema]
   );
 
   const handleUpdateDisplayName = useCallback(
@@ -322,30 +409,33 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         showErrorToast(error as AxiosError, t('server.api-error'));
       }
     },
-    [databaseSchema, saveUpdatedDatabaseSchemaData]
+    [databaseSchema, saveUpdatedDatabaseSchemaData, setDatabaseSchema, t]
   );
 
-  const handleToggleDelete = (version?: number) => {
-    navigate('', {
-      state: {
-        cursorData: null,
-        pageSize: null,
-        currentPage: INITIAL_PAGING_VALUE,
-        replace: true,
-      },
-    });
-    setDatabaseSchema((prev) => {
-      if (!prev) {
-        return prev;
-      }
+  const handleToggleDelete = useCallback(
+    (version?: number) => {
+      navigate('', {
+        state: {
+          cursorData: null,
+          pageSize: null,
+          currentPage: INITIAL_PAGING_VALUE,
+          replace: true,
+        },
+      });
+      setDatabaseSchema((prev) => {
+        if (!prev) {
+          return prev;
+        }
 
-      return {
-        ...prev,
-        deleted: !prev?.deleted,
-        ...(version ? { version } : {}),
-      };
-    });
-  };
+        return {
+          ...prev,
+          deleted: !prev?.deleted,
+          ...(version ? { version } : {}),
+        };
+      });
+    },
+    [navigate, setDatabaseSchema]
+  );
 
   const handleRestoreDatabaseSchema = useCallback(async () => {
     try {
@@ -358,6 +448,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -365,8 +457,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           entity: t('label.database-schema'),
         })
       );
+
+      return false;
     }
-  }, [databaseSchemaId]);
+  }, [databaseSchemaId, handleToggleDelete]);
 
   const versionHandler = useCallback(() => {
     currentVersion &&
@@ -381,18 +475,32 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [currentVersion, decodedDatabaseSchemaFQN]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        getEntityDetailsPath(
+          EntityType.DATABASE,
+          getPartialNameFromTableFQN(
+            decodedDatabaseSchemaFQN,
+            [FqnPart.Service, FqnPart.Database],
+            FQN_SEPARATOR_CHAR
+          )
+        )
+      ),
+    [decodedDatabaseSchemaFQN]
   );
 
-  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
-    const updatedData = data as DatabaseSchema;
+  const afterDomainUpdateAction = useCallback(
+    (data: DataAssetWithDomains) => {
+      const updatedData = data as DatabaseSchema;
 
-    setDatabaseSchema((data) => ({
-      ...(updatedData ?? data),
-      version: updatedData.version,
-    }));
-  }, []);
+      setDatabaseSchema((prev) => ({
+        ...(updatedData ?? prev),
+        version: updatedData.version,
+      }));
+    },
+    [setDatabaseSchema]
+  );
 
   // Fetch stored procedure count to show it in Tab label
   const fetchStoreProcedureCount = useCallback(async () => {
@@ -423,47 +531,39 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [decodedDatabaseSchemaFQN, filters.showDeletedTables]);
 
   useEffect(() => {
-    fetchDatabaseSchemaPermission();
-  }, [decodedDatabaseSchemaFQN]);
-
-  useEffect(() => {
     if (viewDatabaseSchemaPermission) {
-      fetchDatabaseSchemaDetails();
       fetchStoreProcedureCount();
-      getEntityFeedCount();
+      fetchTaskCounts();
+      fetchActivityCount();
     }
   }, [
     viewDatabaseSchemaPermission,
-    fetchDatabaseSchemaDetails,
     fetchStoreProcedureCount,
-    getEntityFeedCount,
+    fetchTaskCounts,
+    fetchActivityCount,
   ]);
 
   useEffect(() => {
     fetchTableCount();
   }, [filters.showDeletedTables]);
 
-  const {
-    editCustomAttributePermission,
-    viewAllPermission,
-    viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editCustomAttributePermission:
-        getPrioritizedEditPermission(
-          databaseSchemaPermission,
-          PermissionOperation.EditCustomFields
-        ) && !databaseSchema.deleted,
-      viewAllPermission: databaseSchemaPermission.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        databaseSchemaPermission,
-        PermissionOperation.ViewCustomFields
-      ),
-    }),
-    [databaseSchemaPermission, databaseSchema]
-  );
+  // Edit-tier useEntityPermissions call — the counterpart to the view-tier call near the top
+  // of this component (see its comment for why this component calls the hook twice). This is
+  // the earliest point `deleted` exists (from {@code databaseSchema}, resolved by the entity
+  // useQuery above): `canEditCustomFields` is gated on it, matching the old code's own
+  // `&& !databaseSchema?.deleted` suffix. Both calls share one React Query cache entry (same
+  // resource/identifier), so this costs an extra derivation, not an extra fetch.
+  const { canEditCustomFields: editCustomAttributePermission } =
+    useEntityPermissions(
+      ResourceEntity.DATABASE_SCHEMA,
+      decodedDatabaseSchemaFQN,
+      { deleted: Boolean(databaseSchema?.deleted) }
+    );
 
   const handleExtensionUpdate = async (schema: DatabaseSchema) => {
+    if (!databaseSchema) {
+      return;
+    }
     const response = await saveUpdatedDatabaseSchemaData({
       ...databaseSchema,
       extension: schema.extension,
@@ -563,60 +663,109 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       checkIfExpandViewSupported(tabs[0], activeTab, PageType.DatabaseSchema),
     [tabs[0], activeTab]
   );
+
+  const isSchemaMissing = useMemo(
+    () => isEmpty(databaseSchema) && !databaseSchemaLoading,
+    [databaseSchema, databaseSchemaLoading]
+  );
+
+  const expandButton = useMemo(
+    () =>
+      isExpandViewSupported && (
+        <AlignRightIconButton
+          className={isTabExpanded ? 'rotate-180' : ''}
+          title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+          onClick={toggleTabExpanded}
+        />
+      ),
+    [isExpandViewSupported, isTabExpanded, t, toggleTabExpanded]
+  );
+
+  const followMutation = useMutation<
+    void,
+    AxiosError,
+    void,
+    { previous: DatabaseSchema | undefined }
+  >({
+    mutationFn: async () => {
+      if (!databaseSchemaId) {
+        return;
+      }
+      if (isFollowing) {
+        await removeFollowers(
+          databaseSchemaId,
+          USERId,
+          GlobalSettingOptions.DATABASE_SCHEMA
+        );
+      } else {
+        await addFollowers(
+          databaseSchemaId,
+          USERId,
+          GlobalSettingOptions.DATABASE_SCHEMA
+        );
+      }
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: databaseSchemaCacheKey });
+      const previous = queryClient.getQueryData<DatabaseSchema | undefined>(
+        databaseSchemaCacheKey
+      );
+      queryClient.setQueryData<DatabaseSchema | undefined>(
+        databaseSchemaCacheKey,
+        (prev) => {
+          if (!prev) {
+            return prev;
+          }
+          const currentFollowers = prev.followers ?? [];
+          if (isFollowing) {
+            return {
+              ...prev,
+              followers: currentFollowers.filter(({ id }) => id !== USERId),
+            };
+          }
+
+          return {
+            ...prev,
+            followers: [
+              ...currentFollowers,
+              { id: USERId, type: 'user' },
+            ] as DatabaseSchema['followers'],
+          };
+        }
+      );
+
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData<DatabaseSchema | undefined>(
+          databaseSchemaCacheKey,
+          context.previous
+        );
+      }
+      showErrorToast(
+        error as AxiosError,
+        isFollowing
+          ? t('server.entity-unfollow-error', {
+              entity: getEntityName(databaseSchema),
+            })
+          : t('server.entity-follow-error', {
+              entity: getEntityName(databaseSchema),
+            })
+      );
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: databaseSchemaCacheKey });
+    },
+  });
+
   const followSchema = useCallback(async () => {
-    try {
-      const res = await addFollowers(
-        databaseSchemaId,
-        USERId ?? '',
-        GlobalSettingOptions.DATABASE_SCHEMA
-      );
-      const { newValue } = res.changeDescription.fieldsAdded[0];
-      const newFollowers = [...(followers ?? []), ...newValue];
-      setDatabaseSchema((prev) => {
-        if (!prev) {
-          return prev;
-        }
+    await followMutation.mutateAsync();
+  }, [followMutation]);
 
-        return { ...prev, followers: newFollowers };
-      });
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-follow-error', {
-          entity: getEntityName(databaseSchema),
-        })
-      );
-    }
-  }, [USERId, databaseSchemaId]);
   const unFollowSchema = useCallback(async () => {
-    try {
-      const res = await removeFollowers(
-        databaseSchemaId,
-        USERId,
-        GlobalSettingOptions.DATABASE_SCHEMA
-      );
-      const { oldValue } = res.changeDescription.fieldsDeleted[0];
-      setDatabaseSchema((pre) => {
-        if (!pre) {
-          return pre;
-        }
-
-        return {
-          ...pre,
-          followers: pre.followers?.filter(
-            (follower) => follower.id !== oldValue[0].id
-          ),
-        };
-      });
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-unfollow-error', {
-          entity: getEntityName(databaseSchema),
-        })
-      );
-    }
-  }, [USERId, databaseSchemaId]);
+    await followMutation.mutateAsync();
+  }, [followMutation]);
 
   const onCertificationUpdate = useCallback(
     async (newCertification?: Tag) => {
@@ -639,7 +788,18 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [isFollowing, unFollowSchema, followSchema]);
 
   if (isPermissionsLoading) {
-    return <Loader />;
+    return <PageLoader />;
+  }
+
+  if (isError) {
+    return (
+      <ErrorPlaceHolder>
+        {getEntityMissingError(
+          EntityType.DATABASE_SCHEMA,
+          decodedDatabaseSchemaFQN
+        )}
+      </ErrorPlaceHolder>
+    );
   }
 
   if (!viewDatabaseSchemaPermission) {
@@ -656,7 +816,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   return (
     <PageLayoutV1 pageTitle={getEntityName(databaseSchema)}>
-      {isEmpty(databaseSchema) && !isSchemaDetailsLoading ? (
+      {isSchemaMissing ? (
         <ErrorPlaceHolder className="m-0">
           {getEntityMissingError(
             EntityType.DATABASE_SCHEMA,
@@ -666,7 +826,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       ) : (
         <Row gutter={[0, 12]}>
           <Col span={24}>
-            {isSchemaDetailsLoading ? (
+            {databaseSchemaLoading || !databaseSchema ? (
               <Skeleton
                 active
                 className="m-b-md"
@@ -698,7 +858,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           </Col>
           <GenericProvider<DatabaseSchema>
             customizedPage={customizedPage}
-            data={databaseSchema}
+            data={databaseSchema ?? ({} as DatabaseSchema)}
             isTabExpanded={isTabExpanded}
             permissions={databaseSchemaPermission}
             type={EntityType.DATABASE_SCHEMA}
@@ -709,17 +869,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 className="tabs-new"
                 data-testid="tabs"
                 items={tabs}
-                tabBarExtraContent={
-                  isExpandViewSupported && (
-                    <AlignRightIconButton
-                      className={isTabExpanded ? 'rotate-180' : ''}
-                      title={
-                        isTabExpanded ? t('label.collapse') : t('label.expand')
-                      }
-                      onClick={toggleTabExpanded}
-                    />
-                  )
-                }
+                tabBarExtraContent={expandButton}
                 onChange={activeTabHandler}
               />
             </Col>

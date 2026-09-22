@@ -26,20 +26,15 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import {
-  CHART_BLUE_1,
-  GREY_100,
-  GREY_200,
-} from '../../../constants/Color.constants';
-import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import { DEFAULT_HISTOGRAM_DATA } from '../../../constants/profiler.constant';
 import { HistogramClass } from '../../../generated/entity/data/table';
+import { useChartColors } from '../../../hooks/useChartColors';
 import {
   axisTickFormatter,
   createHorizontalGridLineRenderer,
   tooltipFormatter,
 } from '../../../utils/ChartUtils';
-import { CustomDQTooltip } from '../../../utils/DataQuality/DataQualityUtils';
+import { CustomDQTooltip } from '../../../utils/DataQuality/CustomDQTooltip.component';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { DataDistributionHistogramProps } from './Chart.interface';
@@ -49,6 +44,7 @@ const DataDistributionHistogram = ({
   noDataPlaceholderText,
 }: DataDistributionHistogramProps) => {
   const { t } = useTranslation();
+  const { axis, cursorFill, grid, primary } = useChartColors();
 
   const renderHorizontalGridLine = useMemo(
     () => createHorizontalGridLineRenderer(),
@@ -139,7 +135,7 @@ const DataDistributionHistogram = ({
                   margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
                   <CartesianGrid
                     horizontal={renderHorizontalGridLine}
-                    stroke={GRAPH_BACKGROUND_COLOR}
+                    stroke={grid}
                     strokeDasharray="3 3"
                     vertical={false}
                   />
@@ -147,14 +143,14 @@ const DataDistributionHistogram = ({
                     axisLine={false}
                     dataKey="name"
                     padding={{ left: 16, right: 16 }}
-                    tick={{ fontSize: 12 }}
+                    tick={{ fill: axis, fontSize: 12 }}
                     tickLine={false}
                   />
                   <YAxis
                     allowDataOverflow
                     axisLine={false}
                     padding={{ top: 16, bottom: 16 }}
-                    tick={{ fontSize: 12 }}
+                    tick={{ fill: axis, fontSize: 12 }}
                     tickFormatter={(props) => axisTickFormatter(props)}
                     tickLine={false}
                   />
@@ -168,15 +164,15 @@ const DataDistributionHistogram = ({
                       />
                     }
                     cursor={{
-                      fill: GREY_100,
-                      stroke: GREY_200,
+                      fill: cursorFill,
+                      stroke: grid,
                       strokeDasharray: '3 3',
                     }}
                   />
                   <Bar
                     barSize={22}
                     dataKey="frequency"
-                    fill={CHART_BLUE_1}
+                    fill={primary}
                     radius={[8, 8, 0, 0]}
                   />
                 </BarChart>

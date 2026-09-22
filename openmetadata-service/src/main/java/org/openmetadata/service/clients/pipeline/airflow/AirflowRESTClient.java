@@ -41,6 +41,8 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.exception.IngestionRunnerUnavailableException;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
@@ -321,6 +323,17 @@ public class AirflowRESTClient extends PipelineServiceClient {
   public final HttpResponse<String> post(String endpoint, String payload)
       throws IOException, InterruptedException {
     return post(endpoint, payload, true);
+  }
+
+  /**
+   * The deploy payload is the only place the bot JWT reaches Airflow: DagDeployer serialises it into
+   * DAG_GENERATED_CONFIGS/{dag_id}.json, which the generated DAG re-reads on every parse, while
+   * runPipeline below posts only the dag_id. A rotated token therefore cannot reach an already
+   * deployed DAG without another deploy.
+   */
+  @Override
+  public boolean pinsCredentialsAtDeployTime() {
+    return true;
   }
 
   @Override
@@ -654,7 +667,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
   public Map<String, String> getLastIngestionLogs(
       IngestionPipeline ingestionPipeline, String after) {
     HttpResponse<String> response;
-    String taskId = TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().toString());
+    String taskId =
+        PipelineServiceClientInterface.taskKeyOf(ingestionPipeline.getPipelineType().toString());
     // Init empty after query param
 
     URIBuilder uri = buildURI("last_dag_logs");
@@ -684,7 +698,10 @@ public class AirflowRESTClient extends PipelineServiceClient {
         if (apiEndpointSegments == null) {
           List<String> detected = detectAirflowApiVersion();
           if (detected == null) {
-            throw new PipelineServiceClientException(
+            // Typed subclass, not the generic parent: an unreachable scheduler is exactly the
+            // condition callers tolerate via allowUnavailableRunner. Thrown as the parent it was
+            // uncatchable there, so a cascade hard-delete aborted whenever Airflow was down.
+            throw new IngestionRunnerUnavailableException(
                 String.format(
                     "Unable to connect to Airflow APIs at [%s]. None of the API versions (v3 pluginsv2, v2, v1) responded successfully. "
                         + "Airflow may still be starting up or the OpenMetadata plugin may not be installed. "

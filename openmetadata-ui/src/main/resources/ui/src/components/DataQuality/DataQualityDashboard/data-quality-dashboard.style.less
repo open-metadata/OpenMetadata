@@ -20,11 +20,28 @@
   .data-quality-dashboard-pie-chart {
     background-color: @grey-26;
     border-color: @grey-9;
+    padding: var(--om-space-12) var(--om-space-24);
+  }
+}
+
+// The Data Quality dashboard cards sit on the legacy @grey-* surface, which
+// only adapts to dark through the variables.less + app.less palette bridge —
+// not reliably present in every build (it is stripped where it breaks a
+// downstream LESS color-fn), so the cards fall back to their light hex and show
+// white on the dark dashboard. Pin the dark surface here, scoped to the
+// `.data-quality-dashboard` AI container so the shared widget classes
+// (status-card, custom-chart) are not restyled elsewhere, e.g. Incident Manager.
+.dark-mode .data-quality-dashboard {
+  .data-quality-dashboard-pie-chart,
+  .status-card-widget-container,
+  .custom-chart-background {
+    background-color: var(--om-color-bg-primary);
+    border-color: var(--om-color-border-secondary);
   }
 }
 
 .data-quality-governance-tab-wrapper {
-  background-color: @white;
+  background-color: var(--tw-color-bg-primary);
   padding: @padding-md;
   border-radius: @border-rad-sm;
   height: 100%;

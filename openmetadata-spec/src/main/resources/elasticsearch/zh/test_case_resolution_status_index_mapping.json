@@ -6,7 +6,8 @@
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -15,21 +16,25 @@
           "tokenizer": "letter",
           "filter": [
             "lowercase",
-            "om_stemmer"
+            "asciifolding",
+            "om_stemmer",
+            "om_plural_stemmer"
           ]
         },
         "om_ngram": {
           "type": "custom",
           "tokenizer": "n_gram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         },
         "om_compound_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "compound_word_delimiter_graph",
+            "lowercase",
+            "asciifolding",
             "flatten_graph"
           ]
         }
@@ -50,6 +55,10 @@
           "catenate_all": false,
           "preserve_original": true,
           "stem_english_possessive": true
+        },
+        "om_plural_stemmer": {
+          "type": "stemmer",
+          "name": "minimal_english"
         }
       },
       "tokenizer": {
@@ -160,77 +169,73 @@
               }
             }
           },
-          "resolved": {
+          "testCaseFailureReason": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 15
+              }
+            }
+          },
+          "testCaseFailureComment": {
+            "type": "text",
+            "analyzer": "ik_max_word",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
+              },
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
+          },
+          "resolvedBy": {
             "properties": {
-              "testCaseFailureReason": {
+              "id": {
                 "type": "keyword",
                 "fields": {
                   "keyword": {
                     "type": "keyword",
-                    "ignore_above": 15
+                    "ignore_above": 36
                   }
                 }
               },
-              "testCaseFailureComment": {
-                "type": "text",
-                "analyzer": "ik_max_word",
+              "type": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "fields": {
                   "keyword": {
                     "type": "keyword",
-                    "normalizer": "lowercase_normalizer"
-                  },
-                  "ngram": {
-                    "type": "text",
-                    "analyzer": "om_ngram"
+                    "ignore_above": 256
                   }
                 }
               },
-              "resolvedBy": {
-                "properties": {
-                  "id": {
+              "displayName": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
                     "type": "keyword",
-                    "fields": {
-                      "keyword": {
-                        "type": "keyword",
-                        "ignore_above": 36
-                      }
-                    }
-                  },
-                  "type": {
-                    "type": "keyword"
-                  },
-                  "name": {
-                    "type": "keyword",
-                    "normalizer": "lowercase_normalizer",
-                    "fields": {
-                      "keyword": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                      }
-                    }
-                  },
-                  "displayName": {
-                    "type": "keyword",
-                    "fields": {
-                      "keyword": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                      }
-                    }
-                  },
-                  "fullyQualifiedName": {
-                    "type": "text"
-                  },
-                  "description": {
-                    "type": "text"
-                  },
-                  "deleted": {
-                    "type": "text"
-                  },
-                  "href": {
-                    "type": "text"
+                    "ignore_above": 256
                   }
                 }
+              },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text"
+              },
+              "deleted": {
+                "type": "text"
+              },
+              "href": {
+                "type": "text"
               }
             }
           }
@@ -417,6 +422,46 @@
           },
           "href": {
             "type": "text"
+          }
+        }
+      },
+      "certification": {
+        "type": "object",
+        "properties": {
+          "tagLabel": {
+            "type": "object",
+            "properties": {
+              "tagFQN": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "text": {
+                    "type": "text",
+                    "analyzer": "om_analyzer"
+                  }
+                }
+              },
+              "labelType": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              },
+              "source": {
+                "type": "keyword"
+              },
+              "state": {
+                "type": "keyword"
+              }
+            }
+          },
+          "appliedDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          },
+          "expiryDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
           }
         }
       },
@@ -706,7 +751,8 @@
                     "type": "text",
                     "analyzer": "om_analyzer"
                   }
-                }
+                },
+                "normalizer": "lowercase_normalizer"
               },
               "labelType": {
                 "type": "keyword"

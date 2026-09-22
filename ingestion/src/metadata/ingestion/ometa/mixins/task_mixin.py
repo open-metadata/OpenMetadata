@@ -11,8 +11,8 @@
 """
 Mixin class containing Task entity specific methods.
 """
+
 import json
-from typing import Dict, List, Optional, Union
 from uuid import UUID
 
 from metadata.ingestion.ometa.client import REST, APIError
@@ -55,15 +55,13 @@ class OMetaTaskMixin:
         """
         resp = self.client.post(
             self._tasks_path,
-            create_request.model_dump_json(
-                context={"mask_secrets": False}, by_alias=True
-            ),
+            create_request.model_dump_json(context={"mask_secrets": False}, by_alias=True),
         )
         return Task.model_validate(resp)
 
     def resolve_task(
         self,
-        task_id: Union[str, UUID],
+        task_id: str | UUID,
         resolve_request: ResolveTaskRequest,
     ) -> Task:
         """Resolve a task with the given resolution type.
@@ -78,19 +76,17 @@ class OMetaTaskMixin:
         path = f"{self._tasks_path}/{model_str(task_id)}/resolve"
         resp = self.client.post(
             path,
-            resolve_request.model_dump_json(
-                context={"mask_secrets": False}, by_alias=True
-            ),
+            resolve_request.model_dump_json(context={"mask_secrets": False}, by_alias=True),
         )
         return Task.model_validate(resp)
 
     def get_task(
         self,
-        task_id: Union[str, UUID],
-        fields: Optional[List[str]] = None,
-        include: Optional[str] = None,
+        task_id: str | UUID,
+        fields: list[str] | None = None,
+        include: str | None = None,
         nullable: bool = True,
-    ) -> Optional[Task]:
+    ) -> Task | None:
         """Get a task by UUID."""
         query = []
         if fields:
@@ -109,9 +105,9 @@ class OMetaTaskMixin:
     def get_task_by_task_id(
         self,
         task_id: str,
-        fields: Optional[List[str]] = None,
-        include: Optional[str] = None,
-    ) -> Optional[Task]:
+        fields: list[str] | None = None,
+        include: str | None = None,
+    ) -> Task | None:
         """Get a task by its human-readable task id (e.g. TASK-00001)."""
         query = []
         if fields:
@@ -122,26 +118,26 @@ class OMetaTaskMixin:
         resp = self.client.get(f"{self._tasks_path}/name/{quote(task_id)}{suffix}")
         return Task.model_validate(resp) if resp else None
 
-    def list_tasks(
+    def list_tasks(  # noqa: C901
         self,
-        fields: Optional[List[str]] = None,
-        status: Optional[TaskEntityStatus] = None,
-        status_group: Optional[str] = None,
-        category: Optional[TaskCategory] = None,
-        type_: Optional[TaskEntityType] = None,
-        domain: Optional[str] = None,
-        priority: Optional[TaskPriority] = None,
-        assignee: Optional[str] = None,
-        created_by: Optional[str] = None,
-        created_by_id: Optional[Union[str, UUID]] = None,
-        about_entity: Optional[str] = None,
-        mentioned_user: Optional[str] = None,
+        fields: list[str] | None = None,
+        status: TaskEntityStatus | None = None,
+        status_group: str | None = None,
+        category: TaskCategory | None = None,
+        type_: TaskEntityType | None = None,
+        domain: str | None = None,
+        priority: TaskPriority | None = None,
+        assignee: str | None = None,
+        created_by: str | None = None,
+        created_by_id: str | UUID | None = None,
+        about_entity: str | None = None,
+        mentioned_user: str | None = None,
         limit: int = 10,
-        before: Optional[str] = None,
-        after: Optional[str] = None,
-        include: Optional[str] = None,
+        before: str | None = None,
+        after: str | None = None,
+        include: str | None = None,
     ) -> EntityList[Task]:
-        params: Dict[str, str] = {"limit": str(limit)}
+        params: dict[str, str] = {"limit": str(limit)}
         if fields:
             params["fields"] = ",".join(fields)
         if status:
@@ -181,9 +177,7 @@ class OMetaTaskMixin:
             before=resp["paging"].get("before"),
         )
 
-    def add_task_comment(
-        self, task_id: Union[str, UUID], message: str
-    ) -> Optional[Task]:
+    def add_task_comment(self, task_id: str | UUID, message: str) -> Task | None:
         """Add a comment to a task.
 
         Args:
@@ -199,7 +193,7 @@ class OMetaTaskMixin:
             return Task.model_validate(resp)
         return None
 
-    def patch_task(self, task_id: Union[str, UUID], patch: list[dict]) -> Task:
+    def patch_task(self, task_id: str | UUID, patch: list[dict]) -> Task:
         """Patch a task via JsonPatch operations."""
         resp = self.client.patch(
             f"{self._tasks_path}/{model_str(task_id)}",
@@ -207,34 +201,22 @@ class OMetaTaskMixin:
         )
         return Task.model_validate(resp)
 
-    def close_task(
-        self, task_id: Union[str, UUID], comment: Optional[str] = None
-    ) -> Task:
+    def close_task(self, task_id: str | UUID, comment: str | None = None) -> Task:
         """Close a task without applying changes."""
         suffix = f"?comment={quote(comment)}" if comment else ""
-        resp = self.client.post(
-            f"{self._tasks_path}/{model_str(task_id)}/close{suffix}"
-        )
+        resp = self.client.post(f"{self._tasks_path}/{model_str(task_id)}/close{suffix}")
         return Task.model_validate(resp)
 
-    def apply_suggestion(
-        self, task_id: Union[str, UUID], comment: Optional[str] = None
-    ) -> Task:
+    def apply_suggestion(self, task_id: str | UUID, comment: str | None = None) -> Task:
         """Approve and apply a suggestion task to its target entity."""
         suffix = f"?comment={quote(comment)}" if comment else ""
-        resp = self.client.put(
-            f"{self._tasks_path}/{model_str(task_id)}/suggestion/apply{suffix}"
-        )
+        resp = self.client.put(f"{self._tasks_path}/{model_str(task_id)}/suggestion/apply{suffix}")
         return Task.model_validate(resp)
 
-    def bulk_task_operation(
-        self, bulk_request: BulkTaskOperationRequest
-    ) -> BulkTaskOperationResult:
+    def bulk_task_operation(self, bulk_request: BulkTaskOperationRequest) -> BulkTaskOperationResult:
         """Run a bulk task operation."""
         resp = self.client.post(
             f"{self._tasks_path}/bulk",
-            bulk_request.model_dump_json(
-                context={"mask_secrets": False}, by_alias=True
-            ),
+            bulk_request.model_dump_json(context={"mask_secrets": False}, by_alias=True),
         )
         return BulkTaskOperationResult.model_validate(resp)

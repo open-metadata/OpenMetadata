@@ -11,10 +11,15 @@
 """
 SAP Hana source module
 """
+
+import re
 import traceback
-from typing import Iterable, Optional
+from collections.abc import Iterable
+from typing import Any
 
 from sqlalchemy import text
+from sqlalchemy.engine import Connection
+from sqlalchemy_hana.dialect import HANAHDBCLIDialect
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -46,6 +51,55 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
+def _is_disconnect(self, e, connection, cursor):
+    # sqlalchemy-hana's own implementation calls connection.isconnected(), which crashes
+    # (AttributeError) when the profiler passes a SQLAlchemy Engine instead of a raw DBAPI
+    # connection - masking the real underlying error (e.g. HANA rejecting GROUP BY on a LOB
+    # column). Every other dialect (Postgres, MySQL, the SQLAlchemy default) is defensive
+    # about what `connection` actually is; this makes HANA's the same.
+    isconnected = getattr(connection, "isconnected", None)
+    return not isconnected() if isconnected else False
+
+
+HANAHDBCLIDialect.is_disconnect = _is_disconnect
+
+
+# Leaves a definition that already names its target alone. Anchored, because the words
+# also turn up inside a string literal a view happens to select, and treating that as a
+# name would skip the prefix and cost the view the column lineage this exists to add.
+_CREATE_VIEW = re.compile(r"^\s*CREATE\s+(OR\s+REPLACE\s+)?(MATERIALIZED\s+)?VIEW\b", re.IGNORECASE)
+_sqlalchemy_hana_get_view_definition = HANAHDBCLIDialect.get_view_definition
+
+
+def _get_view_definition(
+    self: HANAHDBCLIDialect,
+    connection: Connection,
+    view_name: str,
+    schema: str | None = None,
+    **kw: Any,
+) -> str:
+    # SYS.VIEWS.DEFINITION holds the SELECT body alone, without the CREATE VIEW that names
+    # what it populates. The lineage parser only derives column-level pairs once the
+    # statement has a target, so a bare SELECT produces a table-level edge and every SAP
+    # HANA view loses its column lineage. Vertica and Redshift add the same prefix for the
+    # same reason. Done here rather than in the lineage pass so the definition OpenMetadata
+    # stores is the one that was parsed.
+    definition = _sqlalchemy_hana_get_view_definition(self, connection, view_name, schema=schema, **kw)
+    if not definition or _CREATE_VIEW.search(definition):
+        return definition
+
+    # Quoted because HANA names are case sensitive and routinely carry characters, hyphens
+    # above all, that would otherwise end the identifier early. The dialect's own preparer
+    # does the quoting, so a name containing a double quote is escaped rather than closing
+    # the identifier and producing SQL the parser cannot read.
+    quote = self.identifier_preparer.quote_identifier
+    qualified = f"{quote(schema or self.default_schema_name)}.{quote(view_name)}"
+    return f"CREATE VIEW {qualified} AS {definition}"
+
+
+HANAHDBCLIDialect.get_view_definition = _get_view_definition
+
+
 class SaphanaSource(CommonDbSourceService):
     """
     Implements the necessary methods to extract
@@ -53,15 +107,11 @@ class SaphanaSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SapHanaConnection = config.serviceConnection.root.config
         if not isinstance(connection, SapHanaConnection):
-            raise InvalidSourceException(
-                f"Expected SapHanaConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected SapHanaConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_database_names(self) -> Iterable[str]:
@@ -71,16 +121,14 @@ class SaphanaSource(CommonDbSourceService):
         self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
 
-        if getattr(self.service_connection.connection, "database"):
+        if getattr(self.service_connection.connection, "database", None):
             yield self.service_connection.connection.database
 
         else:
             try:
-                yield self.connection.execute(
-                    text("SELECT DATABASE_NAME FROM M_DATABASE")
-                ).fetchone()[0]
+                yield self.connection.execute(text("SELECT DATABASE_NAME FROM M_DATABASE")).fetchone()[0]
             except Exception as err:
-                raise RuntimeError(
+                raise RuntimeError(  # noqa: B904
                     f"Error retrieving database name from the source - [{err}]."
                     " A way through this error is by specifying the `database` in the service connection."
                 )
@@ -89,7 +137,7 @@ class SaphanaSource(CommonDbSourceService):
         if self.service_connection.connection.__dict__.get("databaseSchema"):
             yield self.service_connection.connection.databaseSchema
         else:
-            for schema_name in self.inspector.get_schema_names():
+            for schema_name in self.inspector.get_schema_names():  # noqa: UP028
                 yield schema_name
 
     def get_stored_procedures(self) -> Iterable[SapHanaStoredProcedure]:
@@ -104,17 +152,12 @@ class SaphanaSource(CommonDbSourceService):
                     ).all()
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Error fetching table functions for schema"
-                    f" [{schema_name}]: {exc}"
-                )
+                logger.warning(f"Error fetching table functions for schema [{schema_name}]: {exc}")
                 return
 
             for row in results:
                 try:
-                    stored_procedure = SapHanaStoredProcedure.model_validate(
-                        row._asdict()
-                    )
+                    stored_procedure = SapHanaStoredProcedure.model_validate(row._asdict())
                     if self.is_stored_procedure_filtered(stored_procedure.name):
                         continue
                     yield stored_procedure

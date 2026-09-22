@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/basic.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Basic",
   "description": "This schema defines basic common types that are used by other schemas.",
   "definitions": {
@@ -124,13 +124,20 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 256,
-      "pattern": "^((?!::).)*$"
+      "pattern": "^((?!::)[^>\"\\x00-\\x1f])*$"
+    },
+    "customPropertyName": {
+      "description": "Name of a custom property. Allowed characters: alphanumeric, _ - . % # @ ! , ; = | ' + ? ` space ( ) [ ] { }. Must start with an alphanumeric character. Disallowed characters: \" * & < > : ^ $ \\ / ~. The forward slash and tilde are reserved by JSON Pointer (RFC 6901) and cause silent corruption when the property name is interpolated into JSON Patch paths.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9 _\\-.,;%#@!'(){}\\[\\]|=+?`]*$"
     },
     "testCaseEntityName": {
       "description": "Name that identifies a test definition and test case.",
       "type": "string",
       "minLength": 1,
-      "pattern": "^((?!::).)*$"
+      "pattern": "^((?!::)[^>\"\\x00-\\x1f])*$"
     },
     "fullyQualifiedEntityName": {
       "description": "A unique name that identifies an entity. Example for table 'DatabaseService.Database.Schema.Table'.",
@@ -151,6 +158,12 @@
       "$comment" : "@om-field-type",
       "description": "Text in Markdown format.",
       "type": "string"
+    },
+    "nonBlankMarkdown": {
+      "description": "Nonblank text in Markdown format.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[\\s\\S]*\\S[\\s\\S]*$"
     },
     "expression": {
       "description": "Expression in SpEL.",

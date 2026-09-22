@@ -14,104 +14,66 @@
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
-import airbyteConnection from '../jsons/connectionSchemas/connections/pipeline/airbyteConnection.json';
-import airflowConnection from '../jsons/connectionSchemas/connections/pipeline/airflowConnection.json';
-import customPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/customPipelineConnection.json';
-import dagsterConnection from '../jsons/connectionSchemas/connections/pipeline/dagsterConnection.json';
-import databricksPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/databricksPipelineConnection.json';
-import dbtCloudConnection from '../jsons/connectionSchemas/connections/pipeline/dbtCloudConnection.json';
-import domoPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/domoPipelineConnection.json';
-import fivetranConnection from '../jsons/connectionSchemas/connections/pipeline/fivetranConnection.json';
-import flinkConnection from '../jsons/connectionSchemas/connections/pipeline/flinkConnection.json';
-import gluePipelineConnection from '../jsons/connectionSchemas/connections/pipeline/gluePipelineConnection.json';
-import KafkaConnectConnection from '../jsons/connectionSchemas/connections/pipeline/kafkaConnectConnection.json';
-import microsoftFabricPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/microsoftFabricPipelineConnection.json';
-import nifiConnection from '../jsons/connectionSchemas/connections/pipeline/nifiConnection.json';
-import openLineageConnection from '../jsons/connectionSchemas/connections/pipeline/openLineageConnection.json';
-import splineConnection from '../jsons/connectionSchemas/connections/pipeline/splineConnection.json';
+import { loadConnectionSchema } from './loadConnectionSchema';
 
-export const getPipelineConfig = (type: PipelineServiceType) => {
-  let schema = {};
+type SchemaModule =
+  | { default: Record<string, unknown> }
+  | Record<string, unknown>;
+type SchemaLoader = () => Promise<SchemaModule>;
+
+const pipelineSchemaLoaders: Partial<
+  Record<PipelineServiceType, SchemaLoader>
+> = {
+  [PipelineServiceType.Airbyte]: () =>
+    loadConnectionSchema('connections/pipeline/airbyteConnection.json'),
+  [PipelineServiceType.Airflow]: () =>
+    loadConnectionSchema('connections/pipeline/airflowConnection.json'),
+  [PipelineServiceType.GluePipeline]: () =>
+    loadConnectionSchema('connections/pipeline/gluePipelineConnection.json'),
+  [PipelineServiceType.KafkaConnect]: () =>
+    loadConnectionSchema('connections/pipeline/kafkaConnectConnection.json'),
+  [PipelineServiceType.Fivetran]: () =>
+    loadConnectionSchema('connections/pipeline/fivetranConnection.json'),
+  [PipelineServiceType.Dagster]: () =>
+    loadConnectionSchema('connections/pipeline/dagsterConnection.json'),
+  [PipelineServiceType.DBTCloud]: () =>
+    loadConnectionSchema('connections/pipeline/dbtCloudConnection.json'),
+  [PipelineServiceType.Nifi]: () =>
+    loadConnectionSchema('connections/pipeline/nifiConnection.json'),
+  [PipelineServiceType.DomoPipeline]: () =>
+    loadConnectionSchema('connections/pipeline/domoPipelineConnection.json'),
+  [PipelineServiceType.CustomPipeline]: () =>
+    loadConnectionSchema('connections/pipeline/customPipelineConnection.json'),
+  [PipelineServiceType.DatabricksPipeline]: () =>
+    loadConnectionSchema(
+      'connections/pipeline/databricksPipelineConnection.json'
+    ),
+  [PipelineServiceType.Spline]: () =>
+    loadConnectionSchema('connections/pipeline/splineConnection.json'),
+  [PipelineServiceType.OpenLineage]: () =>
+    loadConnectionSchema('connections/pipeline/openLineageConnection.json'),
+  [PipelineServiceType.Flink]: () =>
+    loadConnectionSchema('connections/pipeline/flinkConnection.json'),
+  [PipelineServiceType.Prefect]: () =>
+    loadConnectionSchema('connections/pipeline/prefectConnection.json'),
+  [PipelineServiceType.Data360Pipeline]: () =>
+    loadConnectionSchema('connections/pipeline/data360PipelineConnection.json'),
+};
+
+const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {
+  const maybeDefault = (mod as { default?: Record<string, unknown> }).default;
+
+  return maybeDefault ?? (mod as Record<string, unknown>);
+};
+
+export const getPipelineConfig = async (type: PipelineServiceType) => {
+  const loader = pipelineSchemaLoaders[type];
+  let schema: Record<string, unknown> = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
-  switch (type) {
-    case PipelineServiceType.Airbyte: {
-      schema = airbyteConnection;
 
-      break;
-    }
-
-    case PipelineServiceType.Airflow: {
-      schema = airflowConnection;
-
-      break;
-    }
-    case PipelineServiceType.GluePipeline: {
-      schema = gluePipelineConnection;
-
-      break;
-    }
-    case PipelineServiceType.KafkaConnect: {
-      schema = KafkaConnectConnection;
-
-      break;
-    }
-    case PipelineServiceType.Fivetran: {
-      schema = fivetranConnection;
-
-      break;
-    }
-    case PipelineServiceType.Dagster: {
-      schema = dagsterConnection;
-
-      break;
-    }
-    case PipelineServiceType.DBTCloud: {
-      schema = dbtCloudConnection;
-
-      break;
-    }
-    case PipelineServiceType.Nifi: {
-      schema = nifiConnection;
-
-      break;
-    }
-    case PipelineServiceType.DomoPipeline: {
-      schema = domoPipelineConnection;
-
-      break;
-    }
-    case PipelineServiceType.CustomPipeline: {
-      schema = customPipelineConnection;
-
-      break;
-    }
-    case PipelineServiceType.DatabricksPipeline: {
-      schema = databricksPipelineConnection;
-
-      break;
-    }
-    case PipelineServiceType.Spline: {
-      schema = splineConnection;
-
-      break;
-    }
-    case PipelineServiceType.OpenLineage: {
-      schema = openLineageConnection;
-
-      break;
-    }
-    case PipelineServiceType.Flink: {
-      schema = flinkConnection;
-
-      break;
-    }
-    case PipelineServiceType.MicrosoftFabricPipeline: {
-      schema = microsoftFabricPipelineConnection;
-
-      break;
-    }
-    default:
-      break;
+  if (loader) {
+    const mod = await loader();
+    schema = resolveSchemaModule(mod);
   }
 
   return cloneDeep({ schema, uiSchema });

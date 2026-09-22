@@ -45,6 +45,7 @@ export interface CreateMessagingService {
      */
     owners?:     EntityReference[];
     serviceType: MessagingServiceType;
+    style?:      Style;
     /**
      * Tags for this Messaging Service.
      */
@@ -64,6 +65,8 @@ export interface MessagingConnection {
  * Redpanda Connection Config
  *
  * Kinesis Connection Config
+ *
+ * NATS Connection Config
  *
  * Google Cloud Pub/Sub Connection Config
  *
@@ -134,8 +137,11 @@ export interface Connection {
      */
     securityProtocol?:           SecurityProtocol;
     supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
     /**
      * Regex to only fetch topics that matches the pattern.
+     *
+     * Regex to only fetch subjects/streams that match the pattern.
      */
     topicFilterPattern?: FilterPattern;
     /**
@@ -145,6 +151,27 @@ export interface Connection {
      */
     type?:      MessagingServiceType;
     awsConfig?: AWSCredentials;
+    /**
+     * Additional NATS client configuration options. See https://nats-io.github.io/nats.py/
+     */
+    additionalConfig?: { [key: string]: any };
+    /**
+     * NATS authentication method. Leave empty for anonymous authentication.
+     */
+    authType?: AuthenticationType;
+    /**
+     * NATS server URLs as comma-separated values. Ex: nats://host1:4222,nats://host2:4222
+     */
+    natsServers?: string;
+    /**
+     * Name of the JetStream KV bucket where schemas are stored. Keys must match stream names.
+     * Values should be Avro JSON, Protobuf (.proto) or JSON Schema text.
+     */
+    schemaKvBucket?: string;
+    /**
+     * TLS/SSL configuration for secure NATS connections.
+     */
+    tlsConfig?: Config;
     /**
      * GCP credentials configuration for authenticating with Pub/Sub.
      */
@@ -180,6 +207,34 @@ export interface Connection {
      */
     sourcePythonClass?: string;
     [property: string]: any;
+}
+
+/**
+ * NATS authentication method. Leave empty for anonymous authentication.
+ *
+ * Username and password authentication for NATS.
+ *
+ * Token-based authentication for NATS.
+ *
+ * NKey seed authentication for NATS.
+ */
+export interface AuthenticationType {
+    /**
+     * Password for NATS authentication.
+     */
+    password?: string;
+    /**
+     * Username for NATS authentication.
+     */
+    username?: string;
+    /**
+     * Token for NATS authentication.
+     */
+    token?: string;
+    /**
+     * NKey seed for NATS authentication.
+     */
+    nkeySeed?: string;
 }
 
 /**
@@ -242,6 +297,8 @@ export interface AWSCredentials {
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
+ *
+ * TLS/SSL configuration for secure NATS connections.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
@@ -406,6 +463,8 @@ export enum SecurityProtocol {
  * Regex to only fetch topics that matches the pattern.
  *
  * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only fetch subjects/streams that match the pattern.
  */
 export interface FilterPattern {
     /**
@@ -429,12 +488,13 @@ export interface FilterPattern {
  *
  * Custom messaging service type
  *
- * Type of messaging service - Kafka or Pulsar.
+ * Type of messaging service.
  */
 export enum MessagingServiceType {
     CustomMessaging = "CustomMessaging",
     Kafka = "Kafka",
     Kinesis = "Kinesis",
+    Nats = "Nats",
     PubSub = "PubSub",
     Redpanda = "Redpanda",
 }
@@ -495,6 +555,43 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * UI Style is used to associate a color code and/or icon to entity to customize the look of
+ * that entity in UI.
+ */
+export interface Style {
+    /**
+     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
+     */
+    color?: string;
+    /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
+     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
+     */
+    iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -658,41 +755,4 @@ export enum TagSource {
 export enum State {
     Confirmed = "Confirmed",
     Suggested = "Suggested",
-}
-
-/**
- * UI Style is used to associate a color code and/or icon to entity to customize the look of
- * that entity in UI.
- */
-export interface Style {
-    /**
-     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
-     */
-    color?: string;
-    /**
-     * Cover image configuration for the entity.
-     */
-    coverImage?: CoverImage;
-    /**
-     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
-     */
-    iconURL?: string;
-}
-
-/**
- * Cover image configuration for the entity.
- *
- * Cover image configuration for an entity. This is used to display a banner or header image
- * for entities like Domain, Glossary, Data Product, etc.
- */
-export interface CoverImage {
-    /**
-     * Position of the cover image in CSS background-position format. Supports keywords (top,
-     * center, bottom) or pixel values (e.g., '20px 30px').
-     */
-    position?: string;
-    /**
-     * URL of the cover image.
-     */
-    url?: string;
 }

@@ -22,6 +22,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.governance.workflows.util.FieldChangeValueExtractor;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
@@ -35,12 +36,11 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
   public void execute(DelegateExecution execution) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
-      Map<String, String> inputNamespaceMap =
-          JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
+      InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
       String entityLinkStr =
           (String)
               varHandler.getNamespacedVariable(
-                  inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE);
+                  inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE);
 
       boolean result = checkChangeDescription(execution, entityLinkStr);
       varHandler.setNodeVariable(RESULT_VARIABLE, result);
@@ -55,7 +55,7 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
   private boolean checkChangeDescription(DelegateExecution execution, String entityLinkStr) {
     // Parse entity
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
-    EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
+    EntityInterface entity = Entity.getEntity(entityLink, "", Include.ALL);
 
     // No changeDescription means it's a create event - return true
     ChangeDescription changeDescription = entity.getChangeDescription();

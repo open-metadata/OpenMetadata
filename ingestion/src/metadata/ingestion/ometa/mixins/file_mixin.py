@@ -13,8 +13,8 @@ Mixin class containing File specific methods
 
 To be used by OpenMetadata class
 """
+
 import traceback
-from typing import Optional
 
 from metadata.generated.schema.entity.data.file import File
 from metadata.generated.schema.entity.data.table import TableData
@@ -33,9 +33,7 @@ class OMetaFileMixin:
 
     client: REST
 
-    def ingest_file_sample_data(
-        self, file: File, sample_data: TableData
-    ) -> Optional[File]:
+    def ingest_file_sample_data(self, file: File, sample_data: TableData) -> File | None:
         """
         PUT sample data for a file
 
@@ -60,9 +58,7 @@ class OMetaFileMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to PUT sample data for {file.fullyQualifiedName.root}: {exc}"
-            )
+            logger.warning(f"Error trying to PUT sample data for {file.fullyQualifiedName.root}: {exc}")
 
         if resp:
             try:
@@ -74,13 +70,11 @@ class OMetaFileMixin:
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Error trying to parse sample data results from {file.fullyQualifiedName.root}: {exc}"
-                )
+                logger.warning(f"Error trying to parse sample data results from {file.fullyQualifiedName.root}: {exc}")
 
         return None
 
-    def get_file_sample_data(self, file: File) -> Optional[File]:
+    def get_file_sample_data(self, file: File) -> File | None:
         """
         GET call for the /sampleData endpoint for a given File
 
@@ -93,9 +87,7 @@ class OMetaFileMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to GET sample data for {file.fullyQualifiedName.root}: {exc}"
-            )
+            logger.warning(f"Error trying to GET sample data for {file.fullyQualifiedName.root}: {exc}")
 
         if resp:
             try:
@@ -107,8 +99,6 @@ class OMetaFileMixin:
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Error trying to parse sample data results from {file.fullyQualifiedName.root}: {exc}"
-                )
+                logger.warning(f"Error trying to parse sample data results from {file.fullyQualifiedName.root}: {exc}")
 
         return None

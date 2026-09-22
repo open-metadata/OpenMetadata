@@ -13,6 +13,7 @@
 
 import base, { expect, Page } from '@playwright/test';
 import { get } from 'lodash';
+import { Query } from '../../../src/generated/entity/data/query';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -20,6 +21,7 @@ import { SubDomain } from '../../support/domain/SubDomain';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
+import { okJson } from '../../utils/apiResponse';
 import {
   getApiContext,
   redirectToExplorePage,
@@ -36,19 +38,72 @@ import {
   verifyActiveDomainIsDefault,
 } from '../../utils/domain';
 import { assignTier, waitForAllLoadersToDisappear } from '../../utils/entity';
+import { clickUpdateButtonIfVisible } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
-    await page.close();
+    await afterAction();
   },
 });
 
-test.describe('Domain Filter - User Behavior Tests', () => {
-  test.slow(true);
+const getDomainMustClauses = (queryFilter: string): unknown[] => {
+  try {
+    return get(JSON.parse(queryFilter), 'query.bool.must', []);
+  } catch {
+    return [];
+  }
+};
 
+const expectQueryVisibleForDomain = async (
+  page: Page,
+  table: TableClass,
+  domain: Domain,
+  queryText: string
+) => {
+  await table.visitEntityPage(page);
+  await selectDomainFromNavbar(page, domain.responseData);
+
+  const queryResponse = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    const queryFilter = url.searchParams.get('query_filter') ?? '';
+
+    if (
+      !url.pathname.endsWith('/api/v1/search/query') ||
+      url.searchParams.get('index')?.includes('query') !== true
+    ) {
+      return false;
+    }
+
+    const mustClauses = getDomainMustClauses(queryFilter);
+    const domainFqn = domain.responseData.fullyQualifiedName;
+
+    return mustClauses.some((mustClause) =>
+      get(mustClause, 'bool.should', []).some(
+        (domainClause: unknown) =>
+          get(domainClause, ['term', 'domains.fullyQualifiedName']) ===
+            domainFqn ||
+          get(domainClause, ['prefix', 'domains.fullyQualifiedName']) ===
+            `${domainFqn}.`
+      )
+    );
+  });
+  const queriesTab = page.getByTestId('table_queries');
+
+  await expect(queriesTab).toBeEnabled();
+  await queriesTab.click();
+  expect((await queryResponse).status()).toBe(200);
+  await waitForAllLoadersToDisappear(page);
+  await expect(
+    page.getByTestId('query-card').filter({ hasText: queryText })
+  ).toBeVisible();
+};
+
+test.describe('Domain Filter - User Behavior Tests', () => {
   test('Assets from selected domain should be visible in explore page', async ({
     page,
   }) => {
@@ -75,6 +130,83 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await domainTable.delete(apiContext);
       await nonDomainTable.delete(apiContext);
       await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Queries should inherit every associated table domain', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const firstDomain = new Domain();
+    const secondDomain = new Domain();
+    const firstTable = new TableClass();
+    const secondTable = new TableClass();
+    const queryText = `select query_domain_inheritance_${Date.now()}`;
+    let queryId: string | undefined;
+
+    try {
+      await firstDomain.create(apiContext);
+      await secondDomain.create(apiContext);
+      await firstTable.create(apiContext);
+      await secondTable.create(apiContext);
+      await firstTable.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains',
+            value: [{ id: firstDomain.responseData.id, type: 'domain' }],
+          },
+        ],
+      });
+      await secondTable.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains',
+            value: [{ id: secondDomain.responseData.id, type: 'domain' }],
+          },
+        ],
+      });
+
+      const response = await apiContext.post('/api/v1/queries', {
+        data: {
+          query: queryText,
+          queryUsedIn: [
+            { id: firstTable.entityResponseData.id, type: 'table' },
+            { id: secondTable.entityResponseData.id, type: 'table' },
+          ],
+          queryDate: Date.now(),
+          service: firstTable.serviceResponseData.name,
+        },
+      });
+      queryId = (await okJson<Query>(response, 'create multi-table query')).id;
+
+      await redirectToHomePage(page);
+      await expectQueryVisibleForDomain(
+        page,
+        firstTable,
+        firstDomain,
+        queryText
+      );
+      await expectQueryVisibleForDomain(
+        page,
+        secondTable,
+        secondDomain,
+        queryText
+      );
+    } finally {
+      if (queryId) {
+        await apiContext.delete(
+          `/api/v1/queries/${queryId}?recursive=true&hardDelete=true`
+        );
+      }
+      await firstTable.delete(apiContext);
+      await secondTable.delete(apiContext);
+      await firstDomain.delete(apiContext);
+      await secondDomain.delete(apiContext);
       await afterAction();
     }
   });
@@ -341,7 +473,12 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await waitForAllLoadersToDisappear(page);
 
       await expect(
-        page.getByText(domainTable.entityResponseData.fullyQualifiedName ?? '')
+        page
+          .getByTestId('group-table')
+          .getByTestId('data-name')
+          .filter({
+            hasText: domainTable.entityResponseData.fullyQualifiedName ?? '',
+          })
       ).toBeVisible();
 
       const nonDomainTableName = get(
@@ -433,6 +570,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
   test('Quick filters should persist when domain filter is applied and cleared', async ({
     page,
   }) => {
+    test.slow();
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const domainTable1 = new TableClass();
@@ -465,12 +603,13 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await waitForAllLoadersToDisappear(page);
       const tier1Option = page.getByTestId('tier.tier1');
       await tier1Option.waitFor({ state: 'visible' });
-      await tier1Option.click();
 
+      // Arm before selecting: immediate-apply fires the query on the click
       const quickFilterApplyRes = page.waitForResponse(
         '/api/v1/search/query?*index=dataAsset*'
       );
-      await page.getByTestId('update-btn').click();
+      await tier1Option.click();
+      await clickUpdateButtonIfVisible(page);
       await quickFilterApplyRes;
       await waitForAllLoadersToDisappear(page);
 
@@ -672,6 +811,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
   test('Multi-nested domain hierarchy: filters should scope correctly at every level', async ({
     page,
   }) => {
+    test.slow();
     /**
      * Domain Hierarchy:
      * RootDomain
@@ -718,7 +858,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await page.getByTestId('drop-down-menu').waitFor({
         state: 'visible',
       });
-      const checkbox = page.getByTestId(`${tier}-checkbox`);
+      const checkbox = page.getByTestId('drop-down-menu').getByTestId(tier);
       await checkbox.waitFor({ state: 'visible' });
       await checkbox.click();
       const filterRes = page.waitForResponse(
@@ -741,7 +881,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
         .getByTestId('drop-down-menu')
         .getByTestId('search-input')
         .fill(searchTerm);
-      await page.getByRole('menuitem', { name: tagPattern }).click();
+      await page.getByRole('menuitemcheckbox', { name: tagPattern }).click();
       const filterRes = page.waitForResponse(
         '/api/v1/search/query?*index=all*'
       );
@@ -754,11 +894,13 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     const applyEntityTypeFilter = async (entityType: string) => {
       await page.locator('.filters-row button').first().click();
       await page.getByRole('menuitem', { name: /Entity Type/i }).click();
-      await page.click('[data-testid="search-dropdown-Entity Type"]');
+      await page.click('[data-testid="search-dropdown-entityType"]');
       await page.getByTestId('drop-down-menu').waitFor({
         state: 'visible',
       });
-      const checkbox = page.getByTestId(`${entityType}-checkbox`);
+      const checkbox = page
+        .getByTestId('drop-down-menu')
+        .getByTestId(entityType);
       await checkbox.waitFor({ state: 'visible' });
       await checkbox.click();
       const filterRes = page.waitForResponse(

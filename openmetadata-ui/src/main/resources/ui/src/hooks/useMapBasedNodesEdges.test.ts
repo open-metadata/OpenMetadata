@@ -14,7 +14,7 @@ import { act, renderHook } from '@testing-library/react';
 import { Edge, Node } from 'reactflow';
 import { useMapBasedNodesEdges } from './useMapBasedNodesEdges';
 
-jest.mock('../utils/EntityLineageUtils', () => ({
+jest.mock('../utils/EntityLineageEdgeUtils', () => ({
   getClassifiedEdge: jest.fn((edges: Edge[]) => ({
     normalEdge: edges.filter((e) => !e.data?.isColumnLineage),
     columnEdge: edges.filter((e) => e.data?.isColumnLineage),

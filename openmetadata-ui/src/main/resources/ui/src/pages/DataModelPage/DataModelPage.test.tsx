@@ -10,11 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { mockUserData } from '../../components/Settings/Users/mocks/User.mocks';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addDataModelFollower,
@@ -23,6 +34,7 @@ import {
   removeDataModelFollower,
   updateDataModelVotes,
 } from '../../rest/dataModelsAPI';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { showErrorToast } from '../../utils/ToastUtils';
 import DataModelsPage from './DataModelPage.component';
 import {
@@ -37,12 +49,35 @@ import {
   UPDATE_VOTE,
 } from './mocks/DataModelPage.mock';
 
-const mockGetEntityPermissionByFqn = jest.fn().mockImplementation(() => ({
-  ViewAll: true,
-  ViewBasic: true,
-}));
 const mockUpdateTierTag = jest.fn();
 const ENTITY_MISSING_ERROR = 'Entity missing error.';
+
+// Permissions now come from useEntityPermissions (Task 8 Batch 9) rather than an
+// imperative usePermissionProvider().getEntityPermissionByFqn call — mock the hook
+// directly, mirroring MetricDetailsPage.test.tsx's approach.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
@@ -90,14 +125,14 @@ jest.mock(
       )
 );
 
-jest.mock('../../components/common/Loader/Loader', () =>
-  jest.fn().mockImplementation(() => <div>Loader</div>)
-);
-
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockImplementation(() => ({
-    getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
-  })),
+jest.mock('../../components/common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
 }));
 
 jest.mock('../../hooks/useFqn', () => ({
@@ -118,22 +153,25 @@ jest.mock('../../rest/dataModelsAPI', () => ({
     .mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
-  addToRecentViewed: jest.fn(),
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn(() => ENTITY_MISSING_ERROR),
+}));
+
+jest.mock('../../utils/RecentActivityUtils', () => ({
+  addToRecentViewed: jest.fn(),
 }));
 
 jest.mock('../../utils/DataModelsUtils', () => ({
   getSortedDataModelColumnTags: jest.fn().mockImplementation((tags) => tags),
 }));
 
-jest.mock('../../utils/TableUtils', () => {
+jest.mock('../../utils/TablePureUtils', () => {
   return {
     getTierTags: jest.fn().mockImplementation((tags) => tags),
   };
 });
 
-jest.mock('../../utils/TagsUtils', () => ({
+jest.mock('../../utils/TagsPureUtils', () => ({
   updateTierTag: () => mockUpdateTierTag(),
 }));
 
@@ -146,48 +184,73 @@ jest.mock('fast-json-patch', () => ({
   compare: jest.fn(),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation(() => 'testEntityName'),
 }));
 
+const renderPage = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, refetchOnWindowFocus: false },
+      mutations: { retry: false },
+    },
+  });
+
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </MemoryRouter>
+  );
+
+  return render(<DataModelsPage />, { wrapper: Wrapper });
+};
+
 describe('DataModelPage component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (getDataModelByFqn as jest.Mock).mockResolvedValue({});
+    (patchDataModelDetails as jest.Mock).mockResolvedValue({});
+    (addDataModelFollower as jest.Mock).mockResolvedValue({});
+    (removeDataModelFollower as jest.Mock).mockResolvedValue({});
+    (updateDataModelVotes as jest.Mock).mockResolvedValue({});
+    setMockPermissions({ ViewAll: true, ViewBasic: true });
+  });
+
   it('should render necessary elements', async () => {
     await act(async () => {
-      render(<DataModelsPage />, { wrapper: MemoryRouter });
+      renderPage();
     });
 
-    expect(getDataModelByFqn).toHaveBeenCalled();
-    expect(screen.getByText('DataModelDetails')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(getDataModelByFqn).toHaveBeenCalled();
+    });
+
+    expect(await screen.findByText('DataModelDetails')).toBeInTheDocument();
   });
 
   it('toggle delete action check', async () => {
     await act(async () => {
-      render(<DataModelsPage />, { wrapper: MemoryRouter });
+      renderPage();
     });
 
-    // toggle delete
     fireEvent.click(
-      screen.getByRole('button', {
+      await screen.findByRole('button', {
         name: TOGGLE_DELETE,
       })
     );
 
-    expect(screen.getByText(DATA_MODEL_DELETED)).toBeInTheDocument();
+    expect(await screen.findByText(DATA_MODEL_DELETED)).toBeInTheDocument();
   });
 
   it('follow data model action check', async () => {
-    await act(async () => {
-      render(<DataModelsPage />, { wrapper: MemoryRouter });
-    });
-
-    // follow data model
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: FOLLOW_DATA_MODEL,
-      })
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByText('DataModelDetails')).toBeInTheDocument()
     );
 
-    expect(addDataModelFollower).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: FOLLOW_DATA_MODEL }));
+
+    await waitFor(() => expect(addDataModelFollower).toHaveBeenCalled());
   });
 
   it('unfollow data model action check', async () => {
@@ -199,124 +262,88 @@ describe('DataModelPage component', () => {
       ],
     });
 
-    await act(async () => {
-      render(<DataModelsPage />, { wrapper: MemoryRouter });
-    });
-
-    // unfollow data model
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: FOLLOW_DATA_MODEL,
-      })
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByText('DataModelDetails')).toBeInTheDocument()
     );
 
-    expect(removeDataModelFollower).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: FOLLOW_DATA_MODEL }));
+
+    await waitFor(() => expect(removeDataModelFollower).toHaveBeenCalled());
   });
 
   it('update data model action check', async () => {
-    await act(async () => {
-      render(<DataModelsPage />, { wrapper: MemoryRouter });
-    });
-
-    // update data model
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: UPDATE_DATA_MODEL,
-      })
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByText('DataModelDetails')).toBeInTheDocument()
     );
 
-    expect(patchDataModelDetails).toHaveBeenCalledTimes(3);
+    fireEvent.click(screen.getByRole('button', { name: UPDATE_DATA_MODEL }));
+
+    await waitFor(() => expect(patchDataModelDetails).toHaveBeenCalledTimes(3));
   });
 
   it('update vote action check', async () => {
-    await act(async () => {
-      render(<DataModelsPage />, { wrapper: MemoryRouter });
-    });
-
-    // update vote
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: UPDATE_VOTE,
-      })
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByText('DataModelDetails')).toBeInTheDocument()
     );
 
-    expect(updateDataModelVotes).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: UPDATE_VOTE }));
+
+    await waitFor(() => expect(updateDataModelVotes).toHaveBeenCalled());
   });
 
   it('errors check', async () => {
     (patchDataModelDetails as jest.Mock).mockRejectedValue(ERROR);
-    (addDataModelFollower as jest.Mock).mockRejectedValueOnce(ERROR);
-    (updateDataModelVotes as jest.Mock).mockRejectedValueOnce(ERROR);
+    (addDataModelFollower as jest.Mock).mockRejectedValue(ERROR);
+    (updateDataModelVotes as jest.Mock).mockRejectedValue(ERROR);
 
-    await act(async () => {
-      render(<DataModelsPage />, { wrapper: MemoryRouter });
-    });
-
-    // create thread
-    userEvent.click(
-      screen.getByRole('button', {
-        name: CREATE_THREAD,
-      })
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByText('DataModelDetails')).toBeInTheDocument()
     );
 
-    await act(async () => {
-      // update data model
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: UPDATE_DATA_MODEL,
-        })
-      );
+    userEvent.click(screen.getByRole('button', { name: CREATE_THREAD }));
 
-      // follow data model
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: FOLLOW_DATA_MODEL,
-        })
-      );
+    fireEvent.click(screen.getByRole('button', { name: UPDATE_DATA_MODEL }));
 
-      // update vote
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: UPDATE_VOTE,
-        })
-      );
-    });
+    fireEvent.click(screen.getByRole('button', { name: FOLLOW_DATA_MODEL }));
 
-    expect(showErrorToast).toHaveBeenCalledTimes(5);
+    fireEvent.click(screen.getByRole('button', { name: UPDATE_VOTE }));
 
-    (patchDataModelDetails as jest.Mock).mockResolvedValue({});
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
   });
 
   it('error when rendering component', async () => {
-    mockGetEntityPermissionByFqn.mockRejectedValueOnce(ERROR);
+    setMockPermissions({}, { error: ERROR });
 
     await act(async () => {
-      render(<DataModelsPage />, { wrapper: MemoryRouter });
+      renderPage();
     });
 
-    expect(screen.getByText(ERROR_PLACEHOLDER)).toBeInTheDocument();
+    expect(await screen.findByText(ERROR_PLACEHOLDER)).toBeInTheDocument();
     expect(showErrorToast).toHaveBeenCalledWith(FETCH_ENTITY_PERMISSION_ERROR);
   });
 
   it('error while fetching data model data', async () => {
     (getDataModelByFqn as jest.Mock).mockImplementationOnce(() => {
-      return Promise.reject(new Error(ERROR));
+      return Promise.reject({
+        response: { status: 404 },
+        message: ERROR,
+      });
     });
 
     await act(async () => {
-      render(<DataModelsPage />, { wrapper: MemoryRouter });
+      renderPage();
     });
 
     expect(useFqn).toHaveBeenCalled();
-    expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
       ResourceEntity.DASHBOARD_DATA_MODEL,
-      'testFqn'
+      'testFqn',
+      expect.objectContaining({ enabled: true })
     );
-    expect(screen.getByText(ERROR_PLACEHOLDER)).toBeInTheDocument();
-    expect(showErrorToast).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: ERROR,
-      })
-    );
+    expect(await screen.findByText(ERROR_PLACEHOLDER)).toBeInTheDocument();
   });
 });

@@ -1,6 +1,7 @@
 """
 Comprehensive unit tests for Chart entity with full mock coverage.
 """
+
 import unittest
 from unittest.mock import MagicMock
 from uuid import UUID
@@ -61,9 +62,7 @@ class TestChartEntity(unittest.TestCase):
 
         self.assertEqual(str(result.id), self.chart_id)
         self.assertEqual(result.name, "revenue_chart")
-        self.mock_ometa.get_by_id.assert_called_once_with(
-            entity=ChartEntity, entity_id=self.chart_id, fields=None
-        )
+        self.mock_ometa.get_by_id.assert_called_once_with(entity=ChartEntity, entity_id=self.chart_id, fields=None)
 
     def test_retrieve_chart_with_fields(self):
         """Test retrieving a chart with specific fields"""
@@ -92,9 +91,7 @@ class TestChartEntity(unittest.TestCase):
         self.assertIsNotNone(result.owner)
         self.assertEqual(result.owner.name, "analyst")
         self.assertEqual(len(result.tags), 2)
-        self.mock_ometa.get_by_id.assert_called_once_with(
-            entity=ChartEntity, entity_id=self.chart_id, fields=fields
-        )
+        self.mock_ometa.get_by_id.assert_called_once_with(entity=ChartEntity, entity_id=self.chart_id, fields=fields)
 
     def test_retrieve_chart_by_name(self):
         """Test retrieving a chart by fully qualified name"""
@@ -107,9 +104,7 @@ class TestChartEntity(unittest.TestCase):
         result = Charts.retrieve_by_name(self.chart_fqn)
 
         self.assertEqual(result.fullyQualifiedName, self.chart_fqn)
-        self.mock_ometa.get_by_name.assert_called_once_with(
-            entity=ChartEntity, fqn=self.chart_fqn, fields=None
-        )
+        self.mock_ometa.get_by_name.assert_called_once_with(entity=ChartEntity, fqn=self.chart_fqn, fields=None)
 
     def test_update_chart(self):
         """Test updating a chart"""
@@ -119,11 +114,7 @@ class TestChartEntity(unittest.TestCase):
 
         # Mock the get_by_id to return the current state
         current_entity = MagicMock(spec=type(chart_to_update))
-        current_entity.id = (
-            chart_to_update.id
-            if hasattr(chart_to_update, "id")
-            else UUID(self.entity_id)
-        )
+        current_entity.id = chart_to_update.id if hasattr(chart_to_update, "id") else UUID(self.entity_id)
         self.mock_ometa.get_by_id.return_value = current_entity
 
         # Mock the patch to return the updated entity
@@ -237,9 +228,7 @@ class TestChartEntity(unittest.TestCase):
 
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0].version, 0.1)
-        self.mock_ometa.get_list_entity_versions.assert_called_once_with(
-            entity=ChartEntity, entity_id=self.chart_id
-        )
+        self.mock_ometa.get_list_entity_versions.assert_called_once_with(entity=ChartEntity, entity_id=self.chart_id)
 
     def test_get_specific_version(self):
         """Test getting a specific version of a chart"""
@@ -284,9 +273,7 @@ class TestChartEntity(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(str(result.id.root), self.chart_id)
         self.assertFalse(result.deleted)
-        self.mock_ometa.client.put.assert_called_once_with(
-            "/charts/restore", json={"id": self.chart_id}
-        )
+        self.mock_ometa.client.put.assert_called_once_with("/charts/restore", json={"id": self.chart_id})
 
     def test_export_charts_csv(self):
         """Test exporting charts to CSV"""
@@ -297,9 +284,7 @@ class TestChartEntity(unittest.TestCase):
         result = exporter.execute()
 
         self.assertEqual(result, csv_data)
-        self.mock_ometa.export_csv.assert_called_once_with(
-            entity=ChartEntity, name="chart_export"
-        )
+        self.mock_ometa.export_csv.assert_called_once_with(entity=ChartEntity, name="chart_export")
 
     def test_import_charts_csv(self):
         """Test importing charts from CSV"""

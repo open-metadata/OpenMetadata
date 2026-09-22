@@ -214,6 +214,11 @@ public final class LLMServices {
     public LLMServiceDeleter delete() {
       return new LLMServiceDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<LLMService> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.llmServices(), identifier);
+    }
   }
 
   // ==================== Deleter ====================
@@ -339,5 +344,15 @@ public final class LLMServices {
     public LLMServiceDeleter delete() {
       return new LLMServiceDeleter(client, entity.getId().toString());
     }
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().llmServices().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().llmServices().getContextByName(fqn);
   }
 }

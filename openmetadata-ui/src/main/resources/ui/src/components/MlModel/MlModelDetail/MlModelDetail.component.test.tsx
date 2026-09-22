@@ -16,12 +16,48 @@ import {
   findByTestId,
   findByText,
   render,
+  waitFor,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Paging } from '../../../generated/type/paging';
+import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import MlModelDetailComponent from './MlModelDetail.component';
+
+// The component now reads permissions via useEntityPermissions rather than the raw
+// PermissionProvider context — see TableDetailsPageV1.test.tsx's setMockPermissions for the
+// full rationale (partial-object fidelity, mockReturnValue over mockImplementationOnce, the
+// `deleted`-gating blind spot), mirrored here without repeating it.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 const mockData = {
   id: '1b561c2d-f449-4640-b893-94077cf1c35b',
@@ -186,53 +222,95 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({ pathname: 'mlmodel' }));
 });
 
-jest.mock('react-router-dom', () => ({
-  useParams: jest.fn().mockImplementation(() => mockParams),
+jest.mock('../../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockImplementation(() => mockParams),
 }));
+
+jest.mock('../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockReturnValue({
+    fqn: 'mlflow_svc.eta_predictions',
+    entityFqn: 'mlflow_svc.eta_predictions',
+  }),
+}));
+
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockReturnValue({
+    currentUser: { id: 'testUser' },
+  }),
+}));
+
+jest.mock('../../../hooks/useCustomPages', () => ({
+  useCustomPages: jest.fn().mockReturnValue({
+    customizedPage: undefined,
+    isLoading: false,
+  }),
+}));
+
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    getEntityPermission: jest.fn().mockResolvedValue({
+      ViewAll: true,
+      ViewBasic: true,
+    }),
+  })),
+}));
+
+jest.mock('../../../utils/FeedUtilsPure', () => ({
+  fetchEntityActivityCountInto: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
+  getFeedCounts: jest.fn(),
+}));
+
+jest.mock('../../AppRouter/withActivityFeed', () => ({
+  withActivityFeed: jest.fn().mockImplementation((component) => component),
+}));
+
+jest.mock('../../../hoc/LimitWrapper', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
+jest.mock(
+  '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component',
+  () => ({
+    DataAssetsHeader: jest.fn().mockReturnValue(<div>DataAssetsHeader</div>),
+  })
+);
+
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  GenericProvider: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+}));
+
+jest.mock('../../Customization/GenericTab/GenericTab', () => ({
+  GenericTab: jest.fn().mockReturnValue(<div>GenericTab</div>),
+}));
+
+jest.mock('../../Lineage/EntityLineageTab/EntityLineageTab', () => ({
+  EntityLineageTab: jest.fn().mockReturnValue(<div>EntityLineageTab</div>),
+}));
+
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
+  return jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>);
+});
 
 jest.mock('../../common/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
-});
-
-jest.mock('../../common/EntityDescription/DescriptionV1', () => {
-  return jest.fn().mockReturnValue(<p>Description</p>);
-});
-
-jest.mock('../../Lineage/Lineage.component', () => {
-  return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
-});
-
-jest.mock('./MlModelFeaturesList', () => {
-  return jest.fn().mockReturnValue(<p>MlModelFeaturesList</p>);
-});
-
-jest.mock('../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel', () => {
-  return jest.fn().mockReturnValue(<p>ActivityThreadPanel</p>);
 });
 
 jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
-jest.mock('../../../utils/CommonUtils', () => {
-  return {
-    getEntityName: jest.fn().mockReturnValue('entityName'),
-    getEntityPlaceHolder: jest.fn().mockReturnValue('entityPlaceholder'),
-    getOwnerValue: jest.fn().mockReturnValue('Owner'),
-    getEmptyPlaceholder: jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>),
-    getCountBadge: jest.fn().mockReturnValue(<p>1</p>),
-  };
-});
+jest.mock('../../../utils/EntityNameUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('entityName'),
+}));
 
-jest.mock('../../../utils/TableUtils', () => {
+jest.mock('../../../utils/TablePureUtils', () => {
   return {
     getTagsWithoutTier: jest.fn().mockReturnValue([]),
     getTierTags: jest.fn().mockReturnValue(undefined),
   };
-});
-
-jest.mock('../../ActivityFeed/FeedEditor/FeedEditor', () => {
-  return jest.fn().mockReturnValue(<p>FeedEditor.component</p>);
 });
 
 jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
@@ -241,26 +319,116 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
     .mockReturnValue(<p>CustomPropertyTable.component</p>),
 }));
 
-describe.skip('Test MlModel entity detail component', () => {
+// --- Additional mocks for the permission-conversion tests below, on top of the shared
+// mocks above. `useFqn`, `useCustomPages`, `useApplicationStore`, `useRequiredParams`,
+// `DataAssetsHeader`, `GenericProvider`, `LimitWrapper` and `FeedUtilsPure` are already
+// mocked above and reused as-is — re-registering them here would silently win (last
+// `jest.mock` call for a given path wins) and diverge from the suite below. In particular,
+// `useRequiredParams` must stay the dynamic `mockParams`-backed mock above: the suite below
+// mutates `mockParams.tab` per test to switch tabs, and `MlModelClassBase` is deliberately
+// left unmocked so the real tab list renders for both suites — a static override here would
+// break every tab-switching assertion below.
+jest.mock('../../../rest/mlModelAPI', () => ({
+  restoreMlmodel: jest.fn().mockResolvedValue({ version: 1 }),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+
+jest.mock('../../../utils/RouterUtils', () => ({
+  getEntityDetailsPath: jest.fn().mockReturnValue('/mlmodel/path'),
+}));
+
+describe('MlModelDetail permissions', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setMockPermissions(ENTITY_PERMISSIONS);
+  });
+
+  // Guardrail: this component owns the single useEntityPermissions call whose raw
+  // `mlModelPermissions` prop feeds DataAssetsHeader/GenericProvider — see
+  // PipelineDetails.test.tsx's afterEach for the general rationale on asserting the
+  // (resource, identifier) pair. Only one call per render here, so this is mostly
+  // future-proofing against a later edit accidentally adding a diverging second call.
+  afterEach(() => {
+    const calls = mockUseEntityPermissions.mock.calls;
+    if (calls.length === 0) {
+      return;
+    }
+    const [expectedResource, expectedIdentifier] = calls[0];
+    calls.forEach(([resource, identifier]) => {
+      expect(resource).toBe(expectedResource);
+      expect(identifier).toBe(expectedIdentifier);
+    });
+  });
+
+  it('should fetch permissions by id, not fqn', async () => {
+    render(<MlModelDetailComponent {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    await waitFor(() => {
+      expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+        ResourceEntity.ML_MODEL,
+        { id: mockData.id },
+        { deleted: false }
+      );
+    });
+  });
+
+  it('requests edit permissions as deleted-gated for a soft-deleted mlmodel', async () => {
+    render(
+      <MlModelDetailComponent
+        {...mockProp}
+        mlModelDetail={{ ...mockData, deleted: true } as Mlmodel}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    await waitFor(() => {
+      expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+        ResourceEntity.ML_MODEL,
+        { id: mockData.id },
+        { deleted: true }
+      );
+    });
+  });
+
+  it('shows the permission-fetch error toast when the hook reports an error', async () => {
+    setMockPermissions(ENTITY_PERMISSIONS, {
+      error: new Error('permission fetch failed'),
+    });
+
+    render(<MlModelDetailComponent {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    // t() is globally mocked to the identity function (see src/setupTests.js), so the
+    // interpolated `entity` option collapses out and only the outer key survives.
+    await waitFor(() => {
+      expect(showErrorToast).toHaveBeenCalledWith(
+        'server.fetch-entity-permissions-error'
+      );
+    });
+  });
+});
+
+describe('Test MlModel entity detail component', () => {
   it('Should render detail component', async () => {
+    mockParams.tab = EntityTabs.FEATURES;
     const { container } = render(<MlModelDetailComponent {...mockProp} />, {
       wrapper: MemoryRouter,
     });
 
-    const detailContainer = await findByTestId(container, 'mlmodel-details');
-
+    const dataAssetsHeader = await findByText(container, 'DataAssetsHeader');
     const entityTabs = await findByTestId(container, 'tabs');
-    const entityFeatureList = await findByText(
-      container,
-      /MlModelFeaturesList/i
-    );
-    const entityDescription = await findByText(container, /Description/i);
+    const featuresTab = await findByText(container, 'GenericTab');
 
-    expect(detailContainer).toBeInTheDocument();
-
+    expect(dataAssetsHeader).toBeInTheDocument();
     expect(entityTabs).toBeInTheDocument();
-    expect(entityFeatureList).toBeInTheDocument();
-    expect(entityDescription).toBeInTheDocument();
+    expect(featuresTab).toBeInTheDocument();
   });
 
   it('Should render hyper parameter and ml store table for details tab', async () => {
@@ -280,13 +448,13 @@ describe.skip('Test MlModel entity detail component', () => {
       }
     );
 
-    const detailContainer = await findByTestId(container, 'mlmodel-details');
+    const entityTabs = await findByTestId(container, 'tabs');
     const emptyTablePlaceholder = await findAllByText(
       container,
       'ErrorPlaceHolder'
     );
 
-    expect(detailContainer).toBeInTheDocument();
+    expect(entityTabs).toBeInTheDocument();
     expect(emptyTablePlaceholder).toHaveLength(2);
   });
 
@@ -296,7 +464,6 @@ describe.skip('Test MlModel entity detail component', () => {
       wrapper: MemoryRouter,
     });
 
-    const detailContainer = await findByTestId(container, 'mlmodel-details');
     const hyperMetereTable = await findByTestId(
       container,
       'hyperparameters-table'
@@ -304,7 +471,6 @@ describe.skip('Test MlModel entity detail component', () => {
 
     const mlStoreTable = await findByTestId(container, 'model-store-table');
 
-    expect(detailContainer).toBeInTheDocument();
     expect(hyperMetereTable).toBeInTheDocument();
     expect(mlStoreTable).toBeInTheDocument();
   });
@@ -315,9 +481,9 @@ describe.skip('Test MlModel entity detail component', () => {
       wrapper: MemoryRouter,
     });
 
-    const detailContainer = await findByTestId(container, 'lineage-details');
+    const lineageTab = await findByText(container, 'EntityLineageTab');
 
-    expect(detailContainer).toBeInTheDocument();
+    expect(lineageTab).toBeInTheDocument();
   });
 
   it('Check if active tab is custom properties', async () => {
@@ -344,19 +510,12 @@ describe.skip('Test MlModel entity detail component', () => {
         wrapper: MemoryRouter,
       }
     );
-    const detailContainer = await findByTestId(container, 'mlmodel-details');
-    const entityInfo = await findByText(container, /EntityPageInfo/i);
+    const dataAssetsHeader = await findByText(container, 'DataAssetsHeader');
     const entityTabs = await findByTestId(container, 'tabs');
-    const entityFeatureList = await findByText(
-      container,
-      /MlModelFeaturesList/i
-    );
-    const entityDescription = await findByText(container, /Description/i);
+    const featuresTab = await findByText(container, 'GenericTab');
 
-    expect(detailContainer).toBeInTheDocument();
-    expect(entityInfo).toBeInTheDocument();
+    expect(dataAssetsHeader).toBeInTheDocument();
     expect(entityTabs).toBeInTheDocument();
-    expect(entityFeatureList).toBeInTheDocument();
-    expect(entityDescription).toBeInTheDocument();
+    expect(featuresTab).toBeInTheDocument();
   });
 });

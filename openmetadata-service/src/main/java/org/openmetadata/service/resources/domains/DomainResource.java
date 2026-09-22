@@ -142,9 +142,39 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
               description = "Returns list of Domain after this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after) {
-    return listInternal(
-        uriInfo, securityContext, fieldsParam, new ListFilter(null), limitParam, before, after);
+          String after,
+      @Parameter(
+              description =
+                  "Filter domains owned by any of these users or teams "
+                      + "(comma-separated user/team ids, names, or FQNs)",
+              schema = @Schema(type = "string"))
+          @QueryParam("owners")
+          String owners,
+      @Parameter(
+              description =
+                  "Filter by domain type: Aggregate, Consumer-aligned, Source-aligned (comma-separated)",
+              schema = @Schema(type = "string"))
+          @QueryParam("domainType")
+          String domainType,
+      @Parameter(
+              description = "Filter by classification tag FQNs (comma-separated)",
+              schema = @Schema(type = "string"))
+          @QueryParam("tags")
+          String tags,
+      @Parameter(
+              description = "Filter by glossary term FQNs (comma-separated)",
+              schema = @Schema(type = "string"))
+          @QueryParam("glossaryTerms")
+          String glossaryTerms) {
+    ListFilter filter =
+        new ListFilter(null)
+            .addQueryParam("ownerId", EntityUtil.resolveOwnersToIds(owners))
+            .addQueryParam("ownerToEntity", Entity.DOMAIN)
+            .addQueryParam("domainType", domainType)
+            .addQueryParam("tags", tags)
+            .addQueryParam("glossaryTerms", glossaryTerms);
+    EntityUtil.applyDomainSelfRestriction(securityContext, filter);
+    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -326,24 +356,8 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -686,7 +700,8 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @QueryParam("offset")
           int offset) {
 
-    return repository.buildHierarchy(fieldsParam, limitParam, directChildrenOf, offset);
+    return repository.buildHierarchy(
+        fieldsParam, limitParam, directChildrenOf, offset, securityContext);
   }
 
   @PUT
@@ -713,9 +728,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return addFollowerInternal(securityContext, id, userId);
   }
 
   @DELETE
@@ -742,9 +755,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
-        .toResponse();
+    return deleteFollowerInternal(securityContext, id, UUID.fromString(userId));
   }
 
   @GET

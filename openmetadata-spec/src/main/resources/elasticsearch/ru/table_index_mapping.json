@@ -42,7 +42,8 @@
           "type": "custom",
           "tokenizer": "n_gram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         },
         "om_compound_analyzer": {
@@ -50,6 +51,7 @@
           "filter": [
             "compound_word_delimiter_graph",
             "lowercase",
+            "asciifolding",
             "flatten_graph"
           ]
         }
@@ -180,6 +182,9 @@
       "sourceUrl": {
         "type": "keyword"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "tableType": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
@@ -251,7 +256,8 @@
             "type": "integer"
           },
           "extension": {
-            "type": "flattened"
+            "type": "object",
+            "enabled": false
           },
           "customPropertiesTyped": {
             "type": "nested",
@@ -294,11 +300,19 @@
                 "type": "keyword"
               }
             }
+          },
+          "children": {
+            "type": "object",
+            "enabled": false
           }
         }
       },
       "columnNames": {
         "type": "keyword"
+      },
+      "columnNamesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer"
       },
       "databaseSchema": {
         "properties": {
@@ -390,7 +404,14 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
           },
           "description": {
             "type": "text"
@@ -555,7 +576,8 @@
         }
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "dataProducts": {
         "properties": {
@@ -586,7 +608,8 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
-                "ignore_above": 256
+                "ignore_above": 256,
+                "normalizer": "lowercase_normalizer"
               }
             }
           },
@@ -648,6 +671,20 @@
       "locationPath": {
         "type": "keyword"
       },
+      "aliases": {
+        "type": "text",
+        "analyzer": "om_analyzer",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          }
+        }
+      },
       "usageSummary": {
         "properties": {
           "dailyStats": {
@@ -704,7 +741,8 @@
                 "type": "text",
                 "analyzer": "om_analyzer"
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -854,6 +892,26 @@
             }
           },
           "sqlQueryKey": {
+            "type": "keyword"
+          },
+          "createdAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          },
+          "updatedAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          },
+          "createdBy": {
+            "type": "keyword"
+          },
+          "updatedBy": {
+            "type": "keyword"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "docUniqueId": {
             "type": "keyword"
           }
         }
@@ -1052,6 +1110,13 @@
       "lineageSqlQueries": {
         "type": "object",
         "enabled": false
+      },
+      "aiContext": {
+        "type": "object",
+        "enabled": false
+      },
+      "aiContextForeignKeyTargets": {
+        "type": "keyword"
       }
     }
   }

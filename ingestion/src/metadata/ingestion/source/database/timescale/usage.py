@@ -11,7 +11,6 @@
 """
 TimescaleDB usage module
 """
-from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.database.timescaleConnection import (
     TimescaleConnection,
@@ -30,14 +29,10 @@ class TimescaleUsageSource(PostgresUsageSource):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         """Create TimescaleUsageSource"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection = config.serviceConnection.root.config
         if not isinstance(connection, TimescaleConnection):
-            raise InvalidSourceException(
-                f"Expected TimescaleConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected TimescaleConnection, but got {connection}")
         return cls(config, metadata)

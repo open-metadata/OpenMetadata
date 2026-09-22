@@ -15,7 +15,6 @@ Utilities for Looker service
 
 import os
 import shutil
-from typing import Optional, Union
 
 from git import Repo
 
@@ -42,7 +41,7 @@ def _extract_hostname(git_host_url) -> str:
     url_str = str(git_host_url)
     # Remove protocol and trailing slash
     hostname = url_str.replace("https://", "").replace("http://", "").rstrip("/")
-    return hostname
+    return hostname  # noqa: RET504
 
 
 def _is_azure_devops_host(hostname: str) -> bool:
@@ -53,18 +52,14 @@ def _is_azure_devops_host(hostname: str) -> bool:
 def _clone_repo(
     repo_name: str,
     path: str,
-    credential: Optional[
-        Union[
-            NoGitCredentials, GitHubCredentials, BitBucketCredentials, GitlabCredentials
-        ]
-    ],
-    overwrite: Optional[bool] = False,
+    credential: NoGitCredentials | GitHubCredentials | BitBucketCredentials | GitlabCredentials | None,
+    overwrite: bool | None = False,
 ):
     """Clone a repo to local `path`"""
     try:
         if overwrite:
             shutil.rmtree(path, ignore_errors=True)
-        if os.path.isdir(path):
+        if os.path.isdir(path):  # noqa: PTH112
             logger.debug(f"_clone_repo: repo {path} already cloned.")
             return
 

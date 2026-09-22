@@ -13,19 +13,19 @@
 
 import { List, Space, Typography } from 'antd';
 import { startCase } from 'lodash';
-import { FC, useMemo } from 'react';
+import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   formatDateTime,
   getRelativeTime,
 } from '../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../utils/EntityUtils';
-import { entityDisplayName, prepareFeedLink } from '../../utils/FeedUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
+import { entityDisplayName, prepareFeedLink } from '../../utils/FeedUtilsPure';
 import {
   getTaskDetailPathFromTask,
   getTaskDisplayId,
-} from '../../utils/TasksUtils';
+} from '../../utils/TaskNavigationUtils';
 import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { SourceType } from '../SearchedData/SearchedData.interface';
@@ -40,10 +40,19 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
   taskEntity,
 }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const isMentionNotification = Boolean(mentionNotification && !taskEntity);
   const taskLink = useMemo(() => {
     return taskEntity ? getTaskDetailPathFromTask(taskEntity) : '';
   }, [taskEntity]);
+
+  const handleTaskLinkClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      navigate(taskLink, { state: { tasksRefreshKey: Date.now() } });
+    },
+    [navigate, taskLink]
+  );
 
   const taskContent = useMemo(() => {
     return (
@@ -51,14 +60,19 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
         <span className="p-x-xss">
           {t('message.assigned-you-a-new-task-lowercase')}
         </span>
-        <Link to={taskLink}>
+        <Link
+          to={taskLink}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleTaskLinkClick(e);
+          }}>
           {`#${getTaskDisplayId(taskEntity?.taskId ?? '')} ${startCase(
             taskEntity?.type ?? ''
           )}`}
         </Link>
       </>
     );
-  }, [taskEntity, taskLink, t]);
+  }, [taskEntity, taskLink, handleTaskLinkClick, t]);
 
   const entityName = useMemo(() => {
     const entityRef = (taskEntity?.about ?? mentionNotification?.entityRef) as
@@ -70,14 +84,33 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
       : entityDisplayName(entityType, entityFQN);
   }, [entityFQN, entityType, mentionNotification, taskEntity]);
 
+  const mentionLink = prepareFeedLink(
+    entityType,
+    entityFQN,
+    ActivityFeedTabs.ALL
+  );
+
+  const mentionContent = useMemo(
+    () => (
+      <>
+        <span> {t('message.mentioned-you-on-the-lowercase')} </span>{' '}
+        <span>{entityType} </span>
+        <Link
+          className="truncate"
+          data-testid={`notification-link-${entityName}`}
+          to={mentionLink}>
+          {entityName}
+        </Link>
+      </>
+    ),
+    [entityType, entityName, mentionLink, t]
+  );
+
   return (
     <Link
       className="no-underline"
-      to={
-        isMentionNotification
-          ? prepareFeedLink(entityType, entityFQN, ActivityFeedTabs.ALL)
-          : taskLink
-      }>
+      to={isMentionNotification ? mentionLink : taskLink}
+      onClick={!isMentionNotification ? handleTaskLinkClick : undefined}>
       <List.Item.Meta
         avatar={<ProfilePicture name={createdBy} width="32" />}
         className="m-0"
@@ -90,24 +123,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
               className="m-0"
               style={{ color: '#37352F', marginBottom: 0 }}>
               <>{createdBy}</>
-              {isMentionNotification ? (
-                <>
-                  <span> {t('message.mentioned-you-on-the-lowercase')} </span>{' '}
-                  <span>{entityType} </span>
-                  <Link
-                    className="truncate"
-                    data-testid={`notification-link-${entityName}`}
-                    to={prepareFeedLink(
-                      entityType,
-                      entityFQN,
-                      ActivityFeedTabs.ALL
-                    )}>
-                    {entityName}
-                  </Link>
-                </>
-              ) : (
-                taskContent
-              )}
+              {isMentionNotification ? mentionContent : taskContent}
             </Typography.Paragraph>
             <Typography.Text
               style={{ color: '#6B7280', marginTop: '8px', fontSize: '12px' }}

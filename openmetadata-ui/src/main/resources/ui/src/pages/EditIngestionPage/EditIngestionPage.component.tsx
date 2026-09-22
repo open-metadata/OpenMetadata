@@ -11,20 +11,24 @@
  *  limitations under the License.
  */
 
+import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { OpenIncidents } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
 import { ServicesUpdateRequest } from 'Models';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import FormPanelBody, {
+  getFormFirstPanelProps,
+} from '../../components/common/FormPanelBody/FormPanelBody.component';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import AddIngestion from '../../components/Settings/Services/AddIngestion/AddIngestion.component';
+import { AddIngestionHandle } from '../../components/Settings/Services/AddIngestion/IngestionWorkflow.interface';
 import {
   DEPLOYED_PROGRESS_VAL,
   INGESTION_PROGRESS_END_VAL,
@@ -41,6 +45,7 @@ import {
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useFieldFocusManagement } from '../../hooks/useFieldFocusManagement';
 import { useFqn } from '../../hooks/useFqn';
 import { DataObj } from '../../interface/service.interface';
 import {
@@ -49,14 +54,14 @@ import {
   updateIngestionPipeline,
 } from '../../rest/ingestionPipelineAPI';
 import { getServiceByFQN } from '../../rest/serviceAPI';
-import { getEntityMissingError } from '../../utils/CommonUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import {
   getBreadCrumbsArray,
   getIngestionHeadingName,
   getSettingsPathFromPipelineType,
-} from '../../utils/IngestionUtils';
+} from '../../utils/IngestionConfigUtils';
 import { getServiceDetailsPath } from '../../utils/RouterUtils';
-import { getServiceType } from '../../utils/ServiceUtils';
+import { getServiceType } from '../../utils/ServicePureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
@@ -74,6 +79,7 @@ const EditIngestionPage = () => {
     {} as IngestionPipeline
   );
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
+  const [isStepReady, setIsStepReady] = useState(false);
   const [isLoading, setIsloading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | JSX.Element>('');
   const [ingestionProgress, setIngestionProgress] = useState(0);
@@ -86,7 +92,7 @@ const EditIngestionPage = () => {
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
-  const [activeField, setActiveField] = useState<string>('');
+  const addIngestionRef = useRef<AddIngestionHandle>(null);
 
   const isSettingsPipeline = useMemo(
     () =>
@@ -97,7 +103,9 @@ const EditIngestionPage = () => {
 
   const fetchServiceDetails = () => {
     return new Promise<void>((resolve, reject) => {
-      getServiceByFQN(serviceCategory, serviceFQN)
+      getServiceByFQN(serviceCategory, serviceFQN, {
+        fields: TabSpecificField.OWNERS,
+      })
         .then((resService) => {
           if (resService) {
             setServiceData(resService as ServicesUpdateRequest);
@@ -127,8 +135,10 @@ const EditIngestionPage = () => {
 
   const fetchIngestionDetails = () => {
     return new Promise<void>((resolve, reject) => {
+      // `owners` must be fetched so the form pre-fills the saved owners and the
+      // patch diff replaces them instead of adding against a missing baseline.
       getIngestionPipelineByFqn(ingestionFQN, {
-        fields: TabSpecificField.PIPELINE_STATUSES,
+        fields: [TabSpecificField.PIPELINE_STATUSES, TabSpecificField.OWNERS],
       })
         .then((res) => {
           if (res) {
@@ -231,14 +241,8 @@ const EditIngestionPage = () => {
 
   const handleCancelClick = isSettingsPipeline ? goToSettingsPage : goToService;
 
-  const handleFieldFocus = (fieldName: string) => {
-    if (isEmpty(fieldName)) {
-      return;
-    }
-    setTimeout(() => {
-      setActiveField(fieldName);
-    }, 50);
-  };
+  const { activeField, activeFieldMeta, handleFieldFocus } =
+    useFieldFocusManagement();
 
   useEffect(() => {
     const breadCrumbsArray = getBreadCrumbsArray(
@@ -252,42 +256,87 @@ const EditIngestionPage = () => {
     setSlashedBreadcrumb(breadCrumbsArray);
   }, [serviceCategory, ingestionType, serviceData, isSettingsPipeline]);
 
+  const footerNextText =
+    activeIngestionStep === 2 ? t('label.submit') : t('label.next');
+
+  const handleFooterBack = () => {
+    if (activeIngestionStep === 1) {
+      handleCancelClick();
+    } else {
+      setActiveIngestionStep(1);
+    }
+  };
+
+  const handleFooterNext = () => {
+    addIngestionRef.current?.submit();
+  };
+
   const firstPanelChildren = (
-    <>
-      <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-      <div className="m-t-md">
-        <AddIngestion
-          activeIngestionStep={activeIngestionStep}
-          data={ingestionData}
-          handleCancelClick={handleCancelClick}
-          handleViewServiceClick={handleCancelClick}
-          heading={getIngestionHeadingName(
-            ingestionType as PipelineType,
-            INGESTION_ACTION_TYPE.EDIT
-          )}
-          ingestionAction={ingestionAction}
-          ingestionProgress={ingestionProgress}
-          isIngestionCreated={isIngestionCreated}
-          isIngestionDeployed={isIngestionDeployed}
-          pipelineType={ingestionType as PipelineType}
-          serviceCategory={serviceCategory as ServiceCategory}
-          serviceData={serviceData as DataObj}
-          setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
-          showDeployButton={showIngestionButton}
-          status={FormSubmitType.EDIT}
-          onFocus={handleFieldFocus}
-          onIngestionDeploy={onIngestionDeploy}
-          onSuccessSave={goToService}
-          onUpdateIngestion={onEditIngestionSave}
-        />
-      </div>
-    </>
+    <FormPanelBody
+      footer={
+        activeIngestionStep <= 2 ? (
+          <>
+            <Button
+              color="secondary"
+              data-testid="previous-button"
+              size="sm"
+              type="button"
+              onPress={handleFooterBack}>
+              {t('label.back')}
+            </Button>
+            <Button
+              color="primary"
+              data-testid="next-button"
+              isDisabled={!isStepReady}
+              size="sm"
+              type="button"
+              onPress={handleFooterNext}>
+              {footerNextText}
+            </Button>
+          </>
+        ) : undefined
+      }>
+      <>
+        <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
+        <div className="tw:mt-4">
+          <AddIngestion
+            hideFooter
+            activeIngestionStep={activeIngestionStep}
+            data={ingestionData}
+            handleCancelClick={handleCancelClick}
+            handleViewServiceClick={handleCancelClick}
+            heading={getIngestionHeadingName(
+              ingestionType as PipelineType,
+              INGESTION_ACTION_TYPE.EDIT
+            )}
+            ingestionAction={ingestionAction}
+            ingestionProgress={ingestionProgress}
+            isIngestionCreated={isIngestionCreated}
+            isIngestionDeployed={isIngestionDeployed}
+            pipelineType={ingestionType as PipelineType}
+            ref={addIngestionRef}
+            serviceCategory={serviceCategory as ServiceCategory}
+            serviceData={serviceData as DataObj}
+            setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
+            showDeployButton={showIngestionButton}
+            status={FormSubmitType.EDIT}
+            onFocus={handleFieldFocus}
+            onIngestionDeploy={onIngestionDeploy}
+            onStepReadyChange={setIsStepReady}
+            onSuccessSave={goToService}
+            onUpdateIngestion={onEditIngestionSave}
+          />
+        </div>
+      </>
+    </FormPanelBody>
   );
 
   const secondPanelChildren = (
     <ServiceDocPanel
+      focusedMode
       isWorkflow
       activeField={activeField}
+      activeFieldMeta={activeFieldMeta}
       serviceName={serviceData?.serviceType ?? ''}
       serviceType={getServiceType(serviceCategory as ServiceCategory)}
       workflowType={ingestionType as PipelineType}
@@ -304,20 +353,21 @@ const EditIngestionPage = () => {
     return <Loader />;
   }
   if (errorMsg) {
-    return <ErrorPlaceHolder>{errorMsg}</ErrorPlaceHolder>;
+    return (
+      <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
+        <EmptyPlaceholder
+          description={errorMsg}
+          icon={<OpenIncidents className="tw:text-secondary" />}
+          title={t('message.something-went-wrong')}
+        />
+      </div>
+    );
   }
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
-      firstPanel={{
-        children: firstPanelChildren,
-        minWidth: 700,
-        flex: 0.7,
-        className: 'content-resizable-panel-container',
-        cardClassName: 'steps-form-container',
-        allowScroll: true,
-      }}
+      className="content-height-with-resizable-panel tw:bg-transparent"
+      firstPanel={getFormFirstPanelProps(firstPanelChildren)}
       pageTitle={t('label.edit-entity', {
         entity: t('label.ingestion'),
       })}

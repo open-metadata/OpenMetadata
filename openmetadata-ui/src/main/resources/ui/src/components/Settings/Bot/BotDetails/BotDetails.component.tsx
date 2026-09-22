@@ -12,22 +12,23 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Input, Row, Typography } from 'antd';
+import { Button, Card, Col, Input, Row, Tag, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { toLower } from 'lodash';
-import { FC, useEffect, useMemo, useState } from 'react';
+import { debounce, toLower, uniqBy } from 'lodash';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconBotProfile } from '../../../../assets/svg/bot-profile.svg';
-import { PAGE_SIZE_LARGE, TERM_ADMIN } from '../../../../constants/constants';
+import { TERM_ADMIN } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Role } from '../../../../generated/entity/teams/role';
-import { getAllRoles } from '../../../../rest/rolesAPIV1';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { searchRoles } from '../../../../rest/rolesAPIV1';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
+import Description from '../../../common/EntityDescription/Description';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import InheritedRolesCard from '../../../common/InheritedRolesCard/InheritedRolesCard.component';
 import RolesCard from '../../../common/RolesCard/RolesCard.component';
@@ -48,21 +49,27 @@ const BotDetails: FC<BotsDetailProps> = ({
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<Array<string>>([]);
   const [roles, setRoles] = useState<Array<Role>>([]);
+  const [isRolesLoading, setIsRolesLoading] = useState(false);
+  const selectedRolesRef = useRef<string[]>([]);
   const { getResourceLimit, config } = useLimitStore();
 
   const [disableFields, setDisableFields] = useState<string[]>(['token']);
 
   const { t } = useTranslation();
 
-  const { editAllPermission, displayNamePermission, descriptionPermission } =
-    useMemo(
-      () => ({
-        editAllPermission: botPermission.EditAll,
-        displayNamePermission: botPermission.EditDisplayName,
-        descriptionPermission: botPermission.EditDescription,
-      }),
-      [botPermission]
-    );
+  // Consumer via the `botPermission: OperationPermission` prop (raw contract kept per Task 8
+  // rule 2). No `deleted` argument — bots aren't soft-deletable through this page and the old
+  // expressions never referenced a deleted concept. Both call sites below OR'd a raw
+  // field-specific flag with the raw `botPermission.EditAll` (displayNamePermission ||
+  // editAllPermission, descriptionPermission || editAllPermission) — each now reads
+  // canEditDisplayName/canEditDescription directly (explicit-deny-wins fix, Task 6 Finding 1);
+  // the prioritized flag already folds in the EditAll fallback, so the separate EditAll term
+  // isn't lost, just no longer spelled out raw. The old `editAllPermission` (bare EditAll-only)
+  // local is now unused and dropped (Task 7/8 dead-code precedent).
+  const { canEditDisplayName, canEditDescription } = useMemo(
+    () => getDerivedPermissionFlags(botPermission),
+    [botPermission]
+  );
 
   const initLimits = async () => {
     if (!config?.enable) {
@@ -74,15 +81,29 @@ const BotDetails: FC<BotsDetailProps> = ({
     }
   };
 
-  const fetchRoles = async () => {
+  const fetchRoles = useCallback(async (query = '') => {
+    setIsRolesLoading(true);
+
     try {
-      const data = await getAllRoles('', false, PAGE_SIZE_LARGE);
-      setRoles(data);
+      const data = await searchRoles(query);
+      setRoles((prevRoles) => {
+        const selectedRoleOptions = prevRoles.filter((role) =>
+          selectedRolesRef.current.includes(role.id)
+        );
+
+        return uniqBy([...selectedRoleOptions, ...data], 'id');
+      });
     } catch (err) {
-      setRoles([]);
       showErrorToast(err as AxiosError);
+    } finally {
+      setIsRolesLoading(false);
     }
-  };
+  }, []);
+
+  const debouncedFetchRoles = useMemo(
+    () => debounce(fetchRoles, 300),
+    [fetchRoles]
+  );
 
   const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDisplayName(e.target.value);
@@ -160,7 +181,7 @@ const BotDetails: FC<BotsDetailProps> = ({
                           })}
                         </Typography.Text>
                       )}
-                      {(displayNamePermission || editAllPermission) && (
+                      {canEditDisplayName && (
                         <div>
                           <EditIconButton
                             newLook
@@ -176,11 +197,21 @@ const BotDetails: FC<BotsDetailProps> = ({
                     </>
                   )}
                 </div>
-                <DescriptionV1
+                {botUserData.allowImpersonation && (
+                  <Tooltip title={t('message.allow-impersonation-help')}>
+                    <Tag
+                      className="w-fit-content"
+                      color="blue"
+                      data-testid="impersonation-enabled-badge">
+                      {t('label.impersonation-enabled')}
+                    </Tag>
+                  </Tooltip>
+                )}
+                <Description
                   description={botData.description}
                   entityName={getEntityName(botData)}
                   entityType={EntityType.BOT}
-                  hasEditAccess={descriptionPermission || editAllPermission}
+                  hasEditAccess={canEditDescription}
                   showCommentsIcon={false}
                   onDescriptionUpdate={handleDescriptionChange}
                 />
@@ -190,7 +221,9 @@ const BotDetails: FC<BotsDetailProps> = ({
         </Col>
         <Col span={24}>
           <RolesCard
+            isRolesLoading={isRolesLoading}
             roles={roles}
+            searchRolesOptions={debouncedFetchRoles}
             selectedRoles={selectedRoles}
             setSelectedRoles={(selectedRoles) =>
               setSelectedRoles(selectedRoles)
@@ -207,18 +240,41 @@ const BotDetails: FC<BotsDetailProps> = ({
   };
 
   useEffect(() => {
+    selectedRolesRef.current = selectedRoles;
+  }, [selectedRoles]);
+
+  useEffect(() => {
     fetchRoles();
     initLimits();
   }, []);
 
   useEffect(() => {
+    return () => {
+      debouncedFetchRoles.cancel();
+    };
+  }, [debouncedFetchRoles]);
+
+  useEffect(() => {
     prepareSelectedRoles();
+    setRoles((prevRoles) =>
+      uniqBy(
+        [
+          ...prevRoles,
+          ...((botUserData.roles ?? []).map((role) => ({
+            id: role.id,
+            name: role.name ?? '',
+            displayName: role.displayName,
+          })) as Role[]),
+        ],
+        'id'
+      )
+    );
   }, [botUserData]);
 
   return (
     <PageLayoutV1
       leftPanel={fetchLeftPanel()}
-      pageTitle={t('label.bot-detail')}
+      pageTitle={getEntityName(botData) || t('label.bot-detail')}
       rightPanel={
         <Card className="h-full m-b-box" data-testid="right-panel">
           <div className="d-flex flex-col">

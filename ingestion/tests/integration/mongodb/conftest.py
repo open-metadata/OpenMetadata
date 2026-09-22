@@ -18,7 +18,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 
 
 @pytest.fixture(scope="module")
-def mongodbContainer(tmp_path_factory):
+def mongodbContainer(tmp_path_factory):  # noqa: N802
     """
     Start a Mongodb container
     """
@@ -26,9 +26,7 @@ def mongodbContainer(tmp_path_factory):
 
     container = MongoDbContainer()
 
-    with (
-        try_bind(container, 27017, None) if not os.getenv("CI") else container
-    ) as container:
+    with try_bind(container, 27017, None) if not os.getenv("CI") else container as container:
         db = container.get_connection_client().test
         db.user_profiles.insert_one(
             {
@@ -45,7 +43,7 @@ def mongodbContainer(tmp_path_factory):
 
 
 @pytest.fixture(scope="module")
-def create_service_request(mongodbContainer):
+def create_service_request(mongodbContainer):  # noqa: N803
     return CreateDatabaseServiceRequest(
         name=f"docker_test_mongodb_{uuid.uuid4().hex[:8]}",
         serviceType=DatabaseServiceType.MongoDB,

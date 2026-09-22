@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/dashboardService.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Dashboard Service",
   "description": "This schema defines the Dashboard Service entity, such as Looker and Superset.",
   "type": "object",
@@ -35,7 +35,9 @@
         "Grafana",
         "Hex",
         "Ssrs",
-        "SapS4Hana"
+        "Rill",
+        "SapS4Hana",
+        "Omni"
       ],
       "javaEnums": [
         {
@@ -99,7 +101,13 @@
           "name": "Ssrs"
         },
         {
+          "name": "Rill"
+        },
+        {
           "name": "SapS4Hana"
+        },
+        {
+          "name": "Omni"
         }
       ]
     },
@@ -175,7 +183,13 @@
               "$ref": "./connections/dashboard/ssrsConnection.json"
             },
             {
+              "$ref": "./connections/dashboard/rillConnection.json"
+            },
+            {
               "$ref": "./connections/dashboard/sapS4HanaConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/omniConnection.json"
             }
           ]
         }
@@ -226,6 +240,9 @@
         "$ref": "../../type/tagLabel.json"
       },
       "default": []
+    },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
     },
     "owners": {
       "description": "Owners of this dashboard service.",

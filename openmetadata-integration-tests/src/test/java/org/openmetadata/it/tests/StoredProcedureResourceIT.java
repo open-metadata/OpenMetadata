@@ -174,19 +174,6 @@ public class StoredProcedureResourceIT
   }
 
   @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().storedProcedures().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient()
-        .storedProcedures()
-        .getVersionList(id, limit, offset, fieldChanged);
-  }
-
-  @Override
   protected StoredProcedure getVersion(UUID id, Double version) {
     return SdkClients.adminClient().storedProcedures().getVersion(id.toString(), version);
   }
@@ -608,5 +595,32 @@ public class StoredProcedureResourceIT
     CreateStoredProcedure request = new CreateStoredProcedure();
     request.setName(ns.prefix("invalid_stored_proc"));
     return request;
+  }
+
+  @Test
+  void test_listStoredProceduresFilteredByService(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    StoredProcedureCode code =
+        new StoredProcedureCode()
+            .withCode(
+                "CREATE OR REPLACE PROCEDURE p() AS $$ BEGIN RETURN; END; $$ LANGUAGE plpgsql;")
+            .withLanguage(StoredProcedureLanguage.SQL);
+    for (int i = 0; i < 2; i++) {
+      CreateStoredProcedure request = new CreateStoredProcedure();
+      request.setName(ns.prefix("service_filter_proc_" + i));
+      request.setDatabaseSchema(schema.getFullyQualifiedName());
+      request.setStoredProcedureCode(code);
+      client.storedProcedures().create(request);
+    }
+
+    ListResponse<StoredProcedure> response =
+        client.storedProcedures().list(new ListParams().setService(service.getName()).setLimit(50));
+
+    assertEquals(2, response.getData().size());
+    assertTrue(
+        response.getData().stream()
+            .allMatch(proc -> proc.getFullyQualifiedName().startsWith(service.getName() + ".")));
   }
 }

@@ -1,6 +1,9 @@
 """Base class for param setter logic for table data diff"""
 
-from typing import List, Optional, Set, Type, Union
+from typing import (
+    Protocol,
+    runtime_checkable,
+)
 
 from sqlalchemy.engine import make_url
 
@@ -47,13 +50,20 @@ class ServiceSpecPatch:
             )
         )
 
-    def get_data_diff_class(self) -> Type["BaseTableParameter"]:
+    def get_data_diff_class(self) -> type["BaseTableParameter"]:
         return import_from_module(self.service_spec.data_diff)
 
-    def get_connection_class(self) -> Optional[Type[BaseConnection]]:
+    def get_connection_class(self) -> type[BaseConnection] | None:
         if self.service_spec.connection_class:
             return import_from_module(self.service_spec.connection_class)
         return None
+
+
+@runtime_checkable
+class SupportsConnectionDict(Protocol):
+    """A connection that can expose its config as a data-diff connection dict."""
+
+    def get_connection_dict(self) -> dict: ...
 
 
 class BaseTableParameter:
@@ -66,7 +76,7 @@ class BaseTableParameter:
         key_columns,
         extra_columns,
         case_sensitive_columns,
-        service_url: Optional[Union[str, dict]],
+        service_url: str | dict | None,
     ) -> TableParameter:
         """Getter table parameter for the table diff test.
 
@@ -75,9 +85,7 @@ class BaseTableParameter:
         """
         return TableParameter(
             database_service_type=service.serviceType,
-            path=self.get_data_diff_table_path(
-                entity.fullyQualifiedName.root, service.serviceType
-            ),
+            path=self.get_data_diff_table_path(entity.fullyQualifiedName.root, service.serviceType),
             fullyQualifiedName=entity.fullyQualifiedName.root,
             serviceUrl=self.get_data_diff_url(
                 service,
@@ -97,9 +105,7 @@ class BaseTableParameter:
         )
 
     @staticmethod
-    def get_data_diff_table_path(
-        table_fqn: str, service_type: DatabaseServiceType
-    ) -> str:
+    def get_data_diff_table_path(table_fqn: str, service_type: DatabaseServiceType) -> str:
         """Get the data diff table path.
 
         Args:
@@ -117,9 +123,7 @@ class BaseTableParameter:
                 table = dialect_instance.denormalize_name(name=table)
                 schema = dialect_instance.denormalize_name(name=schema)
         except Exception as e:
-            logger.debug(
-                f"[Data Diff]: Error denormalizing table and schema names. Skipping denormalization\n{e}"
-            )
+            logger.debug(f"[Data Diff]: Error denormalizing table and schema names. Skipping denormalization\n{e}")
         return fqn._build(  # pylint: disable=protected-access
             "___SERVICE___", "__DATABASE__", schema, table
         ).replace("___SERVICE___.__DATABASE__.", "")
@@ -128,51 +132,40 @@ class BaseTableParameter:
     def _get_service_connection_config(
         cls,
         service_connection_config,
-    ) -> Optional[Union[str, dict]]:
-        """
-        Get the connection dictionary for the service.
-        """
+    ) -> str | dict | None:
+        """Return the service connection for data diff, as a dict or URL string."""
         if not service_connection_config:
             return None
 
-        service_spec_patch = ServiceSpecPatch(
-            ServiceType.Database, service_connection_config.type.value.lower()
-        )
+        service_spec_patch = ServiceSpecPatch(ServiceType.Database, service_connection_config.type.value.lower())
 
         try:
             connection_class = service_spec_patch.get_connection_class()
-            if not connection_class:
-                return (
-                    get_connection(service_connection_config).url.render_as_string(
-                        hide_password=False
-                    )
-                    if service_connection_config
-                    else None
-                )
-            connection = connection_class(service_connection_config)
-            return connection.get_connection_dict()
+            if connection_class is not None:
+                connection = connection_class(service_connection_config)
+                if isinstance(connection, SupportsConnectionDict):
+                    return connection.get_connection_dict()
         except (ValueError, AttributeError, NotImplementedError):
-            return (
-                get_connection(service_connection_config).url.render_as_string(
-                    hide_password=False
-                )
-                if service_connection_config
-                else None
+            logger.debug(
+                f"[Data Diff]: Could not build a connection dict for "
+                f"{service_connection_config.type.value}; falling back to the connection URL",
+                exc_info=True,
             )
+        return get_connection(service_connection_config).url.render_as_string(hide_password=False)
 
     @classmethod
     def get_service_connection_config(
         cls,
         service: DatabaseService,
-    ) -> Optional[Union[str, dict]]:
+    ) -> str | dict | None:
         return cls._get_service_connection_config(service.connection.config)
 
     def get_data_diff_url(
         self,
         db_service: DatabaseService,
         table_fqn,
-        override_url: Optional[Union[str, dict]] = None,
-    ) -> Union[str, dict]:
+        override_url: str | dict | None = None,
+    ) -> str | dict:
         """Get the url for the data diff service.
 
         Args:
@@ -184,11 +177,11 @@ class BaseTableParameter:
             str: The url for the data diff service
         """
         source_url = (
-            self._get_service_connection_config(db_service.connection.config)
-            if not override_url
-            else override_url
+            self._get_service_connection_config(db_service.connection.config) if not override_url else override_url  # noqa: SIM212
         )
         if isinstance(source_url, dict):
+            # Both sides of a same-service diff are handed the same dict
+            source_url = dict(source_url)
             source_url["driver"] = source_url["driver"].split("+")[0]
             return source_url
 
@@ -211,11 +204,11 @@ class BaseTableParameter:
 
     @staticmethod
     def filter_relevant_columns(
-        columns: List[Column],
-        key_columns: Set[str],
-        extra_columns: Set[str],
+        columns: list[Column],
+        key_columns: set[str],
+        extra_columns: set[str],
         case_sensitive: bool,
-    ) -> List[Column]:
+    ) -> list[Column]:
         """Filter relevant columns.
 
         Args:
@@ -228,8 +221,6 @@ class BaseTableParameter:
             List[Column]
         """
         validated_columns = (
-            [*key_columns, *extra_columns]
-            if case_sensitive
-            else CaseInsensitiveList([*key_columns, *extra_columns])
+            [*key_columns, *extra_columns] if case_sensitive else CaseInsensitiveList([*key_columns, *extra_columns])
         )
         return [c for c in columns if c.name.root in validated_columns]

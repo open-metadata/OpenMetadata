@@ -351,9 +351,7 @@ public class PromptTemplateResource
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return addFollowerInternal(securityContext, id, userId);
   }
 
   @DELETE
@@ -382,9 +380,7 @@ public class PromptTemplateResource
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return deleteFollowerInternal(securityContext, id, userId);
   }
 
   @GET
@@ -407,24 +403,8 @@ public class PromptTemplateResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the Prompt Template", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET

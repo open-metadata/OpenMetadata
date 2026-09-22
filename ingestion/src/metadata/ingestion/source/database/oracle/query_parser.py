@@ -11,8 +11,8 @@
 """
 Oracle query parsing module
 """
+
 from abc import ABC
-from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
     OracleConnection,
@@ -36,13 +36,9 @@ class OracleQueryParserSource(QueryParserSource, ABC):
     filters: str
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: OracleConnection = config.serviceConnection.root.config
         if not isinstance(connection, OracleConnection):
-            raise InvalidSourceException(
-                f"Expected OracleConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected OracleConnection, but got {connection}")
         return cls(config, metadata)

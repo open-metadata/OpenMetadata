@@ -15,8 +15,7 @@ Mixin class containing announcement specific methods.
 from __future__ import annotations
 
 import json
-from typing import List, Optional, Union
-from uuid import UUID
+from uuid import UUID  # noqa: TC003
 
 from metadata.generated.schema.api.data.restoreEntity import RestoreEntity
 from metadata.ingestion.ometa.announcement_models import (
@@ -24,7 +23,7 @@ from metadata.ingestion.ometa.announcement_models import (
     AnnouncementStatus,
     CreateAnnouncementRequest,
 )
-from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.client import REST  # noqa: TC001
 from metadata.ingestion.ometa.models import EntityList
 from metadata.ingestion.ometa.utils import model_str, quote
 
@@ -39,15 +38,15 @@ class OMetaAnnouncementMixin:
 
     def list_announcements(
         self,
-        fields: Optional[List[str]] = None,
-        entity_link: Optional[str] = None,
-        status: Optional[AnnouncementStatus] = None,
-        active: Optional[bool] = None,
-        domain: Optional[str] = None,
+        fields: list[str] | None = None,
+        entity_link: str | None = None,
+        status: AnnouncementStatus | None = None,
+        active: bool | None = None,
+        domain: str | None = None,
         limit: int = 10,
-        before: Optional[str] = None,
-        after: Optional[str] = None,
-        include: Optional[str] = None,
+        before: str | None = None,
+        after: str | None = None,
+        include: str | None = None,
     ) -> EntityList[Announcement]:
         params = {"limit": str(limit)}
         if fields:
@@ -77,9 +76,9 @@ class OMetaAnnouncementMixin:
 
     def get_announcement(
         self,
-        announcement_id: Union[str, UUID],
-        fields: Optional[List[str]] = None,
-        include: Optional[str] = None,
+        announcement_id: str | UUID,
+        fields: list[str] | None = None,
+        include: str | None = None,
     ) -> Announcement:
         query = []
         if fields:
@@ -87,16 +86,14 @@ class OMetaAnnouncementMixin:
         if include:
             query.append(f"include={quote(include)}")
         suffix = f"?{'&'.join(query)}" if query else ""
-        resp = self.client.get(
-            f"{self._announcements_path}/{model_str(announcement_id)}{suffix}"
-        )
+        resp = self.client.get(f"{self._announcements_path}/{model_str(announcement_id)}{suffix}")
         return Announcement.model_validate(resp)
 
     def get_announcement_by_name(
         self,
         fqn: str,
-        fields: Optional[List[str]] = None,
-        include: Optional[str] = None,
+        fields: list[str] | None = None,
+        include: str | None = None,
     ) -> Announcement:
         query = []
         if fields:
@@ -107,46 +104,32 @@ class OMetaAnnouncementMixin:
         resp = self.client.get(f"{self._announcements_path}/name/{quote(fqn)}{suffix}")
         return Announcement.model_validate(resp)
 
-    def create_announcement(
-        self, create_request: CreateAnnouncementRequest
-    ) -> Announcement:
+    def create_announcement(self, create_request: CreateAnnouncementRequest) -> Announcement:
         resp = self.client.post(
             self._announcements_path,
-            create_request.model_dump_json(
-                context={"mask_secrets": False}, by_alias=True
-            ),
+            create_request.model_dump_json(context={"mask_secrets": False}, by_alias=True),
         )
         return Announcement.model_validate(resp)
 
-    def create_or_update_announcement(
-        self, create_request: CreateAnnouncementRequest
-    ) -> Announcement:
+    def create_or_update_announcement(self, create_request: CreateAnnouncementRequest) -> Announcement:
         resp = self.client.put(
             self._announcements_path,
-            create_request.model_dump_json(
-                context={"mask_secrets": False}, by_alias=True
-            ),
+            create_request.model_dump_json(context={"mask_secrets": False}, by_alias=True),
         )
         return Announcement.model_validate(resp)
 
-    def patch_announcement(
-        self, announcement_id: Union[str, UUID], patch: list[dict]
-    ) -> Announcement:
+    def patch_announcement(self, announcement_id: str | UUID, patch: list[dict]) -> Announcement:
         resp = self.client.patch(
             f"{self._announcements_path}/{model_str(announcement_id)}",
             json.dumps(patch),
         )
         return Announcement.model_validate(resp)
 
-    def delete_announcement(
-        self, announcement_id: Union[str, UUID], hard_delete: bool = False
-    ) -> None:
+    def delete_announcement(self, announcement_id: str | UUID, hard_delete: bool = False) -> None:
         suffix = "?hardDelete=true" if hard_delete else ""
-        self.client.delete(
-            f"{self._announcements_path}/{model_str(announcement_id)}{suffix}"
-        )
+        self.client.delete(f"{self._announcements_path}/{model_str(announcement_id)}{suffix}")
 
-    def restore_announcement(self, announcement_id: Union[str, UUID]) -> Announcement:
+    def restore_announcement(self, announcement_id: str | UUID) -> Announcement:
         resp = self.client.put(
             f"{self._announcements_path}/restore",
             RestoreEntity(id=model_str(announcement_id)).model_dump_json(

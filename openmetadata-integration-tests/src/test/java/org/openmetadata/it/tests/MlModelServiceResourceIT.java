@@ -12,6 +12,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.data.CreateMlModel;
 import org.openmetadata.schema.api.services.CreateMlModelService;
 import org.openmetadata.schema.api.services.CreateMlModelService.MlModelServiceType;
 import org.openmetadata.schema.entity.services.MlModelService;
@@ -37,6 +38,23 @@ public class MlModelServiceResourceIT extends BaseServiceIT<MlModelService, Crea
   @Override
   protected String getResourcePath() {
     return MlModelServiceResource.COLLECTION_PATH;
+  }
+
+  @Override
+  protected DeletableSubtree createDeletableSubtree(TestNamespace ns) {
+    var service = createEntity(createMinimalRequest(ns));
+    var child =
+        SdkClients.adminClient()
+            .mlModels()
+            .create(
+                new CreateMlModel()
+                    .withName(ns.prefix("del_child"))
+                    .withService(service.getFullyQualifiedName())
+                    .withAlgorithm("regression"));
+    return new DeletableSubtree(
+        service.getId().toString(),
+        java.util.List.of(child.getId().toString()),
+        java.util.List.of(new SearchDoc("mlmodel_search_index", child.getId().toString())));
   }
 
   @Override
@@ -142,19 +160,6 @@ public class MlModelServiceResourceIT extends BaseServiceIT<MlModelService, Crea
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().mlModelServices().getVersionList(id);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().mlModelServices().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient()
-        .mlModelServices()
-        .getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override

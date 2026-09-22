@@ -14,10 +14,13 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { lowerCase } from 'lodash';
 import { EntityType } from '../../../enums/entity.enum';
-import { Column, Table } from '../../../generated/entity/data/table';
+import { Column, State, Table } from '../../../generated/entity/data/table';
+import { LabelType } from '../../../generated/tests/testCase';
 import { DataType } from '../../../generated/tests/testDefinition';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { getColumnByFQN } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ColumnDetailPanel } from './ColumnDetailPanel.component';
 
 jest.mock('react-i18next', () => ({
@@ -122,7 +125,7 @@ jest.mock('../../../assets/svg/up-arrow-icon.svg', () => ({
   ReactComponent: () => <div data-testid="arrow-up-icon">ArrowUp</div>,
 }));
 
-jest.mock('../../../assets/svg/ic-column-new.svg', () => ({
+jest.mock('../../../assets/svg/entity/column.svg', () => ({
   ReactComponent: () => <div data-testid="column-icon">ColumnIcon</div>,
 }));
 
@@ -134,20 +137,24 @@ jest.mock('../../common/DescriptionSection/DescriptionSection', () => ({
   __esModule: true,
   default: jest
     .fn()
-    .mockImplementation(({ onDescriptionUpdate, description }) => (
-      <div data-testid="description-section">
-        <span>Description: {description || 'No description'}</span>
-        {onDescriptionUpdate && (
-          <button
-            data-testid="update-description"
-            onClick={async () => {
-              await onDescriptionUpdate('Updated description');
-            }}>
-            Update Description
-          </button>
-        )}
-      </div>
-    )),
+    .mockImplementation(
+      ({ onDescriptionUpdate, description, hasPermission }) => (
+        <div
+          data-has-permission={String(hasPermission)}
+          data-testid="description-section">
+          <span>Description: {description || 'No description'}</span>
+          {onDescriptionUpdate && (
+            <button
+              data-testid="update-description"
+              onClick={async () => {
+                await onDescriptionUpdate('Updated description');
+              }}>
+              Update Description
+            </button>
+          )}
+        </div>
+      )
+    ),
 }));
 
 jest.mock('../../common/TagsSection/TagsSection', () => ({
@@ -222,15 +229,6 @@ jest.mock('../../common/Loader/Loader', () => ({
   )),
 }));
 
-jest.mock('../../AlertBar/AlertBar', () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(({ message, type }) => (
-    <div data-testid="alert-bar" data-type={type}>
-      {message}
-    </div>
-  )),
-}));
-
 jest.mock('../../Entity/EntityRightPanel/EntityRightPanelVerticalNav', () => ({
   __esModule: true,
   default: jest
@@ -264,13 +262,19 @@ jest.mock(
   })
 );
 
-jest.mock('../../Explore/EntitySummaryPanel/LineageTab', () => ({
-  LineageTabContent: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="lineage-tab">Lineage Tab</div>),
-}));
+jest.mock(
+  '../../Explore/EntitySummaryPanel/LineageTab/LineageTabContent',
+  () => ({
+    __esModule: true,
+    default: jest
+      .fn()
+      .mockImplementation(() => (
+        <div data-testid="lineage-tab">Lineage Tab</div>
+      )),
+  })
+);
 
-jest.mock('./KeyProfileMetrics', () => ({
+jest.mock('./KeyProfileMetrics/KeyProfileMetrics.component', () => ({
   KeyProfileMetrics: jest
     .fn()
     .mockImplementation(() => (
@@ -285,7 +289,12 @@ jest.mock('../../../utils/ToastUtils', () => ({
 
 jest.mock('../../../rest/tableAPI', () => ({
   updateTableColumn: jest.fn(),
-  getTableColumnsByFQN: jest.fn().mockResolvedValue({ data: [] }),
+  getColumnByFQN: jest.fn().mockResolvedValue({
+    name: 'test_column',
+    dataType: 'VARCHAR',
+    fullyQualifiedName: 'test_db.test_schema.test_table.test_column',
+    tags: [],
+  }),
 }));
 
 jest.mock('../../../rest/testAPI', () => ({
@@ -302,7 +311,7 @@ jest.mock('../../../rest/metadataTypeAPI', () => ({
   }),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockReturnValue({
     permissions: {
       EditTags: true,
@@ -357,7 +366,7 @@ jest.mock('../../../utils/DataQuality/DataQualityUtils', () => ({
     ),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity?.displayName || entity?.name || ''),
@@ -388,7 +397,7 @@ jest.mock('../../../utils/EntitySummaryPanelUtils', () => ({
   }),
 }));
 
-jest.mock('../../../utils/StringsUtils', () => ({
+jest.mock('../../../utils/StringUtils', () => ({
   stringToHTML: jest.fn().mockImplementation((str) => str),
   getErrorText: jest
     .fn()
@@ -400,7 +409,7 @@ jest.mock('../../../utils/StringsUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn: string) => fqn),
 }));
 
-jest.mock('../../../utils/TableUtils', () => ({
+jest.mock('../../../utils/TablePureUtils', () => ({
   flattenColumns: jest.fn().mockImplementation((columns) => columns || []),
   generateEntityLink: jest.fn().mockImplementation((fqn) => fqn),
   getDataTypeDisplay: jest.fn().mockReturnValue('VARCHAR'),
@@ -531,6 +540,298 @@ describe('ColumnDetailPanel', () => {
     });
   });
 
+  describe('Data Fetching', () => {
+    it('should call getColumnByFQN with column FQN when panel opens', async () => {
+      const mockGetColumnByFQN = getColumnByFQN as jest.Mock;
+      mockGetColumnByFQN.mockResolvedValueOnce({
+        ...mockColumn,
+        tags: [],
+      });
+
+      await act(async () => {
+        render(
+          <ColumnDetailPanel
+            {...mockProps}
+            isOpen
+            entityType={EntityType.TABLE}
+          />
+        );
+      });
+
+      await waitFor(() => {
+        expect(mockGetColumnByFQN).toHaveBeenCalledWith(
+          mockColumn.fullyQualifiedName,
+          expect.objectContaining({
+            fields: 'tags,customMetrics,extension,profile',
+          })
+        );
+      });
+    });
+
+    it('should pass entityType=table in request params', async () => {
+      const mockGetColumnByFQN = getColumnByFQN as jest.Mock;
+      mockGetColumnByFQN.mockResolvedValueOnce({ ...mockColumn, tags: [] });
+
+      await act(async () => {
+        render(<ColumnDetailPanel {...mockProps} />);
+      });
+
+      await waitFor(() => {
+        expect(mockGetColumnByFQN).toHaveBeenCalledWith(
+          mockColumn.fullyQualifiedName,
+          {
+            entityType: EntityType.TABLE,
+            fields: 'tags,customMetrics,extension,profile',
+          }
+        );
+      });
+    });
+
+    it('should not call getColumnByFQN for DASHBOARD_DATA_MODEL entityType', async () => {
+      const mockGetColumnByFQN = getColumnByFQN as jest.Mock;
+
+      await act(async () => {
+        render(
+          <ColumnDetailPanel
+            {...mockProps}
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
+          />
+        );
+      });
+
+      await waitFor(() => {
+        expect(mockGetColumnByFQN).not.toHaveBeenCalled();
+      });
+    });
+
+    it('should not call getColumnByFQN when isOpen is false', async () => {
+      const mockGetColumnByFQN = getColumnByFQN as jest.Mock;
+
+      await act(async () => {
+        render(<ColumnDetailPanel {...mockProps} isOpen={false} />);
+      });
+
+      expect(mockGetColumnByFQN).not.toHaveBeenCalled();
+    });
+
+    it('should not call getColumnByFQN when tableFqn is missing', async () => {
+      const mockGetColumnByFQN = getColumnByFQN as jest.Mock;
+
+      await act(async () => {
+        render(<ColumnDetailPanel {...mockProps} tableFqn={undefined} />);
+      });
+
+      expect(mockGetColumnByFQN).not.toHaveBeenCalled();
+    });
+
+    it('should not call getColumnByFQN when column FQN is missing', async () => {
+      const mockGetColumnByFQN = getColumnByFQN as jest.Mock;
+
+      await act(async () => {
+        render(
+          <ColumnDetailPanel
+            {...mockProps}
+            column={{ ...mockColumn, fullyQualifiedName: undefined }}
+          />
+        );
+      });
+
+      expect(mockGetColumnByFQN).not.toHaveBeenCalled();
+    });
+
+    it('should merge fetched fields into activeColumn', async () => {
+      const mockGetColumnByFQN = getColumnByFQN as jest.Mock;
+      mockGetColumnByFQN.mockResolvedValueOnce({
+        ...mockColumn,
+        tags: [{ tagFQN: 'PII.Sensitive', source: TagSource.Classification }],
+      });
+
+      const { getByTestId } = render(<ColumnDetailPanel {...mockProps} />);
+
+      await waitFor(() => {
+        expect(mockGetColumnByFQN).toHaveBeenCalled();
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('tags-section')).toHaveTextContent('Tags: 1');
+      });
+    });
+
+    it('should not refetch when the same FQN re-renders', async () => {
+      const mockGetColumnByFQN = getColumnByFQN as jest.Mock;
+      mockGetColumnByFQN.mockResolvedValue({ ...mockColumn, tags: [] });
+
+      const { rerender } = render(<ColumnDetailPanel {...mockProps} />);
+
+      await waitFor(() => {
+        expect(mockGetColumnByFQN).toHaveBeenCalledTimes(1);
+      });
+
+      rerender(<ColumnDetailPanel {...mockProps} />);
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(mockGetColumnByFQN).toHaveBeenCalledTimes(1);
+    });
+
+    it('should refetch when column FQN changes', async () => {
+      const mockGetColumnByFQN = getColumnByFQN as jest.Mock;
+      mockGetColumnByFQN.mockResolvedValue({ ...mockColumn, tags: [] });
+
+      const { rerender } = render(<ColumnDetailPanel {...mockProps} />);
+
+      await waitFor(() => {
+        expect(mockGetColumnByFQN).toHaveBeenCalledTimes(1);
+      });
+
+      const nextColumn: Column = {
+        ...mockColumn,
+        name: 'next_column',
+        fullyQualifiedName: 'test_db.test_schema.test_table.next_column',
+      };
+
+      rerender(<ColumnDetailPanel {...mockProps} column={nextColumn} />);
+
+      await waitFor(() => {
+        expect(mockGetColumnByFQN).toHaveBeenCalledTimes(2);
+      });
+
+      expect(mockGetColumnByFQN).toHaveBeenLastCalledWith(
+        nextColumn.fullyQualifiedName,
+        expect.objectContaining({
+          fields: 'tags,customMetrics,extension,profile',
+        })
+      );
+    });
+
+    it('should refetch after close-then-reopen', async () => {
+      const mockGetColumnByFQN = getColumnByFQN as jest.Mock;
+      mockGetColumnByFQN.mockResolvedValue({ ...mockColumn, tags: [] });
+
+      const { rerender } = render(<ColumnDetailPanel {...mockProps} />);
+
+      await waitFor(() => {
+        expect(mockGetColumnByFQN).toHaveBeenCalledTimes(1);
+      });
+
+      rerender(<ColumnDetailPanel {...mockProps} isOpen={false} />);
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      rerender(<ColumnDetailPanel {...mockProps} isOpen />);
+
+      await waitFor(() => {
+        expect(mockGetColumnByFQN).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it('should show loader while fetch is in flight and hide sections', async () => {
+      const mockGetColumnByFQN = getColumnByFQN as jest.Mock;
+      let resolveFetch: (value: Column) => void = (_value) => undefined;
+      mockGetColumnByFQN.mockImplementationOnce(
+        () =>
+          new Promise<Column>((resolve) => {
+            resolveFetch = resolve;
+          })
+      );
+
+      const { getByTestId, queryByTestId } = render(
+        <ColumnDetailPanel {...mockProps} />
+      );
+
+      await waitFor(() => {
+        expect(getByTestId('loader')).toBeInTheDocument();
+      });
+
+      expect(queryByTestId('description-section')).not.toBeInTheDocument();
+
+      await act(async () => {
+        resolveFetch({ ...mockColumn, tags: [] });
+      });
+
+      await waitFor(() => {
+        expect(queryByTestId('loader')).not.toBeInTheDocument();
+      });
+
+      expect(getByTestId('description-section')).toBeInTheDocument();
+    });
+
+    it('should show error toast and clear loading when fetch fails', async () => {
+      const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
+      const mockGetColumnByFQN = getColumnByFQN as jest.Mock;
+      const fetchError = new Error('Network error') as AxiosError;
+      mockGetColumnByFQN.mockRejectedValueOnce(fetchError);
+
+      const { getByTestId, queryByTestId } = render(
+        <ColumnDetailPanel {...mockProps} />
+      );
+
+      await waitFor(() => {
+        expect(showErrorToast).toHaveBeenCalledWith(fetchError);
+      });
+
+      await waitFor(() => {
+        expect(queryByTestId('loader')).not.toBeInTheDocument();
+      });
+
+      expect(getByTestId('description-section')).toBeInTheDocument();
+    });
+
+    it('should ignore stale response when active column FQN changed mid-flight', async () => {
+      const mockGetColumnByFQN = getColumnByFQN as jest.Mock;
+      let resolveStale: (value: Column) => void = (_value) => undefined;
+      mockGetColumnByFQN.mockImplementationOnce(
+        () =>
+          new Promise<Column>((resolve) => {
+            resolveStale = resolve;
+          })
+      );
+
+      const nextColumn: Column = {
+        ...mockColumn,
+        name: 'next_column',
+        fullyQualifiedName: 'test_db.test_schema.test_table.next_column',
+      };
+      mockGetColumnByFQN.mockResolvedValueOnce({ ...nextColumn, tags: [] });
+
+      const { getByTestId, rerender } = render(
+        <ColumnDetailPanel {...mockProps} />
+      );
+
+      await waitFor(() => {
+        expect(mockGetColumnByFQN).toHaveBeenCalledTimes(1);
+      });
+
+      rerender(<ColumnDetailPanel {...mockProps} column={nextColumn} />);
+
+      await waitFor(() => {
+        expect(mockGetColumnByFQN).toHaveBeenCalledTimes(2);
+      });
+
+      await act(async () => {
+        resolveStale({
+          ...mockColumn,
+          tags: [
+            {
+              tagFQN: 'Stale.Tag',
+              source: TagSource.Classification,
+              labelType: LabelType.Manual,
+              state: State.Confirmed,
+            },
+          ],
+        });
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('tags-section')).toHaveTextContent('Tags: 0');
+      });
+    });
+  });
+
   describe('Individual Section Loaders', () => {
     it('should show loader only for description section when updating description', async () => {
       const onColumnFieldUpdate = jest
@@ -655,11 +956,12 @@ describe('ColumnDetailPanel', () => {
         fireEvent.click(updateButton);
       });
 
+      const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
+
       await waitFor(
         () => {
           expect(onColumnFieldUpdate).toHaveBeenCalled();
-          expect(getByTestId('alert-bar')).toBeInTheDocument();
-          expect(getByTestId('alert-bar')).toHaveTextContent('Update failed');
+          expect(showErrorToast).toHaveBeenCalled();
           expect(getByTestId('description-section')).toBeInTheDocument();
         },
         { timeout: 300 }
@@ -765,11 +1067,15 @@ describe('ColumnDetailPanel', () => {
         fireEvent.click(updateButton);
       });
 
+      const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
+
       await waitFor(
         () => {
           expect(onColumnFieldUpdate).toHaveBeenCalled();
-          expect(getByTestId('alert-bar')).toBeInTheDocument();
-          expect(getByTestId('alert-bar')).toHaveTextContent('Network error');
+          expect(showErrorToast).toHaveBeenCalledWith(
+            expect.objectContaining({ message: 'Network error' }),
+            expect.any(String)
+          );
           expect(getByTestId('description-section')).toBeInTheDocument();
         },
         { timeout: 300 }
@@ -798,11 +1104,13 @@ describe('ColumnDetailPanel', () => {
         fireEvent.click(updateButton);
       });
 
+      const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
+
       await waitFor(() => {
         expect(onColumnFieldUpdate).toHaveBeenCalled();
-        expect(getByTestId('alert-bar')).toBeInTheDocument();
-        expect(getByTestId('alert-bar')).toHaveTextContent(
-          'Tags update failed'
+        expect(showErrorToast).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Tags update failed' }),
+          expect.any(String)
         );
       });
     });
@@ -829,18 +1137,20 @@ describe('ColumnDetailPanel', () => {
         fireEvent.click(updateButton);
       });
 
+      const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
+
       await waitFor(() => {
         expect(onColumnFieldUpdate).toHaveBeenCalled();
-        expect(getByTestId('alert-bar')).toBeInTheDocument();
-        expect(getByTestId('alert-bar')).toHaveTextContent(
-          'Glossary terms update failed'
+        expect(showErrorToast).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Glossary terms update failed' }),
+          expect.any(String)
         );
       });
     });
   });
 
-  describe('AlertBar Functionality', () => {
-    it('should show success alert on successful description update', async () => {
+  describe('Toast Functionality', () => {
+    it('should show success toast on successful description update', async () => {
       const onColumnFieldUpdate = jest.fn().mockResolvedValue(mockColumn);
 
       const { getByTestId } = render(
@@ -860,16 +1170,19 @@ describe('ColumnDetailPanel', () => {
         fireEvent.click(updateButton);
       });
 
+      const { showSuccessToast } = jest.requireMock(
+        '../../../utils/ToastUtils'
+      );
+
       await waitFor(() => {
         expect(onColumnFieldUpdate).toHaveBeenCalled();
-        expect(getByTestId('alert-bar')).toBeInTheDocument();
-        expect(getByTestId('alert-bar')).toHaveTextContent(
+        expect(showSuccessToast).toHaveBeenCalledWith(
           'server.update-entity-success - {"entity":"label.description"}'
         );
       });
     });
 
-    it('should show success alert on successful tags update', async () => {
+    it('should show success toast on successful tags update', async () => {
       const onColumnFieldUpdate = jest.fn().mockResolvedValue(mockColumn);
 
       const { getByTestId } = render(
@@ -889,16 +1202,19 @@ describe('ColumnDetailPanel', () => {
         fireEvent.click(updateButton);
       });
 
+      const { showSuccessToast } = jest.requireMock(
+        '../../../utils/ToastUtils'
+      );
+
       await waitFor(() => {
         expect(onColumnFieldUpdate).toHaveBeenCalled();
-        expect(getByTestId('alert-bar')).toBeInTheDocument();
-        expect(getByTestId('alert-bar')).toHaveTextContent(
+        expect(showSuccessToast).toHaveBeenCalledWith(
           'server.update-entity-success - {"entity":"label.tag-plural"}'
         );
       });
     });
 
-    it('should show error alert with correct message on update failure', async () => {
+    it('should show error toast with correct message on update failure', async () => {
       const errorMessage = 'Custom error message';
       const onColumnFieldUpdate = jest.fn().mockImplementation(
         () =>
@@ -926,28 +1242,70 @@ describe('ColumnDetailPanel', () => {
         fireEvent.click(updateButton);
       });
 
+      const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
+
       await waitFor(
         () => {
-          const alertBar = getByTestId('alert-bar');
-
-          expect(alertBar).toBeInTheDocument();
-          expect(alertBar).toHaveAttribute('data-type', 'error');
-          expect(alertBar).toHaveTextContent(errorMessage);
+          expect(showErrorToast).toHaveBeenCalledWith(
+            expect.objectContaining({ message: errorMessage }),
+            expect.any(String)
+          );
         },
         { timeout: 200 }
       );
     });
 
-    it('should not show alert bar initially', async () => {
-      const { queryByTestId, getByTestId } = render(
-        <ColumnDetailPanel {...mockProps} />
+    it('should not show a toast initially', async () => {
+      const { showErrorToast, showSuccessToast } = jest.requireMock(
+        '../../../utils/ToastUtils'
       );
+      const { getByTestId } = render(<ColumnDetailPanel {...mockProps} />);
 
       await waitFor(() => {
         expect(getByTestId('description-section')).toBeInTheDocument();
       });
 
-      expect(queryByTestId('alert-bar')).not.toBeInTheDocument();
+      expect(showErrorToast).not.toHaveBeenCalled();
+      expect(showSuccessToast).not.toHaveBeenCalled();
+    });
+  });
+
+  // Task 8 Batch 3: hasEditPermission.description's raw
+  // `(permissions.EditDescription || permissions.EditAll) && !deleted` ->
+  // canEditDescription (getDerivedPermissionFlags). Documented explicit-deny-wins behavior
+  // change (Task 6 Finding 1 / Task 8 Batch 2 precedent): an explicit `EditDescription: false`
+  // now wins over a bare `EditAll: true` grant, where the old raw OR granted regardless.
+  describe('Permission derivation (explicit-deny-wins)', () => {
+    it('grants description edit access via EditAll when EditDescription is not present', async () => {
+      (useGenericContext as jest.Mock).mockReturnValue({
+        permissions: { EditAll: true },
+        changeSummary: {},
+      });
+
+      const { getByTestId } = render(<ColumnDetailPanel {...mockProps} />);
+
+      await waitFor(() => {
+        expect(getByTestId('description-section')).toHaveAttribute(
+          'data-has-permission',
+          'true'
+        );
+      });
+    });
+
+    it('denies description edit access when EditDescription is explicitly false, even with EditAll true', async () => {
+      (useGenericContext as jest.Mock).mockReturnValue({
+        permissions: { EditAll: true, EditDescription: false },
+        changeSummary: {},
+      });
+
+      const { getByTestId } = render(<ColumnDetailPanel {...mockProps} />);
+
+      await waitFor(() => {
+        expect(getByTestId('description-section')).toHaveAttribute(
+          'data-has-permission',
+          'false'
+        );
+      });
     });
   });
 });

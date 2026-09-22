@@ -6,6 +6,8 @@ In this section, we provide guides and references for using the Exasol connector
 
 * Exasol >= 7.1
 
+You can find further information on the Exasol connector in the <a href="https://docs.open-metadata.org/connectors/database/exasol" target="_blank">docs</a>.
+
 ## Connection Details
 
 $$section
@@ -47,4 +49,5 @@ Uses Transport Layer Security (TLS) but disables the validation of the server ce
 #### disable-tls
 Does not use any Transport Layer Security (TLS). Data will be sent in plain text (no encryption).
 While this may be helpful in rare cases of debugging, make sure you do not use this in production.
+$$
 

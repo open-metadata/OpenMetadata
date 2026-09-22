@@ -12,6 +12,7 @@
 """
 Profiler utility for the metadata CLI
 """
+
 import sys
 import traceback
 from pathlib import Path
@@ -28,7 +29,7 @@ from metadata.workflow.workflow_init_error_handler import WorkflowInitErrorHandl
 logger = cli_logger()
 
 
-def run_ingest(config_path: Path) -> None:
+def run_ingest(config_path: Path, status_file: Path | None = None) -> None:
     """
     Run the ingestion workflow from a config path
     to a JSON or YAML file
@@ -42,9 +43,7 @@ def run_ingest(config_path: Path) -> None:
         workflow = MetadataWorkflow.create(config_dict)
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        WorkflowInitErrorHandler.print_init_error(
-            exc, config_dict, PipelineType.metadata
-        )
+        WorkflowInitErrorHandler.print_init_error(exc, config_dict, PipelineType.metadata)
         sys.exit(1)
 
-    execute_workflow(workflow=workflow, config_dict=config_dict)
+    execute_workflow(workflow=workflow, config_dict=config_dict, status_file=status_file)

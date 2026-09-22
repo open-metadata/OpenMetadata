@@ -1,11 +1,23 @@
 {
   "settings": {
+    "index": {},
     "analysis": {
       "tokenizer": {
         "edge_ngram_tokenizer": {
           "type": "edge_ngram",
           "min_gram": 3,
           "max_gram": 20,
+          "token_chars": [
+            "letter",
+            "digit",
+            "custom"
+          ],
+          "custom_token_chars": "_"
+        },
+        "substring_ngram_tokenizer": {
+          "type": "ngram",
+          "min_gram": 3,
+          "max_gram": 4,
           "token_chars": [
             "letter",
             "digit",
@@ -19,7 +31,8 @@
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -27,24 +40,36 @@
         "om_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "word_delimiter_filter",
-            "om_stemmer"
+            "lowercase",
+            "asciifolding",
+            "om_stemmer",
+            "om_plural_stemmer"
           ]
         },
         "om_ngram": {
           "type": "custom",
           "tokenizer": "edge_ngram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         },
         "om_compound_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "compound_word_delimiter_graph",
+            "lowercase",
+            "asciifolding",
             "flatten_graph"
+          ]
+        },
+        "om_substring": {
+          "type": "custom",
+          "tokenizer": "substring_ngram_tokenizer",
+          "filter": [
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -68,12 +93,34 @@
           "catenate_all": false,
           "preserve_original": true,
           "stem_english_possessive": true
+        },
+        "om_plural_stemmer": {
+          "type": "stemmer",
+          "name": "minimal_english"
         }
       }
     }
   },
   "mappings": {
     "properties": {
+      "fingerprint": {
+        "type": "keyword"
+      },
+      "textToLLMContext": {
+        "type": "text"
+      },
+      "textToEmbed": {
+        "type": "text"
+      },
+      "chunkIndex": {
+        "type": "integer"
+      },
+      "chunkCount": {
+        "type": "integer"
+      },
+      "parentId": {
+        "type": "keyword"
+      },
       "changeDescription": {
         "enabled": false
       },
@@ -105,6 +152,10 @@
           "compound": {
             "type": "text",
             "analyzer": "om_compound_analyzer"
+          },
+          "substring": {
+            "type": "text",
+            "analyzer": "om_substring"
           }
         }
       },
@@ -136,6 +187,10 @@
           "compound": {
             "type": "text",
             "analyzer": "om_compound_analyzer"
+          },
+          "substring": {
+            "type": "text",
+            "analyzer": "om_substring"
           }
         }
       },
@@ -244,7 +299,7 @@
           }
         }
       },
-      "dataQualityDimension": {
+      "dataQualityDimensionName": {
         "type": "keyword"
       },
       "owners": {
@@ -438,6 +493,9 @@
           }
         }
       },
+      "testSuitesRevision": {
+        "type": "long"
+      },
       "testSuites": {
         "type": "nested",
         "properties": {
@@ -574,6 +632,46 @@
           },
           "state": {
             "type": "keyword"
+          }
+        }
+      },
+      "certification": {
+        "type": "object",
+        "properties": {
+          "tagLabel": {
+            "type": "object",
+            "properties": {
+              "tagFQN": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "text": {
+                    "type": "text",
+                    "analyzer": "om_analyzer"
+                  }
+                }
+              },
+              "labelType": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              },
+              "source": {
+                "type": "keyword"
+              },
+              "state": {
+                "type": "keyword"
+              }
+            }
+          },
+          "appliedDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          },
+          "expiryDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
           }
         }
       },

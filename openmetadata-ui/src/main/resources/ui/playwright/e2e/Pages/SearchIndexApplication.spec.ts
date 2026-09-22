@@ -14,15 +14,31 @@ import test, { expect, Page, Response } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
+  APPLICATION_LIST,
+  expectApplicationInstalled,
+  expectApplicationNotInstalled,
+  findApplicationCard,
+  openApplicationDetails,
+} from '../../utils/applications';
+import {
   clickOutside,
   getApiContext,
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
+import { selectOnDemandSchedule } from '../../utils/scheduleInterval';
 import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
+
+const SEARCH_INDEX_APP_NAME = 'SearchIndexingApplication';
+const SUCCESSFUL_RUN_STATUS = /success|completed|activeError/i;
+
+interface AppRunRecordResponse {
+  startTime?: number;
+  status?: string;
+}
 
 /**
  * Installs the Search Indexing Application from the marketplace.
@@ -39,47 +55,13 @@ const installSearchIndexApplication = async (page: Page) => {
 
   expect(response.status()).toBe(200);
 
-  // Wait for at least one app card to be rendered before polling.
-  await page
-    .locator('[data-testid$="-application-card"]')
-    .first()
-    .waitFor({ state: 'visible' });
+  const marketplaceCard = await findApplicationCard(
+    page,
+    'search-indexing-application-card',
+    APPLICATION_LIST.marketplace
+  );
 
-  // Paginate through marketplace pages until the card is found.
-  let cardFound = await page
-    .locator('[data-testid="search-indexing-application-card"]')
-    .isVisible();
-
-  while (!cardFound) {
-    const nextButton = page.locator('[data-testid="next"]');
-
-    const isNextButtonVisible = await nextButton.isVisible();
-
-    if (!isNextButtonVisible || (await nextButton.isDisabled())) {
-      throw new Error(
-        'search-indexing-application-card not found in marketplace and next button is disabled'
-      );
-    }
-
-    const nextPageResponse = page.waitForResponse('/api/v1/apps/marketplace*');
-    await nextButton.click();
-    await nextPageResponse;
-
-    // Wait for the next page's cards to render before re-checking.
-    await page
-      .locator('[data-testid$="-application-card"]')
-      .first()
-      .waitFor({ state: 'visible' });
-
-    cardFound = await page
-      .locator('[data-testid="search-indexing-application-card"]')
-      .isVisible();
-  }
-
-  await page
-    .getByTestId('search-indexing-application-card')
-    .getByTestId('config-btn')
-    .click();
+  await marketplaceCard.getByTestId('config-btn').click();
 
   await page.getByTestId('install-application').waitFor({ state: 'visible' });
   await page.getByTestId('install-application').click();
@@ -89,13 +71,7 @@ const installSearchIndexApplication = async (page: Page) => {
 
   await page.getByTestId('submit-btn').waitFor({ state: 'visible' });
   await page.getByTestId('submit-btn').click();
-  await page.getByTestId('schedular-card-container').waitFor();
-  await page
-    .getByTestId('schedular-card-container')
-    .getByText('On Demand')
-    .click();
-
-  await expect(page.locator('[data-testid="cron-type"]')).not.toBeVisible();
+  await selectOnDemandSchedule(page);
 
   const installApplicationResponse = page.waitForResponse('api/v1/apps');
   const getApplications = page.waitForRequest(
@@ -109,9 +85,7 @@ const installSearchIndexApplication = async (page: Page) => {
 
   await getApplications;
 
-  await expect(
-    page.getByTestId('search-indexing-application-card')
-  ).toBeVisible();
+  await expectApplicationInstalled(page, 'search-indexing-application-card');
 };
 
 const verifyLastExecutionStatus = async (page: Page) => {
@@ -136,7 +110,7 @@ const verifyLastExecutionStatus = async (page: Page) => {
         timeout: 300_000,
       }
     )
-    .toEqual(expect.stringMatching(/success|activeError/g));
+    .toEqual(expect.stringMatching(SUCCESSFUL_RUN_STATUS));
 
   await page.reload();
 
@@ -155,10 +129,95 @@ const verifyLastExecutionRun = async (page: Page, response: Response) => {
       await verifyLastExecutionStatus(page);
     } else {
       expect(responseData.data[0].status).toEqual(
-        expect.stringMatching(/success|activeError/g)
+        expect.stringMatching(SUCCESSFUL_RUN_STATUS)
       );
     }
   }
+};
+
+const getLatestRunStartTime = async (page: Page) => {
+  const { apiContext } = await getApiContext(page);
+  const response = await apiContext.get(
+    `/api/v1/apps/name/${SEARCH_INDEX_APP_NAME}/runs/latest`
+  );
+  const run = await getAppRunRecord(response);
+
+  return run?.startTime;
+};
+
+const getAppRunRecord = async (response: Response) => {
+  if (!response.ok() || response.status() === 204) {
+    return undefined;
+  }
+
+  const body = await response.text();
+
+  return body ? (JSON.parse(body) as AppRunRecordResponse) : undefined;
+};
+
+const waitForNewSuccessfulRun = async (
+  page: Page,
+  previousRunStartTime?: number
+) => {
+  const { apiContext } = await getApiContext(page);
+  let completedRunStartTime: number | undefined;
+
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/apps/name/${SEARCH_INDEX_APP_NAME}/runs/latest`
+        );
+        const run = await getAppRunRecord(response);
+
+        if (run?.startTime === undefined) {
+          return undefined;
+        }
+
+        if (
+          previousRunStartTime !== undefined &&
+          run.startTime <= previousRunStartTime
+        ) {
+          return undefined;
+        }
+
+        if (run.status && SUCCESSFUL_RUN_STATUS.test(run.status)) {
+          completedRunStartTime = run.startTime;
+        }
+
+        return run.status;
+      },
+      {
+        message: 'Wait for a new successful SearchIndexingApplication run',
+        intervals: [5_000, 10_000, 15_000, 30_000],
+        timeout: 300_000,
+      }
+    )
+    .toEqual(expect.stringMatching(SUCCESSFUL_RUN_STATUS));
+
+  expect(completedRunStartTime).toBeDefined();
+
+  return completedRunStartTime;
+};
+
+const rerunSearchIndexApplicationForTable = async (
+  page: Page,
+  previousRunStartTime?: number
+) => {
+  const { apiContext } = await getApiContext(page);
+  const response = await apiContext.post(
+    `/api/v1/apps/trigger/${SEARCH_INDEX_APP_NAME}`,
+    {
+      data: {
+        batchSize: 100,
+        entities: ['table'],
+      },
+    }
+  );
+
+  expect(response.status()).toBeLessThan(300);
+
+  return waitForNewSuccessfulRun(page, previousRunStartTime);
 };
 
 test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
@@ -198,11 +257,7 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const statusAPI = page.waitForResponse(
         '/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=1'
       );
-      await page
-        .locator(
-          '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-        )
-        .click();
+      await openApplicationDetails(page, 'search-indexing-application-card');
       const statusResponse = await statusAPI;
 
       expect(statusResponse.status()).toBe(200);
@@ -228,11 +283,7 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await test.step('Edit application', async () => {
       await page.click('[data-testid="edit-button"]');
-      await page.getByTestId('schedular-card-container').waitFor();
-      await page
-        .getByTestId('schedular-card-container')
-        .getByText('On Demand')
-        .click();
+      await selectOnDemandSchedule(page);
 
       const deployResponse = page.waitForResponse(
         (response) =>
@@ -267,7 +318,13 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         .getByRole('combobox')
         .fill('Table');
 
-      const tableTitle = page.getByRole('tree').getByTitle('Table');
+      // Exact: the entity list is server-driven now, and rc-tree-select filters on the node value
+      // (treeNodeFilterProp defaults to 'value'), so typing "Table" also leaves `tableColumn` —
+      // rendered as "Table Column" — visible. A substring getByTitle would match both and break
+      // strict mode.
+      const tableTitle = page
+        .getByRole('tree')
+        .getByTitle('Table', { exact: true });
 
       // Wait for the filtered tree result to render
       await tableTitle.waitFor({ state: 'visible' });
@@ -338,11 +395,10 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await toastNotification(page, 'Application uninstalled successfully');
 
-      const card1 = page.locator(
-        '[data-testid="search-indexing-application-card"]'
+      await expectApplicationNotInstalled(
+        page,
+        'search-indexing-application-card'
       );
-
-      await expect(card1).toBeHidden();
     });
 
     await test.step('Install application', async () => {
@@ -350,13 +406,12 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     if (process.env.PLAYWRIGHT_IS_OSS) {
-      await test.step('Run application', async () => {
+      await test.step('Run application and rerun with table-only config', async () => {
         test.slow(true); // Test time shouldn't exceed while re-fetching the history API.
 
-        await page.click(
-          '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-        );
+        await openApplicationDetails(page, 'search-indexing-application-card');
 
+        const previousRunStartTime = await getLatestRunStartTime(page);
         const triggerPipelineResponse = page.waitForResponse(
           '/api/v1/apps/trigger/SearchIndexingApplication'
         );
@@ -375,6 +430,12 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         expect(statusResponse.status()).toBe(200);
 
         await verifyLastExecutionRun(page, statusResponse);
+        const firstRunStartTime = await waitForNewSuccessfulRun(
+          page,
+          previousRunStartTime
+        );
+
+        await rerunSearchIndexApplicationForTable(page, firstRunStartTime);
       });
     }
   });

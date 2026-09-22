@@ -14,8 +14,6 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from typing import List
-
 from sqlalchemy.exc import ProgrammingError
 
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
@@ -46,7 +44,7 @@ class MariaDBProfilerInterface(SQAProfilerInterface):
 
     def _compute_window_metrics(
         self,
-        metrics: List[Metrics],
+        metrics: list[Metrics],
         runner: QueryRunner,
         *args,
         **kwargs,
@@ -76,9 +74,7 @@ class MariaDBProfilerInterface(SQAProfilerInterface):
             if row:
                 return row._asdict()
         except ProgrammingError:
-            logger.info(
-                f"Skipping window metrics for {runner.table_name}.{column.name} due to overflow"
-            )
+            logger.info(f"Skipping window metrics for {runner.table_name}.{column.name} due to overflow")
             return None
 
         except Exception as exc:

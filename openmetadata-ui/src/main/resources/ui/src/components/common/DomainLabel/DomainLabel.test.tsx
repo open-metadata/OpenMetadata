@@ -16,8 +16,9 @@ import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { DomainLabel } from './DomainLabel.component';
+import { DomainLabelProps } from './DomainLabel.interface';
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity?.name || 'Unknown'),
@@ -61,7 +62,13 @@ jest.mock('../../../assets/svg/ic-inherit.svg', () => ({
 
 jest.mock('../DomainSelectableList/DomainSelectableList.component', () => ({
   __esModule: true,
-  default: ({ onUpdate, selectedDomain }: any) => (
+  default: ({
+    onUpdate,
+    selectedDomain,
+  }: {
+    onUpdate?: (domain: EntityReference | EntityReference[]) => void;
+    selectedDomain: EntityReference | EntityReference[];
+  }) => (
     <button
       data-testid="domain-selectable-list"
       onClick={() => onUpdate && onUpdate(selectedDomain)}>
@@ -100,7 +107,7 @@ const defaultProps = {
   entityId: 'test-id',
 };
 
-const renderDomainLabel = (props: any = {}) =>
+const renderDomainLabel = (props: Partial<DomainLabelProps> = {}) =>
   render(
     <MemoryRouter>
       <DomainLabel {...defaultProps} {...props} />
@@ -220,7 +227,9 @@ describe('DomainLabel Component', () => {
   });
 
   it('should handle domains as single object instead of array', () => {
-    renderDomainLabel({ domains: mockDomain1 });
+    renderDomainLabel({
+      domains: mockDomain1 as unknown as EntityReference[],
+    });
 
     expect(screen.getByText('Domain One')).toBeInTheDocument();
   });

@@ -153,26 +153,6 @@ public final class Tables {
     return getClient().tables().getVersionList(id);
   }
 
-  public static org.openmetadata.schema.type.EntityHistory getVersionList(
-      java.util.UUID id, int limit, int offset) {
-    return getClient().tables().getVersionList(id, limit, offset);
-  }
-
-  public static org.openmetadata.schema.type.EntityHistory getVersionList(
-      java.util.UUID id, int limit, int offset, String fieldChanged) {
-    return getClient().tables().getVersionList(id, limit, offset, fieldChanged);
-  }
-
-  public static org.openmetadata.schema.utils.ResultList getEntityHistory(
-      long startTs, long endTs) {
-    return getClient().tables().getEntityHistory(startTs, endTs);
-  }
-
-  public static org.openmetadata.schema.utils.ResultList getEntityHistory(
-      long startTs, long endTs, int limit, String before, String after) {
-    return getClient().tables().getEntityHistory(startTs, endTs, limit, before, after);
-  }
-
   public static Table getVersion(String id, Double version) {
     return getClient().tables().getVersion(id, version);
   }
@@ -331,6 +311,10 @@ public final class Tables {
 
     public TableDeleter delete() {
       return new TableDeleter(client, identifier);
+    }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Table> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(client.tables(), identifier);
     }
   }
 
@@ -723,5 +707,15 @@ public final class Tables {
 
   public static String STRUCT(String... fields) {
     return "STRUCT<" + String.join(",", fields) + ">";
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().tables().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().tables().getContextByName(fqn);
   }
 }

@@ -290,6 +290,11 @@ public final class McpServers {
     public McpServerDeleter delete() {
       return new McpServerDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<McpServer> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.mcpServers(), identifier);
+    }
   }
 
   // ==================== Deleter ====================
@@ -467,5 +472,15 @@ public final class McpServers {
     public McpServerDeleter delete() {
       return new McpServerDeleter(client, entity.getId().toString());
     }
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().mcpServers().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().mcpServers().getContextByName(fqn);
   }
 }

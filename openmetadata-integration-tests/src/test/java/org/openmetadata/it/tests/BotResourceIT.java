@@ -169,17 +169,6 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
   }
 
   @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().bots().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient().bots().getVersionList(id, limit, offset, fieldChanged);
-  }
-
-  @Override
   protected Bot getVersion(UUID id, Double version) {
     return SdkClients.adminClient().bots().getVersion(id.toString(), version);
   }
@@ -203,6 +192,29 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
     assertNotNull(bot);
     assertNotNull(bot.getBotUser());
     assertEquals(botUser.getName().toLowerCase(), bot.getBotUser().getName().toLowerCase());
+  }
+
+  @Test
+  void get_entityListIncludesRequiredBotUser_200_OK(TestNamespace ns) {
+    User botUser = createBotUser(ns);
+    Bot created =
+        createEntity(
+            new CreateBot()
+                .withName(ns.prefix("listed_bot"))
+                .withDescription("Bot returned by the list endpoint")
+                .withBotUser(botUser.getName()));
+
+    ListParams params = new ListParams();
+    params.setLimit(1000000);
+    params.setFields("*");
+    Bot listed =
+        listEntities(params).getData().stream()
+            .filter(bot -> bot.getId().equals(created.getId()))
+            .findFirst()
+            .orElseThrow();
+
+    assertNotNull(listed.getBotUser(), "Listed bot must include its required bot user");
+    assertEquals(botUser.getId(), listed.getBotUser().getId());
   }
 
   @Test

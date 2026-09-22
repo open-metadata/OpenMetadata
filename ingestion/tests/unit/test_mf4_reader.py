@@ -12,11 +12,32 @@
 """
 MF4 reader tests
 """
+
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 from metadata.readers.dataframe.mf4 import MF4DataFrameReader
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
+
+
+def test_local_mf4_reading_with_installed_asammdf():
+    from asammdf import MDF
+
+    from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+        LocalConfig,
+    )
+
+    with TemporaryDirectory() as tmp_dir:
+        file_path = Path(tmp_dir) / "empty.mf4"
+        with MDF(version="4.10") as mdf:
+            mdf.save(file_path)
+
+        reader = MF4DataFrameReader(LocalConfig(), None)
+        result = reader._read(key=str(file_path), bucket_name="")
+
+    assert list(result.dataframes()) == []
 
 
 class TestMF4DataFrameReader(TestCase):
@@ -35,9 +56,7 @@ class TestMF4DataFrameReader(TestCase):
         mock_reader = MagicMock()
         mock_get_reader.return_value = mock_reader
 
-        self.reader = MF4DataFrameReader(
-            config_source=mock_config_source, client=mock_client
-        )
+        self.reader = MF4DataFrameReader(config_source=mock_config_source, client=mock_client)
         self.mock_reader = mock_reader
 
     def test_extract_schema_from_header_with_common_properties(self):
@@ -116,9 +135,7 @@ class TestMF4DataFrameReader(TestCase):
         mock_client.get_object.return_value = {"Body": mock_body}
 
         config = S3Config(
-            securityConfig=AWSCredentials(
-                awsAccessKeyId="test", awsSecretAccessKey="test", awsRegion="us-east-1"
-            )
+            securityConfig=AWSCredentials(awsAccessKeyId="test", awsSecretAccessKey="test", awsRegion="us-east-1")
         )
         reader = MF4DataFrameReader(config, mock_client)
 
@@ -164,9 +181,7 @@ class TestMF4DataFrameReader(TestCase):
     @patch("adlfs.AzureBlobFileSystem")
     @patch("metadata.readers.dataframe.mf4.return_azure_storage_options")
     @patch("tempfile.NamedTemporaryFile")
-    def test_azure_mf4_reading(
-        self, mock_temp, mock_storage_opts, mock_adlfs, mock_mdf_class
-    ):
+    def test_azure_mf4_reading(self, mock_temp, mock_storage_opts, mock_adlfs, mock_mdf_class):
         from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
             AzureConfig,
         )
@@ -188,11 +203,7 @@ class TestMF4DataFrameReader(TestCase):
         mock_mdf.header = mock_header
         mock_mdf_class.return_value = mock_mdf
 
-        config = AzureConfig(
-            securityConfig=AzureCredentials(
-                accountName="test", clientId="test", tenantId="test"
-            )
-        )
+        config = AzureConfig(securityConfig=AzureCredentials(accountName="test", clientId="test", tenantId="test"))
         reader = MF4DataFrameReader(config, None)
 
         result = reader._read(key="test.mf4", bucket_name="test-container")

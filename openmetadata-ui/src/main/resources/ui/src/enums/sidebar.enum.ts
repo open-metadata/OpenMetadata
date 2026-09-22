@@ -34,5 +34,12 @@ export enum SidebarItem {
   METRICS = 'metrics',
   LINEAGE = 'lineage',
   COLUMN_BULK_OPERATIONS = 'column-bulk-operations',
+  KNOWLEDGE_CENTER = 'knowledge-center',
+  CONTEXT_CENTER = 'context-center',
   WORKFLOWS = 'workflows',
+  ARTICLES = 'articles',
+  DOCUMENTS = 'documents',
+  OVERVIEW = 'overview',
+  MEMORIES = 'memories',
+  AI_CONTEXT = 'ai-context',
 }

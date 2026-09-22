@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -10,7 +11,9 @@ import static org.openmetadata.it.bootstrap.SharedEntities.*;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -18,6 +21,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.MessagingServiceTestFactory;
@@ -47,6 +51,7 @@ import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
@@ -56,10 +61,12 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for DataProduct entity operations.
@@ -204,17 +211,6 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().dataProducts().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient().dataProducts().getVersionList(id, limit, offset, fieldChanged);
-  }
-
-  @Override
   protected DataProduct getVersion(UUID id, Double version) {
     return SdkClients.adminClient().dataProducts().getVersion(id.toString(), version);
   }
@@ -222,6 +218,110 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   // ===================================================================
   // DATA PRODUCT-SPECIFIC TESTS
   // ===================================================================
+
+  @Test
+  void put_addFollowerForAnotherUser_403(TestNamespace ns) {
+    DataProduct dataProduct = createEntity(createMinimalRequest(ns));
+
+    ForbiddenException exception =
+        assertThrows(
+            ForbiddenException.class,
+            () -> addFollower(SdkClients.user2Client(), dataProduct.getId(), testUser3().getId()));
+
+    assertEquals(403, exception.getStatusCode());
+    assertFalse(hasFollower(dataProduct.getId(), testUser3().getId()));
+  }
+
+  @Test
+  void delete_followerForSelf_200(TestNamespace ns) {
+    DataProduct dataProduct = createEntity(createMinimalRequest(ns));
+    OpenMetadataClient client = SdkClients.user2Client();
+    UUID userId = testUser2().getId();
+
+    addFollower(client, dataProduct.getId(), userId);
+    assertTrue(hasFollower(dataProduct.getId(), userId));
+
+    deleteFollower(client, dataProduct.getId(), userId);
+    assertFalse(hasFollower(dataProduct.getId(), userId));
+  }
+
+  @Test
+  void delete_followerForAnotherUserAsAdmin_200(TestNamespace ns) {
+    DataProduct dataProduct = createEntity(createMinimalRequest(ns));
+    OpenMetadataClient client = SdkClients.adminClient();
+    UUID userId = testUser3().getId();
+
+    addFollower(client, dataProduct.getId(), userId);
+    assertTrue(hasFollower(dataProduct.getId(), userId));
+
+    deleteFollower(client, dataProduct.getId(), userId);
+    assertFalse(hasFollower(dataProduct.getId(), userId));
+  }
+
+  @Test
+  void put_addFollowerWithNullUserId_400(TestNamespace ns) {
+    DataProduct dataProduct = createEntity(createMinimalRequest(ns));
+
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.user2Client()
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PUT,
+                        "/v1/dataProducts/" + dataProduct.getId() + "/followers",
+                        "null",
+                        ChangeEvent.class,
+                        RequestOptions.builder()
+                            .header("Content-Type", "application/json")
+                            .build()));
+
+    assertEquals(400, exception.getStatusCode());
+    assertEquals("userId is required", exception.getMessage());
+  }
+
+  @Test
+  void delete_removeFollowerForAnotherUser_403(TestNamespace ns) {
+    DataProduct dataProduct = createEntity(createMinimalRequest(ns));
+    addFollower(SdkClients.user3Client(), dataProduct.getId(), testUser3().getId());
+
+    ForbiddenException exception =
+        assertThrows(
+            ForbiddenException.class,
+            () ->
+                deleteFollower(SdkClients.user2Client(), dataProduct.getId(), testUser3().getId()));
+
+    assertEquals(403, exception.getStatusCode());
+    assertTrue(hasFollower(dataProduct.getId(), testUser3().getId()));
+  }
+
+  private void addFollower(OpenMetadataClient client, UUID dataProductId, UUID userId) {
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/dataProducts/" + dataProductId + "/followers",
+            userId,
+            ChangeEvent.class);
+  }
+
+  private void deleteFollower(OpenMetadataClient client, UUID dataProductId, UUID userId) {
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.DELETE,
+            "/v1/dataProducts/" + dataProductId + "/followers/" + userId,
+            null,
+            ChangeEvent.class);
+  }
+
+  private boolean hasFollower(UUID dataProductId, UUID userId) {
+    DataProduct dataProduct = getEntityWithFields(dataProductId.toString(), "followers");
+    return dataProduct.getFollowers() != null
+        && dataProduct.getFollowers().stream()
+            .anyMatch(follower -> userId.equals(follower.getId()));
+  }
 
   @Test
   void post_dataProductWithStyle_200_OK(TestNamespace ns) {
@@ -553,6 +653,193 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @Test
+  void test_domainChangeDetachesConflictingDataProducts(TestNamespace ns) throws Exception {
+    Domain finance = createTestDomain(ns, "finance");
+    Domain hr = createTestDomain(ns, "hr");
+
+    DataProduct movingProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_moving"))
+                .withDescription("Data product whose domain will move")
+                .withDomains(List.of(finance.getFullyQualifiedName())));
+    DataProduct stayingProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_staying"))
+                .withDescription("Data product that stays in finance")
+                .withDomains(List.of(finance.getFullyQualifiedName())));
+
+    var schema = createSchemaWithDomain(ns, "schema_conflict", finance);
+    EntityReference schemaRef = schema.getEntityReference();
+    bulkAddAssets(
+        movingProduct.getFullyQualifiedName(), new BulkAssets().withAssets(List.of(schemaRef)));
+    bulkAddAssets(
+        stayingProduct.getFullyQualifiedName(), new BulkAssets().withAssets(List.of(schemaRef)));
+
+    moveDataProductDomain(movingProduct, hr);
+
+    List<EntityReference> schemaDataProducts =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .get(schema.getId().toString(), "dataProducts")
+            .getDataProducts();
+    assertTrue(
+        hasDataProduct(schemaDataProducts, movingProduct.getId()),
+        "The moved data product now shares the schema's new domain and must be kept");
+    assertFalse(
+        hasDataProduct(schemaDataProducts, stayingProduct.getId()),
+        "The data product left behind in finance must be detached from the moved schema");
+
+    // The schema must stay writable — before the fix this edit failed domain validation with 400.
+    var editableSchema =
+        SdkClients.adminClient().databaseSchemas().get(schema.getId().toString(), "dataProducts");
+    editableSchema.setDescription("edited after data product domain move");
+    SdkClients.adminClient()
+        .databaseSchemas()
+        .update(editableSchema.getId().toString(), editableSchema);
+  }
+
+  @Test
+  void test_domainChangeDetachesConflictingDataProductsOnInheritedDescendants(TestNamespace ns)
+      throws Exception {
+    Domain finance = createTestDomain(ns, "finance_desc");
+    Domain hr = createTestDomain(ns, "hr_desc");
+
+    DataProduct movingProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_moving_desc"))
+                .withDescription("Data product on the parent schema")
+                .withDomains(List.of(finance.getFullyQualifiedName())));
+    DataProduct childProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_child"))
+                .withDescription("Data product on the inheriting child table")
+                .withDomains(List.of(finance.getFullyQualifiedName())));
+
+    var schema = createSchemaWithDomain(ns, "schema_parent", finance);
+    Table childTable = createChildTable(ns, "inheriting_child", schema, null);
+    bulkAddAssets(
+        movingProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(schema.getEntityReference())));
+    bulkAddAssets(
+        childProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(childTable.getEntityReference())));
+
+    moveDataProductDomain(movingProduct, hr);
+
+    List<EntityReference> childDataProducts =
+        SdkClients.adminClient()
+            .tables()
+            .get(childTable.getId().toString(), "dataProducts")
+            .getDataProducts();
+    assertFalse(
+        hasDataProduct(childDataProducts, childProduct.getId()),
+        "A data product on an inherited-domain descendant must be detached when its ancestor moves");
+
+    var editableChild =
+        SdkClients.adminClient().tables().get(childTable.getId().toString(), "dataProducts");
+    editableChild.setDescription("edited after ancestor domain move");
+    SdkClients.adminClient().tables().update(editableChild.getId().toString(), editableChild);
+  }
+
+  @Test
+  void test_domainChangeSkipsSoftDeletedAssetsAndDoesNotAbort(TestNamespace ns) throws Exception {
+    Domain finance = createTestDomain(ns, "finance_soft");
+    Domain hr = createTestDomain(ns, "hr_soft");
+
+    DataProduct movingProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_moving_soft"))
+                .withDescription("Data product with a soft-deleted asset")
+                .withDomains(List.of(finance.getFullyQualifiedName())));
+
+    var liveSchema = createSchemaWithDomain(ns, "schema_live", finance);
+    var staleSchema = createSchemaWithDomain(ns, "schema_stale", finance);
+    bulkAddAssets(
+        movingProduct.getFullyQualifiedName(),
+        new BulkAssets()
+            .withAssets(
+                List.of(liveSchema.getEntityReference(), staleSchema.getEntityReference())));
+
+    // Soft-delete keeps the data-product relationship, so the stale schema still shows in the
+    // product's asset list. Before the fix, resolving it during detach threw
+    // EntityNotFoundException
+    // and rolled back the whole domain change.
+    SdkClients.adminClient()
+        .databaseSchemas()
+        .delete(
+            staleSchema.getId().toString(), Map.of("hardDelete", "false", "recursive", "false"));
+
+    assertDoesNotThrow(() -> moveDataProductDomain(movingProduct, hr));
+
+    // The live asset was still migrated and stays writable.
+    var editableSchema =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .get(liveSchema.getId().toString(), "dataProducts");
+    editableSchema.setDescription("edited after domain move with a soft-deleted sibling");
+    SdkClients.adminClient()
+        .databaseSchemas()
+        .update(editableSchema.getId().toString(), editableSchema);
+  }
+
+  @Test
+  void test_domainRemovalDetachesDataProductsFromAssets(TestNamespace ns) throws Exception {
+    Domain finance = createTestDomain(ns, "finance_removal");
+
+    DataProduct product =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_removal"))
+                .withDescription("Domains will be cleared")
+                .withDomains(List.of(finance.getFullyQualifiedName())));
+
+    var schema = createSchemaWithDomain(ns, "schema_removal", finance);
+    bulkAddAssets(
+        product.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(schema.getEntityReference())));
+
+    // Clearing the product's domains leaves the schema with no domains; an asset with a data
+    // product but no domains fails validation, so the assignment must be detached.
+    DataProduct current =
+        SdkClients.adminClient().dataProducts().get(product.getId().toString(), "domains");
+    current.setDomains(List.of());
+    SdkClients.adminClient().dataProducts().update(current.getId().toString(), current);
+
+    List<EntityReference> schemaDataProducts =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .get(schema.getId().toString(), "dataProducts")
+            .getDataProducts();
+    assertFalse(
+        hasDataProduct(schemaDataProducts, product.getId()),
+        "A data product must be detached from an asset left with no domains");
+
+    var editableSchema =
+        SdkClients.adminClient().databaseSchemas().get(schema.getId().toString(), "dataProducts");
+    editableSchema.setDescription("edited after domain removal");
+    SdkClients.adminClient()
+        .databaseSchemas()
+        .update(editableSchema.getId().toString(), editableSchema);
+  }
+
+  private void moveDataProductDomain(DataProduct dataProduct, Domain targetDomain) {
+    DataProduct current =
+        SdkClients.adminClient().dataProducts().get(dataProduct.getId().toString(), "domains");
+    current.setDomains(List.of(targetDomain.getEntityReference()));
+    SdkClients.adminClient().dataProducts().update(current.getId().toString(), current);
+  }
+
+  private boolean hasDataProduct(List<EntityReference> dataProducts, UUID dataProductId) {
+    return dataProducts != null
+        && dataProducts.stream().anyMatch(dp -> dp.getId().equals(dataProductId));
+  }
+
+  @Test
   void test_entityStatusUpdateAndPatch(TestNamespace ns) throws Exception {
     Domain domain = getOrCreateDomain(ns);
     CreateDataProduct createDataProduct =
@@ -730,6 +1017,34 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     return SdkClients.adminClient().tables().create(createTable);
   }
 
+  private org.openmetadata.schema.entity.data.DatabaseSchema createSchemaWithDomain(
+      TestNamespace ns, String suffix, Domain domain) {
+    DatabaseService service = getOrCreateDatabaseService(ns);
+    org.openmetadata.schema.entity.data.Database database =
+        getOrCreateDatabase(ns, service.getFullyQualifiedName());
+    org.openmetadata.schema.api.data.CreateDatabaseSchema create =
+        new org.openmetadata.schema.api.data.CreateDatabaseSchema()
+            .withName(ns.prefix(suffix))
+            .withDatabase(database.getFullyQualifiedName())
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    return SdkClients.adminClient().databaseSchemas().create(create);
+  }
+
+  private Table createChildTable(
+      TestNamespace ns,
+      String suffix,
+      org.openmetadata.schema.entity.data.DatabaseSchema schema,
+      Domain domain) {
+    CreateTable createTable =
+        new CreateTable()
+            .withName(ns.prefix(suffix))
+            .withDatabaseSchema(schema.getFullyQualifiedName());
+    if (domain != null) {
+      createTable.withDomains(List.of(domain.getFullyQualifiedName()));
+    }
+    return SdkClients.adminClient().tables().create(createTable);
+  }
+
   private Dashboard createTestDashboard(TestNamespace ns, String suffix, Domain domain) {
     DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
 
@@ -865,6 +1180,40 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     }
 
     return JsonUtils.readObjects(fieldNode.toString(), EntityReference.class);
+  }
+
+  private void assertSingleSearchDomain(UUID tableId, Domain expected, String message)
+      throws Exception {
+    assertSingleSearchDomain(tableId, expected, message, "table_search_index");
+  }
+
+  private void assertSingleSearchDomain(
+      UUID entityId, Domain expected, String message, String indexName) throws Exception {
+    List<EntityReference> searchDomains =
+        getEntityReferencesFromSearchIndex(entityId, indexName, "domains");
+    assertNotNull(searchDomains, message);
+    assertEquals(1, searchDomains.size(), message);
+    assertEquals(expected.getId(), searchDomains.getFirst().getId(), message);
+  }
+
+  private org.openmetadata.schema.entity.data.Database createDatabaseWithDomain(
+      TestNamespace ns, String suffix, Domain domain) {
+    DatabaseService service = getOrCreateDatabaseService(ns);
+    org.openmetadata.schema.api.data.CreateDatabase create =
+        new org.openmetadata.schema.api.data.CreateDatabase()
+            .withName(ns.prefix(suffix))
+            .withService(service.getFullyQualifiedName())
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    return SdkClients.adminClient().databases().create(create);
+  }
+
+  private org.openmetadata.schema.entity.data.DatabaseSchema createSchemaUnderDatabase(
+      TestNamespace ns, String suffix, org.openmetadata.schema.entity.data.Database database) {
+    org.openmetadata.schema.api.data.CreateDatabaseSchema create =
+        new org.openmetadata.schema.api.data.CreateDatabaseSchema()
+            .withName(ns.prefix(suffix))
+            .withDatabase(database.getFullyQualifiedName());
+    return SdkClients.adminClient().databaseSchemas().create(create);
   }
 
   // ===================================================================
@@ -1158,6 +1507,148 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @Test
+  void test_changeDataProductDomain_thenDeleteOriginalDomain_preservesDataProduct(
+      TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Domain domain1 = createTestDomain(ns, "domain_delete_original_1");
+    Domain domain2 = createTestDomain(ns, "domain_delete_original_2");
+
+    DataProduct dataProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_delete_original_domain"))
+                .withDescription("Data product moved before original domain deletion")
+                .withDomains(List.of(domain1.getFullyQualifiedName())));
+
+    dataProduct.setDomains(List.of(domain2.getEntityReference()));
+    DataProduct updated = patchEntity(dataProduct.getId().toString(), dataProduct);
+    assertEquals(1, updated.getDomains().size());
+    assertEquals(domain2.getId(), updated.getDomains().getFirst().getId());
+
+    client
+        .domains()
+        .delete(domain1.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    DataProduct fetched = client.dataProducts().get(dataProduct.getId().toString(), "domains");
+    assertFalse(Boolean.TRUE.equals(fetched.getDeleted()));
+    assertEquals(1, fetched.getDomains().size());
+    assertEquals(domain2.getId(), fetched.getDomains().getFirst().getId());
+
+    ListResponse<DataProduct> listed =
+        client
+            .dataProducts()
+            .list(
+                new ListParams()
+                    .setFields("domains")
+                    .withDomain(domain2.getFullyQualifiedName())
+                    .withLimit(100));
+    assertTrue(
+        listed.getData().stream().anyMatch(dp -> dp.getId().equals(dataProduct.getId())),
+        "Moved data product must remain visible under its target domain after original domain deletion");
+  }
+
+  @Test
+  @ResourceLock("MULTI_DOMAIN_RULE")
+  void test_deleteOneDomainForMultiDomainDataProduct_preservesDataProductUntilLastDomain(
+      TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Domain domain1 = createTestDomain(ns, "multi_domain_delete_1");
+    Domain domain2 = createTestDomain(ns, "multi_domain_delete_2");
+
+    DataProduct dataProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_multi_domain_delete"))
+                .withDescription("Data product shared by multiple domains")
+                .withDomains(List.of(domain1.getFullyQualifiedName())));
+    updateDataProductDomainsWithMultiDomainRuleDisabled(client, dataProduct, domain1, domain2);
+
+    DataProduct sharedDataProduct =
+        client.dataProducts().get(dataProduct.getId().toString(), "domains");
+    Double versionBeforeDomainDelete = sharedDataProduct.getVersion();
+    assertEquals(2, sharedDataProduct.getDomains().size());
+    assertTrue(
+        sharedDataProduct.getDomains().stream()
+            .anyMatch(domain -> domain.getId().equals(domain1.getId())));
+    assertTrue(
+        sharedDataProduct.getDomains().stream()
+            .anyMatch(domain -> domain.getId().equals(domain2.getId())));
+
+    long eventsSince = System.currentTimeMillis();
+    client
+        .domains()
+        .delete(domain1.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    DataProduct fetched = client.dataProducts().get(dataProduct.getId().toString(), "domains");
+    assertFalse(Boolean.TRUE.equals(fetched.getDeleted()));
+    assertEquals(1, fetched.getDomains().size());
+    assertEquals(domain2.getId(), fetched.getDomains().getFirst().getId());
+    assertTrue(fetched.getVersion() > versionBeforeDomainDelete);
+    assertDomainDetachChangeEvent(
+        client, dataProduct.getId(), versionBeforeDomainDelete, fetched.getVersion(), eventsSince);
+
+    ListResponse<DataProduct> listed =
+        client
+            .dataProducts()
+            .list(
+                new ListParams()
+                    .setFields("domains")
+                    .withDomain(domain2.getFullyQualifiedName())
+                    .withLimit(100));
+    assertTrue(
+        listed.getData().stream().anyMatch(dp -> dp.getId().equals(dataProduct.getId())),
+        "Data product must remain visible under the surviving domain");
+
+    client
+        .domains()
+        .delete(domain2.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    assertThrows(
+        Exception.class,
+        () -> client.dataProducts().get(dataProduct.getId().toString(), "domains"));
+  }
+
+  private void assertDomainDetachChangeEvent(
+      OpenMetadataClient client,
+      UUID dataProductId,
+      Double previousVersion,
+      Double currentVersion,
+      long eventsSince) {
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ListResponse<ChangeEvent> events =
+                  client.changeEvents().listUpdated("dataProduct", eventsSince);
+              assertTrue(
+                  events.getData().stream()
+                      .anyMatch(
+                          event ->
+                              dataProductId.equals(event.getEntityId())
+                                  && previousVersion.equals(event.getPreviousVersion())
+                                  && currentVersion.equals(event.getCurrentVersion())
+                                  && event.getChangeDescription() != null
+                                  && event.getChangeDescription().getFieldsDeleted() != null
+                                  && event.getChangeDescription().getFieldsDeleted().stream()
+                                      .anyMatch(field -> "domains".equals(field.getName()))),
+                  "Domain detach should emit a data product change event");
+            });
+  }
+
+  private DataProduct updateDataProductDomainsWithMultiDomainRuleDisabled(
+      OpenMetadataClient client, DataProduct dataProduct, Domain... domains) {
+    boolean originalRuleState = EntityRulesUtil.isMultiDomainRuleEnabled(client);
+    EntityRulesUtil.toggleMultiDomainRule(client, false);
+    try {
+      DataProduct update = client.dataProducts().get(dataProduct.getId().toString(), "domains");
+      update.setDomains(List.of(domains).stream().map(Domain::getEntityReference).toList());
+      return client.dataProducts().update(dataProduct.getId().toString(), update);
+    } finally {
+      EntityRulesUtil.toggleMultiDomainRule(client, originalRuleState);
+    }
+  }
+
+  @Test
   void test_changeDataProductDomain_withAssetMigration(TestNamespace ns) throws Exception {
     // Create two domains
     Domain domain1 = createTestDomain(ns, "domain_migrate_1");
@@ -1255,6 +1746,124 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
                   domain2.getId(),
                   searchIndexDomains.getFirst().getId(),
                   "Search index should show the migrated domain2");
+            });
+  }
+
+  @Test
+  void test_changeDataProductDomain_propagatesInheritedDomainToChildTablesInSearch(TestNamespace ns)
+      throws Exception {
+    Domain finance = createTestDomain(ns, "dp_inherit_finance");
+    Domain hr = createTestDomain(ns, "dp_inherit_hr");
+    Domain marketing = createTestDomain(ns, "dp_inherit_marketing");
+
+    // Schema with an explicit Finance domain, assigned as the data product's only asset
+    org.openmetadata.schema.entity.data.DatabaseSchema schema =
+        createSchemaWithDomain(ns, "dp_inherit_schema", finance);
+
+    // Children under the schema: t1 inherits Finance, t2 is explicitly Finance, t3 is Marketing
+    Table inheritedChild = createChildTable(ns, "dp_inherit_t1", schema, null);
+    Table explicitSameDomainChild = createChildTable(ns, "dp_inherit_t2", schema, finance);
+    Table explicitOtherDomainChild = createChildTable(ns, "dp_inherit_t3", schema, marketing);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_inherit"))
+            .withDescription("Data product for inherited-domain search propagation test")
+            .withDomains(List.of(finance.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    bulkAddAssets(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(schema.getEntityReference())));
+
+    Awaitility.await("Wait for schema asset to be linked")
+        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(15))
+        .untilAsserted(
+            () -> assertEquals(1, getAssets(dataProduct.getId(), 10, 0).getPaging().getTotal()));
+
+    // Move the data product, and with it the schema asset, from Finance to HR
+    dataProduct.setDomains(List.of(hr.getEntityReference()));
+    patchEntity(dataProduct.getId().toString(), dataProduct);
+
+    Awaitility.await("Wait for inherited-domain search propagation to child tables")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              assertSingleSearchDomain(
+                  inheritedChild.getId(),
+                  hr,
+                  "Child table that inherits its domain should follow the data product to HR in search");
+              assertSingleSearchDomain(
+                  explicitSameDomainChild.getId(),
+                  finance,
+                  "Child table with an explicit Finance domain should stay in Finance in search");
+              assertSingleSearchDomain(
+                  explicitOtherDomainChild.getId(),
+                  marketing,
+                  "Child table with an explicit Marketing domain should keep it in search");
+            });
+  }
+
+  @Test
+  void test_changeDataProductDomain_multiLevelDescendantsFollowInSearch(TestNamespace ns)
+      throws Exception {
+    Domain finance = createTestDomain(ns, "dp_ml_finance");
+    Domain hr = createTestDomain(ns, "dp_ml_hr");
+    Domain marketing = createTestDomain(ns, "dp_ml_marketing");
+
+    // Database (explicit Finance) is the asset; the schema and one table inherit through it, two
+    // levels down, so the move must reach descendants keyed on database.id in search.
+    org.openmetadata.schema.entity.data.Database database =
+        createDatabaseWithDomain(ns, "dp_ml_db", finance);
+    org.openmetadata.schema.entity.data.DatabaseSchema schema =
+        createSchemaUnderDatabase(ns, "dp_ml_schema", database);
+    Table inheritedTable = createChildTable(ns, "dp_ml_t1", schema, null);
+    Table explicitTable = createChildTable(ns, "dp_ml_t2", schema, marketing);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_ml"))
+            .withDescription("Data product for multi-level domain propagation test")
+            .withDomains(List.of(finance.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    bulkAddAssets(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(database.getEntityReference())));
+
+    Awaitility.await("Wait for database asset to be linked")
+        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(15))
+        .untilAsserted(
+            () -> assertEquals(1, getAssets(dataProduct.getId(), 10, 0).getPaging().getTotal()));
+
+    dataProduct.setDomains(List.of(hr.getEntityReference()));
+    patchEntity(dataProduct.getId().toString(), dataProduct);
+
+    Awaitility.await("Wait for multi-level inherited-domain search propagation")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              assertSingleSearchDomain(
+                  schema.getId(),
+                  hr,
+                  "Inheriting schema (child of the moved database) should follow to HR in search",
+                  "database_schema_search_index");
+              assertSingleSearchDomain(
+                  inheritedTable.getId(),
+                  hr,
+                  "Inheriting grandchild table should follow to HR in search");
+              assertSingleSearchDomain(
+                  explicitTable.getId(),
+                  marketing,
+                  "Grandchild table with an explicit domain should keep it in search");
             });
   }
 
@@ -1643,6 +2252,124 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @Test
+  void test_getPorts_survivingPortsKeepIdentityWhenOneDeleted(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_deleted_port"))
+            .withDescription("Data product for deleted-port attribution test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table1 = createTestTable(ns, "del_port_1", domain);
+    Table table2 = createTestTable(ns, "del_port_2", domain);
+    Table table3 = createTestTable(ns, "del_port_3", domain);
+
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets()
+            .withAssets(
+                List.of(
+                    table1.getEntityReference(),
+                    table2.getEntityReference(),
+                    table3.getEntityReference())));
+
+    // Soft-delete a port. getPaginatedPorts fetches ports with NON_DELETED, so this row drops out
+    // of the entity fetch while its relationship record remains — the exact condition under which
+    // index-based mapping misattributed or silently dropped the surviving ports.
+    SdkClients.adminClient().tables().delete(table2.getId().toString());
+
+    ResultList<Map<String, Object>> inputPorts = getInputPorts(dataProduct.getId(), 10, 0);
+
+    List<UUID> returnedIds = new ArrayList<>();
+    for (Map<String, Object> port : inputPorts.getData()) {
+      returnedIds.add(getEntityId(port));
+    }
+
+    // Each surviving port must be present exactly once and carry its own id — never the deleted
+    // port's id and never a neighbour's data.
+    assertEquals(2, returnedIds.size());
+    assertTrue(returnedIds.contains(table1.getId()));
+    assertTrue(returnedIds.contains(table3.getId()));
+    assertFalse(returnedIds.contains(table2.getId()));
+  }
+
+  @Test
+  void test_addPort_rejectsNonDataAssetEntity(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_port_type_guard"))
+            .withDescription("Data product for port type validation test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    // A user is a real entity but not a data asset, so it cannot be a port.
+    String userName = ns.shortPrefix("port_user");
+    User user =
+        SdkClients.adminClient()
+            .users()
+            .create(
+                new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org"));
+
+    BulkAssets request = new BulkAssets().withAssets(List.of(user.getEntityReference()));
+    InvalidRequestException failException =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> addInputPortsWithResult(dataProduct.getFullyQualifiedName(), request));
+    BulkOperationResult failResult =
+        JsonUtils.readValue(failException.getResponseBody(), BulkOperationResult.class);
+
+    assertEquals(ApiStatus.FAILURE, failResult.getStatus());
+    assertEquals(1, failResult.getNumberOfRowsFailed());
+    assertEquals(1, failResult.getFailedRequest().size());
+    assertTrue(
+        failResult.getFailedRequest().get(0).getMessage().contains("cannot be added as a port"));
+
+    // The rejected asset must not appear as a port, and the view must load without error.
+    DataProductPortsView portsView = getPortsView(dataProduct.getId(), 10, 0, 10, 0);
+    assertEquals(0, portsView.getInputPorts().getPaging().getTotal());
+  }
+
+  @Test
+  void test_addPort_rejectsTableColumnPseudoType(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_tablecolumn_port"))
+            .withDescription("Data product for tableColumn port validation test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    // tableColumn is a search-only pseudo type with no repository. It must be reported as a
+    // per-row failure, not silently dropped (populateEntityReferences works on a copy).
+    EntityReference columnRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("tableColumn")
+            .withFullyQualifiedName(ns.prefix("db.schema.table.column"));
+
+    BulkAssets request = new BulkAssets().withAssets(List.of(columnRef));
+    InvalidRequestException failException =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> addInputPortsWithResult(dataProduct.getFullyQualifiedName(), request));
+    BulkOperationResult failResult =
+        JsonUtils.readValue(failException.getResponseBody(), BulkOperationResult.class);
+
+    assertEquals(ApiStatus.FAILURE, failResult.getStatus());
+    assertEquals(1, failResult.getNumberOfRowsFailed());
+    assertTrue(
+        failResult.getFailedRequest().get(0).getMessage().contains("cannot be added as a port"));
+
+    DataProductPortsView portsView = getPortsView(dataProduct.getId(), 10, 0, 10, 0);
+    assertEquals(0, portsView.getInputPorts().getPaging().getTotal());
+  }
+
+  @Test
   void test_getPortsViewCombined(TestNamespace ns) throws Exception {
     Domain domain = getOrCreateDomain(ns);
 
@@ -1778,6 +2505,14 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
 
   private void bulkAddInputPorts(String dataProductName, BulkAssets request) {
     SdkClients.adminClient().dataProducts().inputPorts(dataProductName).add(request);
+  }
+
+  private BulkOperationResult addInputPortsWithResult(String dataProductName, BulkAssets request)
+      throws Exception {
+    String path = "/v1/dataProducts/name/" + dataProductName + "/inputPorts/add";
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, path, request, BulkOperationResult.class);
   }
 
   private void bulkAddOutputPorts(String dataProductName, BulkAssets request) throws Exception {
@@ -3003,5 +3738,220 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     assertTrue(
         listed.getOwners() == null || listed.getOwners().isEmpty(),
         "Soft-deleted owner must not appear in list endpoint");
+  }
+
+  // ===================================================================
+  // BULK REMOVE ASSETS — dryRun behavior (issue #27954)
+  // ===================================================================
+
+  @Test
+  void test_bulkRemoveAssets_dryRunTrue_doesNotDetach(TestNamespace ns) throws Exception {
+    Domain domain = createTestDomain(ns, "dr_true_domain");
+    DataProduct dataProduct = createDataProductInDomain(ns, domain, "dr_true");
+    Table table = createTestTable(ns, "dr_true_tbl", domain);
+
+    addTableToDataProduct(dataProduct, table);
+
+    BulkAssets dryRunRemove =
+        new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(true);
+    String removePath =
+        "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/remove";
+    BulkOperationResult result =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.PUT, removePath, dryRunRemove, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertTrue(result.getDryRun(), "Result must propagate dryRun=true");
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    Table refreshed =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts");
+    assertNotNull(refreshed.getDataProducts(), "dataProducts field must be populated");
+    assertTrue(
+        refreshed.getDataProducts().stream().anyMatch(d -> dataProduct.getId().equals(d.getId())),
+        "Table must still be attached to the data product after dryRun=true remove");
+  }
+
+  @Test
+  void test_bulkRemoveAssets_dryRunFalse_detaches(TestNamespace ns) throws Exception {
+    Domain domain = createTestDomain(ns, "dr_false_domain");
+    DataProduct dataProduct = createDataProductInDomain(ns, domain, "dr_false");
+    Table table = createTestTable(ns, "dr_false_tbl", domain);
+
+    addTableToDataProduct(dataProduct, table);
+
+    BulkAssets realRemove =
+        new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(false);
+    String removePath =
+        "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/remove";
+    BulkOperationResult result =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.PUT, removePath, realRemove, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertFalse(Boolean.TRUE.equals(result.getDryRun()));
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    Table refreshed =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts");
+    assertTrue(
+        refreshed.getDataProducts() == null
+            || refreshed.getDataProducts().stream()
+                .noneMatch(d -> dataProduct.getId().equals(d.getId())),
+        "Table should no longer be attached to the data product when dryRun=false");
+  }
+
+  @Test
+  void test_bulkAddAssets_dryRunTrue_doesNotAttach(TestNamespace ns) throws Exception {
+    Domain domain = createTestDomain(ns, "add_dr_true_domain");
+    DataProduct dataProduct = createDataProductInDomain(ns, domain, "add_dr_true");
+    Table table = createTestTable(ns, "add_dr_true_tbl", domain);
+
+    BulkAssets dryRunAdd =
+        new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(true);
+    String addPath = "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/add";
+    BulkOperationResult result =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.PUT, addPath, dryRunAdd, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertTrue(result.getDryRun(), "Result must propagate dryRun=true");
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    Table refreshed =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts");
+    assertTrue(
+        refreshed.getDataProducts() == null
+            || refreshed.getDataProducts().stream()
+                .noneMatch(d -> dataProduct.getId().equals(d.getId())),
+        "Table must NOT be attached to the data product on dryRun=true add");
+  }
+
+  @Test
+  void test_bulkRemoveAssets_dryRunOmitted_defaultsToDetach(TestNamespace ns) throws Exception {
+    Domain domain = createTestDomain(ns, "dr_omit_domain");
+    DataProduct dataProduct = createDataProductInDomain(ns, domain, "dr_omit");
+    Table table = createTestTable(ns, "dr_omit_tbl", domain);
+
+    addTableToDataProduct(dataProduct, table);
+
+    String rawBody = "{\"assets\":[{\"id\":\"" + table.getId() + "\",\"type\":\"table\"}]}";
+    String removePath =
+        "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/remove";
+    BulkOperationResult result =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.PUT, removePath, rawBody, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertFalse(
+        Boolean.TRUE.equals(result.getDryRun()),
+        "Omitted dryRun must deserialize to schema default=false (destructive)");
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    Table refreshed =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts");
+    assertTrue(
+        refreshed.getDataProducts() == null
+            || refreshed.getDataProducts().stream()
+                .noneMatch(d -> dataProduct.getId().equals(d.getId())),
+        "Table should be detached when dryRun is omitted (default destructive)");
+  }
+
+  private DataProduct createDataProductInDomain(TestNamespace ns, Domain domain, String suffix) {
+    return SdkClients.adminClient()
+        .dataProducts()
+        .create(
+            new CreateDataProduct()
+                .withName(ns.prefix("br_dp_" + suffix))
+                .withDomains(List.of(domain.getFullyQualifiedName()))
+                .withDescription("Data product for bulk remove dryRun test"));
+  }
+
+  private void addTableToDataProduct(DataProduct dataProduct, Table table) throws Exception {
+    BulkAssets addRequest =
+        new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(false);
+    String addPath = "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/add";
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, addPath, addRequest, BulkOperationResult.class);
+  }
+
+  // ===================================================================
+  // Issue #28696 (data product analogue): a prefix-extension rename must keep
+  // the linked asset's dataProducts[].fullyQualifiedName pointing at the new
+  // FQN in search. Data products are flat and their reference update uses an
+  // EXACT-match term query + script (==oldFqn -> newFqn), so this path is
+  // idempotent and prefix-safe by construction (no sibling concern, no
+  // double-apply); this confirms it empirically.
+  // ===================================================================
+  @Test
+  void test_renameDataProductPrefixExtension_keepsAssetReference(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+    Domain domain = getOrCreateDomain(ns);
+
+    String dpName = "dp_" + ns.shortPrefix();
+    DataProduct dataProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(dpName)
+                .withDisplayName("Revenue")
+                .withDescription("Data product renamed via prefix extension (#28696)")
+                .withDomains(List.of(domain.getFullyQualifiedName())));
+    String oldFqn = dataProduct.getFullyQualifiedName();
+
+    Table asset = createTestTable(ns, "dp_asset", domain);
+    bulkAddAssets(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(asset.getEntityReference())));
+
+    awaitAssetDataProduct(client, mapper, asset.getId().toString(), oldFqn);
+
+    dataProduct.setName(dpName + " Renamed");
+    dataProduct.setDisplayName("Revenue Renamed");
+    DataProduct renamed = patchEntity(dataProduct.getId().toString(), dataProduct);
+    String newFqn = renamed.getFullyQualifiedName();
+    assertNotEquals(oldFqn, newFqn);
+    assertTrue(newFqn.startsWith(oldFqn), "rename must extend the FQN as a prefix: " + newFqn);
+
+    awaitAssetDataProduct(client, mapper, asset.getId().toString(), newFqn);
+  }
+
+  private void awaitAssetDataProduct(
+      OpenMetadataClient client, ObjectMapper mapper, String tableId, String expectedDpFqn) {
+    Awaitility.await("asset " + tableId + " carries data product " + expectedDpFqn + " in search")
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode hits = mapper.readTree(response).path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "table should be indexed");
+              List<String> dpFqns = new ArrayList<>();
+              for (JsonNode dp : hits.get(0).path("_source").path("dataProducts")) {
+                dpFqns.add(dp.path("fullyQualifiedName").asText());
+              }
+              assertTrue(
+                  dpFqns.contains(expectedDpFqn),
+                  "Expected data product FQN '"
+                      + expectedDpFqn
+                      + "' on table search doc but found "
+                      + dpFqns);
+            });
   }
 }

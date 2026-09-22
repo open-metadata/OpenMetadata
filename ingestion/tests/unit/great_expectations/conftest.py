@@ -13,7 +13,6 @@ Fixtures for test suite
 """
 
 import os
-from unittest import mock
 
 from pytest import fixture
 
@@ -35,7 +34,7 @@ def mocked_ometa_object():
             self._type = _type
 
     class ListEntities:
-        entities = [Entity("list_entities")]
+        entities = [Entity("list_entities")]  # noqa: RUF012
 
     class OmetaMock:
         def get_by_name(self, *args, **kwargs):
@@ -47,62 +46,93 @@ def mocked_ometa_object():
     return OmetaMock()
 
 
+class MockedExpectationConfiguration(dict):
+    """Stands in for a GX `ExpectationConfiguration`.
+
+    GX exposes it as a dict-like object whose keys are also reachable as attributes,
+    which is how the action reads `kwargs` and `meta` off it.
+    """
+
+    @property
+    def kwargs(self):
+        return self["kwargs"]
+
+    @property
+    def meta(self):
+        return self["meta"]
+
+
 @fixture(scope="module")
 def mocked_ometa():
-    """Mocks OMeta obkect"""
-    from metadata.great_expectations.action import OpenMetadataValidationAction
-
-    with mock.patch.object(
-        OpenMetadataValidationAction,
-        "_create_ometa_connection",
-        side_effect=mocked_ometa_object,
-    ) as mocked_obj:
-        yield mocked_obj
+    """Mocks OMeta object"""
+    return mocked_ometa_object()
 
 
 @fixture(scope="module")
-def mocked_ge_data_context():
-    with mock.patch("great_expectations.DataContext") as mocked_data_context:
-        yield mocked_data_context
-
-
-@fixture(scope="module")
-def mocked_ge_column_result():
+def mocked_gx_column_result():
     return {
         "success": True,
-        "expectation_config": {
-            "kwargs": {
-                "column": "my_column",
-                "regex": "abc.*",
-                "value_set": [1, 2],
-                "min_value": 10,
-                "max_value": 20,
+        "expectation_config": MockedExpectationConfiguration(
+            {
+                "type": "expect_column_values_to_match_regex",
+                "meta": {"description": "column must match the regex"},
+                "kwargs": {
+                    "column": "my_column",
+                    "batch_id": "my_datasource-my_asset",
+                    "regex": "abc.*",
+                    "value_set": [1, 2],
+                    "min_value": 10,
+                    "max_value": 20,
+                },
             }
+        ),
+        # The percentages are what GX actually reports; the action is expected to drop
+        # them so counts and percentages never share a chart axis.
+        "result": {
+            "element_count": 10000,
+            "unexpected_count": 3,
+            "unexpected_percent": 0.03,
+            "unexpected_percent_total": 0.03,
+            "missing_count": 1,
+            "missing_percent": 0.01,
         },
-        "result": {"unexpected_percent": 0.0},
     }
 
 
 @fixture(scope="module")
-def mocked_ge_table_result():
+def mocked_gx_table_result():
     return {
         "success": True,
-        "expectation_config": {
-            "kwargs": {
-                "min_value": 10,
-                "max_value": 10,
-                "value": 10,
+        "expectation_config": MockedExpectationConfiguration(
+            {
+                "type": "expect_table_row_count_to_equal",
+                "meta": {},
+                "kwargs": {
+                    "min_value": 10,
+                    "max_value": 10,
+                    "value": 10,
+                },
             }
-        },
+        ),
         "result": {"observed_value": 10},
     }
 
 
 @fixture(scope="module")
+def mocked_gx_result_meta():
+    """Metadata GX attaches to a validation result"""
+    return {
+        "active_batch_definition": {
+            "datasource_name": "my_datasource",
+            "data_asset_name": "my_asset",
+        },
+        "batch_spec": {"type": "table", "table_name": "users", "schema_name": None},
+    }
+
+
+@fixture(scope="module")
 def fixture_jinja_environment():
-    return create_jinja_environment(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources")
-    )
+    return create_jinja_environment(os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources"))  # noqa: PTH100, PTH118, PTH120
 
 
 @fixture(scope="module")

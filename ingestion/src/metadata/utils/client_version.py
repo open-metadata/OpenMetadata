@@ -13,6 +13,7 @@ Mixin class containing Server and client specific methods
 
 To be used by OpenMetadata class
 """
+
 import re
 
 try:
@@ -21,7 +22,7 @@ except ImportError:
     from importlib_metadata import version
 
 
-class VersionParsingException(Exception):
+class VersionParsingException(Exception):  # noqa: N818
     """
     Used when we cannot parse version information from a string
     """
@@ -37,9 +38,7 @@ def get_version_from_string(raw_version: str) -> str:
     try:
         return re.match(r"\d+.\d+.\d+", raw_version).group(0)
     except AttributeError as err:
-        raise VersionParsingException(
-            f"Can't extract version from {raw_version}: {err}"
-        ) from err
+        raise VersionParsingException(f"Can't extract version from {raw_version}: {err}") from err
 
 
 def get_client_version() -> str:

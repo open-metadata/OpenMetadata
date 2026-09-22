@@ -15,7 +15,6 @@ Validator for column values to be unique test case
 
 import traceback
 from abc import abstractmethod
-from typing import List, Optional, Union
 
 from sqlalchemy import Column
 
@@ -43,7 +42,7 @@ UNIQUE_COUNT = "uniqueCount"
 class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
     """Validator for column values to be unique test case"""
 
-    def _get_metrics_to_compute(self, test_params: Optional[dict] = None) -> dict:
+    def _get_metrics_to_compute(self, test_params: dict | None = None) -> dict:
         """Define which metrics to compute for uniqueness test
 
         Args:
@@ -58,12 +57,12 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
             Metrics.uniqueCount.name: Metrics.uniqueCount,
         }
 
-    def _evaluate_test_condition(
-        self, metric_values: dict, test_params: Optional[dict] = None
-    ) -> TestEvaluation:
+    def _evaluate_test_condition(self, metric_values: dict, test_params: dict | None = None) -> TestEvaluation:
         """Evaluate the uniqueness test condition and calculate derived values
 
-        For uniqueness test: all values should be unique, meaning COUNT == UNIQUE_COUNT
+        For uniqueness test: the duplicates (COUNT - UNIQUE_COUNT) must stay within the
+        failure threshold, counted against the non-null values. With the default threshold,
+        that means COUNT == UNIQUE_COUNT.
 
         Args:
             metric_values: Dictionary with keys from Metrics enum names
@@ -72,7 +71,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
 
         Returns:
             TestEvaluation: TypedDict with keys:
-                - matched: bool - whether test passed (count == unique_count)
+                - matched: bool - whether the duplicates are within the threshold
                 - passed_rows: int - number of unique values
                 - failed_rows: int - number of duplicate values
                 - total_rows: int - total row count
@@ -81,7 +80,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         unique_count = metric_values[Metrics.uniqueCount.name]
 
         return {
-            "matched": count == unique_count,
+            "matched": self._apply_row_threshold(count - unique_count, count),
             "passed_rows": unique_count,
             "failed_rows": count - unique_count,
             "total_rows": count,
@@ -90,8 +89,8 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
     def _format_result_message(
         self,
         metric_values: dict,
-        dimension_info: Optional[DimensionInfo] = None,
-        test_params: Optional[dict] = None,
+        dimension_info: DimensionInfo | None = None,
+        test_params: dict | None = None,
     ) -> str:
         """Format the result message for uniqueness test
 
@@ -111,13 +110,13 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
                 f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
                 f"Found valuesCount={count} vs. uniqueCount={unique_count}"
             )
-        else:
+        else:  # noqa: RET505
             return (
                 f"Found valuesCount={count} vs. uniqueCount={unique_count}. "
                 "Both counts should be equal for column values to be unique."
             )
 
-    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:
+    def _get_test_result_values(self, metric_values: dict) -> list[TestResultValue]:
         """Get test result values for uniqueness test
 
         Args:
@@ -127,12 +126,8 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
             List[TestResultValue]: Test result values for the test case
         """
         return [
-            TestResultValue(
-                name=VALUE_COUNT, value=str(metric_values[Metrics.valuesCount.name])
-            ),
-            TestResultValue(
-                name=UNIQUE_COUNT, value=str(metric_values[Metrics.uniqueCount.name])
-            ),
+            TestResultValue(name=VALUE_COUNT, value=str(metric_values[Metrics.valuesCount.name])),
+            TestResultValue(name=UNIQUE_COUNT, value=str(metric_values[Metrics.uniqueCount.name])),
         ]
 
     def _run_validation(self) -> TestCaseResult:
@@ -147,7 +142,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self.get_column()
+            column: SQALikeColumn | Column = self.get_column()
             count = self._run_results(Metrics.valuesCount, column)
             unique_count = self._get_unique_count(Metrics.uniqueCount, column)
 
@@ -159,7 +154,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
-            logger.warning(msg)
+            logger.error(msg)
             return self.get_test_case_result_object(
                 self.execution_date,
                 TestCaseStatus.Aborted,
@@ -171,9 +166,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
             )
 
         evaluation = self._evaluate_test_condition(metric_values, test_params)
-        result_message = self._format_result_message(
-            metric_values, test_params=test_params
-        )
+        result_message = self._format_result_message(metric_values, test_params=test_params)
         test_result_values = self._get_test_result_values(metric_values)
 
         return self.get_test_case_result_object(
@@ -186,7 +179,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         )
 
     @abstractmethod
-    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column]):
+    def _run_results(self, metric: Metrics, column: SQALikeColumn | Column):
         """Compute row count for the given column
 
         Args:
@@ -198,7 +191,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         raise NotImplementedError
 
     @abstractmethod
-    def _get_unique_count(self, metric: Metrics, column: Union[SQALikeColumn, Column]):
+    def _get_unique_count(self, metric: Metrics, column: SQALikeColumn | Column):
         """Get row count
 
         Returns:
@@ -209,12 +202,12 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
     @abstractmethod
     def _execute_dimensional_validation(
         self,
-        column: Union[SQALikeColumn, Column],
-        dimension_col: Union[SQALikeColumn, Column],
+        column: SQALikeColumn | Column,
+        dimension_col: SQALikeColumn | Column,
         metrics_to_compute: dict,
-        test_params: Optional[dict],
+        test_params: dict | None,
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> list[DimensionResult]:
         """Execute dimensional query for a single dimension
 
         This method should implement the engine-specific logic for executing

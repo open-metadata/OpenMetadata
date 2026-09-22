@@ -12,8 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,19 +27,21 @@ import {
 } from '../../../generated/entity/data/dashboard';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/tagLabel';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
-} from '../../../utils/EntityVersionUtils';
+} from '../../../utils/EntityVersionUtilsPure';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import Description from '../../common/EntityDescription/Description';
 import Loader from '../../common/Loader/Loader';
+import { ColumnsType } from '../../common/Table/Table.interface';
+import Table from '../../common/Table/TableV2';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
@@ -48,7 +49,6 @@ import DataProductsContainer from '../../DataProducts/DataProductsContainer/Data
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DashboardVersionProp } from './DashboardVersion.interface';
-
 const DashboardVersion: FC<DashboardVersionProp> = ({
   version,
   currentVersionData,
@@ -57,9 +57,6 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   tier,
   slashedDashboardName,
   versionList,
-  onLoadMore,
-  hasMore,
-  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -186,7 +183,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
-                  <DescriptionV1
+                  <Description
                     description={description}
                     entityType={EntityType.DASHBOARD}
                     showActions={false}
@@ -303,12 +300,9 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
       <EntityVersionTimeLine
         currentVersion={version ?? ''}
         entityType={EntityType.DASHBOARD}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
-        onLoadMore={onLoadMore}
       />
     </>
   );

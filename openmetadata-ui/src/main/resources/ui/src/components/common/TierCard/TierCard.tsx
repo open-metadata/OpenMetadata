@@ -30,7 +30,7 @@ import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { getTags } from '../../../rest/tagAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
 import Loader from '../Loader/Loader';
@@ -55,6 +55,7 @@ const TierCard = ({
   );
   const [selectedTier, setSelectedTier] = useState<string>(currentTier ?? '');
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
+  const [isOpen, setIsOpen] = useState<boolean>(popoverProps?.open ?? false);
   const { t } = useTranslation();
 
   const getTierData = async () => {
@@ -63,6 +64,7 @@ const TierCard = ({
       const { data } = await getTags({
         parent: 'Tier',
         limit: 50,
+        disabled: false,
       });
 
       if (data) {
@@ -120,6 +122,29 @@ const TierCard = ({
       getTierData();
     }
   }, [popoverProps?.open]);
+
+  // Re-syncs selectedTier when the persisted tier changes after a successful save.
+  // Guards with isOpen (internal state) rather than popoverProps?.open so that
+  // uncontrolled usages (no popoverProps) are covered correctly.
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedTier(currentTier ?? '');
+    }
+  }, [currentTier, isOpen]);
+
+  const handleOpenChange = (visible: boolean) => {
+    setIsOpen(visible);
+
+    if (visible && !tierCardData.length) {
+      getTierData();
+    }
+
+    if (!visible) {
+      setSelectedTier(currentTier ?? '');
+    }
+
+    popoverProps?.onOpenChange?.(visible);
+  };
 
   return (
     <Popover
@@ -220,10 +245,10 @@ const TierCard = ({
       ref={popoverRef}
       showArrow={false}
       trigger="click"
-      onOpenChange={(visible) =>
-        visible && !tierCardData.length && getTierData()
-      }
-      {...popoverProps}>
+      {...popoverProps}
+      // Intentionally overrides popoverProps.onOpenChange — handleOpenChange
+      // wraps it and delegates to popoverProps?.onOpenChange internally (line 146).
+      onOpenChange={handleOpenChange}>
       {children}
     </Popover>
   );

@@ -12,7 +12,16 @@
  */
 
 import { useOktaAuth } from '@okta/okta-react';
-import { forwardRef, Fragment, ReactNode, useImperativeHandle } from 'react';
+import {
+  forwardRef,
+  Fragment,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+} from 'react';
+import { authCoordinator } from '../../../utils/Auth/AuthCoordinator/AuthCoordinator';
+import type { Renewer } from '../../../utils/Auth/AuthCoordinator/types';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
@@ -40,10 +49,10 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     const renewToken = async () => {
       try {
-        const existingIdToken = await oktaAuth.tokenManager.get('idToken');
-        const existingAccessToken = await oktaAuth.tokenManager.get(
-          'accessToken'
-        );
+        const [existingIdToken, existingAccessToken] = await Promise.all([
+          oktaAuth.tokenManager.get('idToken'),
+          oktaAuth.tokenManager.get('accessToken'),
+        ]);
 
         // Add fallback if renewToken fails
         // Redirect to sign-in if no tokens exist
@@ -69,11 +78,42 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
       return '';
     };
 
+    // Bridges to the AuthCoordinator Renewer contract. Reads the raw Tokens
+    // shape directly instead of going through setOidcToken (the AuthCoordinator
+    // owns app-side storage now), but must still hand the renewed set to
+    // Okta's own tokenManager so subsequent SDK reads/renewals don't see the
+    // expired tokens.
+    const getRenewer = useCallback(
+      (): Renewer => async () => {
+        const tokens = await oktaAuth.token.renewTokens();
+
+        if (!tokens.idToken?.idToken) {
+          throw new Error('Okta renewal returned no idToken');
+        }
+
+        oktaAuth.tokenManager.setTokens(tokens);
+
+        return {
+          idToken: tokens.idToken.idToken,
+          expiresAt: tokens.idToken.expiresAt * 1000,
+        };
+      },
+      [oktaAuth]
+    );
+
     useImperativeHandle(ref, () => ({
       invokeLogin: login,
       invokeLogout: logout,
       renewIdToken: renewToken,
     }));
+
+    // Register the coordinator renewer directly from this authenticator's
+    // own mount effect (avoids the ref-based race in the parent).
+    useEffect(() => {
+      authCoordinator.registerRenewer(getRenewer());
+
+      return () => authCoordinator.registerRenewer(null);
+    }, [getRenewer]);
 
     return <Fragment>{children}</Fragment>;
   }

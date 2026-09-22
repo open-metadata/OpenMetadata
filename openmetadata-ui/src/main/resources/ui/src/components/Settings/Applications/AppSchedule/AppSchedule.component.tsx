@@ -11,31 +11,71 @@
  *  limitations under the License.
  */
 import { Button, Col, Modal, Row, Space, Typography } from 'antd';
-import cronstrue from 'cronstrue';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SCHEDULAR_OPTIONS } from '../../../../constants/Schedular.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import {
+  App,
   AppScheduleClass,
   AppType,
   ScheduleType,
 } from '../../../../generated/entity/applications/app';
 import { getIngestionPipelineByFqn } from '../../../../rest/ingestionPipelineAPI';
-import { getCronDefaultValue } from '../../../../utils/SchedularUtils';
+import { getCronDefaultValue } from '../../../../utils/CronExpressionUtils';
 import Loader from '../../../common/Loader/Loader';
 import ScheduleInterval from '../../Services/AddIngestion/Steps/ScheduleInterval';
-import { WorkflowExtraConfig } from '../../Services/AddIngestion/Steps/ScheduleInterval.interface';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import { AppRunsHistoryRef } from '../AppRunsHistory/AppRunsHistory.interface';
 import { AppScheduleProps } from './AppScheduleProps.interface';
 
+// The schedule read-out is self-contained; keeping it out of AppSchedule keeps
+// that component's branching down to the action buttons it actually owns.
+const AppScheduleSummary = ({
+  appSchedule,
+  cronString,
+}: {
+  appSchedule?: App['appSchedule'];
+  cronString: string;
+}) => {
+  const { t } = useTranslation();
+
+  if (!appSchedule) {
+    return null;
+  }
+
+  return (
+    <>
+      <div className="d-flex items-center gap-2">
+        <Typography.Text className="right-panel-label">
+          {t('label.schedule-type')}
+        </Typography.Text>
+        <Typography.Text className="font-medium" data-testid="schedule-type">
+          {(appSchedule as AppScheduleClass).scheduleTimeline ?? ''}
+        </Typography.Text>
+      </div>
+
+      {!isEmpty(cronString) && (
+        <div className="d-flex items-center gap-2">
+          <Typography.Text className="right-panel-label">
+            {t('label.schedule-interval')}
+          </Typography.Text>
+          <Typography.Text className="font-medium" data-testid="cron-string">
+            {cronString}
+          </Typography.Text>
+        </div>
+      )}
+    </>
+  );
+};
+
 const AppSchedule = ({
   appData,
   loading: { isRunLoading, isDeployLoading },
   jsonSchema,
+  disabled = false,
+  disabledReason,
   onSave,
   onDemandTrigger,
   onDeployTrigger,
@@ -46,7 +86,10 @@ const AppSchedule = ({
   const [isPipelineDeployed, setIsPipelineDeployed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
+  const [scheduleValue, setScheduleValue] = useState<string>();
+  const [isScheduleValid, setIsScheduleValid] = useState(true);
   const { config } = useLimitStore();
+  const isAppDisabled = disabled || Boolean(appData.deleted);
 
   const showRunNowButton = useMemo(() => {
     return [ScheduleType.ScheduledOrManual, ScheduleType.OnlyManual].includes(
@@ -81,25 +124,47 @@ const AppSchedule = ({
     }
   }, [appData]);
 
-  const cronString = useMemo(() => {
+  const [cronString, setCronString] = useState<string>('');
+
+  useEffect(() => {
     const cronExpression = (appData.appSchedule as AppScheduleClass)
       ?.cronExpression;
-    if (cronExpression) {
-      return cronstrue.toString(cronExpression, {
-        throwExceptionOnParseError: false,
-      });
-    }
+    if (!cronExpression) {
+      setCronString('');
 
-    return '';
+      return;
+    }
+    let cancelled = false;
+    import('cronstrue').then((m) => {
+      if (!cancelled) {
+        setCronString(
+          m.default.toString(cronExpression, {
+            throwExceptionOnParseError: false,
+          })
+        );
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [appData]);
 
   const onDialogCancel = () => {
     setShowModal(false);
   };
 
-  const onDialogSave = async (data: WorkflowExtraConfig) => {
+  const onDialogOpen = () => {
+    setScheduleValue(
+      (appData.appSchedule as AppScheduleClass)?.cronExpression ?? undefined
+    );
+    setIsScheduleValid(true);
+    setShowModal(true);
+  };
+
+  const onDialogSave = async () => {
     setIsSaveLoading(true);
-    await onSave(data.cron ?? '');
+    await onSave(scheduleValue ?? '');
     setIsSaveLoading(false);
     setShowModal(false);
   };
@@ -115,7 +180,7 @@ const AppSchedule = ({
 
   const appRunHistory = useMemo(() => {
     if (
-      !appData.deleted &&
+      !isAppDisabled &&
       (appData.appType === AppType.Internal || isPipelineDeployed)
     ) {
       return (
@@ -129,10 +194,10 @@ const AppSchedule = ({
       );
     }
 
-    if (appData.deleted) {
+    if (isAppDisabled) {
       return (
         <Typography.Text>
-          {t('message.application-disabled-message')}
+          {disabledReason ?? t('message.application-disabled-message')}
         </Typography.Text>
       );
     }
@@ -142,31 +207,26 @@ const AppSchedule = ({
         {t('message.no-ingestion-pipeline-found')}
       </Typography.Text>
     );
-  }, [appData, isPipelineDeployed, appRunsHistoryRef]);
+  }, [
+    appData,
+    disabledReason,
+    isAppDisabled,
+    isPipelineDeployed,
+    appRunsHistoryRef,
+    jsonSchema,
+    t,
+  ]);
 
-  const { initialOptions, initialData, defaultCron } = useMemo(() => {
+  const { initialOptions, defaultCron } = useMemo(() => {
     return {
       initialOptions: applicationsClassBase.getScheduleOptionsForApp(
         appData.name,
         appData.appType,
         pipelineSchedules
       ),
-      initialData: {
-        cron: (appData.appSchedule as AppScheduleClass)?.cronExpression,
-      },
       defaultCron: getCronDefaultValue(appData?.name ?? ''),
     };
-  }, [appData.name, appData.appType, appData.appSchedule, pipelineSchedules]);
-
-  const translatedSchedularOptions = useMemo(
-    () =>
-      SCHEDULAR_OPTIONS.map((option) => ({
-        ...option,
-        title: t(option.title),
-        description: t(option.description),
-      })),
-    [t]
-  );
+  }, [appData.name, appData.appType, pipelineSchedules]);
 
   useEffect(() => {
     fetchPipelineDetails();
@@ -180,42 +240,18 @@ const AppSchedule = ({
     <>
       <Row>
         <Col className="flex-col" flex="auto">
-          {appData.appSchedule && (
-            <>
-              <div className="d-flex items-center gap-2">
-                <Typography.Text className="right-panel-label">
-                  {t('label.schedule-type')}
-                </Typography.Text>
-                <Typography.Text
-                  className="font-medium"
-                  data-testid="schedule-type">
-                  {(appData.appSchedule as AppScheduleClass).scheduleTimeline ??
-                    ''}
-                </Typography.Text>
-              </div>
-
-              {!isEmpty(cronString) && (
-                <div className="d-flex items-center gap-2">
-                  <Typography.Text className="right-panel-label">
-                    {t('label.schedule-interval')}
-                  </Typography.Text>
-                  <Typography.Text
-                    className="font-medium"
-                    data-testid="cron-string">
-                    {cronString}
-                  </Typography.Text>
-                </div>
-              )}
-            </>
-          )}
+          <AppScheduleSummary
+            appSchedule={appData.appSchedule}
+            cronString={cronString}
+          />
         </Col>
-        {!appData.deleted && (
+        {!isAppDisabled && (
           <Col className="d-flex items-center justify-end" flex="200px">
             <Space>
               {appData.appType === AppType.External && (
                 <Button
                   data-testid="deploy-button"
-                  disabled={appData.deleted}
+                  disabled={isAppDisabled}
                   loading={isDeployLoading}
                   type="primary"
                   onClick={onDeployTrigger}>
@@ -226,9 +262,9 @@ const AppSchedule = ({
               {!appData.system && (
                 <Button
                   data-testid="edit-button"
-                  disabled={appData.deleted}
+                  disabled={isAppDisabled}
                   type="primary"
-                  onClick={() => setShowModal(true)}>
+                  onClick={onDialogOpen}>
                   {t('label.edit')}
                 </Button>
               )}
@@ -236,7 +272,7 @@ const AppSchedule = ({
               {showRunNowButton && (
                 <Button
                   data-testid="run-now-button"
-                  disabled={appData.deleted}
+                  disabled={isAppDisabled}
                   loading={isRunLoading}
                   type="primary"
                   onClick={onAppTrigger}>
@@ -263,19 +299,28 @@ const AppSchedule = ({
         title={t('label.update-entity', { entity: t('label.schedule') })}
         width={650}>
         <ScheduleInterval
-          isEditMode
-          buttonProps={{
-            cancelText: t('label.cancel'),
-            okText: t('label.save'),
-          }}
           defaultSchedule={defaultCron}
           includePeriodOptions={initialOptions}
-          initialData={initialData}
-          schedularOptions={translatedSchedularOptions}
-          status={isSaveLoading ? 'waiting' : 'initial'}
-          onBack={onDialogCancel}
-          onDeploy={onDialogSave}
+          value={scheduleValue}
+          onChange={setScheduleValue}
+          onValidityChange={setIsScheduleValid}
         />
+        <div className="d-flex justify-end gap-2 m-t-md">
+          <Button
+            data-testid="back-button"
+            type="link"
+            onClick={onDialogCancel}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            data-testid="deploy-button"
+            disabled={!isScheduleValid}
+            loading={isSaveLoading}
+            type="primary"
+            onClick={onDialogSave}>
+            {t('label.save')}
+          </Button>
+        </div>
       </Modal>
     </>
   );

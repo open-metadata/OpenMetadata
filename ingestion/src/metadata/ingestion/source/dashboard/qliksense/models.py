@@ -11,7 +11,6 @@
 """
 QlikSense Models
 """
-from typing import List, Optional, Union
 
 from pydantic import BaseModel
 
@@ -19,131 +18,129 @@ from pydantic import BaseModel
 
 
 class QlikDashboardMeta(BaseModel):
-    description: Optional[str] = None
-    published: Optional[bool] = None
+    description: str | None = None
+    published: bool | None = None
 
 
 class QlikDashboard(BaseModel):
-    qDocName: str
-    qDocId: str
-    qTitle: str
-    qMeta: Optional[QlikDashboardMeta] = QlikDashboardMeta()
+    qDocName: str  # noqa: N815
+    qDocId: str  # noqa: N815
+    qTitle: str  # noqa: N815
+    qMeta: QlikDashboardMeta | None = QlikDashboardMeta()  # noqa: N815
 
 
 class QlikDashboardList(BaseModel):
-    qDocList: Optional[List[QlikDashboard]] = []
+    qDocList: list[QlikDashboard] | None = []  # noqa: N815
 
 
 class QlikDashboardResult(BaseModel):
-    result: Optional[QlikDashboardList] = QlikDashboardList()
+    result: QlikDashboardList | None = QlikDashboardList()
 
 
 # sheet models
 class QlikSheetInfo(BaseModel):
-    qId: str
+    qId: str  # noqa: N815
 
 
 class QlikSheetMeta(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
+    title: str | None = None
+    description: str | None = None
 
 
 class QlikSheet(BaseModel):
-    qInfo: QlikSheetInfo
-    qMeta: Optional[QlikSheetMeta] = QlikSheetMeta()
+    qInfo: QlikSheetInfo  # noqa: N815
+    qMeta: QlikSheetMeta | None = QlikSheetMeta()  # noqa: N815
 
 
 class QlikSheetItems(BaseModel):
-    qItems: Optional[List[QlikSheet]] = []
+    qItems: list[QlikSheet] | None = []  # noqa: N815
 
 
 class QlikSheetAppObject(BaseModel):
-    qAppObjectList: Optional[QlikSheetItems] = QlikSheetItems()
+    qAppObjectList: QlikSheetItems | None = QlikSheetItems()  # noqa: N815
 
 
 class QlikSheetLayout(BaseModel):
-    qLayout: Optional[QlikSheetAppObject] = QlikSheetAppObject()
+    qLayout: QlikSheetAppObject | None = QlikSheetAppObject()  # noqa: N815
 
 
 class QlikSheetResult(BaseModel):
-    result: Optional[QlikSheetLayout] = QlikSheetLayout()
+    result: QlikSheetLayout | None = QlikSheetLayout()
 
 
 # datamodel models
 class QlikFields(BaseModel):
-    name: Optional[str] = None
-    id: Optional[str] = None
+    name: str | None = None
+    id: str | None = None
 
 
 class QlikTableConnectionProp(BaseModel):
-    tableQualifiers: Optional[List[str]] = []
+    tableQualifiers: list[str] | None = []  # noqa: N815
 
 
 class QlikTable(BaseModel):
-    tableName: Optional[str] = None
-    id: Optional[str] = None
-    connectorProperties: Optional[QlikTableConnectionProp] = QlikTableConnectionProp()
-    fields: Optional[List[QlikFields]] = []
+    tableName: str | None = None  # noqa: N815
+    id: str | None = None
+    connectorProperties: QlikTableConnectionProp | None = QlikTableConnectionProp()  # noqa: N815
+    fields: list[QlikFields] | None = []
 
 
 class QlikTablesList(BaseModel):
-    tables: Optional[List[QlikTable]] = []
+    tables: list[QlikTable] | None = []
 
 
 class QlikDataModelValue(BaseModel):
-    value: Optional[QlikTablesList] = QlikTablesList()
+    value: QlikTablesList | None = QlikTablesList()
 
 
 class QlikDataModelLayout(BaseModel):
-    qLayout: Optional[
-        Union[QlikTablesList, List[QlikDataModelValue]]
-    ] = QlikTablesList()
+    qLayout: QlikTablesList | list[QlikDataModelValue] | None = QlikTablesList()  # noqa: N815
 
 
 class QlikDataModelResult(BaseModel):
-    result: Optional[QlikDataModelLayout] = QlikDataModelLayout()
+    result: QlikDataModelLayout | None = QlikDataModelLayout()
 
 
 # GetTablesAndKeys response models
 class QlikTablesAndKeysField(BaseModel):
-    qName: Optional[str] = None
-    qOriginalFieldName: Optional[str] = None
+    qName: str | None = None  # noqa: N815
+    qOriginalFieldName: str | None = None  # noqa: N815
 
 
 class QlikTablesAndKeysTable(BaseModel):
-    qName: Optional[str] = None
-    qFields: Optional[List[QlikTablesAndKeysField]] = []
-    qConnectorProperties: Optional[QlikTableConnectionProp] = QlikTableConnectionProp()
+    qName: str | None = None  # noqa: N815
+    qFields: list[QlikTablesAndKeysField] | None = []  # noqa: N815
+    qConnectorProperties: QlikTableConnectionProp | None = QlikTableConnectionProp()  # noqa: N815
 
 
 class QlikTablesAndKeysResult(BaseModel):
-    qtr: Optional[List[QlikTablesAndKeysTable]] = []
+    qtr: list[QlikTablesAndKeysTable] | None = []
 
 
 class QlikTablesAndKeysResponse(BaseModel):
-    result: Optional[QlikTablesAndKeysResult] = QlikTablesAndKeysResult()
+    result: QlikTablesAndKeysResult | None = QlikTablesAndKeysResult()
 
 
 # script models
 class QlikScript(BaseModel):
-    qScript: Optional[str] = None
+    qScript: str | None = None  # noqa: N815
 
 
 class QlikScriptResult(BaseModel):
-    result: Optional[QlikScript] = QlikScript()
+    result: QlikScript | None = QlikScript()
 
 
 class QlikLayoutHandle(BaseModel):
-    qHandle: Optional[int] = 2
+    qHandle: int | None = 2  # noqa: N815
 
 
 class QlikLayoutValue(BaseModel):
-    value: Optional[QlikLayoutHandle] = QlikLayoutHandle()
+    value: QlikLayoutHandle | None = QlikLayoutHandle()
 
 
 class QlikQReturn(BaseModel):
-    qReturn: Optional[Union[QlikLayoutHandle, List[QlikLayoutValue]]] = []
+    qReturn: QlikLayoutHandle | list[QlikLayoutValue] | None = []  # noqa: N815
 
 
 class QlikLayoutResult(BaseModel):
-    result: Optional[QlikQReturn] = QlikQReturn()
+    result: QlikQReturn | None = QlikQReturn()

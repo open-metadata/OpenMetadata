@@ -10,14 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
+import { expect, Route } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { Domain } from '../../support/domain/Domain';
+import { BundleTestSuiteClass } from '../../support/entity/BundleTestSuiteClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  addTestCaseListFilterByFirstColumn,
+  addTestCaseListFilterByColumn,
   addTestCaseListFilterByStatus,
   addTestCaseListFilterByTable,
   addTestCaseListFilterByTestType,
@@ -27,7 +28,8 @@ import {
 import { performAdminLogin } from '../../utils/admin';
 import {
   assignSingleSelectDomain,
-  descriptionBox,
+  fillDescriptionBox,
+  getApiContext,
   redirectToHomePage,
   removeSingleSelectDomain,
   toastNotification,
@@ -50,6 +52,16 @@ const user1 = new UserClass();
 const user2 = new UserClass();
 const domain1 = new Domain();
 const domain2 = new Domain();
+const bundleTestSuite = new BundleTestSuiteClass();
+
+const createDeferred = () => {
+  let resolveDeferred: () => void = () => undefined;
+  const promise = new Promise<void>((resolve) => {
+    resolveDeferred = resolve;
+  });
+
+  return { promise, resolve: resolveDeferred };
+};
 
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -60,11 +72,201 @@ test.beforeAll(async ({ browser }) => {
   await table.createTestCase(apiContext);
   await domain1.create(apiContext);
   await domain2.create(apiContext);
+  await bundleTestSuite.createBundleTestSuite(apiContext);
   await afterAction();
+});
+
+test.afterAll(async ({ browser }) => {
+  const bundleSuiteName = bundleTestSuite.bundleTestSuiteResponseData?.name;
+
+  if (bundleSuiteName) {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await apiContext.delete(
+      `/api/v1/dataQuality/testSuites/name/${encodeURIComponent(
+        bundleSuiteName
+      )}?hardDelete=true&recursive=true`
+    );
+    await afterAction();
+  }
 });
 
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
+});
+
+test('Test suite tab switching keeps active bundle suite data after stale table suite response', async ({
+  page,
+}) => {
+  const bundleSuiteName =
+    bundleTestSuite.bundleTestSuiteResponseData?.name ?? '';
+  const tableFqn = table.entityResponseData?.fullyQualifiedName ?? '';
+  const tableSuiteRequestReceived = createDeferred();
+  const tableSuiteResponseRelease = createDeferred();
+  const tableSuiteResponseFulfilled = createDeferred();
+
+  expect(bundleSuiteName).not.toBe('');
+  expect(tableFqn).not.toBe('');
+
+  await page.route(
+    '**/api/v1/dataQuality/testSuites/search/list**',
+    async (route: Route) => {
+      const requestUrl = new URL(route.request().url());
+      const testSuiteType = requestUrl.searchParams.get('testSuiteType');
+
+      if (testSuiteType === 'basic') {
+        tableSuiteRequestReceived.resolve();
+        const tableSuiteResponse = await route.fetch();
+        await tableSuiteResponseRelease.promise;
+
+        await route.fulfill({
+          response: tableSuiteResponse,
+        });
+        tableSuiteResponseFulfilled.resolve();
+
+        return;
+      }
+
+      await route.continue();
+    }
+  );
+
+  await page.goto('/data-quality/test-suites/table-suites');
+  await tableSuiteRequestReceived.promise;
+
+  await expect(page.getByTestId('test-suite-table')).toBeVisible();
+  await expect(
+    page.getByTestId('test-suite-table').getByText(tableFqn)
+  ).not.toBeVisible();
+
+  const bundleSuiteListResponse = page.waitForResponse((response) => {
+    const responseUrl = new URL(response.url());
+
+    return (
+      responseUrl.pathname.includes(
+        '/api/v1/dataQuality/testSuites/search/list'
+      ) && responseUrl.searchParams.get('testSuiteType') === 'logical'
+    );
+  });
+
+  await page.getByTestId('bundle-suite-radio-btn').click();
+  await bundleSuiteListResponse;
+
+  const bundleSuiteSearchResponse = page.waitForResponse((response) => {
+    const responseUrl = new URL(response.url());
+
+    return (
+      responseUrl.pathname.includes(
+        '/api/v1/dataQuality/testSuites/search/list'
+      ) &&
+      responseUrl.searchParams.get('testSuiteType') === 'logical' &&
+      responseUrl.searchParams.get('q') === bundleSuiteName
+    );
+  });
+
+  await page.getByPlaceholder('Search Bundle Suites').fill(bundleSuiteName);
+  await bundleSuiteSearchResponse;
+  await expect(page.getByTestId(bundleSuiteName)).toBeVisible();
+
+  tableSuiteResponseRelease.resolve();
+  await tableSuiteResponseFulfilled.promise;
+
+  await expect(page.getByTestId(bundleSuiteName)).toBeVisible();
+  await expect(
+    page.getByTestId('test-suite-table').getByText(tableFqn)
+  ).not.toBeVisible();
+});
+
+test('Searching the bundle suites list from a later page resets to the first page', async ({
+  page,
+}) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  // The list is sorted by last result, not relevance, so the target must be
+  // the only suite the search matches for its row to be on the first page.
+  const targetSuite = `pwpagingtarget${uuid()}`;
+  const bundleSuiteListUrl = (query = '') =>
+    `/api/v1/dataQuality/testSuites/search/list?testSuiteType=logical&includeEmptyTestSuites=true${query}`;
+  const isBundleSuiteList = (url: URL) =>
+    url.pathname.endsWith('/api/v1/dataQuality/testSuites/search/list') &&
+    url.searchParams.get('testSuiteType') === 'logical';
+
+  try {
+    const createResponse = await apiContext.post(
+      '/api/v1/dataQuality/testSuites',
+      { data: { name: targetSuite } }
+    );
+
+    expect(createResponse.status()).toBe(201);
+
+    // At one suite per page, page 2 only needs a second suite (beforeAll
+    // creates one), so wait until the list has two and the target is indexed.
+    await expect
+      .poll(
+        async () => {
+          const [targetResponse, listResponse] = await Promise.all([
+            apiContext.get(
+              bundleSuiteListUrl(`&q=${encodeURIComponent(targetSuite)}`)
+            ),
+            apiContext.get(bundleSuiteListUrl()),
+          ]);
+          const targetTotal = (await targetResponse.json())?.paging?.total;
+          const listTotal = (await listResponse.json())?.paging?.total;
+
+          return targetTotal > 0 && listTotal > 1;
+        },
+        { timeout: 30_000, intervals: [1_000, 2_000, 5_000] }
+      )
+      .toBe(true);
+
+    await test.step('Go to page 2 of the bundle suites list', async () => {
+      const listResponse = page.waitForResponse((response) =>
+        isBundleSuiteList(new URL(response.url()))
+      );
+      await page.goto('/data-quality/test-suites/bundle-suites?pageSize=1');
+      await listResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      const nextPageResponse = page.waitForResponse((response) =>
+        isBundleSuiteList(new URL(response.url()))
+      );
+      await page.getByTestId('next').click();
+      await nextPageResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('page-indicator')).toContainText('2 of');
+    });
+
+    await test.step('Search for a single suite', async () => {
+      const searchResponse = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+
+        return (
+          isBundleSuiteList(url) && url.searchParams.get('q') === targetSuite
+        );
+      });
+      await page.getByTestId('searchbar').fill(targetSuite);
+      expect((await searchResponse).status()).toBe(200);
+      await waitForAllLoadersToDisappear(page);
+
+      // Keeping the page-2 offset for this single-result search rendered the
+      // "No matching suites" empty state instead (issue #33399).
+      await expect(page.getByTestId(targetSuite)).toBeVisible();
+    });
+
+    await test.step('Clearing the search returns to the first page', async () => {
+      // No network wait: the unfiltered first page can be served from the
+      // list's 30s response cache, so the request may never be sent.
+      await page.getByTestId('searchbar').clear();
+
+      await expect(page.getByTestId('page-indicator')).toContainText('1 of');
+    });
+  } finally {
+    await apiContext.delete(
+      `/api/v1/dataQuality/testSuites/name/${encodeURIComponent(
+        targetSuite
+      )}?hardDelete=true&recursive=true`
+    );
+    await afterAction();
+  }
 });
 
 test(
@@ -94,8 +296,10 @@ test(
       );
       await page.click('[data-testid="add-test-suite-btn"]');
       await initialListResponse;
-      await page.fill('[data-testid="test-suite-name"]', NEW_TEST_SUITE.name);
-      await page.locator(descriptionBox).fill(NEW_TEST_SUITE.description);
+      await page
+        .locator('[data-testid="test-suite-name"] input')
+        .fill(NEW_TEST_SUITE.name);
+      await fillDescriptionBox(page, NEW_TEST_SUITE.description);
       await page.waitForSelector(
         "[data-testid='test-case-selection-card'] [data-testid='loader']",
         { state: 'detached' }
@@ -126,13 +330,14 @@ test(
     });
 
     await test.step('Filter by Column and wait for API', async () => {
-      await addTestCaseListFilterByFirstColumn(page);
+      await addTestCaseListFilterByColumn(page, table.columnsName[0]);
     });
 
     await test.step('Reset Test Type to All and clear filters, wait for API', async () => {
       await addTestCaseListResetFilters(
         page,
-        table.entityResponseData?.fullyQualifiedName ?? ''
+        table.entityResponseData?.fullyQualifiedName ?? '',
+        table.columnsName[0]
       );
     });
 
@@ -223,7 +428,10 @@ test(
       const getOwnerList = page.waitForResponse(
         '/api/v1/search/query?q=&index=user&*'
       );
-      await page.click('.ant-tabs [id*=tab-users]');
+      await page
+        .getByTestId('select-owner-tabs')
+        .getByRole('tab', { name: 'Users' })
+        .click();
       await getOwnerList;
       await waitForAllLoadersToDisappear(page);
 
@@ -236,7 +444,10 @@ test(
       const testSuiteByOwner = page.waitForResponse(
         '/api/v1/dataQuality/testSuites/search/list?*owner=*'
       );
-      await page.click(`.ant-popover [title="${owner}"]`);
+      await page
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: owner })
+        .click();
       await testSuiteByOwner;
       await page.getByTestId(NEW_TEST_SUITE.name).waitFor({
         state: 'visible',
@@ -253,9 +464,6 @@ test(
       await ownerPage.click('[data-testid="manage-button"]');
       await ownerPage.click('[data-testid="delete-button"]');
 
-      // Click on Permanent/Hard delete option
-      await ownerPage.click('[data-testid="hard-delete-option"]');
-      await ownerPage.fill('[data-testid="confirmation-text-input"]', 'DELETE');
       const deleteResponse = ownerPage.waitForResponse(
         '/api/v1/dataQuality/testSuites/*?hardDelete=true&recursive=true'
       );

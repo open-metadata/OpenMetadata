@@ -1,7 +1,16 @@
+import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { Dot } from '@/components/foundations/dot-icon';
 import { cx } from '@/utils/cx';
 import { X as CloseX } from '@untitledui/icons';
-import type { KeyboardEventHandler, MouseEventHandler, ReactNode } from 'react';
+import type {
+  CSSProperties,
+  HTMLAttributes,
+  KeyboardEventHandler,
+  MouseEventHandler,
+  ReactNode,
+} from 'react';
+import type { Placement } from 'react-aria';
+import { Link as AriaLink } from 'react-aria-components';
 import type {
   BadgeColors,
   BadgeTypeToColorMap,
@@ -17,79 +26,79 @@ export const filledColors: Record<
   { root: string; addon: string; addonButton: string }
 > = {
   gray: {
-    root: 'tw:bg-utility-gray-50 tw:text-utility-gray-700 tw:ring-utility-gray-200',
+    root: 'tw:bg-utility-gray-50 tw:text-utility-gray-700 tw:outline-utility-gray-200',
     addon: 'tw:text-utility-gray-500',
     addonButton:
       'tw:hover:bg-utility-gray-100 tw:text-utility-gray-400 tw:hover:text-utility-gray-500',
   },
   brand: {
-    root: 'tw:bg-utility-brand-50 tw:text-utility-brand-700 tw:ring-utility-brand-200',
+    root: 'tw:bg-utility-brand-50 tw:text-utility-brand-700 tw:outline-utility-brand-200',
     addon: 'tw:text-utility-brand-500',
     addonButton:
       'tw:hover:bg-utility-brand-100 tw:text-utility-brand-400 tw:hover:text-utility-brand-500',
   },
   error: {
-    root: 'tw:bg-utility-error-50 tw:text-utility-error-700 tw:ring-utility-error-200',
+    root: 'tw:bg-utility-error-50 tw:text-utility-error-700 tw:outline-utility-error-200',
     addon: 'tw:text-utility-error-500',
     addonButton:
       'tw:hover:bg-utility-error-100 tw:text-utility-error-400 tw:hover:text-utility-error-500',
   },
   warning: {
-    root: 'tw:bg-utility-warning-50 tw:text-utility-warning-700 tw:ring-utility-warning-200',
+    root: 'tw:bg-utility-warning-50 tw:text-utility-warning-700 tw:outline-utility-warning-200',
     addon: 'tw:text-utility-warning-500',
     addonButton:
       'tw:hover:bg-utility-warning-100 tw:text-utility-warning-400 tw:hover:text-utility-warning-500',
   },
   success: {
-    root: 'tw:bg-utility-success-50 tw:text-utility-success-700 tw:ring-utility-success-200',
+    root: 'tw:bg-utility-success-50 tw:text-utility-success-700 tw:outline-utility-success-200',
     addon: 'tw:text-utility-success-500',
     addonButton:
       'tw:hover:bg-utility-success-100 tw:text-utility-success-400 tw:hover:text-utility-success-500',
   },
   'gray-blue': {
-    root: 'tw:bg-utility-gray-blue-50 tw:text-utility-gray-blue-700 tw:ring-utility-gray-blue-200',
+    root: 'tw:bg-utility-gray-blue-50 tw:text-utility-gray-blue-700 tw:outline-utility-gray-blue-200',
     addon: 'tw:text-utility-gray-blue-500',
     addonButton:
       'tw:hover:bg-utility-gray-blue-100 tw:text-utility-gray-blue-400 tw:hover:text-utility-gray-blue-500',
   },
   'blue-light': {
-    root: 'tw:bg-utility-blue-light-50 tw:text-utility-blue-light-700 tw:ring-utility-blue-light-200',
+    root: 'tw:bg-utility-blue-light-50 tw:text-utility-blue-light-700 tw:outline-utility-blue-light-200',
     addon: 'tw:text-utility-blue-light-500',
     addonButton:
       'tw:hover:bg-utility-blue-light-100 tw:text-utility-blue-light-400 tw:hover:text-utility-blue-light-500',
   },
   blue: {
-    root: 'tw:bg-utility-blue-50 tw:text-utility-blue-700 tw:ring-utility-blue-200',
+    root: 'tw:bg-utility-blue-50 tw:text-utility-blue-700 tw:outline-utility-blue-200',
     addon: 'tw:text-utility-blue-500',
     addonButton:
       'tw:hover:bg-utility-blue-100 tw:text-utility-blue-400 tw:hover:text-utility-blue-500',
   },
   indigo: {
-    root: 'tw:bg-utility-indigo-50 tw:text-utility-indigo-700 tw:ring-utility-indigo-200',
+    root: 'tw:bg-utility-indigo-50 tw:text-utility-indigo-700 tw:outline-utility-indigo-200',
     addon: 'tw:text-utility-indigo-500',
     addonButton:
       'tw:hover:bg-utility-indigo-100 tw:text-utility-indigo-400 tw:hover:text-utility-indigo-500',
   },
   purple: {
-    root: 'tw:bg-utility-purple-50 tw:text-utility-purple-700 tw:ring-utility-purple-200',
+    root: 'tw:bg-utility-purple-50 tw:text-utility-purple-700 tw:outline-utility-purple-200',
     addon: 'tw:text-utility-purple-500',
     addonButton:
       'tw:hover:bg-utility-purple-100 tw:text-utility-purple-400 tw:hover:text-utility-purple-500',
   },
   pink: {
-    root: 'tw:bg-utility-pink-50 tw:text-utility-pink-700 tw:ring-utility-pink-200',
+    root: 'tw:bg-utility-pink-50 tw:text-utility-pink-700 tw:outline-utility-pink-200',
     addon: 'tw:text-utility-pink-500',
     addonButton:
       'tw:hover:bg-utility-pink-100 tw:text-utility-pink-400 tw:hover:text-utility-pink-500',
   },
   orange: {
-    root: 'tw:bg-utility-orange-50 tw:text-utility-orange-700 tw:ring-utility-orange-200',
+    root: 'tw:bg-utility-orange-50 tw:text-utility-orange-700 tw:outline-utility-orange-200',
     addon: 'tw:text-utility-orange-500',
     addonButton:
       'tw:hover:bg-utility-orange-100 tw:text-utility-orange-400 tw:hover:text-utility-orange-500',
   },
   'blue-dark': {
-    root: 'tw:bg-utility-blue-dark-50 tw:text-utility-gray-700 tw:ring-utility-gray-blue-200',
+    root: 'tw:bg-utility-blue-dark-50 tw:text-utility-gray-700 tw:outline-utility-gray-blue-200',
     addon: 'tw:text-utility-gray-700',
     addonButton:
       'tw:hover:bg-utility-blue-dark-100 tw:text-utility-gray-700 tw:hover:text-utility-blue-dark-500',
@@ -106,21 +115,21 @@ const addonOnlyColors = Object.fromEntries(
 const withPillTypes = {
   [badgeTypes.pillColor]: {
     common:
-      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-full tw:ring-1 tw:ring-inset',
+      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-full',
     styles: filledColors,
   },
   [badgeTypes.badgeColor]: {
     common:
-      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:ring-1 tw:ring-inset',
+      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md',
     styles: filledColors,
   },
   [badgeTypes.badgeModern]: {
     common:
-      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:ring-1 tw:ring-inset tw:shadow-xs',
+      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:shadow-xs',
     styles: {
       gray: {
-        root: 'tw:bg-primary tw:text-secondary tw:ring-primary',
-        addon: 'tw:text-gray-500',
+        root: 'tw:bg-surface tw:text-secondary tw:outline-subtle',
+        addon: 'tw:text-utility-gray-500',
         addonButton:
           'tw:hover:bg-utility-gray-100 tw:text-utility-gray-400 tw:hover:text-utility-gray-500',
       },
@@ -131,17 +140,17 @@ const withPillTypes = {
 const withBadgeTypes = {
   [badgeTypes.pillColor]: {
     common:
-      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-full tw:ring-1 tw:ring-inset',
+      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-full',
     styles: filledColors,
   },
   [badgeTypes.badgeColor]: {
     common:
-      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:ring-1 tw:ring-inset',
+      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md',
     styles: filledColors,
   },
   [badgeTypes.badgeModern]: {
     common:
-      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:ring-1 tw:ring-inset tw:bg-primary tw:text-secondary tw:ring-primary tw:shadow-xs',
+      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:bg-surface tw:text-secondary tw:outline-subtle tw:shadow-xs',
     styles: addonOnlyColors,
   },
 };
@@ -150,27 +159,57 @@ export type BadgeColor<T extends BadgeTypes> = BadgeTypeToColorMap<
   typeof withPillTypes
 >[T];
 
-interface BadgeProps<T extends BadgeTypes> {
+interface BadgeProps<T extends BadgeTypes>
+  extends Omit<HTMLAttributes<HTMLSpanElement>, 'color' | 'style'> {
   type?: T;
   size?: Sizes;
   color?: BadgeColor<T>;
   children: ReactNode;
   className?: string;
+  bordered?: boolean;
+  style?: CSSProperties;
+  'data-testid'?: string;
+  /** Tooltip text shown on hover/focus */
+  tooltip?: string;
+  /** Placement of the tooltip relative to the badge */
+  tooltipPlacement?: Placement;
+  /**
+   * When provided, the badge renders as a link to this URL instead of a
+   * `<span>` — the entire visible badge (including padding) becomes the
+   * clickable/focusable target, not just its children.
+   */
+  href?: string;
 }
 
 export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
-  const { type = 'pill-color', size = 'md', color = 'gray', children } = props;
+  const {
+    type = 'pill-color',
+    size = 'md',
+    color = 'gray',
+    bordered = true,
+    children,
+    tooltip,
+    tooltipPlacement = 'top',
+    className,
+    style,
+    href,
+    'data-testid': dataTestId,
+    ...rest
+  } = props;
   const colors = withPillTypes[type];
+  const Component = href ? AriaLink : 'span';
 
   const pillSizes = {
-    sm: 'tw:py-0.5 tw:px-2 tw:text-xs tw:font-medium',
-    md: 'tw:py-0.5 tw:px-2.5 tw:text-sm tw:font-medium',
-    lg: 'tw:py-1 tw:px-3 tw:text-sm tw:font-medium',
+    xs: 'tw:py-0.5 tw:px-1.5 tw:text-[10px] tw:leading-4',
+    sm: 'tw:py-0.5 tw:px-2 tw:text-xs',
+    md: 'tw:py-0.5 tw:px-2.5 tw:text-sm',
+    lg: 'tw:py-1 tw:px-3 tw:text-sm',
   };
   const badgeSizes = {
-    sm: 'tw:py-0.5 tw:px-1.5 tw:text-xs tw:font-medium',
-    md: 'tw:py-0.5 tw:px-2 tw:text-sm tw:font-medium',
-    lg: 'tw:py-1 tw:px-2.5 tw:text-sm tw:font-medium tw:rounded-lg',
+    xs: 'tw:py-0.5 tw:px-1 tw:text-[10px] tw:leading-4',
+    sm: 'tw:py-0.5 tw:px-1.5 tw:text-xs',
+    md: 'tw:py-0.5 tw:px-2 tw:text-sm',
+    lg: 'tw:py-1 tw:px-2.5 tw:text-sm tw:rounded-lg',
   };
 
   const sizes = {
@@ -179,23 +218,46 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
     [badgeTypes.badgeModern]: badgeSizes,
   };
 
-  return (
-    <span
+  const badge = (
+    <Component
+      {...(rest as object)}
+      // `href` only exists on `AriaLink`'s props — `Component` is `'span' |
+      // typeof AriaLink`, so TS can't narrow which one applies here; safe
+      // since `href` is only ever set when `Component` is `AriaLink`.
       className={cx(
         colors.common,
         sizes[type][size],
         colors.styles[color].root,
-        props.className
-      )}>
+        bordered && 'tw:outline-1 tw:-outline-offset-1',
+        // A linked badge must look identical to a non-linked one — no
+        // browser default underline/link color, and it must inherit the
+        // badge's own text color rather than react-aria-components' link styles.
+        href && 'tw:text-inherit tw:no-underline',
+        className
+      )}
+      data-testid={dataTestId}
+      href={href as never}
+      style={style}>
       {children}
-    </span>
+    </Component>
   );
+
+  if (tooltip) {
+    return (
+      <Tooltip placement={tooltipPlacement} title={tooltip}>
+        {badge}
+      </Tooltip>
+    );
+  }
+
+  return badge;
 };
 
 interface BadgeWithDotProps<T extends BadgeTypes> {
   type?: T;
   size?: Sizes;
   color?: BadgeTypeToColorMap<typeof withBadgeTypes>[T];
+  bordered?: boolean;
   className?: string;
   children: ReactNode;
 }
@@ -207,6 +269,7 @@ export const BadgeWithDot = <T extends BadgeTypes>(
     size = 'md',
     color = 'gray',
     type = 'pill-color',
+    bordered = true,
     className,
     children,
   } = props;
@@ -214,15 +277,17 @@ export const BadgeWithDot = <T extends BadgeTypes>(
   const colors = withBadgeTypes[type];
 
   const pillSizes = {
-    sm: 'tw:gap-1 tw:py-0.5 tw:pl-1.5 tw:pr-2 tw:text-xs tw:font-medium',
-    md: 'tw:gap-1.5 tw:py-0.5 tw:pl-2 tw:pr-2.5 tw:text-sm tw:font-medium',
-    lg: 'tw:gap-1.5 tw:py-1 tw:pl-2.5 tw:pr-3 tw:text-sm tw:font-medium',
+    xs: 'tw:gap-0.5 tw:py-0.5 tw:pl-1 tw:pr-1.5 tw:text-[10px] tw:leading-4',
+    sm: 'tw:gap-1 tw:py-0.5 tw:pl-1.5 tw:pr-2 tw:text-xs',
+    md: 'tw:gap-1.5 tw:py-0.5 tw:pl-2 tw:pr-2.5 tw:text-sm',
+    lg: 'tw:gap-1.5 tw:py-1 tw:pl-2.5 tw:pr-3 tw:text-sm',
   };
 
   const badgeSizes = {
-    sm: 'tw:gap-1 tw:py-0.5 tw:px-1.5 tw:text-xs tw:font-medium',
-    md: 'tw:gap-1.5 tw:py-0.5 tw:px-2 tw:text-sm tw:font-medium',
-    lg: 'tw:gap-1.5 tw:py-1 tw:px-2.5 tw:text-sm tw:font-medium tw:rounded-lg',
+    xs: 'tw:gap-0.5 tw:py-0.5 tw:px-1 tw:text-[10px] tw:leading-4',
+    sm: 'tw:gap-1 tw:py-0.5 tw:px-1.5 tw:text-xs',
+    md: 'tw:gap-1.5 tw:py-0.5 tw:px-2 tw:text-sm',
+    lg: 'tw:gap-1.5 tw:py-1 tw:px-2.5 tw:text-sm tw:rounded-lg',
   };
 
   const sizes = {
@@ -237,6 +302,7 @@ export const BadgeWithDot = <T extends BadgeTypes>(
         colors.common,
         sizes[type][size],
         colors.styles[color].root,
+        bordered && 'tw:outline-1 tw:-outline-offset-1',
         className
       )}>
       <Dot className={colors.styles[color].addon} size="sm" />
@@ -252,6 +318,7 @@ interface BadgeWithIconProps<T extends BadgeTypes> {
   iconLeading?: IconComponentType;
   iconTrailing?: IconComponentType;
   children: ReactNode;
+  bordered?: boolean;
   className?: string;
 }
 
@@ -262,6 +329,7 @@ export const BadgeWithIcon = <T extends BadgeTypes>(
     size = 'md',
     color = 'gray',
     type = 'pill-color',
+    bordered = true,
     iconLeading: IconLeading,
     iconTrailing: IconTrailing,
     children,
@@ -273,6 +341,12 @@ export const BadgeWithIcon = <T extends BadgeTypes>(
   const icon = IconLeading ? 'leading' : 'trailing';
 
   const pillSizes = {
+    xs: {
+      trailing:
+        'tw:gap-0.5 tw:py-0.5 tw:pl-1.5 tw:pr-1 tw:text-[10px] tw:leading-4 tw:font-medium',
+      leading:
+        'tw:gap-0.5 tw:py-0.5 tw:pr-1.5 tw:pl-1 tw:text-[10px] tw:leading-4 tw:font-medium',
+    },
     sm: {
       trailing:
         'tw:gap-0.5 tw:py-0.5 tw:pl-2 tw:pr-1.5 tw:text-xs tw:font-medium',
@@ -290,6 +364,12 @@ export const BadgeWithIcon = <T extends BadgeTypes>(
     },
   };
   const badgeSizes = {
+    xs: {
+      trailing:
+        'tw:gap-0.5 tw:py-0.5 tw:pl-1.5 tw:pr-1 tw:text-[10px] tw:leading-4 tw:font-medium',
+      leading:
+        'tw:gap-0.5 tw:py-0.5 tw:pr-1.5 tw:pl-1 tw:text-[10px] tw:leading-4 tw:font-medium',
+    },
     sm: {
       trailing:
         'tw:gap-0.5 tw:py-0.5 tw:pl-2 tw:pr-1.5 tw:text-xs tw:font-medium',
@@ -321,6 +401,7 @@ export const BadgeWithIcon = <T extends BadgeTypes>(
         colors.common,
         sizes[type][size][icon],
         colors.styles[color].root,
+        bordered && 'tw:outline-1 tw:-outline-offset-1',
         className
       )}>
       {IconLeading && (
@@ -343,6 +424,7 @@ interface BadgeWithFlagProps<T extends BadgeTypes> {
   size?: Sizes;
   flag?: FlagTypes;
   color?: BadgeTypeToColorMap<typeof withPillTypes>[T];
+  bordered?: boolean;
   children: ReactNode;
 }
 
@@ -354,17 +436,20 @@ export const BadgeWithFlag = <T extends BadgeTypes>(
     color = 'gray',
     flag = 'AU',
     type = 'pill-color',
+    bordered = true,
     children,
   } = props;
 
   const colors = withPillTypes[type];
 
   const pillSizes = {
+    xs: 'tw:gap-0.5 tw:py-0.5 tw:pl-0.5 tw:pr-1.5 tw:text-[10px] tw:leading-4 tw:font-medium',
     sm: 'tw:gap-1 tw:py-0.5 tw:pl-0.75 tw:pr-2 tw:text-xs tw:font-medium',
     md: 'tw:gap-1.5 tw:py-0.5 tw:pl-1 tw:pr-2.5 tw:text-sm tw:font-medium',
     lg: 'tw:gap-1.5 tw:py-1 tw:pl-1.5 tw:pr-3 tw:text-sm tw:font-medium',
   };
   const badgeSizes = {
+    xs: 'tw:gap-0.5 tw:py-0.5 tw:pl-0.5 tw:pr-1 tw:text-[10px] tw:leading-4 tw:font-medium',
     sm: 'tw:gap-1 tw:py-0.5 tw:pl-1 tw:pr-1.5 tw:text-xs tw:font-medium',
     md: 'tw:gap-1.5 tw:py-0.5 tw:pl-1.5 tw:pr-2 tw:text-sm tw:font-medium',
     lg: 'tw:gap-1.5 tw:py-1 tw:pl-2 tw:pr-2.5 tw:text-sm tw:font-medium tw:rounded-lg',
@@ -381,7 +466,8 @@ export const BadgeWithFlag = <T extends BadgeTypes>(
       className={cx(
         colors.common,
         sizes[type][size],
-        colors.styles[color].root
+        colors.styles[color].root,
+        bordered && 'tw:outline-1 tw:-outline-offset-1'
       )}>
       <img
         alt={`${flag} flag`}
@@ -398,6 +484,7 @@ interface BadgeWithImageProps<T extends BadgeTypes> {
   size?: Sizes;
   imgSrc: string;
   color?: BadgeTypeToColorMap<typeof withPillTypes>[T];
+  bordered?: boolean;
   children: ReactNode;
 }
 
@@ -408,6 +495,7 @@ export const BadgeWithImage = <T extends BadgeTypes>(
     size = 'md',
     color = 'gray',
     type = 'pill-color',
+    bordered = true,
     imgSrc,
     children,
   } = props;
@@ -415,11 +503,13 @@ export const BadgeWithImage = <T extends BadgeTypes>(
   const colors = withPillTypes[type];
 
   const pillSizes = {
+    xs: 'tw:gap-0.5 tw:py-0.5 tw:pl-0.5 tw:pr-1.5 tw:text-[10px] tw:leading-4 tw:font-medium',
     sm: 'tw:gap-1 tw:py-0.5 tw:pl-0.75 tw:pr-2 tw:text-xs tw:font-medium',
     md: 'tw:gap-1.5 tw:py-0.5 tw:pl-1 tw:pr-2.5 tw:text-sm tw:font-medium',
     lg: 'tw:gap-1.5 tw:py-1 tw:pl-1.5 tw:pr-3 tw:text-sm tw:font-medium',
   };
   const badgeSizes = {
+    xs: 'tw:gap-0.5 tw:py-0.5 tw:pl-0.5 tw:pr-1 tw:text-[10px] tw:leading-4 tw:font-medium',
     sm: 'tw:gap-1 tw:py-0.5 tw:pl-1 tw:pr-1.5 tw:text-xs tw:font-medium',
     md: 'tw:gap-1.5 tw:py-0.5 tw:pl-1.5 tw:pr-2 tw:text-sm tw:font-medium',
     lg: 'tw:gap-1.5 tw:py-1 tw:pl-2 tw:pr-2.5 tw:text-sm tw:font-medium tw:rounded-lg',
@@ -436,10 +526,11 @@ export const BadgeWithImage = <T extends BadgeTypes>(
       className={cx(
         colors.common,
         sizes[type][size],
-        colors.styles[color].root
+        colors.styles[color].root,
+        bordered && 'tw:outline-1 tw:-outline-offset-1'
       )}>
       <img
-        alt="Badge image"
+        alt="Badge"
         className="tw:size-4 tw:max-w-none tw:rounded-full"
         src={imgSrc}
       />
@@ -448,12 +539,16 @@ export const BadgeWithImage = <T extends BadgeTypes>(
   );
 };
 
-interface BadgeWithButtonProps<T extends BadgeTypes> {
+interface BadgeWithButtonProps<T extends BadgeTypes>
+  extends Omit<HTMLAttributes<HTMLSpanElement>, 'color' | 'style' | 'onClick'> {
   type?: T;
   size?: Sizes;
   icon?: IconComponentType;
   color?: BadgeTypeToColorMap<typeof withPillTypes>[T];
+  bordered?: boolean;
   children: ReactNode;
+  className?: string;
+  style?: CSSProperties;
   /**
    * The label for the button.
    */
@@ -470,6 +565,15 @@ interface BadgeWithButtonProps<T extends BadgeTypes> {
    * Whether the button is disabled.
    */
   isDisabled?: boolean;
+  'data-testid'?: string;
+  /**
+   * The data-testid for the button.
+   */
+  buttonTestId?: string;
+  /** Tooltip text shown on hover/focus */
+  tooltip?: string;
+  /** Placement of the tooltip relative to the badge */
+  tooltipPlacement?: Placement;
 }
 
 export const BadgeWithButton = <T extends BadgeTypes>(
@@ -479,21 +583,31 @@ export const BadgeWithButton = <T extends BadgeTypes>(
     size = 'md',
     color = 'gray',
     type = 'pill-color',
+    bordered = true,
     icon: Icon = CloseX,
     buttonLabel,
+    buttonTestId,
     children,
     isDisabled,
     onButtonKeyDown,
+    tooltip,
+    tooltipPlacement = 'top',
+    className,
+    style,
+    'data-testid': dataTestId,
+    ...rest
   } = props;
 
   const colors = withPillTypes[type];
 
   const pillSizes = {
+    xs: 'tw:gap-0.5 tw:py-0.5 tw:pl-1.5 tw:pr-0.5 tw:text-[10px] tw:leading-4 tw:font-medium',
     sm: 'tw:gap-0.5 tw:py-0.5 tw:pl-2 tw:pr-0.75 tw:text-xs tw:font-medium',
     md: 'tw:gap-0.5 tw:py-0.5 tw:pl-2.5 tw:pr-1 tw:text-sm tw:font-medium',
     lg: 'tw:gap-0.5 tw:py-1 tw:pl-3 tw:pr-1.5 tw:text-sm tw:font-medium',
   };
   const badgeSizes = {
+    xs: 'tw:gap-0.5 tw:py-0.5 tw:pl-1 tw:pr-0.5 tw:text-[10px] tw:leading-4 tw:font-medium',
     sm: 'tw:gap-0.5 tw:py-0.5 tw:pl-1.5 tw:pr-0.75 tw:text-xs tw:font-medium',
     md: 'tw:gap-0.5 tw:py-0.5 tw:pl-2 tw:pr-1 tw:text-sm tw:font-medium',
     lg: 'tw:gap-0.5 tw:py-1 tw:pl-2.5 tw:pr-1.5 tw:text-sm tw:font-medium tw:rounded-lg',
@@ -505,14 +619,30 @@ export const BadgeWithButton = <T extends BadgeTypes>(
     [badgeTypes.badgeModern]: badgeSizes,
   };
 
+  // The tooltip wraps only `children` (label/icon content), never the whole span —
+  // the span also contains the delete <button>, and Tooltip must not wrap a
+  // container whose children include an interactive element (see tooltip.tsx).
+  const content = tooltip ? (
+    <Tooltip placement={tooltipPlacement} title={tooltip}>
+      <span className="tw:contents">{children}</span>
+    </Tooltip>
+  ) : (
+    children
+  );
+
   return (
     <span
+      {...rest}
       className={cx(
         colors.common,
         sizes[type][size],
-        colors.styles[color].root
-      )}>
-      {children}
+        colors.styles[color].root,
+        bordered && 'tw:outline-1 tw:-outline-offset-1',
+        className
+      )}
+      data-testid={dataTestId}
+      style={style}>
+      {content}
       <button
         aria-label={buttonLabel}
         className={cx(
@@ -523,6 +653,7 @@ export const BadgeWithButton = <T extends BadgeTypes>(
           colors.styles[color].addonButton,
           type === 'pill-color' ? 'tw:rounded-full' : 'tw:rounded-[3px]'
         )}
+        data-testid={buttonTestId}
         disabled={isDisabled}
         type="button"
         onClick={props.onButtonClick}
@@ -538,6 +669,7 @@ interface BadgeIconProps<T extends BadgeTypes> {
   size?: Sizes;
   icon: IconComponentType;
   color?: BadgeTypeToColorMap<typeof withPillTypes>[T];
+  bordered?: boolean;
   children?: ReactNode;
 }
 
@@ -546,18 +678,21 @@ export const BadgeIcon = <T extends BadgeTypes>(props: BadgeIconProps<T>) => {
     size = 'md',
     color = 'gray',
     type = 'pill-color',
+    bordered = true,
     icon: Icon,
   } = props;
 
   const colors = withPillTypes[type];
 
   const pillSizes = {
+    xs: 'tw:p-1',
     sm: 'tw:p-1.25',
     md: 'tw:p-1.5',
     lg: 'tw:p-2',
   };
 
   const badgeSizes = {
+    xs: 'tw:p-1',
     sm: 'tw:p-1.25',
     md: 'tw:p-1.5',
     lg: 'tw:p-2 tw:rounded-lg',
@@ -574,7 +709,8 @@ export const BadgeIcon = <T extends BadgeTypes>(props: BadgeIconProps<T>) => {
       className={cx(
         colors.common,
         sizes[type][size],
-        colors.styles[color].root
+        colors.styles[color].root,
+        bordered && 'tw:outline-1 tw:-outline-offset-1'
       )}>
       <Icon
         className={cx('tw:size-3 tw:stroke-[3px]', colors.styles[color].addon)}

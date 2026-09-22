@@ -13,11 +13,7 @@
 
 import { AnalyticsData } from './../components/WebAnalytics/WebAnalytics.interface';
 import { postWebAnalyticEvent } from './../rest/WebAnalyticsAPI';
-import {
-  getAnalyticInstance,
-  getReferrerPath,
-  trackCustomEvent,
-} from './WebAnalyticsUtils';
+import { getAnalyticInstance, trackPageView } from './WebAnalyticsUtils';
 
 const userId = 'userId';
 
@@ -55,23 +51,22 @@ const MOCK_ANALYTICS_DATA: AnalyticsData = {
   },
 };
 
-const CUSTOM_EVENT_PAYLOAD = {
-  eventType: 'CustomEvent',
+const EXPECTED_PAGE_VIEW_PAYLOAD = {
+  eventType: 'PageView',
   eventData: {
-    url: '/',
     fullUrl: 'http://localhost/',
-    hostname: 'localhost',
-    eventType: 'CLICK',
+    url: '/',
+    userId: 'test',
     sessionId: '19c85e4f-7679-4fba-813f-e72108d914c4',
-    eventValue: 'Explore',
   },
   timestamp: 1680246874535,
 };
 
-const mockReferrer =
-  'http://localhost:3000/settings/members/teams/Organization';
-
 describe('Web Analytics utils', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('getAnalyticInstance Should return the analytic instance and must have plugins, storage, page and setAnonymousId property', () => {
     const instance = getAnalyticInstance(userId);
 
@@ -84,21 +79,17 @@ describe('Web Analytics utils', () => {
     expect(instance).toHaveProperty('setAnonymousId');
   });
 
-  it('getReferrerPath should return pathname if url is correct', () => {
-    const pathname = getReferrerPath(mockReferrer);
+  it('trackPageView should send only the minimum payload required for DAU/MAU and entity view aggregation', () => {
+    trackPageView(MOCK_ANALYTICS_DATA, 'test');
 
-    expect(pathname).toBe('/settings/members/teams/Organization');
+    expect(postWebAnalyticEvent).toHaveBeenCalledWith(
+      EXPECTED_PAGE_VIEW_PAYLOAD
+    );
   });
 
-  it('getReferrerPath should return empty string if url is incorrect', () => {
-    const pathname = getReferrerPath('incorrectURL');
+  it('trackPageView should be a no-op when userId is missing', () => {
+    trackPageView(MOCK_ANALYTICS_DATA, undefined);
 
-    expect(pathname).toBe('');
-  });
-
-  it('trackCustomEvent should call postWebAnalyticEvent', () => {
-    trackCustomEvent(MOCK_ANALYTICS_DATA, 'test');
-
-    expect(postWebAnalyticEvent).toHaveBeenCalledWith(CUSTOM_EVENT_PAYLOAD);
+    expect(postWebAnalyticEvent).not.toHaveBeenCalled();
   });
 });

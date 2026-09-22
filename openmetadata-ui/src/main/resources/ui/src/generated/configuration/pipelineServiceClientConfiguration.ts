@@ -61,8 +61,14 @@ export interface PipelineServiceClientConfiguration {
     /**
      * Additional parameters to initialize the PipelineServiceClient.
      */
-    parameters?:           { [key: string]: any };
-    secretsManagerLoader?: SecretsManagerClientLoader;
+    parameters?: { [key: string]: any };
+    /**
+     * How long a `queued` pipeline status recorded when triggering a run stays visible before
+     * it is treated as stale and hidden. Covers runs that the orchestrator accepted but never
+     * started.
+     */
+    queuedStatusTimeoutSeconds?: number;
+    secretsManagerLoader?:       SecretsManagerClientLoader;
     /**
      * OpenMetadata Client SSL configuration. This SSL information is about the OpenMetadata
      * server. It will be picked up from the pipelineServiceClient to use/ignore SSL when
@@ -255,10 +261,6 @@ export enum AuthProvider {
  */
 export interface LogStorageConfiguration {
     /**
-     * Size of async buffer in MB for batching log writes
-     */
-    asyncBufferSizeMB?: number;
-    /**
      * AWS credentials configuration
      */
     awsConfig?: AWSCredentials;
@@ -266,6 +268,14 @@ export interface LogStorageConfiguration {
      * S3 bucket name for storing logs (required for S3 type)
      */
     bucketName?: string;
+    /**
+     * How often the sweeper wakes up to check for abandoned streams
+     */
+    cleanupIntervalMinutes?: number;
+    /**
+     * Triggers an out-of-band flush when pendingFlush exceeds this size
+     */
+    earlyFlushWatermarkBytes?: number;
     /**
      * Enable it for pipelines deployed in the server
      */
@@ -287,6 +297,14 @@ export interface LogStorageConfiguration {
      */
     maxConcurrentStreams?: number;
     /**
+     * Periodic cadence for flushing pendingFlush to partial.txt
+     */
+    partialFlushIntervalMinutes?: number;
+    /**
+     * Emit an alerting metric after this many consecutive failed flushes for a stream
+     */
+    pendingFlushAlertAfterFailures?: number;
+    /**
      * S3 key prefix for organizing logs
      */
     prefix?: string;
@@ -299,7 +317,7 @@ export interface LogStorageConfiguration {
      */
     storageClass?: StorageClass;
     /**
-     * Timeout in minutes for idle log streams before automatic cleanup
+     * Idle threshold in minutes before the abandoned-run sweeper finalizes a stream
      */
     streamTimeoutMinutes?: number;
     /**

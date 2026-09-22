@@ -14,6 +14,12 @@ public class EntityReindexContext {
   String originalIndex;
   String activeIndex;
   String stagedIndex;
+
+  /** Staged vector-chunk generation of the run this callback belongs to; null outside staged
+   * chunk recreates. Binds per-type completion marks to their run (a later, unrelated run's
+   * callbacks must never complete or promote a stale staged generation). */
+  String stagedChunkIndex;
+
   String canonicalAliases;
   Set<String> existingAliases;
   Set<String> parentAliases;

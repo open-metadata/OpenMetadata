@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
@@ -62,7 +63,12 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
     if (testSuite == null) return;
     doc.put("testSuite", testSuite.getEntityReference());
     if (testSuite.getBasicEntityReference() != null) {
-      TestSuiteIndex.addTestSuiteParentEntityRelations(testSuite.getBasicEntityReference(), doc);
+      Table linkedTable =
+          TestSuiteIndex.addTestSuiteParentEntityRelations(
+              testSuite.getBasicEntityReference(), doc);
+      if (linkedTable != null && linkedTable.getCertification() != null) {
+        doc.put("certification", linkedTable.getCertification());
+      }
     }
   }
 
@@ -72,7 +78,7 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
     fields.put("testCaseReference.displayName", 15.0f);
     fields.put("testCaseReference.name", 10.0f);
     fields.put("testCaseReference.description", 1.0f);
-    fields.put("testCaseResolutionStatusDetails.resolved.testCaseFailureComment", 10.0f);
+    fields.put("testCaseResolutionStatusDetails.testCaseFailureComment", 10.0f);
     return fields;
   }
 }

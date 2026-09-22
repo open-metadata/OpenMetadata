@@ -22,6 +22,11 @@ import {
   GlobalSettingsMenuCategory,
 } from './GlobalSettings.constants';
 
+export const KNOWLEDGE_CENTER_CLASSIFICATION = 'KnowledgeCenter';
+export const CREATE_PAGE_HASH = 'create';
+export const SHORT_DELAY = 3000;
+export const LONG_DELAY = 10000;
+
 export const LITE_GRAY_COLOR = '#DBE0EB';
 export const TEXT_BODY_COLOR = '#37352F';
 export const TEXT_GREY_MUTED = '#757575';
@@ -40,6 +45,7 @@ export const HOVER_CHART_OPACITY = 0.3;
 export const LOGGED_IN_USER_STORAGE_KEY = 'loggedInUsers';
 export const DOMAIN_STORAGE_KEY = 'om_domains';
 export const DEFAULT_DOMAIN_VALUE = 'All Domains';
+export const DOMAIN_ONLY_ACCESS_ROLE = 'DomainOnlyAccessRole';
 export const REFRESH_TOKEN_KEY = 'refreshToken';
 
 export const USER_DATA_SIZE = 5;
@@ -56,7 +62,6 @@ export const AGGREGATE_PAGE_SIZE_LARGE = 1000;
 export const ES_MAX_PAGE_SIZE = 10000;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
-export const LINEAGE_CHILD_ITEMS_PER_PAGE = 10;
 export const TAG_LIST_SIZE = 3;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
 export const MAX_NAME_LENGTH = 256;
@@ -115,8 +120,6 @@ export const PLACEHOLDER_USER_BOT = ':bot';
 export const PLACEHOLDER_WEBHOOK_TYPE = ':webhookType';
 export const PLACEHOLDER_RULE_NAME = ':ruleName';
 export const PLACEHOLDER_DASHBOARD_TYPE = ':dashboardType';
-export const LOG_ENTITY_TYPE = ':logEntityType';
-export const LOG_ENTITY_NAME = ':logEntityName';
 export const PLACEHOLDER_ACTION = ':action';
 export const PLACEHOLDER_ROUTE_DIMENSION_KEY = ':dimensionKey';
 
@@ -144,11 +147,29 @@ export const ROUTES = {
   EXPLORE: '/explore',
   EXPLORE_WITH_TAB: `/explore/${PLACEHOLDER_ROUTE_TAB}`,
   ONTOLOGY_EXPLORER: '/governance/ontology',
+  SPARQL_PLAYGROUND: '/governance/sparql',
   WORKFLOWS: '/workflows',
   WORKFLOWS_WITH_FQN_TAB: `/workflows/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   SQL_BUILDER: '/sql-builder',
   SETTINGS: `/settings`,
   KNOWLEDGE_CENTER_PAGE: '/knowledge-center',
+  KNOWLEDGE_CENTER: '/knowledge-center',
+  KNOWLEDGE_PAGE_VERSION: `/knowledge-center/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+  CONTEXT_CENTER: '/context-center',
+  CONTEXT_CENTER_WITH_TAB: `/context-center/${PLACEHOLDER_ROUTE_TAB}`,
+  CONTEXT_CENTER_OVERVIEW: '/context-center/overview',
+  CONTEXT_CENTER_ARTICLES: '/context-center/articles',
+  CONTEXT_CENTER_ARTICLE_DETAIL: `/context-center/articles/${PLACEHOLDER_ROUTE_FQN}`,
+  CONTEXT_CENTER_ARTICLE_DETAIL_WITH_TAB: `/context-center/articles/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  CONTEXT_CENTER_ARTICLE_DETAIL_WITH_SUB_TAB: `/context-center/articles/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
+  CONTEXT_CENTER_ARTICLE_VERSION: `/context-center/articles/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+  CONTEXT_CENTER_DOCUMENTS: '/context-center/documents',
+  CONTEXT_CENTER_FILTER: '/context-center/filter',
+  CONTEXT_CENTER_MEMORIES: '/context-center/memories',
+  CONTEXT_CENTER_INTEGRATIONS: '/context-center/integrations',
+  CONTEXT_CENTER_AI_CONTEXT: '/context-center/ai-context',
+  CONTEXT_CENTER_AI_CONTEXT_DETAIL: `/context-center/ai-context/${PLACEHOLDER_ROUTE_FQN}`,
+  CONTEXT_CENTER_ARCHIVE: '/context-center/archive',
   SETTINGS_WITH_CATEGORY: `/settings/${PLACEHOLDER_SETTING_CATEGORY}`,
   SETTINGS_WITH_CATEGORY_FQN: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_FQN}`,
   SETTINGS_WITH_TAB: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}`,
@@ -210,6 +231,8 @@ export const ROUTES = {
 
   DATA_MARKETPLACE_SECTION: '/data-marketplace-section',
   DATA_MARKETPLACE: '/data-marketplace',
+  DATA_MARKETPLACE_DATA_ACCESS_REQUESTS:
+    '/data-marketplace/data-access-requests',
 
   APP_DETAILS: `/apps/${PLACEHOLDER_ROUTE_FQN}`,
   APP_DETAILS_WITH_TAB: `/apps/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
@@ -277,9 +300,6 @@ export const ROUTES = {
   TEST_CASE_DIMENSIONS: `/test-case/${PLACEHOLDER_ROUTE_FQN}/dimensions/${PLACEHOLDER_ROUTE_DIMENSION_KEY}`,
   TEST_CASE_DIMENSIONS_WITH_TAB: `/test-case/${PLACEHOLDER_ROUTE_FQN}/dimensions/${PLACEHOLDER_ROUTE_DIMENSION_KEY}/${PLACEHOLDER_ROUTE_TAB}`,
 
-  // logs viewer
-  LOGS: `/${LOG_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/logs`,
-
   DATA_INSIGHT: `/data-insights`,
   DATA_INSIGHT_WITH_TAB: `/data-insights/${PLACEHOLDER_ROUTE_TAB}`,
   KPI_LIST: `/data-insights/kpi`,
@@ -340,7 +360,12 @@ export const SOCKET_EVENTS = {
   DELETE_ENTITY_CHANNEL: 'deleteEntityChannel',
   MOVE_GLOSSARY_TERM_CHANNEL: 'moveGlossaryTermChannel',
   CHART_DATA_STREAM: 'chartDataStream',
+  QUERY_RUNNER_CHANNEL: 'queryRunnerChannel',
 };
+
+export const CACHE_WARMUP_APPLICATION_NAME = 'CacheWarmupApplication';
+
+export const MCP_APPLICATION_NAME = 'McpApplication';
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
   '/database/': [i18n.t('message.in-this-database')],
@@ -348,6 +373,7 @@ export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
 
 export const NOTIFICATION_READ_TIMER = 2500;
 export const TIER_CATEGORY = 'Tier';
+export const CERTIFICATION_CATEGORY = 'Certification';
 
 export const ENTITY_PATH = {
   tables: 'table',
@@ -379,6 +405,12 @@ export const ENTITY_PATH = {
   worksheets: 'worksheet',
   dataProductsTab: 'dataProductsTab',
   column: 'tableColumn',
+  aiApplications: 'aiApplication',
+  llmModels: 'llmModel',
+  mcpServers: 'mcpServer',
+  agentExecutions: 'agentExecution',
+  mcpExecutions: 'mcpExecution',
+  promptTemplates: 'promptTemplate',
 };
 
 export const CUSTOM_PROPERTIES_DOCS =

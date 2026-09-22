@@ -1,0 +1,426 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import {
+  Box,
+  ButtonUtility,
+  Card,
+  ClassificationTag,
+  Dot,
+  GlossaryTag,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { AxiosError } from 'axios';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
+import { OwnerType } from '../../../enums/user.enum';
+
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import type { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
+import {
+  KnowledgePage,
+  PageType,
+  QuickLink,
+  RecentlyViewedQuickLinks,
+  RecentViewedKnowledgePage,
+} from '../../../interface/knowledge-center.interface';
+import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import { t } from '../../../utils/i18next/LocalUtil';
+import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
+import {
+  addToKnowledgeCenterRecentViewed,
+  updateKnowledgeCenterRecentViewed,
+} from '../../../utils/KnowledgePageUtils';
+import { stripMarkdown } from '../../../utils/StringUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import {
+  QuickLinkFormModal,
+  QuickLinkFormModalFormData,
+} from '../QuickLinkFormModal/QuickLinkFormModal';
+
+import { Trash01 } from '@untitledui/icons';
+import { TagSource } from '../../../generated/type/tagLabel';
+import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
+import { queryClient } from '../../../queryClient';
+import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+
+export interface KnowledgeCardProps {
+  knowledgeItem: KnowledgePage;
+  onUpdateVote?: (data: VotingDataProps, id: string) => Promise<void>;
+  onFollow?: (id: string) => Promise<void>;
+  onUnFollow?: (id: string) => Promise<void>;
+  onDelete?: (id: string) => void;
+  onRefreshTagsCategory?: (value: boolean) => void;
+  readonly?: boolean;
+}
+
+interface KnowledgeCardFooterProps {
+  owners: KnowledgePage['owners'];
+  firstDomain?: NonNullable<KnowledgePage['domains']>[number];
+  tags: KnowledgePage['tags'];
+}
+
+const KnowledgeCardFooter: FC<KnowledgeCardFooterProps> = ({
+  owners,
+  firstDomain,
+  tags,
+}) => {
+  const tagList = tags ?? [];
+
+  return (
+    <Box
+      align="center"
+      className="tw:pt-2"
+      data-testid="knowledge-footer"
+      gap={3}>
+      {owners?.[0] ? (
+        <UserPopOverCard
+          showUserName
+          className="tw:text-xs tw:font-medium tw:text-secondary tw:gap-2 tw:max-w-40"
+          displayName={getEntityName(owners?.[0])}
+          profileWidth={20}
+          type={owners?.[0]?.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
+          userName={owners?.[0].name || owners?.[0].displayName}
+        />
+      ) : (
+        <Typography
+          className="tw:text-utility-gray-400"
+          data-testid="owner-name"
+          size="text-xs"
+          weight="medium">
+          {t('label.no-entity', { entity: t('label.owner') })}
+        </Typography>
+      )}
+
+      <Dot className="tw:text-fg-quaternary" size="micro" />
+      <div className="tw:max-w-40 tw:mb-0.5">
+        <Typography
+          ellipsis
+          className={
+            firstDomain ? 'tw:text-quaternary' : 'tw:text-utility-gray-400'
+          }
+          data-testid="domain-name"
+          size="text-xs"
+          weight="medium">
+          {firstDomain?.displayName ??
+            firstDomain?.name ??
+            t('label.no-entity', { entity: t('label.domain') })}
+        </Typography>
+      </div>
+
+      <span className="tw:flex-1" />
+      <Box align="center" className="tw:gap-1.5">
+        {tagList.slice(0, 2).map((tag) => {
+          const isGlossaryTerm = tag.source === TagSource.Glossary;
+          const TagComponent = isGlossaryTerm ? GlossaryTag : ClassificationTag;
+
+          return (
+            <TagComponent
+              color={tag.style?.color}
+              icon={tag.style?.iconURL}
+              key={tag.tagFQN ?? ''}
+              label={getEntityName(tag)}
+              tooltip={getEntityName(tag)}
+            />
+          );
+        })}
+        {tagList.length > 2 && (
+          <Typography
+            className="tw:text-secondary tw:whitespace-nowrap"
+            size="text-xs"
+            weight="medium">
+            +{tagList.length - 2}
+          </Typography>
+        )}
+      </Box>
+    </Box>
+  );
+};
+
+const KnowledgeCard: FC<KnowledgeCardProps> = ({
+  knowledgeItem,
+  onDelete,
+  onRefreshTagsCategory,
+  readonly = false,
+}) => {
+  const [knowledgePage, setKnowledgePage] = useState(knowledgeItem);
+
+  const {
+    name,
+    displayName = '',
+    owners = [],
+    updatedAt,
+    description = '',
+  } = knowledgePage;
+
+  const [showAddLinkModal, setShowAddLinkModal] = useState(false);
+  const [isDelete, setIsDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const {
+    preferences: { recentlyViewedQuickLinks },
+  } = useCurrentUserPreferences();
+  const { removeDraft } = useArticleDraftStore();
+  const recentlyViewed =
+    recentlyViewedQuickLinks as unknown as RecentlyViewedQuickLinks['data'];
+
+  const isQuickLink = knowledgePage.pageType === PageType.QUICK_LINK;
+  const path = isQuickLink
+    ? (knowledgePage.page as QuickLink).url
+    : contextCenterClassBase.getArticlePath(knowledgePage.fullyQualifiedName);
+
+  // Single useEntityPermissions call, `enabled: isQuickLink` — only quick-link cards render
+  // edit/delete affordances (`quickLinkActions`), matching the old `fetchPermission` call,
+  // which only ever ran inside `if (knowledgeItem.pageType === PageType.QUICK_LINK)`.
+  // Identifier is `knowledgeItem.fullyQualifiedName` (the prop), not `knowledgePage`'s (local
+  // state) — mirrors the old effect's `[knowledgeItem, fetchPermission]` dependency exactly,
+  // so a new card instance (new FQN prop) triggers a refetch via the query key. `deleted`
+  // (from `knowledgePage`, the most current local state) is a documented addition: the old
+  // `editPermission` never gated on it, but every canEdit*-consuming fetcher in this sweep is
+  // deleted-gated by convention (see KnowledgePageDetailComponent.tsx, same batch).
+  const {
+    permissions,
+    error: permissionsError,
+    canDelete,
+    canEditDisplayName,
+    canEditDescription,
+    canEditTags,
+    canEditAll,
+  } = useEntityPermissions(
+    ResourceEntity.KNOWLEDGE_PAGE,
+    knowledgeItem.fullyQualifiedName,
+    { enabled: isQuickLink, deleted: Boolean(knowledgePage.deleted) }
+  );
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
+
+  const { firstDomain } = useMemo(() => {
+    const domains = knowledgePage.domains ?? [];
+
+    return { firstDomain: domains[0] };
+  }, [knowledgePage]);
+
+  const handleQuickLinkUpdate = async (
+    formData: QuickLinkFormModalFormData
+  ) => {
+    setKnowledgePage((prevKnowledgePage) => ({
+      ...prevKnowledgePage,
+      displayName: formData.displayName,
+      description: formData.description,
+      tags: formData.tags,
+      page: {
+        url: formData.url,
+      },
+      relatedEntities: formData?.relatedEntities,
+    }));
+    onRefreshTagsCategory?.(true);
+  };
+
+  const handleToggleDelete = () => {
+    setKnowledgePage((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) => {
+      updateKnowledgeCenterRecentViewed(
+        recentlyViewed.filter((page) => page.id !== knowledgePage?.id)
+      );
+      isSoftDelete ? handleToggleDelete() : onDelete?.(knowledgePage?.id);
+      onRefreshTagsCategory?.(true);
+    },
+    [
+      knowledgePage,
+      onDelete,
+      handleToggleDelete,
+      onRefreshTagsCategory,
+      recentlyViewed,
+    ]
+  );
+
+  const quickLinkActions = useMemo(() => {
+    // `canEditAll` is ORed in explicitly alongside the three prioritized field flags to
+    // reproduce the old raw 4-term OR exactly: the old expression let a bare `EditAll: true`
+    // win unconditionally even if EditDisplayName/EditDescription/EditTags were all explicitly
+    // `false` — ORing only the three prioritized flags (which each already fall back to
+    // EditAll only when their own key is *absent*) would lose that case. Adding `canEditAll`
+    // back in as its own term restores byte-for-byte equivalence with the old expression.
+    const editPermission =
+      canEditAll || canEditDisplayName || canEditDescription || canEditTags;
+
+    return (
+      <Box align="center" gap={1}>
+        {editPermission && (
+          <ButtonUtility
+            color="tertiary"
+            data-testid="edit-quick-link-btn"
+            icon={<EditIcon height={16} width={16} />}
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+              e.stopPropagation();
+              e.preventDefault();
+              setShowAddLinkModal(true);
+            }}
+          />
+        )}
+        {canDelete && (
+          <ButtonUtility
+            color="tertiary"
+            data-testid="delete-quick-link-btn"
+            icon={<Trash01 height={16} width={16} />}
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+              e.stopPropagation();
+              e.preventDefault();
+              setIsDelete(true);
+            }}
+          />
+        )}
+      </Box>
+    );
+  }, [
+    canEditAll,
+    canEditDisplayName,
+    canEditDescription,
+    canEditTags,
+    canDelete,
+  ]);
+
+  const handleQuickLinkRecentView = useCallback(() => {
+    if (isQuickLink) {
+      addToKnowledgeCenterRecentViewed(
+        knowledgePage as RecentViewedKnowledgePage
+      );
+    }
+  }, [isQuickLink, knowledgePage]);
+
+  // Permission fetching itself now lives in useEntityPermissions (called above, gated by
+  // `enabled: isQuickLink`, keyed off `knowledgeItem.fullyQualifiedName`) — this effect keeps
+  // the one other thing the old effect did: syncing local `knowledgePage` state whenever the
+  // `knowledgeItem` prop changes.
+  useEffect(() => {
+    setKnowledgePage(knowledgeItem);
+  }, [knowledgeItem]);
+
+  return (
+    <Card
+      className="tw:flex tw:flex-col tw:cursor-pointer tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-utility-blue-200 tw:hover:-translate-y-px"
+      data-testid={`knowledge-card-${displayName || name}`}>
+      <Link
+        className="tw:flex tw:flex-col tw:gap-2.5 tw:px-5 tw:py-4.5"
+        data-testid={isQuickLink ? 'knowledge-link' : 'knowledge-page-link'}
+        style={{ textDecoration: 'none', color: 'inherit' }}
+        target={isQuickLink ? '_blank' : '_self'}
+        to={path}
+        onClick={handleQuickLinkRecentView}>
+        {/* Row 1: title + timestamp */}
+        <Box align="center" justify="between">
+          <Box align="center" className="tw:max-w-[70%]" gap={2}>
+            <Typography
+              ellipsis
+              data-testid="knowledge-card-title"
+              weight="semibold">
+              {getKnowledgePageName(knowledgePage, t)}
+            </Typography>
+            {isQuickLink && !readonly && quickLinkActions}
+          </Box>
+          <Typography
+            className="tw:text-quaternary"
+            data-testid="updated-at"
+            size="text-xs">
+            {t('label.last-edited-time', {
+              time: getShortRelativeTime(updatedAt),
+            })}
+          </Typography>
+        </Box>
+
+        {/* Row 3: plain-text description */}
+        {description.trim() ? (
+          <Typography
+            className="tw:text-tertiary tw:line-clamp-2 tw:leading-[1.55]"
+            data-testid="knowledge-card-description"
+            size="text-sm">
+            {stripMarkdown(description)}
+          </Typography>
+        ) : (
+          <Typography
+            className="tw:text-utility-gray-400"
+            data-testid="no-description"
+            size="text-sm">
+            {t('label.no-description')}
+          </Typography>
+        )}
+
+        {/* Row 4: owner · dot · domain · spacer → tags */}
+        <KnowledgeCardFooter
+          firstDomain={firstDomain}
+          owners={owners}
+          tags={knowledgePage.tags}
+        />
+      </Link>
+
+      {showAddLinkModal && (
+        <QuickLinkFormModal
+          isOpen={showAddLinkModal}
+          permissions={permissions}
+          quickLink={knowledgePage}
+          onCancel={() => setShowAddLinkModal(false)}
+          onSave={(data) => {
+            handleQuickLinkUpdate(data);
+            setShowAddLinkModal(false);
+          }}
+        />
+      )}
+      <DeleteModal
+        entityTitle={getKnowledgePageName(knowledgePage, t)}
+        isDeleting={isDeleting}
+        message={t('message.delete-entity-permanently', {
+          entityType: t('label.quick-link'),
+        })}
+        open={isDelete}
+        onCancel={() => setIsDelete(false)}
+        onDelete={async () => {
+          setIsDeleting(true);
+          try {
+            await deleteKnowledgePage(knowledgePage.id, false, true);
+            queryClient.invalidateQueries({
+              queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+            });
+            removeDraft(knowledgePage.id);
+            afterDeleteAction(false);
+          } catch (error) {
+            showErrorToast(error as AxiosError);
+          } finally {
+            setIsDeleting(false);
+            setIsDelete(false);
+          }
+        }}
+      />
+    </Card>
+  );
+};
+
+export default KnowledgeCard;

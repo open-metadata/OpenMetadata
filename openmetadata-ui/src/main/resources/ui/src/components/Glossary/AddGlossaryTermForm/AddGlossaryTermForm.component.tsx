@@ -11,17 +11,32 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
+import {
+  ColorPickerField,
+  FormSelectItem,
+  IconPickerField,
+  Owner,
+} from '@openmetadata/ui-core-components';
 import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
-
-import { isEmpty, isString } from 'lodash';
-import { useEffect } from 'react';
+import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
-import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { EntityReference } from '../../../generated/entity/type';
+import { TagSource } from '../../../generated/entity/data/container';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import {
+  CustomProperty,
+  EntityReference,
+} from '../../../generated/entity/type';
+import {
+  FieldKind,
+  IntakeForm,
+  IntakeFormField,
+  TargetEntityType,
+} from '../../../generated/governance/intakeForm';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import {
@@ -30,11 +45,175 @@ import {
   FormItemLayout,
   HelperTextType,
 } from '../../../interface/FormUtils.interface';
+import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
+import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
-import { referenceURLValidator } from '../../../utils/GlossaryUtils';
-import { fetchGlossaryList } from '../../../utils/TagsUtils';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
-import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
+import { referenceURLValidator } from '../../../utils/GlossaryPureUtils';
+import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { GlossaryPickerValue } from '../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
+import {
+  AVAILABLE_ICONS,
+  DEFAULT_GLOSSARY_TERM_ICON,
+} from '../../common/IconPicker/IconPicker.constants';
+import {
+  AddGlossaryTermFormProps,
+  IntakeFieldsSectionProps,
+  OwnersBadgeProps,
+} from './AddGlossaryTermForm.interface';
+import {
+  getGlossaryTermFqn,
+  getInitialDescription,
+  toEntityReferenceArray,
+} from './AddGlossaryTermForm.utils';
+import GlossaryTermIntakeFields, {
+  GlossaryTermIntakeFieldsHandle,
+} from './GlossaryTermIntakeFields.component';
+
+const ARRAY_VALUED_NATIVE_FIELDS = new Set(['tags', 'synonyms']);
+
+interface BuildGlossaryTermSavePayloadParams {
+  formObj: Parameters<NonNullable<FormProps['onFinish']>>[0];
+  editMode: boolean;
+  ownersList: EntityReference[];
+  reviewersList: EntityReference[];
+  currentUserId?: string;
+  glossaryTerm: GlossaryTerm | undefined;
+  extension: Record<string, unknown>;
+}
+
+// antd's injected `onChange` keeps only the first argument; forward the nodes.
+const RelatedTermsPicker = ({
+  excludeFqn,
+  value,
+  onChange,
+}: {
+  excludeFqn: string;
+  value?: GlossaryPickerValue[];
+  onChange?: (terms: GlossaryPickerValue[]) => void;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <GlossaryTermPicker
+      data-testid="related-terms"
+      // A term cannot be related to itself.
+      excludeFqns={[excludeFqn]}
+      placeholder={t('label.add-entity', {
+        entity: t('label.related-term-plural'),
+      })}
+      value={value}
+      onChange={(_terms, nodes) => onChange?.(nodes)}
+    />
+  );
+};
+
+// Seeded from the reference; the id is resolved from `relatedTerms` on submit.
+const relatedTermToPickerValue = (
+  related: EntityReference
+): GlossaryPickerValue =>
+  ({
+    tagFQN: related.fullyQualifiedName ?? '',
+    name: getEntityName(related),
+    source: TagSource.Glossary,
+  } as GlossaryPickerValue);
+
+// Create takes FQNs; edit takes ids, which a picked term carries as its entity.
+const resolveRelatedTerms = (
+  editMode: boolean,
+  relatedTerms: GlossaryPickerValue[],
+  glossaryTerm: GlossaryTerm | undefined
+) =>
+  editMode
+    ? relatedTerms
+        .map(
+          (term) =>
+            term.entity?.id ??
+            glossaryTerm?.relatedTerms?.find(
+              (r) => r.term.fullyQualifiedName === term.tagFQN
+            )?.term.id
+        )
+        .filter((id): id is string => Boolean(id))
+    : relatedTerms.map((term) => term.tagFQN);
+
+const buildGlossaryTermSavePayload = ({
+  formObj,
+  editMode,
+  ownersList,
+  reviewersList,
+  currentUserId,
+  glossaryTerm,
+  extension,
+}: BuildGlossaryTermSavePayloadParams) => {
+  const {
+    name,
+    displayName = '',
+    description = '',
+    synonyms = [],
+    tags = [],
+    mutuallyExclusive = false,
+    references = [],
+    relatedTerms = [],
+    color,
+    iconURL,
+  } = formObj;
+
+  const selectedOwners =
+    ownersList.length > 0
+      ? ownersList
+      : [
+          {
+            id: currentUserId ?? '',
+            type: 'user',
+          },
+        ];
+
+  const style = {
+    color,
+    iconURL,
+  };
+
+  return {
+    name: name.trim(),
+    displayName: displayName?.trim(),
+    description: description,
+    reviewers: reviewersList,
+    relatedTerms: resolveRelatedTerms(editMode, relatedTerms, glossaryTerm),
+    references: references.length > 0 ? references : undefined,
+    synonyms: synonyms,
+    mutuallyExclusive,
+    tags: tags,
+    owners: selectedOwners,
+    style: isEmpty(style) ? undefined : style,
+    ...(!editMode && !isEmpty(extension) ? { extension } : {}),
+  };
+};
+
+const OwnersBadge = ({ owners, testId }: OwnersBadgeProps) =>
+  Boolean(owners.length) && (
+    <Space wrap data-testid={testId} size={[8, 8]}>
+      <Owner isCompactView={false} owners={owners} showLabel={false} />
+    </Space>
+  );
+
+const IntakeFieldsSection = ({
+  editMode,
+  customPropertiesLoaded,
+  extensionFormFields,
+  customProperties,
+  intakeFieldsRef,
+}: IntakeFieldsSectionProps) =>
+  !editMode &&
+  customPropertiesLoaded &&
+  extensionFormFields.length > 0 && (
+    <GlossaryTermIntakeFields
+      customProperties={customProperties}
+      formFields={extensionFormFields}
+      ref={intakeFieldsRef}
+    />
+  );
 
 const AddGlossaryTermForm = ({
   editMode,
@@ -47,83 +226,182 @@ const AddGlossaryTermForm = ({
   const selectedOwners =
     Form.useWatch<EntityReference | EntityReference[]>('owners', form) ?? [];
   const { t } = useTranslation();
+  const [intakeForm, setIntakeForm] = useState<IntakeForm | null>(null);
+  const [customProperties, setCustomProperties] = useState<CustomProperty[]>(
+    []
+  );
+  const [customPropertiesLoaded, setCustomPropertiesLoaded] = useState(false);
+  const intakeFieldsRef = useRef<GlossaryTermIntakeFieldsHandle>(null);
 
-  const ownersList = Array.isArray(selectedOwners)
-    ? selectedOwners
-    : [selectedOwners];
+  useEffect(() => {
+    let cancelled = false;
+
+    if (editMode) {
+      setIntakeForm(null);
+
+      return;
+    }
+
+    getIntakeFormByEntityType(TargetEntityType.GlossaryTerm)
+      .then((result) => {
+        if (!cancelled) {
+          setIntakeForm(result);
+        }
+      })
+      .catch((error: AxiosError) => {
+        if (!cancelled) {
+          setIntakeForm(null);
+          showErrorToast(error);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [editMode]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (editMode) {
+      setCustomProperties([]);
+      setCustomPropertiesLoaded(true);
+
+      return;
+    }
+    setCustomPropertiesLoaded(false);
+
+    getCustomPropertiesByEntityType(TargetEntityType.GlossaryTerm)
+      .then((properties) => {
+        if (!cancelled) {
+          setCustomProperties(properties ?? []);
+          setCustomPropertiesLoaded(true);
+        }
+      })
+      .catch((error: AxiosError) => {
+        if (!cancelled) {
+          setCustomProperties([]);
+          setCustomPropertiesLoaded(true);
+          showErrorToast(error);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [editMode]);
+
+  const nativeRequiredFieldsByPath = useMemo(() => {
+    const fields = new Map<string, IntakeFormField>();
+
+    getIntakeFormFields(intakeForm).forEach((field) => {
+      const isCustomProperty =
+        field.fieldKind === FieldKind.CustomProperty ||
+        field.fieldPath.startsWith('extension.');
+
+      if (field.required && !isCustomProperty) {
+        fields.set(field.fieldPath, field);
+      }
+    });
+
+    return fields;
+  }, [intakeForm]);
+
+  const extensionFormFields = useMemo(
+    () =>
+      getIntakeFormFields(intakeForm).filter(
+        (field) =>
+          field.fieldKind === FieldKind.CustomProperty ||
+          field.fieldPath.startsWith('extension.')
+      ),
+    [intakeForm]
+  );
+
+  const applyIntakeFormRequired = useCallback(
+    (field: FieldProp): FieldProp => {
+      const requiredField = nativeRequiredFieldsByPath.get(
+        field.name.toString()
+      );
+
+      if (!requiredField) {
+        return field;
+      }
+
+      const isArrayValuedField = ARRAY_VALUED_NATIVE_FIELDS.has(
+        field.name.toString()
+      );
+
+      return {
+        ...field,
+        required: true,
+        rules: [
+          ...(field.rules ?? []),
+          {
+            required: true,
+            ...(isArrayValuedField ? { type: 'array' as const } : {}),
+            message:
+              requiredField.errorMessage ||
+              t('label.field-required', {
+                field: requiredField.fieldLabel,
+              }),
+          },
+        ],
+      };
+    },
+    [nativeRequiredFieldsByPath, t]
+  );
+
+  const ownersList = toEntityReferenceArray(selectedOwners);
 
   const reviewersData =
     Form.useWatch<EntityReference | EntityReference[]>('reviewers', form) ?? [];
 
-  const reviewersList = Array.isArray(reviewersData)
-    ? reviewersData
-    : [reviewersData];
+  const reviewersList = toEntityReferenceArray(reviewersData);
+
+  const selectedColor = Form.useWatch<string | undefined>('color', form);
+
+  const iconOptions = useMemo<FormSelectItem[]>(
+    () =>
+      [
+        DEFAULT_GLOSSARY_TERM_ICON,
+        ...AVAILABLE_ICONS.filter(
+          (icon) => icon.name !== DEFAULT_GLOSSARY_TERM_ICON.name
+        ),
+      ].map((icon) => ({
+        icon: icon.component,
+        id: icon.name,
+        label: icon.name,
+      })),
+    []
+  );
 
   const isMutuallyExclusive = Form.useWatch<boolean | undefined>(
     'mutuallyExclusive',
     form
   );
 
-  const getRelatedTermFqnList = (relatedTerms: DefaultOptionType[]): string[] =>
-    relatedTerms.map((tag: DefaultOptionType) => tag.value as string);
-
   const handleSave: FormProps['onFinish'] = async (formObj) => {
-    const {
-      name,
-      displayName = '',
-      description = '',
-      synonyms = [],
-      tags = [],
-      mutuallyExclusive = false,
-      references = [],
-      relatedTerms = [],
-      color,
-      iconURL,
-    } = formObj;
+    // The intake custom properties live in their own RHF form outside this antd
+    // Form, so antd's own validation pass cannot see them — validate explicitly
+    // and abort so RHF renders the inline errors.
+    const isIntakeValid = await (intakeFieldsRef.current?.validate() ?? true);
+    if (!editMode && !isIntakeValid) {
+      return;
+    }
 
-    const selectedOwners =
-      ownersList.length > 0
-        ? ownersList
-        : [
-            {
-              id: currentUser?.id ?? '',
-              type: 'user',
-            },
-          ];
+    const extension = editMode
+      ? {}
+      : intakeFieldsRef.current?.getExtension() ?? {};
 
-    const style = {
-      color,
-      iconURL,
-    };
-
-    const data = {
-      name: name.trim(),
-      displayName: displayName?.trim(),
-      description: description,
-      reviewers: reviewersList,
-      relatedTerms: editMode
-        ? relatedTerms.map((term: DefaultOptionType) => {
-            if (isString(term)) {
-              return glossaryTerm?.relatedTerms?.find(
-                (r) => r.fullyQualifiedName === term
-              )?.id;
-            }
-            if (term.data) {
-              return term.data.id;
-            }
-
-            return glossaryTerm?.relatedTerms?.find(
-              (r) => r.fullyQualifiedName === term.value
-            )?.id;
-          })
-        : getRelatedTermFqnList(relatedTerms),
-      references: references.length > 0 ? references : undefined,
-      synonyms: synonyms,
-      mutuallyExclusive,
-      tags: tags,
-      owners: selectedOwners,
-      style: isEmpty(style) ? undefined : style,
-    };
+    const data = buildGlossaryTermSavePayload({
+      currentUserId: currentUser?.id,
+      editMode,
+      extension,
+      formObj,
+      glossaryTerm,
+      ownersList,
+      reviewersList,
+    });
 
     await onSave(data);
   };
@@ -155,17 +433,21 @@ const AddGlossaryTermForm = ({
         tags,
         references,
         mutuallyExclusive,
-        relatedTerms: relatedTerms?.map((r) => r.fullyQualifiedName ?? ''),
+        relatedTerms: relatedTerms?.map((r) =>
+          relatedTermToPickerValue(r.term)
+        ),
       });
 
       if (reviewers) {
         form.setFieldValue('reviewers', reviewers);
       }
+      // The fields are flat (`color`, `iconURL`); writing the nested
+      // `style.*` paths here meant an existing style never reached the form.
       if (style?.color) {
-        form.setFieldValue('style.color', style.color);
+        form.setFieldValue('color', style.color);
       }
       if (style?.iconURL) {
-        form.setFieldValue('style.iconURL', style.iconURL);
+        form.setFieldValue('iconURL', style.iconURL);
       }
 
       if (owners) {
@@ -253,36 +535,50 @@ const AddGlossaryTermForm = ({
       required: false,
       label: t('label.related-term-plural'),
       id: 'root/relatedTerms',
-      type: FieldTypes.TREE_ASYNC_SELECT_LIST,
+      type: FieldTypes.COMPONENT,
       props: {
-        className: 'glossary-select',
-        'data-testid': 'related-terms',
-        mode: 'multiple',
-        placeholder: t('label.add-entity', {
-          entity: t('label.related-term-plural'),
-        }),
-        open: false,
-        hasNoActionButtons: true,
-        fetchOptions: fetchGlossaryList,
-        initialOptions: glossaryTerm?.relatedTerms?.map((data) => ({
-          label: data.fullyQualifiedName,
-          value: data.fullyQualifiedName,
-          data,
-        })),
-        filterOptions: [glossaryTerm?.fullyQualifiedName ?? ''],
+        children: (
+          <RelatedTermsPicker excludeFqn={getGlossaryTermFqn(glossaryTerm)} />
+        ),
       },
     },
+    // antd's Form.Item feeds the real `value`/`onChange` into these controlled
+    // pickers, so the `value` below only satisfies their prop types.
     {
       name: 'iconURL',
       id: 'root/iconURL',
-      label: t('label.icon-url'),
+      label: t('label.icon'),
       required: false,
-      placeholder: t('label.icon-url'),
-      type: FieldTypes.TEXT,
-      helperText: t('message.govern-url-size-message'),
+      type: FieldTypes.COMPONENT,
+      helperText: t('message.icon-aspect-ratio'),
+      helperTextType: HelperTextType.Tooltip,
+      formItemProps: {
+        getValueProps: (value) => ({ value: (value as string) ?? '' }),
+      },
       props: {
-        'data-testid': 'icon-url',
-        tooltipPlacement: 'right',
+        children: (
+          <IconPickerField
+            allowUrl
+            backgroundColor={selectedColor}
+            data-testid="icon-picker-btn"
+            defaultIcon={DEFAULT_GLOSSARY_TERM_ICON}
+            items={iconOptions}
+            labels={{
+              customIconUrl: t('label.icon-url'),
+              emptyState: t('label.no-entity-available', {
+                entity: t('label.icon-plural'),
+              }),
+              enterIconUrl: t('label.enter-entity', {
+                entity: t('label.icon-url'),
+              }),
+              iconsTab: t('label.icon-plural'),
+              urlTab: t('label.url'),
+            }}
+            name="iconURL"
+            placeholder={t('label.icon-url')}
+            value=""
+          />
+        ),
       },
     },
     {
@@ -290,13 +586,13 @@ const AddGlossaryTermForm = ({
       id: 'root/color',
       label: t('label.color'),
       required: false,
-      type: FieldTypes.COLOR_PICKER,
-      rules: [
-        {
-          pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
-        },
-      ],
+      type: FieldTypes.COMPONENT,
+      formItemProps: {
+        getValueProps: (value) => ({ value: (value as string) ?? '' }),
+      },
+      props: {
+        children: <ColorPickerField data-testid="color-picker" value="" />,
+      },
     },
     {
       name: 'mutuallyExclusive',
@@ -316,6 +612,7 @@ const AddGlossaryTermForm = ({
       showHelperText: Boolean(isMutuallyExclusive),
     },
   ];
+  const intakeAwareFormFields = formFields.map(applyIntakeFormRequired);
 
   const ownerField: FieldProp = {
     name: 'owners',
@@ -346,7 +643,7 @@ const AddGlossaryTermForm = ({
     },
   };
 
-  const reviewersField: FieldProp = {
+  const reviewersField: FieldProp = applyIntakeFormRequired({
     name: 'reviewers',
     id: 'root/reviewers',
     required: false,
@@ -374,18 +671,18 @@ const AddGlossaryTermForm = ({
       valuePropName: 'selectedUsers',
       trigger: 'onUpdate',
     },
-  };
+  });
 
   return (
     <>
       <Form
         form={form}
         initialValues={{
-          description: editMode && glossaryTerm ? glossaryTerm.description : '',
+          description: getInitialDescription(editMode, glossaryTerm),
         }}
         layout="vertical"
         onFinish={handleSave}>
-        {generateFormFields(formFields)}
+        {generateFormFields(intakeAwareFormFields)}
 
         <Form.List name="references">
           {(fields, { add, remove }) => (
@@ -466,21 +763,25 @@ const AddGlossaryTermForm = ({
         <div className="m-t-xss">
           {getField(ownerField)}
 
-          {Boolean(ownersList.length) && (
-            <Space wrap data-testid="owner-container" size={[8, 8]}>
-              <OwnerLabel owners={ownersList} />
-            </Space>
-          )}
+          <OwnersBadge owners={ownersList} testId="owner-container" />
         </div>
         <div className="m-t-xss">
           {getField(reviewersField)}
-          {Boolean(reviewersList.length) && (
-            <Space wrap data-testid="reviewers-container" size={[8, 8]}>
-              <OwnerLabel owners={reviewersList} />
-            </Space>
-          )}
+          <OwnersBadge owners={reviewersList} testId="reviewers-container" />
         </div>
       </Form>
+
+      {/* Rendered as a sibling of the antd Form, not inside it: this emits its
+          own <form> element and nesting forms is invalid HTML. The modal's Save
+          button sits in the footer outside both forms, so it still drives
+          submission via the antd instance. */}
+      <IntakeFieldsSection
+        customProperties={customProperties}
+        customPropertiesLoaded={customPropertiesLoaded}
+        editMode={editMode}
+        extensionFormFields={extensionFormFields}
+        intakeFieldsRef={intakeFieldsRef}
+      />
     </>
   );
 };

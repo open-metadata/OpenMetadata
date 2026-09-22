@@ -11,6 +11,7 @@
 """
 Test source hash stability and normalization
 """
+
 import uuid
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
@@ -20,6 +21,7 @@ from metadata.generated.schema.entity.data.table import (
     DataType,
     TableConstraint,
 )
+from metadata.generated.schema.type.assetCertification import AssetCertification
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
@@ -40,6 +42,19 @@ from metadata.utils.source_hash import (
 )
 
 
+def _certification(tag_fqn: str = "Certification.Bronze") -> AssetCertification:
+    return AssetCertification(
+        tagLabel=TagLabel(
+            tagFQN=tag_fqn,
+            source=TagSource.Classification,
+            labelType=LabelType.Automated,
+            state=State.Confirmed,
+        ),
+        appliedDate=1700000000000,
+        expiryDate=1731536000000,
+    )
+
+
 class TestNormalizeWhitespace:
     def test_normalize_whitespace_none(self):
         assert _normalize_whitespace(None) is None
@@ -52,10 +67,7 @@ class TestNormalizeWhitespace:
             id INT,
             name VARCHAR(100)
         )"""
-        assert (
-            _normalize_whitespace(text)
-            == "CREATE TABLE foo ( id INT, name VARCHAR(100) )"
-        )
+        assert _normalize_whitespace(text) == "CREATE TABLE foo ( id INT, name VARCHAR(100) )"
 
     def test_normalize_whitespace_tabs(self):
         assert _normalize_whitespace("col1\t\tcol2\n\ncol3") == "col1 col2 col3"
@@ -134,11 +146,7 @@ class TestRemoveVolatileFields:
         assert result == {"name": "owner"}
 
     def test_remove_nested_volatile(self):
-        data = {
-            "owners": [
-                {"name": "user1", "href": "http://example.com/user1", "deleted": False}
-            ]
-        }
+        data = {"owners": [{"name": "user1", "href": "http://example.com/user1", "deleted": False}]}
         result = _remove_volatile_fields(data)
         assert result == {"owners": [{"name": "user1"}]}
 
@@ -276,11 +284,7 @@ class TestNormalizeForHash:
         assert result["schemaDefinition"] == "CREATE TABLE foo ( id INT )"
 
     def test_normalize_removes_volatile_fields(self):
-        data = {
-            "owners": [
-                {"name": "user1", "href": "http://example.com", "deleted": False}
-            ]
-        }
+        data = {"owners": [{"name": "user1", "href": "http://example.com", "deleted": False}]}
         result = _normalize_for_hash(data)
         assert "href" not in result["owners"][0]
         assert "deleted" not in result["owners"][0]
@@ -348,12 +352,8 @@ class TestGenerateSourceHash:
         assert generate_source_hash(request1) == generate_source_hash(request2)
 
     def test_hash_stable_with_constraint_order_variation(self):
-        constraint_pk = TableConstraint(
-            constraintType=ConstraintType.PRIMARY_KEY, columns=["id"]
-        )
-        constraint_unique = TableConstraint(
-            constraintType=ConstraintType.UNIQUE, columns=["name"]
-        )
+        constraint_pk = TableConstraint(constraintType=ConstraintType.PRIMARY_KEY, columns=["id"])
+        constraint_unique = TableConstraint(constraintType=ConstraintType.UNIQUE, columns=["name"])
         request1 = CreateTableRequest(
             name="test_table",
             databaseSchema="service.db.schema",
@@ -375,12 +375,8 @@ class TestGenerateSourceHash:
         assert generate_source_hash(request1) == generate_source_hash(request2)
 
     def test_hash_stable_with_owner_order_variation(self):
-        owner1 = EntityReference(
-            id=uuid.uuid4(), type="user", fullyQualifiedName="team.user_a"
-        )
-        owner2 = EntityReference(
-            id=uuid.uuid4(), type="user", fullyQualifiedName="team.user_b"
-        )
+        owner1 = EntityReference(id=uuid.uuid4(), type="user", fullyQualifiedName="team.user_a")
+        owner2 = EntityReference(id=uuid.uuid4(), type="user", fullyQualifiedName="team.user_b")
         request1 = CreateTableRequest(
             name="test_table",
             databaseSchema="service.db.schema",
@@ -488,6 +484,90 @@ class TestGenerateSourceHash:
         )
         assert generate_source_hash(request1) == generate_source_hash(request2)
 
+    def test_hash_changes_with_certification_added(self):
+        request1 = CreateTableRequest(
+            name="test_table",
+            databaseSchema="service.db.schema",
+            columns=[Column(name="id", dataType=DataType.INT)],
+        )
+        request2 = CreateTableRequest(
+            name="test_table",
+            databaseSchema="service.db.schema",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            certification=_certification("Certification.Bronze"),
+        )
+        assert generate_source_hash(request1) != generate_source_hash(request2)
+
+    def test_hash_changes_with_certification_value_change(self):
+        request1 = CreateTableRequest(
+            name="test_table",
+            databaseSchema="service.db.schema",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            certification=_certification("Certification.Bronze"),
+        )
+        request2 = CreateTableRequest(
+            name="test_table",
+            databaseSchema="service.db.schema",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            certification=_certification("Certification.Gold"),
+        )
+        assert generate_source_hash(request1) != generate_source_hash(request2)
+
+    def test_hash_stable_when_certification_omitted(self):
+        request1 = CreateTableRequest(
+            name="test_table",
+            databaseSchema="service.db.schema",
+            columns=[Column(name="id", dataType=DataType.INT)],
+        )
+        request2 = CreateTableRequest(
+            name="test_table",
+            databaseSchema="service.db.schema",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            certification=None,
+        )
+        assert generate_source_hash(request1) == generate_source_hash(request2)
+
+    def test_hash_stable_with_equivalent_certification_payload(self):
+        request1 = CreateTableRequest(
+            name="test_table",
+            databaseSchema="service.db.schema",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            certification=_certification("Certification.Silver"),
+        )
+        request2 = CreateTableRequest(
+            name="test_table",
+            databaseSchema="service.db.schema",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            certification=_certification("Certification.Silver"),
+        )
+        assert generate_source_hash(request1) == generate_source_hash(request2)
+
+    def test_hash_stable_across_certification_applied_and_expiry_dates(self):
+        """appliedDate/expiryDate are always recomputed server-side from
+        AssetCertificationSettings when a certification is applied, so a
+        connector populating them with a run-time-relative value (e.g. now())
+        must not defeat the bulk fast-path when the certification itself is
+        unchanged. Only tagLabel is a real change-detection signal."""
+        tag_label = TagLabel(
+            tagFQN="Certification.Gold",
+            source=TagSource.Classification,
+            labelType=LabelType.Automated,
+            state=State.Confirmed,
+        )
+        request1 = CreateTableRequest(
+            name="test_table",
+            databaseSchema="service.db.schema",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            certification=AssetCertification(tagLabel=tag_label, appliedDate=1700000000000, expiryDate=1731536000000),
+        )
+        request2 = CreateTableRequest(
+            name="test_table",
+            databaseSchema="service.db.schema",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            certification=AssetCertification(tagLabel=tag_label, appliedDate=1800000000000, expiryDate=1999999999999),
+        )
+        assert generate_source_hash(request1) == generate_source_hash(request2)
+
     def test_hash_with_custom_exclude_fields(self):
         request1 = CreateTableRequest(
             name="test_table",
@@ -502,10 +582,6 @@ class TestGenerateSourceHash:
             description="Description 2",
         )
         hash_without_exclude = generate_source_hash(request1)
-        hash_with_exclude = generate_source_hash(
-            request1, exclude_fields={"description": True}
-        )
+        hash_with_exclude = generate_source_hash(request1, exclude_fields={"description": True})
         assert hash_without_exclude != generate_source_hash(request2)
-        assert hash_with_exclude == generate_source_hash(
-            request2, exclude_fields={"description": True}
-        )
+        assert hash_with_exclude == generate_source_hash(request2, exclude_fields={"description": True})

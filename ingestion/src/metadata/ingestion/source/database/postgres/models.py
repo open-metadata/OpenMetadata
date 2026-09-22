@@ -11,9 +11,19 @@
 """
 Postgres models
 """
-from typing import Optional
 
 from pydantic import BaseModel, Field
+
+from metadata.generated.schema.entity.data.storedProcedure import Language
+
+# Postgres exposes the routine implementation language via pg_language.lanname
+# (e.g. sql, plpgsql, c, internal, plpython3u, ...). The OpenMetadata Language
+# enum only has SQL, Java, JavaScript, Python and External, so only `sql` has a
+# direct mapping here. Other languages are deliberately left as None (honest
+# "unknown") rather than mislabelled as SQL until the enum is extended.
+POSTGRES_STORED_PROC_LANGUAGE_MAP: dict[str, Language] = {
+    "sql": Language.SQL,
+}
 
 
 class PostgresStoredProcedure(BaseModel):
@@ -22,6 +32,6 @@ class PostgresStoredProcedure(BaseModel):
     name: str = Field(alias="procedure_name")
     schema: str = Field(alias="schema_name")
     definition: str
-    language: Optional[str] = None
-    procedure_type: Optional[str] = Field(None, alias="procedure_type")
-    description: Optional[str] = Field(None, alias="description")
+    language: str | None = Field(None, alias="language")
+    procedure_type: str | None = Field(None, alias="procedure_type")
+    description: str | None = Field(None, alias="description")

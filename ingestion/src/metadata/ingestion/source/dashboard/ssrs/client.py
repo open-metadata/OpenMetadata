@@ -11,10 +11,11 @@
 """
 SSRS REST client
 """
+
 import base64
 import binascii
 import json
-from typing import Iterable, Iterator, Optional, Union
+from collections.abc import Iterable, Iterator
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -55,15 +56,13 @@ class SsrsClient:
     def __init__(
         self,
         config: SsrsConnection,
-        verify_ssl: Optional[Union[bool, str]] = None,
+        verify_ssl: bool | str | None = None,
     ):
         self.config = config
         self.base_url = f"{clean_uri(config.hostPort)}/{API_VERSION}"
         self.session = requests.Session()
         if config.username and config.password:
-            self.session.auth = HttpNtlmAuth(
-                config.username, config.password.get_secret_value()
-            )
+            self.session.auth = HttpNtlmAuth(config.username, config.password.get_secret_value())
         self.session.headers.update({"Accept": "application/json"})
         if verify_ssl is not None:
             self.session.verify = verify_ssl
@@ -78,18 +77,17 @@ class SsrsClient:
             raise_on_status=False,
         )
         adapter = HTTPAdapter(max_retries=retry)
-        self.session.mount("http://", adapter)
+        # On-premises SSRS may intentionally expose HTTP; mounting an adapter does not select the protocol.
+        self.session.mount("http://", adapter)  # NOSONAR(S5332)
         self.session.mount("https://", adapter)
 
     def close(self) -> None:
         if self.session:
             self.session.close()
 
-    def _get(self, path: str, params: Optional[dict] = None) -> dict:
+    def _get(self, path: str, params: dict | None = None) -> dict:
         url = f"{self.base_url}{path}"
-        resp = self.session.get(
-            url, timeout=(CONNECT_TIMEOUT, READ_TIMEOUT), params=params
-        )
+        resp = self.session.get(url, timeout=(CONNECT_TIMEOUT, READ_TIMEOUT), params=params)
         resp.raise_for_status()
         return resp.json()
 
@@ -103,9 +101,7 @@ class SsrsClient:
             try:
                 data = self._get(path, params=page_params)
             except Exception as exc:
-                raise SourceConnectionException(
-                    f"Failed to fetch SSRS {resource_label} at skip={skip}: {exc}"
-                ) from exc
+                raise SourceConnectionException(f"Failed to fetch SSRS {resource_label} at skip={skip}: {exc}") from exc
             yield data
             value = data.get("value") or []
             if len(value) < PAGE_SIZE:
@@ -116,17 +112,13 @@ class SsrsClient:
         try:
             self._get("/Folders", params={"$top": "1"})
         except Exception as exc:
-            raise SourceConnectionException(
-                f"Failed to connect to SSRS: {exc}"
-            ) from exc
+            raise SourceConnectionException(f"Failed to connect to SSRS: {exc}") from exc
 
     def test_get_reports(self) -> None:
         try:
             self._get("/Reports", params={"$top": "1"})
         except Exception as exc:
-            raise SourceConnectionException(
-                f"Failed to fetch SSRS reports: {exc}"
-            ) from exc
+            raise SourceConnectionException(f"Failed to fetch SSRS reports: {exc}") from exc
 
     def get_folders(self) -> Iterator[SsrsFolder]:
         params = {
@@ -144,14 +136,14 @@ class SsrsClient:
         for data in self._paginate("/Reports", params, "reports"):
             yield from SsrsReportListResponse(**data).value
 
-    def get_report_definition(self, report_id: str) -> Optional[bytes]:
+    def get_report_definition(self, report_id: str) -> bytes | None:
         """Return the RDL XML bytes for a report, or ``None`` if unavailable.
 
         Tries ``/Reports({id})/Content/$value`` first, then ``/CatalogItems({id})/Content``.
         Only 404 triggers silent fallback; permission errors (401/403), server errors
         (5xx after retries), and transport errors raise ``SourceConnectionException`` so
         operators see outages instead of silently deleted entities."""
-        last_err: Optional[Exception] = None
+        last_err: Exception | None = None
         for template in RDL_CONTENT_PATHS:
             path = template.format(id=report_id)
             try:
@@ -168,7 +160,7 @@ class SsrsClient:
             ) from last_err
         return None
 
-    def _fetch_report_content(self, path: str) -> Optional[bytes]:
+    def _fetch_report_content(self, path: str) -> bytes | None:
         url = f"{self.base_url}{path}"
         with self.session.get(
             url,
@@ -179,9 +171,7 @@ class SsrsClient:
             if resp.status_code in RDL_NOT_FOUND_STATUS:
                 return None
             if not resp.ok:
-                raise SourceConnectionException(
-                    f"RDL fetch returned HTTP {resp.status_code} for {path}"
-                )
+                raise SourceConnectionException(f"RDL fetch returned HTTP {resp.status_code} for {path}")
             if _exceeds_size_limit(resp, path):
                 return None
             body = _read_bounded_body(resp, path)
@@ -194,7 +184,7 @@ class SsrsClient:
             )
 
 
-def _read_bounded_body(resp: requests.Response, path: str) -> Optional[bytes]:
+def _read_bounded_body(resp: requests.Response, path: str) -> bytes | None:
     """Stream response body into memory, aborting if it exceeds ``MAX_RDL_BYTES``."""
     buffer = bytearray()
     for chunk in resp.iter_content(chunk_size=65536):
@@ -230,7 +220,7 @@ def _exceeds_size_limit(resp: requests.Response, path: str) -> bool:
     return False
 
 
-def _decode_rdl_body(body: bytes, content_type: str, path: str) -> Optional[bytes]:
+def _decode_rdl_body(body: bytes, content_type: str, path: str) -> bytes | None:
     """Decode an already-read response body. If JSON-wrapped base64, unwrap it."""
     if not body:
         return None

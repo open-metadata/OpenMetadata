@@ -12,8 +12,8 @@
 Sink that will store metadata in a file.
 Useful for local testing without having OM up.
 """
+
 import pathlib
-from typing import Optional
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import Entity
@@ -50,9 +50,7 @@ class FileSink(Sink):
         self.wrote_something = False
 
     @classmethod
-    def create(
-        cls, config_dict: dict, _: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict: dict, _: OpenMetadata, pipeline_name: str | None = None):
         config = FileSinkConfig.model_validate(config_dict)
         return cls(config)
 

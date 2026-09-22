@@ -109,6 +109,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       className?: string;
     }) => (
       <input
+        aria-label={testId}
         data-testid={testId}
         type={type}
         value={value}
@@ -164,6 +165,7 @@ const staticFormData: ProfileSampleConfig = {
 const dynamicFormData: ProfileSampleConfig = {
   sampleConfigType: SampleConfigType.Dynamic,
   config: {
+    smartSampling: false,
     thresholds: [
       {
         rowCountThreshold: 1000000,
@@ -207,16 +209,13 @@ describe('ProfileSampleConfigField', () => {
       ).toBeInTheDocument();
     });
 
-    it('shows static config fields by default when no formData is provided', () => {
+    it('shows dynamic smart sampling by default when no formData is provided', () => {
       render(<ProfileSampleConfigField {...baseFieldProps} />);
 
-      expect(screen.getByTestId('profile-sample-input')).toBeInTheDocument();
+      expect(screen.getByTestId('smart-sampling-toggle')).toBeInTheDocument();
       expect(
-        screen.getByTestId('profile-sample-type-select')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByTestId('sampling-method-type-select')
-      ).toBeInTheDocument();
+        screen.queryByTestId('profile-sample-input')
+      ).not.toBeInTheDocument();
     });
 
     it('does not show dynamic threshold section in STATIC mode', () => {
@@ -296,6 +295,7 @@ describe('ProfileSampleConfigField', () => {
       const multiThresholdData: ProfileSampleConfig = {
         sampleConfigType: SampleConfigType.Dynamic,
         config: {
+          smartSampling: false,
           thresholds: [
             { rowCountThreshold: 1000000, profileSample: 10 },
             { rowCountThreshold: 500000, profileSample: 20 },
@@ -330,7 +330,7 @@ describe('ProfileSampleConfigField', () => {
     it('shows empty threshold list with only the add button when thresholds array is empty', () => {
       const emptyDynamic: ProfileSampleConfig = {
         sampleConfigType: SampleConfigType.Dynamic,
-        config: { thresholds: [] },
+        config: { smartSampling: false, thresholds: [] },
       };
 
       render(
@@ -348,7 +348,7 @@ describe('ProfileSampleConfigField', () => {
     it('calls onChange with a new default threshold when add button is clicked', () => {
       const emptyDynamic: ProfileSampleConfig = {
         sampleConfigType: SampleConfigType.Dynamic,
-        config: { thresholds: [] },
+        config: { smartSampling: false, thresholds: [] },
       };
 
       render(
@@ -360,6 +360,7 @@ describe('ProfileSampleConfigField', () => {
       expect(mockOnChange).toHaveBeenCalledWith({
         sampleConfigType: SampleConfigType.Dynamic,
         config: {
+          smartSampling: false,
           thresholds: [{ rowCountThreshold: 1, profileSample: 100 }],
         },
       });
@@ -378,6 +379,7 @@ describe('ProfileSampleConfigField', () => {
       expect(mockOnChange).toHaveBeenCalledWith({
         sampleConfigType: SampleConfigType.Dynamic,
         config: {
+          smartSampling: false,
           thresholds: [
             {
               rowCountThreshold: 1000000,
@@ -405,7 +407,7 @@ describe('ProfileSampleConfigField', () => {
 
       expect(mockOnChange).toHaveBeenCalledWith({
         sampleConfigType: SampleConfigType.Dynamic,
-        config: { thresholds: [] },
+        config: { smartSampling: false, thresholds: [] },
       });
     });
 
@@ -413,6 +415,7 @@ describe('ProfileSampleConfigField', () => {
       const multiThresholdData: ProfileSampleConfig = {
         sampleConfigType: SampleConfigType.Dynamic,
         config: {
+          smartSampling: false,
           thresholds: [
             { rowCountThreshold: 1000000, profileSample: 10 },
             { rowCountThreshold: 500000, profileSample: 20 },
@@ -432,6 +435,7 @@ describe('ProfileSampleConfigField', () => {
       expect(mockOnChange).toHaveBeenCalledWith({
         sampleConfigType: SampleConfigType.Dynamic,
         config: {
+          smartSampling: false,
           thresholds: [{ rowCountThreshold: 500000, profileSample: 20 }],
         },
       });
@@ -463,6 +467,58 @@ describe('ProfileSampleConfigField', () => {
       expect(
         screen.queryByTestId('profile-sample-input')
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Cross-discriminator field leakage', () => {
+    it('drops Dynamic-only keys when sampleConfigType is STATIC', () => {
+      const polluted: ProfileSampleConfig = {
+        sampleConfigType: SampleConfigType.Static,
+        config: {
+          smartSampling: true,
+          thresholds: [],
+          profileSample: 10,
+        },
+      };
+
+      render(
+        <ProfileSampleConfigField {...baseFieldProps} formData={polluted} />
+      );
+
+      fireEvent.change(screen.getByTestId('profile-sample-input'), {
+        target: { value: '25' },
+      });
+
+      expect(mockOnChange).toHaveBeenCalledWith({
+        sampleConfigType: SampleConfigType.Static,
+        config: { profileSample: 25 },
+      });
+    });
+
+    it('drops Static-only keys when sampleConfigType is DYNAMIC', () => {
+      const polluted: ProfileSampleConfig = {
+        sampleConfigType: SampleConfigType.Dynamic,
+        config: {
+          smartSampling: false,
+          thresholds: [],
+          profileSample: 10,
+          profileSampleType: ProfileSampleType.Percentage,
+        } as ProfileSampleConfig['config'],
+      };
+
+      render(
+        <ProfileSampleConfigField {...baseFieldProps} formData={polluted} />
+      );
+
+      fireEvent.click(screen.getByTestId('add-threshold-btn'));
+
+      expect(mockOnChange).toHaveBeenCalledWith({
+        sampleConfigType: SampleConfigType.Dynamic,
+        config: {
+          smartSampling: false,
+          thresholds: [{ rowCountThreshold: 1, profileSample: 100 }],
+        },
+      });
     });
   });
 

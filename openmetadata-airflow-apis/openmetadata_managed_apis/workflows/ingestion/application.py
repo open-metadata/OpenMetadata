@@ -11,15 +11,10 @@
 """
 Generic Workflow entrypoint to execute Applications
 """
+
 import json
 
 from airflow import DAG
-from openmetadata_managed_apis.utils.logger import set_operator_logger
-from openmetadata_managed_apis.workflows.ingestion.common import (
-    build_dag,
-    build_workflow_config_property,
-    execute_workflow,
-)
 
 from metadata.generated.schema.entity.applications.configuration.applicationConfig import (
     AppConfig,
@@ -32,9 +27,15 @@ from metadata.generated.schema.metadataIngestion.application import (
     OpenMetadataApplicationConfig,
 )
 from metadata.generated.schema.metadataIngestion.applicationPipeline import (
-    ApplicationPipeline,
+    ApplicationPipeline,  # noqa: TC001
 )
 from metadata.workflow.application import ApplicationWorkflow
+from openmetadata_managed_apis.utils.logger import set_operator_logger
+from openmetadata_managed_apis.workflows.ingestion.common import (
+    build_dag,
+    build_workflow_config_property,
+    execute_workflow,
+)
 
 
 def application_workflow(workflow_config: OpenMetadataApplicationConfig, **context):
@@ -50,9 +51,7 @@ def application_workflow(workflow_config: OpenMetadataApplicationConfig, **conte
     set_operator_logger(workflow_config)
 
     # set overridden app config
-    config = json.loads(
-        workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False)
-    )
+    config = json.loads(workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False))
     params = context.get("params") or {}
     config["appConfig"] = {
         **(config.get("appConfig") or {}),
@@ -70,9 +69,7 @@ def build_application_workflow_config(
     """
 
     # Here we have an application pipeline, so the Source Config is of type ApplicationPipeline
-    application_pipeline_conf: ApplicationPipeline = (
-        ingestion_pipeline.sourceConfig.config
-    )
+    application_pipeline_conf: ApplicationPipeline = ingestion_pipeline.sourceConfig.config
 
     application_workflow_config = OpenMetadataApplicationConfig(
         sourcePythonClass=application_pipeline_conf.sourcePythonClass,
@@ -82,9 +79,7 @@ def build_application_workflow_config(
         )
         if application_pipeline_conf.appConfig
         else None,
-        appPrivateConfig=PrivateConfig(
-            root=application_pipeline_conf.appPrivateConfig.root
-        )
+        appPrivateConfig=PrivateConfig(root=application_pipeline_conf.appPrivateConfig.root)
         if application_pipeline_conf.appPrivateConfig
         else None,
         workflowConfig=build_workflow_config_property(ingestion_pipeline),
@@ -92,7 +87,7 @@ def build_application_workflow_config(
         enableStreamableLogs=ingestion_pipeline.enableStreamableLogs,
     )
 
-    return application_workflow_config
+    return application_workflow_config  # noqa: RET504
 
 
 def build_application_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
@@ -110,4 +105,4 @@ def build_application_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
         },
     )
 
-    return dag
+    return dag  # noqa: RET504

@@ -11,7 +11,6 @@
 """
 SSRS Models
 """
-from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -21,12 +20,12 @@ class SsrsReport(BaseModel):
 
     id: str = Field(alias="Id")
     name: str = Field(alias="Name")
-    description: Optional[str] = Field(None, alias="Description")
+    description: str | None = Field(None, alias="Description")
     path: str = Field(alias="Path")
-    type: Optional[str] = Field(None, alias="Type")
+    type: str | None = Field(None, alias="Type")
     hidden: bool = Field(False, alias="Hidden")
-    has_data_sources: Optional[bool] = Field(None, alias="HasDataSources")
-    created_by: Optional[str] = Field(None, alias="CreatedBy")
+    has_data_sources: bool | None = Field(None, alias="HasDataSources")
+    created_by: str | None = Field(None, alias="CreatedBy")
 
 
 class SsrsFolder(BaseModel):
@@ -40,12 +39,12 @@ class SsrsFolder(BaseModel):
 class SsrsODataResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    odata_count: Optional[int] = Field(None, alias="@odata.count")
+    odata_count: int | None = Field(None, alias="@odata.count")
 
 
 class SsrsReportListResponse(SsrsODataResponse):
-    value: List[SsrsReport] = Field(default_factory=list)
+    value: list[SsrsReport] = Field(default_factory=list)
 
 
 class SsrsFolderListResponse(SsrsODataResponse):
-    value: List[SsrsFolder] = Field(default_factory=list)
+    value: list[SsrsFolder] = Field(default_factory=list)

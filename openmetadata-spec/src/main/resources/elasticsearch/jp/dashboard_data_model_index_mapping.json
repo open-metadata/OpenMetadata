@@ -9,11 +9,21 @@
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
       "analyzer": {
+        "om_analyzer": {
+          "tokenizer": "letter",
+          "filter": [
+            "lowercase",
+            "asciifolding",
+            "om_stemmer",
+            "om_plural_stemmer"
+          ]
+        },
         "om_analyzer_jp": {
           "tokenizer": "kuromoji_tokenizer",
           "type": "custom",
@@ -28,14 +38,16 @@
           "type": "custom",
           "tokenizer": "n_gram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         },
         "om_compound_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "compound_word_delimiter_graph",
+            "lowercase",
+            "asciifolding",
             "flatten_graph"
           ]
         }
@@ -56,6 +68,10 @@
           "catenate_all": false,
           "preserve_original": true,
           "stem_english_possessive": true
+        },
+        "om_plural_stemmer": {
+          "type": "stemmer",
+          "name": "minimal_english"
         }
       },
       "tokenizer": {
@@ -257,6 +273,26 @@
           },
           "sqlQueryKey": {
             "type": "keyword"
+          },
+          "createdAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          },
+          "updatedAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          },
+          "createdBy": {
+            "type": "keyword"
+          },
+          "updatedBy": {
+            "type": "keyword"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "docUniqueId": {
+            "type": "keyword"
           }
         }
       },
@@ -381,7 +417,8 @@
                 "type": "text",
                 "analyzer": "om_analyzer"
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -497,7 +534,8 @@
         "normalizer": "lowercase_normalizer"
       },
       "dataModelType": {
-        "type": "keyword"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "columns": {
         "properties": {
@@ -548,18 +586,27 @@
           },
           "ordinalPosition": {
             "type": "integer"
+          },
+          "children": {
+            "type": "object",
+            "enabled": false
           }
         }
       },
       "columnNames": {
         "type": "keyword"
       },
+      "columnNamesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer"
+      },
       "project": {
         "type": "text",
         "fields": {
           "keyword": {
             "type": "keyword",
-            "ignore_above": 256
+            "ignore_above": 256,
+            "normalizer": "lowercase_normalizer"
           }
         }
       },

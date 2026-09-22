@@ -36,8 +36,10 @@ export const DeleteModal = ({
 
   return (
     <ModalOverlay
+      data-testid="delete-modal"
       isDismissable={!isDeleting}
       isOpen={open}
+      style={{ zIndex: 999 }}
       onOpenChange={(isOpen) => !isOpen && !isDeleting && onCancel()}>
       <Modal>
         <Dialog width={400} onClose={onCancel}>
@@ -49,12 +51,12 @@ export const DeleteModal = ({
               theme="light"
             />
             <div
-              className="tw:flex tw:flex-col tw:gap-0.5 tw:mt-4"
+              className="tw:flex tw:flex-col tw:gap-0.5 tw:mt-4 tw:min-w-0 tw:w-full"
               data-testid="modal-header">
-              <Typography size="text-md" weight="semibold">
+              <Typography ellipsis size="text-md" weight="semibold">
                 {t('label.delete')} {entityTitle}
               </Typography>
-              <Typography as="p" className="tw:text-tertiary">
+              <Typography as="p" className="tw:text-tertiary tw:break-words">
                 {message}
               </Typography>
             </div>

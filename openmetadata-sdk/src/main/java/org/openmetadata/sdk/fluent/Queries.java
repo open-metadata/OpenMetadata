@@ -177,6 +177,10 @@ public final class Queries {
     public QueryDeleter delete() {
       return new QueryDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Query> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(client.queries(), identifier);
+    }
   }
 
   // ==================== Deleter ====================
@@ -291,5 +295,15 @@ public final class Queries {
     public QueryDeleter delete() {
       return new QueryDeleter(client, query.getId().toString());
     }
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().queries().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().queries().getContextByName(fqn);
   }
 }

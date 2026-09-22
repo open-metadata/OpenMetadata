@@ -13,8 +13,8 @@
 import { PagingResponse } from 'Models';
 import { AppMarketPlaceDefinition } from '../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { ListParams } from '../interface/API.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
-import APIClient from './index';
+import { getEncodedFqn } from '../utils/StringUtils';
+import APIClient from './axiosClient';
 
 const BASE_URL = '/apps/marketplace';
 

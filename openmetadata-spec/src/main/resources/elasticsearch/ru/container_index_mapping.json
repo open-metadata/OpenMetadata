@@ -39,7 +39,8 @@
           "type": "custom",
           "tokenizer": "edge_ngram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         },
         "om_compound_analyzer": {
@@ -47,6 +48,7 @@
           "filter": [
             "compound_word_delimiter_graph",
             "lowercase",
+            "asciifolding",
             "flatten_graph"
           ]
         }
@@ -282,6 +284,26 @@
           },
           "sqlQueryKey": {
             "type": "keyword"
+          },
+          "createdAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          },
+          "updatedAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          },
+          "createdBy": {
+            "type": "keyword"
+          },
+          "updatedBy": {
+            "type": "keyword"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "docUniqueId": {
+            "type": "keyword"
           }
         }
       },
@@ -387,6 +409,10 @@
               },
               "ordinalPosition": {
                 "type": "integer"
+              },
+              "children": {
+                "type": "object",
+                "enabled": false
               }
             }
           }
@@ -494,7 +520,8 @@
         }
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "children": {
         "properties": {
@@ -715,7 +742,8 @@
                 "type": "text",
                 "analyzer": "om_analyzer"
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -761,6 +789,10 @@
       },
       "columnNames": {
         "type": "keyword"
+      },
+      "columnNamesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer"
       },
       "serviceType": {
         "type": "keyword",

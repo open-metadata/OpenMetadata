@@ -91,6 +91,7 @@ export interface DashboardService {
      * Type of dashboard service such as Looker or Superset...
      */
     serviceType: DashboardServiceType;
+    style?:      Style;
     /**
      * Tags for this Dashboard Service.
      */
@@ -229,7 +230,11 @@ export interface DashboardConnection {
  * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
  * create, deploy, and manage paginated reports
  *
+ * Rill Connection Config
+ *
  * SAP S/4HANA Connection Config for Embedded Analytics
+ *
+ * Omni BI connector: models, topics, workbooks/dashboards and lineage
  */
 export interface Connection {
     /**
@@ -262,8 +267,17 @@ export interface Connection {
     dashboardFilterPattern?: FilterPattern;
     /**
      * Regex exclude or include data models that matches the pattern.
+     *
+     * Regex to exclude or include data models (Omni topics) that matches the pattern.
      */
     dataModelFilterPattern?: FilterPattern;
+    /**
+     * Optional URL for human-facing Looker links when the API URL differs from the browser
+     * URL.
+     *
+     * Qlik Sense Base URL, used for genrating dashboard & chat url
+     */
+    displayUrl?: string;
     /**
      * Credentials to extract the .lkml files from a repository. This is required to get all the
      * lineage and definitions.
@@ -304,7 +318,12 @@ export interface Connection {
      *
      * Host and Port of the Ssrs instance.
      *
+     * URL of a Rill Developer runtime or Rill Cloud project endpoint.
+     *
      * Base URL of the SAP S/4HANA instance (e.g. https://s4hana.example.com).
+     *
+     * URL of the Omni instance, e.g. `https://your-org.omniapp.co`. The `/api` path is added
+     * automatically.
      */
     hostPort?: string;
     /**
@@ -443,6 +462,8 @@ export interface Connection {
      *
      * Client SSL verification.
      *
+     * Boolean marking if we need to verify the SSL certs for Rill. Default to True.
+     *
      * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
      * validation, 'validate' to verify against a CA certificate.
      */
@@ -498,10 +519,6 @@ export interface Connection {
     namespace?:    string;
     certificates?: QlikCertificatesBy;
     /**
-     * Qlik Sense Base URL, used for genrating dashboard & chat url
-     */
-    displayUrl?: string;
-    /**
      * User Directory.
      */
     userDirectory?: string;
@@ -544,6 +561,10 @@ export interface Connection {
      * token to connect to Qlik Cloud.
      *
      * Hex API token for authentication. Can be personal or workspace token.
+     *
+     * API token to authenticate with Rill.
+     *
+     * API token to authenticate with Omni.
      */
     token?: string;
     /**
@@ -777,6 +798,8 @@ export interface CertificatesSSLConfig {
  * Regex to only include/exclude tables that matches the pattern.
  *
  * Regex to exclude or include charts that matches the pattern.
+ *
+ * Regex to exclude or include data models (Omni topics) that matches the pattern.
  */
 export interface FilterPattern {
     /**
@@ -835,9 +858,9 @@ export interface SupersetConnection {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
      */
     database?: string;
     /**
@@ -904,6 +927,12 @@ export interface SupersetConnection {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
+     */
+    queryHistoryTable?: string;
     /**
      * Use slow logs to extract lineage.
      */
@@ -1526,12 +1555,14 @@ export enum DashboardServiceType {
     Metabase = "Metabase",
     MicroStrategy = "MicroStrategy",
     Mode = "Mode",
+    Omni = "Omni",
     PowerBI = "PowerBI",
     PowerBIReportServer = "PowerBIReportServer",
     QlikCloud = "QlikCloud",
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
     Redash = "Redash",
+    Rill = "Rill",
     SapS4Hana = "SapS4Hana",
     Sigma = "Sigma",
     Ssrs = "Ssrs",
@@ -1614,6 +1645,43 @@ export enum EntityStatus {
     InReview = "In Review",
     Rejected = "Rejected",
     Unprocessed = "Unprocessed",
+}
+
+/**
+ * UI Style is used to associate a color code and/or icon to entity to customize the look of
+ * that entity in UI.
+ */
+export interface Style {
+    /**
+     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
+     */
+    color?: string;
+    /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
+     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
+     */
+    iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -1780,43 +1848,6 @@ export enum State {
 }
 
 /**
- * UI Style is used to associate a color code and/or icon to entity to customize the look of
- * that entity in UI.
- */
-export interface Style {
-    /**
-     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
-     */
-    color?: string;
-    /**
-     * Cover image configuration for the entity.
-     */
-    coverImage?: CoverImage;
-    /**
-     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
-     */
-    iconURL?: string;
-}
-
-/**
- * Cover image configuration for the entity.
- *
- * Cover image configuration for an entity. This is used to display a banner or header image
- * for entities like Domain, Glossary, Data Product, etc.
- */
-export interface CoverImage {
-    /**
-     * Position of the cover image in CSS background-position format. Supports keywords (top,
-     * center, bottom) or pixel values (e.g., '20px 30px').
-     */
-    position?: string;
-    /**
-     * URL of the cover image.
-     */
-    url?: string;
-}
-
-/**
  * Last test connection results for this service
  *
  * TestConnectionResult is the definition that will encapsulate result of running the test
@@ -1854,9 +1885,21 @@ export enum StatusType {
  */
 export interface TestConnectionStepResult {
     /**
+     * Classified, actionable explanation of a failure, separate from the raw errorLog.
+     */
+    diagnosis?: Diagnosis;
+    /**
+     * Wall-clock time the step took, in milliseconds.
+     */
+    durationMs?: number;
+    /**
      * In case of failed step, this field would contain the actual error faced during the step.
      */
     errorLog?: string;
+    /**
+     * The command or statement the step actually ran, when applicable.
+     */
+    executedCommand?: string;
     /**
      * Is this step mandatory to be passed?
      */
@@ -1874,4 +1917,54 @@ export interface TestConnectionStepResult {
      * Did the step pass successfully?
      */
     passed: boolean;
+    /**
+     * Human-readable summary of what the step found on success.
+     */
+    resultSummary?: string;
+    /**
+     * Why a step did not run, when status is Skipped.
+     */
+    skipReason?: SkipReason;
+    /**
+     * Lifecycle state of this step.
+     */
+    status?: Status;
+}
+
+/**
+ * Classified, actionable explanation of a failure, separate from the raw errorLog.
+ */
+export interface Diagnosis {
+    /**
+     * Link to relevant documentation.
+     */
+    docUrl?: string;
+    /**
+     * What the user can do to fix it.
+     */
+    remediation?: string;
+    /**
+     * Short statement of what went wrong.
+     */
+    title?: string;
+}
+
+/**
+ * Why a step did not run, when status is Skipped.
+ */
+export enum SkipReason {
+    ConnectionNotEstablished = "ConnectionNotEstablished",
+    NotImplemented = "NotImplemented",
+}
+
+/**
+ * Lifecycle state of this step.
+ */
+export enum Status {
+    Failed = "Failed",
+    Passed = "Passed",
+    Queued = "Queued",
+    Running = "Running",
+    Skipped = "Skipped",
+    Warning = "Warning",
 }

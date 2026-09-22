@@ -19,6 +19,10 @@ import type {
   HierarchyNode,
   OntologyNode,
 } from '../OntologyExplorer.interface';
+import {
+  getInverseRelationshipName,
+  isHierarchicalRelationship,
+} from './relationshipTypeUtils';
 
 const HIERARCHICAL_RELATION_TYPES = new Set([
   'broader',
@@ -27,35 +31,26 @@ const HIERARCHICAL_RELATION_TYPES = new Set([
   'hasPart',
 ]);
 
-function isParentSide(relationType: string): boolean {
-  return relationType === 'broader' || relationType === 'hasPart';
-}
-
 function normalizeParentChild(
   from: string,
   to: string,
-  relationType: string
+  relationType: string,
+  parentSideTypes: Set<string>
 ): { parent: string; child: string } {
-  if (isParentSide(relationType)) {
+  if (parentSideTypes.has(relationType)) {
     return { parent: from, child: to };
   }
 
   return { parent: to, child: from };
 }
 
-function isHierarchicalCategory(category: unknown): boolean {
-  return (
-    typeof category === 'string' && category.toLowerCase() === 'hierarchical'
-  );
-}
-
 function getHierarchicalRelationTypes(
-  relationSettings: BuildHierarchyGraphsParams['relationSettings']
+  relationTypes: BuildHierarchyGraphsParams['relationTypes']
 ): Set<string> {
-  if (relationSettings?.relationTypes?.length) {
+  if (relationTypes.length) {
     const set = new Set<string>();
-    relationSettings.relationTypes.forEach((r) => {
-      if (isHierarchicalCategory(r.category)) {
+    relationTypes.forEach((r) => {
+      if (isHierarchicalRelationship(r)) {
         set.add(r.name);
       }
     });
@@ -67,6 +62,34 @@ function getHierarchicalRelationTypes(
   return new Set(HIERARCHICAL_RELATION_TYPES);
 }
 
+function buildRelationMapsForHierarchy(
+  relationTypes: BuildHierarchyGraphsParams['relationTypes']
+): {
+  inverseMap: Record<string, string>;
+  parentSideTypes: Set<string>;
+} {
+  const inverseMap: Record<string, string> = {
+    broader: 'narrower',
+    narrower: 'broader',
+    hasPart: 'partOf',
+    partOf: 'hasPart',
+  };
+  const parentSideTypes = new Set(['broader', 'hasPart']);
+
+  relationTypes.forEach((relationshipType) => {
+    const inverseName = getInverseRelationshipName(relationshipType);
+    if (inverseName) {
+      inverseMap[relationshipType.name] = inverseName;
+      inverseMap[inverseName] = relationshipType.name;
+    }
+    if (isHierarchicalRelationship(relationshipType)) {
+      parentSideTypes.add(relationshipType.name);
+    }
+  });
+
+  return { inverseMap, parentSideTypes };
+}
+
 function scopeId(glossaryId: string, termId: string): string {
   return `${glossaryId}::${termId}`;
 }
@@ -74,14 +97,16 @@ function scopeId(glossaryId: string, termId: string): string {
 export function buildHierarchyGraphs({
   terms,
   relations,
-  relationSettings,
+  relationTypes,
   relationColors,
   glossaryNames,
 }: BuildHierarchyGraphsParams): HierarchyGraphResult {
-  const hierarchicalTypes = getHierarchicalRelationTypes(relationSettings);
+  const hierarchicalTypes = getHierarchicalRelationTypes(relationTypes);
   const hierarchicalEdges = relations.filter((e) =>
     hierarchicalTypes.has(e.relationType)
   );
+  const { inverseMap, parentSideTypes } =
+    buildRelationMapsForHierarchy(relationTypes);
 
   const termsWithHierarchicalRelation = new Set<string>();
   hierarchicalEdges.forEach((e) => {
@@ -98,19 +123,24 @@ export function buildHierarchyGraphs({
     const { parent, child } = normalizeParentChild(
       edge.from,
       edge.to,
-      edge.relationType
+      edge.relationType,
+      parentSideTypes
     );
     if (!termById.has(parent) || !termById.has(child)) {
       return;
     }
-    if (!parentToChildren.has(parent)) {
-      parentToChildren.set(parent, new Set());
+    let childrenSet = parentToChildren.get(parent);
+    if (!childrenSet) {
+      childrenSet = new Set();
+      parentToChildren.set(parent, childrenSet);
     }
-    parentToChildren.get(parent)!.add(child);
-    if (!childToParents.has(child)) {
-      childToParents.set(child, new Set());
+    childrenSet.add(child);
+    let parentsSet = childToParents.get(child);
+    if (!parentsSet) {
+      parentsSet = new Set();
+      childToParents.set(child, parentsSet);
     }
-    childToParents.get(child)!.add(parent);
+    parentsSet.add(parent);
   });
 
   const glossariesWithTerms = new Map<string, Set<string>>();
@@ -193,17 +223,41 @@ export function buildHierarchyGraphs({
       return;
     }
 
-    const keptEdges: Array<{
-      from: string;
-      to: string;
-      relationType: string;
-      color?: string;
-    }> = [];
+    const keptEdgesMap = new Map<
+      string,
+      {
+        from: string;
+        to: string;
+        relationType: string;
+        inverseRelationType?: string;
+        color?: string;
+      }
+    >();
+    const buildKeptEdge = (
+      sourceId: string,
+      targetId: string,
+      parentRelationType: string,
+      relationType: string
+    ) => {
+      const childRelationType = inverseMap[parentRelationType];
+
+      return {
+        from: sourceId,
+        to: targetId,
+        relationType: parentRelationType,
+        ...(childRelationType
+          ? { inverseRelationType: childRelationType }
+          : {}),
+        color:
+          relationColors[parentRelationType] ?? relationColors[relationType],
+      };
+    };
     hierarchicalEdges.forEach((edge) => {
       const { parent, child } = normalizeParentChild(
         edge.from,
         edge.to,
-        edge.relationType
+        edge.relationType,
+        parentSideTypes
       );
       const sourceId = scopeId(glossaryId, parent);
       const targetId = scopeId(glossaryId, child);
@@ -217,18 +271,21 @@ export function buildHierarchyGraphs({
       if (!parentIsNative && !childIsNative) {
         return;
       }
-      const key = `${sourceId}-${targetId}-${edge.relationType}`;
-      if (edgeKeys.has(key)) {
+      const wasFlipped = !parentSideTypes.has(edge.relationType);
+      const parentRelationType = wasFlipped
+        ? inverseMap[edge.relationType] ?? edge.relationType
+        : edge.relationType;
+      const pairKey = `${sourceId}-${targetId}-${parentRelationType}`;
+      if (keptEdgesMap.has(pairKey) || edgeKeys.has(pairKey)) {
         return;
       }
-      edgeKeys.add(key);
-      keptEdges.push({
-        from: sourceId,
-        to: targetId,
-        relationType: edge.relationType,
-        color: relationColors[edge.relationType],
-      });
+      edgeKeys.add(pairKey);
+      keptEdgesMap.set(
+        pairKey,
+        buildKeptEdge(sourceId, targetId, parentRelationType, edge.relationType)
+      );
     });
+    const keptEdges = Array.from(keptEdgesMap.values());
 
     const visibleNodeIds = new Set<string>();
     keptEdges.forEach((e) => {
@@ -247,7 +304,15 @@ export function buildHierarchyGraphs({
     }
 
     const comboId = `hierarchy-combo-${glossaryId}`;
-    const comboLabel = glossaryNames[glossaryId] ?? glossaryId;
+    // Prefer the glossary's name from the caller's visible glossary list, but
+    // fall back to a `group` value carried on any term node (the RDF endpoint
+    // populates this from the glossary's om:name) so callers who can see the
+    // term but not the parent glossary still see a human label instead of the
+    // raw UUID.
+    const groupFallback = comboNodes
+      .map((n) => n.group)
+      .find((g): g is string => typeof g === 'string' && g.length > 0);
+    const comboLabel = glossaryNames[glossaryId] ?? groupFallback ?? glossaryId;
     combos.push({ id: comboId, label: comboLabel, glossaryId });
     nodesToShow.forEach((n) => nodes.push(n));
     keptEdges.forEach((e) =>
@@ -255,6 +320,9 @@ export function buildHierarchyGraphs({
         from: e.from,
         to: e.to,
         relationType: e.relationType,
+        ...(e.inverseRelationType
+          ? { inverseRelationType: e.inverseRelationType }
+          : {}),
         color: e.color,
       })
     );

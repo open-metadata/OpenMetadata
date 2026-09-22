@@ -12,6 +12,7 @@
 """
 Test TTL Cache
 """
+
 import time
 from unittest.mock import patch
 
@@ -78,7 +79,4 @@ def test_ometa_ttl_cache():
         with pytest.raises(LimitsException) as exc_info:
             metadata.get_by_name(entity=Table, fqn="random")
 
-        assert (
-            str(exc_info.value)
-            == "Skipping request - limits reached for /tables/name/random"
-        )
+        assert str(exc_info.value) == "Skipping request - limits reached for /tables/name/random"

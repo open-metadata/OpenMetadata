@@ -11,12 +11,26 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.LLMModelTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.ai.CreateAIApplication;
+import org.openmetadata.schema.api.ai.CreateMcpServer;
+import org.openmetadata.schema.api.services.CreateMcpService;
 import org.openmetadata.schema.entity.ai.AIApplication;
+import org.openmetadata.schema.entity.ai.AgentExecution;
 import org.openmetadata.schema.entity.ai.ApplicationType;
+import org.openmetadata.schema.entity.ai.ExecutionStatus;
+import org.openmetadata.schema.entity.ai.LLMModel;
+import org.openmetadata.schema.entity.ai.McpServer;
+import org.openmetadata.schema.entity.ai.McpServerType;
+import org.openmetadata.schema.entity.ai.ModelConfiguration;
+import org.openmetadata.schema.entity.ai.ModelPurpose;
+import org.openmetadata.schema.entity.services.McpService;
 import org.openmetadata.sdk.fluent.AIApplications;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for AIApplication entity using SDK fluent API.
@@ -47,6 +61,58 @@ public class AIApplicationResourceIT {
     assertEquals("Test AI Application", app.getDescription());
     assertNotNull(app.getId());
     assertNotNull(app.getFullyQualifiedName());
+  }
+
+  @Test
+  void test_createAIApplicationPreservesModelAndMcpReferences(final TestNamespace ns) {
+    final LLMModel model = LLMModelTestFactory.createGPT(ns);
+    final String mcpServiceName = ns.prefix("aiApplicationMcpService");
+    createMcpService(mcpServiceName);
+    final McpServer mcpServer = createMcpServer(ns, mcpServiceName);
+    final CreateAIApplication request = referencedApplication(ns, model, mcpServer);
+    final AIApplication created = SdkClients.adminClient().aiApplications().create(request);
+    final AIApplication fetched =
+        SdkClients.adminClient().aiApplications().get(created.getId().toString());
+
+    assertEquals(model.getId(), fetched.getModelConfigurations().getFirst().getModel().getId());
+    assertEquals(model.getId(), fetched.getPrimaryModel().getId());
+    assertEquals(mcpServer.getId(), fetched.getMcpServers().getFirst().getId());
+  }
+
+  private static void createMcpService(final String serviceName) {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/services/mcpServices",
+            new CreateMcpService()
+                .withName(serviceName)
+                .withServiceType(CreateMcpService.McpServiceType.Mcp),
+            McpService.class);
+  }
+
+  private static McpServer createMcpServer(final TestNamespace ns, final String serviceName) {
+    return SdkClients.adminClient()
+        .mcpServers()
+        .create(
+            new CreateMcpServer()
+                .withName(ns.prefix("claimsTools"))
+                .withService(serviceName)
+                .withServerType(McpServerType.DataAccess));
+  }
+
+  private static CreateAIApplication referencedApplication(
+      final TestNamespace ns, final LLMModel model, final McpServer mcpServer) {
+    final ModelConfiguration primaryConfiguration =
+        new ModelConfiguration()
+            .withModel(model.getEntityReference())
+            .withPurpose(ModelPurpose.Primary);
+    return new CreateAIApplication()
+        .withName(ns.prefix("claimsCopilot"))
+        .withApplicationType(ApplicationType.Copilot)
+        .withModelConfigurations(List.of(primaryConfiguration))
+        .withPrimaryModel(model.getFullyQualifiedName())
+        .withMcpServers(List.of(mcpServer.getEntityReference()));
   }
 
   @Test
@@ -242,6 +308,51 @@ public class AIApplicationResourceIT {
         Exception.class,
         () -> AIApplications.get(created.getId().toString()),
         "Hard deleted AI application should not be retrievable");
+  }
+
+  @Test
+  void test_recursiveHardDeleteCascadesPastAgentExecutionChildren(TestNamespace ns)
+      throws Exception {
+    AIApplication app =
+        AIApplications.create()
+            .name(ns.prefix("agentExecCascadeApp"))
+            .withApplicationType(ApplicationType.Chatbot)
+            .withDescription("App for agent-execution cascade delete test")
+            .execute();
+
+    // Writes an AI_APPLICATION --CONTAINS--> agentExecution row. agentExecution is a time-series
+    // entity (registered in ENTITY_TS_REPOSITORY_MAP, not ENTITY_REPOSITORY_MAP), so the bulk
+    // hard-delete cascade used to throw EntityRepositoryNotFound the moment it walked CONTAINS
+    // children of an AI Application.
+    AgentExecution execution =
+        new AgentExecution()
+            .withAgent(app.getEntityReference())
+            .withAgentId(app.getId())
+            .withTimestamp(System.currentTimeMillis())
+            .withStatus(ExecutionStatus.Success)
+            .withInput("cascade-delete test")
+            .withOutput("cascade-delete test");
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST, "/v1/agentExecutions", execution, RequestOptions.builder().build());
+
+    String appId = app.getId().toString();
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            "/v1/aiApplications/" + appId,
+            null,
+            RequestOptions.builder()
+                .queryParam("recursive", "true")
+                .queryParam("hardDelete", "true")
+                .build());
+
+    assertThrows(
+        Exception.class,
+        () -> AIApplications.get(appId),
+        "AI Application should be deleted along with its agent-execution children");
   }
 
   @Test

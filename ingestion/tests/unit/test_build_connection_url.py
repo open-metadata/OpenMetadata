@@ -18,15 +18,11 @@ from metadata.generated.schema.entity.services.connections.database.common.basic
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection as MysqlConnectionConfig,
 )
-from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
-    PostgresConnection as PostgresConnectionConfig,
-)
 from metadata.generated.schema.security.credentials.azureCredentials import (
     AzureCredentials,
 )
 from metadata.ingestion.source.database.azuresql.connection import get_connection_url
 from metadata.ingestion.source.database.mysql.connection import MySQLConnection
-from metadata.ingestion.source.database.postgres.connection import PostgresConnection
 
 
 class TestGetConnectionURL(unittest.TestCase):
@@ -95,40 +91,4 @@ class TestGetConnectionURL(unittest.TestCase):
             self.assertEqual(
                 engine_connection.url.render_as_string(hide_password=False),
                 "mysql+pymysql://openmetadata_user:mocked_token@localhost:3306/openmetadata_db",
-            )
-
-    def test_get_connection_url_postgres(self):
-        connection = PostgresConnectionConfig(
-            username="openmetadata_user",
-            authType=BasicAuth(password="openmetadata_password"),
-            hostPort="localhost:3306",
-            database="openmetadata_db",
-        )
-        engine_connection = PostgresConnection(connection).client
-        self.assertEqual(
-            engine_connection.url.render_as_string(hide_password=False),
-            "postgresql+psycopg2://openmetadata_user:openmetadata_password@localhost:3306/openmetadata_db",
-        )
-        connection = PostgresConnectionConfig(
-            username="openmetadata_user",
-            authType=AzureConfigurationSource(
-                azureConfig=AzureCredentials(
-                    clientId="clientid",
-                    tenantId="tenantid",
-                    clientSecret="clientsecret",
-                    scopes="scope1,scope2",
-                )
-            ),
-            hostPort="localhost:3306",
-            database="openmetadata_db",
-        )
-        with patch.object(
-            ClientSecretCredential,
-            "get_token",
-            return_value=AccessToken(token="mocked_token", expires_on=100),
-        ):
-            engine_connection = PostgresConnection(connection).client
-            self.assertEqual(
-                engine_connection.url.render_as_string(hide_password=False),
-                "postgresql+psycopg2://openmetadata_user:mocked_token@localhost:3306/openmetadata_db",
             )

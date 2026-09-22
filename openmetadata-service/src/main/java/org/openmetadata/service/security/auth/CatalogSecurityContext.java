@@ -29,7 +29,8 @@ public record CatalogSecurityContext(
     String authenticationScheme,
     Set<String> userRoles,
     boolean isBot,
-    String impersonatedUser)
+    String impersonatedUser,
+    String activePersona)
     implements SecurityContext {
   public static final String OPENID_AUTH = "openid";
 
@@ -55,7 +56,7 @@ public record CatalogSecurityContext(
   // Backward compatibility constructors
   public CatalogSecurityContext(
       Principal principal, String scheme, String authenticationScheme, Set<String> userRoles) {
-    this(principal, scheme, authenticationScheme, userRoles, false, null);
+    this(principal, scheme, authenticationScheme, userRoles, false, null, null);
   }
 
   public CatalogSecurityContext(
@@ -64,7 +65,17 @@ public record CatalogSecurityContext(
       String authenticationScheme,
       Set<String> userRoles,
       boolean isBot) {
-    this(principal, scheme, authenticationScheme, userRoles, isBot, null);
+    this(principal, scheme, authenticationScheme, userRoles, isBot, null, null);
+  }
+
+  public CatalogSecurityContext(
+      Principal principal,
+      String scheme,
+      String authenticationScheme,
+      Set<String> userRoles,
+      boolean isBot,
+      String impersonatedUser) {
+    this(principal, scheme, authenticationScheme, userRoles, isBot, impersonatedUser, null);
   }
 
   @Override
@@ -72,6 +83,10 @@ public record CatalogSecurityContext(
     return principal;
   }
 
+  /**
+   * Never use this to decide a role sync - it flattens null (the token carried no roles claim) into
+   * an empty set (the provider revoked every role). Read the {@code userRoles} component directly.
+   */
   public Set<String> getUserRoles() {
     if (nullOrEmpty(userRoles)) {
       return new HashSet<>();

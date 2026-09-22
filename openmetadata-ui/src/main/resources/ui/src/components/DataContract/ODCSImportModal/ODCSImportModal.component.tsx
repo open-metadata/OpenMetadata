@@ -11,24 +11,23 @@
  *  limitations under the License.
  */
 
+import type { SelectItemType } from '@openmetadata/ui-core-components';
 import {
+  Badge,
+  BadgeWithIcon,
   Box,
   Button,
-  Chip,
+  ButtonUtility,
+  Card,
   Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControl,
-  IconButton,
-  MenuItem,
-  Radio,
+  FileUploadDropZone,
+  Modal,
+  ModalOverlay,
+  RadioButton,
   RadioGroup,
   Select,
-  SelectChangeEvent,
   Typography,
-  useTheme,
-} from '@mui/material';
+} from '@openmetadata/ui-core-components';
 import {
   AlertTriangle,
   CheckCircle,
@@ -40,11 +39,11 @@ import {
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { TFunction } from 'i18next';
 import { load as yamlLoad } from 'js-yaml';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloudUpload } from '../../../assets/svg/upload-cloud.svg';
 import { CreateDataContract } from '../../../generated/api/data/createDataContract';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { ContractValidation } from '../../../generated/entity/datacontract/contractValidation';
@@ -67,9 +66,106 @@ import {
   ParsedODCSContract,
   ParsedOpenMetadataContract,
 } from './ODCSImportModal.interface';
-import './ODCSImportModal.less';
 
 type ParsedContract = ParsedODCSContract | ParsedOpenMetadataContract;
+
+// Module-scope helpers pulled out of the component body so their internal
+// branching doesn't count against the component function's own complexity.
+const getIsImportDisabled = (
+  yamlContent: string | null,
+  parseError: string | null,
+  isValidating: boolean,
+  hasValidationErrors: boolean,
+  hasMultipleObjects: boolean,
+  selectedObjectName: string
+): boolean => {
+  const hasBlockingValidationState =
+    !yamlContent || Boolean(parseError) || isValidating;
+
+  return (
+    hasBlockingValidationState ||
+    hasValidationErrors ||
+    (hasMultipleObjects && !selectedObjectName)
+  );
+};
+
+const getModalTitle = (isODCSFormat: boolean, t: TFunction): string =>
+  isODCSFormat ? t('label.import-odcs-contract') : t('label.import-contract');
+
+const getValidationCardClassName = (parseError: string | null): string =>
+  `tw:w-[320px] tw:shrink-0 tw:flex tw:flex-col tw:self-start tw:p-4 tw:overflow-auto ${
+    parseError ? 'tw:bg-utility-error-50' : 'tw:bg-bg-secondary'
+  }`;
+
+// Pulled out of handleOpenMetadataImport: the OM export converts termsOfUse
+// from entity object {content, inherited} to a plain string (CreateDataContract
+// format). Convert it back to entity format so the JSON Patch targets the
+// object fields correctly.
+const normalizeTermsOfUseForPatch = (
+  mergedForPatch: Record<string, unknown>,
+  existingContract?: DataContract | null
+): Record<string, unknown> => {
+  if (typeof mergedForPatch.termsOfUse !== 'string') {
+    return mergedForPatch;
+  }
+
+  const existingTermsOfUse =
+    existingContract?.termsOfUse &&
+    typeof existingContract.termsOfUse === 'object'
+      ? existingContract.termsOfUse
+      : {};
+
+  return {
+    ...mergedForPatch,
+    termsOfUse: {
+      ...existingTermsOfUse,
+      content: mergedForPatch.termsOfUse,
+    },
+  };
+};
+
+const applyReplaceImport = async (
+  existingContractId: string | undefined,
+  contractData: CreateDataContract
+): Promise<DataContract> => {
+  await deleteContractById(existingContractId ?? '');
+
+  return createContract(contractData) as Promise<DataContract>;
+};
+
+const applyMergeImport = async (
+  existingContract: DataContract | undefined | null,
+  contractData: CreateDataContract
+): Promise<DataContract> => {
+  const mergedForPatch = normalizeTermsOfUseForPatch(
+    { ...existingContract, ...contractData },
+    existingContract
+  );
+  const patchOperations = compare(existingContract as object, mergedForPatch);
+
+  return updateContract(
+    existingContract?.id ?? '',
+    patchOperations
+  ) as Promise<DataContract>;
+};
+
+const hasFailedSchemaValidation = (
+  serverValidation: ContractValidation | null
+): boolean =>
+  serverValidation?.schemaValidation?.failed !== undefined &&
+  serverValidation.schemaValidation.failed > 0;
+
+const hasEntityOrConstraintValidationErrors = (
+  serverValidation: ContractValidation | null
+): boolean => {
+  const hasEntityErrors =
+    serverValidation?.entityErrors && serverValidation.entityErrors.length > 0;
+  const hasConstraintErrors =
+    serverValidation?.constraintErrors &&
+    serverValidation.constraintErrors.length > 0;
+
+  return Boolean(hasEntityErrors || hasConstraintErrors);
+};
 
 const ContractImportModal: React.FC<ContractImportModalProps> = ({
   visible,
@@ -82,7 +178,6 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
   onSuccess,
 }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const [yamlContent, setYamlContent] = useState<string | null>(null);
   const [parsedRawContent, setParsedRawContent] = useState<Record<
     string,
@@ -104,7 +199,6 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
   const [schemaObjects, setSchemaObjects] = useState<string[]>([]);
   const [selectedObjectName, setSelectedObjectName] = useState<string>('');
   const [hasMultipleObjects, setHasMultipleObjects] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
 
   const isODCSFormat = format === 'odcs';
 
@@ -256,6 +350,44 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     [isODCSFormat, parseODCSContent, parseOpenMetadataContent]
   );
 
+  const clearSchemaObjects = useCallback(() => {
+    setSchemaObjects([]);
+    setHasMultipleObjects(false);
+    setSelectedObjectName('');
+  }, []);
+
+  // ODCS documents may carry several schema objects; pick the one matching the
+  // entity when there is a choice, and fall back to a cleared selection if the
+  // document cannot be parsed at all.
+  const applyOdcsSchemaObjects = useCallback(
+    async (content: string) => {
+      try {
+        const parseResult: ODCSParseResult = await parseODCSYaml(content);
+        const objects = parseResult.schemaObjects ?? [];
+        setSchemaObjects(objects);
+        setHasMultipleObjects(parseResult.hasMultipleObjects ?? false);
+
+        if (objects.length === 1) {
+          setSelectedObjectName(objects[0]);
+
+          return;
+        }
+
+        if (objects.length > 1) {
+          const matchingObject = entityName
+            ? objects.find(
+                (obj) => obj.toLowerCase() === entityName.toLowerCase()
+              )
+            : undefined;
+          setSelectedObjectName(matchingObject ?? '');
+        }
+      } catch {
+        clearSchemaObjects();
+      }
+    },
+    [entityName, clearSchemaObjects]
+  );
+
   const processFile = useCallback(
     async (file: File) => {
       const reader = new FileReader();
@@ -265,87 +397,41 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         setFileName(file.name);
 
         const parsed = parseYamlContent(content);
-        if (parsed) {
-          setParsedContract(parsed);
-          setParseError(null);
-
-          if (isODCSFormat) {
-            try {
-              const parseResult: ODCSParseResult = await parseODCSYaml(content);
-              const objects = parseResult.schemaObjects ?? [];
-              setSchemaObjects(objects);
-              setHasMultipleObjects(parseResult.hasMultipleObjects ?? false);
-
-              if (objects.length === 1) {
-                setSelectedObjectName(objects[0]);
-              } else if (objects.length > 1) {
-                const matchingObject = entityName
-                  ? objects.find(
-                      (obj) => obj.toLowerCase() === entityName.toLowerCase()
-                    )
-                  : undefined;
-                setSelectedObjectName(matchingObject ?? '');
-              }
-            } catch {
-              setSchemaObjects([]);
-              setHasMultipleObjects(false);
-              setSelectedObjectName('');
-            }
-          }
-        } else {
+        if (!parsed) {
           setParsedContract(null);
           setParseError(
             isODCSFormat
               ? t('message.invalid-odcs-contract-format')
               : t('message.invalid-openmetadata-contract-format')
           );
-          setSchemaObjects([]);
-          setHasMultipleObjects(false);
-          setSelectedObjectName('');
+          clearSchemaObjects();
+
+          return;
+        }
+
+        setParsedContract(parsed);
+        setParseError(null);
+
+        if (isODCSFormat) {
+          await applyOdcsSchemaObjects(content);
         }
       };
       reader.readAsText(file);
     },
-    [parseYamlContent, isODCSFormat, entityName, t]
+    [
+      parseYamlContent,
+      isODCSFormat,
+      t,
+      clearSchemaObjects,
+      applyOdcsSchemaObjects,
+    ]
   );
 
-  const handleFileInputChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
+  const handleDropFiles = useCallback(
+    (files: FileList) => {
+      const file = files[0];
       if (file) {
         processFile(file);
-      }
-    },
-    [processFile]
-  );
-
-  const handleDragOver = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setIsDragging(false);
-  }, []);
-
-  const handleDrop = useCallback(
-    (event: React.DragEvent) => {
-      event.preventDefault();
-      event.stopPropagation();
-      setIsDragging(false);
-
-      const file = event.dataTransfer.files?.[0];
-      if (file) {
-        const validExtensions = ['.yaml', '.yml', '.json'];
-        const fileExtension = file.name
-          .toLowerCase()
-          .slice(file.name.lastIndexOf('.'));
-        if (validExtensions.includes(fileExtension)) {
-          processFile(file);
-        }
       }
     },
     [processFile]
@@ -396,37 +482,11 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
       } as CreateDataContract;
 
       if (hasExistingContract && importMode === 'replace') {
-        await deleteContractById(existingContract!.id!);
+        return applyReplaceImport(existingContract?.id, contractData);
+      }
 
-        return createContract(contractData) as Promise<DataContract>;
-      } else if (hasExistingContract && importMode === 'merge') {
-        const mergedForPatch: Record<string, unknown> = {
-          ...existingContract,
-          ...contractData,
-        };
-
-        // The OM export converts termsOfUse from entity object {content, inherited}
-        // to a plain string (CreateDataContract format). Convert it back to entity
-        // format so the JSON Patch targets the object fields correctly.
-        if (typeof mergedForPatch.termsOfUse === 'string') {
-          mergedForPatch.termsOfUse = {
-            ...(existingContract?.termsOfUse &&
-            typeof existingContract.termsOfUse === 'object'
-              ? existingContract.termsOfUse
-              : {}),
-            content: mergedForPatch.termsOfUse,
-          };
-        }
-
-        const patchOperations = compare(
-          existingContract as object,
-          mergedForPatch
-        );
-
-        return updateContract(
-          existingContract!.id!,
-          patchOperations
-        ) as Promise<DataContract>;
+      if (hasExistingContract && importMode === 'merge') {
+        return applyMergeImport(existingContract, contractData);
       }
 
       return createContract(contractData) as Promise<DataContract>;
@@ -500,29 +560,17 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     setHasMultipleObjects(false);
   }, []);
 
-  const handleImportModeChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      setImportMode(event.target.value as ImportMode);
-    },
-    []
-  );
+  const handleImportModeChange = useCallback((value: string) => {
+    setImportMode(value as ImportMode);
+  }, []);
 
-  const handleObjectSelectChange = useCallback(
-    (event: SelectChangeEvent<string>) => {
-      setSelectedObjectName(event.target.value);
-    },
-    []
-  );
+  const handleObjectSelectChange = useCallback((key: React.Key | null) => {
+    setSelectedObjectName(key ? String(key) : '');
+  }, []);
 
-  const renderContractPreview = useCallback(() => {
-    if (!parsedContract) {
-      return null;
-    }
-
-    const includedFeatures: string[] = [];
-
-    if (isODCSFormat) {
-      const odcsContract = parsedContract as ParsedODCSContract;
+  const renderODCSContractPreview = useCallback(
+    (odcsContract: ParsedODCSContract) => {
+      const includedFeatures: string[] = [];
       if (odcsContract.hasSchema) {
         includedFeatures.push(t('label.schema'));
       }
@@ -537,710 +585,422 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
       }
 
       return (
-        <Box
-          data-testid="contract-preview-card"
-          sx={{
-            border: `1px solid ${theme.palette.divider}`,
-            borderRadius: '8px',
-            p: '16px',
-          }}>
-          <Typography
-            sx={{
-              fontSize: '16px',
-              fontWeight: 600,
-              color: theme.palette.text.secondary,
-              mb: '12px',
-            }}>
+        <div
+          className="tw:border tw:border-secondary tw:rounded-lg tw:p-4"
+          data-testid="contract-preview-card">
+          <Typography as="p" weight="medium">
             {t('label.contract-preview')}
           </Typography>
-          <Box sx={{ display: 'flex', mb: '8px' }}>
-            <Typography
-              sx={{
-                fontSize: '14px',
-                color: theme.palette.text.secondary,
-                width: '70px',
-                flexShrink: 0,
-              }}>
-              {t('label.name')}
-            </Typography>
-            <Typography
-              sx={{
-                fontSize: '14px',
-                fontWeight: 500,
-                color: theme.palette.text.primary,
-              }}>
+          <Box className="tw:mb-2 tw:mt-3">
+            <div className="tw:w-17.5">
+              <Typography className="tw:shrink-0 tw:text-secondary">
+                {t('label.name')}
+              </Typography>
+            </div>
+            <Typography weight="medium">
               {odcsContract.name ?? t('label.not-specified')}
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', mb: '8px' }}>
-            <Typography
-              sx={{
-                fontSize: '14px',
-                color: theme.palette.text.secondary,
-                width: '70px',
-                flexShrink: 0,
-              }}>
-              {t('label.version')}
-            </Typography>
-            <Typography
-              sx={{
-                fontSize: '14px',
-                fontWeight: 500,
-                color: theme.palette.text.primary,
-              }}>
-              {odcsContract.version}
-            </Typography>
+          <Box className="tw:mb-2">
+            <div className="tw:w-17.5">
+              <Typography
+                className="tw:shrink-0 tw:text-secondary"
+                size="text-sm">
+                {t('label.version')}
+              </Typography>
+            </div>
+            <Typography weight="medium">{odcsContract.version}</Typography>
           </Box>
-          <Box sx={{ display: 'flex', mb: '8px' }}>
-            <Typography
-              sx={{
-                fontSize: '14px',
-                color: theme.palette.text.secondary,
-                width: '70px',
-                flexShrink: 0,
-              }}>
-              {t('label.status')}
-            </Typography>
-            <Typography
-              sx={{
-                fontSize: '14px',
-                fontWeight: 500,
-                color: theme.palette.text.primary,
-              }}>
-              {odcsContract.status}
-            </Typography>
+          <Box className="tw:mb-2">
+            <div className="tw:w-17.5">
+              <Typography className="tw:shrink-0 tw:text-secondary">
+                {t('label.status')}
+              </Typography>
+            </div>
+            <Typography weight="medium">{odcsContract.status}</Typography>
           </Box>
           {includedFeatures.length > 0 && (
-            <Box
-              sx={{
-                display: 'flex',
-                gap: '8px',
-                flexWrap: 'wrap',
-                mt: '12px',
-              }}>
+            <Box className="tw:mt-3" gap={2} wrap="wrap">
               {includedFeatures.map((feature) => (
-                <Chip
-                  key={feature}
-                  label={feature}
-                  size="small"
-                  sx={{
-                    fontSize: '12px',
-                    height: '24px',
-                    backgroundColor: theme.palette.grey[100],
-                    border: 'none',
-                    borderRadius: '4px',
-                    color: theme.palette.text.secondary,
-                  }}
-                />
+                <Badge color="gray" key={feature} size="sm" type="color">
+                  {feature}
+                </Badge>
               ))}
             </Box>
           )}
-        </Box>
+        </div>
       );
+    },
+    [t]
+  );
+
+  const renderOpenMetadataContractPreview = useCallback(
+    (omContract: ParsedOpenMetadataContract) => {
+      const includedFeatures: string[] = [];
+      if (omContract.hasSchema) {
+        includedFeatures.push(t('label.schema'));
+      }
+      if (omContract.hasSla) {
+        includedFeatures.push(t('label.sla'));
+      }
+      if (omContract.hasSecurity) {
+        includedFeatures.push(t('label.security'));
+      }
+      if (omContract.hasSemantics) {
+        includedFeatures.push(t('label.semantic-plural'));
+      }
+
+      return (
+        <Card className="tw:p-4">
+          <Typography as="p" weight="medium">
+            {t('label.contract-preview')}
+          </Typography>
+          <Box className="tw:mb-2 tw:mt-3">
+            <div className="tw:w-17.5">
+              <Typography
+                className="tw:shrink-0 tw:text-gray-700"
+                size="text-sm">
+                {t('label.name')}
+              </Typography>
+            </div>
+            <Typography size="text-sm" weight="medium">
+              {omContract.name ?? t('label.not-specified')}
+            </Typography>
+          </Box>
+          {omContract.displayName && (
+            <Box className="tw:mb-2">
+              <div className="tw:w-17.5">
+                <Typography
+                  className="tw:shrink-0 tw:text-gray-700"
+                  size="text-sm">
+                  {t('label.display-name')}
+                </Typography>
+              </div>
+              <Typography size="text-sm" weight="medium">
+                {omContract.displayName}
+              </Typography>
+            </Box>
+          )}
+          {includedFeatures.length > 0 && (
+            <Box className="tw:mt-3" gap={2} wrap="wrap">
+              {includedFeatures.map((feature) => (
+                <Badge color="gray" key={feature} size="sm" type="color">
+                  {feature}
+                </Badge>
+              ))}
+            </Box>
+          )}
+        </Card>
+      );
+    },
+    [t]
+  );
+
+  const renderContractPreview = useCallback(() => {
+    if (!parsedContract) {
+      return null;
     }
 
-    const omContract = parsedContract as ParsedOpenMetadataContract;
-    if (omContract.hasSchema) {
-      includedFeatures.push(t('label.schema'));
-    }
-    if (omContract.hasSla) {
-      includedFeatures.push(t('label.sla'));
-    }
-    if (omContract.hasSecurity) {
-      includedFeatures.push(t('label.security'));
-    }
-    if (omContract.hasSemantics) {
-      includedFeatures.push(t('label.semantic-plural'));
-    }
+    return isODCSFormat
+      ? renderODCSContractPreview(parsedContract as ParsedODCSContract)
+      : renderOpenMetadataContractPreview(
+          parsedContract as ParsedOpenMetadataContract
+        );
+  }, [
+    parsedContract,
+    isODCSFormat,
+    renderODCSContractPreview,
+    renderOpenMetadataContractPreview,
+  ]);
+
+  const renderParseErrorPanel = useCallback(
+    () => (
+      <Card
+        className="tw:h-full tw:flex tw:flex-col tw:p-4"
+        data-testid="parse-error-panel">
+        <Box
+          align="center"
+          className="tw:mb-4 tw:pb-4 tw:border-b tw:border-utility-error-100"
+          justify="between">
+          <Typography weight="semibold">{t('label.parse-error')}</Typography>
+          <BadgeWithIcon
+            color="error"
+            iconLeading={XClose}
+            size="sm"
+            type="pill-color">
+            {t('label.failed')}
+          </BadgeWithIcon>
+        </Box>
+        <div className="tw:flex-1 tw:min-h-50 tw:mb-4">
+          <Typography className="tw:text-secondary">
+            {isODCSFormat
+              ? t('message.invalid-odcs-contract-format-required-fields')
+              : t(
+                  'message.invalid-openmetadata-contract-format-required-fields'
+                )}
+          </Typography>
+          <Box className="tw:mt-3" direction="col" gap={2}>
+            {(isODCSFormat ? ['APIVersion', 'Kind', 'Status'] : ['name']).map(
+              (field) => (
+                <Box align="center" gap={2} key={field}>
+                  <div className="tw:w-1.5 tw:h-1.5 tw:rounded-full tw:bg-utility-error-600 tw:shrink-0" />
+                  <Typography>{field}</Typography>
+                </Box>
+              )
+            )}
+          </Box>
+        </div>
+        <div className="tw:mt-auto tw:pt-4 tw:border-t tw:border-utility-error-100">
+          <Box align="center" gap={2}>
+            <XCircle className="tw:text-utility-error-600" size={16} />
+            <Typography size="text-sm">
+              {t('label.syntax')} :{' '}
+              <strong className="tw:font-medium">{t('label.invalid')}</strong>
+            </Typography>
+          </Box>
+        </div>
+      </Card>
+    ),
+    [isODCSFormat, t]
+  );
+
+  const renderValidatingPanel = useCallback(
+    () => (
+      <Box
+        align="center"
+        className="tw:bg-bg-secondary tw:rounded-lg tw:h-full"
+        direction="col"
+        justify="center">
+        <Loader size="small" style={{ marginBottom: '12px' }} />
+        <Typography as="p" className="tw:text-secondary" size="text-sm">
+          {t('message.validating-contract-schema')}
+        </Typography>
+      </Box>
+    ),
+    [t]
+  );
+
+  const renderServerValidationErrorPanel = useCallback(
+    () => (
+      <Box
+        className="tw:bg-bg-secondary tw:rounded-lg tw:h-full"
+        data-testid="server-validation-error-panel"
+        direction="col">
+        <Box
+          align="center"
+          className="tw:mb-4 tw:pb-4 tw:border-b tw:border-secondary"
+          justify="between">
+          <Typography weight="medium">
+            {t('label.schema-validation')}
+          </Typography>
+          <BadgeWithIcon
+            color="error"
+            iconLeading={XClose}
+            size="sm"
+            type="pill-color">
+            {t('label.failed')}
+          </BadgeWithIcon>
+        </Box>
+        <div className="tw:flex-1 tw:min-h-50 tw:mb-4">
+          <Typography as="p" className="tw:text-secondary tw:wrap-break-word">
+            {serverValidationError}
+          </Typography>
+        </div>
+        <div className="tw:mt-auto tw:pt-4 tw:border-t tw:border-secondary">
+          <Box align="center" className="tw:mb-2" gap={2}>
+            <CheckCircle className="tw:text-utility-success-500" size={16} />
+            <Typography>
+              {t('label.syntax')} :{' '}
+              <strong className="tw:font-medium">{t('label.valid')}</strong>
+            </Typography>
+          </Box>
+          <Box align="center" gap={2}>
+            <XCircle className="tw:text-utility-error-600" size={16} />
+            <Typography>
+              {t('label.schema')} :{' '}
+              <strong className="tw:font-medium">{t('label.error')}</strong>
+            </Typography>
+          </Box>
+        </div>
+      </Box>
+    ),
+    [serverValidationError, t]
+  );
+
+  const renderSchemaValidationFailedPanel = useCallback(
+    () => (
+      <Box
+        className="tw:bg-bg-secondary tw:rounded-lg tw:h-full"
+        data-testid="server-validation-failed-error-panel"
+        direction="col">
+        <Box
+          align="center"
+          className="tw:mb-4 tw:pb-4 tw:border-b tw:border-secondary"
+          justify="between">
+          <Typography weight="medium">
+            {t('label.schema-validation')}
+          </Typography>
+          <BadgeWithIcon
+            color="error"
+            iconLeading={XClose}
+            size="sm"
+            type="pill-color">
+            {t('label.failed')}
+          </BadgeWithIcon>
+        </Box>
+        <div className="tw:flex-1 tw:min-h-50 tw:overflow-y-auto">
+          <Box data-testid="failed-fields-list" direction="col" gap={2}>
+            {serverValidation?.schemaValidation?.failedFields?.map(
+              (field, index) => (
+                <Box align="center" gap={2} key={`notfound-${field}`}>
+                  <div className="tw:w-1.5 tw:h-1.5 tw:rounded-full tw:bg-utility-error-600 tw:shrink-0" />
+                  <Typography
+                    data-testid={`failed-field-${index}`}
+                    size="text-sm">
+                    {field} - {t('label.not-found-lowercase')}
+                  </Typography>
+                </Box>
+              )
+            )}
+            {serverValidation?.schemaValidation?.duplicateFields?.map(
+              (field, index) => (
+                <Box align="center" gap={2} key={`duplicate-${field}`}>
+                  <div className="tw:w-1.5 tw:h-1.5 tw:rounded-full tw:bg-utility-error-600 tw:shrink-0" />
+                  <Typography
+                    data-testid={`duplicate-field-${index}`}
+                    size="text-sm">
+                    {field} - {t('label.duplicate')}
+                  </Typography>
+                </Box>
+              )
+            )}
+            {serverValidation?.schemaValidation?.typeMismatchFields?.map(
+              (field, index) => (
+                <Box align="center" gap={2} key={`typemismatch-${field}`}>
+                  <div className="tw:w-1.5 tw:h-1.5 tw:rounded-full tw:bg-utility-error-600 tw:shrink-0" />
+                  <Typography
+                    data-testid={`type-mismatch-field-${index}`}
+                    size="text-sm">
+                    {field}
+                  </Typography>
+                </Box>
+              )
+            )}
+          </Box>
+        </div>
+        <div className="tw:mt-auto tw:pt-4 tw:border-t tw:border-secondary">
+          <Box align="center" className="tw:mb-2" gap={2}>
+            <CheckCircle className="tw:text-utility-success-500" size={16} />
+            <Typography size="text-sm">
+              {t('label.syntax')} :{' '}
+              <strong className="tw:font-medium">{t('label.valid')}</strong>
+            </Typography>
+          </Box>
+          <Box align="center" gap={2}>
+            <XCircle className="tw:text-utility-error-600" size={16} />
+            <Typography size="text-sm">
+              {t('label.schema')} : {serverValidation?.schemaValidation?.failed}{' '}
+              {t('label.field-plural-lowercase')} {t('label.with-issues')}
+            </Typography>
+          </Box>
+        </div>
+      </Box>
+    ),
+    [serverValidation, t]
+  );
+
+  const renderEntityValidationErrorPanel = useCallback(() => {
+    const allErrors = [
+      ...(serverValidation?.entityErrors ?? []),
+      ...(serverValidation?.constraintErrors ?? []),
+    ];
 
     return (
       <Box
-        sx={{
-          border: `1px solid ${theme.palette.divider}`,
-          borderRadius: '8px',
-          p: '16px',
-        }}>
-        <Typography
-          sx={{
-            fontSize: '16px',
-            fontWeight: 600,
-            color: theme.palette.text.secondary,
-            letterSpacing: '0.5px',
-            mb: '12px',
-          }}>
-          {t('label.contract-preview')}
-        </Typography>
-        <Box sx={{ display: 'flex', mb: '8px' }}>
-          <Typography
-            sx={{
-              fontSize: '14px',
-              color: theme.palette.text.secondary,
-              width: '70px',
-              flexShrink: 0,
-            }}>
-            {t('label.name')}
+        className="tw:bg-bg-secondary tw:rounded-lg tw:h-full"
+        data-testid="entity-validation-error-panel"
+        direction="col">
+        <Box
+          align="center"
+          className="tw:mb-4 tw:pb-4 tw:border-b tw:border-secondary"
+          justify="between">
+          <Typography size="text-sm" weight="semibold">
+            {t('label.contract-validation')}
           </Typography>
-          <Typography
-            sx={{
-              fontSize: '14px',
-              fontWeight: 500,
-              color: theme.palette.text.primary,
-            }}>
-            {omContract.name ?? t('label.not-specified')}
-          </Typography>
+          <BadgeWithIcon
+            color="error"
+            iconLeading={XClose}
+            size="sm"
+            type="pill-color">
+            {t('label.failed')}
+          </BadgeWithIcon>
         </Box>
-        {omContract.displayName && (
-          <Box sx={{ display: 'flex', mb: '8px' }}>
-            <Typography
-              sx={{
-                fontSize: '14px',
-                color: theme.palette.text.secondary,
-                width: '70px',
-                flexShrink: 0,
-              }}>
-              {t('label.display-name')}
-            </Typography>
-            <Typography
-              sx={{
-                fontSize: '14px',
-                fontWeight: 500,
-                color: theme.palette.text.primary,
-              }}>
-              {omContract.displayName}
-            </Typography>
-          </Box>
-        )}
-        {includedFeatures.length > 0 && (
-          <Box
-            sx={{ display: 'flex', gap: '8px', flexWrap: 'wrap', mt: '12px' }}>
-            {includedFeatures.map((feature) => (
-              <Chip
-                key={feature}
-                label={feature}
-                size="small"
-                sx={{
-                  fontSize: '12px',
-                  height: '24px',
-                  backgroundColor: theme.palette.grey[100],
-                  border: 'none',
-                  borderRadius: '4px',
-                  color: theme.palette.text.secondary,
-                }}
-              />
+        <div className="tw:flex-1 tw:min-h-50 tw:mb-4">
+          <Box data-testid="entity-errors-list" direction="col" gap={2}>
+            {allErrors.map((error, index) => (
+              <Box align="start" gap={2} key={`error-${error}`}>
+                <div className="tw:w-1.5 tw:h-1.5 tw:rounded-full tw:bg-utility-error-600 tw:shrink-0 tw:mt-1.5" />
+                <Typography
+                  className="tw:wrap-break-word"
+                  data-testid={`entity-error-${index}`}
+                  size="text-sm">
+                  {error}
+                </Typography>
+              </Box>
             ))}
           </Box>
-        )}
+        </div>
+        <div className="tw:mt-auto tw:pt-4 tw:border-t tw:border-secondary">
+          <Box align="center" className="tw:mb-2" gap={2}>
+            <CheckCircle className="tw:text-utility-success-500" size={16} />
+            <Typography size="text-sm">
+              {t('label.syntax')} :{' '}
+              <strong className="tw:font-medium">{t('label.valid')}</strong>
+            </Typography>
+          </Box>
+          <Box align="center" gap={2}>
+            <XCircle className="tw:text-utility-error-600" size={16} />
+            <Typography size="text-sm">
+              {t('label.contract')} :{' '}
+              <strong className="tw:font-medium">
+                {t('label.validation-failed')}
+              </strong>
+            </Typography>
+          </Box>
+        </div>
       </Box>
     );
-  }, [parsedContract, isODCSFormat, t, theme]);
+  }, [serverValidation, t]);
 
-  const renderValidationPanel = useCallback(() => {
-    if (parseError) {
-      return (
-        <Box
-          data-testid="parse-error-panel"
-          sx={{
-            borderRadius: '8px',
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-          }}>
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              mb: '16px',
-              pb: '16px',
-              borderBottom: `1px solid ${theme.palette.allShades.error[100]}`,
-            }}>
-            <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>
-              {t('label.parse-error')}
-            </Typography>
-            <Chip
-              icon={<XClose size={12} />}
-              label={t('label.failed')}
-              size="small"
-              sx={{
-                backgroundColor: theme.palette.allShades.error[50],
-                color: theme.palette.allShades.error[600],
-                fontSize: '12px',
-                height: '22px',
-                '& .MuiChip-icon': {
-                  color: theme.palette.allShades.error[600],
-                },
-              }}
-            />
-          </Box>
-          <Box sx={{ flex: 1, minHeight: '200px' }}>
-            <Typography
-              sx={{
-                fontSize: '14px',
-                color: theme.palette.text.secondary,
-                mb: '12px',
-              }}>
-              {isODCSFormat
-                ? t('message.invalid-odcs-contract-format-required-fields')
-                : t(
-                    'message.invalid-openmetadata-contract-format-required-fields'
-                  )}
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {(isODCSFormat ? ['APIVersion', 'Kind', 'Status'] : ['name']).map(
-                (field) => (
-                  <Box
-                    key={field}
-                    sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Box
-                      sx={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: '50%',
-                        backgroundColor: theme.palette.allShades.error[600],
-                      }}
-                    />
-                    <Typography sx={{ fontSize: '14px' }}>{field}</Typography>
-                  </Box>
-                )
-              )}
-            </Box>
-          </Box>
-          <Box
-            sx={{
-              mt: 'auto',
-              pt: '16px',
-              borderTop: `1px solid ${theme.palette.allShades.error[100]}`,
-            }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <XCircle color={theme.palette.allShades.error[600]} size={16} />
-              <Typography sx={{ fontSize: '14px' }}>
-                {t('label.syntax')} : <strong>{t('label.invalid')}</strong>
-              </Typography>
-            </Box>
-          </Box>
-        </Box>
-      );
-    }
-
-    if (isValidating) {
-      return (
-        <Box
-          sx={{
-            backgroundColor: theme.palette.grey[50],
-            borderRadius: '8px',
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-          <Loader size="small" style={{ marginBottom: '12px' }} />
-          <Typography
-            sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
-            {t('message.validating-contract-schema')}
-          </Typography>
-        </Box>
-      );
-    }
-
-    if (serverValidationError) {
-      return (
-        <Box
-          data-testid="server-validation-error-panel"
-          sx={{
-            backgroundColor: theme.palette.grey[50],
-            borderRadius: '8px',
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-          }}>
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              mb: '16px',
-              pb: '16px',
-              borderBottom: `1px solid ${theme.palette.divider}`,
-            }}>
-            <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>
-              {t('label.schema-validation')}
-            </Typography>
-            <Chip
-              icon={<XClose size={12} />}
-              label={t('label.failed')}
-              size="small"
-              sx={{
-                backgroundColor: theme.palette.allShades.error[50],
-                color: theme.palette.allShades.error[600],
-                fontSize: '12px',
-                height: '22px',
-                '& .MuiChip-icon': {
-                  color: theme.palette.allShades.error[600],
-                },
-              }}
-            />
-          </Box>
-          <Box sx={{ flex: 1, minHeight: '200px' }}>
-            <Typography
-              sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
-              {serverValidationError}
-            </Typography>
-          </Box>
-          <Box
-            sx={{
-              mt: 'auto',
-              pt: '16px',
-              borderTop: `1px solid ${theme.palette.divider}`,
-            }}>
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                mb: '8px',
-              }}>
-              <CheckCircle
-                color={theme.palette.allShades.success[500]}
-                size={16}
-              />
-              <Typography sx={{ fontSize: '14px' }}>
-                {t('label.syntax')} : <strong>{t('label.valid')}</strong>
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <XCircle color={theme.palette.allShades.error[600]} size={16} />
-              <Typography sx={{ fontSize: '14px' }}>
-                {t('label.schema')} : <strong>{t('label.error')}</strong>
-              </Typography>
-            </Box>
-          </Box>
-        </Box>
-      );
-    }
-
-    if (
-      serverValidation?.schemaValidation?.failed !== undefined &&
-      serverValidation.schemaValidation.failed > 0
-    ) {
-      return (
-        <Box
-          data-testid="server-validation-failed-error-panel"
-          sx={{
-            backgroundColor: theme.palette.grey[50],
-            borderRadius: '8px',
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-          }}>
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              mb: '16px',
-              pb: '16px',
-              borderBottom: `1px solid ${theme.palette.divider}`,
-            }}>
-            <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>
-              {t('label.schema-validation')}
-            </Typography>
-            <Chip
-              icon={<XClose size={12} />}
-              label={t('label.failed')}
-              size="small"
-              sx={{
-                backgroundColor: theme.palette.allShades.error[50],
-                color: theme.palette.allShades.error[600],
-                fontSize: '12px',
-                height: '22px',
-                '& .MuiChip-icon': {
-                  color: theme.palette.allShades.error[600],
-                },
-              }}
-            />
-          </Box>
-          <Box
-            sx={{
-              flex: 1,
-              minHeight: '200px',
-              overflowY: 'auto',
-            }}>
-            <Box
-              data-testid="failed-fields-list"
-              sx={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {serverValidation.schemaValidation?.failedFields?.map(
-                (field, index) => (
-                  <Box
-                    key={`notfound-${index}`}
-                    sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Box
-                      sx={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: '50%',
-                        backgroundColor: theme.palette.allShades.error[600],
-                      }}
-                    />
-                    <Typography
-                      data-testid={`failed-field-${index}`}
-                      sx={{ fontSize: '14px' }}>
-                      {field} - {t('label.not-found-lowercase')}
-                    </Typography>
-                  </Box>
-                )
-              )}
-              {serverValidation.schemaValidation?.duplicateFields?.map(
-                (field, index) => (
-                  <Box
-                    key={`duplicate-${index}`}
-                    sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Box
-                      sx={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: '50%',
-                        backgroundColor: theme.palette.allShades.error[600],
-                      }}
-                    />
-                    <Typography
-                      data-testid={`duplicate-field-${index}`}
-                      sx={{ fontSize: '14px' }}>
-                      {field} - {t('label.duplicate')}
-                    </Typography>
-                  </Box>
-                )
-              )}
-              {serverValidation.schemaValidation?.typeMismatchFields?.map(
-                (field, index) => (
-                  <Box
-                    key={`typemismatch-${index}`}
-                    sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Box
-                      sx={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: '50%',
-                        backgroundColor: theme.palette.allShades.error[600],
-                      }}
-                    />
-                    <Typography
-                      data-testid={`type-mismatch-field-${index}`}
-                      sx={{ fontSize: '14px' }}>
-                      {field}
-                    </Typography>
-                  </Box>
-                )
-              )}
-            </Box>
-          </Box>
-          <Box
-            sx={{
-              mt: 'auto',
-              pt: '16px',
-              borderTop: `1px solid ${theme.palette.divider}`,
-            }}>
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                mb: '8px',
-              }}>
-              <CheckCircle
-                color={theme.palette.allShades.success[500]}
-                size={16}
-              />
-              <Typography sx={{ fontSize: '14px' }}>
-                {t('label.syntax')} : <strong>{t('label.valid')}</strong>
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <XCircle color={theme.palette.allShades.error[600]} size={16} />
-              <Typography sx={{ fontSize: '14px' }}>
-                {t('label.schema')} :{' '}
-                {serverValidation.schemaValidation?.failed}{' '}
-                {t('label.field-plural-lowercase')} {t('label.with-issues')}
-              </Typography>
-            </Box>
-          </Box>
-        </Box>
-      );
-    }
-
-    const hasEntityErrors =
-      serverValidation?.entityErrors &&
-      serverValidation.entityErrors.length > 0;
-    const hasConstraintErrors =
-      serverValidation?.constraintErrors &&
-      serverValidation.constraintErrors.length > 0;
-
-    if (hasEntityErrors || hasConstraintErrors) {
-      const allErrors = [
-        ...(serverValidation?.entityErrors ?? []),
-        ...(serverValidation?.constraintErrors ?? []),
-      ];
-
-      return (
-        <Box
-          data-testid="entity-validation-error-panel"
-          sx={{
-            backgroundColor: theme.palette.grey[50],
-            borderRadius: '8px',
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-          }}>
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              mb: '16px',
-              pb: '16px',
-              borderBottom: `1px solid ${theme.palette.divider}`,
-            }}>
-            <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>
-              {t('label.contract-validation')}
-            </Typography>
-            <Chip
-              icon={<XClose size={12} />}
-              label={t('label.failed')}
-              size="small"
-              sx={{
-                backgroundColor: theme.palette.allShades.error[50],
-                color: theme.palette.allShades.error[600],
-                fontSize: '12px',
-                height: '22px',
-                '& .MuiChip-icon': {
-                  color: theme.palette.allShades.error[600],
-                },
-              }}
-            />
-          </Box>
-          <Box sx={{ flex: 1, minHeight: '200px' }}>
-            <Box
-              data-testid="entity-errors-list"
-              sx={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {allErrors.map((error, index) => (
-                <Box
-                  key={index}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '8px',
-                  }}>
-                  <Box
-                    sx={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: '50%',
-                      backgroundColor: theme.palette.allShades.error[600],
-                      mt: '6px',
-                      flexShrink: 0,
-                    }}
-                  />
-                  <Typography
-                    data-testid={`entity-error-${index}`}
-                    sx={{ fontSize: '14px', wordBreak: 'break-word' }}>
-                    {error}
-                  </Typography>
-                </Box>
-              ))}
-            </Box>
-          </Box>
-          <Box
-            sx={{
-              mt: 'auto',
-              pt: '16px',
-              borderTop: `1px solid ${theme.palette.divider}`,
-            }}>
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                mb: '8px',
-              }}>
-              <CheckCircle
-                color={theme.palette.allShades.success[500]}
-                size={16}
-              />
-              <Typography sx={{ fontSize: '14px' }}>
-                {t('label.syntax')} : <strong>{t('label.valid')}</strong>
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <XCircle color={theme.palette.allShades.error[600]} size={16} />
-              <Typography sx={{ fontSize: '14px' }}>
-                {t('label.contract')} :{' '}
-                <strong>{t('label.validation-failed')}</strong>
-              </Typography>
-            </Box>
-          </Box>
-        </Box>
-      );
-    }
-
+  const renderValidationSuccessPanel = useCallback(() => {
     const hasTypeMismatches =
       serverValidation?.schemaValidation?.typeMismatchFields &&
       serverValidation.schemaValidation.typeMismatchFields.length > 0;
 
     return (
       <Box
+        className="tw:bg-bg-secondary tw:rounded-lg tw:h-full"
         data-testid="validation-success-panel"
-        sx={{
-          backgroundColor: theme.palette.grey[50],
-          borderRadius: '8px',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-        }}>
+        direction="col">
         <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            mb: '16px',
-            pb: '16px',
-            borderBottom: `1px solid ${theme.palette.divider}`,
-          }}>
-          <Typography
-            sx={{
-              fontSize: '14px',
-              fontWeight: 600,
-              color: theme.palette.text.primary,
-            }}>
+          align="center"
+          className="tw:mb-4 tw:pb-4 tw:border-b tw:border-secondary"
+          justify="between">
+          <Typography weight="medium">
             {t('label.schema-validation')}
           </Typography>
-          <Chip
-            icon={<CheckVerified01 size={12} />}
-            label={
-              hasTypeMismatches
-                ? t('label.passed-with-warnings')
-                : t('label.passed')
-            }
-            size="small"
-            sx={{
-              backgroundColor: hasTypeMismatches
-                ? theme.palette.allShades.warning[50]
-                : theme.palette.allShades.success[50],
-              color: hasTypeMismatches
-                ? theme.palette.allShades.warning[700]
-                : theme.palette.allShades.success[700],
-              fontSize: '12px',
-              height: '22px',
-              '& .MuiChip-icon': {
-                color: hasTypeMismatches
-                  ? theme.palette.allShades.warning[700]
-                  : theme.palette.allShades.success[700],
-              },
-            }}
-          />
+          <BadgeWithIcon
+            color={hasTypeMismatches ? 'warning' : 'success'}
+            iconLeading={CheckVerified01}
+            size="sm"
+            type="pill-color">
+            {hasTypeMismatches
+              ? t('label.passed-with-warnings')
+              : t('label.passed')}
+          </BadgeWithIcon>
         </Box>
-        <Box sx={{ flex: 1, minHeight: '200px', overflowY: 'auto' }}>
-          <Typography
-            sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
+        <div className="tw:flex-1 tw:min-h-50 tw:overflow-y-auto tw:mb-4">
+          <Typography as="p" className="tw:text-secondary" size="text-sm">
             {serverValidation?.schemaValidation?.total &&
             serverValidation.schemaValidation.total > 0
               ? t('message.schema-validation-passed', {
@@ -1249,89 +1009,100 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               : t('message.contract-syntax-valid')}
           </Typography>
           {hasTypeMismatches && (
-            <Box sx={{ mt: '16px' }}>
+            <div className="tw:mt-4">
               <Typography
-                sx={{
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: theme.palette.allShades.warning[700],
-                  mb: '8px',
-                }}>
+                as="p"
+                className="tw:text-utility-warning-700 tw:mb-2"
+                size="text-sm"
+                weight="semibold">
                 {t('label.type-mismatches')}
               </Typography>
               <Box
                 data-testid="type-mismatch-warnings-list"
-                sx={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {serverValidation.schemaValidation.typeMismatchFields.map(
+                direction="col"
+                gap={2}>
+                {serverValidation?.schemaValidation?.typeMismatchFields?.map(
                   (field, index) => (
                     <Box
-                      key={`typemismatch-warning-${index}`}
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                      }}>
+                      align="center"
+                      gap={2}
+                      key={`typemismatch-warning-${field}`}>
                       <AlertTriangle
-                        color={theme.palette.allShades.warning[600]}
+                        className="tw:text-utility-warning-600"
                         size={14}
                       />
                       <Typography
                         data-testid={`type-mismatch-warning-${index}`}
-                        sx={{ fontSize: '14px' }}>
+                        size="text-sm">
                         {field}
                       </Typography>
                     </Box>
                   )
                 )}
               </Box>
-            </Box>
+            </div>
           )}
-        </Box>
-        <Box
-          sx={{
-            mt: 'auto',
-            pt: '16px',
-            borderTop: `1px solid ${theme.palette.divider}`,
-          }}>
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              mb: '8px',
-            }}>
-            <CheckCircle
-              color={theme.palette.allShades.success[700]}
-              size={16}
-            />
-            <Typography sx={{ fontSize: '14px' }}>
-              {t('label.syntax')} : <strong>{t('label.valid')}</strong>
+        </div>
+        <div className="tw:mt-auto tw:pt-4 tw:border-t tw:border-secondary">
+          <Box align="center" className="tw:mb-2" gap={2}>
+            <CheckCircle className="tw:text-utility-success-700" size={16} />
+            <Typography size="text-sm">
+              {t('label.syntax')} :{' '}
+              <strong className="tw:font-medium">{t('label.valid')}</strong>
             </Typography>
           </Box>
           {serverValidation?.schemaValidation?.total !== undefined &&
             serverValidation.schemaValidation.total > 0 && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Box align="center" gap={2}>
                 <CheckCircle
-                  color={theme.palette.allShades.success[700]}
+                  className="tw:text-utility-success-700"
                   size={16}
                 />
-                <Typography sx={{ fontSize: '14px' }}>
+                <Typography size="text-sm">
                   {t('label.schema')} :{' '}
                   {serverValidation.schemaValidation?.passed}{' '}
                   {t('label.field-plural-lowercase')} {t('label.verified')}
                 </Typography>
               </Box>
             )}
-        </Box>
+        </div>
       </Box>
     );
+  }, [serverValidation, t]);
+
+  const renderValidationPanel = useCallback(() => {
+    if (parseError) {
+      return renderParseErrorPanel();
+    }
+
+    if (isValidating) {
+      return renderValidatingPanel();
+    }
+
+    if (serverValidationError) {
+      return renderServerValidationErrorPanel();
+    }
+
+    if (hasFailedSchemaValidation(serverValidation)) {
+      return renderSchemaValidationFailedPanel();
+    }
+
+    if (hasEntityOrConstraintValidationErrors(serverValidation)) {
+      return renderEntityValidationErrorPanel();
+    }
+
+    return renderValidationSuccessPanel();
   }, [
     parseError,
     isValidating,
     serverValidationError,
     serverValidation,
-    t,
-    theme,
+    renderParseErrorPanel,
+    renderValidatingPanel,
+    renderServerValidationErrorPanel,
+    renderSchemaValidationFailedPanel,
+    renderEntityValidationErrorPanel,
+    renderValidationSuccessPanel,
   ]);
 
   const renderImportOptions = useCallback(() => {
@@ -1340,188 +1111,118 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     }
 
     return (
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px',
-          marginTop: '16px',
-        }}>
-        <Box
-          data-testid="existing-contract-warning"
-          sx={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '12px',
-            backgroundColor: theme.palette.allShades.warning[50],
-            border: `1px solid ${theme.palette.allShades.warning[300]}`,
-            borderRadius: '8px',
-            p: '12px',
-          }}>
+      <Box className="tw:mt-4" direction="col" gap={3}>
+        <Card
+          className="tw:flex tw:items-start tw:gap-3 tw:p-3"
+          color="warning"
+          data-testid="existing-contract-warning">
           <AlertTriangle
-            color={theme.palette.allShades.warning[600]}
-            size={20}
-            style={{ marginTop: '2px' }}
+            className="tw:text-warning-600 tw:mt-0.5 tw:shrink-0"
+            size={16}
           />
-          <Typography
-            sx={{
-              fontSize: '14px',
-              color: theme.palette.allShades.warning[800],
-              lineHeight: '20px',
-            }}>
+          <Typography as="p" className="tw:text-warning-800 tw:leading-5">
             {t('message.existing-contract-detected')}{' '}
-            <strong>{t('message.please-select-action-below')}</strong>
+            <strong className="tw:font-medium">
+              {t('message.please-select-action-below')}
+            </strong>
           </Typography>
-        </Box>
+        </Card>
 
-        <FormControl component="fieldset" sx={{ width: '100%' }}>
-          <RadioGroup value={importMode} onChange={handleImportModeChange}>
-            <Box
-              sx={{
-                border: `1px solid ${
-                  importMode === 'merge'
-                    ? theme.palette.primary.main
-                    : theme.palette.divider
-                }`,
-                borderRadius: '8px',
-                p: '12px',
-                mb: '8px',
-                cursor: 'pointer',
-                backgroundColor:
-                  importMode === 'merge'
-                    ? 'rgba(25, 118, 210, 0.04)'
-                    : 'transparent',
-                '&:hover': {
-                  borderColor: theme.palette.primary.main,
-                },
-              }}
-              onClick={() => setImportMode('merge')}>
-              <Box
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                }}>
-                <Box>
-                  <Typography
-                    sx={{
-                      fontSize: '14px',
-                      fontWeight: 600,
-                      color: theme.palette.text.primary,
-                    }}>
-                    {t('label.merge-with-existing')}
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontSize: '12px',
-                      color: theme.palette.text.secondary,
-                      lineHeight: '20px',
-                    }}>
-                    {t('message.import-mode-merge-description')}
-                  </Typography>
-                </Box>
-                <Radio
-                  checked={importMode === 'merge'}
-                  sx={{ p: 0 }}
-                  value="merge"
-                />
-              </Box>
+        <RadioGroup
+          className="tw:gap-0"
+          value={importMode}
+          onChange={handleImportModeChange}>
+          <Card
+            className="tw:p-3 tw:mb-2 tw:cursor-pointer tw:transition-colors tw:hover:border-utility-brand-200"
+            color={importMode === 'merge' ? 'brand' : 'default'}
+            data-testid="import-mode-merge"
+            role="button"
+            tabIndex={0}
+            onClick={() => setImportMode('merge')}
+            onKeyDown={(e) => e.key === 'Enter' && setImportMode('merge')}>
+            <Box align="start" justify="between">
+              <div>
+                <Typography as="p" size="text-sm" weight="semibold">
+                  {t('label.merge-with-existing')}
+                </Typography>
+                <Typography
+                  as="p"
+                  className="tw:text-secondary tw:leading-5"
+                  size="text-xs">
+                  {t('message.import-mode-merge-description')}
+                </Typography>
+              </div>
+              <RadioButton className="tw:p-0" value="merge" />
             </Box>
-            <Box
-              sx={{
-                border: `1px solid ${
-                  importMode === 'replace'
-                    ? theme.palette.primary.main
-                    : theme.palette.divider
-                }`,
-                borderRadius: '8px',
-                p: '12px',
-                cursor: 'pointer',
-                backgroundColor:
-                  importMode === 'replace'
-                    ? 'rgba(25, 118, 210, 0.04)'
-                    : 'transparent',
-                '&:hover': {
-                  borderColor: theme.palette.primary.main,
-                },
-              }}
-              onClick={() => setImportMode('replace')}>
-              <Box
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                }}>
-                <Box>
-                  <Typography
-                    sx={{
-                      fontSize: '14px',
-                      fontWeight: 600,
-                      color: theme.palette.text.primary,
-                    }}>
-                    {t('label.replace-entire-contract')}
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontSize: '12px',
-                      color: theme.palette.text.secondary,
-                      lineHeight: '20px',
-                    }}>
-                    {t('message.import-mode-replace-description')}
-                  </Typography>
-                </Box>
-                <Radio
-                  checked={importMode === 'replace'}
-                  sx={{ p: 0 }}
-                  value="replace"
-                />
-              </Box>
+          </Card>
+          <Card
+            className="tw:p-3 tw:transition-colors tw:cursor-pointer tw:hover:border-utility-brand-200"
+            color={importMode === 'replace' ? 'brand' : 'default'}
+            data-testid="import-mode-replace"
+            role="button"
+            tabIndex={0}
+            onClick={() => setImportMode('replace')}
+            onKeyDown={(e) => e.key === 'Enter' && setImportMode('replace')}>
+            <Box align="start" justify="between">
+              <div>
+                <Typography as="p" weight="semibold">
+                  {t('label.replace-entire-contract')}
+                </Typography>
+                <Typography
+                  as="p"
+                  className="tw:text-secondary tw:leading-5"
+                  size="text-xs">
+                  {t('message.import-mode-replace-description')}
+                </Typography>
+              </div>
+              <RadioButton className="tw:p-0" value="replace" />
             </Box>
-          </RadioGroup>
-        </FormControl>
+          </Card>
+        </RadioGroup>
       </Box>
     );
-  }, [hasExistingContract, importMode, handleImportModeChange, t, theme]);
+  }, [hasExistingContract, importMode, handleImportModeChange, t]);
 
   const renderObjectSelector = useCallback(() => {
     if (!isODCSFormat || schemaObjects.length <= 1) {
       return null;
     }
 
+    const selectItems: SelectItemType[] = schemaObjects.map((obj) => ({
+      id: obj,
+      label: obj,
+    }));
+
     return (
-      <Box className="object-selector-section">
-        <Box className="object-selector-header">
+      <div
+        className="tw:rounded-xl tw:bg-gray-50 tw:p-3.5 tw:mb-4"
+        data-testid="object-selector-section">
+        <Box align="center" className="tw:mb-2.5" gap={2}>
           <Typography
-            component="span"
             data-testid="multi-object-contract-detected"
-            sx={{ fontSize: '14px', fontWeight: 600 }}>
+            size="text-sm"
+            weight="semibold">
             {t('message.multi-object-contract-detected')}
           </Typography>
         </Box>
-        <Box className="object-selector-content">
-          <FormControl fullWidth>
-            <Select
-              displayEmpty
-              fullWidth
-              data-testid="schema-object-select"
-              value={selectedObjectName}
-              onChange={handleObjectSelectChange}>
-              <MenuItem disabled value="">
-                {t('label.select-schema-object')}
-              </MenuItem>
-              {schemaObjects.map((obj) => (
-                <MenuItem
-                  data-testid={`schema-object-option-${obj}`}
-                  key={obj}
-                  sx={{ px: '12px' }}
-                  value={obj}>
-                  {obj}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+        <Box direction="col" gap={2}>
+          <Select
+            data-testid="schema-object-select"
+            items={selectItems}
+            placeholder={t('label.select-schema-object')}
+            selectedKey={selectedObjectName || null}
+            onSelectionChange={handleObjectSelectChange}>
+            {(item) => (
+              <Select.Item
+                data-testid={`schema-object-option-${item.id}`}
+                id={item.id}
+                key={item.id}>
+                {item.label}
+              </Select.Item>
+            )}
+          </Select>
         </Box>
-      </Box>
+      </div>
     );
   }, [
     isODCSFormat,
@@ -1531,215 +1232,127 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     t,
   ]);
 
-  const isImportDisabled =
-    !yamlContent ||
-    Boolean(parseError) ||
-    isValidating ||
-    hasValidationErrors ||
-    (hasMultipleObjects && !selectedObjectName);
+  const isImportDisabled = getIsImportDisabled(
+    yamlContent,
+    parseError,
+    isValidating,
+    hasValidationErrors,
+    hasMultipleObjects,
+    selectedObjectName
+  );
 
   return (
-    <Dialog
-      data-testid="import-contract-modal"
-      open={visible}
-      slotProps={{
-        paper: {
-          className: 'odcs-import-modal',
-          sx: {
-            borderRadius: '8px',
-            width: yamlContent ? 900 : 680,
-            maxWidth: '100%',
-          },
-        },
-      }}
-      onClose={isLoading ? undefined : handleReset}>
-      <DialogTitle
-        data-testid="import-contract-modal-title"
-        sx={{
-          '&.MuiDialogTitle-root': {
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            padding: '24px 24px 16px 24px',
-            boxShadow: yamlContent
-              ? '0 4px 6px -1px rgba(10, 13, 18, 0.10), 0 2px 4px -2px rgba(10, 13, 18, 0.06)'
-              : 'none',
-          },
-        }}>
-        <Box>
-          <Typography
-            sx={{ fontSize: '14px', fontWeight: 600, lineHeight: '20px' }}>
-            {isODCSFormat
-              ? t('label.import-odcs-contract')
-              : t('label.import-contract')}
-          </Typography>
-          <Typography
-            color="textSecondary"
-            sx={{ fontSize: '14px', lineHeight: '20px', mt: '4px' }}>
-            {t('message.upload-file-description')}
-          </Typography>
-        </Box>
-        {!isLoading && (
-          <IconButton size="medium" sx={{ p: 0 }} onClick={handleReset}>
-            <XClose data-testid="CloseIcon" />
-          </IconButton>
-        )}
-      </DialogTitle>
+    <ModalOverlay
+      isDismissable={!isLoading}
+      isOpen={visible}
+      onOpenChange={(open) => !open && handleReset()}>
+      <Modal>
+        <Dialog
+          data-testid="import-contract-modal"
+          showCloseButton={!isLoading}
+          width={yamlContent ? 900 : 680}
+          onClose={handleReset}>
+          <Dialog.Header>
+            <Typography
+              as="p"
+              data-testid="import-contract-modal-title"
+              size="text-sm"
+              weight="semibold">
+              {getModalTitle(isODCSFormat, t)}
+            </Typography>
+            <Typography as="p" className="tw:text-secondary" size="text-sm">
+              {t('message.upload-file-description')}
+            </Typography>
+          </Dialog.Header>
 
-      <DialogContent sx={{ px: '20px', pt: 0, pb: '20px' }}>
-        <Box
-          className="import-content-wrapper"
-          sx={{
-            minHeight: yamlContent ? '400px' : 'auto',
-            marginTop: yamlContent ? '16px' : '0',
-            overflow: 'scroll',
-          }}>
-          <Box className="source-panel">
-            {!yamlContent ? (
-              <Box
-                sx={{
-                  border: `1px solid ${theme.palette.divider}`,
-                  borderRadius: '8px',
-                  py: '16px',
-                  px: '24px',
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  backgroundColor: isDragging
-                    ? theme.palette.action.hover
-                    : 'transparent',
-                  transition: 'all 0.2s',
-                  '&:hover': {
-                    backgroundColor: theme.palette.action.hover,
-                  },
-                }}
-                onDragLeave={handleDragLeave}
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}>
-                <input
-                  accept=".yaml,.yml"
-                  data-testid="file-upload-input"
-                  id="file-upload-input"
-                  style={{ display: 'none' }}
-                  type="file"
-                  onChange={handleFileInputChange}
-                />
-                <label
-                  htmlFor="file-upload-input"
-                  style={{ cursor: 'pointer', display: 'block' }}>
-                  <Box
-                    sx={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: '8px',
-                      border: `1px solid ${theme.palette.divider}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      mx: 'auto',
-                      mb: '12px',
-                    }}>
-                    <CloudUpload height={20} width={20} />
-                  </Box>
-                  <Typography sx={{ fontSize: '14px', lineHeight: '20px' }}>
-                    <Typography
-                      component="span"
-                      sx={{
-                        color: theme.palette.primary.main,
-                        fontWeight: 600,
-                        fontSize: '14px',
-                        cursor: 'pointer',
-                      }}>
-                      {t('label.click-to-upload')}
-                    </Typography>{' '}
-                    {t('label.or-drag-and-drop')}
-                  </Typography>
-                  <Typography
-                    color="textSecondary"
-                    sx={{ fontSize: '12px', lineHeight: '18px', mt: '4px' }}>
-                    {t('label.supports-yaml-format')}
-                  </Typography>
-                </label>
-              </Box>
-            ) : (
-              <>
-                <Box className="file-info-card" data-testid="file-info-card">
-                  <Box className="file-info">
-                    <File06 className="file-icon" />
-
-                    <Typography className="file-name" component="span">
-                      {fileName}
-                    </Typography>
-                  </Box>
-
-                  <IconButton
-                    className="remove-button"
-                    data-testid="remove-file-button"
-                    size="small"
-                    title="Delete file"
-                    onClick={handleRemoveFile}>
-                    <Trash01 size={20} />
-                  </IconButton>
-                </Box>
-
-                {renderObjectSelector()}
-                {renderContractPreview()}
-                {renderImportOptions()}
-              </>
-            )}
-          </Box>
-
-          {yamlContent && (
+          <Dialog.Content>
             <Box
-              className="validation-panel"
-              sx={{
-                backgroundColor: parseError
-                  ? theme.palette.allShades.error[50]
-                  : theme.palette.grey[50],
+              gap={5}
+              style={{
+                minHeight: yamlContent ? '400px' : 'auto',
               }}>
-              {renderValidationPanel()}
-            </Box>
-          )}
-        </Box>
-      </DialogContent>
+              <div className="tw:flex-1">
+                {yamlContent ? (
+                  <>
+                    <Box
+                      align="center"
+                      className="tw:mb-4 tw:px-4 tw:py-3 tw:rounded tw:bg-gray-50"
+                      data-testid="file-info-card"
+                      justify="between">
+                      <Box align="center" gap={2}>
+                        <File06 className="tw:text-gray-500" size={24} />
+                        <div className="tw:max-w-70">
+                          <Typography
+                            ellipsis
+                            as="p"
+                            className="tw:text-gray-700"
+                            size="text-md"
+                            weight="medium">
+                            {fileName}
+                          </Typography>
+                        </div>
+                      </Box>
 
-      <DialogActions sx={{ px: '20px', py: '16px', gap: '12px' }}>
-        <Button
-          data-testid="cancel-button"
-          disabled={isLoading}
-          sx={{
-            fontSize: '14px',
-            fontWeight: 600,
-            textTransform: 'none',
-            px: '14px',
-            py: '8px',
-          }}
-          variant="text"
-          onClick={handleReset}>
-          {t('label.cancel')}
-        </Button>
-        <Button
-          data-testid="import-button"
-          disabled={isImportDisabled || isLoading}
-          sx={{
-            fontSize: '14px',
-            fontWeight: 600,
-            textTransform: 'none',
-            px: '14px',
-            py: '8px',
-          }}
-          variant="contained"
-          onClick={handleImport}>
-          {(isLoading || isValidating) && (
-            <Loader
-              size="x-small"
-              style={{ marginRight: '8px' }}
-              type="white"
-            />
-          )}
-          {t('label.import')}
-        </Button>
-      </DialogActions>
-    </Dialog>
+                      <ButtonUtility
+                        color="tertiary"
+                        data-testid="remove-file-button"
+                        icon={<Trash01 size={16} />}
+                        size="sm"
+                        title={t('label.delete-entity', {
+                          entity: t('label.file'),
+                        })}
+                        onClick={handleRemoveFile}
+                      />
+                    </Box>
+
+                    {renderObjectSelector()}
+                    {renderContractPreview()}
+                    {renderImportOptions()}
+                  </>
+                ) : (
+                  <FileUploadDropZone
+                    accept=".yaml,.yml,.json"
+                    className="tw:w-full"
+                    clickToUploadLabel={t('label.click-to-upload')}
+                    hint={t('label.supports-yaml-format')}
+                    input-data-testid="file-upload-input"
+                    orDragAndDropLabel={t('label.or-drag-and-drop')}
+                    onDropFiles={handleDropFiles}
+                  />
+                )}
+              </div>
+
+              {yamlContent && (
+                <Card className={getValidationCardClassName(parseError)}>
+                  {renderValidationPanel()}
+                </Card>
+              )}
+            </Box>
+          </Dialog.Content>
+
+          <Dialog.Footer>
+            <Box className="tw:col-span-2" gap={3} justify="end">
+              <Button
+                color="secondary"
+                data-testid="cancel-button"
+                isDisabled={isLoading}
+                onClick={handleReset}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                showTextWhileLoading
+                color="primary"
+                data-testid="import-button"
+                isDisabled={isImportDisabled || isLoading}
+                isLoading={isLoading || isValidating}
+                onClick={handleImport}>
+                {t('label.import')}
+              </Button>
+            </Box>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

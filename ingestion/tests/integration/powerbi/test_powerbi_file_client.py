@@ -83,9 +83,7 @@ class PowerBIFileClientTests(TestCase):
         """
         Test unzipping pbit files from local and extract the datamodels and connections
         """
-        datamodel_mappings = _get_datamodel_schema_list(
-            path=self.file_client.config.pbitFilesSource.path
-        )
+        datamodel_mappings = _get_datamodel_schema_list(path=self.file_client.config.pbitFilesSource.path)
         all_tables = []
         for schema in datamodel_mappings:
             # test the table and columns from the pbit file

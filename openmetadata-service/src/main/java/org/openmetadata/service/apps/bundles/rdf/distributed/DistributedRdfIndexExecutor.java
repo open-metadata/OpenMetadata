@@ -18,6 +18,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -27,6 +28,8 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.service.apps.bundles.rdf.RdfBatchProcessor;
+import org.openmetadata.service.apps.bundles.rdf.RdfIndexingRunContext;
+import org.openmetadata.service.apps.bundles.rdf.sink.RdfBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -46,6 +49,8 @@ public class DistributedRdfIndexExecutor {
   private final AtomicBoolean stopped = new AtomicBoolean(false);
   private final AtomicBoolean localExecutionCleaned = new AtomicBoolean(true);
   private final List<RdfPartitionWorker> activeWorkers = new CopyOnWriteArrayList<>();
+  private final ConcurrentMap<UUID, RdfIndexPartition> activePartitions = new ConcurrentHashMap<>();
+  private volatile RdfEntityCompletionTracker completionTracker;
 
   @Getter private volatile RdfIndexJob currentJob;
   private volatile ExecutorService workerExecutor;
@@ -89,8 +94,11 @@ public class DistributedRdfIndexExecutor {
       throw new IllegalStateException("Failed to acquire RDF reindex lock");
     }
 
+    UUID createdJobId = null;
     try {
       currentJob = coordinator.createJob(entities, jobConfiguration, createdBy);
+      createdJobId = currentJob.getId();
+      COORDINATED_JOBS.add(createdJobId);
       currentJob = coordinator.initializePartitions(currentJob.getId());
       if (!coordinator.transferReindexLock(tempJobId, currentJob.getId())) {
         throw new IllegalStateException("Failed to transfer RDF reindex lock to job");
@@ -98,6 +106,9 @@ public class DistributedRdfIndexExecutor {
       coordinatorOwnedJob = true;
       return currentJob;
     } catch (Exception e) {
+      if (createdJobId != null) {
+        COORDINATED_JOBS.remove(createdJobId);
+      }
       coordinator.releaseReindexLock(tempJobId);
       throw e;
     }
@@ -111,19 +122,39 @@ public class DistributedRdfIndexExecutor {
     stopped.set(false);
     localExecutionCleaned.set(false);
     COORDINATED_JOBS.add(currentJob.getId());
-    coordinator.updateJobStatus(currentJob.getId(), IndexJobStatus.RUNNING, null);
-    currentJob = coordinator.getJobWithAggregatedStats(currentJob.getId());
-    if (currentJob == null) {
-      throw new IllegalStateException("Failed to load RDF distributed job state");
-    }
-
     try {
+      coordinator.updateJobStatus(currentJob.getId(), IndexJobStatus.RUNNING, null);
+      final RdfIndexJob refreshed = coordinator.getJobWithAggregatedStats(currentJob.getId());
+      if (refreshed == null) {
+        throw new IllegalStateException("Failed to load RDF distributed job state");
+      }
+      currentJob = refreshed;
+      initializeCompletionTracker();
       startCoordinatorThreads();
       runWorkers(jobConfiguration, true);
       finalizeCoordinatorJob();
     } finally {
       cleanupCoordinatorExecution();
     }
+  }
+
+  private void initializeCompletionTracker() {
+    completionTracker = new RdfEntityCompletionTracker(currentJob.getId());
+    if (currentJob.getEntityStats() == null) {
+      return;
+    }
+    currentJob
+        .getEntityStats()
+        .forEach(
+            (entityType, stats) ->
+                completionTracker.initializeEntity(entityType, stats.getTotalPartitions()));
+    completionTracker.setOnEntityComplete(
+        (entityType, success) ->
+            LOG.info(
+                "RDF entity '{}' fully indexed (success={}) - job {}",
+                entityType,
+                success,
+                currentJob.getId()));
   }
 
   public void joinJob(RdfIndexJob job, EventPublisherJob jobConfiguration)
@@ -133,7 +164,11 @@ public class DistributedRdfIndexExecutor {
     coordinatorOwnedJob = false;
     stopped.set(false);
     localExecutionCleaned.set(false);
-    runWorkers(jobConfiguration, false);
+    try {
+      runWorkers(jobConfiguration, false);
+    } finally {
+      cleanupLocalExecution();
+    }
   }
 
   public RdfIndexJob getJobWithFreshStats() {
@@ -149,9 +184,7 @@ public class DistributedRdfIndexExecutor {
 
     if (currentJob != null) {
       if (coordinatorOwnedJob) {
-        coordinator.updateJobStatus(currentJob.getId(), IndexJobStatus.STOPPING, null);
-        coordinator.cancelPendingPartitions(currentJob.getId());
-        coordinator.releaseServerPartitions(currentJob.getId(), serverId, true, "Stopped by user");
+        coordinator.requestStop(currentJob.getId());
       } else {
         coordinator.releaseServerPartitions(
             currentJob.getId(), serverId, false, "Worker server stopped participating");
@@ -162,7 +195,11 @@ public class DistributedRdfIndexExecutor {
       worker.stop();
     }
 
-    cleanupLocalExecution();
+    if (coordinatorOwnedJob) {
+      cleanupCoordinatorExecution();
+    } else {
+      cleanupLocalExecution();
+    }
   }
 
   private void runWorkers(EventPublisherJob jobConfiguration, boolean coordinatorMode)
@@ -178,10 +215,16 @@ public class DistributedRdfIndexExecutor {
                     : Runtime.getRuntime().availableProcessors(),
                 Runtime.getRuntime().availableProcessors() * 2));
     int batchSize = jobConfiguration.getBatchSize() != null ? jobConfiguration.getBatchSize() : 100;
-    RdfBatchProcessor batchProcessor =
-        new RdfBatchProcessor(collectionDAO, RdfRepository.getInstance());
+    final RdfIndexingRunContext run =
+        RdfIndexingRunContext.forJob(jobConfiguration)
+            .withJobIdentity(currentJob != null ? currentJob.getId() : null, serverId);
+    final RdfIndexingRunContext.StorageTarget target = run.storageTarget();
+    final RdfRepository rdfRepository =
+        RdfRepository.getInstance()
+            .forRun(target.dataset(), target.rebuildId(), target.appendBudgetBytes());
+    RdfBatchProcessor batchProcessor = new RdfBatchProcessor(collectionDAO, rdfRepository, run);
 
-    workerExecutor =
+    final ExecutorService workers =
         Executors.newFixedThreadPool(
             workerCount,
             Thread.ofPlatform()
@@ -191,20 +234,38 @@ public class DistributedRdfIndexExecutor {
                         : "rdf-distributed-participant-",
                     0)
                 .factory());
-    try {
-      for (int i = 0; i < workerCount; i++) {
-        RdfPartitionWorker worker = new RdfPartitionWorker(coordinator, batchProcessor, batchSize);
-        activeWorkers.add(worker);
-        workerExecutor.submit(() -> workerLoop(worker));
-      }
+    workerExecutor = workers;
+    // One sink per run and per JVM: workers are readers/translators; the sink's
+    // single writer thread is the only place storage writes happen, so this
+    // process never has two requests queued on Fuseki's writer lock at once.
+    // Closed (drained) before returning so completion accounting and blue/green
+    // promotion see every write.
+    try (RdfPartitionHeartbeat heartbeat =
+            new RdfPartitionHeartbeat(
+                collectionDAO.rdfIndexPartitionDAO(),
+                () -> List.copyOf(activePartitions.values()));
+        RdfBulkSink sink = new RdfBulkSink(rdfRepository, batchProcessor, stopped::get)) {
+      try {
+        for (int i = 0; i < workerCount && !stopped.get(); i++) {
+          RdfPartitionWorker worker =
+              new RdfPartitionWorker(coordinator, sink, batchProcessor, batchSize);
+          activeWorkers.add(worker);
+          workers.submit(() -> workerLoop(worker));
+        }
 
-      workerExecutor.shutdown();
-      workerExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
-    } finally {
-      activeWorkers.clear();
-      if (workerExecutor != null && !workerExecutor.isShutdown()) {
+        workers.shutdown();
+        workers.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
+      } finally {
+        if (!workers.isTerminated()) {
+          stopped.set(true);
+          activeWorkers.forEach(RdfPartitionWorker::stop);
+        }
         shutdownWorkerExecutor();
       }
+    } finally {
+      activeWorkers.clear();
+      activePartitions.clear();
+      shutdownWorkerExecutor();
     }
   }
 
@@ -217,7 +278,7 @@ public class DistributedRdfIndexExecutor {
         return;
       }
 
-      RdfIndexPartition partition = coordinator.claimNextPartition(latestJob.getId());
+      RdfIndexPartition partition = coordinator.claimNextPartition(latestJob.getId(), serverId);
       if (partition == null) {
         try {
           TimeUnit.MILLISECONDS.sleep(CLAIM_RETRY_SLEEP_MS);
@@ -228,7 +289,25 @@ public class DistributedRdfIndexExecutor {
         continue;
       }
 
-      worker.processPartition(partition);
+      activePartitions.put(partition.getId(), partition);
+      RdfPartitionWorker.PartitionResult result = null;
+      try {
+        result = worker.processPartition(partition);
+      } finally {
+        activePartitions.remove(partition.getId(), partition);
+      }
+      if (result != null && result.stopped()) {
+        return;
+      }
+      if (completionTracker != null && result != null) {
+        // hasAnyFailure() captures BOTH entity-level failures (failedCount,
+        // including readerErrors) AND per-edge relationship failures
+        // (relationshipFailureCount). Using only failedCount would let an
+        // entity be promoted to "success" even when its lineage / ownership /
+        // tag triples failed to write — premature promotion.
+        completionTracker.recordPartitionComplete(
+            partition.getEntityType(), result.hasAnyFailure());
+      }
     }
   }
 
@@ -238,14 +317,10 @@ public class DistributedRdfIndexExecutor {
       return;
     }
 
-    if (stopped.get()) {
-      coordinator.updateJobStatus(currentJob.getId(), IndexJobStatus.STOPPED, null);
-    } else if (!currentJob.isTerminal()) {
-      IndexJobStatus terminalStatus =
-          currentJob.getFailedRecords() > 0
-              ? IndexJobStatus.COMPLETED_WITH_ERRORS
-              : IndexJobStatus.COMPLETED;
-      coordinator.updateJobStatus(currentJob.getId(), terminalStatus, currentJob.getErrorMessage());
+    if (stopped.get() && !currentJob.isTerminal()) {
+      coordinator.requestStop(currentJob.getId());
+    } else {
+      coordinator.checkAndUpdateJobCompletion(currentJob.getId());
     }
 
     currentJob = coordinator.getJobWithAggregatedStats(currentJob.getId());
@@ -291,19 +366,22 @@ public class DistributedRdfIndexExecutor {
   }
 
   private void shutdownWorkerExecutor() {
-    if (workerExecutor == null || workerExecutor.isShutdown()) {
+    final ExecutorService workers;
+    synchronized (this) {
+      workers = workerExecutor;
+      workerExecutor = null;
+    }
+    if (workers == null || workers.isTerminated()) {
       return;
     }
 
-    workerExecutor.shutdownNow();
+    workers.shutdownNow();
     try {
-      if (!workerExecutor.awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+      if (!workers.awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
         LOG.warn("Timed out waiting for RDF distributed workers to stop");
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-    } finally {
-      workerExecutor = null;
     }
   }
 
@@ -330,6 +408,7 @@ public class DistributedRdfIndexExecutor {
     lockRefreshThread = null;
     staleReclaimerThread = null;
     activeWorkers.clear();
+    activePartitions.clear();
   }
 
   private void cleanupCoordinatorExecution() {

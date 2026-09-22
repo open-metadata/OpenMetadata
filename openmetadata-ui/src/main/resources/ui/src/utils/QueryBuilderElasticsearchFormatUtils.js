@@ -22,6 +22,24 @@ import { Utils as extendConfigUtils } from '@react-awesome-query-builder/core';
 export const ES_7_SYNTAX = 'ES_7_SYNTAX';
 export const ES_6_SYNTAX = 'ES_6_SYNTAX';
 
+const EXACT_MATCH_OPERATORS = [
+  'equal',
+  'not_equal',
+  'select_equals',
+  'select_not_equals',
+  'multiselect_equals',
+  'multiselect_not_equals',
+];
+
+const NEGATED_OPERATORS = [
+  'not_equal',
+  'not_between',
+  'not_like',
+  'select_not_equals',
+  'multiselect_not_equals',
+  'multiselect_not_contains',
+];
+
 /**
  * Converts a string representation of top_left and bottom_right cords to
  * a ES geo_point required for query
@@ -59,6 +77,28 @@ function buildEsGeoPoint(geoPointString) {
  *
  * @private
  */
+// A whole day, for operators that compare against a single date.
+const buildEsDayRange = (dateTime) => ({
+  gte: ''.concat(dateTime, '||/d'),
+  lte: ''.concat(dateTime, '||+1d'),
+});
+
+// Operator -> range builder. A Map rather than an object literal: `operator`
+// arrives from the query-builder config, and a plain object would resolve
+// inherited keys such as `toString` to a function and call it.
+// todo: move this logic into config
+const ES_RANGE_BY_OPERATOR = new Map([
+  ['on_date', buildEsDayRange], // todo: not used
+  ['not_on_date', buildEsDayRange],
+  ['equal', buildEsDayRange],
+  ['select_equals', buildEsDayRange],
+  ['not_equal', buildEsDayRange],
+  ['less_or_equal', (dateTime) => ({ lte: ''.concat(dateTime) })],
+  ['greater_or_equal', (dateTime) => ({ gte: ''.concat(dateTime) })],
+  ['greater', (dateTime) => ({ gte: ''.concat(dateTime) })],
+  ['less', (dateTime) => ({ lt: ''.concat(dateTime) })],
+]);
+
 function buildEsRangeParameters(value, operator) {
   // -- if value is greater than 1 then we assume this is a between operator : BUG this is wrong,
   // a selectable list can have multiple values
@@ -70,42 +110,9 @@ function buildEsRangeParameters(value, operator) {
   } // -- if value is only one we assume this is a date time query for a specific day
 
   const dateTime = value[0]; // TODO: Rethink about this part, what if someone adds a new type of opperator
+  const buildRange = ES_RANGE_BY_OPERATOR.get(operator);
 
-  // todo: move this logic into config
-  switch (operator) {
-    case 'on_date': // todo: not used
-    case 'not_on_date':
-    case 'equal':
-    case 'select_equals':
-    case 'not_equal':
-      return {
-        gte: ''.concat(dateTime, '||/d'),
-        lte: ''.concat(dateTime, '||+1d'),
-      };
-
-    case 'less_or_equal':
-      return {
-        lte: ''.concat(dateTime),
-      };
-
-    case 'greater_or_equal':
-      return {
-        gte: ''.concat(dateTime),
-      };
-
-    case 'less':
-      return {
-        lt: ''.concat(dateTime),
-      };
-
-    case 'greater':
-      return {
-        gte: ''.concat(dateTime),
-      };
-
-    default:
-      return undefined;
-  }
+  return buildRange ? buildRange(dateTime) : undefined;
 }
 
 /**
@@ -161,6 +168,27 @@ function determineField(fieldName) {
   // todo: ElasticSearchTextField - not used
   // return config.fields[fieldName].ElasticSearchTextField || fieldName;
   return fieldName;
+}
+
+/**
+ * Strips parameters the user has not filled in yet. `JSON.stringify` drops `undefined` values, so
+ * a clause built from them collapses to `{"term":{}}` — which Elasticsearch and OpenSearch both
+ * reject outright, failing the whole search rather than the one incomplete row.
+ *
+ * @param {object} parameters - The DSL parameters built for a single rule
+ * @returns {object|undefined} - The entered parameters, or undefined when the rule is incomplete
+ * @private
+ */
+function definedParameters(parameters) {
+  if (!parameters) {
+    return undefined;
+  }
+
+  const entered = Object.entries(parameters).filter(
+    ([, parameter]) => parameter !== undefined
+  );
+
+  return entered.length ? Object.fromEntries(entered) : undefined;
 }
 
 function buildParameters(
@@ -235,6 +263,10 @@ function buildParameters(
  * @returns {string} - The base property name
  * @private
  */
+// The entityReference sub-fields a custom-property field can name.
+const DISPLAY_NAME_SUFFIX = '.displayName';
+const FQN_SUFFIX = '.fullyQualifiedName';
+
 function getBasePropertyName(propertyName) {
   // Handle table-cp pattern: propertyName.rows.columnName.keyword -> propertyName.rows.columnName
   // Backend stores separate entries for each column with names like "propertyName.rows.columnName"
@@ -255,11 +287,11 @@ function getBasePropertyName(propertyName) {
   // Known nested field suffixes for complex custom property types
   const nestedSuffixes = [
     '.displayName.keyword',
-    '.displayName',
+    DISPLAY_NAME_SUFFIX,
     '.name.keyword',
     '.name',
     '.fullyQualifiedName.keyword',
-    '.fullyQualifiedName',
+    FQN_SUFFIX,
     '.start',
     '.end',
     '.keyword',
@@ -275,6 +307,32 @@ function getBasePropertyName(propertyName) {
   }
 
   return baseName;
+}
+
+/**
+ * The nested sub-field holding the part of an entityReference a field names.
+ *
+ * `SearchIndexUtils.populateEntityRefFields` splits a reference across the
+ * nested doc: `name` into refName, `fullyQualifiedName` into refFqn and
+ * `displayName` into stringValue. Reading refName for all three matched a
+ * displayName against a name and returned nothing.
+ *
+ * @param {string} propertyName - The full property name, `.keyword` and all
+ * @returns {string} - The customPropertiesTyped sub-field to query
+ * @private
+ */
+function getEntityRefNestedField(propertyName) {
+  const path = String(propertyName ?? '').replace(/\.keyword$/, '');
+
+  if (path.endsWith(DISPLAY_NAME_SUFFIX)) {
+    return 'stringValue';
+  }
+
+  if (path.endsWith(FQN_SUFFIX)) {
+    return 'refFqn';
+  }
+
+  return 'refName';
 }
 
 /**
@@ -295,7 +353,10 @@ function getFieldTypeInfoFromOmType(omPropertyType, propertyName) {
   switch (omPropertyType) {
     case 'entityReference':
     case 'array<entityReference>':
-      return { fieldType: 'entityReference', nestedField: 'refName' };
+      return {
+        fieldType: 'entityReference',
+        nestedField: getEntityRefNestedField(propertyName),
+      };
     case 'hyperlink-cp':
       return { fieldType: 'hyperlink', nestedField: 'stringValue' };
     case 'table-cp':
@@ -335,11 +396,14 @@ function getFieldTypeInfo(propertyName) {
   // are not misclassified. For full disambiguation when the property name itself
   // is `owner.name`, callers should pass the type via getFieldTypeInfoFromOmType.
   if (
-    propertyName.endsWith('.displayName') ||
+    propertyName.endsWith(DISPLAY_NAME_SUFFIX) ||
     propertyName.endsWith('.name') ||
-    propertyName.endsWith('.fullyQualifiedName')
+    propertyName.endsWith(FQN_SUFFIX)
   ) {
-    return { fieldType: 'entityReference', nestedField: 'refName' };
+    return {
+      fieldType: 'entityReference',
+      nestedField: getEntityRefNestedField(propertyName),
+    };
   }
 
   // Hyperlink fields: propertyName.url.keyword or propertyName.displayText.keyword
@@ -368,30 +432,64 @@ function getFieldTypeInfo(propertyName) {
  * @returns {string|null} - The OM property type, or null
  * @private
  */
+/**
+ * A property's declared type, from whichever scope of the config holds it.
+ *
+ * Explore nests properties per entity type; a builder pinned to one type
+ * exposes them directly under `extension`. Both store the key flat, dots and
+ * all — a table-type property declares each column as
+ * `<property>.rows.<column>`. Picking a single scope by `entityType` returned
+ * no type for the pinned shape, and the path fallback then read a column's
+ * trailing `.name` as an entity reference: the query asked for `refName`
+ * instead of `stringValue` and matched nothing.
+ */
 function lookupOmPropertyType(config, entityType, propertyName) {
   const extensionGroup = config?.fields?.extension;
-  const entityGroup = extensionGroup?.subfields?.[entityType];
-  const fieldConfig = entityGroup?.subfields?.[propertyName];
+  const scopes = [
+    entityType ? extensionGroup?.subfields?.[entityType]?.subfields : null,
+    extensionGroup?.subfields,
+  ];
 
-  return fieldConfig?.__omPropertyType ?? null;
+  for (const scope of scopes) {
+    // The field key carries suffixes such as `.keyword` that the config key
+    // does not.
+    const found =
+      scope?.[propertyName]?.__omPropertyType ??
+      scope?.[getBasePropertyName(propertyName)]?.__omPropertyType;
+
+    if (found) {
+      return found;
+    }
+  }
+
+  return null;
 }
 
-/**
- * Checks if the operator is a range operator (requires numeric field).
- *
- * @param {string} operator - The query operator
- * @returns {boolean} - True if range operator
- * @private
- */
+const RANGE_OPERATOR_BOUNDS = {
+  less: 'lt',
+  less_or_equal: 'lte',
+  greater: 'gt',
+  greater_or_equal: 'gte',
+};
+
 function isRangeOperator(operator) {
-  return [
-    'between',
-    'not_between',
-    'less',
-    'less_or_equal',
-    'greater',
-    'greater_or_equal',
-  ].includes(operator);
+  return (
+    operator === 'between' ||
+    operator === 'not_between' ||
+    operator in RANGE_OPERATOR_BOUNDS
+  );
+}
+
+function buildRangeClause(value, operator) {
+  if (operator === 'between' || operator === 'not_between') {
+    return Array.isArray(value) && value.length >= 2
+      ? { gte: value[0], lte: value[1] }
+      : {};
+  }
+
+  return {
+    [RANGE_OPERATOR_BOUNDS[operator]]: Array.isArray(value) ? value[0] : value,
+  };
 }
 
 /**
@@ -404,36 +502,25 @@ function isRangeOperator(operator) {
  * @returns {object} - The nested ES query
  * @private
  */
-function buildNestedTypedQuery(propertyName, nestedField, value, operator) {
-  const mustClauses = [
-    { term: { 'customPropertiesTyped.name': propertyName } },
-  ];
+function buildNestedTypedQuery(
+  propertyName,
+  nestedField,
+  value,
+  operator,
+  caseInsensitive = false
+) {
+  const fieldPath = `customPropertiesTyped.${nestedField}`;
+  const termValue = Array.isArray(value) ? value[0] : value;
 
-  // Build the value query based on operator
-  if (isRangeOperator(operator)) {
-    const rangeQuery = {};
-    if (operator === 'between' && Array.isArray(value) && value.length >= 2) {
-      rangeQuery.gte = value[0];
-      rangeQuery.lte = value[1];
-    } else if (operator === 'less') {
-      rangeQuery.lt = Array.isArray(value) ? value[0] : value;
-    } else if (operator === 'less_or_equal') {
-      rangeQuery.lte = Array.isArray(value) ? value[0] : value;
-    } else if (operator === 'greater') {
-      rangeQuery.gt = Array.isArray(value) ? value[0] : value;
-    } else if (operator === 'greater_or_equal') {
-      rangeQuery.gte = Array.isArray(value) ? value[0] : value;
-    }
-    mustClauses.push({
-      range: { [`customPropertiesTyped.${nestedField}`]: rangeQuery },
-    });
-  } else {
-    // Exact match
-    const termValue = Array.isArray(value) ? value[0] : value;
-    mustClauses.push({
-      term: { [`customPropertiesTyped.${nestedField}`]: termValue },
-    });
-  }
+  const valueClause = isRangeOperator(operator)
+    ? { range: { [fieldPath]: buildRangeClause(value, operator) } }
+    : {
+        term: {
+          [fieldPath]: caseInsensitive
+            ? { value: termValue, case_insensitive: true }
+            : termValue,
+        },
+      };
 
   return {
     nested: {
@@ -441,7 +528,10 @@ function buildNestedTypedQuery(propertyName, nestedField, value, operator) {
       ignore_unmapped: true,
       query: {
         bool: {
-          must: mustClauses,
+          must: [
+            { term: { 'customPropertiesTyped.name': propertyName } },
+            valueClause,
+          ],
         },
       },
     },
@@ -466,6 +556,229 @@ function buildNestedTypedQuery(propertyName, nestedField, value, operator) {
  * @returns {object} - The ES query for custom properties
  * @private
  */
+// Wraps a leaf clause in the nested/bool/must shape every customPropertiesTyped
+// query shares, alongside the property-name term.
+const wrapTypedNestedQuery = (basePropertyName, clause) => ({
+  nested: {
+    path: 'customPropertiesTyped',
+    ignore_unmapped: true,
+    query: {
+      bool: {
+        must: [
+          { term: { 'customPropertiesTyped.name': basePropertyName } },
+          clause,
+        ],
+      },
+    },
+  },
+});
+
+const firstIfArray = (value) => (Array.isArray(value) ? value[0] : value);
+
+// Narrow by entity type only when the field carried one.
+const withEntityTypeFilter = (mainQuery, entityType) =>
+  entityType
+    ? {
+        bool: {
+          must: [mainQuery, { term: { entityType: entityType } }],
+        },
+      }
+    : mainQuery;
+
+// Which shape of query an extension field needs, resolved once so the builder
+// below is a lookup rather than a nine-branch chain. Operator wins over field
+// type, matching the original order of checks. Maps, not object literals:
+// `operator` comes from the query-builder config.
+const EXTENSION_STRATEGY_BY_OPERATOR = new Map([
+  ['like', 'wildcard'],
+  ['not_like', 'wildcard'],
+  ['multiselect_contains', 'wildcard'],
+  ['multiselect_not_contains', 'wildcard'],
+  ['regexp', 'regexp'],
+  ['is_null', 'exists'],
+  ['is_not_null', 'exists'],
+]);
+
+const EXTENSION_STRATEGY_BY_FIELD_TYPE = new Map([
+  ['timeInterval', 'timeInterval'],
+  ['entityReference', 'entityReference'],
+  ['hyperlink', 'stringValue'],
+  ['table', 'stringValue'],
+]);
+
+function getExtensionQueryStrategy(operator, fieldType, nestedField) {
+  const byOperator = EXTENSION_STRATEGY_BY_OPERATOR.get(operator);
+  if (byOperator) {
+    return byOperator;
+  }
+
+  // timeInterval, hyperlink and table only route by field type once a nested
+  // field resolved; entityReference always does.
+  const byFieldType = EXTENSION_STRATEGY_BY_FIELD_TYPE.get(fieldType);
+  if (byFieldType && (fieldType === 'entityReference' || nestedField)) {
+    return byFieldType;
+  }
+
+  if (isRangeOperator(operator)) {
+    return 'range';
+  }
+
+  return EXACT_MATCH_OPERATORS.includes(operator) ? 'exactMatch' : 'textMatch';
+}
+
+// Existence check: query if the property name exists in customPropertiesTyped.
+// Negate for is_null (field should NOT exist), but not when reversed from
+// is_not_null.
+function buildExtensionExistsQuery(basePropertyName, operator, not) {
+  const existsQuery = {
+    nested: {
+      path: 'customPropertiesTyped',
+      ignore_unmapped: true,
+      query: {
+        term: { 'customPropertiesTyped.name': basePropertyName },
+      },
+    },
+  };
+  const shouldNegateExists =
+    (operator === 'is_null' && !not) || (operator === 'is_not_null' && not);
+
+  return shouldNegateExists ? { bool: { must_not: existsQuery } } : existsQuery;
+}
+
+// Range query: OR across the typed value fields since we don't know which one
+// holds the value. Date/time custom properties are stored only as formatted
+// strings in stringValue — sending those into a numeric longValue/doubleValue
+// range raises an ES number_format_exception that fails the whole search, so
+// route date types to stringValue only.
+const DATE_OM_PROPERTY_TYPES = new Set(['date-cp', 'dateTime-cp', 'time-cp']);
+const NUMERIC_OM_PROPERTY_TYPES = new Set(['integer', 'number', 'timestamp']);
+
+function buildExtensionRangeQuery(basePropertyName, value, operator, omType) {
+  const rangeFields = DATE_OM_PROPERTY_TYPES.has(omType)
+    ? ['stringValue']
+    : ['longValue', 'doubleValue', 'stringValue'];
+
+  return {
+    bool: {
+      should: rangeFields.map((field) =>
+        buildNestedTypedQuery(basePropertyName, field, value, operator)
+      ),
+      minimum_should_match: 1,
+    },
+  };
+}
+
+// Exact match: pick the right typed field.
+// 1) If we know the OM property type, route directly: numeric types ->
+//    longValue/doubleValue, all others -> stringValue. This avoids the bug
+//    where a string property storing "123" was queried via longValue.
+// 2) Otherwise (legacy callers without config), fall back to value-shape
+//    detection.
+function buildExtensionExactMatchQuery(basePropertyName, value, omType) {
+  const stringValue = String(value);
+  const trimmedValue = stringValue.trim();
+  const numericValue =
+    typeof value === 'number' ? value : parseFloat(trimmedValue);
+  const isNumeric =
+    !isNaN(numericValue) &&
+    isFinite(numericValue) &&
+    String(numericValue) === trimmedValue;
+  const useNumericField = omType
+    ? NUMERIC_OM_PROPERTY_TYPES.has(omType)
+    : isNumeric;
+
+  if (useNumericField && isNumeric) {
+    return buildNestedTypedQuery(
+      basePropertyName,
+      stringValue.includes('.') ? 'doubleValue' : 'longValue',
+      numericValue,
+      'equal'
+    );
+  }
+
+  return buildNestedTypedQuery(basePropertyName, 'stringValue', value, 'equal');
+}
+
+const EXTENSION_QUERY_BUILDERS = new Map([
+  [
+    // Contains/Not contains: wildcard on stringValue (keyword field). All
+    // searchable values are stored in stringValue for wildcard support.
+    'wildcard',
+    ({ basePropertyName, value }) =>
+      wrapTypedNestedQuery(basePropertyName, {
+        wildcard: {
+          'customPropertiesTyped.stringValue': {
+            value: '*' + firstIfArray(value) + '*',
+          },
+        },
+      }),
+  ],
+  [
+    'regexp',
+    ({ basePropertyName, value }) =>
+      wrapTypedNestedQuery(basePropertyName, {
+        regexp: {
+          'customPropertiesTyped.stringValue': {
+            value: firstIfArray(value),
+            case_insensitive: true,
+          },
+        },
+      }),
+  ],
+  [
+    // TimeInterval: query start or end field
+    'timeInterval',
+    ({ basePropertyName, nestedField, value, operator }) =>
+      buildNestedTypedQuery(basePropertyName, nestedField, value, operator),
+  ],
+  [
+    'entityReference',
+    ({ basePropertyName, nestedField, value, operator }) =>
+      buildNestedTypedQuery(
+        basePropertyName,
+        nestedField ?? 'refName',
+        value,
+        operator,
+        true
+      ),
+  ],
+  [
+    // Hyperlink/Table: values are stored in stringValue for exact/wildcard
+    // matching.
+    'stringValue',
+    ({ basePropertyName, value, operator }) =>
+      buildNestedTypedQuery(basePropertyName, 'stringValue', value, operator),
+  ],
+  [
+    'range',
+    ({ basePropertyName, value, operator, omPropertyType }) =>
+      buildExtensionRangeQuery(
+        basePropertyName,
+        value,
+        operator,
+        omPropertyType
+      ),
+  ],
+  [
+    'exactMatch',
+    ({ basePropertyName, value, omPropertyType }) =>
+      buildExtensionExactMatchQuery(basePropertyName, value, omPropertyType),
+  ],
+  [
+    // Default text search: match query on textValue.
+    'textMatch',
+    ({ basePropertyName, value }) =>
+      wrapTypedNestedQuery(basePropertyName, {
+        match: {
+          'customPropertiesTyped.textValue': {
+            query: firstIfArray(value),
+            operator: 'and',
+          },
+        },
+      }),
+  ],
+]);
+
 function buildExtensionQuery(
   propertyName,
   entityType,
@@ -481,264 +794,27 @@ function buildExtensionQuery(
     getFieldTypeInfoFromOmType(omPropertyType, propertyName) ??
     getFieldTypeInfo(propertyName);
 
-  let mainQuery;
+  const strategy = getExtensionQueryStrategy(operator, fieldType, nestedField);
 
-  // Use customPropertiesTyped for structured queries
-  // Handle text search operators first (like, not_like, regexp) - these need special query types
-  if (operator === 'like' || operator === 'not_like') {
-    // Contains/Not contains: use wildcard query on stringValue (keyword field)
-    // All searchable values are now stored in stringValue for wildcard support
-    const searchValue = Array.isArray(value) ? value[0] : value;
-    mainQuery = {
-      nested: {
-        path: 'customPropertiesTyped',
-        ignore_unmapped: true,
-        query: {
-          bool: {
-            must: [
-              { term: { 'customPropertiesTyped.name': basePropertyName } },
-              {
-                wildcard: {
-                  'customPropertiesTyped.stringValue': {
-                    value: '*' + searchValue + '*',
-                  },
-                },
-              },
-            ],
-          },
-        },
-      },
-    };
-  } else if (operator === 'regexp') {
-    // Regular expression: use regexp query on stringValue
-    const searchValue = Array.isArray(value) ? value[0] : value;
-    mainQuery = {
-      nested: {
-        path: 'customPropertiesTyped',
-        ignore_unmapped: true,
-        query: {
-          bool: {
-            must: [
-              { term: { 'customPropertiesTyped.name': basePropertyName } },
-              {
-                regexp: {
-                  'customPropertiesTyped.stringValue': {
-                    value: searchValue,
-                    case_insensitive: true,
-                  },
-                },
-              },
-            ],
-          },
-        },
-      },
-    };
-  } else if (operator === 'is_null' || operator === 'is_not_null') {
-    // Existence check: query if property name exists in customPropertiesTyped
-    // Handle this early to ensure it works for all field types
-    const existsQuery = {
-      nested: {
-        path: 'customPropertiesTyped',
-        ignore_unmapped: true,
-        query: {
-          term: { 'customPropertiesTyped.name': basePropertyName },
-        },
-      },
-    };
-    // Negate for is_null (field should NOT exist), but not when reversed from is_not_null
-    const shouldNegateExists =
-      (operator === 'is_null' && !not) || (operator === 'is_not_null' && not);
-    if (shouldNegateExists) {
-      mainQuery = {
-        bool: {
-          must_not: existsQuery,
-        },
-      };
-    } else {
-      mainQuery = existsQuery;
-    }
-
-    // Return early with entityType filter
-    return {
-      bool: {
-        must: [
-          mainQuery,
-          {
-            term: {
-              entityType: entityType,
-            },
-          },
-        ],
-      },
-    };
-  } else if (fieldType === 'timeInterval' && nestedField) {
-    // TimeInterval: query start or end field
-    mainQuery = buildNestedTypedQuery(
-      basePropertyName,
-      nestedField,
-      value,
-      operator
+  // Handled ahead of the rest so it works for all field types, and it never
+  // takes the negation wrapper below.
+  if (strategy === 'exists') {
+    return withEntityTypeFilter(
+      buildExtensionExistsQuery(basePropertyName, operator, not),
+      entityType
     );
-  } else if (fieldType === 'entityReference') {
-    // EntityReference: use refName for exact match queries
-    mainQuery = buildNestedTypedQuery(
-      basePropertyName,
-      'refName',
-      value,
-      operator
-    );
-  } else if (fieldType === 'hyperlink' && nestedField) {
-    // Hyperlink: both URL and displayText are stored in stringValue for exact/wildcard matching
-    mainQuery = buildNestedTypedQuery(
-      basePropertyName,
-      'stringValue',
-      value,
-      operator
-    );
-  } else if (fieldType === 'table' && nestedField) {
-    // Table: row data is stored in both stringValue (for wildcard) and textValue (for full-text)
-    // Use stringValue for exact match queries
-    mainQuery = buildNestedTypedQuery(
-      basePropertyName,
-      'stringValue',
-      value,
-      operator
-    );
-  } else if (isRangeOperator(operator)) {
-    // Range query: query longValue, doubleValue, and stringValue with OR
-    // since we don't know which field the value is stored in
-    // (dates are stored as strings, numbers as long/double)
-    const longValueQuery = buildNestedTypedQuery(
-      basePropertyName,
-      'longValue',
-      value,
-      operator
-    );
-    const doubleValueQuery = buildNestedTypedQuery(
-      basePropertyName,
-      'doubleValue',
-      value,
-      operator
-    );
-    const stringValueQuery = buildNestedTypedQuery(
-      basePropertyName,
-      'stringValue',
-      value,
-      operator
-    );
-    mainQuery = {
-      bool: {
-        should: [longValueQuery, doubleValueQuery, stringValueQuery],
-        minimum_should_match: 1,
-      },
-    };
-  } else if (
-    operator === 'equal' ||
-    operator === 'not_equal' ||
-    operator === 'select_equals' ||
-    operator === 'select_not_equals' ||
-    operator === 'multiselect_equals' ||
-    operator === 'multiselect_not_equals'
-  ) {
-    // Exact match: pick the right typed field.
-    // 1) If we know the OM property type, route directly: numeric types ->
-    //    longValue/doubleValue, all others -> stringValue. This avoids the bug
-    //    where a string property storing "123" was queried via longValue.
-    // 2) Otherwise (legacy callers without config), fall back to value-shape
-    //    detection.
-    const stringValue = String(value);
-    const trimmedValue = stringValue.trim();
-    const numericValue =
-      typeof value === 'number' ? value : parseFloat(trimmedValue);
-    const isNumeric =
-      !isNaN(numericValue) &&
-      isFinite(numericValue) &&
-      String(numericValue) === trimmedValue;
-    const isNumericOmType =
-      omPropertyType === 'integer' ||
-      omPropertyType === 'number' ||
-      omPropertyType === 'timestamp';
-    const useNumericField = omPropertyType ? isNumericOmType : isNumeric;
-
-    if (useNumericField && isNumeric) {
-      const isDecimal = stringValue.includes('.');
-      const nestedField = isDecimal ? 'doubleValue' : 'longValue';
-      mainQuery = buildNestedTypedQuery(
-        basePropertyName,
-        nestedField,
-        numericValue,
-        'equal'
-      );
-    } else {
-      mainQuery = buildNestedTypedQuery(
-        basePropertyName,
-        'stringValue',
-        value,
-        'equal'
-      );
-    }
-  } else if (
-    operator === 'multiselect_contains' ||
-    operator === 'multiselect_not_contains'
-  ) {
-    // Multiselect contains: use wildcard on stringValue (enum values are stored there)
-    const searchValue = Array.isArray(value) ? value[0] : value;
-    mainQuery = {
-      nested: {
-        path: 'customPropertiesTyped',
-        ignore_unmapped: true,
-        query: {
-          bool: {
-            must: [
-              { term: { 'customPropertiesTyped.name': basePropertyName } },
-              {
-                wildcard: {
-                  'customPropertiesTyped.stringValue': {
-                    value: '*' + searchValue + '*',
-                  },
-                },
-              },
-            ],
-          },
-        },
-      },
-    };
-  } else {
-    // Default text search: use match query on textValue
-    const searchValue = Array.isArray(value) ? value[0] : value;
-    mainQuery = {
-      nested: {
-        path: 'customPropertiesTyped',
-        ignore_unmapped: true,
-        query: {
-          bool: {
-            must: [
-              { term: { 'customPropertiesTyped.name': basePropertyName } },
-              {
-                match: {
-                  'customPropertiesTyped.textValue': {
-                    query: searchValue,
-                    operator: 'and',
-                  },
-                },
-              },
-            ],
-          },
-        },
-      },
-    };
   }
 
+  let mainQuery = EXTENSION_QUERY_BUILDERS.get(strategy)({
+    basePropertyName,
+    nestedField,
+    value,
+    operator,
+    omPropertyType,
+  });
+
   // Wrap in must_not if negated
-  if (
-    not ||
-    operator === 'not_equal' ||
-    operator === 'not_between' ||
-    operator === 'not_like' ||
-    operator === 'select_not_equals' ||
-    operator === 'multiselect_not_equals' ||
-    operator === 'multiselect_not_contains'
-  ) {
+  if (not || NEGATED_OPERATORS.includes(operator)) {
     mainQuery = {
       bool: {
         must_not: mainQuery.nested ? mainQuery : [mainQuery],
@@ -746,19 +822,7 @@ function buildExtensionQuery(
     };
   }
 
-  // Combine with entityType filter
-  return {
-    bool: {
-      must: [
-        mainQuery,
-        {
-          term: {
-            entityType: entityType,
-          },
-        },
-      ],
-    },
-  };
+  return withEntityTypeFilter(mainQuery, entityType);
 }
 
 /**
@@ -772,33 +836,102 @@ function buildExtensionQuery(
  * @returns {object} - The ES rule
  * @private
  */
-function buildEsRule(fieldName, value, operator, config, valueSrc) {
-  if (!fieldName || !operator || value === undefined) {
-    return undefined;
-  } // rule is not fully entered
+// A rule needs a field, an operator and a value before it can produce a clause.
+function isRuleEntered(fieldName, operator, value) {
+  return Boolean(fieldName) && Boolean(operator) && value !== undefined;
+}
 
-  // Check if field has custom elasticsearch field mapping or handle extension fields
-  let actualFieldName = fieldName;
-  let isNestedExtensionField = false;
-  let entityType = null;
-  let extensionPropertyName = null;
-
-  if (fieldName.startsWith('extension.') && fieldName.split('.').length >= 3) {
-    const parts = fieldName.split('.');
-    entityType = parts[1];
-    extensionPropertyName = parts.slice(2).join('.');
-    actualFieldName = `${parts[0]}.${extensionPropertyName}`;
-    isNestedExtensionField = true;
+// A row the user has half-filled (field and operator picked, nothing typed) carries a value
+// list of undefined. Building from it yields a bodiless clause such as `{"term":{}}` once
+// JSON.stringify drops the undefined, and both Elasticsearch and OpenSearch reject that
+// outright — failing the whole search instead of ignoring the one incomplete row. Operators
+// with no value at all (is_null and friends) carry an empty list and stay valid.
+function isIncompleteRuleValue(value, operator) {
+  if (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((entry) => entry === undefined)
+  ) {
+    return true;
   }
 
+  const isBetweenOperator =
+    operator === 'between' || operator === 'not_between';
+  if (!isBetweenOperator) {
+    return false;
+  }
+
+  // between needs both bounds present
+  if (!Array.isArray(value) || value.length < 2) {
+    return true;
+  }
+
+  return value[0] === undefined || value[1] === undefined;
+}
+
+// The entity-type segment is only present when the builder offers custom
+// properties for every entity type (Explore): `extension.table.testCp`.
+// A builder pinned to one entity type omits it: `extension.testCp`.
+// Deciding positionally read `testCp` as the entity type and `keyword` as
+// the property, so those builders matched nothing at all. Ask the config
+// instead: an entity-type segment is a group, a property is a leaf.
+// `omEntityType` is set only for a builder pinned to one entity type, and
+// that is exactly when its keys omit the entity-type segment — so it
+// decides, and the key's shape is only a fallback. Shape alone cannot: a
+// table-type property is itself a struct (`testCp.rows.name`), so "the
+// segment has subfields, therefore it is an entity type" read `testCp` as
+// the entity and `rows` as the property, and the query matched nothing.
+function hasEntityTypeSegment(parts, config, pinnedEntityType) {
+  if (pinnedEntityType || parts.length < 3) {
+    return false;
+  }
+  const extensionSubfields = config?.fields?.extension?.subfields;
+  const segment = extensionSubfields?.[parts[1]];
+
+  return segment ? Boolean(segment.subfields) : !extensionSubfields;
+}
+
+// Check if field has custom elasticsearch field mapping or handle extension fields
+function parseExtensionFieldName(fieldName, config) {
+  const parsed = {
+    actualFieldName: fieldName,
+    isNestedExtensionField: false,
+    entityType: null,
+    extensionPropertyName: null,
+  };
+  if (!fieldName.startsWith('extension.')) {
+    return parsed;
+  }
+
+  const parts = fieldName.split('.');
+  const pinnedEntityType = config?.settings?.omEntityType ?? null;
+
+  if (hasEntityTypeSegment(parts, config, pinnedEntityType)) {
+    parsed.entityType = parts[1];
+    parsed.extensionPropertyName = parts.slice(2).join('.');
+  } else if (parts.length >= 2) {
+    parsed.entityType = pinnedEntityType;
+    parsed.extensionPropertyName = parts.slice(1).join('.');
+  }
+
+  if (parsed.extensionPropertyName) {
+    parsed.actualFieldName = `${parts[0]}.${parsed.extensionPropertyName}`;
+    parsed.isNestedExtensionField = true;
+  }
+
+  return parsed;
+}
+
+// An operator with no query type of its own is expressed as the negation of its
+// reverse (e.g. not_equal -> not(equal)).
+function resolveRuleOperator(config, operator) {
   let op = operator;
   let opConfig = config.operators[op];
   if (!opConfig) {
     return undefined;
   } // unknown operator
-  let { elasticSearchQueryType } = opConfig;
 
-  // not
+  let { elasticSearchQueryType } = opConfig;
   let not = false;
   if (!elasticSearchQueryType && opConfig.reversedOp) {
     not = true;
@@ -807,27 +940,39 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
     ({ elasticSearchQueryType } = opConfig);
   }
 
-  // For extension fields, use the new customPropertiesTyped field approach
-  // Handle both value-based operators and unary operators (is_null, is_not_null)
-  const isUnaryOperator = op === 'is_null' || op === 'is_not_null';
-  const hasValue = Array.isArray(value) && value.length > 0;
-  if (isNestedExtensionField && entityType && (hasValue || isUnaryOperator)) {
-    const omPropertyType = lookupOmPropertyType(
-      config,
-      entityType,
-      extensionPropertyName
-    );
+  return { op, elasticSearchQueryType, not };
+}
 
-    return buildExtensionQuery(
-      extensionPropertyName,
-      entityType,
-      hasValue ? value[0] : null,
-      op,
-      not,
-      omPropertyType
-    );
+// For extension fields, use the new customPropertiesTyped field approach.
+// Handle both value-based operators and unary operators (is_null, is_not_null).
+// No `entityType` requirement: a builder pinned to one entity type keys its
+// custom properties without that segment, and demanding it sent those fields
+// down the generic path, which cannot express a nested customPropertiesTyped
+// query and produced no query at all.
+function isExtensionRule(parsed, op, hasValue) {
+  const isUnaryOperator = op === 'is_null' || op === 'is_not_null';
+
+  return parsed.isNestedExtensionField && (hasValue || isUnaryOperator);
+}
+
+function resolveExtensionValue(op, value, hasValue) {
+  if (!hasValue) {
+    return null;
   }
 
+  return isRangeOperator(op) ? value : value[0];
+}
+
+function buildWidgetRuleQuery({
+  config,
+  fieldName,
+  actualFieldName,
+  op,
+  value,
+  valueSrc,
+  elasticSearchQueryType,
+  not,
+}) {
   // handle if value 0 has multiple values like a select in a array
   const widget = extendConfigUtils.ConfigUtils.getWidgetForFieldOp(
     config,
@@ -843,12 +988,10 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
 
   /** In most cases the queryType will be static however in some casese (like between) the query type will change
    * based on the data type. i.e. a between time will be different than between number, date, letters etc... */
-  let queryType;
-  if (typeof elasticSearchQueryType === 'function') {
-    queryType = elasticSearchQueryType(widget);
-  } else {
-    queryType = elasticSearchQueryType;
-  }
+  const queryType =
+    typeof elasticSearchQueryType === 'function'
+      ? elasticSearchQueryType(widget)
+      : elasticSearchQueryType;
 
   if (!queryType) {
     // Not supported
@@ -858,36 +1001,67 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
   /** If a widget has a rule on how to format that data then use that otherwise use default way
    * of determineing search parameters
    * */
-  let parameters;
-  if (typeof elasticSearchFormatValue === 'function') {
-    parameters = elasticSearchFormatValue(
-      queryType,
-      value,
-      op,
-      actualFieldName,
-      config
-    );
-  } else {
-    parameters = buildParameters(queryType, value, op, actualFieldName, config);
-  }
+  const parameters =
+    typeof elasticSearchFormatValue === 'function'
+      ? elasticSearchFormatValue(queryType, value, op, actualFieldName, config)
+      : buildParameters(queryType, value, op, actualFieldName, config);
+
+  const enteredParameters = definedParameters(parameters);
+  if (!enteredParameters) {
+    return undefined;
+  } // rule is not fully entered
 
   // Build the main query
-  let mainQuery;
-  if (not) {
-    mainQuery = {
-      bool: {
-        must_not: {
-          [queryType]: { ...parameters },
-        },
-      },
-    };
-  } else {
-    mainQuery = {
-      [queryType]: { ...parameters },
-    };
+  return not
+    ? { bool: { must_not: { [queryType]: { ...enteredParameters } } } }
+    : { [queryType]: { ...enteredParameters } };
+}
+
+function buildEsRule(fieldName, value, operator, config, valueSrc) {
+  if (!isRuleEntered(fieldName, operator, value)) {
+    return undefined;
+  } // rule is not fully entered
+
+  if (isIncompleteRuleValue(value, operator)) {
+    return undefined;
   }
 
-  return mainQuery;
+  const parsedField = parseExtensionFieldName(fieldName, config);
+  const resolvedOperator = resolveRuleOperator(config, operator);
+  if (!resolvedOperator) {
+    return undefined;
+  } // unknown operator
+  const { op, elasticSearchQueryType, not } = resolvedOperator;
+
+  const hasValue = Array.isArray(value) && value.length > 0;
+  if (isExtensionRule(parsedField, op, hasValue)) {
+    const { entityType, extensionPropertyName } = parsedField;
+    const omPropertyType = lookupOmPropertyType(
+      config,
+      entityType,
+      extensionPropertyName
+    );
+
+    return buildExtensionQuery(
+      extensionPropertyName,
+      entityType,
+      resolveExtensionValue(op, value, hasValue),
+      op,
+      not,
+      omPropertyType
+    );
+  }
+
+  return buildWidgetRuleQuery({
+    config,
+    fieldName,
+    actualFieldName: parsedField.actualFieldName,
+    op,
+    value,
+    valueSrc,
+    elasticSearchQueryType,
+    not,
+  });
 }
 
 /**
@@ -938,6 +1112,67 @@ function buildEsGroup(
   };
 }
 
+// A multiselect rule holds its options in value[0]; each option becomes its own
+// clause. An option the user has not picked yet yields no rule; keeping the hole
+// would serialize to a null clause, which the search engines reject.
+function buildMultiselectEsRule(field, value, operator, config, valueSrc) {
+  const useAndLogic =
+    operator === 'multiselect_equals' || operator === 'multiselect_not_equals';
+
+  return {
+    bool: {
+      [useAndLogic ? 'must' : 'should']: value[0]
+        .map((val) => buildEsRule(field, [val], operator, config, valueSrc))
+        .filter((rule) => rule !== undefined),
+    },
+  };
+}
+
+function formatEsRuleNode(properties, extendedConfig) {
+  const operator = properties.get('operator');
+  const field = properties.get('field');
+  const fieldSrc = properties.get('fieldSrc');
+  const value = properties.get('value')?.toJS();
+  const valueSrc = properties.get('valueSrc')?.get(0);
+
+  if (valueSrc === 'func' || fieldSrc === 'func') {
+    // -- elastic search doesn't support functions (that is post processing)
+    return undefined;
+  }
+
+  if (value && Array.isArray(value[0])) {
+    return buildMultiselectEsRule(
+      field,
+      value,
+      operator,
+      extendedConfig,
+      valueSrc
+    );
+  }
+
+  // extendedConfig, as in every other branch: buildEsRule resolves the field's widget
+  // through the config it is given, and a raw one resolves none — so a fully entered
+  // condition builds no clause at all when this runs on a rule node directly.
+  return buildEsRule(field, value, operator, extendedConfig, valueSrc);
+}
+
+// The formatter is passed in rather than referenced: buildEsGroup recurses
+// through it, and naming the export here would read it before it is defined.
+function formatEsGroupNode(tree, properties, groupConfig, syntax, formatter) {
+  const conjunction =
+    properties.get('conjunction') ||
+    extendConfigUtils.DefaultUtils.defaultConjunction(groupConfig.extended);
+
+  return buildEsGroup(
+    tree.get('children1'),
+    conjunction,
+    properties.get('not'),
+    formatter,
+    groupConfig.passed,
+    syntax
+  );
+}
+
 export function elasticSearchFormat(tree, config, syntax = ES_6_SYNTAX) {
   try {
     const extendedConfig = extendConfigUtils.ConfigUtils.extendConfig(
@@ -952,65 +1187,132 @@ export function elasticSearchFormat(tree, config, syntax = ES_6_SYNTAX) {
     const type = tree.get('type');
     const properties = tree.get('properties') || new Map();
 
+    // -- field is null when a new blank rule is added
     if (type === 'rule' && properties.get('field')) {
-      // -- field is null when a new blank rule is added
-      const operator = properties.get('operator');
-      const field = properties.get('field');
-      const fieldSrc = properties.get('fieldSrc');
-      const value = properties.get('value')?.toJS();
-      const valueSrc = properties.get('valueSrc')?.get(0);
-
-      if (valueSrc === 'func' || fieldSrc === 'func') {
-        // -- elastic search doesn't support functions (that is post processing)
-        return;
-      }
-
-      if (value && Array.isArray(value[0])) {
-        // Check if this is a multiselect equals operator that should use AND logic
-        const useAndLogic =
-          operator === 'multiselect_equals' ||
-          operator === 'multiselect_not_equals';
-
-        return {
-          bool: {
-            [useAndLogic ? 'must' : 'should']: value[0].map((val) =>
-              buildEsRule(
-                field,
-                [val],
-                operator,
-                extendedConfig,
-                valueSrc,
-                syntax
-              )
-            ),
-          },
-        };
-      } else {
-        return buildEsRule(field, value, operator, config, valueSrc, syntax);
-      }
+      return formatEsRuleNode(properties, extendedConfig);
     }
 
     if (type === 'group' || type === 'rule_group') {
-      const not = properties.get('not');
-      let conjunction = properties.get('conjunction');
-      if (!conjunction) {
-        conjunction =
-          extendConfigUtils.DefaultUtils.defaultConjunction(extendedConfig);
-      }
-      const children = tree.get('children1');
-
-      return buildEsGroup(
-        children,
-        conjunction,
-        not,
-        elasticSearchFormat,
-        extendedConfig,
-        syntax
+      return formatEsGroupNode(
+        tree,
+        properties,
+        { extended: extendedConfig, passed: extendedConfig },
+        syntax,
+        elasticSearchFormat
       );
     }
   } catch {
     return {};
   }
+}
+
+/**
+ * A rule that produced no clause, or a multiselect wrapper with no options picked, adds no
+ * constraint at all.
+ *
+ * @param {object|undefined} clause - What elasticSearchFormat produced for a single rule
+ * @returns {boolean} - Whether the rule ended up constraining nothing
+ * @private
+ */
+function producesNoConstraint(clause) {
+  if (!clause) {
+    return true;
+  }
+
+  const options = clause.bool?.must ?? clause.bool?.should;
+
+  return Array.isArray(options) && options.length === 0;
+}
+
+/**
+ * Reports whether the tree holds a condition the user started but did not finish — a row naming a
+ * field whose value was never entered.
+ *
+ * Such a row is dropped from the emitted query (a bodiless clause like `{"term":{}}` is rejected by
+ * both search engines), so persisting it would silently widen the filter to match everything. The
+ * answer comes from asking elasticSearchFormat what the row actually produces, so this check and
+ * buildEsRule cannot drift apart.
+ *
+ * A row with no field picked is deliberately not flagged: that is the query builder's own empty
+ * state, which it creates and keeps on its own, and it has always been dropped. Only a row that
+ * names a field carries intent that could be silently lost.
+ *
+ * @param {object} tree - The immutable query-builder tree
+ * @param {object} config - The same config passed to elasticSearchFormat
+ * @param {string} syntax - The version of ElasticSearch syntax to generate
+ * @returns {boolean} - Whether any condition was started but left unfinished
+ */
+export function hasUnfinishedRule(tree, config, syntax = ES_6_SYNTAX) {
+  if (!tree) {
+    return false;
+  }
+
+  const type = tree.get('type');
+  if (type === 'rule') {
+    const field = tree.get('properties')?.get('field');
+
+    return (
+      Boolean(field) &&
+      producesNoConstraint(elasticSearchFormat(tree, config, syntax))
+    );
+  }
+
+  const children = tree.get('children1');
+  if (!children || typeof children.valueSeq !== 'function') {
+    return false;
+  }
+
+  return children
+    .valueSeq()
+    .toArray()
+    .some((child) => hasUnfinishedRule(child, config, syntax));
+}
+
+// Deliberately unlike the Elasticsearch variant above: this one passes the raw
+// `config` to buildEsRule, excludes select_not_any_in from the per-option
+// expansion, and keeps undefined entries in the clause list.
+function buildJsonLogicMultiselectRule(
+  field,
+  value,
+  operator,
+  config,
+  valueSrc
+) {
+  const useAndLogic =
+    operator === 'multiselect_equals' || operator === 'multiselect_not_equals';
+
+  return {
+    bool: {
+      [useAndLogic ? 'must' : 'should']: value[0].map((val) =>
+        buildEsRule(field, [val], operator, config, valueSrc)
+      ),
+    },
+  };
+}
+
+function formatJsonLogicRuleNode(properties, config) {
+  const operator = properties.get('operator');
+  const field = properties.get('field');
+  const fieldSrc = properties.get('fieldSrc');
+  const value = properties.get('value')?.toJS();
+  const valueSrc = properties.get('valueSrc')?.get(0);
+
+  if (valueSrc === 'func' || fieldSrc === 'func') {
+    // -- elastic search doesn't support functions (that is post processing)
+    return undefined;
+  }
+
+  if (value && Array.isArray(value[0]) && operator !== 'select_not_any_in') {
+    return buildJsonLogicMultiselectRule(
+      field,
+      value,
+      operator,
+      config,
+      valueSrc
+    );
+  }
+
+  return buildEsRule(field, value, operator, config, valueSrc);
 }
 
 export function elasticSearchFormatForJSONLogic(
@@ -1027,57 +1329,18 @@ export function elasticSearchFormatForJSONLogic(
     const type = tree.get('type');
     const properties = tree.get('properties') || new Map();
 
+    // -- field is null when a new blank rule is added
     if (type === 'rule' && properties.get('field')) {
-      // -- field is null when a new blank rule is added
-      const operator = properties.get('operator');
-      const field = properties.get('field');
-      const fieldSrc = properties.get('fieldSrc');
-      const value = properties.get('value')?.toJS();
-      const valueSrc = properties.get('valueSrc')?.get(0);
-
-      if (valueSrc === 'func' || fieldSrc === 'func') {
-        // -- elastic search doesn't support functions (that is post processing)
-        return;
-      }
-
-      if (
-        value &&
-        Array.isArray(value[0]) &&
-        operator !== 'select_not_any_in'
-      ) {
-        // Check if this is a multiselect equals operator that should use AND logic
-        const useAndLogic =
-          operator === 'multiselect_equals' ||
-          operator === 'multiselect_not_equals';
-
-        return {
-          bool: {
-            [useAndLogic ? 'must' : 'should']: value[0].map((val) =>
-              buildEsRule(field, [val], operator, config, valueSrc)
-            ),
-          },
-        };
-      } else {
-        return buildEsRule(field, value, operator, config, valueSrc);
-      }
+      return formatJsonLogicRuleNode(properties, config);
     }
 
     if (type === 'group' || type === 'rule_group') {
-      const not = properties.get('not');
-      let conjunction = properties.get('conjunction');
-      if (!conjunction) {
-        conjunction =
-          extendConfigUtils.DefaultUtils.defaultConjunction(extendedConfig);
-      }
-      const children = tree.get('children1');
-
-      return buildEsGroup(
-        children,
-        conjunction,
-        not,
-        elasticSearchFormatForJSONLogic,
-        config,
-        syntax
+      return formatEsGroupNode(
+        tree,
+        properties,
+        { extended: extendedConfig, passed: config },
+        syntax,
+        elasticSearchFormatForJSONLogic
       );
     }
   } catch {

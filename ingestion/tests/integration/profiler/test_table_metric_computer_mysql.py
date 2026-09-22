@@ -34,14 +34,14 @@ class Base(DeclarativeBase):
 
 class MetricComputerTestTable(Base):
     __tablename__ = "metric_computer_test"
-    __table_args__ = {"schema": "test_metrics"}
+    __table_args__ = {"schema": "test_metrics"}  # noqa: RUF012
     id = Column(Integer, primary_key=True)
     name = Column(String(256))
 
 
 class NonExistentModel(Base):
     __tablename__ = "nonexistent_table_xyz"
-    __table_args__ = {"schema": "test_metrics"}
+    __table_args__ = {"schema": "test_metrics"}  # noqa: RUF012
     id = Column(Integer, primary_key=True)
 
 
@@ -52,15 +52,10 @@ def mysql_engine():
         engine = create_engine(container.get_connection_url())
         with engine.connect() as conn:
             conn.execute(
-                text(
-                    "CREATE TABLE IF NOT EXISTS metric_computer_test "
-                    "(id INTEGER PRIMARY KEY, name VARCHAR(256))"
-                )
+                text("CREATE TABLE IF NOT EXISTS metric_computer_test (id INTEGER PRIMARY KEY, name VARCHAR(256))")
             )
             values = ", ".join(f"({i}, 'name_{i}')" for i in range(1, 101))
-            conn.execute(
-                text(f"INSERT INTO metric_computer_test (id, name) VALUES {values}")
-            )
+            conn.execute(text(f"INSERT INTO metric_computer_test (id, name) VALUES {values}"))
             conn.execute(text("ANALYZE TABLE metric_computer_test"))
             conn.commit()
         yield engine

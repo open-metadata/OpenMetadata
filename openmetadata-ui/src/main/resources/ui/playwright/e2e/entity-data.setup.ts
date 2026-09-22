@@ -10,16 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as setup } from '@playwright/test';
+import { expect, test as setup } from '@playwright/test';
 import { EntityDataClass } from '../support/entity/EntityDataClass';
 import { performAdminLogin } from '../utils/admin';
 
 setup('create entity data prerequisites', async ({ browser }) => {
-  setup.setTimeout(300 * 1000);
+  setup.setTimeout(600 * 1000);
 
   const { apiContext, afterAction } = await performAdminLogin(browser);
 
   try {
+    // A weekly rebuild can otherwise change shared search results halfway through a CI shard.
+    const response = await apiContext.patch(
+      '/api/v1/apps/name/SearchIndexingApplication',
+      {
+        headers: { 'Content-Type': 'application/json-patch+json' },
+        data: [
+          {
+            op: 'replace',
+            path: '/appSchedule',
+            value: { scheduleTimeline: 'None' },
+          },
+        ],
+      }
+    );
+    expect(response.ok()).toBe(true);
+    expect((await response.json()).appSchedule.scheduleTimeline).toBe('None');
     await EntityDataClass.preRequisitesForTests(apiContext);
     EntityDataClass.saveResponseData();
   } finally {

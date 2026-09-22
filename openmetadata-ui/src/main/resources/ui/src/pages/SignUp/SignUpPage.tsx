@@ -11,15 +11,27 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Form, FormProps, Input, Space, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  FieldProp,
+  FieldTypes,
+  FormField,
+  FormFields,
+  FormItemLabel,
+  HookForm,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { UserProfile } from '../../components/Auth/AuthProviders/AuthProvider.interface';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import TeamsSelectable from '../../components/Settings/Team/TeamsSelectable/TeamsSelectable';
-import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { REDIRECT_PATHNAME } from '../../constants/router.constants';
 import { ClientType } from '../../generated/configuration/authenticationConfiguration';
 import { EntityReference } from '../../generated/entity/type';
@@ -36,6 +48,14 @@ import { getImages } from '../../utils/UserDataUtils';
 
 const cookieStorage = new CookieStorage();
 
+interface SignUpFormValues {
+  displayName: string;
+  name: string;
+  email: string;
+  teams: EntityReference[];
+  picture?: string;
+}
+
 const SignUp = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -50,9 +70,39 @@ const SignUp = () => {
   } = useApplicationStore();
 
   const [loading, setLoading] = useState<boolean>(false);
-  const OMDLogo = useMemo(() => brandClassBase.getMonogram().svg, []);
+  const OMDLogo = brandClassBase.getMonogram().svg;
 
-  const handleCreateNewUser: FormProps['onFinish'] = async (data) => {
+  const clientType = authConfig?.clientType ?? ClientType.Public;
+
+  const initialValues = useMemo<SignUpFormValues>(
+    () => ({
+      teams: [],
+      displayName: newUser?.name ?? '',
+      name: newUser?.name ?? '',
+      email: newUser?.email ?? '',
+      ...(clientType === ClientType.Public
+        ? getNameFromUserData(
+            newUser as UserProfile,
+            jwtPrincipalClaims,
+            authorizerConfig?.principalDomain,
+            jwtPrincipalClaimsMapping
+          )
+        : {}),
+    }),
+    [
+      clientType,
+      authorizerConfig?.principalDomain,
+      jwtPrincipalClaims,
+      jwtPrincipalClaimsMapping,
+      newUser,
+    ]
+  );
+
+  const form = useForm<SignUpFormValues>({
+    defaultValues: initialValues,
+  });
+
+  const handleCreateNewUser = async (data: SignUpFormValues) => {
     setLoading(true);
 
     try {
@@ -73,149 +123,120 @@ const SignUp = () => {
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.user'),
-        })
+        t('server.create-entity-error', { entity: t('label.user') })
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const clientType = authConfig?.clientType ?? ClientType.Public;
+  const displayNameField: FieldProp = {
+    name: 'displayName',
+    type: FieldTypes.TEXT,
+    label: t('label.full-name'),
+    id: 'root/displayName',
+    placeholder: t('label.your-entity', { entity: t('label.full-name') }),
+    required: true,
+    rules: {
+      required: t('message.field-text-is-required', {
+        fieldText: t('label.full-name'),
+      }),
+    },
+    props: { 'data-testid': 'full-name-input', size: 'md' },
+  };
 
-  const initialValues = useMemo(
-    () => ({
-      displayName: newUser?.name ?? '',
-      ...(clientType === ClientType.Public
-        ? getNameFromUserData(
-            newUser as UserProfile,
-            jwtPrincipalClaims,
-            authorizerConfig?.principalDomain,
-            jwtPrincipalClaimsMapping
-          )
-        : {
-            name: newUser?.name ?? '',
-            email: newUser?.email ?? '',
-          }),
+  const emailField: FieldProp = {
+    name: 'email',
+    type: FieldTypes.TEXT,
+    label: t('label.email'),
+    id: 'root/email',
+    placeholder: t('label.your-entity', {
+      entity: `${t('label.email')} ${t('label.address')}`,
     }),
-    [
-      clientType,
-      authorizerConfig?.principalDomain,
-      jwtPrincipalClaims,
-      jwtPrincipalClaimsMapping,
-      newUser,
-    ]
-  );
+    required: true,
+    rules: {
+      required: t('message.field-text-is-required', {
+        fieldText: t('label.email'),
+      }),
+    },
+    props: { 'data-testid': 'email-input', isDisabled: true, size: 'md' },
+  };
 
   return (
-    <div className="flex-center w-full h-full">
-      <Card className="p-x-md p-y-md w-500">
-        <Space
-          align="center"
-          className="w-full m-b-lg"
-          direction="vertical"
-          size="middle">
-          <OMDLogo
-            data-testid="om-logo"
-            height={50}
-            name={t('label.open-metadata-logo')}
-            width={50}
-          />
-          <Typography.Title
-            className="text-center"
-            data-testid="om-heading"
-            level={3}>
-            <Transi18next
-              i18nKey="label.join-entity"
-              renderElement={<span className="text-primary" />}
-              values={{
-                entity: t('label.open-metadata'),
-              }}
+    <div
+      className="tw:flex tw:min-h-screen tw:w-full tw:items-center tw:justify-center tw:bg-primary"
+      data-testid="signup-page-container">
+      <DocumentTitle title={t('label.sign-up')} />
+      <Card
+        className="tw:w-full tw:max-w-[500px] tw:shadow-xl"
+        variant="elevated">
+        <Card.Content className="tw:p-8">
+          <div className="tw:mb-8 tw:flex tw:flex-col tw:items-center tw:gap-4">
+            <OMDLogo
+              data-testid="om-logo"
+              height={50}
+              name={t('label.brand-name-logo')}
+              width={50}
             />
-          </Typography.Title>
-        </Space>
+            <Typography
+              as="h1"
+              className="tw:text-center"
+              data-testid="om-heading"
+              size="display-xs"
+              weight="semibold">
+              <Transi18next
+                i18nKey="label.join-entity"
+                renderElement={<span className="tw:text-brand-secondary" />}
+                values={{ entity: t('label.brand-name') }}
+              />
+            </Typography>
+          </div>
 
-        <Form
-          data-testid="create-user-form"
-          initialValues={initialValues}
-          layout="vertical"
-          validateMessages={VALIDATION_MESSAGES}
-          onFinish={handleCreateNewUser}>
-          <Form.Item
-            data-testid="full-name-label"
-            label={t('label.full-name')}
-            name="displayName"
-            rules={[
-              {
-                required: true,
-              },
-            ]}>
-            <Input
-              autoFocus
-              data-testid="full-name-input"
-              placeholder={t('label.your-entity', {
-                entity: t('label.full-name'),
-              })}
-            />
-          </Form.Item>
-
-          <Form.Item
-            hidden
-            data-testid="username-label"
-            label={t('label.username')}
-            name="name"
-            rules={[
-              {
-                required: true,
-              },
-            ]}>
-            <Input
-              disabled
+          <HookForm
+            className="tw:flex tw:flex-col tw:gap-4"
+            data-testid="create-user-form"
+            form={form}
+            onSubmit={form.handleSubmit(handleCreateNewUser)}>
+            <FormFields fields={[displayNameField, emailField]} />
+            <input
               data-testid="username-input"
-              placeholder={t('label.username')}
+              type="hidden"
+              {...form.register('name', { required: true })}
             />
-          </Form.Item>
 
-          <Form.Item
-            data-testid="email-label"
-            label={t('label.email')}
-            name="email"
-            rules={[
-              {
-                required: true,
-              },
-            ]}>
-            <Input
-              disabled
-              data-testid="email-input"
-              placeholder={t('label.your-entity', {
-                entity: `${t('label.email')} ${t('label.address')}`,
-              })}
-              type="email"
-            />
-          </Form.Item>
+            <FormField control={form.control} name="teams">
+              {({ field }) => (
+                <div
+                  className="tw:flex tw:flex-col tw:gap-1.5"
+                  data-testid="select-team-label">
+                  <FormItemLabel
+                    label={t('label.select-field', {
+                      field: t('label.team-plural-lowercase'),
+                    })}
+                  />
+                  <TeamsSelectable
+                    filterJoinable
+                    showTeamsAlert
+                    onSelectionChange={field.onChange}
+                  />
+                </div>
+              )}
+            </FormField>
 
-          <Form.Item
-            data-testid="select-team-label"
-            label={t('label.select-field', {
-              field: t('label.team-plural-lowercase'),
-            })}
-            name="teams"
-            trigger="onSelectionChange">
-            <TeamsSelectable filterJoinable showTeamsAlert />
-          </Form.Item>
-
-          <Space align="center" className="w-full justify-end d-flex">
-            <Button
-              data-testid="create-button"
-              htmlType="submit"
-              loading={loading}
-              type="primary">
-              {t('label.create')}
-            </Button>
-          </Space>
-        </Form>
+            <div className="tw:mt-4 tw:flex tw:justify-end">
+              <Button
+                showTextWhileLoading
+                color="primary"
+                data-testid="create-button"
+                isDisabled={loading}
+                isLoading={loading}
+                size="md"
+                type="submit">
+                {t('label.create')}
+              </Button>
+            </div>
+          </HookForm>
+        </Card.Content>
       </Card>
     </div>
   );

@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.USER;
 
 import jakarta.ws.rs.core.Response;
@@ -11,13 +12,20 @@ import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -30,6 +38,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.query.QueryResource;
+import org.openmetadata.service.search.vector.QueryBodyTextContributor;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -41,6 +50,10 @@ public class QueryRepository extends EntityRepository<Query> {
   private static final String QUERY_USERS_FIELD = "users";
   private static final String QUERY_PATCH_FIELDS = "users,query,queryUsedIn,processedLineage";
   private static final String QUERY_UPDATE_FIELDS = "users,queryUsedIn,processedLineage";
+  static final int DOMAIN_REINDEX_BATCH_SIZE = 100;
+  private static final String INITIAL_QUERY_ID_CURSOR = "";
+  private static final Set<String> QUERY_ANCESTOR_DOMAIN_SOURCE_TYPES =
+      Set.of(Entity.DATABASE_SERVICE, Entity.DATABASE, Entity.DATABASE_SCHEMA);
 
   public QueryRepository() {
     super(
@@ -51,6 +64,7 @@ public class QueryRepository extends EntityRepository<Query> {
         QUERY_PATCH_FIELDS,
         QUERY_UPDATE_FIELDS);
     supportsSearch = true;
+    QueryBodyTextContributor.INSTANCE.register();
   }
 
   @Override
@@ -68,9 +82,21 @@ public class QueryRepository extends EntityRepository<Query> {
 
   @Override
   public void setFields(Query entity, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
-    entity.setQueryUsedIn(
-        fields.contains(QUERY_USED_IN_FIELD) ? getQueryUsage(entity) : entity.getQueryUsedIn());
+    entity.setQueryUsedIn(getQueryUsageForFields(entity, fields));
     entity.withUsers(fields.contains("users") ? getQueryUsers(entity) : entity.getUsers());
+  }
+
+  @Override
+  protected void setInheritedFields(Query query, EntityUtil.Fields fields) {
+    setInheritedFields(List.of(query), fields);
+  }
+
+  @Override
+  protected void setInheritedFields(List<Query> queries, EntityUtil.Fields fields) {
+    if (fields.contains(FIELD_DOMAINS) && !nullOrEmpty(queries)) {
+      final Map<UUID, Table> tablesById = loadTablesWithDomains(queries);
+      queries.forEach(query -> query.setDomains(QueryDomainInheritance.resolve(query, tablesById)));
+    }
   }
 
   @Override
@@ -125,24 +151,35 @@ public class QueryRepository extends EntityRepository<Query> {
   }
 
   private void fetchAndSetQueryUsage(List<Query> queries, EntityUtil.Fields fields) {
-    if (!fields.contains(QUERY_USED_IN_FIELD) || queries == null || queries.isEmpty()) {
+    if (!needsQueryUsage(fields) || queries == null || queries.isEmpty()) {
       return;
     }
 
-    List<String> queryIds = queries.stream().map(q -> q.getId().toString()).toList();
-    List<CollectionDAO.EntityRelationshipObject> relationships =
-        daoCollection
-            .relationshipDAO()
-            .findFromBatch(queryIds, Entity.QUERY, Relationship.MENTIONED_IN.ordinal());
-
-    // Group relationships by query ID
+    final boolean queryUsageRequested = fields.contains(QUERY_USED_IN_FIELD);
+    final List<String> queryIds = queries.stream().map(q -> q.getId().toString()).toList();
+    final List<CollectionDAO.EntityRelationshipObject> relationships =
+        queryUsageRequested
+            ? daoCollection
+                .relationshipDAO()
+                .findFromBatch(queryIds, Entity.QUERY, Relationship.MENTIONED_IN.ordinal())
+            : findActiveTableUsageRelationships(queryIds);
+    final Map<String, Map<UUID, EntityReference>> referencesByType =
+        queryUsageRequested ? loadQueryUsageReferences(relationships) : Map.of();
     Map<UUID, List<EntityReference>> queryUsageMap = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : relationships) {
-      UUID queryId = UUID.fromString(record.getToId());
-      EntityReference entityRef =
-          Entity.getEntityReferenceById(
-              record.getFromEntity(), UUID.fromString(record.getFromId()), Include.ALL);
-      queryUsageMap.computeIfAbsent(queryId, k -> new ArrayList<>()).add(entityRef);
+      final String usageType = record.getFromEntity();
+      if (!queryUsageRequested && !Entity.TABLE.equals(usageType)) {
+        continue;
+      }
+      final UUID usageId = UUID.fromString(record.getFromId());
+      final EntityReference entityRef =
+          queryUsageRequested
+              ? referencesByType.getOrDefault(usageType, Map.of()).get(usageId)
+              : new EntityReference().withId(usageId).withType(Entity.TABLE);
+      if (entityRef != null) {
+        final UUID queryId = UUID.fromString(record.getToId());
+        queryUsageMap.computeIfAbsent(queryId, ignored -> new ArrayList<>()).add(entityRef);
+      }
     }
 
     queries.forEach(
@@ -150,6 +187,81 @@ public class QueryRepository extends EntityRepository<Query> {
           List<EntityReference> usage = queryUsageMap.getOrDefault(query.getId(), List.of());
           query.setQueryUsedIn(usage);
         });
+  }
+
+  private Map<String, Map<UUID, EntityReference>> loadQueryUsageReferences(
+      List<CollectionDAO.EntityRelationshipObject> relationships) {
+    final Map<String, Set<UUID>> idsByType = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : relationships) {
+      idsByType
+          .computeIfAbsent(record.getFromEntity(), ignored -> new HashSet<>())
+          .add(UUID.fromString(record.getFromId()));
+    }
+
+    final Map<String, Map<UUID, EntityReference>> referencesByType = new HashMap<>();
+    idsByType.forEach(
+        (type, ids) -> {
+          final List<EntityReference> references =
+              Entity.getEntityReferencesByIds(type, new ArrayList<>(ids), Include.ALL);
+          referencesByType.put(
+              type,
+              references.stream()
+                  .collect(Collectors.toMap(EntityReference::getId, Function.identity())));
+        });
+    return referencesByType;
+  }
+
+  private boolean needsQueryUsage(EntityUtil.Fields fields) {
+    return fields.contains(QUERY_USED_IN_FIELD) || fields.contains(FIELD_DOMAINS);
+  }
+
+  private List<EntityReference> getQueryUsageForFields(Query query, EntityUtil.Fields fields) {
+    if (fields.contains(QUERY_USED_IN_FIELD)) {
+      return getQueryUsage(query);
+    }
+    if (fields.contains(FIELD_DOMAINS)) {
+      return findActiveTableUsageRelationships(List.of(query.getId().toString())).stream()
+          .map(
+              record ->
+                  new EntityReference()
+                      .withId(UUID.fromString(record.getFromId()))
+                      .withType(record.getFromEntity()))
+          .toList();
+    }
+    return query.getQueryUsedIn();
+  }
+
+  private List<CollectionDAO.EntityRelationshipObject> findActiveTableUsageRelationships(
+      List<String> queryIds) {
+    return daoCollection
+        .relationshipDAO()
+        .findFromBatch(queryIds, Relationship.MENTIONED_IN.ordinal(), Entity.TABLE, Entity.QUERY);
+  }
+
+  private Map<UUID, Table> loadTablesWithDomains(List<Query> queries) {
+    final Set<UUID> tableIds = getUsedTableIds(queries);
+    Map<UUID, Table> result = Map.of();
+    if (!tableIds.isEmpty()) {
+      final TableRepository repository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
+      final List<Table> tables =
+          repository.get(
+              null,
+              new ArrayList<>(tableIds),
+              repository.getFields(FIELD_DOMAINS),
+              Include.NON_DELETED);
+      result = tables.stream().collect(Collectors.toMap(Table::getId, Function.identity()));
+    }
+    return result;
+  }
+
+  private Set<UUID> getUsedTableIds(List<Query> queries) {
+    return queries.stream()
+        .filter(query -> !QueryDomainInheritance.hasExplicitDomains(query))
+        .flatMap(query -> listOrEmpty(query.getQueryUsedIn()).stream())
+        .filter(reference -> Entity.TABLE.equals(reference.getType()))
+        .map(EntityReference::getId)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toSet());
   }
 
   private void fetchAndSetQueryUsers(List<Query> queries, EntityUtil.Fields fields) {
@@ -190,6 +302,56 @@ public class QueryRepository extends EntityRepository<Query> {
     return queryEntity == null
         ? Collections.emptyList()
         : findFrom(queryEntity.getId(), Entity.QUERY, Relationship.USES, USER);
+  }
+
+  public void forEachQueryBatchForDomainSource(
+      String sourceType,
+      UUID sourceId,
+      String sourceFqn,
+      Consumer<List<EntityReference>> batchConsumer) {
+    String afterQueryId = INITIAL_QUERY_ID_CURSOR;
+    List<String> queryIds =
+        getQueryIdsForDomainSource(sourceType, sourceId, sourceFqn, afterQueryId);
+    while (!queryIds.isEmpty()) {
+      batchConsumer.accept(toQueryReferences(queryIds));
+      afterQueryId = queryIds.getLast();
+      queryIds =
+          queryIds.size() == DOMAIN_REINDEX_BATCH_SIZE
+              ? getQueryIdsForDomainSource(sourceType, sourceId, sourceFqn, afterQueryId)
+              : List.of();
+    }
+  }
+
+  private List<String> getQueryIdsForDomainSource(
+      String sourceType, UUID sourceId, String sourceFqn, String afterQueryId) {
+    List<String> queryIds = List.of();
+    if (Entity.TABLE.equals(sourceType)) {
+      queryIds =
+          daoCollection
+              .relationshipDAO()
+              .findQueryIdsForTableAfter(
+                  sourceId,
+                  Relationship.MENTIONED_IN.ordinal(),
+                  afterQueryId,
+                  DOMAIN_REINDEX_BATCH_SIZE);
+    } else if (QUERY_ANCESTOR_DOMAIN_SOURCE_TYPES.contains(sourceType) && !nullOrEmpty(sourceFqn)) {
+      queryIds =
+          daoCollection
+              .relationshipDAO()
+              .findQueryIdsForTableFqnPrefixAfter(
+                  FullyQualifiedName.buildHash(sourceFqn) + ".%",
+                  Relationship.MENTIONED_IN.ordinal(),
+                  afterQueryId,
+                  DOMAIN_REINDEX_BATCH_SIZE);
+    }
+    return queryIds;
+  }
+
+  private List<EntityReference> toQueryReferences(List<String> queryIds) {
+    return queryIds.stream()
+        .map(UUID::fromString)
+        .map(queryId -> new EntityReference().withId(queryId).withType(Entity.QUERY))
+        .toList();
   }
 
   @Override
@@ -314,7 +476,7 @@ public class QueryRepository extends EntityRepository<Query> {
                 Relationship.MENTIONED_IN));
 
     // Populate Fields
-    setFieldsInternal(query, new EntityUtil.Fields(allowedFields, QUERY_USED_IN_FIELD));
+    populateQueryUsageAndDomains(query);
     Entity.withHref(uriInfo, query.getQueryUsedIn());
     ChangeEvent changeEvent =
         getQueryChangeEvent(
@@ -323,6 +485,7 @@ public class QueryRepository extends EntityRepository<Query> {
             oldValue,
             query.getQueryUsedIn(),
             withHref(uriInfo, query));
+    dispatchQueryUsageUpdate(query, changeEvent);
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 
@@ -337,7 +500,7 @@ public class QueryRepository extends EntityRepository<Query> {
     }
 
     // Populate Fields
-    setFieldsInternal(query, new EntityUtil.Fields(allowedFields, QUERY_USED_IN_FIELD));
+    populateQueryUsageAndDomains(query);
     Entity.withHref(uriInfo, query.getQueryUsedIn());
     ChangeEvent changeEvent =
         getQueryChangeEvent(
@@ -346,7 +509,27 @@ public class QueryRepository extends EntityRepository<Query> {
             oldValue,
             query.getQueryUsedIn(),
             withHref(uriInfo, query));
+    dispatchQueryUsageUpdate(query, changeEvent);
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
+  }
+
+  private void dispatchQueryUsageUpdate(final Query query, final ChangeEvent changeEvent) {
+    query.setIncrementalChangeDescription(changeEvent.getChangeDescription());
+    query.setChangeDescription(changeEvent.getChangeDescription());
+    postUpdate(query, query);
+  }
+
+  @Override
+  protected void postUpdate(Query original, Query updated) {
+    populateQueryUsageAndDomains(updated);
+    super.postUpdate(original, updated);
+  }
+
+  private void populateQueryUsageAndDomains(Query query) {
+    EntityUtil.Fields fields =
+        new EntityUtil.Fields(allowedFields, QUERY_USED_IN_FIELD + "," + FIELD_DOMAINS);
+    setFieldsInternal(query, fields);
+    setInheritedFields(query, fields);
   }
 
   private ChangeEvent getQueryChangeEvent(

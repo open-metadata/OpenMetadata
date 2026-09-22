@@ -31,16 +31,16 @@
   border-bottom: 0.6px solid @grey-15;
   .glossary-terms-header {
     display: flex;
-    gap: 8px;
+    gap: var(--om-space-8);
     align-items: center;
-    margin-bottom: 12px;
-    padding-left: 14px;
-    padding-right: 14px;
+    margin-bottom: var(--om-space-12);
+    padding-left: var(--om-space-14);
+    padding-right: var(--om-space-14);
 
     .glossary-terms-title {
-      font-weight: 600;
+      font-weight: var(--om-font-weight-semibold);
       color: @grey-900;
-      font-size: 13px;
+      font-size: var(--om-font-size-13);
     }
 
     .cursor-pointer {
@@ -58,16 +58,16 @@
   }
 
   .glossary-terms-content {
-    padding-left: 14px;
-    padding-right: 14px;
-    padding-bottom: 16px;
+    padding-left: var(--om-space-14);
+    padding-right: var(--om-space-14);
+    padding-bottom: var(--om-space-16);
 
     .glossary-term-selector-display {
-      background-color: @white;
+      background-color: var(--tw-color-bg-primary);
       display: flex;
       align-items: center;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: var(--om-space-8);
       cursor: pointer;
 
       &:hover {
@@ -77,31 +77,8 @@
       .selected-glossary-terms-list {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: var(--om-space-8);
         width: 100%;
-
-        .selected-glossary-term-chip {
-          background-color: @blue-29;
-          border: 1px solid @blue-30;
-          border-radius: 8px;
-          padding: 5px 6px;
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          height: 26px;
-
-          .glossary-term-icon {
-            height: 12px;
-            width: 12px;
-            flex-shrink: 0;
-          }
-
-          .glossary-term-name {
-            font-weight: 400;
-            font-size: 12px;
-            color: @tag-text;
-          }
-        }
       }
     }
 
@@ -109,10 +86,10 @@
       .glossary-term-selector {
         width: 100%;
         min-height: 40px !important;
-        border-radius: 6px !important;
+        border-radius: var(--om-radius-md) !important;
         border: 1px solid @grey-22 !important;
-        background-color: @white !important;
-        padding: 4px 2px !important;
+        background-color: var(--om-color-bg-surface) !important;
+        padding: var(--om-space-4) var(--om-space-2) !important;
         .ant-select-selector {
           border: none !important;
         }
@@ -121,42 +98,14 @@
 
     .no-data-placeholder {
       color: @grey-500;
-      font-size: 12px;
+      font-size: var(--om-font-size-xs);
     }
 
     .glossary-terms-display {
       .glossary-terms-list {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
-
-        .glossary-term-item {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          padding: 5px 6px;
-          height: 26px;
-          border-radius: 8px;
-
-          min-width: 0;
-          background-color: @blue-29;
-          border: 1px solid @blue-30;
-          .glossary-term-icon {
-            width: 12px;
-            height: 12px;
-            color: @tag-text;
-            flex-shrink: 0;
-          }
-
-          .glossary-term-name {
-            color: @tag-text;
-            font-size: 12px;
-            font-weight: 400;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-          }
-        }
+        gap: var(--om-space-8);
 
         .show-more-terms-button {
           display: flex;
@@ -168,10 +117,10 @@
           background-color: transparent;
           border: none;
           color: @primary-7;
-          font-size: 12px;
-          font-weight: 400;
+          font-size: var(--om-font-size-xs);
+          font-weight: var(--om-font-weight-regular);
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all var(--om-duration-200) ease;
 
           &:hover {
             text-decoration: underline;
@@ -195,14 +144,14 @@
   width: 285px;
   padding-bottom: 0;
   .ant-popover-inner {
-    border-radius: 16px;
+    border-radius: var(--om-radius-2xl);
   }
   .ant-popover-inner-content {
-    padding: 8px 12px;
+    padding: var(--om-space-8) var(--om-space-12);
     padding-bottom: 0;
   }
   .ant-list-sm .ant-list-item {
-    padding: 8px 12px;
+    padding: var(--om-space-8) var(--om-space-12);
     align-items: center;
   }
 }

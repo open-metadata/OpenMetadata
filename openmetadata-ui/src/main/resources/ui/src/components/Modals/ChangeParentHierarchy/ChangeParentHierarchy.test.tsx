@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByRole, fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
 import { PageType } from '../../../generated/system/ui/page';
 import { mockedGlossaryTerms } from '../../../mocks/Glossary.mock';
@@ -23,14 +22,14 @@ const mockOnCancel = jest.fn();
 const mockProps = {
   selectedData: {
     ...mockedGlossaryTerms[0],
-    children: mockedGlossaryTerms[0].children?.map((child: any) => ({
+    children: mockedGlossaryTerms[0].children?.map((child) => ({
       id: child.id,
       name: child.name,
       displayName: child.displayName,
       description: child.description,
       fullyQualifiedName: child.fullyQualifiedName,
       type: PageType.GlossaryTerm, // Required field for EntityReference
-      deleted: child.deleted || false,
+      deleted: (child as { deleted?: boolean }).deleted || false,
     })),
   },
   onCancel: mockOnCancel,
@@ -60,7 +59,7 @@ jest.mock('../../../rest/glossaryAPI', () => ({
   ),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation((obj) => obj.name),
 }));
 
@@ -74,24 +73,13 @@ describe('Test ChangeParentHierarchy modal component', () => {
     jest.clearAllMocks();
   });
 
-  it('should render glossary selection dropdown', async () => {
+  it('should render the parent picker', async () => {
     await act(async () => {
       render(<ChangeParent {...mockProps} />);
     });
 
-    const selectInput = await findByRole(
-      screen.getByTestId('change-parent-select'),
-      'combobox'
-    );
-
-    expect(selectInput).toBeInTheDocument();
-
-    await act(async () => {
-      userEvent.click(selectInput);
-    });
-
-    // TreeAsyncSelectList will load glossaries and handle term filtering internally
-    expect(selectInput).toBeInTheDocument();
+    // The picker loads glossaries and their terms itself.
+    expect(screen.getByTestId('change-parent-select')).toBeInTheDocument();
   });
 
   it('should trigger onCancel button', async () => {

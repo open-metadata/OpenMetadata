@@ -348,8 +348,7 @@ public class ChangeSummaryResourceIT {
                 .withDescription("Change summary suggestion")
                 .withCategory(TaskCategory.MetadataUpdate)
                 .withType(TaskEntityType.Suggestion)
-                .withAbout(entityFqn)
-                .withAboutType(aboutType)
+                .withAbout(String.format("<#E::%s::%s>", aboutType, entityFqn))
                 .withAssignees(List.of(assignee))
                 .withPayload(
                     Map.of(

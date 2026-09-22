@@ -14,7 +14,6 @@
 import { render, screen } from '@testing-library/react';
 import { act } from 'react-test-renderer';
 import { INITIAL_ROW_METRIC_VALUE } from '../../../../constants/profiler.constant';
-import '../../../../test/unit/mocks/mui.mock';
 import { ProfilerLatestValueProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerLatestValue from './ProfilerLatestValue';
 
@@ -29,7 +28,7 @@ jest.mock('../../../../constants/constants', () => ({
   JSON_TAB_SIZE: 2,
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/NumberUtils', () => ({
   getStatisticsDisplayValue: jest.fn().mockImplementation(() => '10'),
 }));
 

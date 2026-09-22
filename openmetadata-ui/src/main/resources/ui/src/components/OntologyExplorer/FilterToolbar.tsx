@@ -19,18 +19,151 @@ import {
 } from '@openmetadata/ui-core-components';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import SearchDropdown from '../SearchDropdown/SearchDropdown';
+import FilterSelectDropdown from '../common/FilterSelectDropdown/FilterSelectDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 import {
   FilterToolbarProps,
   GraphViewMode,
 } from './OntologyExplorer.interface';
 
+const DISABLED_ITEM_CLASSNAME = ' tw:pointer-events-none tw:opacity-50';
+
 const VIEW_MODES: { label: string; value: GraphViewMode }[] = [
   { label: 'label.overview', value: 'overview' },
   { label: 'label.hierarchy', value: 'hierarchy' },
   { label: 'label.cross-glossary', value: 'crossGlossary' },
 ];
+
+interface ViewModeSelectorProps {
+  disabled: boolean;
+  viewMode: GraphViewMode;
+  onViewModeChange?: (viewMode: GraphViewMode) => void;
+}
+
+const ViewModeSelector: React.FC<ViewModeSelectorProps> = ({
+  disabled,
+  viewMode,
+  onViewModeChange,
+}) => {
+  const { t } = useTranslation();
+
+  const viewModeItems = useMemo(
+    () =>
+      VIEW_MODES.map(({ label, value }) => ({
+        id: value,
+        label: t(label),
+      })),
+    [t]
+  );
+
+  const handleChange = useCallback(
+    (key: React.Key | null) => {
+      const nextViewMode = VIEW_MODES.find(
+        (m) => m.value === String(key)
+      )?.value;
+      if (nextViewMode) {
+        onViewModeChange?.(nextViewMode);
+      }
+    },
+    [onViewModeChange]
+  );
+
+  return (
+    <div
+      className={
+        'tw:flex tw:shrink-0 tw:items-center tw:gap-2' +
+        (disabled ? DISABLED_ITEM_CLASSNAME : '')
+      }>
+      <Typography
+        as="span"
+        className="tw:whitespace-nowrap tw:text-tertiary"
+        size="text-sm"
+        weight="medium">
+        {t('label.view-mode')}:
+      </Typography>
+      <Select
+        className="tw:w-36"
+        data-testid="view-mode-select"
+        fontSize="sm"
+        isDisabled={disabled}
+        items={viewModeItems}
+        size="sm"
+        value={viewMode}
+        onChange={handleChange}>
+        {(item) => (
+          <Select.Item id={item.id} key={item.id} label={item.label} />
+        )}
+      </Select>
+    </div>
+  );
+};
+
+interface FilterToolbarActionsProps {
+  hasActiveFilters: boolean;
+  isLoading: boolean;
+  isLoadingMore: boolean;
+  hasMoreTerms: boolean;
+  loadedTermCount?: number;
+  totalTermCount?: number;
+  onLoadMore?: () => void;
+  onClearAll?: () => void;
+}
+
+const FilterToolbarActions: React.FC<FilterToolbarActionsProps> = ({
+  hasActiveFilters,
+  isLoading,
+  isLoadingMore,
+  hasMoreTerms,
+  loadedTermCount,
+  totalTermCount,
+  onLoadMore,
+  onClearAll,
+}) => {
+  const { t } = useTranslation();
+
+  const showLoadedCount =
+    onLoadMore !== undefined &&
+    loadedTermCount !== undefined &&
+    totalTermCount !== undefined;
+
+  return (
+    <div className="tw:ml-auto tw:flex tw:items-center">
+      {showLoadedCount && (
+        <Typography
+          as="span"
+          className="tw:whitespace-nowrap tw:pr-1 tw:text-(--color-text-tertiary)"
+          size="text-sm">
+          {t('label.loaded-x-of-y-entity', {
+            loaded: loadedTermCount,
+            total: totalTermCount,
+            entity: t('label.term-plural'),
+          })}
+        </Typography>
+      )}
+      {onLoadMore !== undefined && (
+        <Button
+          className="tw:text-brand-secondary"
+          color="tertiary"
+          data-testid="ontology-load-more-btn"
+          isDisabled={!hasMoreTerms || isLoading || isLoadingMore}
+          size="sm"
+          onClick={onLoadMore}>
+          {t('label.load-more')}
+        </Button>
+      )}
+      {onClearAll && hasActiveFilters && (
+        <Button
+          color="tertiary"
+          data-testid="ontology-clear-all-btn"
+          isDisabled={isLoading}
+          size="sm"
+          onClick={onClearAll}>
+          {t('label.clear-entity', { entity: t('label.all-lowercase') })}
+        </Button>
+      )}
+    </div>
+  );
+};
 
 const FilterToolbar: React.FC<FilterToolbarProps> = ({
   filters,
@@ -39,7 +172,13 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
   onFiltersChange,
   onViewModeChange,
   onClearAll,
+  onLoadMore,
   viewModeDisabled = false,
+  isLoading = false,
+  isLoadingMore = false,
+  hasMoreTerms = false,
+  loadedTermCount,
+  totalTermCount,
 }) => {
   const { t } = useTranslation();
 
@@ -136,63 +275,34 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
   const hasActiveFilters =
     filters.glossaryIds.length > 0 || filters.relationTypes.length > 0;
 
-  const viewModeItems = useMemo(
-    () =>
-      VIEW_MODES.map(({ label, value }) => ({
-        id: value,
-        label: t(label),
-      })),
-    [t]
-  );
+  const loadingSectionClassName =
+    'tw:flex tw:shrink-0 tw:items-center' +
+    (isLoading ? DISABLED_ITEM_CLASSNAME : '');
+
+  const glossaryFilterLabel =
+    filters.glossaryIds.length === 0
+      ? t('label.all-glossaries')
+      : t('label.glossary');
 
   return (
     <div className="tw:flex tw:w-full tw:items-center tw:gap-5 tw:pl-2">
-      {/* View Mode dropdown — disabled in data mode */}
-      <div
-        className={
-          'tw:flex tw:shrink-0 tw:items-center tw:gap-2' +
-          (viewModeDisabled ? ' tw:pointer-events-none tw:opacity-50' : '')
-        }>
-        <Typography
-          as="span"
-          className="tw:whitespace-nowrap tw:text-gray-600"
-          size="text-sm"
-          weight="medium">
-          {t('label.view-mode')}:
-        </Typography>
-        <Select
-          className="tw:w-36"
-          data-testid="view-mode-select"
-          fontSize="sm"
-          isDisabled={viewModeDisabled}
-          items={viewModeItems}
-          size="sm"
-          value={filters.viewMode}
-          onChange={(key) => {
-            const viewMode = VIEW_MODES.find(
-              (m) => m.value === String(key)
-            )?.value;
-            if (viewMode) {
-              onViewModeChange?.(viewMode);
-            }
-          }}>
-          {(item) => (
-            <Select.Item id={item.id} key={item.id} label={item.label} />
-          )}
-        </Select>
-      </div>
+      {/* View Mode dropdown — disabled in data mode or while loading */}
+      <ViewModeSelector
+        disabled={viewModeDisabled || isLoading}
+        viewMode={filters.viewMode}
+        onViewModeChange={onViewModeChange}
+      />
 
       {/* Glossary filter */}
       <div
-        className="tw:flex tw:shrink-0 tw:items-center"
+        className={loadingSectionClassName}
         data-testid="glossary-filter-section">
-        <SearchDropdown
+        <FilterSelectDropdown
           hideCounts
-          label={t('label.glossary')}
+          label={glossaryFilterLabel}
           options={glossaryOptions}
           searchKey="glossaryIds"
           selectedKeys={selectedGlossaryKeys}
-          triggerButtonSize="middle"
           onChange={handleGlossaryChange}
           onGetInitialOptions={handleGlossaryInitialOptions}
           onSearch={handleGlossarySearch}
@@ -200,24 +310,24 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
       </div>
 
       <div
-        className="tw:flex tw:shrink-0 tw:items-center"
+        className={loadingSectionClassName}
         data-testid="relation-type-filter-section">
-        <SearchDropdown
+        <FilterSelectDropdown
           hideCounts
           label={t('label.relationship-type')}
           options={relationTypeOptions}
           searchKey="relationTypes"
           selectedKeys={selectedRelationTypeKeys}
-          triggerButtonSize="middle"
           onChange={handleRelationTypeChange}
           onGetInitialOptions={handleRelationTypeInitialOptions}
           onSearch={handleRelationTypeSearch}
         />
       </div>
 
-      {/* Isolated toggle */}
+      {/* Isolated toggle — disabled while loading or when Cross Glossary view removes all non-connected nodes */}
       <Toggle
         data-testid="ontology-isolated-toggle"
+        isDisabled={isLoading || filters.showCrossGlossaryOnly}
         isSelected={filters.showIsolatedNodes}
         label={t('label.isolated')}
         size="sm"
@@ -226,18 +336,16 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
         }
       />
 
-      {onClearAll && hasActiveFilters && (
-        <>
-          <div className="tw:ml-auto" />
-          <Button
-            color="tertiary"
-            data-testid="ontology-clear-all-btn"
-            size="sm"
-            onClick={onClearAll}>
-            {t('label.clear-entity', { entity: t('label.all-lowercase') })}
-          </Button>
-        </>
-      )}
+      <FilterToolbarActions
+        hasActiveFilters={hasActiveFilters}
+        hasMoreTerms={hasMoreTerms}
+        isLoading={isLoading}
+        isLoadingMore={isLoadingMore}
+        loadedTermCount={loadedTermCount}
+        totalTermCount={totalTermCount}
+        onClearAll={onClearAll}
+        onLoadMore={onLoadMore}
+      />
     </div>
   );
 };

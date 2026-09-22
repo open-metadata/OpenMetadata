@@ -11,7 +11,8 @@
 """
 Athena lineage module
 """
-from typing import Iterable, Optional
+
+from collections.abc import Iterable
 
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.source.database.athena.query_parser import (
@@ -29,7 +30,7 @@ class AthenaLineageSource(AthenaQueryParserSource, LineageSource):
     Athena Lineage Source
     """
 
-    def yield_table_query(self) -> Optional[Iterable[TableQuery]]:
+    def yield_table_query(self) -> Iterable[TableQuery] | None:
         """
         Method to yield TableQueries
         """

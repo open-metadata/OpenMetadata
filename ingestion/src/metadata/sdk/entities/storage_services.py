@@ -1,7 +1,6 @@
 """StorageServices entity SDK."""
-from __future__ import annotations
 
-from typing import Type
+from __future__ import annotations
 
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
@@ -14,5 +13,5 @@ class StorageServices(BaseEntity[StorageService, CreateStorageServiceRequest]):
     """Fluent facade for storage service operations."""
 
     @classmethod
-    def entity_type(cls) -> Type[StorageService]:
+    def entity_type(cls) -> type[StorageService]:
         return StorageService

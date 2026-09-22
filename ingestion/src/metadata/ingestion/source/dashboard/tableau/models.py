@@ -14,7 +14,6 @@ Tableau Source Model module
 """
 
 import uuid
-from typing import Dict, List, Optional, Set, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -30,12 +29,12 @@ class TableauBaseModel(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     # in case of personal space workbooks, the project id is returned as a UUID
-    id: Union[str, uuid.UUID]
-    name: Optional[str] = None
+    id: str | uuid.UUID
+    name: str | None = None
 
     # pylint: disable=no-self-argument
     @field_validator("id", mode="before")
-    def coerce_uuid_to_string(cls, value):
+    def coerce_uuid_to_string(cls, value):  # noqa: N805
         """Ensure id is always stored as a string internally"""
         if isinstance(value, uuid.UUID):
             return str(value)
@@ -82,7 +81,7 @@ class TableauOwner(TableauBaseModel):
     Aux class for Owner object of the tableau_api_lib response
     """
 
-    email: Optional[str] = None
+    email: str | None = None
 
 
 class TableauDatasource(BaseModel):
@@ -90,8 +89,8 @@ class TableauDatasource(BaseModel):
     Model for downstream datasource information
     """
 
-    id: Optional[str] = None
-    name: Optional[str] = None
+    id: str | None = None
+    name: str | None = None
 
 
 class CustomSQLTable(TableauBaseModel):
@@ -100,8 +99,8 @@ class CustomSQLTable(TableauBaseModel):
     https://help.tableau.com/current/api/metadata_api/en-us/reference/customsqltable.doc.html
     """
 
-    downstreamDatasources: Optional[List[TableauDatasource]] = None
-    query: Optional[str] = None
+    downstreamDatasources: list[TableauDatasource] | None = None  # noqa: N815
+    query: str | None = None
 
 
 class CustomSQLTablesResponse(BaseModel):
@@ -109,42 +108,42 @@ class CustomSQLTablesResponse(BaseModel):
     Model for the custom SQL tables response
     """
 
-    data: Dict[str, List[CustomSQLTable]]
+    data: dict[str, list[CustomSQLTable]]
 
 
 class UpstreamColumn(BaseModel):
     id: str
-    name: Optional[str] = None
-    remoteType: Optional[str] = None
+    name: str | None = None
+    remoteType: str | None = None  # noqa: N815
 
 
 class DatasourceField(BaseModel):
     id: str
-    name: Optional[str] = None
-    upstreamColumns: Optional[List[Union[UpstreamColumn, None]]] = None
-    description: Optional[str] = None
-    formula: Optional[str] = None
+    name: str | None = None
+    upstreamColumns: list[UpstreamColumn | None] | None = None  # noqa: N815
+    description: str | None = None
+    formula: str | None = None
 
 
 class UpstreamTableColumn(BaseModel):
     id: str
-    name: Optional[str] = None
+    name: str | None = None
 
 
 class TableauDatabase(BaseModel):
     id: str
-    name: Optional[str] = None
+    name: str | None = None
 
 
 class UpstreamTable(BaseModel):
     id: str
     luid: str
-    name: Optional[str] = None
-    fullName: Optional[str] = None
-    schema_: Optional[str] = Field(None, alias="schema")
-    columns: Optional[List[UpstreamTableColumn]] = None
-    database: Optional[TableauDatabase] = None
-    referencedByQueries: Optional[List[CustomSQLTable]] = None
+    name: str | None = None
+    fullName: str | None = None  # noqa: N815
+    schema_: str | None = Field(None, alias="schema")
+    columns: list[UpstreamTableColumn] | None = None
+    database: TableauDatabase | None = None
+    referencedByQueries: list[CustomSQLTable] | None = None  # noqa: N815
 
     @field_validator("referencedByQueries", mode="before")
     @classmethod
@@ -157,22 +156,22 @@ class UpstreamTable(BaseModel):
 
 class DataSource(BaseModel):
     id: str
-    name: Optional[str] = None
-    description: Optional[str] = None
-    projectName: Optional[str] = None
-    tags: Optional[List[TableauDataModelTag]] = []
-    fields: Optional[List[DatasourceField]] = None
-    upstreamTables: Optional[List[UpstreamTable]] = None
-    upstreamDatasources: Optional[List["DataSource"]] = None
+    name: str | None = None
+    description: str | None = None
+    projectName: str | None = None  # noqa: N815
+    tags: list[TableauDataModelTag] | None = []
+    fields: list[DatasourceField] | None = None
+    upstreamTables: list[UpstreamTable] | None = None  # noqa: N815
+    upstreamDatasources: list["DataSource"] | None = None  # noqa: N815
 
 
 class TableauDatasources(BaseModel):
-    nodes: Optional[List[DataSource]] = None
-    totalCount: Optional[int] = None
+    nodes: list[DataSource] | None = None
+    totalCount: int | None = None  # noqa: N815
 
 
 class TableauDatasourcesConnection(BaseModel):
-    embeddedDatasourcesConnection: Optional[TableauDatasources] = None
+    embeddedDatasourcesConnection: TableauDatasources | None = None  # noqa: N815
 
 
 class TableauChart(TableauBaseModel):
@@ -180,10 +179,10 @@ class TableauChart(TableauBaseModel):
     Aux class for Chart object of the tableau_api_lib response
     """
 
-    owner: Optional[TableauOwner] = None
-    tags: Optional[Set] = []
-    contentUrl: Optional[str] = ""
-    sheetType: Optional[str] = ChartType.Other.value
+    owner: TableauOwner | None = None
+    tags: set | None = []
+    contentUrl: str | None = ""  # noqa: N815
+    sheetType: str | None = ChartType.Other.value  # noqa: N815
 
 
 class TableauDashboard(TableauBaseModel):
@@ -193,15 +192,15 @@ class TableauDashboard(TableauBaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    project: Optional[TableauBaseModel] = None
-    description: Optional[str] = None
-    owner: Optional[TableauOwner] = None
-    tags: Optional[Set] = []
-    webpageUrl: Optional[str] = None
-    charts: Optional[List[TableauChart]] = None
-    dataModels: Optional[List[DataSource]] = []
-    custom_sql_queries: Optional[List[str]] = None
-    user_views: Optional[int] = None
+    project: TableauBaseModel | None = None
+    description: str | None = None
+    owner: TableauOwner | None = None
+    tags: set | None = []
+    webpageUrl: str | None = None  # noqa: N815
+    charts: list[TableauChart] | None = None
+    dataModels: list[DataSource] | None = []  # noqa: N815
+    custom_sql_queries: list[str] | None = None
+    user_views: int | None = None
 
 
 class TableAndQuery(BaseModel):
@@ -210,4 +209,4 @@ class TableAndQuery(BaseModel):
     """
 
     table: Table
-    query: Optional[str] = None
+    query: str | None = None

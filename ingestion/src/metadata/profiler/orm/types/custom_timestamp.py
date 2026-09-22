@@ -14,6 +14,7 @@
 """
 Expand sqlalchemy types to map them to OpenMetadata DataType
 """
+
 from sqlalchemy.sql.sqltypes import TIMESTAMP, TypeDecorator
 
 from metadata.utils.logger import profiler_logger

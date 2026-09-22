@@ -45,6 +45,7 @@ type ResponseDataType = {
   fullyQualifiedName?: string;
   owners?: UserTeamRef[];
   experts?: UserTeamRef[];
+  dataProductType?: string;
 };
 
 export class DataProduct extends EntityClass {
@@ -72,6 +73,7 @@ export class DataProduct extends EntityClass {
       domains: [],
       // eslint-disable-next-line no-useless-escape
       fullyQualifiedName: `\"${dataName}\"`,
+      dataProductType: 'DATASET',
     };
   }
 
@@ -149,6 +151,9 @@ export class DataProduct extends EntityClass {
       }
     );
 
+    // A 400 here is a bulk-operation report (numberOfRowsFailed and a
+    // failedRequest list), not a transport failure, so the caller inspects the
+    // body rather than having it raised.
     const data = await response.json();
     this.responseData = data;
 

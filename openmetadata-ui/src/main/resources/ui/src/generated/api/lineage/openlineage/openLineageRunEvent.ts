@@ -208,7 +208,7 @@ export interface DocumentationFacet {
 }
 
 /**
- * Ownership facet providing owner information for the dataset.
+ * Ownership facet providing owner information for the dataset or job.
  *
  * Base facet that all facets extend from.
  */
@@ -347,7 +347,8 @@ export interface OpenLineageJob {
  * Facets that can be attached to a job.
  */
 export interface JobFacets {
-    sql?: SQLJobFacet;
+    ownership?: OwnershipFacet;
+    sql?:       SQLJobFacet;
     [property: string]: any;
 }
 

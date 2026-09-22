@@ -16,10 +16,13 @@ export * from './base/alert/alert';
 export * from './base/autocomplete/autocomplete';
 export * from './base/autocomplete/autocomplete-item';
 export * from './base/avatar/avatar';
+export * from './base/avatar/avatar-group';
 export * from './base/avatar/avatar-label-group';
 export * from './base/avatar/avatar-profile-photo';
+export * from './base/avatar/avatar-stack';
 export * from './base/avatar/base-components';
 export * from './base/avatar/utils';
+export * from './application/owner/owner.types';
 export * from './base/badges/badge-groups';
 export * from './base/badges/badge-types';
 export * from './base/badges/badges';
@@ -63,6 +66,7 @@ export * from './base/input/hint-text';
 export * from './base/input/input';
 export * from './base/input/input-group';
 export * from './base/input/label';
+export * from './base/input/password-input';
 export * from './base/progress-indicators/progress-circles';
 export * from './base/progress-indicators/progress-indicators';
 export * from './base/progress-indicators/simple-circle';
@@ -79,13 +83,43 @@ export * from './base/tags/base-components/tag-checkbox';
 export * from './base/tags/base-components/tag-close-x';
 export * from './base/tags/tags';
 export * from './base/textarea/textarea';
+export * from './base/time-picker/time-picker';
 export * from './base/toggle/toggle';
 export * from './base/tooltip/tooltip';
 export * from './base/video-player/icons';
 export * from './base/video-player/play-button-icon';
 
 // Application components
+export * from './application/form-field/form-field.types';
+export * from './application/form-field/form-item-label';
+export * from './application/form-field/fields/color-picker-field';
+export * from './application/form-field/fields/icon-picker-field';
+export * from './application/form-field/field-doc-panel';
+export * from './application/form-field/field-doc-popover';
+export {
+  FieldDocProvider,
+  useActiveFieldDoc,
+  useFieldDoc,
+  useFieldDocRegistry,
+} from './application/form-field/field-doc-context';
+export type { FieldDocEntry } from './application/form-field/field-doc-context';
+export {
+  Field,
+  FormFields,
+  getField,
+} from './application/form-field/form-field';
 export * from './application/accordion/accordion';
+export * from './application/breadcrumbs/breadcrumbs';
+export * from './application/tag/tag-chip-content';
+export * from './application/tag/classification-tag';
+export * from './application/tag/glossary-tag';
+export * from './application/tag/domain-tag';
+export * from './application/tag/data-product-tag';
+export * from './application/tag/auto-classification-tag';
+export * from './application/tag/tag.types';
+export * from './application/tree/tree';
+export * from './application/tree-select/tree-select.types';
+export * from './application/tree-select/tree-select';
 export { MobileNavigationHeader } from './application/app-navigation/base-components/mobile-header';
 export {
   NavAccountCard,
@@ -98,6 +132,16 @@ export type {
   NavItemDividerType,
   NavItemType,
 } from './application/app-navigation/config';
+export * from './application/credential-file-input/credential-file-input';
+export * from './application/credential-file-input/credential-file-input.types';
+// Only the size cap is part of the public contract; the other constants are
+// internal defaults and `DEFAULT_LABELS`/`DEFAULT_VALIDATION_MESSAGES` are names
+// sibling components use locally too. The utils module stays internal.
+export { DEFAULT_CREDENTIAL_FILE_MAX_SIZE } from './application/credential-file-input/credential-file-input.constants';
+export * from './application/file-upload/file-upload';
+export * from './application/filter-bar/filter-bar';
+export * from './application/filter-select/filter-select';
+export * from './application/filter-select/filter-select.types';
 export * from './application/date-picker/calendar';
 export * from './application/date-picker/cell';
 export * from './application/date-picker/date-input';
@@ -105,21 +149,54 @@ export * from './application/date-picker/date-picker';
 export * from './application/date-picker/date-range-picker';
 export * from './application/date-picker/range-calendar';
 export * from './application/date-picker/range-preset';
+export * from './application/empty-placeholder/empty-placeholder';
 export * from './application/modals/modal';
+export * from './application/page-layout/page-layout';
 export * from './application/pagination/pagination';
 export * from './application/pagination/pagination-base';
 export * from './application/pagination/pagination-dot';
 export * from './application/pagination/pagination-line';
 export * from './application/popover/popover';
+export * from './application/progress-steps/progress-steps';
 export { SlideoutMenu } from './application/slideout-menus/slideout-menu';
 export * from './application/table/table';
 export * from './application/tabs/tabs';
+export * from './application/toast/toast';
+export * from './application/toast/toast-provider';
+export { toast, showToast, toastQueue } from './application/toast/toast-store';
+export type {
+  ToastContent,
+  ShowToastOptions,
+} from './application/toast/toast-store';
+
+// Common
+export * from './common/document-title/document-title';
+
+// Page header
+export * from './application/page-header/page-header';
 
 // Foundations
 export * from './foundations/dot-icon';
 export * from './foundations/featured-icon/featured-icon';
+// `Icon` itself is intentionally NOT re-exported here: it (and the ICON_MAP it
+// carries, a plain object referencing ~44 icon components) would otherwise be
+// pulled into every consumer of this barrel whether or not they use it. Icon
+// is only reachable as `@openmetadata/ui-core-components/icon` (see
+// package.json `exports`) so callers opt in — and, ideally, React.lazy it.
+export * from './foundations/icon/icon.types';
 export * from './foundations/typography';
 
 // Other components
 export * from './checkbox-icons';
-export * from './SnackbarContent';
+
+// Owner
+export * from './application/owner/owner';
+export * from './application/owner/owner-chip';
+export * from './application/owner/owner-avatar-stack';
+export * from './application/owner/owner-renderer';
+export * from './application/owner/owner-utils';
+export type {
+  OwnerProps,
+  OwnerChipProps,
+  OwnerAvatarStackProps,
+} from './application/owner/owner.types';

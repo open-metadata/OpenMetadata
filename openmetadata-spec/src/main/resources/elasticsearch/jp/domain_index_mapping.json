@@ -9,11 +9,21 @@
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
       "analyzer": {
+        "om_analyzer": {
+          "tokenizer": "letter",
+          "filter": [
+            "lowercase",
+            "asciifolding",
+            "om_stemmer",
+            "om_plural_stemmer"
+          ]
+        },
         "om_analyzer_jp": {
           "tokenizer": "kuromoji_tokenizer",
           "type": "custom",
@@ -28,14 +38,16 @@
           "type": "custom",
           "tokenizer": "n_gram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         },
         "om_compound_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "compound_word_delimiter_graph",
+            "lowercase",
+            "asciifolding",
             "flatten_graph"
           ]
         }
@@ -56,6 +68,10 @@
           "catenate_all": false,
           "preserve_original": true,
           "stem_english_possessive": true
+        },
+        "om_plural_stemmer": {
+          "type": "stemmer",
+          "name": "minimal_english"
         }
       },
       "tokenizer": {
@@ -73,6 +89,9 @@
   },
   "mappings": {
     "properties": {
+      "deleted": {
+        "type": "boolean"
+      },
       "changeDescription": {
         "enabled": false
       },
@@ -231,7 +250,8 @@
                 "type": "text",
                 "analyzer": "om_analyzer"
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -305,7 +325,8 @@
         "normalizer": "lowercase_normalizer"
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "certification": {
         "type": "object",
@@ -388,6 +409,24 @@
             "type": "keyword"
           }
         }
+      },
+      "fingerprint": {
+        "type": "keyword"
+      },
+      "textToLLMContext": {
+        "type": "text"
+      },
+      "textToEmbed": {
+        "type": "text"
+      },
+      "chunkIndex": {
+        "type": "integer"
+      },
+      "chunkCount": {
+        "type": "integer"
+      },
+      "parentId": {
+        "type": "keyword"
       },
       "ownerDisplayName": {
         "type": "keyword",

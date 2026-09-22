@@ -9,6 +9,7 @@
       "react",
       "react-dom",
       "lodash",
+      "lodash-es",
       "luxon",
       "js-yaml",
       "codemirror",
@@ -47,14 +48,17 @@
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "allowUnreachableCode": false,
     "skipLibCheck": true,
-    "noImplicitAny": true
+    "noImplicitAny": true,
+    "paths": {
+      "react-hook-form": ["./node_modules/react-hook-form"]
+    }
   },
   "include": ["src"]
 }

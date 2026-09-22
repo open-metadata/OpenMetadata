@@ -14,7 +14,7 @@ import Icon, { ExclamationCircleFilled } from '@ant-design/icons';
 import { Badge, Button, Col, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { useMemo, useState } from 'react';
+import { MouseEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
@@ -24,11 +24,17 @@ import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { stringToHTML } from '../../../utils/StringsUtils';
 import './entity-header-title.less';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
+
+// Extracted so this ternary doesn't add to the cyclomatic complexity of the
+// functions that call it (it's evaluated twice per render for the follow
+// button's tooltip and its label).
+const getFollowLabelKey = (isFollowing?: boolean) =>
+  `label.${isFollowing ? 'un-follow' : 'follow'}`;
 
 const EntityHeaderTitle = ({
   icon,
@@ -61,7 +67,9 @@ const EntityHeaderTitle = ({
     entityUrl ?? globalThis.location.href
   );
 
-  const handleShareButtonClick = async () => {
+  const handleShareButtonClick = async (e: MouseEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     await onCopyToClipBoard();
     setCopyTooltip(t('message.link-copy-to-clipboard'));
     setTimeout(() => setCopyTooltip(''), 2000);
@@ -79,7 +87,7 @@ const EntityHeaderTitle = ({
 
   const entityName = useMemo(
     () =>
-      stringToHTML(
+      renderHighlightedText(
         showOnlyDisplayName
           ? getEntityName({
               displayName,
@@ -114,7 +122,67 @@ const EntityHeaderTitle = ({
     [isDisabled, deleted, badge]
   );
 
-  const content = (
+  const canShowFollowButton = useMemo(
+    () => !excludeEntityService && !deleted && !isCustomizedView,
+    [excludeEntityService, deleted, isCustomizedView]
+  );
+
+  // Each render* helper below is its own function scope, so its internal
+  // branches don't add to EntityHeaderTitle's own cyclomatic complexity.
+  // Pure extraction of the JSX that used to live inline — same conditions,
+  // same order, same output.
+  const renderDisplayNameHeader = () => {
+    if (isEmpty(displayName) || !showName) {
+      return null;
+    }
+
+    return (
+      <div className="d-flex items-center gap-2">
+        <Tooltip
+          placement="bottom"
+          title={renderHighlightedText(displayName ?? name)}>
+          <Typography.Text
+            ellipsis
+            className={classNames(
+              'entity-header-name',
+              nameClassName,
+              'm-b-0 d-block display-xs font-semibold'
+            )}
+            data-testid="entity-header-display-name">
+            {renderHighlightedText(displayName ?? name)}
+          </Typography.Text>
+        </Tooltip>
+        {badges}
+        {suffix}
+      </div>
+    );
+  };
+
+  const renderFollowButton = () => {
+    if (!canShowFollowButton || !handleFollowingClick) {
+      return null;
+    }
+
+    return (
+      <Tooltip
+        title={t('label.field-entity', {
+          field: t(getFollowLabelKey(isFollowing)),
+          entity: formattedEntityType,
+        })}>
+        <Button
+          className="entity-follow-button flex-center gap-1 text-sm "
+          data-testid="entity-follow-button"
+          disabled={deleted}
+          icon={<Icon component={StarFilledIcon} />}
+          loading={isFollowingLoading}
+          onClick={handleFollowingClick}>
+          <Typography.Text>{t(getFollowLabelKey(isFollowing))}</Typography.Text>
+        </Button>
+      </Tooltip>
+    );
+  };
+
+  const renderContent = () => (
     <Row
       align="middle"
       className={classNames('entity-header-title', className)}
@@ -130,26 +198,7 @@ const EntityHeaderTitle = ({
           }
         )}>
         {/* If we do not have displayName name only be shown in the bold from the below code */}
-        {!isEmpty(displayName) && showName ? (
-          <div className="d-flex items-center gap-2">
-            <Tooltip
-              placement="bottom"
-              title={stringToHTML(displayName ?? name)}>
-              <Typography.Text
-                ellipsis
-                className={classNames(
-                  'entity-header-name',
-                  nameClassName,
-                  'm-b-0 d-block display-xs font-semibold'
-                )}
-                data-testid="entity-header-display-name">
-                {stringToHTML(displayName ?? name)}
-              </Typography.Text>
-            </Tooltip>
-            {badges}
-            {suffix}
-          </div>
-        ) : null}
+        {renderDisplayNameHeader()}
 
         <div
           className="d-flex gap-3 items-center"
@@ -186,28 +235,7 @@ const EntityHeaderTitle = ({
             />
           </Tooltip>
           {(isEmpty(displayName) || !showName) && suffix}
-          {!excludeEntityService &&
-            !deleted &&
-            !isCustomizedView &&
-            handleFollowingClick && (
-              <Tooltip
-                title={t('label.field-entity', {
-                  field: t(`label.${isFollowing ? 'un-follow' : 'follow'}`),
-                  entity: formattedEntityType,
-                })}>
-                <Button
-                  className="entity-follow-button flex-center gap-1 text-sm "
-                  data-testid="entity-follow-button"
-                  disabled={deleted}
-                  icon={<Icon component={StarFilledIcon} />}
-                  loading={isFollowingLoading}
-                  onClick={handleFollowingClick}>
-                  <Typography.Text>
-                    {t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}
-                  </Typography.Text>
-                </Button>
-              </Tooltip>
-            )}
+          {renderFollowButton()}
         </div>
       </Col>
 
@@ -220,11 +248,12 @@ const EntityHeaderTitle = ({
       className="no-underline d-inline-block w-max-full entity-header-title-link"
       data-testid="entity-link"
       target={openEntityInNewPage ? '_blank' : '_self'}
-      to={link}>
-      {content}
+      to={link}
+      onClick={(e) => e.stopPropagation()}>
+      {renderContent()}
     </Link>
   ) : (
-    content
+    renderContent()
   );
 };
 

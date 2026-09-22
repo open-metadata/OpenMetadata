@@ -13,6 +13,7 @@
 Test Postgres using the topology
 """
 
+import re
 import types
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
@@ -21,6 +22,7 @@ from sqlalchemy.types import VARCHAR
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.storedProcedure import Language
 from metadata.generated.schema.entity.data.table import (
     Column,
     Constraint,
@@ -37,12 +39,19 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.source.database.common_db_source import TableNameAndType
 from metadata.ingestion.source.database.common_pg_mappings import (
     GEOMETRY,
     POINT,
     POLYGON,
 )
 from metadata.ingestion.source.database.postgres.metadata import PostgresSource
+from metadata.ingestion.source.database.postgres.models import PostgresStoredProcedure
+from metadata.ingestion.source.database.postgres.queries import (
+    POSTGRES_GET_FUNCTIONS,
+    POSTGRES_GET_STORED_PROCEDURES,
+    POSTGRES_GET_TABLE_NAMES,
+)
 from metadata.ingestion.source.database.postgres.usage import PostgresUsageSource
 from metadata.ingestion.source.database.postgres.utils import get_postgres_version
 
@@ -312,10 +321,8 @@ EXPECTED_COLUMN_VALUE = [
 
 
 class PostgresUnitTest(TestCase):
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-    )
-    def __init__(self, methodName, test_connection) -> None:
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_postgres_config)
@@ -324,22 +331,12 @@ class PostgresUnitTest(TestCase):
             self.config.workflowConfig.openMetadataServerConfig,
         )
 
-        self.postgres_source.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
-        self.postgres_source.context.get().__dict__[
-            "database"
-        ] = MOCK_DATABASE.name.root
-        self.postgres_source.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
+        self.postgres_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.postgres_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.postgres_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
-        self.usage_config = OpenMetadataWorkflowConfig.model_validate(
-            mock_postgres_usage_config
-        )
-        with patch(
-            "metadata.ingestion.source.database.postgres.usage.PostgresUsageSource.test_connection"
-        ):
+        self.usage_config = OpenMetadataWorkflowConfig.model_validate(mock_postgres_usage_config)
+        with patch("metadata.ingestion.source.database.postgres.usage.PostgresUsageSource.test_connection"):
             self.postgres_usage_source = PostgresUsageSource.create(
                 mock_postgres_usage_config["source"],
                 self.usage_config.workflowConfig.openMetadataServerConfig,
@@ -347,9 +344,7 @@ class PostgresUnitTest(TestCase):
 
     def test_datatype(self):
         inspector = types.SimpleNamespace()
-        inspector.get_columns = (
-            lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
-        )
+        inspector.get_columns = lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
         inspector.get_pk_constraint = lambda table_name, schema_name: []
         inspector.get_unique_constraints = lambda table_name, schema_name: []
         inspector.get_foreign_keys = lambda table_name, schema_name: []
@@ -364,31 +359,31 @@ class PostgresUnitTest(TestCase):
         Test fetching stored procedures with filter
         """
         self.postgres_source.source_config.includeStoredProcedures = True
-        self.postgres_source.source_config.storedProcedureFilterPattern = FilterPattern(
-            excludes=["sp_exclude"]
-        )
+        self.postgres_source.source_config.storedProcedureFilterPattern = FilterPattern(excludes=["sp_exclude"])
         self.postgres_source.context.get().__dict__["database"] = "test_db"
         self.postgres_source.context.get().__dict__["database_schema"] = "test_schema"
 
         mock_engine = MagicMock()
         self.postgres_source.engine = mock_engine
 
-        # Mock rows
+        # Mock rows. The `language` value mirrors what the real
+        # POSTGRES_GET_STORED_PROCEDURES query returns via `pg_language.lanname`
+        # (lowercase, e.g. "sql", "plpgsql").
         row1 = MagicMock()
         row1._mapping = {
             "procedure_name": "sp_include",
             "schema_name": "test_schema",
             "definition": "def1",
-            "language": "SQL",
-            "procedure_type": "PROCEDURE",
+            "language": "sql",
+            "procedure_type": "StoredProcedure",
         }
         row2 = MagicMock()
         row2._mapping = {
             "procedure_name": "sp_exclude",
             "schema_name": "test_schema",
             "definition": "def2",
-            "language": "SQL",
-            "procedure_type": "PROCEDURE",
+            "language": "sql",
+            "procedure_type": "StoredProcedure",
         }
 
         # PostgreSQL get_stored_procedures calls _get_stored_procedures_internal twice
@@ -408,6 +403,59 @@ class PostgresUnitTest(TestCase):
 
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].name, "sp_include")
+        # The language column selected by the query must be parsed into the model
+        self.assertEqual(results[0].language, "sql")
+
+    def _yield_language(self, language: str | None, procedure_type: str) -> Language | None:
+        """Build a PostgresStoredProcedure (via the same model_validate(dict) path the
+        production connector uses) and return the language mapped by
+        yield_stored_procedure into the CreateStoredProcedureRequest."""
+        row_mapping = {
+            "procedure_name": "proc",
+            "schema_name": "test_schema",
+            "definition": "SELECT 1",
+            "language": language,
+            "procedure_type": procedure_type,
+        }
+        stored_procedure = PostgresStoredProcedure.model_validate(row_mapping)
+        request = next(iter(self.postgres_source.yield_stored_procedure(stored_procedure))).right
+        assert request is not None
+        return request.storedProcedureCode.language
+
+    def test_yield_stored_procedure_maps_sql_language(self):
+        """A Postgres `sql` routine (the common LANGUAGE sql case) maps to Language.SQL,
+        for both stored procedures and functions."""
+        self.assertEqual(
+            self._yield_language("sql", "StoredProcedure"),
+            Language.SQL,
+        )
+        self.assertEqual(
+            self._yield_language("sql", "Function"),
+            Language.SQL,
+        )
+
+    def test_yield_stored_procedure_unmapped_language_stays_none(self):
+        """Postgres languages with no Language enum member (plpgsql, c, internal, ...)
+        must NOT be mislabelled as SQL -- they stay None (honest "unknown")."""
+        self.assertIsNone(self._yield_language("plpgsql", "StoredProcedure"))
+        self.assertIsNone(self._yield_language("c", "Function"))
+        self.assertIsNone(self._yield_language("internal", "StoredProcedure"))
+
+    def test_stored_procedure_queries_select_language_column(self):
+        """Both Postgres SP/Function queries must select pg_language.lanname and join
+        pg_language, otherwise the language is silently null (regression guard)."""
+        for query in (POSTGRES_GET_STORED_PROCEDURES, POSTGRES_GET_FUNCTIONS):
+            self.assertIn("pg_language.lanname AS language", query)
+            self.assertIn("JOIN pg_language ON pg_proc.prolang = pg_language.oid", query)
+
+    def test_postgres_does_not_reuse_mssql_language_map(self):
+        """The Postgres connector must not depend on the MSSQL-specific
+        STORED_PROC_LANGUAGE_MAP (which is keyed on uppercase SQL/EXTERNAL and does
+        not cover Postgres' sql/plpgsql vocabulary)."""
+        from metadata.ingestion.source.database.postgres import metadata as postgres_metadata
+
+        self.assertFalse(hasattr(postgres_metadata, "STORED_PROC_LANGUAGE_MAP"))
+        self.assertTrue(hasattr(postgres_metadata, "POSTGRES_STORED_PROC_LANGUAGE_MAP"))
 
     def test_get_version_info(self):
         mock_engine = MagicMock()
@@ -425,9 +473,7 @@ class PostgresUnitTest(TestCase):
         self.assertIsNone(get_postgres_version(mock_engine))
 
     @patch("sqlalchemy.engine.base.Engine")
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
-    )
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection")
     def test_close_connection(self, engine, connection):
         connection.return_value = True
         self.postgres_source.close()
@@ -449,12 +495,8 @@ class PostgresUnitTest(TestCase):
 
     def test_query_statement_source_custom(self):
         """Test that custom query statement source is used when configured"""
-        with patch(
-            "metadata.ingestion.source.database.postgres.usage.PostgresUsageSource.test_connection"
-        ):
-            custom_config = OpenMetadataWorkflowConfig.model_validate(
-                mock_postgres_usage_config_custom_source
-            )
+        with patch("metadata.ingestion.source.database.postgres.usage.PostgresUsageSource.test_connection"):
+            custom_config = OpenMetadataWorkflowConfig.model_validate(mock_postgres_usage_config_custom_source)
             custom_usage_source = PostgresUsageSource.create(
                 mock_postgres_usage_config_custom_source["source"],
                 custom_config.workflowConfig.openMetadataServerConfig,
@@ -490,41 +532,33 @@ class PostgresUnitTest(TestCase):
         self.postgres_source.schema_entity_source_state = {"test_schema_fqn"}
 
         # Mock the _get_filtered_schema_names method
-        with patch.object(
-            self.postgres_source, "_get_filtered_schema_names"
-        ) as mock_filtered_schemas:
+        with patch.object(self.postgres_source, "_get_filtered_schema_names") as mock_filtered_schemas:
             mock_filtered_schemas.return_value = [
                 "test_schema_fqn",
                 "another_schema_fqn",
             ]
 
             # Mock the delete_entity_from_source function
-            with patch(
-                "metadata.ingestion.source.database.database_service.delete_entity_from_source"
-            ) as mock_delete:
+            with patch("metadata.ingestion.source.database.database_service.delete_entity_from_source") as mock_delete:
                 mock_delete.return_value = iter([])
 
                 # Call the method
-                result = list(self.postgres_source.mark_schemas_as_deleted())
+                result = list(self.postgres_source.mark_schemas_as_deleted())  # noqa: F841
 
                 # Verify that delete_entity_from_source was called with correct parameters
                 mock_delete.assert_called_once()
                 call_args = mock_delete.call_args
                 self.assertEqual(call_args[1]["entity_type"], DatabaseSchema)
-                self.assertEqual(call_args[1]["mark_deleted_entity"], True)
-                self.assertEqual(
-                    call_args[1]["params"], {"database": "test_service.test_db"}
-                )
+                self.assertEqual(call_args[1]["recursive"], True)
+                self.assertEqual(call_args[1]["params"], {"database": "test_service.test_db"})
 
                 # Verify the entity_source_state contains both processed and filtered schemas
                 expected_source_state = {
                     "test_schema_fqn",
-                    "test_schema_fqn",
+                    "test_schema_fqn",  # noqa: B033
                     "another_schema_fqn",
                 }
-                self.assertEqual(
-                    call_args[1]["entity_source_state"], expected_source_state
-                )
+                self.assertEqual(call_args[1]["entity_source_state"], expected_source_state)
 
     def test_mark_deleted_schemas_disabled(self):
         """Test mark deleted schemas when the config is disabled"""
@@ -569,25 +603,21 @@ class PostgresUnitTest(TestCase):
         self.postgres_source.database_entity_source_state = {"test_db_fqn"}
 
         # Mock the _get_filtered_database_names method
-        with patch.object(
-            self.postgres_source, "_get_filtered_database_names"
-        ) as mock_filtered_dbs:
+        with patch.object(self.postgres_source, "_get_filtered_database_names") as mock_filtered_dbs:
             mock_filtered_dbs.return_value = ["test_db", "another_db"]
 
             # Mock the delete_entity_from_source function
-            with patch(
-                "metadata.ingestion.source.database.database_service.delete_entity_from_source"
-            ) as mock_delete:
+            with patch("metadata.ingestion.source.database.database_service.delete_entity_from_source") as mock_delete:
                 mock_delete.return_value = iter([])
 
                 # Call the method
-                result = list(self.postgres_source.mark_databases_as_deleted())
+                result = list(self.postgres_source.mark_databases_as_deleted())  # noqa: F841
 
                 # Verify that delete_entity_from_source was called with correct parameters
                 mock_delete.assert_called_once()
                 call_args = mock_delete.call_args
                 self.assertEqual(call_args[1]["entity_type"], Database)
-                self.assertEqual(call_args[1]["mark_deleted_entity"], True)
+                self.assertEqual(call_args[1]["recursive"], True)
                 self.assertEqual(call_args[1]["params"], {"service": "test_service"})
 
                 # Verify the entity_source_state contains both processed and filtered databases
@@ -596,9 +626,7 @@ class PostgresUnitTest(TestCase):
                     "test_service.test_db",
                     "test_service.another_db",
                 }
-                self.assertEqual(
-                    call_args[1]["entity_source_state"], expected_source_state
-                )
+                self.assertEqual(call_args[1]["entity_source_state"], expected_source_state)
 
     def test_mark_deleted_databases_disabled(self):
         """Test mark deleted databases when the config is disabled"""
@@ -631,19 +659,15 @@ class PostgresUnitTest(TestCase):
         }
 
         # Mock the _get_filtered_schema_names method to return filtered schemas
-        with patch.object(
-            self.postgres_source, "_get_filtered_schema_names"
-        ) as mock_filtered_schemas:
+        with patch.object(self.postgres_source, "_get_filtered_schema_names") as mock_filtered_schemas:
             mock_filtered_schemas.return_value = ["test_service.test_db.schema1"]
 
             # Mock the delete_entity_from_source function
-            with patch(
-                "metadata.ingestion.source.database.database_service.delete_entity_from_source"
-            ) as mock_delete:
+            with patch("metadata.ingestion.source.database.database_service.delete_entity_from_source") as mock_delete:
                 mock_delete.return_value = iter([])
 
                 # Call the method
-                result = list(self.postgres_source.mark_schemas_as_deleted())
+                result = list(self.postgres_source.mark_schemas_as_deleted())  # noqa: F841
 
                 # Verify that delete_entity_from_source was called
                 mock_delete.assert_called_once()
@@ -653,11 +677,9 @@ class PostgresUnitTest(TestCase):
                 expected_source_state = {
                     "test_service.test_db.schema1",
                     "test_service.test_db.schema2",
-                    "test_service.test_db.schema1",
+                    "test_service.test_db.schema1",  # noqa: B033
                 }
-                self.assertEqual(
-                    call_args[1]["entity_source_state"], expected_source_state
-                )
+                self.assertEqual(call_args[1]["entity_source_state"], expected_source_state)
 
     def test_mark_deleted_databases_with_database_filter_pattern(self):
         """Test mark deleted databases with database filter pattern applied"""
@@ -676,19 +698,15 @@ class PostgresUnitTest(TestCase):
         }
 
         # Mock the _get_filtered_database_names method to return filtered databases
-        with patch.object(
-            self.postgres_source, "_get_filtered_database_names"
-        ) as mock_filtered_dbs:
+        with patch.object(self.postgres_source, "_get_filtered_database_names") as mock_filtered_dbs:
             mock_filtered_dbs.return_value = ["db1"]
 
             # Mock the delete_entity_from_source function
-            with patch(
-                "metadata.ingestion.source.database.database_service.delete_entity_from_source"
-            ) as mock_delete:
+            with patch("metadata.ingestion.source.database.database_service.delete_entity_from_source") as mock_delete:
                 mock_delete.return_value = iter([])
 
                 # Call the method
-                result = list(self.postgres_source.mark_databases_as_deleted())
+                result = list(self.postgres_source.mark_databases_as_deleted())  # noqa: F841
 
                 # Verify that delete_entity_from_source was called
                 mock_delete.assert_called_once()
@@ -698,11 +716,9 @@ class PostgresUnitTest(TestCase):
                 expected_source_state = {
                     "test_service.db1",
                     "test_service.db2",
-                    "test_service.db1",
+                    "test_service.db1",  # noqa: B033
                 }
-                self.assertEqual(
-                    call_args[1]["entity_source_state"], expected_source_state
-                )
+                self.assertEqual(call_args[1]["entity_source_state"], expected_source_state)
 
     def test_mark_deleted_schemas_empty_source_state(self):
         """Test mark deleted schemas with empty source state"""
@@ -719,27 +735,21 @@ class PostgresUnitTest(TestCase):
         self.postgres_source.schema_entity_source_state = set()
 
         # Mock the _get_filtered_schema_names method
-        with patch.object(
-            self.postgres_source, "_get_filtered_schema_names"
-        ) as mock_filtered_schemas:
+        with patch.object(self.postgres_source, "_get_filtered_schema_names") as mock_filtered_schemas:
             mock_filtered_schemas.return_value = ["test_service.test_db.schema1"]
 
             # Mock the delete_entity_from_source function
-            with patch(
-                "metadata.ingestion.source.database.database_service.delete_entity_from_source"
-            ) as mock_delete:
+            with patch("metadata.ingestion.source.database.database_service.delete_entity_from_source") as mock_delete:
                 mock_delete.return_value = iter([])
 
                 # Call the method
-                result = list(self.postgres_source.mark_schemas_as_deleted())
+                result = list(self.postgres_source.mark_schemas_as_deleted())  # noqa: F841
 
                 # Verify that delete_entity_from_source was called with only filtered schemas
                 mock_delete.assert_called_once()
                 call_args = mock_delete.call_args
                 expected_source_state = {"test_service.test_db.schema1"}
-                self.assertEqual(
-                    call_args[1]["entity_source_state"], expected_source_state
-                )
+                self.assertEqual(call_args[1]["entity_source_state"], expected_source_state)
 
     def test_mark_deleted_databases_empty_source_state(self):
         """Test mark deleted databases with empty source state"""
@@ -755,27 +765,21 @@ class PostgresUnitTest(TestCase):
         self.postgres_source.database_entity_source_state = set()
 
         # Mock the _get_filtered_database_names method
-        with patch.object(
-            self.postgres_source, "_get_filtered_database_names"
-        ) as mock_filtered_dbs:
+        with patch.object(self.postgres_source, "_get_filtered_database_names") as mock_filtered_dbs:
             mock_filtered_dbs.return_value = ["db1"]
 
             # Mock the delete_entity_from_source function
-            with patch(
-                "metadata.ingestion.source.database.database_service.delete_entity_from_source"
-            ) as mock_delete:
+            with patch("metadata.ingestion.source.database.database_service.delete_entity_from_source") as mock_delete:
                 mock_delete.return_value = iter([])
 
                 # Call the method
-                result = list(self.postgres_source.mark_databases_as_deleted())
+                result = list(self.postgres_source.mark_databases_as_deleted())  # noqa: F841
 
                 # Verify that delete_entity_from_source was called with only filtered databases
                 mock_delete.assert_called_once()
                 call_args = mock_delete.call_args
                 expected_source_state = {"test_service.db1"}
-                self.assertEqual(
-                    call_args[1]["entity_source_state"], expected_source_state
-                )
+                self.assertEqual(call_args[1]["entity_source_state"], expected_source_state)
 
     def test_mark_deleted_schemas_exception_handling(self):
         """Test mark deleted schemas exception handling"""
@@ -792,13 +796,11 @@ class PostgresUnitTest(TestCase):
         self.postgres_source.schema_entity_source_state = {"test_schema_fqn"}
 
         # Mock the _get_filtered_schema_names method to raise an exception
-        with patch.object(
-            self.postgres_source, "_get_filtered_schema_names"
-        ) as mock_filtered_schemas:
+        with patch.object(self.postgres_source, "_get_filtered_schema_names") as mock_filtered_schemas:
             mock_filtered_schemas.side_effect = Exception("Test exception")
 
             # Call the method and expect it to handle the exception gracefully
-            with self.assertRaises(Exception):
+            with self.assertRaises(Exception):  # noqa: B017
                 list(self.postgres_source.mark_schemas_as_deleted())
 
     def test_mark_deleted_databases_exception_handling(self):
@@ -815,13 +817,11 @@ class PostgresUnitTest(TestCase):
         self.postgres_source.database_entity_source_state = {"test_db_fqn"}
 
         # Mock the _get_filtered_database_names method to raise an exception
-        with patch.object(
-            self.postgres_source, "_get_filtered_database_names"
-        ) as mock_filtered_dbs:
+        with patch.object(self.postgres_source, "_get_filtered_database_names") as mock_filtered_dbs:
             mock_filtered_dbs.side_effect = Exception("Test exception")
 
             # Call the method and expect it to handle the exception gracefully
-            with self.assertRaises(Exception):
+            with self.assertRaises(Exception):  # noqa: B017
                 list(self.postgres_source.mark_databases_as_deleted())
 
     def test_mark_deleted_schemas_with_multiple_schemas(self):
@@ -843,22 +843,18 @@ class PostgresUnitTest(TestCase):
         }
 
         # Mock the _get_filtered_schema_names method
-        with patch.object(
-            self.postgres_source, "_get_filtered_schema_names"
-        ) as mock_filtered_schemas:
+        with patch.object(self.postgres_source, "_get_filtered_schema_names") as mock_filtered_schemas:
             mock_filtered_schemas.return_value = [
                 "test_service.test_db.schema1",
                 "test_service.test_db.schema2",
             ]
 
             # Mock the delete_entity_from_source function
-            with patch(
-                "metadata.ingestion.source.database.database_service.delete_entity_from_source"
-            ) as mock_delete:
+            with patch("metadata.ingestion.source.database.database_service.delete_entity_from_source") as mock_delete:
                 mock_delete.return_value = iter([])
 
                 # Call the method
-                result = list(self.postgres_source.mark_schemas_as_deleted())
+                result = list(self.postgres_source.mark_schemas_as_deleted())  # noqa: F841
 
                 # Verify that delete_entity_from_source was called
                 mock_delete.assert_called_once()
@@ -869,12 +865,10 @@ class PostgresUnitTest(TestCase):
                     "test_service.test_db.schema1",
                     "test_service.test_db.schema2",
                     "test_service.test_db.schema3",
-                    "test_service.test_db.schema1",
-                    "test_service.test_db.schema2",
+                    "test_service.test_db.schema1",  # noqa: B033
+                    "test_service.test_db.schema2",  # noqa: B033
                 }
-                self.assertEqual(
-                    call_args[1]["entity_source_state"], expected_source_state
-                )
+                self.assertEqual(call_args[1]["entity_source_state"], expected_source_state)
 
     def test_mark_deleted_databases_with_multiple_databases(self):
         """Test mark deleted databases with multiple databases in source state"""
@@ -894,19 +888,15 @@ class PostgresUnitTest(TestCase):
         }
 
         # Mock the _get_filtered_database_names method
-        with patch.object(
-            self.postgres_source, "_get_filtered_database_names"
-        ) as mock_filtered_dbs:
+        with patch.object(self.postgres_source, "_get_filtered_database_names") as mock_filtered_dbs:
             mock_filtered_dbs.return_value = ["db1", "db2"]
 
             # Mock the delete_entity_from_source function
-            with patch(
-                "metadata.ingestion.source.database.database_service.delete_entity_from_source"
-            ) as mock_delete:
+            with patch("metadata.ingestion.source.database.database_service.delete_entity_from_source") as mock_delete:
                 mock_delete.return_value = iter([])
 
                 # Call the method
-                result = list(self.postgres_source.mark_databases_as_deleted())
+                result = list(self.postgres_source.mark_databases_as_deleted())  # noqa: F841
 
                 # Verify that delete_entity_from_source was called
                 mock_delete.assert_called_once()
@@ -917,12 +907,116 @@ class PostgresUnitTest(TestCase):
                     "test_service.db1",
                     "test_service.db2",
                     "test_service.db3",
-                    "test_service.db1",
-                    "test_service.db2",
+                    "test_service.db1",  # noqa: B033
+                    "test_service.db2",  # noqa: B033
                 }
-                self.assertEqual(
-                    call_args[1]["entity_source_state"], expected_source_state
-                )
+                self.assertEqual(call_args[1]["entity_source_state"], expected_source_state)
+
+    def test_get_stored_procedures_skips_unparseable_row(self):
+        """
+        An unparseable row must be skipped and reported, not abort the whole schema
+        """
+        self.postgres_source.source_config.includeStoredProcedures = True
+        self.postgres_source.source_config.storedProcedureFilterPattern = None
+        self.postgres_source.status = MagicMock()
+
+        mock_engine = MagicMock()
+        self.postgres_source.engine = mock_engine
+
+        # definition is NULL: pg_proc.prosrc is nullable, the model requires a str
+        bad_row = MagicMock()
+        bad_row._mapping = {
+            "procedure_name": "null_prosrc_func",
+            "schema_name": "test_schema",
+            "definition": None,
+            "procedure_type": "Function",
+        }
+        bad_row._asdict.return_value = dict(bad_row._mapping)
+        good_row = MagicMock()
+        good_row._mapping = {
+            "procedure_name": "healthy_proc",
+            "schema_name": "test_schema",
+            "definition": "def1",
+            "procedure_type": "StoredProcedure",
+        }
+        good_row._asdict.return_value = dict(good_row._mapping)
+
+        mock_result = MagicMock()
+        mock_result.all.return_value = [bad_row, good_row]
+
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = mock_result
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+        results = list(self.postgres_source._get_stored_procedures_internal("query"))
+
+        self.assertEqual([result.name for result in results], ["healthy_proc"])
+        self.postgres_source.status.failed.assert_called_once()
+        # the failure must name the offending procedure, not "UNKNOWN"
+        reported_error = self.postgres_source.status.failed.call_args.kwargs["error"]
+        self.assertEqual(reported_error.name, "null_prosrc_func")
+
+    def test_query_view_names_and_types_includes_materialized_views(self):
+        """
+        includeViews=True: materialized views are emitted as MaterializedView
+        alongside regular views (#31515).
+        """
+        mock_inspector = MagicMock()
+        mock_inspector.get_view_names.return_value = ["regular_view"]
+        mock_inspector.get_materialized_view_names.return_value = ["my_matview"]
+
+        with patch.object(PostgresSource, "inspector", mock_inspector):
+            results = list(self.postgres_source.query_view_names_and_types("public"))
+
+        self.assertEqual(
+            {result.name: result.type_ for result in results},
+            {
+                "regular_view": TableType.View,
+                "my_matview": TableType.MaterializedView,
+            },
+        )
+
+    def test_matview_survives_when_view_list_and_matview_list_disagree(self):
+        """A failing get_materialized_view_names() must not drop regular views."""
+        mock_inspector = MagicMock()
+        mock_inspector.get_view_names.return_value = ["regular_view"]
+        mock_inspector.get_materialized_view_names.side_effect = Exception("unsupported")
+
+        with patch.object(PostgresSource, "inspector", mock_inspector):
+            results = list(self.postgres_source.query_view_names_and_types("public"))
+
+        self.assertEqual([(r.name, r.type_) for r in results], [("regular_view", TableType.View)])
+
+    def test_view_path_is_skipped_when_include_views_false(self):
+        """includeViews=False must not consult the view path at all."""
+        self.postgres_source.source_config.includeTables = True
+        self.postgres_source.source_config.includeViews = False
+
+        with (
+            patch.object(PostgresSource, "query_view_names_and_types") as mock_view_query,
+            patch.object(
+                PostgresSource,
+                "query_table_names_and_types",
+                return_value=[TableNameAndType(name="base_table", type_=TableType.Regular)],
+            ),
+        ):
+            emitted = [name for name, _ in self.postgres_source.get_tables_name_and_type()]
+
+        self.assertEqual(emitted, ["base_table"])
+        mock_view_query.assert_not_called()
+
+    def test_table_query_cannot_return_materialized_views(self):
+        """
+        Matviews must stay off the table path, otherwise includeTables — not
+        includeViews — would govern them (#31515).
+
+        Parses the relkind filter rather than substring-matching the SQL, so a stray
+        'm' in a comment cannot mask a real regression.
+        """
+        relkinds = re.search(r"relkind\s+in\s*\(([^)]*)\)", POSTGRES_GET_TABLE_NAMES, re.IGNORECASE)
+        self.assertIsNotNone(relkinds, "POSTGRES_GET_TABLE_NAMES must filter on relkind")
+        self.assertNotIn("m", {kind.strip().strip("'") for kind in relkinds.group(1).split(",")})
 
 
 class TestPostgresCommonMappings(TestCase):
@@ -950,3 +1044,31 @@ class TestPostgresCommonMappings(TestCase):
 
         tid_type = pg_ischema_names["tid"]
         self.assertIs(tid_type, SqlAlchemyString)
+
+    def test_citext_maps_to_string(self):
+        """'citext' must map to a String type so it is not reflected as CITEXT/UNKNOWN."""
+        from sqlalchemy import String as SqlAlchemyString
+        from sqlalchemy.dialects.postgresql.base import (
+            ischema_names as pg_ischema_names,
+        )
+
+        import metadata.ingestion.source.database.common_pg_mappings  # noqa: F401
+
+        self.assertIs(pg_ischema_names["citext"], SqlAlchemyString)
+
+    def test_citext_resolves_to_string_datatype(self):
+        """A citext column must resolve to a known OM dataType, not UNKNOWN (#19467)."""
+        from sqlalchemy.dialects.postgresql.base import (
+            ischema_names as pg_ischema_names,
+        )
+
+        import metadata.ingestion.source.database.common_pg_mappings  # noqa: F401
+        from metadata.ingestion.source.database.column_type_parser import (
+            ColumnTypeParser,
+        )
+
+        citext_type = pg_ischema_names["citext"]
+        # Resolve an instantiated type, matching how the dialect passes column
+        # types into the parser during reflection.
+        data_type = ColumnTypeParser.get_column_type(citext_type())
+        self.assertEqual(data_type, "STRING")

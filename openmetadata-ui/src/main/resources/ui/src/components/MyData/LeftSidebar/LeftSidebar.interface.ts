@@ -11,15 +11,7 @@
  *  limitations under the License.
  */
 
-export interface LeftSidebarItem {
-  key: string;
-  isBeta?: boolean;
-  title: string;
-  redirect_url?: string;
-  icon: SvgComponent;
-  dataTestId: string;
-  children?: Array<LeftSidebarItem>;
-}
+export type { LeftSidebarItem } from '../../../interface/sidebar.interface';
 
 export interface LeftSidebarItemProps {
   data: {
@@ -29,5 +21,6 @@ export interface LeftSidebarItemProps {
     redirect_url?: string;
     icon: SvgComponent;
     isBeta?: boolean;
+    onClick?: () => void;
   };
 }

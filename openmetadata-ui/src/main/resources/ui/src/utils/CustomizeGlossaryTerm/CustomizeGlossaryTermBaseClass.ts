@@ -11,19 +11,16 @@
  *  limitations under the License.
  */
 
-import {
-  CustomizeTabWidget,
-  CustomizeTabWidgetProps,
-} from '../../components/Customization/CustomizeTabWidget/CustomizeTabWidget';
-import { GenericWidget } from '../../components/Customization/GenericWidget/GenericWidget';
-import GlossaryHeader from '../../components/Glossary/GlossaryHeader/GlossaryHeader.component';
-import { GlossaryHeaderProps } from '../../components/Glossary/GlossaryHeader/GlossaryHeader.interface';
-import { GlossaryHeaderWidget } from '../../components/Glossary/GlossaryHeader/GlossaryHeaderWidget';
+import { lazy, type ComponentType } from 'react';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import type { CustomizeTabWidgetProps } from '../../components/Customization/CustomizeTabWidget/CustomizeTabWidget';
+import type { GlossaryHeaderProps } from '../../components/Glossary/GlossaryHeader/GlossaryHeader.interface';
 import {
   CommonWidgetType,
   CUSTOM_PROPERTIES_WIDGET,
   DESCRIPTION_WIDGET,
   DOMAIN_WIDGET,
+  KNOWLEDGE_ARTICLE_WIDGET,
   OWNER_WIDGET,
   REFERENCES_WIDGET,
   RELATED_TERMS_WIDGET,
@@ -41,61 +38,131 @@ import {
   WidgetCommonProps,
   WidgetConfig,
 } from '../../pages/CustomizablePage/CustomizablePage.interface';
-import { getGlossaryTermWidgetFromKey } from '../GlossaryTerm/GlossaryTermUtil';
+import { getGlossaryTermWidgetFromKey } from '../GlossaryTerm/GlossaryTermWidgetUtils';
+import { getGlossaryChildTermsForCustomization } from './CustomizeGlossaryTermPureUtils';
 
 type ComponentMap = {
   [GlossaryTermDetailPageWidgetKeys.HEADER]: {
-    component: typeof GlossaryHeader;
+    component: ComponentType<GlossaryHeaderProps & WidgetCommonProps>;
     props: GlossaryHeaderProps & WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.TABS]: {
-    component: typeof CustomizeTabWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY]: {
-    component: typeof GenericWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.DESCRIPTION]: {
-    component: typeof GenericWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.TAGS]: {
-    component: typeof GenericWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.DOMAIN]: {
-    component: typeof GenericWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES]: {
-    component: typeof GenericWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.SYNONYMS]: {
-    component: typeof GenericWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.RELATED_TERMS]: {
-    component: typeof GenericWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.REFERENCES]: {
-    component: typeof GenericWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.OWNER]: {
-    component: typeof GenericWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.REVIEWER]: {
-    component: typeof GenericWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER]: {
-    component: typeof GenericWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
+};
+
+const CustomizeTabWidget = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/Customization/CustomizeTabWidget/CustomizeTabWidget'
+    ).then((module) => ({ default: module.CustomizeTabWidget }))
+  )
+) as ComponentType<WidgetCommonProps>;
+
+const GenericWidget = withSuspenseFallback(
+  lazy(() =>
+    import('../../components/Customization/GenericWidget/GenericWidget').then(
+      (module) => ({ default: module.GenericWidget })
+    )
+  )
+) as ComponentType<WidgetCommonProps>;
+
+const GlossaryHeader = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/Glossary/GlossaryHeader/GlossaryHeader.component'
+      )
+  )
+) as ComponentType<GlossaryHeaderProps & WidgetCommonProps>;
+
+const GlossaryHeaderWidget = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/Glossary/GlossaryHeader/GlossaryHeaderWidget'
+    ).then((module) => ({ default: module.GlossaryHeaderWidget }))
+  )
+) as ComponentType<{
+  isGlossary?: boolean;
+  widgetKey?: string;
+}>;
+
+const WIDGET_NAME_TO_KEY: Record<string, GlossaryTermDetailPageWidgetKeys> = {
+  HEADER: GlossaryTermDetailPageWidgetKeys.HEADER,
+  DESCRIPTION: GlossaryTermDetailPageWidgetKeys.DESCRIPTION,
+  TAGS: GlossaryTermDetailPageWidgetKeys.TAGS,
+  DOMAIN: GlossaryTermDetailPageWidgetKeys.DOMAIN,
+  CUSTOM_PROPERTIES: GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES,
+  TABS: GlossaryTermDetailPageWidgetKeys.TABS,
+  SYNONYMS: GlossaryTermDetailPageWidgetKeys.SYNONYMS,
+  RELATED_TERMS: GlossaryTermDetailPageWidgetKeys.RELATED_TERMS,
+  REFERENCES: GlossaryTermDetailPageWidgetKeys.REFERENCES,
+  OWNER: GlossaryTermDetailPageWidgetKeys.OWNER,
+  REVIEWER: GlossaryTermDetailPageWidgetKeys.REVIEWER,
+  WORKFLOW_HISTORY: GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY,
+};
+
+const WIDGET_KEY_TO_HEIGHT_PROP: Record<
+  string,
+  keyof typeof GlossaryTermDetailPageWidgetKeys
+> = {
+  [GlossaryTermDetailPageWidgetKeys.HEADER]: 'HEADER',
+  [GlossaryTermDetailPageWidgetKeys.DESCRIPTION]: 'DESCRIPTION',
+  [GlossaryTermDetailPageWidgetKeys.TAGS]: 'TAGS',
+  [GlossaryTermDetailPageWidgetKeys.DOMAIN]: 'DOMAIN',
+  [GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES]: 'CUSTOM_PROPERTIES',
+  [GlossaryTermDetailPageWidgetKeys.TABS]: 'TABS',
+  [GlossaryTermDetailPageWidgetKeys.SYNONYMS]: 'SYNONYMS',
+  [GlossaryTermDetailPageWidgetKeys.RELATED_TERMS]: 'RELATED_TERMS',
+  [GlossaryTermDetailPageWidgetKeys.REFERENCES]: 'REFERENCES',
+  [GlossaryTermDetailPageWidgetKeys.OWNER]: 'OWNER',
+  [GlossaryTermDetailPageWidgetKeys.REVIEWER]: 'REVIEWER',
+  [GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY]: 'WORKFLOW_HISTORY',
 };
 
 class CustomizeGlossaryTermPageClassBase {
@@ -220,34 +287,10 @@ class CustomizeGlossaryTermPageClassBase {
   public getKeyFromWidgetName(
     widgetName: string
   ): GlossaryTermDetailPageWidgetKeys {
-    switch (widgetName) {
-      case 'HEADER':
-        return GlossaryTermDetailPageWidgetKeys.HEADER;
-      case 'DESCRIPTION':
-        return GlossaryTermDetailPageWidgetKeys.DESCRIPTION;
-      case 'TAGS':
-        return GlossaryTermDetailPageWidgetKeys.TAGS;
-      case 'DOMAIN':
-        return GlossaryTermDetailPageWidgetKeys.DOMAIN;
-      case 'CUSTOM_PROPERTIES':
-        return GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES;
-      case 'TABS':
-        return GlossaryTermDetailPageWidgetKeys.TABS;
-      case 'SYNONYMS':
-        return GlossaryTermDetailPageWidgetKeys.SYNONYMS;
-      case 'RELATED_TERMS':
-        return GlossaryTermDetailPageWidgetKeys.RELATED_TERMS;
-      case 'REFERENCES':
-        return GlossaryTermDetailPageWidgetKeys.REFERENCES;
-      case 'OWNER':
-        return GlossaryTermDetailPageWidgetKeys.OWNER;
-      case 'REVIEWER':
-        return GlossaryTermDetailPageWidgetKeys.REVIEWER;
-      case 'WORKFLOW_HISTORY':
-        return GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY;
-      default:
-        return GlossaryTermDetailPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER;
-    }
+    return (
+      WIDGET_NAME_TO_KEY[widgetName] ??
+      GlossaryTermDetailPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+    );
   }
 
   /**
@@ -272,35 +315,11 @@ class CustomizeGlossaryTermPageClassBase {
   }
 
   public getWidgetHeight(widgetName: string) {
-    switch (widgetName) {
-      case GlossaryTermDetailPageWidgetKeys.HEADER:
-        return this.detailPageWidgetDefaultHeights.HEADER;
-      case GlossaryTermDetailPageWidgetKeys.DESCRIPTION:
-        return this.detailPageWidgetDefaultHeights.DESCRIPTION;
-      case GlossaryTermDetailPageWidgetKeys.TAGS:
-        return this.detailPageWidgetDefaultHeights.TAGS;
-      case GlossaryTermDetailPageWidgetKeys.DOMAIN:
-        return this.detailPageWidgetDefaultHeights.DOMAIN;
-      case GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES:
-        return this.detailPageWidgetDefaultHeights.CUSTOM_PROPERTIES;
-      case GlossaryTermDetailPageWidgetKeys.TABS:
-        return this.detailPageWidgetDefaultHeights.TABS;
-      case GlossaryTermDetailPageWidgetKeys.SYNONYMS:
-        return this.detailPageWidgetDefaultHeights.SYNONYMS;
-      case GlossaryTermDetailPageWidgetKeys.RELATED_TERMS:
-        return this.detailPageWidgetDefaultHeights.RELATED_TERMS;
-      case GlossaryTermDetailPageWidgetKeys.REFERENCES:
-        return this.detailPageWidgetDefaultHeights.REFERENCES;
-      case GlossaryTermDetailPageWidgetKeys.OWNER:
-        return this.detailPageWidgetDefaultHeights.OWNER;
-      case GlossaryTermDetailPageWidgetKeys.REVIEWER:
-        return this.detailPageWidgetDefaultHeights.REVIEWER;
-      case GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY:
-        return this.detailPageWidgetDefaultHeights.WORKFLOW_HISTORY;
+    const heightProp = WIDGET_KEY_TO_HEIGHT_PROP[widgetName];
 
-      default:
-        return this.defaultWidgetHeight;
-    }
+    return heightProp
+      ? this.detailPageWidgetDefaultHeights[heightProp]
+      : this.defaultWidgetHeight;
   }
 
   public getDefaultWidgetForTab(tab: EntityTabs) {
@@ -343,6 +362,14 @@ class CustomizeGlossaryTermPageClassBase {
               w: 0.5,
               x: 3,
               y: 2,
+              static: false,
+            },
+            {
+              h: this.detailPageWidgetDefaultHeights.RELATED_TERMS,
+              i: GlossaryTermDetailPageWidgetKeys.RELATED_TERMS,
+              w: 1,
+              x: 0,
+              y: 3,
               static: false,
             },
           ],
@@ -388,14 +415,6 @@ class CustomizeGlossaryTermPageClassBase {
           y: 4,
           static: false,
         },
-        {
-          h: this.detailPageWidgetDefaultHeights.RELATED_TERMS,
-          i: GlossaryTermDetailPageWidgetKeys.RELATED_TERMS,
-          w: 6,
-          x: 0,
-          y: 7,
-          static: false,
-        },
       ];
     }
 
@@ -411,6 +430,7 @@ class CustomizeGlossaryTermPageClassBase {
       REVIEWER_WIDGET,
       CUSTOM_PROPERTIES_WIDGET,
       TAGS_WIDGET,
+      KNOWLEDGE_ARTICLE_WIDGET,
     ];
 
     return isGlossary
@@ -424,130 +444,7 @@ class CustomizeGlossaryTermPageClassBase {
   }
 
   public getGlossaryChildTerms() {
-    return [
-      {
-        id: 'ea7c8380-34a9-4ea9-93ea-a812c0e838d6',
-        name: 'Finance',
-        displayName: 'Finance',
-        description:
-          'A finance department is the unit of a business responsible for obtaining and handling any monies on behalf of the organization',
-        fullyQualifiedName: 'Business Department.Finance',
-        glossary: {
-          id: 'dae534b6-f5d1-4fc7-9ddf-0d1ec9df5c7e',
-          type: 'glossary',
-          name: 'Business Department',
-          fullyQualifiedName: 'Business Department',
-          description:
-            'Businesses often have several departments that perform unique functions, allowing them to operate efficiently and successfully.',
-          displayName: 'Business Department',
-          deleted: false,
-        },
-        references: [],
-        version: 0.9,
-        updatedAt: 1727894458563,
-        owners: [],
-        status: 'Approved',
-        deleted: false,
-        mutuallyExclusive: false,
-        childrenCount: 1,
-      },
-      {
-        id: 'a8409ff4-b540-4ab0-9332-73f34125651c',
-        name: 'FOO',
-        displayName: '',
-        description: 'VCASCAS',
-
-        fullyQualifiedName: 'Business Department.FOO',
-        synonyms: [],
-        glossary: {
-          id: 'dae534b6-f5d1-4fc7-9ddf-0d1ec9df5c7e',
-          type: 'glossary',
-          name: 'Business Department',
-          fullyQualifiedName: 'Business Department',
-          description:
-            'Businesses often have several departments that perform unique functions, allowing them to operate efficiently and successfully.',
-          displayName: 'Business Department',
-          deleted: false,
-        },
-        references: [],
-        version: 0.1,
-        updatedAt: 1724662513442,
-        updatedBy: 'teddy',
-        owners: [],
-        status: 'Approved',
-        deleted: false,
-        mutuallyExclusive: false,
-        childrenCount: 0,
-      },
-      {
-        id: '5c415db9-0927-4815-b31b-ae8247ea6b0a',
-        name: 'Human resources',
-        displayName: 'Human resources',
-        description:
-          'Human resources (HR) is the department in a company that handles all things related to employees.',
-
-        fullyQualifiedName: 'Business Department.Human resources',
-        synonyms: ['Manpower', 'Human capital'],
-        glossary: {
-          id: 'dae534b6-f5d1-4fc7-9ddf-0d1ec9df5c7e',
-          type: 'glossary',
-          name: 'Business Department',
-          fullyQualifiedName: 'Business Department',
-          description:
-            'Businesses often have several departments that perform unique functions, allowing them to operate efficiently and successfully.',
-          displayName: 'Business Department',
-          deleted: false,
-        },
-        references: [],
-        version: 0.2,
-        updatedAt: 1701067069097,
-        owners: [],
-        status: 'Approved',
-        deleted: false,
-        mutuallyExclusive: false,
-        childrenCount: 0,
-      },
-      {
-        id: 'e866ee75-711a-4649-968d-3ea889bd75b8',
-        name: 'Marketing',
-        displayName: 'Marketing',
-        description:
-          'A marketing department is a division within a business that helps to promote its brand, products and services.',
-        style: {},
-        fullyQualifiedName: 'Business Department.Marketing',
-        synonyms: ['Sell', 'Retails'],
-        glossary: {
-          id: 'dae534b6-f5d1-4fc7-9ddf-0d1ec9df5c7e',
-          type: 'glossary',
-          name: 'Business Department',
-          fullyQualifiedName: 'Business Department',
-          description:
-            'Businesses often have several departments that perform unique functions, allowing them to operate efficiently and successfully.',
-          displayName: 'Business Department',
-          deleted: false,
-        },
-        references: [],
-        version: 0.2,
-        updatedAt: 1700558309238,
-        owners: [],
-        status: 'Rejected',
-        deleted: false,
-        mutuallyExclusive: false,
-        childrenCount: 1,
-      },
-      {
-        id: '288cfb46-a4c2-45a4-9dc0-321eac165812',
-        name: 'test_business_term',
-        displayName: 'Test Business Term',
-        description: 'this is test_business_term',
-        fullyQualifiedName: 'Business Department.test_business_term',
-        version: 0.2,
-        updatedAt: 1728547870161,
-        owners: [],
-        deleted: false,
-        mutuallyExclusive: false,
-      },
-    ];
+    return getGlossaryChildTermsForCustomization();
   }
 
   public getWidgetsFromKey(widgetConfig: WidgetConfig) {

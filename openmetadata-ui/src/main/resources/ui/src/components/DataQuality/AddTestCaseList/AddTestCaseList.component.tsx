@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import {
   Button,
   Checkbox,
@@ -21,6 +22,7 @@ import {
   Typography,
 } from 'antd';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
+import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import isEmpty from 'lodash/isEmpty';
 import VirtualList from 'rc-virtual-list';
@@ -34,6 +36,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as FilterOffIcon } from '../../../assets/svg/ic-filter-off.svg';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import {
@@ -41,45 +44,126 @@ import {
   TEST_CASE_STATUS_LABELS,
   TEST_CASE_TYPE_OPTION,
 } from '../../../constants/profiler.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { TestCaseType } from '../../../enums/TestSuite.enum';
 import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { getAggregateFieldOptions } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getListTestCaseBySearch } from '../../../rest/testAPI';
-import { getNameFromFQN } from '../../../utils/CommonUtils';
+import {
+  getListTestCaseBySearch,
+  ListTestCaseParamsBySearch,
+} from '../../../rest/testAPI';
 import {
   COLUMN_AGGREGATE_FIELD,
   getColumnNameFromColumnFilterKey,
   getSelectedOptionsFromKeys,
   parseColumnAggregateBuckets,
-} from '../../../utils/DataQuality/DataQualityUtils';
-import {
-  getColumnNameFromEntityLink,
-  getEntityName,
-} from '../../../utils/EntityUtils';
-import { getEntityFQN } from '../../../utils/FeedUtils';
+} from '../../../utils/DataQuality/DataQualityPureUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getColumnNameFromEntityLink } from '../../../utils/EntityPureUtils';
+import { getEntityFQN } from '../../../utils/FeedUtilsPure';
+import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { replacePlus } from '../../../utils/StringsUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { isNearScrollBottom } from '../../../utils/ScrollUtils';
+import { replacePlus } from '../../../utils/StringUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
 import { AddTestCaseModalProps } from './AddTestCaseList.interface';
 import AddTestCaseListFilters from './AddTestCaseListFilters.component';
 import { AddTestCaseListFilterKey } from './AddTestCaseListFilters.constants';
-import { normalizeSelectedTestProp } from './AddTestCaseListForm.utils';
+import {
+  normalizeSelectedTestProp,
+  seedSelectedFromExistingTest,
+} from './AddTestCaseListForm.utils';
+
+const getSelectionFlags = ({
+  loadedItemIds,
+  isLoadedRowSelected,
+  selectAll,
+  totalCount,
+  itemsLength,
+}: {
+  loadedItemIds: string[];
+  isLoadedRowSelected: (id: string) => boolean;
+  selectAll: boolean;
+  totalCount: number;
+  itemsLength: number;
+}) => {
+  const allLoadedSelected =
+    loadedItemIds.length > 0 &&
+    loadedItemIds.every((id) => isLoadedRowSelected(id));
+
+  return {
+    allLoadedSelected,
+    showSelectAllTotalLink:
+      !selectAll &&
+      totalCount > itemsLength &&
+      allLoadedSelected &&
+      itemsLength > 0,
+  };
+};
+
+const buildTestCaseSearchParams = ({
+  searchText,
+  page,
+  filterColumns,
+  filterTables,
+  filterStatus,
+  filterTestType,
+  testCaseParams,
+}: {
+  searchText?: string;
+  page: number;
+  filterColumns: string[];
+  filterTables: string[];
+  filterStatus?: TestCaseStatus;
+  filterTestType: TestCaseType;
+  testCaseParams?: ListTestCaseParamsBySearch;
+}): ListTestCaseParamsBySearch => {
+  // `q` must stay free text: /v1/dataQuality/testCases/search/list parses it as a literal
+  // term, so scoping filters travel as first-class params via `testCaseParams`. With no
+  // search text `q` is omitted rather than sent as `*` — a lone asterisk is no longer a
+  // match-all wildcard, it is a literal asterisk that matches nothing.
+  const q = searchText || undefined;
+
+  const columnNamesFromKeys =
+    filterColumns.length > 0
+      ? (filterColumns
+          .map((k) => getColumnNameFromColumnFilterKey(k))
+          .filter(Boolean) as string[])
+      : [];
+  const columnName =
+    columnNamesFromKeys.length > 0 ? columnNamesFromKeys[0] : undefined;
+  const filterTable = filterTables[0];
+  const entityLink = filterTable ? `<#E::table::${filterTable}>` : undefined;
+
+  const requestParams = {
+    q,
+    limit: PAGE_SIZE_MEDIUM,
+    offset: (page - 1) * PAGE_SIZE_MEDIUM,
+    testCaseStatus: filterStatus,
+    testCaseType:
+      filterTestType === TestCaseType.all ? undefined : filterTestType,
+    // includeAllTests=true: prefix-match entityFQN so column tests
+    // under the selected table are included.
+    ...(entityLink && { entityLink, includeAllTests: true }),
+    ...(columnName && { columnName }),
+  };
+
+  return { ...testCaseParams, ...requestParams };
+};
 
 export const AddTestCaseList = ({
   onCancel,
   onSubmit,
   cancelText,
   submitText,
-  testCaseFilters,
   columnFilters,
   selectedTest,
+  existingTest,
   onChange,
   showButton = true,
   testCaseParams,
@@ -90,7 +174,7 @@ export const AddTestCaseList = ({
   const [searchTerm, setSearchTerm] = useState<string>();
   const [items, setItems] = useState<TestCase[]>([]);
   const [selectedItems, setSelectedItems] = useState<Map<string, TestCase>>(
-    () => new Map()
+    () => seedSelectedFromExistingTest(existingTest)
   );
   const [selectAll, setSelectAll] = useState(false);
   const [excludedIds, setExcludedIds] = useState<Set<string>>(() => new Set());
@@ -267,47 +351,36 @@ export const AddTestCaseList = ({
     }) => {
       try {
         setIsLoading(true);
-        const globalSearch = searchText ? `*${searchText}*` : WILD_CARD_CHAR;
-        const q = testCaseFilters
-          ? `${globalSearch} && ${testCaseFilters}`
-          : globalSearch;
-
-        const columnNamesFromKeys =
-          filterColumns.length > 0
-            ? (filterColumns
-                .map((k) => getColumnNameFromColumnFilterKey(k))
-                .filter(Boolean) as string[])
-            : [];
-        const columnName =
-          columnNamesFromKeys.length > 0 ? columnNamesFromKeys[0] : undefined;
-        const filterTable = filterTables[0];
-        const entityLink = filterTable
-          ? `<#E::table::${filterTable}>`
-          : undefined;
-
-        const requestParams = {
-          q,
-          limit: PAGE_SIZE_MEDIUM,
-          offset: (page - 1) * PAGE_SIZE_MEDIUM,
-          testCaseStatus: filterStatus,
-          testCaseType:
-            filterTestType === TestCaseType.all ? undefined : filterTestType,
-          ...(entityLink && { entityLink }),
-          ...(columnName && { columnName }),
-        };
-        const mergedParams = { ...testCaseParams, ...requestParams };
+        const mergedParams = buildTestCaseSearchParams({
+          searchText,
+          page,
+          filterColumns,
+          filterTables,
+          filterStatus,
+          filterTestType,
+          testCaseParams,
+        });
 
         const testCaseResponse = await getListTestCaseBySearch(mergedParams);
 
         setTotalCount(testCaseResponse.paging.total ?? 0);
-        if (selectedTestNames.length > 0 && hydrateSelectedFromProp) {
-          const hydratedMap = new Map<string, TestCase>();
-          [...items, ...testCaseResponse.data].forEach((hit) => {
-            if (selectedTestNames.includes(hit.name)) {
-              hydratedMap.set(hit.id ?? '', hit);
-            }
+        if (hydrateSelectedFromProp) {
+          setSelectedItems((prev) => {
+            const next = new Map(prev);
+            [...items, ...testCaseResponse.data].forEach((hit) => {
+              if (!hit.id) {
+                return;
+              }
+              if (next.has(hit.id)) {
+                next.set(hit.id, hit);
+              }
+              if (selectedTestNames.includes(hit.name)) {
+                next.set(hit.id, hit);
+              }
+            });
+
+            return next;
           });
-          setSelectedItems(hydratedMap);
         }
         setItems(
           page === 1
@@ -315,13 +388,14 @@ export const AddTestCaseList = ({
             : (prevItems) => [...prevItems, ...testCaseResponse.data]
         );
         setPageNumber(page);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       } finally {
         setIsLoading(false);
       }
     },
     [
       items,
-      testCaseFilters,
       selectedTestNames,
       testCaseParams,
       filterStatus,
@@ -368,10 +442,7 @@ export const AddTestCaseList = ({
 
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     (e) => {
-      if (
-        e.currentTarget.scrollHeight - e.currentTarget.scrollTop === 500 &&
-        items.length < totalCount
-      ) {
+      if (isNearScrollBottom(e.currentTarget) && items.length < totalCount) {
         !isLoading &&
           fetchTestCases({
             searchText: searchTerm,
@@ -422,15 +493,13 @@ export const AddTestCaseList = ({
     [items, isLoadedRowSelected]
   );
 
-  const allLoadedSelected =
-    loadedItemIds.length > 0 &&
-    loadedItemIds.every((id) => isLoadedRowSelected(id));
-
-  const showSelectAllTotalLink =
-    !selectAll &&
-    totalCount > items.length &&
-    allLoadedSelected &&
-    items.length > 0;
+  const { allLoadedSelected, showSelectAllTotalLink } = getSelectionFlags({
+    loadedItemIds,
+    isLoadedRowSelected,
+    selectAll,
+    totalCount,
+    itemsLength: items.length,
+  });
 
   const handlePageSelectAllCheckbox = useCallback(
     (e: CheckboxChangeEvent) => {
@@ -541,6 +610,24 @@ export const AddTestCaseList = ({
   );
 
   useEffect(() => {
+    if (!existingTest || existingTest.length === 0) {
+      return;
+    }
+    setSelectedItems((prev) => {
+      const next = new Map(prev);
+      let changed = false;
+      existingTest.forEach((ref) => {
+        if (ref.id && !next.has(ref.id)) {
+          next.set(ref.id, { id: ref.id, name: ref.name ?? '' } as TestCase);
+          changed = true;
+        }
+      });
+
+      return changed ? next : prev;
+    });
+  }, [existingTest]);
+
+  useEffect(() => {
     fetchTestCases({
       searchText: searchTerm,
       hydrateSelectedFromProp: isInitialSearchFilterLoad.current,
@@ -552,7 +639,6 @@ export const AddTestCaseList = ({
     filterTestType,
     filterTables,
     filterColumns,
-    testCaseFilters,
     testCaseParams,
   ]);
 
@@ -582,16 +668,14 @@ export const AddTestCaseList = ({
     if (!isLoading && isEmpty(source)) {
       return (
         <Col span={24}>
-          <Space
-            align="center"
-            className="w-full"
-            direction="vertical"
-            prefixCls="w-full">
-            <ErrorPlaceHolder
-              className="mt-0-important p-b-sm"
-              type={ERROR_PLACEHOLDER_TYPE.FILTER}
+          <Box className="tw:relative tw:min-h-80 tw:w-full">
+            <EmptyPlaceholder
+              description={t('message.try-adjusting-filter')}
+              icon={<FilterOffIcon className="tw:text-fg-quaternary" />}
+              title={t('label.no-result-found')}
+              variant="blank"
             />
-          </Space>
+          </Box>
         </Col>
       );
     } else {
@@ -614,7 +698,7 @@ export const AddTestCaseList = ({
 
                 return (
                   <Space
-                    className="m-b-md border rounded-4 p-sm cursor-pointer bg-white"
+                    className="m-b-md border rounded-4 p-sm cursor-pointer tw:bg-primary"
                     direction="vertical"
                     onClick={() => handleCardClick(test)}>
                     <Space className="justify-between w-full">

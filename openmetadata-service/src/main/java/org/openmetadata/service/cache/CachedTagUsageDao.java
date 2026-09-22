@@ -22,7 +22,7 @@ public class CachedTagUsageDao {
    * Write-through cache: Store tags
    */
   public void putTags(String entityType, UUID entityId, String tagsJson) {
-    if (tagsJson == null || tagsJson.isEmpty()) {
+    if (tagsJson == null || tagsJson.isEmpty() || EntityCacheBypass.isSkipped()) {
       return;
     }
 
@@ -36,6 +36,9 @@ public class CachedTagUsageDao {
   }
 
   public void invalidateTags(String entityType, UUID entityId) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     String cacheKey = keys.tags(entityType, entityId);
     cache.del(cacheKey);
     LOG.debug("Invalidated cache for Tags: {} -> {}", entityType, entityId);
@@ -45,6 +48,9 @@ public class CachedTagUsageDao {
    * Get tags from cache
    */
   public List<TagLabel> getTags(String entityType, UUID entityId) {
+    if (EntityCacheBypass.isSkipped()) {
+      return null;
+    }
     String cacheKey = keys.tags(entityType, entityId);
     Optional<String> cached = cache.get(cacheKey);
     if (cached.isEmpty()) {

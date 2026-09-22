@@ -11,6 +11,7 @@
 """
 Common health validation, for auth and non-auth endpoint
 """
+
 import traceback
 
 from openmetadata_managed_apis.utils.logger import operations_logger
@@ -27,14 +28,12 @@ logger = operations_logger()
 
 def health_response():
     try:
-        return ApiResponse.success(
-            {"status": "healthy", "version": version("openmetadata-ingestion")}
-        )
+        return ApiResponse.success({"status": "healthy", "version": version("openmetadata-ingestion")})
     except Exception as exc:
         msg = f"Error obtaining Airflow REST status due to [{exc}] "
         logger.debug(traceback.format_exc())
         logger.error(msg)
         return ApiResponse.error(
             status=ApiResponse.STATUS_BAD_REQUEST,
-            error=msg,
+            error="Unable to determine the Airflow REST API status.",
         )

@@ -18,6 +18,7 @@ import {
   DESCRIPTION_WIDGET,
   GLOSSARY_TERMS_WIDGET,
   GridSizes,
+  KNOWLEDGE_ARTICLE_WIDGET,
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
 import { TABLE_DUMMY_DATA } from '../constants/Table.constants';
@@ -33,10 +34,11 @@ import i18n from './i18next/LocalUtil';
 import {
   getTableDetailPageBaseTabs,
   getTableWidgetFromKey,
-} from './TableUtils';
+} from './TableTabsUtils';
 
 export interface TableDetailPageTabProps {
   queryCount: number;
+  isQueryCountLoading: boolean;
   isTourOpen: boolean;
   activeTab: EntityTabs;
   feedCount: FeedCounts;
@@ -67,8 +69,26 @@ type TableWidgetKeys =
   | DetailPageWidgetKeys.TAGS
   | DetailPageWidgetKeys.GLOSSARY_TERMS
   | DetailPageWidgetKeys.CUSTOM_PROPERTIES
+  | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE
   | DetailPageWidgetKeys.TABLE_CONSTRAINTS
-  | DetailPageWidgetKeys.PARTITIONED_KEYS;
+  | DetailPageWidgetKeys.PARTITIONED_KEYS
+  | DetailPageWidgetKeys.TABLE_ALIASES
+  | DetailPageWidgetKeys.ASSET_HEALTH;
+
+// Widgets whose height comes from `defaultWidgetHeight`; every other widget is
+// laid out at height 1.
+const SIZEABLE_WIDGET_KEYS: TableWidgetKeys[] = [
+  DetailPageWidgetKeys.DESCRIPTION,
+  DetailPageWidgetKeys.TABLE_SCHEMA,
+  DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
+  DetailPageWidgetKeys.DATA_PRODUCTS,
+  DetailPageWidgetKeys.TAGS,
+  DetailPageWidgetKeys.GLOSSARY_TERMS,
+  DetailPageWidgetKeys.TABLE_CONSTRAINTS,
+  DetailPageWidgetKeys.PARTITIONED_KEYS,
+  DetailPageWidgetKeys.TABLE_ALIASES,
+  DetailPageWidgetKeys.ASSET_HEALTH,
+];
 
 class TableClassBase {
   defaultWidgetHeight: Record<TableWidgetKeys, number>;
@@ -82,8 +102,11 @@ class TableClassBase {
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
+      [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
       [DetailPageWidgetKeys.TABLE_CONSTRAINTS]: 2,
       [DetailPageWidgetKeys.PARTITIONED_KEYS]: 2,
+      [DetailPageWidgetKeys.TABLE_ALIASES]: 2,
+      [DetailPageWidgetKeys.ASSET_HEALTH]: 3,
     };
   }
 
@@ -163,11 +186,19 @@ class TableClassBase {
         static: false,
       },
       {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.ASSET_HEALTH],
+        i: DetailPageWidgetKeys.ASSET_HEALTH,
+        w: 2,
+        x: 6,
+        y: 1,
+        static: false,
+      },
+      {
         h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS],
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
         x: 6,
-        y: 1,
+        y: 2,
         static: false,
       },
       {
@@ -175,7 +206,7 @@ class TableClassBase {
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
-        y: 2,
+        y: 3,
         static: false,
       },
       {
@@ -183,7 +214,15 @@ class TableClassBase {
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
-        y: 3,
+        y: 4,
+        static: false,
+      },
+      {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.KNOWLEDGE_ARTICLE],
+        i: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
+        w: 2,
+        x: 6,
+        y: 5,
         static: false,
       },
       {
@@ -191,7 +230,7 @@ class TableClassBase {
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
-        y: 4,
+        y: 6,
         static: false,
       },
       {
@@ -199,7 +238,7 @@ class TableClassBase {
         i: DetailPageWidgetKeys.PARTITIONED_KEYS,
         w: 2,
         x: 6,
-        y: 5,
+        y: 7,
         static: false,
       },
       {
@@ -207,7 +246,15 @@ class TableClassBase {
         i: DetailPageWidgetKeys.TABLE_CONSTRAINTS,
         w: 2,
         x: 6,
-        y: 6,
+        y: 8,
+        static: false,
+      },
+      {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TABLE_ALIASES],
+        i: DetailPageWidgetKeys.TABLE_ALIASES,
+        w: 2,
+        x: 6,
+        y: 9,
         static: false,
       },
     ];
@@ -221,12 +268,21 @@ class TableClassBase {
     return false;
   }
 
+  public getRequestDataAccessBanner(): ReactNode {
+    return null;
+  }
+
+  public getRequestDataAccessButton(): ReactNode {
+    return null;
+  }
+
   public getRequestDataAccessDrawer(
     _isOpen: boolean,
     _onClose: () => void,
     _entityFqn: string,
     _entityName: string,
-    _entityType: string
+    _entityType: string,
+    _onCreated?: () => void
   ): ReactNode {
     return null;
   }
@@ -243,6 +299,13 @@ class TableClassBase {
         name: i18n.t('label.schema'),
         data: {
           gridSizes: ['large'] as GridSizes[],
+        },
+      },
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.ASSET_HEALTH,
+        name: i18n.t('label.asset-health'),
+        data: {
+          gridSizes: ['small'] as GridSizes[],
         },
       },
       DATA_PRODUCTS_WIDGET,
@@ -263,6 +326,7 @@ class TableClassBase {
         },
       },
       CUSTOM_PROPERTIES_WIDGET,
+      KNOWLEDGE_ARTICLE_WIDGET,
     ];
   }
 
@@ -271,28 +335,9 @@ class TableClassBase {
   }
 
   public getWidgetHeight(widgetName: string) {
-    switch (widgetName) {
-      case DetailPageWidgetKeys.DESCRIPTION:
-        return this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION];
-      case DetailPageWidgetKeys.TABLE_SCHEMA:
-        return this.defaultWidgetHeight[DetailPageWidgetKeys.TABLE_SCHEMA];
-      case DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES:
-        return this.defaultWidgetHeight[
-          DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES
-        ];
-      case DetailPageWidgetKeys.DATA_PRODUCTS:
-        return this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS];
-      case DetailPageWidgetKeys.TAGS:
-        return this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS];
-      case DetailPageWidgetKeys.GLOSSARY_TERMS:
-        return this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS];
-      case DetailPageWidgetKeys.TABLE_CONSTRAINTS:
-        return this.defaultWidgetHeight[DetailPageWidgetKeys.TABLE_CONSTRAINTS];
-      case DetailPageWidgetKeys.PARTITIONED_KEYS:
-        return this.defaultWidgetHeight[DetailPageWidgetKeys.PARTITIONED_KEYS];
-      default:
-        return 1;
-    }
+    return SIZEABLE_WIDGET_KEYS.includes(widgetName as TableWidgetKeys)
+      ? this.defaultWidgetHeight[widgetName as TableWidgetKeys]
+      : 1;
   }
 }
 

@@ -93,6 +93,7 @@ export interface MessagingService {
      * Type of messaging service such as Kafka or Pulsar...
      */
     serviceType: MessagingServiceType;
+    style?:      Style;
     /**
      * Tags for this Message Service.
      */
@@ -195,6 +196,8 @@ export interface MessagingConnection {
  *
  * Kinesis Connection Config
  *
+ * NATS Connection Config
+ *
  * Google Cloud Pub/Sub Connection Config
  *
  * Custom Messaging Service Connection to build a source that is not supported by
@@ -264,8 +267,11 @@ export interface Connection {
      */
     securityProtocol?:           SecurityProtocol;
     supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
     /**
      * Regex to only fetch topics that matches the pattern.
+     *
+     * Regex to only fetch subjects/streams that match the pattern.
      */
     topicFilterPattern?: FilterPattern;
     /**
@@ -275,6 +281,27 @@ export interface Connection {
      */
     type?:      MessagingServiceType;
     awsConfig?: AWSCredentials;
+    /**
+     * Additional NATS client configuration options. See https://nats-io.github.io/nats.py/
+     */
+    additionalConfig?: { [key: string]: any };
+    /**
+     * NATS authentication method. Leave empty for anonymous authentication.
+     */
+    authType?: AuthenticationType;
+    /**
+     * NATS server URLs as comma-separated values. Ex: nats://host1:4222,nats://host2:4222
+     */
+    natsServers?: string;
+    /**
+     * Name of the JetStream KV bucket where schemas are stored. Keys must match stream names.
+     * Values should be Avro JSON, Protobuf (.proto) or JSON Schema text.
+     */
+    schemaKvBucket?: string;
+    /**
+     * TLS/SSL configuration for secure NATS connections.
+     */
+    tlsConfig?: Config;
     /**
      * GCP credentials configuration for authenticating with Pub/Sub.
      */
@@ -310,6 +337,34 @@ export interface Connection {
      */
     sourcePythonClass?: string;
     [property: string]: any;
+}
+
+/**
+ * NATS authentication method. Leave empty for anonymous authentication.
+ *
+ * Username and password authentication for NATS.
+ *
+ * Token-based authentication for NATS.
+ *
+ * NKey seed authentication for NATS.
+ */
+export interface AuthenticationType {
+    /**
+     * Password for NATS authentication.
+     */
+    password?: string;
+    /**
+     * Username for NATS authentication.
+     */
+    username?: string;
+    /**
+     * Token for NATS authentication.
+     */
+    token?: string;
+    /**
+     * NKey seed for NATS authentication.
+     */
+    nkeySeed?: string;
 }
 
 /**
@@ -372,6 +427,8 @@ export interface AWSCredentials {
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
+ *
+ * TLS/SSL configuration for secure NATS connections.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
@@ -536,6 +593,8 @@ export enum SecurityProtocol {
  * Regex to only fetch topics that matches the pattern.
  *
  * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only fetch subjects/streams that match the pattern.
  */
 export interface FilterPattern {
     /**
@@ -561,12 +620,13 @@ export interface FilterPattern {
  *
  * Type of messaging service such as Kafka or Pulsar...
  *
- * Type of messaging service - Kafka or Pulsar.
+ * Type of messaging service.
  */
 export enum MessagingServiceType {
     CustomMessaging = "CustomMessaging",
     Kafka = "Kafka",
     Kinesis = "Kinesis",
+    Nats = "Nats",
     PubSub = "PubSub",
     Redpanda = "Redpanda",
 }
@@ -645,6 +705,43 @@ export enum EntityStatus {
     InReview = "In Review",
     Rejected = "Rejected",
     Unprocessed = "Unprocessed",
+}
+
+/**
+ * UI Style is used to associate a color code and/or icon to entity to customize the look of
+ * that entity in UI.
+ */
+export interface Style {
+    /**
+     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
+     */
+    color?: string;
+    /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
+     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
+     */
+    iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -811,43 +908,6 @@ export enum State {
 }
 
 /**
- * UI Style is used to associate a color code and/or icon to entity to customize the look of
- * that entity in UI.
- */
-export interface Style {
-    /**
-     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
-     */
-    color?: string;
-    /**
-     * Cover image configuration for the entity.
-     */
-    coverImage?: CoverImage;
-    /**
-     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
-     */
-    iconURL?: string;
-}
-
-/**
- * Cover image configuration for the entity.
- *
- * Cover image configuration for an entity. This is used to display a banner or header image
- * for entities like Domain, Glossary, Data Product, etc.
- */
-export interface CoverImage {
-    /**
-     * Position of the cover image in CSS background-position format. Supports keywords (top,
-     * center, bottom) or pixel values (e.g., '20px 30px').
-     */
-    position?: string;
-    /**
-     * URL of the cover image.
-     */
-    url?: string;
-}
-
-/**
  * Last test connection results for this service
  *
  * TestConnectionResult is the definition that will encapsulate result of running the test
@@ -885,9 +945,21 @@ export enum StatusType {
  */
 export interface TestConnectionStepResult {
     /**
+     * Classified, actionable explanation of a failure, separate from the raw errorLog.
+     */
+    diagnosis?: Diagnosis;
+    /**
+     * Wall-clock time the step took, in milliseconds.
+     */
+    durationMs?: number;
+    /**
      * In case of failed step, this field would contain the actual error faced during the step.
      */
     errorLog?: string;
+    /**
+     * The command or statement the step actually ran, when applicable.
+     */
+    executedCommand?: string;
     /**
      * Is this step mandatory to be passed?
      */
@@ -905,4 +977,54 @@ export interface TestConnectionStepResult {
      * Did the step pass successfully?
      */
     passed: boolean;
+    /**
+     * Human-readable summary of what the step found on success.
+     */
+    resultSummary?: string;
+    /**
+     * Why a step did not run, when status is Skipped.
+     */
+    skipReason?: SkipReason;
+    /**
+     * Lifecycle state of this step.
+     */
+    status?: Status;
+}
+
+/**
+ * Classified, actionable explanation of a failure, separate from the raw errorLog.
+ */
+export interface Diagnosis {
+    /**
+     * Link to relevant documentation.
+     */
+    docUrl?: string;
+    /**
+     * What the user can do to fix it.
+     */
+    remediation?: string;
+    /**
+     * Short statement of what went wrong.
+     */
+    title?: string;
+}
+
+/**
+ * Why a step did not run, when status is Skipped.
+ */
+export enum SkipReason {
+    ConnectionNotEstablished = "ConnectionNotEstablished",
+    NotImplemented = "NotImplemented",
+}
+
+/**
+ * Lifecycle state of this step.
+ */
+export enum Status {
+    Failed = "Failed",
+    Passed = "Passed",
+    Queued = "Queued",
+    Running = "Running",
+    Skipped = "Skipped",
+    Warning = "Warning",
 }

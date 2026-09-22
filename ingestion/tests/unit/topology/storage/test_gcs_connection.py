@@ -11,6 +11,7 @@
 """
 Unit tests for GCS test connection - Tester.list_buckets() bucket filtering
 """
+
 from collections import namedtuple
 from unittest.mock import MagicMock
 
@@ -63,27 +64,21 @@ class TestTesterListBuckets:
         assert tester.bucket_tests[0].project_id == "project-1"
 
     def test_include_filter_picks_matching_bucket(self):
-        tester = _make_tester(
-            container_filter_pattern=FilterPattern(includes=["another-.*"])
-        )
+        tester = _make_tester(container_filter_pattern=FilterPattern(includes=["another-.*"]))
         tester.list_buckets()
 
         assert len(tester.bucket_tests) == 1
         assert tester.bucket_tests[0].bucket_name == "another-allowed-bucket"
 
     def test_exclude_filter_skips_excluded_bucket(self):
-        tester = _make_tester(
-            container_filter_pattern=FilterPattern(excludes=["allowed-bucket"])
-        )
+        tester = _make_tester(container_filter_pattern=FilterPattern(excludes=["allowed-bucket"]))
         tester.list_buckets()
 
         assert len(tester.bucket_tests) == 1
         assert tester.bucket_tests[0].bucket_name == "restricted-bucket"
 
     def test_all_filtered_out_raises_with_filter_message(self):
-        tester = _make_tester(
-            container_filter_pattern=FilterPattern(includes=["nonexistent-.*"])
-        )
+        tester = _make_tester(container_filter_pattern=FilterPattern(includes=["nonexistent-.*"]))
 
         with pytest.raises(SourceConnectionException, match="containerFilterPattern"):
             tester.list_buckets()

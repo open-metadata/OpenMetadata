@@ -14,7 +14,7 @@ To extract metadata from Azure ADLS (Storage Account - StorageV2), you will need
 - Storage Blob Data Contributor
 - Storage Queue Data Contributor
 
-You can find further information on the Kafka connector in the <a href="https://docs.open-metadata.org/connectors/storage/adls" target="_blank">docs</a>.
+You can find further information on the ADLS connector in the <a href="https://docs.open-metadata.org/connectors/storage/adls" target="_blank">docs</a>.
 
 ## Connection Details
 

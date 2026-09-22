@@ -11,12 +11,13 @@
 """
 Snowflake models
 """
+
 import urllib
 from datetime import datetime
-from typing import List, Optional
+from typing import Any
 
-from pydantic import BaseModel, Field, TypeAdapter, field_validator
-from requests.utils import quote
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator
+from requests.utils import quote  # pyright: ignore[reportPrivateImportUsage]
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -24,6 +25,9 @@ from metadata.generated.schema.entity.data.storedProcedure import Language
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
+)
+from metadata.ingestion.source.database.snowflake.identifiers import (
+    quote_account_usage_schema,
 )
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_DYNAMIC_TABLE_REFRESH_HISTORY_QUERY,
@@ -48,20 +52,19 @@ class SnowflakeStoredProcedure(BaseModel):
     """Snowflake stored procedure list query results"""
 
     name: str = Field(..., alias="NAME")
-    owner: Optional[str] = Field(None, alias="OWNER")
+    owner: str | None = Field(None, alias="OWNER")
     language: str = Field(..., alias="LANGUAGE")
-    definition: Optional[str] = Field(None, alias="DEFINITION")
-    signature: Optional[str] = Field(
-        None, alias="SIGNATURE", description="Used to build the source URL"
-    )
-    comment: Optional[str] = Field(None, alias="COMMENT")
-    procedure_type: Optional[str] = Field(None, alias="PROCEDURE_TYPE")
+    definition: str | None = Field(None, alias="DEFINITION")
+    signature: str | None = Field(None, alias="SIGNATURE", description="Used to build the source URL")
+    comment: str | None = Field(None, alias="COMMENT")
+    procedure_type: str | None = Field(None, alias="PROCEDURE_TYPE")
 
     # Update the signature to clean it up on read
     @field_validator("signature")
     def clean_signature(  # pylint: disable=no-self-argument
-        cls, signature
-    ) -> Optional[str]:
+        cls,  # noqa: N805
+        signature,
+    ) -> str | None:
         """
         pylint: keeping the approach from pydantic docs
 
@@ -85,7 +88,7 @@ class SnowflakeStoredProcedure(BaseModel):
             logger.warning(f"Error cleaning up Stored Procedure signature - [{exc}]")
             return signature
 
-    def unquote_signature(self) -> Optional[str]:
+    def unquote_signature(self) -> str | None:
         return urllib.parse.unquote(self.signature) if self.signature else "()"
 
 
@@ -95,11 +98,11 @@ class SnowflakeStage(BaseModel):
     name: str
     database_name: str
     schema_name: str
-    url: Optional[str] = None
+    url: str | None = None
     type_: str
-    cloud: Optional[str] = None
-    comment: Optional[str] = None
-    owner: Optional[str] = None
+    cloud: str | None = None
+    comment: str | None = None
+    owner: str | None = None
 
 
 class SnowflakeTable(BaseModel):
@@ -109,19 +112,19 @@ class SnowflakeTable(BaseModel):
     """
 
     name: str
-    deleted: Optional[datetime] = None
-    type_: Optional[TableType] = None
+    deleted: datetime | None = None
+    type_: TableType | None = None
 
 
 class SnowflakeTableList(BaseModel):
     """Understands how to return the deleted and not deleted tables/views/streams from a given list."""
 
-    tables: List[SnowflakeTable]
+    tables: list[SnowflakeTable]
 
-    def get_deleted(self) -> List[SnowflakeTable]:
+    def get_deleted(self) -> list[SnowflakeTable]:
         return [table for table in self.tables if table.deleted]
 
-    def get_not_deleted(self) -> List[SnowflakeTable]:
+    def get_not_deleted(self) -> list[SnowflakeTable]:
         return [table for table in self.tables if not table.deleted]
 
 
@@ -131,23 +134,21 @@ class SnowflakeQueryLogEntry(BaseModel):
     """
 
     query_id: str
-    database_name: Optional[str] = None
-    schema_name: Optional[str] = None
+    database_name: str | None = None
+    schema_name: str | None = None
     query_type: str
     start_time: datetime
-    query_text: Optional[str] = None
-    rows_inserted: Optional[int] = None
-    rows_updated: Optional[int] = None
-    rows_deleted: Optional[int] = None
+    query_text: str | None = None
+    rows_inserted: int | None = None
+    rows_updated: int | None = None
+    rows_deleted: int | None = None
 
     @staticmethod
-    def get_for_table(
-        session: Session, tablename: str, service_connection_config: SnowflakeConnection
-    ):
+    def get_for_table(session: Session, tablename: str, service_connection_config: SnowflakeConnection):
         rows = session.execute(
             text(
                 SNOWFLAKE_QUERY_LOG_QUERY.format(
-                    account_usage_schema=service_connection_config.accountUsageSchema,
+                    account_usage_schema=quote_account_usage_schema(service_connection_config.accountUsageSchema),
                     tablename=tablename,  # type: ignore
                     insert=DatabaseDMLOperations.INSERT.value,
                     update=DatabaseDMLOperations.UPDATE.value,
@@ -156,7 +157,7 @@ class SnowflakeQueryLogEntry(BaseModel):
                 )
             )
         )
-        return TypeAdapter(List[SnowflakeQueryLogEntry]).validate_python(
+        return TypeAdapter(list[SnowflakeQueryLogEntry]).validate_python(
             [ExtendedDict(r._asdict()).lower_case_keys() for r in rows]
         )
 
@@ -164,9 +165,32 @@ class SnowflakeQueryLogEntry(BaseModel):
 class SnowflakeQueryResult(QueryResult):
     """Snowflake system metric query result"""
 
-    rows_inserted: Optional[int] = None
-    rows_updated: Optional[int] = None
-    rows_deleted: Optional[int] = None
+    rows_inserted: int | None = None
+    rows_updated: int | None = None
+    rows_deleted: int | None = None
+
+
+class AccessHistoryRow(BaseModel):
+    """One row from SNOWFLAKE_ACCESS_HISTORY_LINEAGE — a directed table edge
+    with pre-aggregated column pairs (VARIANT) and a representative query text."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    downstream_table: str | None = None
+    upstream_table: str | None = None
+    column_pairs: Any | None = None
+    query_text: str | None = None
+
+
+class CopyHistoryRow(BaseModel):
+    """One row from SNOWFLAKE_COPY_HISTORY_LINEAGE — a stage→table load event."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    downstream_database: str | None = None
+    downstream_schema: str | None = None
+    downstream_table: str | None = None
+    stage_location: str | None = None
 
 
 class SnowflakeDynamicTableRefreshEntry(BaseModel):
@@ -176,22 +200,20 @@ class SnowflakeDynamicTableRefreshEntry(BaseModel):
 
     table_name: str
     start_time: datetime
-    rows_inserted: Optional[int] = None
-    rows_updated: Optional[int] = None
-    rows_deleted: Optional[int] = None
+    rows_inserted: int | None = None
+    rows_updated: int | None = None
+    rows_deleted: int | None = None
 
     @staticmethod
-    def get_for_table(
-        session: Session, tablename: str, service_connection_config: SnowflakeConnection
-    ):
+    def get_for_table(session: Session, tablename: str, service_connection_config: SnowflakeConnection):
         rows = session.execute(
             text(
                 SNOWFLAKE_DYNAMIC_TABLE_REFRESH_HISTORY_QUERY.format(
-                    account_usage_schema=service_connection_config.accountUsageSchema,
+                    account_usage_schema=quote_account_usage_schema(service_connection_config.accountUsageSchema),
                     tablename=tablename,
                 )
             )
         )
-        return TypeAdapter(List[SnowflakeDynamicTableRefreshEntry]).validate_python(
+        return TypeAdapter(list[SnowflakeDynamicTableRefreshEntry]).validate_python(
             [ExtendedDict(r).lower_case_keys() for r in rows]
         )

@@ -12,10 +12,9 @@
 """
 Test Postgres connector with CLI
 """
-from typing import List
 
-from .common.test_cli_db import CliCommonDB
-from .common_e2e_sqa_mixins import SQACommonMethods
+from .common.test_cli_db import CliCommonDB  # noqa: TID252
+from .common_e2e_sqa_mixins import SQACommonMethods  # noqa: TID252
 
 
 class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
@@ -52,7 +51,7 @@ class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         FROM public.all_datatypes;
     """
 
-    insert_data_queries: List[str] = [
+    insert_data_queries: list[str] = [  # noqa: RUF012
         """
             INSERT INTO public.all_datatypes VALUES (
             1,
@@ -116,15 +115,15 @@ class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return "local_postgres.E2EDB.public.all_datatypes"
 
     @staticmethod
-    def get_includes_schemas() -> List[str]:
+    def get_includes_schemas() -> list[str]:
         return ["public"]
 
     @staticmethod
-    def get_includes_tables() -> List[str]:
+    def get_includes_tables() -> list[str]:
         return [".*all_datatypes.*"]
 
     @staticmethod
-    def get_excludes_tables() -> List[str]:
+    def get_excludes_tables() -> list[str]:
         return [".*test_empty.*"]
 
     @staticmethod

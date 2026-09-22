@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { PreviewerProp } from './RichTextEditor.interface';
 import TaskDescriptionPreviewer from './TaskDescriptionPreviewer';
 
@@ -22,8 +22,8 @@ jest.mock('../../BlockEditor/BlockEditor', () => {
     ));
 });
 
-jest.mock('../../../utils/BlockEditorUtils', () => ({
-  formatContent: jest.fn((content) => content),
+jest.mock('../../../utils/BlockEditorPureUtils', () => ({
+  formatClientContent: jest.fn((content) => content),
   isDescriptionContentEmpty: jest.fn((content) => !content || content === ''),
 }));
 
@@ -48,20 +48,20 @@ describe('TaskDescriptionPreviewer', () => {
   afterEach(() => {
     // reset mocks
 
-    jest.mock('../../../utils/BlockEditorUtils', () => ({
-      formatContent: jest.fn((content) => content),
+    jest.mock('../../../utils/BlockEditorPureUtils', () => ({
+      formatClientContent: jest.fn((content) => content),
       isDescriptionContentEmpty: jest.fn(
         (content) => !content || content === ''
       ),
     }));
   });
 
-  it('should render the component with markdown content', () => {
+  it('should render the component with markdown content', async () => {
     render(<TaskDescriptionPreviewer {...mockProp} />);
 
     expect(screen.getByTestId('viewer-container')).toBeInTheDocument();
     expect(screen.getByTestId('markdown-parser')).toBeInTheDocument();
-    expect(screen.getByTestId('block-editor')).toBeInTheDocument();
+    expect(await screen.findByTestId('block-editor')).toBeInTheDocument();
   });
 
   it('should render no-description placeholder when markdown is empty', () => {
@@ -185,12 +185,12 @@ describe('TaskDescriptionPreviewer', () => {
     });
   });
 
-  it('should update content when markdown prop changes', () => {
+  it('should update content when markdown prop changes', async () => {
     const { rerender } = render(
       <TaskDescriptionPreviewer {...mockProp} markdown="Initial content" />
     );
 
-    expect(screen.getByTestId('block-editor')).toHaveTextContent(
+    expect(await screen.findByTestId('block-editor')).toHaveTextContent(
       'Initial content'
     );
 
@@ -198,16 +198,18 @@ describe('TaskDescriptionPreviewer', () => {
       <TaskDescriptionPreviewer {...mockProp} markdown="Updated content" />
     );
 
-    expect(screen.getByTestId('block-editor')).toHaveTextContent(
+    expect(await screen.findByTestId('block-editor')).toHaveTextContent(
       'Updated content'
     );
   });
 
-  it('should format content using formatContent utility', () => {
-    const { formatContent } = require('../../../utils/BlockEditorUtils');
+  it('should format content using formatClientContent utility', () => {
+    const {
+      formatClientContent,
+    } = require('../../../utils/BlockEditorPureUtils');
     render(<TaskDescriptionPreviewer {...mockProp} />);
 
-    expect(formatContent).toHaveBeenCalledWith(mockLongMarkdown, 'client');
+    expect(formatClientContent).toHaveBeenCalledWith(mockLongMarkdown);
   });
 
   it('should render with default props', () => {
@@ -237,17 +239,19 @@ describe('TaskDescriptionPreviewer', () => {
     });
   });
 
-  it('should set BlockEditor to non-editable mode', () => {
+  it('should set BlockEditor to non-editable mode', async () => {
     const BlockEditor = require('../../BlockEditor/BlockEditor');
     render(<TaskDescriptionPreviewer {...mockProp} />);
 
-    expect(BlockEditor).toHaveBeenCalledWith(
-      expect.objectContaining({
-        editable: false,
-        autoFocus: false,
-      }),
-      {}
-    );
+    await waitFor(() => {
+      expect(BlockEditor).toHaveBeenCalledWith(
+        expect.objectContaining({
+          editable: false,
+          autoFocus: false,
+        }),
+        {}
+      );
+    });
   });
 
   it('should handle empty content after formatting', async () => {

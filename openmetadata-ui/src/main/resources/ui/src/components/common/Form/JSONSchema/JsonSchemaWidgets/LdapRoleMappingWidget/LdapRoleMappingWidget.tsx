@@ -23,10 +23,12 @@ import {
   Typography as AntDTypography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { FC, useCallback, useEffect, useRef, useState } from 'react';
+import { debounce, uniqBy } from 'lodash';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../../../../assets/svg/ic-delete.svg';
-import { getRoles } from '../../../../../../rest/rolesAPIV1';
+import { Role } from '../../../../../../generated/entity/teams/role';
+import { searchRoles } from '../../../../../../rest/rolesAPIV1';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import './ldap-role-mapping-widget.less';
 
@@ -47,12 +49,45 @@ interface MappingError {
   [mappingId: string]: string;
 }
 
+const computeNextSearchResults = (
+  prev: Map<string, RoleOption[]>,
+  searchState: { availableRoles: RoleOption[]; mappings: RoleMappingEntry[] },
+  mappingId: string,
+  results: Role[]
+): Map<string, RoleOption[]> => {
+  const next = new Map(prev);
+  const { availableRoles, mappings } = searchState;
+  const currentMapping = mappings.find((mapping) => mapping.id === mappingId);
+  const selectedRoles = new Set(currentMapping?.roles ?? []);
+  const selectedRoleOptions = availableRoles.filter((role) =>
+    selectedRoles.has(role.value)
+  );
+  next.set(
+    mappingId,
+    uniqBy(
+      [
+        ...selectedRoleOptions,
+        ...results.map((role) => ({
+          label: role.displayName || role.name,
+          value: role.name,
+        })),
+      ],
+      'value'
+    )
+  );
+
+  return next;
+};
+
 const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
   const { t } = useTranslation();
   const { value, onChange, id, disabled, readonly } = props;
 
   const [mappings, setMappings] = useState<RoleMappingEntry[]>([]);
   const [availableRoles, setAvailableRoles] = useState<RoleOption[]>([]);
+  const [searchResults, setSearchResults] = useState<Map<string, RoleOption[]>>(
+    new Map()
+  );
   const [isLoadingRoles, setIsLoadingRoles] = useState(false);
   const [errors, setErrors] = useState<MappingError>({});
 
@@ -62,17 +97,24 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
   const getStableId = useCallback(
     (ldapGroup: string, index: number): string => {
       const key = `${index}-${ldapGroup}`;
-      if (!stableIdMapRef.current.has(key)) {
-        const stableId = `mapping-${++idCounterRef.current}`;
+      let stableId = stableIdMapRef.current.get(key);
+      if (!stableId) {
+        stableId = `mapping-${++idCounterRef.current}`;
         stableIdMapRef.current.set(key, stableId);
       }
 
-      return stableIdMapRef.current.get(key)!;
+      return stableId;
     },
     []
   );
 
   const isInitialMount = useRef(true);
+  const searchStateRef = useRef({
+    availableRoles: [] as RoleOption[],
+    mappings: [] as RoleMappingEntry[],
+  });
+
+  searchStateRef.current = { availableRoles, mappings };
 
   useEffect(() => {
     if (isInitialMount.current) {
@@ -101,8 +143,8 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
     const fetchRoles = async () => {
       setIsLoadingRoles(true);
       try {
-        const response = await getRoles('*', undefined, undefined, true, 1000);
-        const roleOptions: RoleOption[] = (response.data || []).map((role) => ({
+        const results = await searchRoles('');
+        const roleOptions: RoleOption[] = results.map((role) => ({
           label: role.displayName || role.name,
           value: role.name,
         }));
@@ -135,7 +177,7 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
       newMappings.forEach((mapping) => {
         if (mapping.ldapGroup.trim()) {
           const normalizedGroup = mapping.ldapGroup.trim().toLowerCase();
-          if (ldapGroupCounts.get(normalizedGroup)! > 1) {
+          if ((ldapGroupCounts.get(normalizedGroup) ?? 0) > 1) {
             newErrors[mapping.id] = t('message.ldap-group-duplicate-error');
           }
         }
@@ -212,18 +254,44 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
     [mappings, updateValue]
   );
 
+  const debouncedSearchRoles = useMemo(
+    () =>
+      debounce(async (mappingId: string, searchText: string) => {
+        try {
+          const results = await searchRoles(searchText);
+          setSearchResults((prev) =>
+            computeNextSearchResults(
+              prev,
+              searchStateRef.current,
+              mappingId,
+              results
+            )
+          );
+        } catch (err) {
+          showErrorToast(err as AxiosError);
+        }
+      }, 300),
+    []
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedSearchRoles.cancel();
+    };
+  }, [debouncedSearchRoles]);
+
   return (
     <div className="ldap-role-mapping-widget" data-testid={id}>
       <Space direction="vertical" size="small" style={{ width: '100%' }}>
         {mappings.length > 0 && (
           <Grid className="tw:mb-1" gap="2">
             <Grid.Item span={11}>
-              <Typography className="tw:text-gray-700" weight="medium">
+              <Typography className="tw:text-secondary" weight="medium">
                 {t('label.ldap-group-dn')}
               </Typography>
             </Grid.Item>
             <Grid.Item span={12}>
-              <Typography className="tw:text-gray-700" weight="medium">
+              <Typography className="tw:text-secondary" weight="medium">
                 {t('label.openmetadata-role-plural')}
               </Typography>
             </Grid.Item>
@@ -266,14 +334,16 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
                   className="w-full"
                   data-testid={`roles-select-${mapping.id}`}
                   disabled={disabled || readonly}
+                  filterOption={false}
                   loading={isLoadingRoles}
                   mode="multiple"
-                  options={availableRoles}
+                  options={searchResults.get(mapping.id) ?? availableRoles}
                   placeholder={t('label.select-field', {
                     field: t('label.role-plural'),
                   })}
                   value={mapping.roles}
                   onChange={(roles) => handleRolesChange(mapping.id, roles)}
+                  onSearch={(val) => debouncedSearchRoles(mapping.id, val)}
                 />
               </Grid.Item>
 

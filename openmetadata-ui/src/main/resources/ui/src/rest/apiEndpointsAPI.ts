@@ -20,8 +20,8 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
-import APIClient from './index';
+import { getEncodedFqn } from '../utils/StringUtils';
+import APIClient from './axiosClient';
 
 export type GetApiEndPointsType = {
   service: string;
@@ -80,13 +80,10 @@ export const restoreApiEndPoint = async (id: string) => {
   return response.data;
 };
 
-export const getApiEndPointVersions = async (
-  id: string,
-  params?: { limit?: number; offset?: number; fieldChanged?: string }
-) => {
+export const getApiEndPointVersions = async (id: string) => {
   const url = `/apiEndpoints/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url, { params });
+  const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };

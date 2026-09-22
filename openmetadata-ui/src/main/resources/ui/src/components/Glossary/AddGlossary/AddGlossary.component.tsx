@@ -12,33 +12,29 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
+import { Owner } from '@openmetadata/ui-core-components';
 import { Button, Form, Space, Typography } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
+import { compact, isArray } from 'lodash';
 import { useTranslation } from 'react-i18next';
+import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import {
   CreateGlossary,
   EntityReference,
 } from '../../../generated/api/data/createGlossary';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useDomainStore } from '../../../hooks/useDomainStore';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import {
   FieldProp,
   FieldTypes,
   FormItemLayout,
   HelperTextType,
 } from '../../../interface/FormUtils.interface';
-import {
-  generateFormFields,
-  getField,
-  getPopupContainer,
-} from '../../../utils/formUtils';
-
-import { isArray } from 'lodash';
-import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
-import { EntityType } from '../../../enums/entity.enum';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useDomainStore } from '../../../hooks/useDomainStore';
-import { useEntityRules } from '../../../hooks/useEntityRules';
+import { getPopupContainer } from '../../../utils/formPureUtils';
+import { generateFormFields, getField } from '../../../utils/formUtils';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import './add-glossary.less';
@@ -95,6 +91,10 @@ const AddGlossary = ({
             },
           ];
 
+    const selectedDomainList: EntityReference[] = isArray(selectedDomain)
+      ? selectedDomain
+      : compact([selectedDomain]);
+
     const data: CreateGlossary = {
       name: name.trim(),
       displayName: displayName?.trim(),
@@ -104,7 +104,7 @@ const AddGlossary = ({
       tags: tags || [],
       mutuallyExclusive: Boolean(mutuallyExclusive),
       domains: selectedDomain
-        ? ((isArray(selectedDomain) ? selectedDomain : [selectedDomain])
+        ? (selectedDomainList
             .map((d) => d.fullyQualifiedName)
             .filter(Boolean) as string[]) ?? []
         : undefined,
@@ -319,7 +319,11 @@ const AddGlossary = ({
                   {getField(ownerField)}
                   {Boolean(ownersList.length) && (
                     <Space wrap data-testid="owner-container" size={[8, 8]}>
-                      <OwnerLabel owners={ownersList} />
+                      <Owner
+                        isCompactView={false}
+                        owners={ownersList}
+                        showLabel={false}
+                      />
                     </Space>
                   )}
                 </div>
@@ -327,7 +331,11 @@ const AddGlossary = ({
                   {getField(reviewersField)}
                   {Boolean(reviewersList.length) && (
                     <Space wrap data-testid="reviewers-container" size={[8, 8]}>
-                      <OwnerLabel owners={reviewersList} />
+                      <Owner
+                        isCompactView={false}
+                        owners={reviewersList}
+                        showLabel={false}
+                      />
                     </Space>
                   )}
                 </div>

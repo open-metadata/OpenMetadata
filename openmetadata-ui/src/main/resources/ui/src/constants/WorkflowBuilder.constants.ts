@@ -22,6 +22,8 @@ import { WORKFLOW_DATA_ASSETS_LIST } from '../utils/WorkflowsUtils';
 export enum ConditionValue {
   TRUE = 'TRUE',
   FALSE = 'FALSE',
+  APPROVE = 'approve',
+  REJECT = 'reject',
 }
 
 export enum SchedularOptions {
@@ -83,6 +85,11 @@ export const NODE_TYPE_MAPPINGS = {
     label: 'Revert Changes',
     displayLabel: 'Revert Changes',
   },
+  [NodeSubType.PolicyAgentTask]: {
+    type: NodeType.AutomatedTask,
+    label: 'Policy Enforcement',
+    displayLabel: 'Policy Enforcement',
+  },
   [NodeSubType.SinkTask]: {
     type: NodeType.AutomatedTask,
     category: 'sink',
@@ -120,6 +127,10 @@ export const AVAILABLE_OPTIONS = {
   CONDITION_VALUES: [
     { value: ConditionValue.TRUE, label: 'True' },
     { value: ConditionValue.FALSE, label: 'False' },
+  ],
+  APPROVAL_CONDITION_VALUES: [
+    { value: ConditionValue.APPROVE, label: 'Approve' },
+    { value: ConditionValue.REJECT, label: 'Reject' },
   ],
   FIELD_NAMES: ['dataAssets', 'eventType', 'excludeFields'],
 } as const;

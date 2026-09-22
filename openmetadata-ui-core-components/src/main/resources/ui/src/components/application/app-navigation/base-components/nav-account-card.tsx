@@ -82,7 +82,7 @@ const NavAccountCardMenuItem = ({
         </div>
 
         {shortcut && (
-          <kbd className="tw:flex tw:rounded tw:px-1 tw:py-px tw:font-body tw:text-xs tw:font-medium tw:text-tertiary tw:ring-1 tw:ring-secondary tw:ring-inset">
+          <kbd className="tw:flex tw:rounded tw:px-1 tw:py-px tw:font-body tw:text-xs tw:font-medium tw:text-tertiary tw:outline-1 tw:-outline-offset-1 tw:outline-secondary">
             {shortcut}
           </kbd>
         )}
@@ -137,11 +137,15 @@ export const NavAccountMenu = ({
     <AriaDialog
       {...dialogProps}
       className={cx(
-        'tw:w-66 tw:rounded-xl tw:bg-secondary_alt tw:shadow-lg tw:ring tw:ring-secondary_alt tw:outline-hidden',
+        // Ported faithfully: the bare `tw:ring` was 3px (Tailwind v4's default) where every
+        // sibling uses ring-1 — almost certainly unintended, but narrowing it here would be
+        // a visual change. Tracked as a separate follow-up.
+        // `outline-hidden` removed: the outline now draws this border.
+        'tw:w-66 tw:rounded-xl tw:bg-secondary_alt tw:shadow-lg tw:outline-[3px] tw:outline-secondary_alt',
         className
       )}
       ref={dialogRef}>
-      <div className="tw:rounded-xl tw:bg-primary tw:ring-1 tw:ring-secondary">
+      <div className="tw:rounded-xl tw:bg-primary tw:outline-1 tw:outline-secondary">
         <div className="tw:flex tw:flex-col tw:gap-0.5 tw:py-1.5">
           <NavAccountCardMenuItem
             icon={User01}
@@ -230,7 +234,7 @@ export const NavAccountCard = ({
 
   return (
     <div
-      className="tw:relative tw:flex tw:items-center tw:gap-3 tw:rounded-xl tw:p-3 tw:ring-1 tw:ring-secondary tw:ring-inset"
+      className="tw:relative tw:flex tw:items-center tw:gap-3 tw:rounded-xl tw:p-3 tw:outline-1 tw:-outline-offset-1 tw:outline-secondary"
       ref={triggerRef}>
       <AvatarLabelGroup
         size="md"

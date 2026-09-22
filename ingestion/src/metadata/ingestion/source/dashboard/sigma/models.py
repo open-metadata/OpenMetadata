@@ -11,67 +11,66 @@
 """
 PowerBI Models
 """
-from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
 
 class AuthToken(BaseModel):
     access_token: str
-    refresh_token: Optional[str] = None
+    refresh_token: str | None = None
     token_type: str
-    expires_in: Optional[int] = 0
+    expires_in: int | None = 0
 
 
 class Workbook(BaseModel):
-    workbookId: str
-    name: Optional[str] = None
-    ownerId: Optional[str] = None
+    workbookId: str  # noqa: N815
+    name: str | None = None
+    ownerId: str | None = None  # noqa: N815
 
 
 class WorkbookDetails(BaseModel):
-    workbookId: str
-    name: Optional[str] = None
-    createdAt: str
+    workbookId: str  # noqa: N815
+    name: str | None = None
+    createdAt: str  # noqa: N815
     url: str
-    path: Optional[str] = None
-    ownerId: Optional[str] = None
-    isArchived: bool
-    description: Optional[str] = None
+    path: str | None = None
+    ownerId: str | None = None  # noqa: N815
+    isArchived: bool  # noqa: N815
+    description: str | None = None
 
 
 class WorkBookResponseDetails(BaseModel):
-    entries: Optional[List[Workbook]] = []
+    entries: list[Workbook] | None = []
     total: int
-    nextPage: Optional[str] = None
+    nextPage: str | None = None  # noqa: N815
 
 
 class OwnerDetails(BaseModel):
-    organizationId: str
+    organizationId: str  # noqa: N815
     email: str
 
 
 class WorkBookPage(BaseModel):
-    pageId: str
+    pageId: str  # noqa: N815
 
 
 class WorkBookPageResponse(BaseModel):
-    entries: Optional[List[WorkBookPage]] = []
+    entries: list[WorkBookPage] | None = []
     total: int
-    nextPage: Optional[str] = None
+    nextPage: str | None = None  # noqa: N815
 
 
 class Elements(BaseModel):
-    elementId: str
-    name: Optional[str] = None
-    vizualizationType: Optional[str] = None
-    columns: Optional[List[str]] = []
+    elementId: str  # noqa: N815
+    name: str | None = None
+    vizualizationType: str | None = None  # noqa: N815
+    columns: list[str] | None = []
 
 
 class ElementsResponse(BaseModel):
-    entries: Optional[List[Elements]] = []
+    entries: list[Elements] | None = []
     total: int
-    nextPage: Optional[str] = None
+    nextPage: str | None = None  # noqa: N815
 
 
 class EdgeSource(BaseModel):
@@ -83,7 +82,7 @@ class EdgeSource(BaseModel):
         if self.source:
             if "inode-" in self.source:
                 return self.source.replace("inode-", "")
-            elif "/" in self.source:
+            elif "/" in self.source:  # noqa: RET505
                 return self.source.split("/")[0]
             else:
                 return self.source
@@ -91,27 +90,27 @@ class EdgeSource(BaseModel):
 
 
 class Dependency(BaseModel):
-    nodeId: str
+    nodeId: str  # noqa: N815
     type: str
-    name: Optional[str]
-    elementId: Optional[str]
+    name: str | None
+    elementId: str | None  # noqa: N815
 
 
 class EdgeSourceResponse(BaseModel):
-    edges: Optional[List[EdgeSource]] = []
-    dependencies: Optional[dict] = {}
+    edges: list[EdgeSource] | None = []
+    dependencies: dict | None = {}
 
 
 class NodeDetails(BaseModel):
     id: str
-    name: Optional[str]
+    name: str | None
     node_type: str = Field(alias="type")
-    path: Optional[str] = ""
+    path: str | None = ""
 
     @property
     def node_schema(self):
         """Extract database.schema from path (searches for dotted format like DB.SCHEMA)"""
-        if self.node_type in ["table", "dataset"] and self.path:
+        if self.node_type in ["table", "dataset"] and self.path:  # noqa: SIM102
             if "/" in self.path:
                 parts = self.path.split("/")
                 for part in reversed(parts):
@@ -122,13 +121,13 @@ class NodeDetails(BaseModel):
 
 
 class WorkbookQuery(BaseModel):
-    elementId: str
-    name: Optional[str]
-    sql: Optional[str] = None
-    error: Optional[str] = None
+    elementId: str  # noqa: N815
+    name: str | None
+    sql: str | None = None
+    error: str | None = None
 
 
 class WorkbookQueriesResponse(BaseModel):
-    entries: Optional[List[WorkbookQuery]] = []
+    entries: list[WorkbookQuery] | None = []
     total: int
-    nextPage: Optional[str] = None
+    nextPage: str | None = None  # noqa: N815

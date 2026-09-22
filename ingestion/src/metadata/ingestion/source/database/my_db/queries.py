@@ -11,6 +11,7 @@
 """
 MyDb SQL Queries
 """
+
 import textwrap
 
 # TODO: Add SQL queries for extracting metadata, usage logs, etc.

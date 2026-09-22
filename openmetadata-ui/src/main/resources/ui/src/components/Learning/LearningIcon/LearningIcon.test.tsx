@@ -84,6 +84,22 @@ describe('LearningIcon', () => {
     expect(container.firstChild).toBeNull();
   });
 
+  it('should show popover on hover', async () => {
+    render(<LearningIcon pageId="glossary" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('learning-icon')).toBeInTheDocument();
+    });
+
+    fireEvent.mouseEnter(screen.getByTestId('learning-icon'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('learning-resources-button')
+      ).toBeInTheDocument();
+    });
+  });
+
   it('should open drawer when icon is clicked', async () => {
     render(<LearningIcon pageId="glossary" />);
 
@@ -91,8 +107,24 @@ describe('LearningIcon', () => {
       expect(screen.getByTestId('learning-icon')).toBeInTheDocument();
     });
 
-    const iconContainer = screen.getByTestId('learning-icon');
-    fireEvent.click(iconContainer);
+    fireEvent.click(screen.getByTestId('learning-icon'));
+
+    expect(screen.getByTestId('learning-drawer')).toBeInTheDocument();
+  });
+
+  it('should open drawer when resources button is clicked', async () => {
+    render(<LearningIcon pageId="glossary" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('learning-icon')).toBeInTheDocument();
+    });
+
+    fireEvent.mouseEnter(screen.getByTestId('learning-icon'));
+
+    const resourcesButton = await screen.findByTestId(
+      'learning-resources-button'
+    );
+    fireEvent.click(resourcesButton);
 
     expect(screen.getByTestId('learning-drawer')).toBeInTheDocument();
   });
@@ -104,8 +136,7 @@ describe('LearningIcon', () => {
       expect(screen.getByTestId('learning-icon')).toBeInTheDocument();
     });
 
-    const iconContainer = screen.getByTestId('learning-icon');
-    fireEvent.click(iconContainer);
+    fireEvent.click(screen.getByTestId('learning-icon'));
 
     expect(screen.getByTestId('learning-drawer')).toBeInTheDocument();
 

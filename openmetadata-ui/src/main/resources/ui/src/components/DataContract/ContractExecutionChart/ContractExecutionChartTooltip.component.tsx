@@ -12,7 +12,7 @@
  */
 import { Card, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { TooltipProps } from 'recharts';
+import type { TooltipProps } from 'recharts';
 import { formatDateTimeLong } from '../../../utils/date-time/DateTimeUtils';
 
 const ContractExecutionChartTooltip = (

@@ -12,7 +12,6 @@
 """
 Default simple profiler to use
 """
-from typing import List, Optional, Type
 
 from metadata.generated.schema.entity.data.table import ColumnProfilerConfig
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -25,11 +24,11 @@ from metadata.profiler.registry import MetricRegistry
 
 
 def get_default_metrics(
-    metrics_registry: Type[MetricRegistry],
+    metrics_registry: type[MetricRegistry],
     table: type,
-    ometa_client: Optional[OpenMetadata] = None,
-    db_service: Optional[DatabaseService] = None,
-) -> List[Metric]:
+    ometa_client: OpenMetadata | None = None,
+    db_service: DatabaseService | None = None,
+) -> list[Metric]:
     return [
         # Table Metrics
         metrics_registry.rowCount.value,
@@ -66,10 +65,10 @@ class DefaultProfiler(Profiler):
     def __init__(
         self,
         profiler_interface: ProfilerInterface,
-        metrics_registry: Type[MetricRegistry],
-        include_columns: Optional[List[ColumnProfilerConfig]] = None,
-        exclude_columns: Optional[List[str]] = None,
-        global_profiler_configuration: Optional[Settings] = None,
+        metrics_registry: type[MetricRegistry],
+        include_columns: list[ColumnProfilerConfig] | None = None,
+        exclude_columns: list[str] | None = None,
+        global_profiler_configuration: Settings | None = None,
         db_service=None,
     ):
         _metrics = get_default_metrics(

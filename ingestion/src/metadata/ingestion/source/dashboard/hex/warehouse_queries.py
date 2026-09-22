@@ -14,7 +14,6 @@ Hex-specific query templates for fetching queries from various data warehouses
 
 import textwrap
 from enum import Enum
-from typing import Dict
 
 
 class WarehouseType(Enum):
@@ -60,7 +59,7 @@ HEX_BIGQUERY_QUERY = textwrap.dedent(
         AND creation_time <= TIMESTAMP('{end_time}')
     ORDER BY creation_time DESC
     LIMIT {limit}
-    """
+    """  # noqa: W291
 )
 
 # Databricks query to fetch Hex-originated queries
@@ -75,7 +74,7 @@ HEX_DATABRICKS_QUERY = textwrap.dedent(
       AND start_time <= '{end_time}'
     ORDER BY start_time DESC
     LIMIT {limit}
-    """
+    """  # noqa: W291
 )
 
 # Redshift query to fetch Hex-originated queries
@@ -105,7 +104,7 @@ HEX_REDSHIFT_QUERY = textwrap.dedent(
       AND q.querytxt NOT LIKE '%stl_query%'
     ORDER BY q.starttime DESC
     LIMIT {limit}
-    """
+    """  # noqa: W291
 )
 
 
@@ -123,7 +122,7 @@ HEX_MYSQL_QUERY = textwrap.dedent(
 FROM mysql.general_log
 WHERE argument LIKE '%hex%'
 LIMIT {limit};
-"""
+"""  # noqa: W291
 )
 
 
@@ -146,7 +145,7 @@ HEX_ATHENA_QUERY = textwrap.dedent(
       )
       AND event_time BETWEEN '{start_time}' AND '{end_time}'
     LIMIT {limit}
-    """
+    """  # noqa: W291
 )
 
 # Trino/Presto query to fetch Hex-originated queries
@@ -168,7 +167,7 @@ HEX_TRINO_QUERY = textwrap.dedent(
       )
       AND created BETWEEN timestamp '{start_time}' AND timestamp '{end_time}'
     LIMIT {limit}
-    """
+    """  # noqa: W291
 )
 
 # ClickHouse query to fetch Hex-originated queries
@@ -192,7 +191,7 @@ HEX_CLICKHOUSE_QUERY = textwrap.dedent(
 
 
 # Mapping of warehouse types to their query templates
-HEX_WAREHOUSE_QUERIES: Dict[WarehouseType, str] = {
+HEX_WAREHOUSE_QUERIES: dict[WarehouseType, str] = {
     WarehouseType.SNOWFLAKE: HEX_SNOWFLAKE_QUERY,
     WarehouseType.BIGQUERY: HEX_BIGQUERY_QUERY,
     WarehouseType.DATABRICKS: HEX_DATABRICKS_QUERY,
@@ -222,4 +221,4 @@ def get_hex_query_template(warehouse_type: str) -> str:
         warehouse = WarehouseType(warehouse_type.lower())
         return HEX_WAREHOUSE_QUERIES.get(warehouse)
     except ValueError:
-        raise ValueError(f"Unsupported warehouse type: {warehouse_type}")
+        raise ValueError(f"Unsupported warehouse type: {warehouse_type}")  # noqa: B904

@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -28,6 +29,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -54,6 +56,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.api.BulkDeleteStaleRequest;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DashboardRepository;
@@ -180,24 +183,8 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the dashboard", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -381,12 +368,61 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
                                 org.openmetadata.schema.type.api.BulkOperationResult.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
+  @Parameter(
+      name = "overrideMetadata",
+      in = ParameterIn.QUERY,
+      description =
+          "When true, allows the bulk update to overwrite user-curated fields "
+              + "(description, displayName, owners, tags) that bot-driven updates "
+              + "normally preserve, and disables the sourceHash fast-path so unchanged "
+              + "entities are re-evaluated. Defaults to false.",
+      schema = @Schema(type = "boolean", defaultValue = "false"))
   public Response bulkCreateOrUpdate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateDashboard> createRequests) {
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+  }
+
+  @DELETE
+  @Path("/deleteStale")
+  @Operation(
+      operationId = "bulkDeleteStaleDashboards",
+      summary = "Delete stale dashboards within a scope",
+      description =
+          "Delete entities within the given scope (service, database, or databaseSchema) "
+              + "that the ingestion connector did not report in the current run. The connector "
+              + "sends the set of FQNs it saw; entities in scope not in that set are considered "
+              + "stale. By default the deletion is soft; pass hardDelete=true to hard-delete "
+              + "instead. Returns a BulkOperationResult of deleted (or, for dryRun, would-be-deleted) "
+              + "entities.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Stale deletion results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response deleteStale(
+      @Context SecurityContext securityContext,
+      @RequestBody(
+              required = true,
+              description =
+                  "Scope to reconcile and the FQNs the connector saw this run. Carried as a"
+                      + " request body on DELETE; a topology that strips it is rejected with 400"
+                      + " rather than being read as an empty seen-set.",
+              content = @Content(schema = @Schema(implementation = BulkDeleteStaleRequest.class)))
+          @NotNull
+          @Valid
+          BulkDeleteStaleRequest request) {
+    return deleteStaleEntities(securityContext, request);
   }
 
   @PATCH
@@ -491,9 +527,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return addFollowerInternal(securityContext, id, userId);
   }
 
   @DELETE
@@ -513,9 +547,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return deleteFollowerInternal(securityContext, id, userId);
   }
 
   @PUT
@@ -628,7 +660,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted dashboard",
-      description = "Restore a soft deleted dashboard.",
+      description =
+          "Restore a soft deleted dashboard. Pass async=true to run the restore in the background"
+              + " and receive a 202 Accepted response with a job id.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -636,12 +670,26 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Dashboard.class)))
+                    schema = @Schema(implementation = Dashboard.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Async restore started. Track completion via the jobId.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.service.util.RestoreEntityResponse.class)))
       })
   public Response restoreDashboard(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Run the restore asynchronously. (Default = `false`)")
+          @QueryParam("async")
+          @DefaultValue("false")
+          boolean async,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return restoreEntity(uriInfo, securityContext, restore.getId(), async);
   }
 }

@@ -17,6 +17,13 @@ Enter the retention period for Activity Threads of type = 'Conversation' records
 $$
 
 $$section
+### Activity Comments Retention Period (days) $(id="activityCommentsRetentionPeriod")
+
+Enter the retention period for comments on Activity Events in days. Use 0 to retain activity comments forever.
+
+$$
+
+$$section
 ### Test Case Results Retention Period (days) $(id="testCaseResultsRetentionPeriod")
 
 Enter the retention period for Test Case Results in days (e.g., 30 for one month, 60 for two months).
@@ -27,5 +34,26 @@ $$section
 ### Profile Data Retention Period (days) $(id="profileDataRetentionPeriod")
 
 Enter the retention period for Profile Data in days (e.g., 30 for one month, 60 for two months).
+
+$$
+
+$$section
+### Audit Log Retention Period (days) $(id="auditLogRetentionPeriod")
+
+Enter the retention period for Audit Log entries in days (e.g., 90 for three months).
+
+$$
+
+$$section
+### Automation Workflow Retention Period (days) $(id="workflowRetentionPeriod")
+
+Enter the retention period in days for automation Workflows: the short-lived records left behind by test connection, query runner and reverse ingestion runs. Use 0 to retain them forever.
+
+$$
+
+$$section
+### Extension Retention Periods (days) $(id="extensions")
+
+Retention periods for cleanups contributed by distributions built on OpenMetadata, keyed by the extension's name. Leave a key out to use whatever default that extension defines.
 
 $$

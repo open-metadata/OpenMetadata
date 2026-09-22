@@ -16,8 +16,8 @@ import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider
 import { ResourcePermission } from '../generated/entity/policies/accessControl/resourcePermission';
 import { EntityReference } from '../generated/entity/type';
 import { Paging } from '../generated/type/paging';
-import { getEncodedFqn } from '../utils/StringsUtils';
-import APIClient from './index';
+import { getEncodedFqn } from '../utils/StringUtils';
+import APIClient from './axiosClient';
 
 export const getLoggedInUserPermissions = async () => {
   const params = {

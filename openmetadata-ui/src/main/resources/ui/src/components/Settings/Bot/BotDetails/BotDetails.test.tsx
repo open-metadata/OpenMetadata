@@ -14,6 +14,7 @@
 import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { searchRoles } from '../../../../rest/rolesAPIV1';
 import { getAuthMechanismForBotUser } from '../../../../rest/userAPI';
 import AccessTokenCard from '../../Users/AccessTokenCard/AccessTokenCard.component';
 import BotDetails from './BotDetails.component';
@@ -90,7 +91,15 @@ const mockProp = {
 };
 
 jest.mock('../../../../utils/PermissionsUtils', () => ({
+  // getDerivedPermissionFlags (used by the converted BotDetails component) calls into
+  // getPrioritizedEditPermission/getPrioritizedViewPermission internally — a blanket mock of
+  // this module without requireActual breaks that call, so only checkPermission is overridden.
+  ...jest.requireActual('../../../../utils/PermissionsUtils'),
   checkPermission: jest.fn().mockReturnValue(true),
+}));
+
+jest.mock('../../../../rest/rolesAPIV1', () => ({
+  searchRoles: jest.fn().mockResolvedValue([]),
 }));
 
 const mockGetResourceLimit = jest.fn().mockResolvedValue({
@@ -109,7 +118,7 @@ jest.mock('../../../../rest/userAPI', () => {
   };
 });
 
-jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
+jest.mock('../../../common/EntityDescription/Description', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
 });
 
@@ -146,6 +155,10 @@ jest.mock('../../../../context/LimitsProvider/useLimitsStore', () => ({
 }));
 
 describe('Test BotsDetail Component', () => {
+  beforeEach(() => {
+    (searchRoles as jest.Mock).mockResolvedValue([]);
+  });
+
   it('Should render all child elements', async () => {
     await act(async () => {
       render(<BotDetails {...mockProp} />, {
@@ -193,5 +206,47 @@ describe('Test BotsDetail Component', () => {
       expect.objectContaining({ disabled: true }),
       {}
     );
+  });
+
+  // Task 8 Batch 3: the displayName edit affordance's raw
+  // `displayNamePermission || editAllPermission` -> canEditDisplayName
+  // (getDerivedPermissionFlags). Documented explicit-deny-wins behavior change (Task 6
+  // Finding 1 / Task 8 Batch 2 precedent): an explicit `EditDisplayName: false` now wins over
+  // a bare `EditAll: true` grant, where the old raw OR granted regardless.
+  describe('displayName edit affordance (explicit-deny-wins)', () => {
+    it('grants the edit-displayName affordance via EditAll when EditDisplayName is not present', async () => {
+      await act(async () => {
+        render(
+          <BotDetails
+            {...mockProp}
+            botPermission={{ EditAll: true } as OperationPermission}
+          />,
+          { wrapper: MemoryRouter }
+        );
+      });
+
+      expect(await screen.findByTestId('edit-displayName')).toBeInTheDocument();
+    });
+
+    it('denies the edit-displayName affordance when EditDisplayName is explicitly false, even with EditAll true', async () => {
+      await act(async () => {
+        render(
+          <BotDetails
+            {...mockProp}
+            botPermission={
+              {
+                EditAll: true,
+                EditDisplayName: false,
+              } as OperationPermission
+            }
+          />,
+          { wrapper: MemoryRouter }
+        );
+      });
+
+      await screen.findByTestId('left-panel');
+
+      expect(screen.queryByTestId('edit-displayName')).not.toBeInTheDocument();
+    });
   });
 });

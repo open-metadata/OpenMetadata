@@ -21,7 +21,7 @@ import { ReactionOperation } from '../../../enums/reactions.enum';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useImage from '../../../hooks/useImage';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 
 interface EmojiProps {
   reaction: ReactionType;

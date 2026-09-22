@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { ColumnsType } from 'antd/lib/table';
+import { Skeleton, Table, Typography } from '@openmetadata/ui-core-components';
+import { ChevronDown, ChevronRight } from '@untitledui/icons';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
@@ -27,7 +28,6 @@ import {
 } from '../../../../../enums/entity.enum';
 import {
   Column,
-  ColumnProfile,
   Table as TableType,
 } from '../../../../../generated/entity/data/table';
 import { Operation } from '../../../../../generated/entity/policies/policy';
@@ -38,27 +38,33 @@ import {
   getTableColumnsByFQN,
   searchTableColumnsByFQN,
 } from '../../../../../rest/tableAPI';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { getTableFQNFromColumnFQN } from '../../../../../utils/FqnUtils';
 import {
   calculatePercentage,
   formatNumberWithComma,
-  getTableFQNFromColumnFQN,
-} from '../../../../../utils/CommonUtils';
-import { getEntityName } from '../../../../../utils/EntityUtils';
+} from '../../../../../utils/NumberUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
-import {
-  getTableExpandableConfig,
-  pruneEmptyChildren,
-} from '../../../../../utils/TableUtils';
+import { getSkeletonMockData } from '../../../../../utils/Skeleton.utils';
+import { pruneEmptyChildren } from '../../../../../utils/TablePureUtils';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
+import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
 import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
-import Table from '../../../../common/Table/Table';
 import { ProfilerTabPath } from '../../ProfilerDashboard/profilerDashboard.interface';
 import NoProfilerBanner from '../NoProfilerBanner/NoProfilerBanner.component';
 import SingleColumnProfile from '../SingleColumnProfile';
 import { ModifiedColumn } from '../TableProfiler.interface';
 import { useTableProfiler } from '../TableProfilerProvider';
+
+interface FlatRow {
+  id: string;
+  record: ModifiedColumn;
+  depth: number;
+  hasChildren: boolean;
+}
 
 const ColumnProfileTable = () => {
   const location = useCustomLocation();
@@ -80,6 +86,10 @@ const ColumnProfileTable = () => {
   const [searchText, setSearchText] = useState<string>('');
   const [data, setData] = useState<ModifiedColumn[]>([]);
   const [isColumnsLoading, setIsColumnsLoading] = useState(false);
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
+  const [sortDescriptor, setSortDescriptor] = useState<
+    SortDescriptor | undefined
+  >(undefined);
   const {
     currentPage,
     paging,
@@ -90,7 +100,6 @@ const ColumnProfileTable = () => {
     handlePagingChange,
   } = usePaging(PAGE_SIZE_LARGE);
 
-  // SingleColumnProfile needs tableDetailsWithColumns to be passed as props
   const tableDetailsWithColumns = useMemo(
     () => ({ ...tableProfiler, columns: data as Column[] } as TableType),
     [tableProfiler, data]
@@ -98,221 +107,118 @@ const ColumnProfileTable = () => {
 
   const searchData = useMemo(() => {
     const param = location.search;
-    const searchData = Qs.parse(
-      param.startsWith('?') ? param.substring(1) : param
-    );
+    const parsed = Qs.parse(param.startsWith('?') ? param.substring(1) : param);
 
-    return searchData as { activeColumnFqn: string };
+    return parsed as { activeColumnFqn: string };
   }, [location.search]);
 
   const { activeColumnFqn } = searchData;
 
-  const tableColumn: ColumnsType<ModifiedColumn> = useMemo(() => {
-    return [
+  const columnList = useMemo(
+    () => [
+      { id: 'name', name: t('label.name'), allowsSorting: true },
+      { id: 'dataType', name: t('label.data-type'), allowsSorting: true },
       {
-        title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-        width: 250,
-        fixed: 'left',
-        render: (_, record) => {
-          return (
-            <div
-              className="d-inline-flex flex-column hover-icon-group"
-              style={{ maxWidth: '75%' }}>
-              <div className="d-inline-flex items-start gap-1 flex-column">
-                <div className="d-inline-flex items-baseline">
-                  <Link
-                    className="break-word p-0 d-block text-link-color tw:font-medium hover:tw:underline"
-                    to={{
-                      pathname: getEntityDetailsPath(
-                        EntityType.TABLE,
-                        tableFqn,
-                        EntityTabs.PROFILER,
-                        activeTab
-                      ),
-                      search: Qs.stringify({
-                        ...searchData,
-                        activeColumnFqn: record.fullyQualifiedName || '',
-                      }),
-                    }}>
-                    {getEntityName(record)}
-                  </Link>
-                </div>
-              </div>
-            </div>
-          );
-        },
-        sorter: (col1, col2) => col1.name.localeCompare(col2.name),
+        id: 'nullProportion',
+        name: `${t('label.null')} %`,
+        allowsSorting: true,
       },
       {
-        title: t('label.data-type'),
-        dataIndex: 'dataTypeDisplay',
-        key: 'dataType',
-        width: 200,
-        render: (dataTypeDisplay: string) => {
-          return (
-            <Typography>
-              <span className="break-word">{dataTypeDisplay || 'N/A'}</span>
-            </Typography>
-          );
-        },
-        sorter: (col1, col2) => col1.dataType.localeCompare(col2.dataType),
+        id: 'uniqueProportion',
+        name: `${t('label.unique')} %`,
+        allowsSorting: true,
       },
       {
-        title: `${t('label.null')} %`,
-        dataIndex: 'profile',
-        key: 'nullProportion',
-        width: 200,
-        render: (profile: ColumnProfile) =>
-          !isNil(profile?.nullProportion)
-            ? calculatePercentage(profile.nullProportion, 1, 2, true)
-            : '--',
-        sorter: (col1, col2) =>
-          (col1.profile?.nullProportion || 0) -
-          (col2.profile?.nullProportion || 0),
+        id: 'distinctProportion',
+        name: `${t('label.distinct')} %`,
+        allowsSorting: true,
       },
-      {
-        title: `${t('label.unique')} %`,
-        dataIndex: 'profile',
-        key: 'uniqueProportion',
-        width: 200,
-        render: (profile: ColumnProfile) =>
-          !isNil(profile?.uniqueProportion)
-            ? calculatePercentage(profile.uniqueProportion, 1, 2, true)
-            : '--',
-        sorter: (col1, col2) =>
-          (col1.profile?.uniqueProportion || 0) -
-          (col2.profile?.uniqueProportion || 0),
-      },
-      {
-        title: `${t('label.distinct')} %`,
-        dataIndex: 'profile',
-        key: 'distinctProportion',
-        width: 200,
-        render: (profile: ColumnProfile) =>
-          !isNil(profile?.distinctProportion)
-            ? calculatePercentage(profile.distinctProportion, 1, 2, true)
-            : '--',
-        sorter: (col1, col2) =>
-          (col1.profile?.distinctProportion || 0) -
-          (col2.profile?.distinctProportion || 0),
-      },
-      {
-        title: t('label.value-count'),
-        dataIndex: 'profile',
-        key: 'valuesCount',
-        width: 200,
-        render: (profile: ColumnProfile) =>
-          profile?.valuesCount !== undefined && profile?.valuesCount !== null
-            ? formatNumberWithComma(profile.valuesCount)
-            : '--',
-        sorter: (col1, col2) =>
-          (col1.profile?.valuesCount || 0) - (col2.profile?.valuesCount || 0),
-      },
-      {
-        title: t('label.success'),
-        dataIndex: 'success',
-        key: 'success',
-        width: 110,
-        render: (_, record) => {
-          const testCounts =
-            testCaseSummary?.[
-              record.fullyQualifiedName?.toLocaleLowerCase() ?? ''
-            ];
+      { id: 'valuesCount', name: t('label.value-count'), allowsSorting: true },
+      { id: 'success', name: t('label.success') },
+      { id: 'failed', name: t('label.failed') },
+      { id: 'aborted', name: t('label.aborted') },
+    ],
+    [t]
+  );
 
-          if (isUndefined(testCounts?.success) || testCounts?.success === 0) {
-            return '--';
-          }
+  const sortedData = useMemo((): ModifiedColumn[] => {
+    if (!sortDescriptor?.column) {
+      return data;
+    }
 
-          return (
-            <Link
-              data-testid={`${record.name}-test-success-count`}
-              to={getEntityDetailsPath(
-                EntityType.TABLE,
-                tableFqn,
-                EntityTabs.PROFILER,
-                ProfilerTabPath.DATA_QUALITY
-              )}>
-              <span className="tw:text-success-primary">
-                {testCounts?.success}
-              </span>
-            </Link>
-          );
-        },
-      },
-      {
-        title: t('label.failed'),
-        dataIndex: 'failed',
-        key: 'failed',
-        width: 100,
-        render: (_, record) => {
-          const testCounts =
-            testCaseSummary?.[
-              record.fullyQualifiedName?.toLocaleLowerCase() ?? ''
-            ];
+    const columnComparators: Record<
+      string,
+      (a: ModifiedColumn, b: ModifiedColumn) => number
+    > = {
+      name: (a, b) => a.name.localeCompare(b.name),
+      dataType: (a, b) => a.dataType.localeCompare(b.dataType),
+      nullProportion: (a, b) =>
+        (a.profile?.nullProportion || 0) - (b.profile?.nullProportion || 0),
+      uniqueProportion: (a, b) =>
+        (a.profile?.uniqueProportion || 0) - (b.profile?.uniqueProportion || 0),
+      distinctProportion: (a, b) =>
+        (a.profile?.distinctProportion || 0) -
+        (b.profile?.distinctProportion || 0),
+      valuesCount: (a, b) =>
+        (a.profile?.valuesCount || 0) - (b.profile?.valuesCount || 0),
+    };
 
-          if (isUndefined(testCounts?.failed) || testCounts?.failed === 0) {
-            return '--';
-          }
+    const comparator = columnComparators[sortDescriptor.column as string];
+    const sorted = comparator ? [...data].sort(comparator) : [...data];
 
-          return (
-            <Link
-              data-testid={`${record.name}-test-failed-count`}
-              to={getEntityDetailsPath(
-                EntityType.TABLE,
-                tableFqn,
-                EntityTabs.PROFILER,
-                ProfilerTabPath.DATA_QUALITY
-              )}>
-              <span className="tw:text-error-primary">
-                {testCounts?.failed}
-              </span>
-            </Link>
-          );
-        },
-      },
-      {
-        title: t('label.aborted'),
-        dataIndex: 'aborted',
-        key: 'aborted',
-        width: 100,
-        render: (_, record) => {
-          const testCounts =
-            testCaseSummary?.[
-              record.fullyQualifiedName?.toLocaleLowerCase() ?? ''
-            ];
+    return sortDescriptor?.direction === 'descending'
+      ? sorted.reverse()
+      : sorted;
+  }, [data, sortDescriptor]);
 
-          if (isUndefined(testCounts?.aborted) || testCounts?.aborted === 0) {
-            return '--';
-          }
+  const flatRows = useMemo((): FlatRow[] => {
+    const result: FlatRow[] = [];
 
-          return (
-            <Link
-              data-testid={`${record.name}-test-aborted-count`}
-              to={getEntityDetailsPath(
-                EntityType.TABLE,
-                tableFqn,
-                EntityTabs.PROFILER,
-                ProfilerTabPath.DATA_QUALITY
-              )}>
-              <span className="tw:text-warning-primary">
-                {testCounts?.aborted}
-              </span>
-            </Link>
-          );
-        },
-      },
-    ];
-  }, [testCaseSummary, searchData, tableFqn, activeTab]);
+    const addRows = (rows: ModifiedColumn[], depth: number) => {
+      rows.forEach((row) => {
+        const children = pruneEmptyChildren(
+          (row.children as Column[]) ?? []
+        ) as ModifiedColumn[];
+        const hasChildren = children.length > 0;
 
-  const handleSearchAction = (searchText: string) => {
-    setSearchText(searchText);
+        result.push({
+          id: row.fullyQualifiedName ?? row.name,
+          record: row,
+          depth,
+          hasChildren,
+        });
+
+        if (hasChildren && expandedKeys.has(row.fullyQualifiedName ?? '')) {
+          addRows(children, depth + 1);
+        }
+      });
+    };
+
+    addRows(sortedData, 0);
+
+    return result;
+  }, [sortedData, expandedKeys]);
+
+  const handleToggleExpand = useCallback((key: string) => {
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+
+      return next;
+    });
+  }, []);
+
+  const handleSearchAction = (value: string) => {
+    setSearchText(value);
     handlePageChange(1);
   };
 
   const fetchTableColumnWithProfiler = useCallback(
-    async (page: number, searchText: string) => {
+    async (page: number, search: string) => {
       if (!tableFqn) {
         return;
       }
@@ -320,10 +226,9 @@ const ColumnProfileTable = () => {
       setIsColumnsLoading(true);
       try {
         const offset = (page - 1) * pageSize;
-        // Use search API if there's a search query, otherwise use regular pagination
-        const response = searchText
+        const response = search
           ? await searchTableColumnsByFQN(tableFqn, {
-              q: searchText,
+              q: search,
               limit: pageSize,
               offset: offset,
               fields: TabSpecificField.PROFILE,
@@ -362,27 +267,140 @@ const ColumnProfileTable = () => {
     }
   }, [tableFqn, currentPage, searchText, pageSize]);
 
-  const pagingProps = useMemo(() => {
-    return {
-      currentPage: currentPage,
-      pageSize: pageSize,
-      showPagination: showPagination,
-      paging: paging,
-      isLoading: isColumnsLoading,
-      isNumberBased: !isEmpty(searchText),
-      pagingHandler: handleColumnProfilePageChange,
-      onShowSizeChange: handlePageSizeChange,
-    };
-  }, [currentPage, pageSize, showPagination, searchText, isColumnsLoading]);
+  const renderProportionCell = (value: number | undefined) => (
+    <Table.Cell className="tw:w-50">
+      {isNil(value) ? '--' : calculatePercentage(value, 1, 2, true)}
+    </Table.Cell>
+  );
 
-  const searchProps = useMemo(() => {
-    return {
-      placeholder: t('message.find-in-table'),
-      value: searchText,
-      typingInterval: 500,
-      onSearch: handleSearchAction,
-    };
-  }, [searchText, handleSearchAction]);
+  const renderTestCountCell = (
+    count: number | undefined,
+    dataTestId: string,
+    valueClassName: string,
+    widthClass: string
+  ) => (
+    <Table.Cell className={widthClass}>
+      {isUndefined(count) || count === 0 ? (
+        '--'
+      ) : (
+        <Link
+          data-testid={dataTestId}
+          to={getEntityDetailsPath(
+            EntityType.TABLE,
+            tableFqn,
+            EntityTabs.PROFILER,
+            ProfilerTabPath.DATA_QUALITY
+          )}>
+          <span className={valueClassName}>{count}</span>
+        </Link>
+      )}
+    </Table.Cell>
+  );
+
+  const renderRow = (
+    id: string,
+    record: ModifiedColumn,
+    depth: number,
+    hasChildren: boolean
+  ) => {
+    const rowKey = id;
+    const isExpanded = expandedKeys.has(rowKey);
+    const testCounts =
+      testCaseSummary?.[record.fullyQualifiedName?.toLocaleLowerCase() ?? ''];
+
+    return (
+      <Table.Row data-row-key={rowKey} id={rowKey} key={rowKey}>
+        <Table.Cell
+          className="tw:w-62.5"
+          style={{ paddingLeft: `${16 + depth * 12}px` }}>
+          <div
+            className="d-inline-flex flex-column hover-icon-group"
+            style={{ maxWidth: '75%' }}>
+            <div className="d-inline-flex items-start gap-1 flex-column">
+              <div className="d-inline-flex items-baseline tw:gap-1">
+                {hasChildren ? (
+                  <button
+                    aria-expanded={isExpanded}
+                    className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:inline-flex"
+                    data-testid="expand-icon"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleExpand(rowKey);
+                    }}>
+                    {isExpanded ? (
+                      <ChevronDown className="tw:size-4" />
+                    ) : (
+                      <ChevronRight className="tw:size-4" />
+                    )}
+                  </button>
+                ) : (
+                  <span className="tw:inline-block tw:w-4" />
+                )}
+                <Link
+                  className="break-word p-0 d-block text-link-color tw:font-medium hover:tw:underline"
+                  to={{
+                    pathname: getEntityDetailsPath(
+                      EntityType.TABLE,
+                      tableFqn,
+                      EntityTabs.PROFILER,
+                      activeTab
+                    ),
+                    search: Qs.stringify({
+                      ...searchData,
+                      activeColumnFqn: record.fullyQualifiedName || '',
+                    }),
+                  }}>
+                  {getEntityName(record)}
+                </Link>
+              </div>
+            </div>
+          </div>
+        </Table.Cell>
+
+        <Table.Cell className="tw:w-50">
+          <Typography>
+            <span className="break-word">
+              {record.dataTypeDisplay || t('label.n-a')}
+            </span>
+          </Typography>
+        </Table.Cell>
+
+        {renderProportionCell(record.profile?.nullProportion)}
+
+        {renderProportionCell(record.profile?.uniqueProportion)}
+
+        {renderProportionCell(record.profile?.distinctProportion)}
+
+        <Table.Cell className="tw:w-50">
+          {record.profile?.valuesCount !== undefined &&
+          record.profile?.valuesCount !== null
+            ? formatNumberWithComma(record.profile.valuesCount)
+            : '--'}
+        </Table.Cell>
+
+        {renderTestCountCell(
+          testCounts?.success,
+          `${record.name}-test-success-count`,
+          'tw:text-success-primary',
+          'tw:w-27.5'
+        )}
+
+        {renderTestCountCell(
+          testCounts?.failed,
+          `${record.name}-test-failed-count`,
+          'tw:text-error-primary',
+          'tw:w-25'
+        )}
+
+        {renderTestCountCell(
+          testCounts?.aborted,
+          `${record.name}-test-aborted-count`,
+          'tw:text-warning-primary',
+          'tw:w-25'
+        )}
+      </Table.Row>
+    );
+  };
 
   if (permissions && !permissions?.ViewDataProfile) {
     return (
@@ -413,20 +431,75 @@ const ColumnProfileTable = () => {
       </div>
 
       {isEmpty(activeColumnFqn) ? (
-        <Table
-          columns={tableColumn}
-          customPaginationProps={pagingProps}
-          dataSource={data}
-          expandable={getTableExpandableConfig<Column>()}
-          loading={isColumnsLoading || isLoading}
-          locale={{
-            emptyText: <FilterTablePlaceHolder />,
-          }}
-          pagination={false}
-          rowKey="fullyQualifiedName"
-          scroll={{ x: true, y: 500 }}
-          searchProps={searchProps}
-        />
+        <div className="tw:flex tw:flex-col tw:gap-4 tw:rounded-xl tw:outline-1 tw:outline-secondary tw:overflow-hidden">
+          <div className="p-x-md p-y-md">
+            <Searchbar
+              removeMargin
+              containerClassName="tw:ml-auto tw:w-1/2"
+              placeholder={t('message.find-in-table')}
+              searchValue={searchText}
+              typingInterval={500}
+              onSearch={handleSearchAction}
+            />
+          </div>
+
+          <div className="tw:overflow-x-auto">
+            <Table
+              aria-label={t('label.column-plural')}
+              containerStyle={{ maxHeight: 500, overflowY: 'auto' }}
+              data-testid="column-profile-table"
+              sortDescriptor={sortDescriptor}
+              onSortChange={setSortDescriptor}>
+              <Table.Header columns={columnList}>
+                {(col) => (
+                  <Table.Head
+                    allowsSorting={col.allowsSorting}
+                    id={col.id}
+                    isRowHeader={col.id === 'name'}
+                    key={col.id}
+                    label={col.name}
+                  />
+                )}
+              </Table.Header>
+              <Table.Body
+                items={isColumnsLoading || isLoading ? [] : flatRows}
+                renderEmptyState={() =>
+                  isColumnsLoading || isLoading ? (
+                    <div
+                      className="tw:p-4"
+                      data-testid="column-profile-table-loading-skeletons">
+                      {getSkeletonMockData(5).map((skeletonId) => (
+                        <Skeleton
+                          className="tw:mb-2"
+                          height={40}
+                          key={skeletonId}
+                          width="100%"
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <FilterTablePlaceHolder />
+                  )
+                }>
+                {({ id, record, depth, hasChildren }) =>
+                  renderRow(id, record, depth, hasChildren)
+                }
+              </Table.Body>
+            </Table>
+          </div>
+
+          {showPagination && (
+            <NextPrevious
+              currentPage={currentPage}
+              isLoading={isColumnsLoading}
+              isNumberBased={!isEmpty(searchText)}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={handleColumnProfilePageChange}
+              onShowSizeChange={handlePageSizeChange}
+            />
+          )}
+        </div>
       ) : (
         <SingleColumnProfile
           activeColumnFqn={activeColumnFqn}

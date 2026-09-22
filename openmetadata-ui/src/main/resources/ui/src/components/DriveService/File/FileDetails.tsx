@@ -24,7 +24,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { File } from '../../../generated/entity/data/file';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -37,28 +38,32 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../utils/EntityUtils';
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
 import fileClassBase from '../../../utils/FileClassBase';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
   createTagObject,
   updateCertificationTag,
   updateTierTag,
-} from '../../../utils/TagsUtils';
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
@@ -72,7 +77,6 @@ import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interfa
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { FileDetailsProps } from './FileDetails.interface';
-
 const EntityLineageTab = lazy(() =>
   import('../../Lineage/EntityLineageTab/EntityLineageTab').then((module) => ({
     default: module.EntityLineageTab,
@@ -162,6 +166,8 @@ function FileDetails({
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -169,6 +175,8 @@ function FileDetails({
           entity: t('label.file'),
         })
       );
+
+      return false;
     }
   };
 
@@ -245,19 +253,44 @@ function FileDetails({
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.FILE, decodedFileFQN, handleFeedCount);
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedFileFQN) {
+      fetchEntityTaskCountsInto(decodedFileFQN, setFeedCount);
+    }
+  }, [decodedFileFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedFileFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.FILE,
+        decodedFileFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedFileFQN]);
+
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.DRIVE_SERVICES,
+          getPartialNameFromTableFQN(decodedFileFQN, [FqnPart.Service])
+        )
+      ),
+    [decodedFileFQN]
   );
 
+  // editAllPermission/viewAllPermission (raw filePermissions.EditAll/.ViewAll reads)
+  // dropped here: computed but never consumed anywhere in this component (only ever
+  // listed, unused, in the tabs useMemo's dependency array) — dead-code precedent
+  // (Task 7/8, e.g. CommonWidgets).
   const {
     editTagsPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
-    editAllPermission,
     editLineagePermission,
-    viewAllPermission,
     viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
@@ -279,11 +312,9 @@ function FileDetails({
           filePermissions,
           Operation.EditCustomFields
         ) && !deleted,
-      editAllPermission: filePermissions.EditAll && !deleted,
       editLineagePermission:
         getPrioritizedEditPermission(filePermissions, Operation.EditLineage) &&
         !deleted,
-      viewAllPermission: filePermissions.ViewAll,
       viewCustomPropertiesPermission: getPrioritizedViewPermission(
         filePermissions,
         Operation.ViewCustomFields
@@ -293,7 +324,8 @@ function FileDetails({
   );
 
   useEffect(() => {
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
   }, [filePermissions, decodedFileFQN]);
 
   const tabs = useMemo(() => {
@@ -359,8 +391,6 @@ function FileDetails({
     editDescriptionPermission,
     editCustomAttributePermission,
     editLineagePermission,
-    editAllPermission,
-    viewAllPermission,
     viewCustomPropertiesPermission,
   ]);
   const onCertificationUpdate = useCallback(

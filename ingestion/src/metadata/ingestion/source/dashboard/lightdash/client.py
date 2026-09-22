@@ -11,8 +11,8 @@
 """
 REST Auth & Client for Lightdash
 """
+
 import traceback
-from typing import List
 
 from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import ClientConfig
@@ -53,29 +53,23 @@ class LightdashApiClient:
             "/api/v1/org",
         )
 
-    def get_spaces(self) -> List[LightdashSpace]:
+    def get_spaces(self) -> list[LightdashSpace]:
         """GET Lightdash Spaces within the project"""
         try:
-            response = self.client.get(
-                f"api/v1/projects/{self.config.projectUUID}/spaces"
-            )
+            response = self.client.get(f"api/v1/projects/{self.config.projectUUID}/spaces")
             response_json_results = response.get("results")
             if response_json_results is None:
-                logger.warning(
-                    "Failed to fetch the spaces list for the Lightdash Connector"
-                )
+                logger.warning("Failed to fetch the spaces list for the Lightdash Connector")
                 return []
 
             if len(response_json_results) > 0:
                 spaces_list = []
                 for space in response_json_results:
-                    spaces_list.append(LightdashSpace(**space))
+                    spaces_list.append(LightdashSpace(**space))  # noqa: PERF401
                 return spaces_list
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                "Failed to fetch the spaces list for the Lightdash Connector"
-            )
+            logger.warning("Failed to fetch the spaces list for the Lightdash Connector")
         return []
 
     def get_project_name(self, project_uuid: str) -> str:
@@ -86,51 +80,39 @@ class LightdashApiClient:
             return response_json_results["name"]
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                "Failed to fetch the project data from the Lightdash Connector"
-            )
+            logger.warning("Failed to fetch the project data from the Lightdash Connector")
             return ""
 
-    def get_charts_list(self) -> List[LightdashChart]:
+    def get_charts_list(self) -> list[LightdashChart]:
         """
         Get List of all charts
         """
         try:
-            response = self.client.get(
-                f"api/v1/projects/{self.config.projectUUID}/charts"
-            )
+            response = self.client.get(f"api/v1/projects/{self.config.projectUUID}/charts")
             response_json_results = response.get("results")
             if response_json_results is None:
-                logger.warning(
-                    "Failed to fetch the charts list for the Lightdash Connector"
-                )
+                logger.warning("Failed to fetch the charts list for the Lightdash Connector")
                 return []
 
             if len(response_json_results) > 0:
                 charts_list = []
                 for chart in response_json_results:
-                    charts_list.append(LightdashChart(**chart))
+                    charts_list.append(LightdashChart(**chart))  # noqa: PERF401
                 return charts_list
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                "Failed to fetch the charts list for the Lightdash Connector"
-            )
+            logger.warning("Failed to fetch the charts list for the Lightdash Connector")
         return []
 
-    def test_get_dashboards_list(self) -> List[LightdashDashboard]:
+    def test_get_dashboards_list(self) -> list[LightdashDashboard]:
         """
         Get List of dashboards without exception handling for test connections.
         This method will raise exceptions to properly fail test connections.
         """
-        response = self.client.get(
-            f"api/v1/projects/{self.config.projectUUID}/spaces/{self.config.spaceUUID}"
-        )
+        response = self.client.get(f"api/v1/projects/{self.config.projectUUID}/spaces/{self.config.spaceUUID}")
         results = response.get("results")
         if results is None:
-            logger.warning(
-                "Failed to fetch the dashboard list for the Lightdash Connector"
-            )
+            logger.warning("Failed to fetch the dashboard list for the Lightdash Connector")
             return []
 
         space_name = results["name"]
@@ -139,28 +121,22 @@ class LightdashApiClient:
         if len(dashboards_raw) > 0:
             dashboards_list = []
             for dashboard in dashboards_raw:
-                dashboards_list.append(
-                    LightdashDashboard(**dashboard, spaceName=space_name)
-                )
+                dashboards_list.append(LightdashDashboard(**dashboard, spaceName=space_name))  # noqa: PERF401
 
             self.add_dashboard_lineage(dashboards_list=dashboards_list)
             return dashboards_list
         return []
 
-    def get_dashboards_list(self) -> List[LightdashDashboard]:
+    def get_dashboards_list(self) -> list[LightdashDashboard]:
         """
         Get List of all dashboards
         """
 
         try:
-            response = self.client.get(
-                f"api/v1/projects/{self.config.projectUUID}/spaces/{self.config.spaceUUID}"
-            )
+            response = self.client.get(f"api/v1/projects/{self.config.projectUUID}/spaces/{self.config.spaceUUID}")
             results = response.get("results")
             if results is None:
-                logger.warning(
-                    "Failed to fetch the dashboard list for the Lightdash Connector"
-                )
+                logger.warning("Failed to fetch the dashboard list for the Lightdash Connector")
                 return []
 
             space_name = results["name"]
@@ -169,20 +145,16 @@ class LightdashApiClient:
             if len(dashboards_raw) > 0:
                 dashboards_list = []
                 for dashboard in dashboards_raw:
-                    dashboards_list.append(
-                        LightdashDashboard(**dashboard, spaceName=space_name)
-                    )
+                    dashboards_list.append(LightdashDashboard(**dashboard, spaceName=space_name))  # noqa: PERF401
 
                 self.add_dashboard_lineage(dashboards_list=dashboards_list)
                 return dashboards_list
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                "Failed to fetch the dashboard list for the Lightdash Connector"
-            )
+            logger.warning("Failed to fetch the dashboard list for the Lightdash Connector")
         return []
 
-    def add_dashboard_lineage(self, dashboards_list: List[LightdashDashboard]) -> None:
+    def add_dashboard_lineage(self, dashboards_list: list[LightdashDashboard]) -> None:
         """
         Get Lineage of all dashboard charts
         """
@@ -191,19 +163,13 @@ class LightdashApiClient:
             response_json_results = response.get("results")
 
             if response_json_results is None:
-                logger.warning(
-                    "Failed to fetch dashboard charts for the Lightdash Connector"
-                )
+                logger.warning("Failed to fetch dashboard charts for the Lightdash Connector")
                 return
 
             charts = response_json_results["tiles"]
             # Lightdash has title, loom & markdown chart types which we want to ignore
             accepted_chart_types = ["saved_chart", "sql_chart", "semantic_viewer_chart"]
-            charts_properties = [
-                chart["properties"]
-                for chart in charts
-                if chart["type"] in accepted_chart_types
-            ]
+            charts_properties = [chart["properties"] for chart in charts if chart["type"] in accepted_chart_types]
 
             dashboard_external_uuid_charts = []
             dashboard_internal_charts = []
@@ -224,12 +190,10 @@ class LightdashApiClient:
                 else:
                     dashboard_external_uuid_charts.append(chart["savedChartUuid"])
 
-            dashboard_external_charts = self.get_charts_objects(
-                dashboard_external_uuid_charts
-            )
+            dashboard_external_charts = self.get_charts_objects(dashboard_external_uuid_charts)
             dashboard.charts = dashboard_external_charts + dashboard_internal_charts
 
-    def get_charts_objects(self, charts_uuid_list) -> List[LightdashChart]:
+    def get_charts_objects(self, charts_uuid_list) -> list[LightdashChart]:
         """
         Get Lineage of all non-dashboard charts
         """
@@ -239,6 +203,6 @@ class LightdashApiClient:
         for chart_uuid in charts_uuid_list:
             for chart in all_charts:
                 if chart.uuid == chart_uuid:
-                    charts_objects.append(chart)
+                    charts_objects.append(chart)  # noqa: PERF401
 
         return charts_objects

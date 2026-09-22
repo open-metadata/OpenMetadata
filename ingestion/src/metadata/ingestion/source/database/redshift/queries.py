@@ -207,7 +207,7 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
             WHERE n.nspname !~ '^pg_'
               AND att.attnum > 0
               AND NOT att.attisdropped
-              {schema_clause}
+              AND n.nspname = :schema
             UNION
             SELECT
               view_schema as "schema",
@@ -231,7 +231,7 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
               col_name name,
               col_type varchar,
               col_num int)
-            WHERE 1 {schema_clause}
+            WHERE view_schema = :schema
             UNION
             SELECT schemaname AS "schema",
                tablename AS "table_name",
@@ -265,6 +265,7 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
                null AS "schema_oid",
                null AS "table_oid"
             FROM svv_external_columns
+            WHERE schemaname = :schema
             ORDER BY "schema", "table_name", "attnum";
             """
 )
@@ -272,7 +273,7 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
 REDSHIFT_EXTERNAL_TABLE_LOCATION = """
   SELECT schemaname, tablename, location
     FROM svv_external_tables
-    where redshift_database_name='{database_name}'
+    where redshift_database_name = :database_name
 """
 
 
@@ -291,6 +292,10 @@ REDSHIFT_TABLE_COMMENTS = """
 
 REDSHIFT_GET_DATABASE_NAMES = """
 SELECT datname FROM pg_database
+"""
+
+REDSHIFT_GET_ALL_SCHEMAS = """
+SELECT database_name, schema_name FROM SVV_ALL_SCHEMAS
 """
 
 REDSHIFT_TEST_GET_QUERIES = """
@@ -542,8 +547,8 @@ WHERE status = 'success'
     (query_type = 'UTILITY' AND query_text ilike '%%COMMENT ON%%') OR
     (query_type = 'CTAS' AND query_text ilike '%%CREATE TABLE%%')
   )
-  and database_name = '{database}'
-  and end_time >= '{start_date}'
+  and database_name = :database
+  and end_time >= :start_date
 ORDER BY end_time DESC
 """
 
@@ -577,9 +582,9 @@ ORDER BY 5 DESC
 """
 
 # output_rows from SYS_QUERY_DETAIL should match rows from stl_insert/stl_delete
-# It’s often wrong (usually too high). I noticed that sometimes the 'scan' step
+# It’s often wrong (usually too high). I noticed that sometimes the 'scan' step  # noqa: RUF003
 # with plan_parent_id > 0 and plan_node_id > 0 gives the correct count, taking the
-# min id if there are multiple scans. It worked in all the cases I tried, but it’s
+# min id if there are multiple scans. It worked in all the cases I tried, but it’s  # noqa: RUF003
 # not really reliable for general use.
 # For now, we just use the number of queries as a placeholder until we figure out
 # a proper fix.
@@ -630,7 +635,7 @@ ORDER BY data.starttime DESC;
 # both Redshift Serverless and Provisioned since sys views are available
 # in both instances. However, it still needs to be tested in Provisioned
 # clusters.
-# Ref: https://github.com/open-metadata/OpenMetadata/pull/6568/files#diff-65e5e8591345679be6a347ea29c4d283d5ca9aa723ef788c9a2524344de49ff3R17  # noqa: E501
+# Ref: https://github.com/open-metadata/OpenMetadata/pull/6568/files#diff-65e5e8591345679be6a347ea29c4d283d5ca9aa723ef788c9a2524344de49ff3R17
 
 REDSHIFT_TEST_GET_QUERIES_MAP = {
     RedshiftInstanceType.PROVISIONED: REDSHIFT_TEST_GET_QUERIES,

@@ -1,17 +1,18 @@
 import importlib
+import json
 from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
 
-from metadata.generated.schema.api.feed.closeTask import CloseTaskRequest
-from metadata.generated.schema.api.feed.createPost import CreatePostRequest
-from metadata.generated.schema.api.feed.createThread import CreateThreadRequest
-from metadata.generated.schema.api.feed.resolveTask import (
-    ResolveTaskRequest as FeedResolveTaskRequest,
+from metadata.generated.schema.api.feed.createConversation import (
+    CreateConversationRequest,
 )
-from metadata.generated.schema.entity.feed.thread import ThreadTaskStatus, ThreadType
+from metadata.generated.schema.api.feed.createPost import CreatePostRequest
+from metadata.generated.schema.type.conversationFilterType import ConversationFilterType
+from metadata.generated.schema.type.conversationSource import ConversationSource
+from metadata.generated.schema.type.reaction import ReactionType
 from metadata.ingestion.ometa.announcement_models import (
     Announcement,
     AnnouncementStatus,
@@ -19,7 +20,7 @@ from metadata.ingestion.ometa.announcement_models import (
 )
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.mixins.announcement_mixin import OMetaAnnouncementMixin
-from metadata.ingestion.ometa.mixins.feed_mixin import OMetaFeedMixin
+from metadata.ingestion.ometa.mixins.conversation_mixin import OMetaConversationMixin
 from metadata.ingestion.ometa.mixins.task_mixin import OMetaTaskMixin
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.task_models import (
@@ -51,8 +52,8 @@ def _make_announcement_mixin() -> OMetaAnnouncementMixin:
     return mixin
 
 
-def _make_feed_mixin() -> OMetaFeedMixin:
-    mixin = OMetaFeedMixin.__new__(OMetaFeedMixin)
+def _make_conversation_mixin() -> OMetaConversationMixin:
+    mixin = OMetaConversationMixin.__new__(OMetaConversationMixin)
     mixin.client = MagicMock()
     return mixin
 
@@ -87,22 +88,35 @@ def _entity_list(item):
     }
 
 
-def _thread_response(**overrides):
+def _entity_reference(entity_type="user", name="admin"):
+    return {"id": str(uuid4()), "type": entity_type, "name": name}
+
+
+def _conversation_response(**overrides):
     payload = {
         "id": str(uuid4()),
+        "source": ConversationSource.User.value,
         "about": "<#E::table::sample_table::description>",
-        "message": "Thread message",
-        "type": ThreadType.Conversation.value,
+        "entityRef": _entity_reference("table", "sample_table"),
+        "message": "Conversation message",
+        "createdBy": _entity_reference(),
+        "createdAt": 1712728800000,
+        "updatedAt": 1712728800000,
+        "resolved": False,
+        "replyCount": 0,
     }
     payload.update(overrides)
     return payload
 
 
-def _post_response(**overrides):
+def _reply_response(**overrides):
     payload = {
         "id": str(uuid4()),
-        "message": "Post message",
-        "from": "admin",
+        "conversationId": str(uuid4()),
+        "message": "Reply message",
+        "author": _entity_reference(),
+        "createdAt": 1712728800000,
+        "updatedAt": 1712728800000,
     }
     payload.update(overrides)
     return payload
@@ -115,8 +129,7 @@ class TestTaskMixin:
             name="task-client-create",
             category=TaskCategory.MetadataUpdate,
             type=TaskEntityType.Suggestion,
-            about="sample.table",
-            aboutType="table",
+            about="<#E::table::sample.table>",
             payload={"fieldPath": "description"},
         )
         resolve_request = ResolveTaskRequest(
@@ -144,9 +157,7 @@ class TestTaskMixin:
         task = mixin.get_task(task_id, fields=["status", "payload"], include="all")
 
         assert task is not None
-        mixin.client.get.assert_called_once_with(
-            f"/tasks/{task_id}?fields=status,payload&include=all"
-        )
+        mixin.client.get.assert_called_once_with(f"/tasks/{task_id}?fields=status,payload&include=all")
 
         mixin.client.get.side_effect = APIError({"message": "missing", "code": 404})
         assert mixin.get_task(task_id, nullable=True) is None
@@ -160,9 +171,7 @@ class TestTaskMixin:
             _entity_list(_task_response(priority=TaskPriority.High.value)),
         ]
 
-        task = mixin.get_task_by_task_id(
-            "TASK-00001", fields=["status", "priority"], include="deleted"
-        )
+        task = mixin.get_task_by_task_id("TASK-00001", fields=["status", "priority"], include="deleted")
         tasks = mixin.list_tasks(
             fields=["status", "priority"],
             status=TaskEntityStatus.Open,
@@ -205,17 +214,11 @@ class TestTaskMixin:
             _task_response(status=TaskEntityStatus.Cancelled.value),
             {"totalRequested": 1, "successful": 1, "failed": 0, "results": []},
         ]
-        mixin.client.patch.return_value = _task_response(
-            status=TaskEntityStatus.InProgress.value
-        )
-        mixin.client.put.return_value = _task_response(
-            status=TaskEntityStatus.Approved.value
-        )
+        mixin.client.patch.return_value = _task_response(status=TaskEntityStatus.InProgress.value)
+        mixin.client.put.return_value = _task_response(status=TaskEntityStatus.Approved.value)
 
         updated = mixin.add_task_comment(task_id, "hello")
-        patched = mixin.patch_task(
-            task_id, [{"op": "replace", "path": "/status", "value": "InProgress"}]
-        )
+        patched = mixin.patch_task(task_id, [{"op": "replace", "path": "/status", "value": "InProgress"}])
         closed = mixin.close_task(task_id, comment=comment)
         applied = mixin.apply_suggestion(task_id, comment=comment)
         bulk_result = mixin.bulk_task_operation(bulk_request)
@@ -227,13 +230,9 @@ class TestTaskMixin:
         assert bulk_result.successful == 1
         mixin.client.post.assert_any_call(f"/tasks/{task_id}/comments", data="hello")
         mixin.client.patch.assert_called_once()
+        assert mixin.client.post.call_args_list[1].args[0] == f"/tasks/{task_id}/close?comment={quote(comment)}"
         assert (
-            mixin.client.post.call_args_list[1].args[0]
-            == f"/tasks/{task_id}/close?comment={quote(comment)}"
-        )
-        assert (
-            mixin.client.put.call_args_list[0].args[0]
-            == f"/tasks/{task_id}/suggestion/apply?comment={quote(comment)}"
+            mixin.client.put.call_args_list[0].args[0] == f"/tasks/{task_id}/suggestion/apply?comment={quote(comment)}"
         )
 
     def test_task_minimal_paths_and_none_responses(self):
@@ -248,9 +247,7 @@ class TestTaskMixin:
             None,
             _task_response(status=TaskEntityStatus.Cancelled.value),
         ]
-        mixin.client.put.return_value = _task_response(
-            status=TaskEntityStatus.Approved.value
-        )
+        mixin.client.put.return_value = _task_response(status=TaskEntityStatus.Approved.value)
 
         assert mixin.get_task(task_id) is None
         assert mixin.get_task_by_task_id("TASK-00002") is None
@@ -265,16 +262,10 @@ class TestTaskMixin:
         assert closed.status == TaskEntityStatus.Cancelled
         assert applied.status == TaskEntityStatus.Approved
         assert mixin.client.get.call_args_list[0].args[0] == f"/tasks/{task_id}"
-        assert (
-            mixin.client.get.call_args_list[1].args[0]
-            == f"/tasks/name/{quote('TASK-00002')}"
-        )
+        assert mixin.client.get.call_args_list[1].args[0] == f"/tasks/name/{quote('TASK-00002')}"
         assert mixin.client.get.call_args_list[2].args[1] == {"limit": "10"}
         assert mixin.client.post.call_args_list[1].args[0] == f"/tasks/{task_id}/close"
-        assert (
-            mixin.client.put.call_args_list[0].args[0]
-            == f"/tasks/{task_id}/suggestion/apply"
-        )
+        assert mixin.client.put.call_args_list[0].args[0] == f"/tasks/{task_id}/suggestion/apply"
 
 
 class TestAnnouncementMixin:
@@ -310,9 +301,7 @@ class TestAnnouncementMixin:
             include="all",
         )
         fetched = mixin.get_announcement(uuid4(), fields=["owners"], include="deleted")
-        named = mixin.get_announcement_by_name(
-            "sample.announcement", fields=["owners"], include="deleted"
-        )
+        named = mixin.get_announcement_by_name("sample.announcement", fields=["owners"], include="deleted")
         created = mixin.create_announcement(create_request)
         updated = mixin.create_or_update_announcement(create_request)
 
@@ -328,9 +317,7 @@ class TestAnnouncementMixin:
     def test_patch_delete_and_restore_announcement(self):
         mixin = _make_announcement_mixin()
         announcement_id = uuid4()
-        mixin.client.patch.return_value = _announcement_response(
-            status=AnnouncementStatus.Expired.value
-        )
+        mixin.client.patch.return_value = _announcement_response(status=AnnouncementStatus.Expired.value)
         mixin.client.put.return_value = _announcement_response()
 
         patched = mixin.patch_announcement(
@@ -342,9 +329,7 @@ class TestAnnouncementMixin:
 
         assert patched.status == AnnouncementStatus.Expired
         assert restored.description.root == "Announcement body"
-        mixin.client.delete.assert_called_once_with(
-            f"/announcements/{announcement_id}?hardDelete=true"
-        )
+        mixin.client.delete.assert_called_once_with(f"/announcements/{announcement_id}?hardDelete=true")
 
     def test_announcement_minimal_paths_and_soft_delete(self):
         mixin = _make_announcement_mixin()
@@ -372,104 +357,180 @@ class TestAnnouncementMixin:
             "limit": "10",
             "active": "false",
         }
-        assert mixin.client.get.call_args_list[2].args[0] == (
-            f"/announcements/{announcement_id}"
-        )
-        assert mixin.client.get.call_args_list[3].args[0] == (
-            f"/announcements/name/{quote('sample.announcement')}"
-        )
+        assert mixin.client.get.call_args_list[2].args[0] == (f"/announcements/{announcement_id}")
+        assert mixin.client.get.call_args_list[3].args[0] == (f"/announcements/name/{quote('sample.announcement')}")
         mixin.client.delete.assert_called_once_with(f"/announcements/{announcement_id}")
 
 
-class TestFeedMixin:
-    def test_list_and_get_threads(self):
-        mixin = _make_feed_mixin()
-        thread = _thread_response(type=ThreadType.Task.value)
-        mixin.client.get.side_effect = [_entity_list(thread), thread, thread]
+class TestConversationMixin:
+    def test_list_get_and_create_conversations(self):
+        mixin = _make_conversation_mixin()
+        conversation_id = uuid4()
+        user_id = uuid4()
+        conversation = _conversation_response(id=str(conversation_id))
+        mixin.client.get.side_effect = [_entity_list(conversation), conversation]
+        mixin.client.post.return_value = conversation
+        request = CreateConversationRequest(
+            message="Open conversation",
+            about="<#E::table::sample.table::description>",
+        )
 
-        threads = mixin.list_threads(
-            limit_posts=5,
+        conversations = mixin.list_conversations(
             limit=15,
             before="before-cursor",
             after="after-cursor",
             entity_link="<#E::table::sample.table::description>",
-            user_id=uuid4(),
-            filter_type="OWNER",
+            user_id=user_id,
+            filter_type=ConversationFilterType.OWNER,
             resolved=True,
-            thread_type=ThreadType.Task,
-            task_status=ThreadTaskStatus.Open,
+            start_ts=1712728800000,
+            end_ts=1712815200000,
         )
-        fetched = mixin.get_thread(uuid4())
-        task_thread = mixin.get_task_thread(42)
+        fetched = mixin.get_conversation(conversation_id)
+        created = mixin.create_conversation(request)
 
-        assert threads.total == 1
-        assert fetched.message == "Thread message"
-        assert task_thread.type == ThreadType.Task
-        assert mixin.client.get.call_args_list[0].args[0] == "/feed"
-        assert mixin.client.get.call_args_list[0].args[1]["resolved"] == "true"
-        assert mixin.client.get.call_args_list[0].args[1]["taskStatus"] == "Open"
-
-    def test_create_posts_and_resolve_close_feed_task(self):
-        mixin = _make_feed_mixin()
-        thread_id = uuid4()
-        create_thread_request = CreateThreadRequest.model_validate(
-            {
-                "message": "Open thread",
-                "about": "<#E::table::sample.table::description>",
-                "type": ThreadType.Task.value,
-            }
-        )
-        create_post_request = CreatePostRequest.model_validate({"message": "Reply"})
-        resolve_request = FeedResolveTaskRequest(newValue="updated-description")
-        close_request = CloseTaskRequest(comment="closing")
-
-        mixin.client.post.side_effect = [_thread_response(), _post_response()]
-        mixin.client.get.return_value = _entity_list(_post_response())
-        mixin.client.put.side_effect = [
-            _thread_response(resolved=True),
-            _thread_response(resolved=True),
-        ]
-
-        created_thread = mixin.create_thread(create_thread_request)
-        created_post = mixin.create_post(thread_id, create_post_request)
-        posts = mixin.list_posts(
-            thread_id, after="after-cursor", before="before-cursor"
-        )
-        resolved = mixin.resolve_feed_task(42, resolve_request)
-        closed = mixin.close_feed_task(42, close_request)
-
-        assert created_thread.message == "Thread message"
-        assert created_post.from_ == "admin"
-        assert posts.total == 1
-        assert resolved.resolved is True
-        assert closed.resolved is True
-        assert mixin.client.post.call_args_list[0].args[0] == "/feed"
-        assert mixin.client.post.call_args_list[1].args[0] == f"/feed/{thread_id}/posts"
-        assert mixin.client.put.call_args_list[0].args[0] == "/feed/tasks/42/resolve"
-        assert mixin.client.put.call_args_list[1].args[0] == "/feed/tasks/42/close"
-
-    def test_feed_minimal_list_paths(self):
-        mixin = _make_feed_mixin()
-        thread_id = uuid4()
-        mixin.client.get.side_effect = [
-            _entity_list(_thread_response()),
-            _entity_list(_post_response()),
-        ]
-
-        threads = mixin.list_threads()
-        posts = mixin.list_posts(thread_id)
-
-        assert threads.total == 1
-        assert posts.total == 1
+        assert conversations.total == 1
+        assert fetched.message.root == "Conversation message"
+        assert created.source == ConversationSource.User
+        assert mixin.client.get.call_args_list[0].args[0] == "/conversations"
         assert mixin.client.get.call_args_list[0].args[1] == {
-            "limitPosts": "3",
+            "limit": "15",
+            "resolved": "true",
+            "before": "before-cursor",
+            "after": "after-cursor",
+            "entityLink": "<#E::table::sample.table::description>",
+            "userId": str(user_id),
+            "filterType": "OWNER",
+            "startTs": "1712728800000",
+            "endTs": "1712815200000",
+        }
+        assert json.loads(mixin.client.post.call_args.args[1]) == {
+            "message": "Open conversation",
+            "about": "<#E::table::sample.table::description>",
+        }
+
+    def test_patch_delete_and_root_reactions(self):
+        mixin = _make_conversation_mixin()
+        conversation_id = uuid4()
+        patched_payload = _conversation_response(id=str(conversation_id), resolved=True)
+        mixin.client.patch.return_value = patched_payload
+        mixin.client.put.return_value = patched_payload
+        mixin.client.delete.side_effect = [patched_payload, patched_payload]
+        patch = [{"op": "replace", "path": "/resolved", "value": True}]
+
+        patched = mixin.patch_conversation(conversation_id, patch)
+        reacted = mixin.add_conversation_reaction(conversation_id, ReactionType.rocket)
+        unreacted = mixin.remove_conversation_reaction(conversation_id, ReactionType.rocket)
+        deleted = mixin.delete_conversation(conversation_id)
+
+        assert patched.resolved is True
+        assert reacted.id.root == conversation_id
+        assert unreacted.id.root == conversation_id
+        assert deleted.id.root == conversation_id
+        mixin.client.patch.assert_called_once_with(f"/conversations/{conversation_id}", json.dumps(patch))
+        mixin.client.put.assert_called_once_with(f"/conversations/{conversation_id}/reaction/rocket")
+        assert mixin.client.delete.call_args_list[0].args[0] == (f"/conversations/{conversation_id}/reaction/rocket")
+        assert mixin.client.delete.call_args_list[1].args[0] == (f"/conversations/{conversation_id}")
+
+    def test_conversation_reply_routes(self):
+        mixin = _make_conversation_mixin()
+        conversation_id = uuid4()
+        reply_id = uuid4()
+        reply = _reply_response(id=str(reply_id), conversationId=str(conversation_id))
+        mixin.client.get.return_value = _entity_list(reply)
+        mixin.client.post.return_value = reply
+        mixin.client.patch.return_value = reply
+        mixin.client.put.return_value = reply
+        mixin.client.delete.side_effect = [reply, reply]
+        request = CreatePostRequest(message="Reply")
+        patch = [{"op": "replace", "path": "/message", "value": "Edited"}]
+
+        replies = mixin.list_conversation_replies(
+            conversation_id,
+            limit=25,
+            before="before-cursor",
+            after="after-cursor",
+        )
+        created = mixin.create_conversation_reply(conversation_id, request)
+        patched = mixin.patch_conversation_reply(conversation_id, reply_id, patch)
+        reacted = mixin.add_conversation_reply_reaction(conversation_id, reply_id, ReactionType.heart)
+        unreacted = mixin.remove_conversation_reply_reaction(conversation_id, reply_id, ReactionType.heart)
+        deleted = mixin.delete_conversation_reply(conversation_id, reply_id)
+
+        assert replies.total == 1
+        assert created.message.root == "Reply message"
+        assert patched.id.root == reply_id
+        assert reacted.id.root == reply_id
+        assert unreacted.id.root == reply_id
+        assert deleted.id.root == reply_id
+        assert mixin.client.get.call_args.args == (
+            f"/conversations/{conversation_id}/replies",
+            {
+                "limit": "25",
+                "before": "before-cursor",
+                "after": "after-cursor",
+            },
+        )
+        assert json.loads(mixin.client.post.call_args.args[1]) == {"message": "Reply"}
+        mixin.client.patch.assert_called_once_with(
+            f"/conversations/{conversation_id}/replies/{reply_id}",
+            json.dumps(patch),
+        )
+        mixin.client.put.assert_called_once_with(f"/conversations/{conversation_id}/replies/{reply_id}/reaction/heart")
+        assert mixin.client.delete.call_args_list[0].args[0].endswith(f"/{reply_id}/reaction/heart")
+        assert mixin.client.delete.call_args_list[1].args[0].endswith(f"/replies/{reply_id}")
+
+    def test_activity_reply_routes(self):
+        mixin = _make_conversation_mixin()
+        activity_id = uuid4()
+        reply = _reply_response(conversationId=str(activity_id))
+        mixin.client.get.return_value = _entity_list(reply)
+        mixin.client.post.return_value = reply
+        request = CreatePostRequest(message="Activity reply")
+
+        replies = mixin.list_activity_replies(
+            activity_id,
+            limit=30,
+            before="before-cursor",
+            after="after-cursor",
+        )
+        created = mixin.create_activity_reply(activity_id, request)
+
+        assert replies.total == 1
+        assert created.conversationId.root == activity_id
+        mixin.client.get.assert_called_once_with(
+            f"/activity/{activity_id}/replies",
+            {
+                "limit": "30",
+                "before": "before-cursor",
+                "after": "after-cursor",
+            },
+        )
+        assert mixin.client.post.call_args.args[0] == f"/activity/{activity_id}/replies"
+        assert json.loads(mixin.client.post.call_args.args[1]) == {"message": "Activity reply"}
+
+    def test_minimal_list_params(self):
+        mixin = _make_conversation_mixin()
+        conversation_id = uuid4()
+        mixin.client.get.side_effect = [
+            _entity_list(_conversation_response()),
+            _entity_list(_reply_response(conversationId=str(conversation_id))),
+            _entity_list(_reply_response(conversationId=str(conversation_id))),
+        ]
+
+        conversations = mixin.list_conversations()
+        replies = mixin.list_conversation_replies(conversation_id)
+        activity_replies = mixin.list_activity_replies(conversation_id)
+
+        assert conversations.total == 1
+        assert replies.total == 1
+        assert activity_replies.total == 1
+        assert mixin.client.get.call_args_list[0].args[1] == {
             "limit": "10",
             "resolved": "false",
         }
-        assert mixin.client.get.call_args_list[1].args == (
-            f"/feed/{thread_id}/posts",
-            None,
-        )
+        assert mixin.client.get.call_args_list[1].args[1] == {"limit": "20"}
+        assert mixin.client.get.call_args_list[2].args[1] == {"limit": "20"}
 
 
 class TestClientModels:
@@ -559,8 +620,7 @@ class TestClientModels:
             category=TaskCategory.MetadataUpdate,
             type=TaskEntityType.Suggestion,
             priority=TaskPriority.High,
-            about="sample.table",
-            aboutType="table",
+            about="<#E::table::sample.table>",
             domain="Marketing",
             assignees=["owner"],
             reviewers=["reviewer"],
@@ -581,17 +641,13 @@ class TestClientModels:
                 "totalRequested": 1,
                 "successful": 1,
                 "failed": 0,
-                "results": [
-                    {"taskId": str(task.id.root), "status": "success", "error": None}
-                ],
+                "results": [{"taskId": str(task.id.root), "status": "success", "error": None}],
             }
         )
 
         assert task.externalReference.system == "jira"
         assert task.comments[0].author.name == "owner"
-        assert (
-            task.availableTransitions[0].resolutionType == TaskResolutionType.Approved
-        )
+        assert task.availableTransitions[0].resolutionType == TaskResolutionType.Approved
         assert create_request.assignees == ["owner"]
         assert resolve_request.transitionId == "approve"
         assert bulk_result.results[0].status == "success"
@@ -659,9 +715,18 @@ class TestClientModels:
                 operation=BulkTaskOperationType.Assign,
             )
 
+        with pytest.raises(ValidationError):
+            CreateConversationRequest(
+                message="   ",
+                about="<#E::table::sample.table>",
+            )
+
+        with pytest.raises(ValidationError):
+            CreatePostRequest(message="\n\t")
+
 
 def test_openmetadata_includes_new_client_mixins():
-    assert issubclass(OpenMetadata, OMetaFeedMixin)
+    assert issubclass(OpenMetadata, OMetaConversationMixin)
     assert issubclass(OpenMetadata, OMetaAnnouncementMixin)
     assert issubclass(OpenMetadata, OMetaTaskMixin)
 
@@ -677,10 +742,8 @@ def test_reimport_new_client_modules_for_coverage():
             "CreateTaskRequest",
             "BulkTaskOperationResult",
         ],
-        "metadata.ingestion.ometa.mixins.announcement_mixin": [
-            "OMetaAnnouncementMixin"
-        ],
-        "metadata.ingestion.ometa.mixins.feed_mixin": ["OMetaFeedMixin"],
+        "metadata.ingestion.ometa.mixins.announcement_mixin": ["OMetaAnnouncementMixin"],
+        "metadata.ingestion.ometa.mixins.conversation_mixin": ["OMetaConversationMixin"],
         "metadata.ingestion.ometa.mixins.task_mixin": ["OMetaTaskMixin"],
         "metadata.ingestion.ometa.ometa_api": ["OpenMetadata"],
     }

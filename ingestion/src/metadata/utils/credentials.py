@@ -11,11 +11,10 @@
 """
 Credentials helper module
 """
+
 import base64
 import json
 import os
-import tempfile
-from typing import Dict, List, Optional, Union
 
 from cryptography.hazmat.primitives import serialization
 from google import auth
@@ -37,6 +36,7 @@ from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
 )
 from metadata.utils.logger import utils_logger
+from metadata.utils.secure_tempfile import write_secret_temp_file
 
 logger = utils_logger()
 
@@ -48,13 +48,13 @@ GOOGLE_CLOUD_SCOPES = [
 ]
 
 
-class InvalidGcpConfigException(Exception):
+class InvalidGcpConfigException(Exception):  # noqa: N818
     """
     Raised when we have errors trying to set GCP credentials
     """
 
 
-class InvalidPrivateKeyException(Exception):
+class InvalidPrivateKeyException(Exception):  # noqa: N818
     """
     If the key cannot be serialised
     """
@@ -103,7 +103,7 @@ def normalize_pem_string(value: str) -> str:
     )
 
     # Only normalize if it looks like PEM and is all on one line (escaped newlines)
-    if any(h in value for h in pem_headers):
+    if any(h in value for h in pem_headers):  # noqa: SIM102
         if "\\n" in value and "\n" not in value:
             return value.replace("\\n", "\n")
 
@@ -115,25 +115,21 @@ def create_credential_tmp_file(credentials: dict) -> str:
     Given a credentials' dict, store it in a tmp file
     :param credentials: dictionary to store
     :return: path to find the file
+
+    The file deliberately outlives this call: its path goes into
+    ``GOOGLE_APPLICATION_CREDENTIALS`` and the Google auth library reads it lazily
+    for the rest of the process. That is why this cannot use
+    ``secret_temp_file`` — there is no scope to close.
     """
-    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-        cred_json = json.dumps(credentials, indent=4, separators=(",", ": "))
-        temp_file.write(cred_json.encode())
-        # Get the path of the temporary file
-        temp_file_path = temp_file.name
+    cred_json = json.dumps(credentials, indent=4, separators=(",", ": "))
 
-        # The temporary file will be automatically closed when exiting the "with" block,
-        # but we can explicitly close it here to free up resources immediately.
-        temp_file.close()
-
-        # Return the path of the temporary file
-        return temp_file_path
+    return str(write_secret_temp_file(cred_json, suffix=".json"))
 
 
 def build_google_credentials_dict(
-    gcp_values: Union[GcpCredentialsValues, GcpExternalAccount],
+    gcp_values: GcpCredentialsValues | GcpExternalAccount,
     single_project: bool = False,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """
     Given GcPCredentialsValues, build a dictionary as the JSON file
     downloaded from GCP with the service_account
@@ -180,9 +176,7 @@ def build_google_credentials_dict(
     )
 
 
-def set_google_credentials(
-    gcp_credentials: GCPCredentials, single_project: bool = False
-) -> None:
+def set_google_credentials(gcp_credentials: GCPCredentials, single_project: bool = False) -> None:
     """
     Set GCP credentials environment variable
     :param gcp_credentials: GCPCredentials
@@ -191,42 +185,28 @@ def set_google_credentials(
         os.environ[GOOGLE_CREDENTIALS] = str(gcp_credentials.gcpConfig.path)
         return
 
-    if (
-        isinstance(gcp_credentials.gcpConfig, GcpCredentialsValues)
-        and gcp_credentials.gcpConfig.projectId is None
-    ):
-        logger.info(
-            "No credentials available, using the current environment permissions authenticated via gcloud SDK."
-        )
+    if isinstance(gcp_credentials.gcpConfig, GcpCredentialsValues) and gcp_credentials.gcpConfig.projectId is None:
+        logger.info("No credentials available, using the current environment permissions authenticated via gcloud SDK.")
         return
 
     if isinstance(gcp_credentials.gcpConfig, GcpExternalAccount):
-        logger.info(
-            "Using External account credentials to authenticate with GCP services."
-        )
+        logger.info("Using External account credentials to authenticate with GCP services.")
         return
 
     if isinstance(gcp_credentials.gcpConfig, GcpCredentialsValues):
-        if (
-            gcp_credentials.gcpConfig.projectId
-            and not gcp_credentials.gcpConfig.privateKey
-        ):
+        if gcp_credentials.gcpConfig.projectId and not gcp_credentials.gcpConfig.privateKey:
             logger.info(
                 "Overriding default projectid, using the current environment permissions authenticated via gcloud SDK."
             )
             return
 
-        credentials_dict = build_google_credentials_dict(
-            gcp_credentials.gcpConfig, single_project
-        )
+        credentials_dict = build_google_credentials_dict(gcp_credentials.gcpConfig, single_project)
         tmp_credentials_file = create_credential_tmp_file(credentials=credentials_dict)
         os.environ[GOOGLE_CREDENTIALS] = tmp_credentials_file
         return
 
     if isinstance(gcp_credentials.gcpConfig, GcpADC):
-        logger.info(
-            "Using Application Default Credentials to authenticate with GCP services."
-        )
+        logger.info("Using Application Default Credentials to authenticate with GCP services.")
         return
 
     raise InvalidGcpConfigException(
@@ -240,13 +220,13 @@ def generate_http_basic_token(username, password):
     Generates a HTTP basic token from username and password
     Returns a token string (not a byte)
     """
-    token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("utf-8")
-    return token
+    token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("utf-8")  # noqa: UP012
+    return token  # noqa: RET504
 
 
 def get_gcp_default_credentials(
-    quota_project_id: Optional[str] = None,
-    scopes: Optional[List[str]] = None,
+    quota_project_id: str | None = None,
+    scopes: list[str] | None = None,
 ) -> auth.credentials.Credentials:
     """Get the default credentials
 
@@ -261,17 +241,15 @@ def get_gcp_default_credentials(
 
 def get_gcp_impersonate_credentials(
     impersonate_service_account: str,
-    quoted_project_id: Optional[str] = None,
-    scopes: Optional[List[str]] = None,
-    lifetime: Optional[int] = 3600,
+    quoted_project_id: str | None = None,
+    scopes: list[str] | None = None,
+    lifetime: int | None = 3600,
 ) -> impersonated_credentials.Credentials:
     """Get the credentials to impersonate"""
     scopes = scopes or GOOGLE_CLOUD_SCOPES
     source_credentials, _ = auth.default()
     if quoted_project_id:
-        source_credentials, quoted_project_id = auth.default(
-            quota_project_id=quoted_project_id
-        )
+        source_credentials, quoted_project_id = auth.default(quota_project_id=quoted_project_id)
     return impersonated_credentials.Credentials(
         source_credentials=source_credentials,
         target_principal=impersonate_service_account,
@@ -304,8 +282,6 @@ def get_azure_access_token(azure_config: AzureConfigurationSource) -> str:
         )
 
     azure_client = AzureClient(azure_config.azureConfig).create_client()
-    access_token_obj = azure_client.get_token(
-        *azure_config.azureConfig.scopes.split(",")
-    )
+    access_token_obj = azure_client.get_token(*azure_config.azureConfig.scopes.split(","))
 
     return access_token_obj.token

@@ -10,17 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
-  Button,
-  Empty,
-  Form,
-  Space,
-  TagProps,
-  TreeSelect,
-  TreeSelectProps,
-} from 'antd';
+  ClassificationTag,
+  GlossaryTag,
+} from '@openmetadata/ui-core-components';
+import { Button, Empty, Form, Space, TreeSelect, TreeSelectProps } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, get, isEmpty, isNull, isUndefined, pick } from 'lodash';
@@ -38,31 +33,31 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowIcon } from '../../../assets/svg/ic-arrow-down.svg';
 import { PAGE_SIZE_LARGE, TEXT_BODY_COLOR } from '../../../constants/constants';
-import { TAG_START_WITH } from '../../../constants/Tag.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { LabelType } from '../../../generated/entity/data/table';
-import { TagLabel } from '../../../generated/type/tagLabel';
+import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import {
   getGlossariesList,
   ListGlossaryTermsParams,
   queryGlossaryTerms,
   searchGlossaryTerms,
 } from '../../../rest/glossaryAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
-  convertGlossaryTermsToTreeOptions,
   filterTreeNodeOptions,
   findItemByFqn,
-} from '../../../utils/GlossaryUtils';
+  injectMissingInitialOptions,
+} from '../../../utils/GlossaryPureUtils';
+import { convertGlossaryTermsToTreeOptions } from '../../../utils/GlossaryUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
-} from '../../../utils/StringsUtils';
-import { getTagDisplay, tagRender } from '../../../utils/TagsUtils';
+} from '../../../utils/StringUtils';
+import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
-import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import { KeyDownStopPropagationWrapper } from '../KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import Loader from '../Loader/Loader';
 import './async-select-list.less';
@@ -70,7 +65,6 @@ import {
   AsyncSelectListProps,
   SelectOption,
 } from './AsyncSelectList.interface';
-
 interface TreeAsyncSelectListProps
   extends Omit<AsyncSelectListProps, 'fetchOptions'> {
   isMultiSelect?: boolean;
@@ -78,6 +72,8 @@ interface TreeAsyncSelectListProps
   newLook?: boolean;
   onSubmit?: () => void;
   dropdownContainerRef?: React.RefObject<HTMLDivElement>;
+  dropdownMatchSelectWidth?: boolean | number;
+  getPopupContainer?: TreeSelectProps['getPopupContainer'];
 }
 
 interface ExtendedTreeNode {
@@ -92,10 +88,92 @@ interface ExtendedTreeNode {
   children?: ExtendedTreeNode[];
 }
 
+type MultiSelectRawValue = {
+  disabled: boolean;
+  halfChecked: boolean;
+  label: React.ReactNode;
+  value: string;
+};
+
+// Combine the fetched glossaries, active search results and any pre-selected
+// options into a single pool to resolve a selected value's display data from.
+const buildGlossaryPool = (
+  glossaries: Glossary[],
+  searchOptions: Glossary[] | null,
+  initialOptions?: SelectOption[]
+): ModifiedGlossaryTerm[] =>
+  [
+    ...glossaries,
+    ...(isNull(searchOptions) ? [] : searchOptions),
+    ...(initialOptions ?? []),
+  ] as ModifiedGlossaryTerm[];
+
+// Resolve the display option for a raw selected value, falling back to the
+// value itself when it can't be matched against the glossary pool.
+const resolveSelectOption = (
+  value: string,
+  glossaryPool: ModifiedGlossaryTerm[]
+): SelectOption => {
+  const initialData = findItemByFqn(glossaryPool, value, false);
+
+  return initialData
+    ? {
+        value: initialData.fullyQualifiedName ?? '',
+        label: getEntityName(initialData),
+        data: initialData as SelectOption['data'],
+      }
+    : { value, label: value };
+};
+
+// Like resolveSelectOption, but reuses the previously selected tag's own
+// data when it is already present instead of re-resolving it.
+const resolveMultiSelectOption = (
+  value: string,
+  lastSelectedMap: Map<string, SelectOption>,
+  glossaryPool: ModifiedGlossaryTerm[]
+): SelectOption => {
+  if (lastSelectedMap.has(value)) {
+    return lastSelectedMap.get(value) as SelectOption;
+  }
+
+  return resolveSelectOption(value, glossaryPool);
+};
+
+// Filter out siblings of a newly selected, mutually exclusive option so only
+// the latest pick from that group stays checked.
+const filterMutuallyExclusiveSiblings = (
+  rawValues: MultiSelectRawValue[],
+  newlySelected: MultiSelectRawValue[],
+  nodeParentMap: Map<
+    string,
+    { node: ExtendedTreeNode; parent: ExtendedTreeNode | null }
+  >,
+  getSiblingValues: (
+    parent: ExtendedTreeNode | null,
+    currentValue: string
+  ) => string[]
+): MultiSelectRawValue[] => {
+  let filteredRawValues = [...rawValues];
+  for (const newVal of newlySelected) {
+    const { node, parent } = nodeParentMap.get(newVal.value) || {
+      node: null,
+      parent: null,
+    };
+    if (node?.isParentMutuallyExclusive) {
+      const siblingValues = new Set(getSiblingValues(parent, newVal.value));
+      filteredRawValues = filteredRawValues.filter(
+        (v) => !siblingValues.has(v.value)
+      );
+    }
+  }
+
+  return filteredRawValues;
+};
+
 const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   onChange,
+  value: formValue,
   initialOptions,
-  tagType,
   isSubmitLoading,
   filterOptions = [],
   onCancel,
@@ -116,6 +194,16 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   const [expandedRowKeys, setExpandedRowKeys] = useState<Key[]>([]);
   const [searchOptions, setSearchOptions] = useState<Glossary[] | null>(null);
   const [open, setOpen] = useState(openProp); // state for controlling dropdown visibility
+
+  const normalizedValue = useMemo(() => {
+    if (isUndefined(formValue)) {
+      return undefined;
+    }
+
+    return !isMultiSelect && Array.isArray(formValue)
+      ? formValue[0]
+      : formValue;
+  }, [formValue, isMultiSelect]);
 
   const form = Form.useFormInstance();
   const handleSubmit = () => {
@@ -163,7 +251,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   }, []);
 
   const treeData = useMemo(() => {
-    return convertGlossaryTermsToTreeOptions(
+    const tree = convertGlossaryTermsToTreeOptions(
       isNull(searchOptions)
         ? (glossaries as ModifiedGlossaryTerm[])
         : (searchOptions as unknown as ModifiedGlossaryTerm[]),
@@ -171,7 +259,13 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       isParentSelectable,
       false
     );
-  }, [glossaries, searchOptions, isParentSelectable]);
+
+    if (initialOptions?.length) {
+      injectMissingInitialOptions(tree, initialOptions);
+    }
+
+    return tree;
+  }, [glossaries, searchOptions, isParentSelectable, initialOptions]);
 
   const nodeParentMap = useMemo(() => {
     const map = new Map<
@@ -233,12 +327,9 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       (tag) => tag.value === data.value
     );
 
-    if (isUndefined(selectedTag?.data)) {
-      return tagRender(data);
-    }
-
     const { value, onClose } = data;
-    const tagLabel = getTagDisplay(value as string);
+    const tagDisplayName = getTagDisplay(value as string);
+
     const tag = {
       tagFQN: (selectedTag?.data as Tag)?.fullyQualifiedName,
       ...pick(
@@ -251,39 +342,32 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       ),
     } as TagLabel;
 
-    const onPreventMouseDown = (event: React.MouseEvent<HTMLSpanElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-    };
+    const tagLabel = getEntityName(tag) || tagDisplayName || tag.tagFQN;
 
     const isDerived =
-      (selectedTag?.data as TagLabel).labelType === LabelType.Derived;
-
-    const tagProps = {
-      closable: !isDerived,
-      closeIcon: !isDerived && (
-        <CloseOutlined
-          className="p-r-xs"
-          data-testid="remove-tags"
-          height={8}
-          width={8}
-        />
-      ),
-      'data-testid': `selected-tag-${tagLabel}`,
-      onClose: !isDerived ? onClose : null,
-      onMouseDown: onPreventMouseDown,
-    } as TagProps;
+      (selectedTag?.data as TagLabel)?.labelType === LabelType.Derived;
+    const isGlossaryTerm =
+      (selectedTag?.data as TagLabel)?.source === TagSource.Glossary ||
+      (selectedTag?.data as { entityType?: EntityType })?.entityType ===
+        EntityType.GLOSSARY_TERM;
+    const TagComponent = isGlossaryTerm ? GlossaryTag : ClassificationTag;
 
     return (
-      <TagsV1
-        isEditTags
-        newLook={newLook}
-        startWith={TAG_START_WITH.SOURCE_ICON}
-        tag={tag}
-        tagProps={tagProps}
-        tagType={tagType}
-        tooltipOverride={
-          isDerived ? t('message.derived-tag-warning') : undefined
+      <TagComponent
+        closeButtonTestId="remove-tags"
+        color={tag.style?.color}
+        data-testid={`selected-tag-${tagDisplayName}`}
+        icon={tag.style?.iconURL}
+        label={tagLabel}
+        size="sm"
+        tooltip={isDerived ? t('message.derived-tag-warning') : undefined}
+        onDelete={
+          isDerived
+            ? undefined
+            : (e) => {
+                e.stopPropagation();
+                onClose?.();
+              }
         }
       />
     );
@@ -302,12 +386,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   ) => {
     if (isMultiSelect) {
       // Handle multi-select mode
-      const rawValues = values as {
-        disabled: boolean;
-        halfChecked: boolean;
-        label: React.ReactNode;
-        value: string;
-      }[];
+      const rawValues = values as MultiSelectRawValue[];
 
       // Determine newly selected values
       const previousValueSet = new Set(
@@ -318,83 +397,42 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       );
 
       // Filter out siblings of mutually exclusive selections
-      let filteredRawValues = [...rawValues];
-      for (const newVal of newlySelected) {
-        const { node, parent } = nodeParentMap.get(newVal.value) || {
-          node: null,
-          parent: null,
-        };
-        if (node?.isParentMutuallyExclusive) {
-          const siblingValues = new Set(getSiblingValues(parent, newVal.value));
-          filteredRawValues = filteredRawValues.filter(
-            (v) => !siblingValues.has(v.value)
-          );
-        }
-      }
+      const filteredRawValues = filterMutuallyExclusiveSiblings(
+        rawValues,
+        newlySelected,
+        nodeParentMap,
+        getSiblingValues
+      );
 
-      const selectedValues = filteredRawValues.map(({ value }) => {
-        const lastSelectedMap = new Map(
-          selectedTagsRef.current.map((tag) => [tag.value, tag])
-        );
-        if (lastSelectedMap.has(value)) {
-          return lastSelectedMap.get(value) as SelectOption;
-        }
-        const initialData = findItemByFqn(
-          [
-            ...glossaries,
-            ...(isNull(searchOptions) ? [] : searchOptions),
-            ...(initialOptions ?? []),
-          ] as ModifiedGlossaryTerm[],
-          value,
-          false
-        );
-
-        return initialData
-          ? {
-              value: initialData.fullyQualifiedName ?? '',
-              label: getEntityName(initialData),
-              data: initialData,
-            }
-          : {
-              value,
-              label: value,
-            };
-      });
+      const lastSelectedMap = new Map(
+        selectedTagsRef.current.map((tag) => [tag.value, tag])
+      );
+      const glossaryPool = buildGlossaryPool(
+        glossaries,
+        searchOptions,
+        initialOptions
+      );
+      const selectedValues = filteredRawValues.map(({ value }) =>
+        resolveMultiSelectOption(value, lastSelectedMap, glossaryPool)
+      );
       selectedTagsRef.current = selectedValues as SelectOption[];
       onChange?.(selectedValues);
-    } else {
+    } else if (values) {
       // Handle single-select mode
-      if (values) {
-        const value = values as string;
+      const value = values as string;
+      const glossaryPool = buildGlossaryPool(
+        glossaries,
+        searchOptions,
+        initialOptions
+      );
+      const selectedValue = resolveSelectOption(value, glossaryPool);
 
-        const initialData = findItemByFqn(
-          [
-            ...glossaries,
-            ...(isNull(searchOptions) ? [] : searchOptions),
-            ...(initialOptions ?? []),
-          ] as ModifiedGlossaryTerm[],
-          value,
-          false
-        );
-
-        const selectedValue = initialData
-          ? {
-              value: initialData.fullyQualifiedName ?? '',
-              label: getEntityName(initialData),
-              data: initialData,
-            }
-          : {
-              value,
-              label: value,
-            };
-
-        selectedTagsRef.current = [selectedValue as SelectOption];
-        onChange?.(selectedValue as SelectOption);
-      } else {
-        // Nothing selected
-        selectedTagsRef.current = [];
-        onChange?.([]);
-      }
+      selectedTagsRef.current = [selectedValue];
+      onChange?.(selectedValue);
+    } else {
+      // Nothing selected
+      selectedTagsRef.current = [];
+      onChange?.([]);
     }
   };
 
@@ -496,6 +534,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       {...(isMultiSelect
         ? { treeCheckable: true, treeCheckStrictly: true }
         : { allowClear: true })}
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the tag selector when it opens
       autoFocus={open}
       className={classNames('async-select-list', {
         'new-chip-style': newLook,
@@ -550,6 +589,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       onSearch={onSearch}
       onTreeExpand={setExpandedRowKeys}
       {...props}
+      {...(!isUndefined(formValue) ? { value: normalizedValue } : {})}
       onKeyDown={handleKeyDown}
     />
   );

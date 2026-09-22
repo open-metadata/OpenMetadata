@@ -12,40 +12,40 @@
 """
 Athena Models
 """
+
 from datetime import datetime
-from typing import List, Optional
 
 from pydantic import BaseModel
 
 
 class QueryExecutionIdsResponse(BaseModel):
-    QueryExecutionIds: Optional[List[str]] = None
+    QueryExecutionIds: list[str] | None = None
 
 
 class AthenaStatus(BaseModel):
-    State: Optional[str] = "FAILED"  # Default value
-    SubmissionDateTime: Optional[datetime] = None
+    State: str | None = "FAILED"  # Default value
+    SubmissionDateTime: datetime | None = None
 
 
 class AthenaStatistics(BaseModel):
-    TotalExecutionTimeInMillis: Optional[int] = None
+    TotalExecutionTimeInMillis: int | None = None
 
 
 class AthenaQueryExecution(BaseModel):
-    Query: Optional[str] = None
-    Statistics: Optional[AthenaStatistics] = None
-    Status: Optional[AthenaStatus] = None
+    Query: str | None = None
+    Statistics: AthenaStatistics | None = None
+    Status: AthenaStatus | None = None
 
 
 class AthenaQueryExecutionList(BaseModel):
-    QueryExecutions: Optional[List[AthenaQueryExecution]] = None
+    QueryExecutions: list[AthenaQueryExecution] | None = None
 
 
 class WorkGroup(BaseModel):
-    Name: Optional[str] = None
-    State: Optional[str] = None
+    Name: str | None = None
+    State: str | None = None
 
 
 class WorkGroupsList(BaseModel):
-    WorkGroups: Optional[List[WorkGroup]] = []
-    NextToken: Optional[str] = None
+    WorkGroups: list[WorkGroup] | None = []
+    NextToken: str | None = None

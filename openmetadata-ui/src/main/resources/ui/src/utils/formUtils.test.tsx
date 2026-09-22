@@ -15,7 +15,8 @@ import {
   FormItemLayout,
   HelperTextType,
 } from '../interface/FormUtils.interface';
-import { createScrollToErrorHandler, getField } from './formUtils';
+import { createScrollToErrorHandler } from './formPureUtils';
+import { getField } from './formUtils';
 
 describe('formUtils', () => {
   describe('getField', () => {
@@ -72,6 +73,29 @@ describe('formUtils', () => {
       });
 
       expect(JSON.stringify(result)).not.toContain('form-item-alert');
+    });
+
+    // The child is handed straight to the Form.Item named for the field.
+    it('Should place a COMPONENT field child under a Form.Item for that field', () => {
+      const child = <div data-testid="picker" />;
+
+      const result = getField({
+        name: 'relatedTerms',
+        label: 'label.related-term-plural',
+        required: false,
+        id: 'root/relatedTerms',
+        type: FieldTypes.COMPONENT,
+        props: { children: child },
+      });
+
+      const formItem = (
+        result as unknown as {
+          props: { children: Array<{ props: Record<string, unknown> }> };
+        }
+      ).props.children[0];
+
+      expect(formItem.props.name).toBe('relatedTerms');
+      expect(formItem.props.children).toBe(child);
     });
   });
 

@@ -27,7 +27,6 @@ import {
 } from 'recharts';
 import {
   DEFAULT_CHART_OPACITY,
-  GRAPH_BACKGROUND_COLOR,
   HOVER_CHART_OPACITY,
 } from '../../constants/constants';
 import {
@@ -38,20 +37,20 @@ import {
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { PageViewsByEntities } from '../../generated/dataInsight/type/pageViewsByEntities';
+import { useDataInsightChartColors } from '../../hooks/insights/useDataInsightChartColors';
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
-import { entityChartColor } from '../../utils/CommonUtils';
+import { entityChartColor } from '../../utils/ColorUtils';
+import { CustomTooltip } from '../../utils/DataInsightChartUtils';
 import {
-  CustomTooltip,
   getGraphDataByEntityType,
   sortEntityByValue,
-} from '../../utils/DataInsightUtils';
+} from '../../utils/DataInsightPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import PageHeader from '../PageHeader/PageHeader.component';
 import './data-insight-detail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 import TotalEntityInsightSummary from './TotalEntityInsightSummary.component';
-
 interface Props {
   chartFilter: ChartFilter;
   selectedDays: number;
@@ -77,6 +76,7 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
   }, [entities, latestData]);
 
   const { t } = useTranslation();
+  const { axis, grid } = useDataInsightChartColors();
 
   const fetchPageViewsByEntities = async () => {
     setIsLoading(true);
@@ -135,9 +135,9 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
           />
           <ResponsiveContainer debounce={1} height={GRAPH_HEIGHT}>
             <LineChart data={data} margin={BAR_CHART_MARGIN}>
-              <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} vertical={false} />
-              <XAxis dataKey="timestamp" />
-              <YAxis />
+              <CartesianGrid stroke={grid} vertical={false} />
+              <XAxis dataKey="timestamp" tick={{ fill: axis }} />
+              <YAxis tick={{ fill: axis }} />
               <Tooltip
                 content={<CustomTooltip />}
                 wrapperStyle={{ pointerEvents: 'auto' }}

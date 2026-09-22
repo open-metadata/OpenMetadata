@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { MenuProps } from 'antd';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -22,4 +23,5 @@ export interface AddIngestionButtonProps {
   ingestionList: Array<IngestionPipeline>;
   serviceCategory: ServiceCategory;
   serviceName: string;
+  extraMenuItems?: MenuProps['items'];
 }

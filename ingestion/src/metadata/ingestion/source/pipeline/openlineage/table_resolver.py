@@ -25,7 +25,6 @@ Resolution order (per namespace):
 3. Caller falls back to existing suffix search across all ``dbServiceNames``.
 """
 
-from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
 from metadata.generated.schema.entity.services.databaseService import (
@@ -37,7 +36,7 @@ logger = ingestion_logger()
 
 # Maps OpenLineage dataset namespace URI schemes to OMD DatabaseServiceType.
 # See: https://openlineage.io/docs/spec/naming/
-NAMESPACE_SCHEME_TO_SERVICE_TYPE: Dict[str, DatabaseServiceType] = {
+NAMESPACE_SCHEME_TO_SERVICE_TYPE: dict[str, DatabaseServiceType] = {
     "awsathena": DatabaseServiceType.Athena,
     "bigquery": DatabaseServiceType.BigQuery,
     "cassandra": DatabaseServiceType.Cassandra,
@@ -55,7 +54,7 @@ NAMESPACE_SCHEME_TO_SERVICE_TYPE: Dict[str, DatabaseServiceType] = {
 }
 
 
-def extract_db_scheme_from_namespace(namespace: str) -> Optional[str]:
+def extract_db_scheme_from_namespace(namespace: str) -> str | None:
     """
     Extract the URL scheme from an OpenLineage dataset namespace.
 
@@ -75,8 +74,8 @@ def extract_db_scheme_from_namespace(namespace: str) -> Optional[str]:
 
 def find_service_by_namespace_mapping(
     namespace: str,
-    mapping: Dict[str, str],
-) -> Optional[str]:
+    mapping: dict[str, str],
+) -> str | None:
     """
     Look up a database service name from a user-configured
     ``namespaceToServiceMapping`` dict (namespace-prefix → OMD service name).
@@ -118,8 +117,8 @@ def find_service_by_namespace_mapping(
 
 def find_services_by_scheme(
     scheme: str,
-    db_service_type_map: Dict[str, DatabaseServiceType],
-) -> List[str]:
+    db_service_type_map: dict[str, DatabaseServiceType],
+) -> list[str]:
     """
     Filter a pre-built ``{service_name: DatabaseServiceType}`` map to only
     those whose type matches the given URL scheme.
@@ -137,16 +136,8 @@ def find_services_by_scheme(
     target_type = NAMESPACE_SCHEME_TO_SERVICE_TYPE.get(scheme)
 
     if target_type:
-        return [
-            name
-            for name, svc_type in db_service_type_map.items()
-            if svc_type == target_type
-        ]
+        return [name for name, svc_type in db_service_type_map.items() if svc_type == target_type]
 
     known_types = set(NAMESPACE_SCHEME_TO_SERVICE_TYPE.values())
 
-    return [
-        name
-        for name, svc_type in db_service_type_map.items()
-        if svc_type not in known_types
-    ]
+    return [name for name, svc_type in db_service_type_map.items() if svc_type not in known_types]

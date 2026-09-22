@@ -14,7 +14,7 @@ Mixin class containing Pipeline specific methods
 To be used by OpenMetadata class
 """
 
-from typing import Optional, Type, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel
 
@@ -40,10 +40,10 @@ class OMetaProfileMixin:
 
     def get_profile_data_by_type(
         self,
-        entity_type: Type[T],
+        entity_type: type[T],
         start_ts: int,
         end_ts: int,
-        profile_type: Optional[ProfileTypeEnum] = None,
+        profile_type: ProfileTypeEnum | None = None,
     ) -> EntityList[EntityProfile]:
         """List all profile data for a given entity type. To get all the profile for
         a specific profile type use the profile_type parameter.

@@ -16,24 +16,30 @@ import {
   AuthenticationConfiguration,
   AuthorizerConfiguration,
 } from '../constants/SSO.constant';
-import APIClient from './index';
+import { FieldError } from '../generated/system/securityValidationResponse';
+import { TestLoginResult } from '../generated/system/testLoginResult';
+import APIClient from './axiosClient';
+
+const SECURITY_CONFIG_PATH = '/system/security/config';
+const JSON_PATCH_CONTENT_TYPE = 'application/json-patch+json';
 
 export interface SecurityConfiguration {
   authenticationConfiguration: AuthenticationConfiguration;
   authorizerConfiguration: AuthorizerConfiguration;
 }
 
-export interface ValidationResult {
-  component: string;
-  status?: string;
-  message?: string;
-  error?: boolean;
+export interface SecurityValidationResponse {
+  status: 'success' | 'failed';
+  errors?: FieldError[];
 }
 
-export interface SecurityValidationResponse {
-  status: string;
-  message: string;
-  results: ValidationResult[];
+// Re-export the generated TestLoginResult so the schema stays the single source
+// of truth (the backend produces it from the same JSON schema).
+export type { TestLoginResult };
+
+export interface TestLoginTokenRequest {
+  securityConfiguration: SecurityConfiguration;
+  idToken: string;
 }
 
 /**
@@ -51,6 +57,21 @@ export const validateSecurityConfiguration = async (
 };
 
 /**
+ * Validate a browser-obtained OIDC id_token against a candidate (unsaved)
+ * security configuration. Admin-only. Performs no side effects on the server.
+ * @param data - Candidate security configuration and the obtained id_token
+ * @returns Promise with the dry-run test login result
+ */
+export const testLoginValidateToken = async (
+  data: TestLoginTokenRequest
+): Promise<AxiosResponse<TestLoginResult>> => {
+  return APIClient.post<TestLoginTokenRequest, AxiosResponse<TestLoginResult>>(
+    '/system/security/test-login/validate-token',
+    data
+  );
+};
+
+/**
  * Apply security configuration
  * @param data - Security configuration data
  * @returns Promise with application result
@@ -61,7 +82,7 @@ export const applySecurityConfiguration = async (
   return APIClient.put<
     SecurityConfiguration,
     AxiosResponse<SecurityConfiguration>
-  >('/system/security/config', data);
+  >(SECURITY_CONFIG_PATH, data);
 };
 
 /**
@@ -71,21 +92,7 @@ export const applySecurityConfiguration = async (
 export const getSecurityConfiguration = async (): Promise<
   AxiosResponse<SecurityConfiguration>
 > => {
-  return APIClient.get<SecurityConfiguration>('/system/security/config');
-};
-
-/**
- * Test security configuration connection
- * @param data - Security configuration data
- * @returns Promise with test result
- */
-export const testSecurityConfiguration = async (
-  data: SecurityConfiguration
-): Promise<AxiosResponse<ValidationResult>> => {
-  return APIClient.post<SecurityConfiguration, AxiosResponse<ValidationResult>>(
-    '/security/config/test',
-    data
-  );
+  return APIClient.get<SecurityConfiguration>(SECURITY_CONFIG_PATH);
 };
 
 /**
@@ -101,7 +108,7 @@ export const patchAuthenticationConfiguration = async (
     AxiosResponse<AuthenticationConfiguration>
   >('/system/settings/authenticationConfiguration', patches, {
     headers: {
-      'Content-Type': 'application/json-patch+json',
+      'Content-Type': JSON_PATCH_CONTENT_TYPE,
     },
   });
 };
@@ -119,7 +126,7 @@ export const patchAuthorizerConfiguration = async (
     patches,
     {
       headers: {
-        'Content-Type': 'application/json-patch+json',
+        'Content-Type': JSON_PATCH_CONTENT_TYPE,
       },
     }
   );
@@ -134,11 +141,11 @@ export const patchSecurityConfiguration = async (
   patches: Operation[]
 ): Promise<AxiosResponse<SecurityConfiguration>> => {
   return APIClient.patch<Operation[], AxiosResponse<SecurityConfiguration>>(
-    '/system/security/config',
+    SECURITY_CONFIG_PATH,
     patches,
     {
       headers: {
-        'Content-Type': 'application/json-patch+json',
+        'Content-Type': JSON_PATCH_CONTENT_TYPE,
       },
     }
   );

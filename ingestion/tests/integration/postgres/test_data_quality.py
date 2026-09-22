@@ -81,9 +81,7 @@ def run_data_quality_workflow(
                             "name": "first_name_includes_tom_and_jerry_wo_enum",
                             "testDefinitionName": "columnValuesToBeInSet",
                             "columnName": "first_name",
-                            "parameterValues": [
-                                {"name": "allowedValues", "value": "['Tom', 'Jerry']"}
-                            ],
+                            "parameterValues": [{"name": "allowedValues", "value": "['Tom', 'Jerry']"}],
                             "computePassedFailedRowCount": True,
                         },
                         {
@@ -114,9 +112,7 @@ def run_data_quality_workflow(
                             "name": "column_values_not_match_regex",
                             "testDefinitionName": "columnValuesToNotMatchRegex",
                             "columnName": "email",
-                            "parameterValues": [
-                                {"name": "forbiddenRegex", "value": ".*@example\\.com$"}
-                            ],
+                            "parameterValues": [{"name": "forbiddenRegex", "value": ".*@example\\.com$"}],
                         },
                         {
                             "name": "table_column_count_between",
@@ -134,9 +130,7 @@ def run_data_quality_workflow(
                         {
                             "name": "table_column_name_exists",
                             "testDefinitionName": "tableColumnNameToExist",
-                            "parameterValues": [
-                                {"name": "columnName", "value": "customer_id"}
-                            ],
+                            "parameterValues": [{"name": "columnName", "value": "customer_id"}],
                         },
                         {
                             "name": "table_column_names_match_set",
@@ -219,9 +213,7 @@ def run_data_quality_workflow(
     test_suite_processor.execute()
     test_suite_processor.raise_from_status()
     yield
-    test_suite: TestSuite = metadata.get_by_name(
-        TestSuite, test_suite_name, nullable=True
-    )
+    test_suite: TestSuite = metadata.get_by_name(TestSuite, test_suite_name, nullable=True)
     if test_suite:
         metadata.delete(TestSuite, test_suite.id, recursive=True, hard_delete=True)
 
@@ -322,18 +314,10 @@ def test_data_quality(
 ):
     table_fqn = f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer"
     col = _COLUMN_TEST_CASES.get(test_case_name)
-    fqn = (
-        f"{table_fqn}.{col}.{test_case_name}"
-        if col
-        else f"{table_fqn}.{test_case_name}"
-    )
-    test_case: TestCase = metadata.get_by_name(
-        TestCase, fqn, fields=["*"], nullable=False
-    )
+    fqn = f"{table_fqn}.{col}.{test_case_name}" if col else f"{table_fqn}.{test_case_name}"
+    test_case: TestCase = metadata.get_by_name(TestCase, fqn, fields=["*"], nullable=False)
     assert_equal_pydantic_objects(
-        expected_status.model_copy(
-            update={"timestamp": test_case.testCaseResult.timestamp}
-        ),
+        expected_status.model_copy(update={"timestamp": test_case.testCaseResult.timestamp}),
         test_case.testCaseResult,
     )
 
@@ -419,9 +403,7 @@ class IncompatibleTypeParameter:
     ids=lambda x: x.test_case.name,
 )
 def parameters(request, db_service):
-    request.param.entity_fqn = request.param.entity_fqn.format(
-        database_service=db_service.fullyQualifiedName.root
-    )
+    request.param.entity_fqn = request.param.entity_fqn.format(database_service=db_service.fullyQualifiedName.root)
     return request.param
 
 
@@ -438,9 +420,7 @@ def test_incompatible_column_type(
     run_workflow(MetadataWorkflow, ingestion_config)
     test_suite_processor = run_workflow(
         TestSuiteWorkflow,
-        get_incompatible_column_type_config(
-            parameters.entity_fqn, parameters.test_case
-        ),
+        get_incompatible_column_type_config(parameters.entity_fqn, parameters.test_case),
         raise_from_status=False,
     )
     cleanup_fqns(

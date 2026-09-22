@@ -11,39 +11,37 @@
 """
 Environment fixtures to be able to test the DeltaLake Ingestion Pipeline.
 """
+
 import pytest
 
-from ....containers import MinioContainerConfigs, get_minio_container
+from ....containers import S3ContainerConfigs, get_s3_container  # noqa: TID252
 
 
 class DeltaLakeStorageTestConfig:
     def __init__(self):
-        self.minio_config = MinioContainerConfigs()
+        self.s3_config = S3ContainerConfigs()
         self.bucket_name = "bucket"
         self.prefix = "prefix"
         self.storage_options = {
-            "AWS_ACCESS_KEY_ID": self.minio_config.access_key,
-            "AWS_SECRET_ACCESS_KEY": self.minio_config.secret_key,
+            "AWS_ACCESS_KEY_ID": self.s3_config.access_key,
+            "AWS_SECRET_ACCESS_KEY": self.s3_config.secret_key,
             "AWS_REGION": "us-east-2",
             "AWS_ALLOW_HTTP": "true",
             "AWS_S3_ALLOW_UNSAFE_RENAME": "true",
         }
 
-    def with_exposed_port(self, minio):
-        self.minio_config.with_exposed_port(minio)
-        self.storage_options[
-            "AWS_ENDPOINT_URL"
-        ] = f"http://localhost:{self.minio_config.exposed_port}"
+    def with_exposed_port(self, container):
+        self.s3_config.with_exposed_port(container)
+        self.storage_options["AWS_ENDPOINT_URL"] = f"http://localhost:{self.s3_config.exposed_port}"
 
 
 @pytest.fixture(scope="module")
 def deltalake_storage_environment():
     config = DeltaLakeStorageTestConfig()
-    minio = get_minio_container(config.minio_config)
-    with minio:
-        minio_client = minio.get_client()
-        minio_client.make_bucket(config.bucket_name)
+    s3_container = get_s3_container(config.s3_config)
+    with s3_container:
+        s3_container.get_client().make_bucket(config.bucket_name)
 
-        config.with_exposed_port(minio)
+        config.with_exposed_port(s3_container)
 
         yield config

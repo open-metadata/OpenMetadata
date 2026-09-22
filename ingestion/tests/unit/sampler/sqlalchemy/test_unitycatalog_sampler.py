@@ -12,11 +12,14 @@
 """
 Test Unity Catalog sampler functionality
 """
+
 from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import Column, Integer, String
+from sqlalchemy.exc import StatementError
 from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
@@ -29,6 +32,7 @@ from metadata.generated.schema.entity.services.connections.database.unityCatalog
 )
 from metadata.profiler.orm.types.custom_array import CustomArray
 from metadata.sampler.models import SampleConfig
+from metadata.sampler.sqlalchemy.databricks.sampler import DatabricksSamplerInterface
 from metadata.sampler.sqlalchemy.sampler import DEFAULT_MAX_ARRAY_ELEMENTS
 from metadata.sampler.sqlalchemy.unitycatalog.sampler import (
     UnityCatalogSamplerInterface,
@@ -78,9 +82,7 @@ class UnityCatalogSamplerTest(TestCase):
         )
 
     @patch("metadata.sampler.sqlalchemy.databricks.sampler.databricks_get_connection")
-    @patch(
-        "metadata.sampler.sqlalchemy.unitycatalog.sampler.UnityCatalogSamplerInterface.build_table_orm"
-    )
+    @patch("metadata.sampler.sqlalchemy.unitycatalog.sampler.UnityCatalogSamplerInterface.build_table_orm")
     def test_handle_array_column(self, mock_build_table_orm, mock_get_connection):
         """Test array column detection"""
         mock_build_table_orm.return_value = _TestTableModel
@@ -128,3 +130,49 @@ class UnityCatalogSamplerTest(TestCase):
         self.assertIn("CASE", sql_str)
         self.assertIn("slice", sql_str)
         self.assertIn("array_col", sql_str)
+
+
+@pytest.mark.parametrize(
+    "sampler_class",
+    [
+        pytest.param(DatabricksSamplerInterface, id="databricks"),
+        pytest.param(UnityCatalogSamplerInterface, id="unity-catalog"),
+    ],
+)
+@pytest.mark.parametrize(
+    "error",
+    [
+        pytest.param(RuntimeError("[UC_DEPENDENCY_DOES_NOT_EXIST] dependency is missing"), id="bracketed-token"),
+        pytest.param(
+            StatementError(
+                "query failed: uc_dependency_does_not_exist",
+                "SELECT * FROM view",
+                {},
+                RuntimeError("driver failure"),
+            ),
+            id="wrapped-driver-error",
+        ),
+    ],
+)
+def test_databricks_samplers_skip_only_missing_unity_catalog_dependencies(sampler_class, error):
+    assert sampler_class.is_skippable_sampling_error(error)
+
+
+@pytest.mark.parametrize(
+    "sampler_class",
+    [
+        pytest.param(DatabricksSamplerInterface, id="databricks"),
+        pytest.param(UnityCatalogSamplerInterface, id="unity-catalog"),
+    ],
+)
+@pytest.mark.parametrize(
+    "error",
+    [
+        pytest.param(RuntimeError("TABLE_OR_VIEW_NOT_FOUND"), id="table-or-view-not-found"),
+        pytest.param(RuntimeError("42P01"), id="sql-state-only"),
+        pytest.param(RuntimeError("missing dependency object"), id="generic-missing-object"),
+        pytest.param(RuntimeError("boom"), id="unexpected-error"),
+    ],
+)
+def test_databricks_samplers_do_not_skip_unrelated_errors(sampler_class, error):
+    assert not sampler_class.is_skippable_sampling_error(error)

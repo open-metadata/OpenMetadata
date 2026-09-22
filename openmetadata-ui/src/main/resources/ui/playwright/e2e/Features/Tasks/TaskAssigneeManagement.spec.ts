@@ -24,9 +24,9 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
 import { TaskClass } from '../../../support/entity/TaskClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext } from '../../../utils/common';
@@ -53,8 +53,7 @@ test.describe('Task Assignee Management', () => {
       await nextAssignee.create(apiContext);
       await table.create(apiContext);
 
-      task.data.about = table.entityResponseData.fullyQualifiedName;
-      task.data.aboutType = 'table';
+      task.data.about = `<#E::table::${table.entityResponseData.fullyQualifiedName}>`;
       task.data.assignees = [initialAssignee.responseData.name];
 
       await task.create(apiContext);

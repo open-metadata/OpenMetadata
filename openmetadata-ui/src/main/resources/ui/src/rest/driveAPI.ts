@@ -22,6 +22,7 @@ import { Worksheet } from '../generated/entity/data/worksheet';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
+import APIClient from './axiosClient';
 import {
   DriveAssetEntityTypes,
   GetDirectoriesParams,
@@ -29,7 +30,6 @@ import {
   GetSpreadsheetParams,
   GetWorksheetsParams,
 } from './driveAPI.interface';
-import APIClient from './index';
 
 const BASE_URL = '/drives';
 
@@ -175,13 +175,12 @@ export const updateDriveAssetVotes = async <
 
 export const getDriveAssetsVersions = async (
   id: string,
-  entityType: DriveAssetEntityTypes,
-  params?: { limit?: number; offset?: number; fieldChanged?: string }
+  entityType: DriveAssetEntityTypes
 ) => {
   const API = APIByEntityType[entityType];
   const url = `${BASE_URL}${API}/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url, { params });
+  const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };

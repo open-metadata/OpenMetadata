@@ -1,7 +1,6 @@
 """DatabaseServices entity SDK."""
-from __future__ import annotations
 
-from typing import Type
+from __future__ import annotations
 
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
@@ -14,5 +13,5 @@ class DatabaseServices(BaseEntity[DatabaseService, CreateDatabaseServiceRequest]
     """Fluent facade for database service operations."""
 
     @classmethod
-    def entity_type(cls) -> Type[DatabaseService]:
+    def entity_type(cls) -> type[DatabaseService]:
         return DatabaseService

@@ -18,6 +18,7 @@ import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   changeTermHierarchyFromModal,
+  confirmationDragAndDropGlossary,
   dragAndDropTerm,
   performExpandAll,
   selectActiveGlossary,
@@ -87,9 +88,56 @@ test.describe('Glossary Hierarchy', () => {
     }
   });
 
+  // H-M03b: Drag nested term to top level (root) of same glossary
+  test('should drag nested term to root level of same glossary', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const parentTerm = new GlossaryTerm(glossary);
+    const childTerm = new GlossaryTerm(glossary);
+
+    try {
+      await glossary.create(apiContext);
+      await parentTerm.create(apiContext);
+      childTerm.data.parent = parentTerm.responseData.fullyQualifiedName;
+      await childTerm.create(apiContext);
+
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      await performExpandAll(page);
+
+      await dragAndDropTerm(page, childTerm.data.displayName, 'Terms');
+      await confirmationDragAndDropGlossary(
+        page,
+        childTerm.data.name,
+        glossary.responseData.displayName,
+        true
+      );
+
+      const refreshed = await apiContext.get(
+        `/api/v1/glossaryTerms/${childTerm.responseData.id}`
+      );
+      childTerm.responseData = await refreshed.json();
+
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+
+      await expect(
+        page.locator(`[data-row-key*="${childTerm.responseData.name}"]`)
+      ).toBeVisible();
+    } finally {
+      await childTerm.delete(apiContext);
+      await parentTerm.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
   // H-M04: Move term to root of different glossary
-  // Skipped due to known issue: https://github.com/open-metadata/OpenMetadata/pull/24794
   test('should move term to root of different glossary', async ({ page }) => {
+    test.slow(true);
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary1 = new Glossary();
     const glossary2 = new Glossary();
@@ -111,6 +159,22 @@ test.describe('Glossary Hierarchy', () => {
         glossary2.responseData.fullyQualifiedName
       );
 
+      // moveAsync returns 200 immediately; the actual hierarchy change is
+      // processed asynchronously. Poll until the term's glossary updates.
+      await expect
+        .poll(
+          async () => {
+            const res = await apiContext.get(
+              `/api/v1/glossaryTerms/${term1.responseData.id}`
+            );
+            const term = await res.json();
+
+            return term.glossary?.fullyQualifiedName;
+          },
+          { timeout: 60_000, intervals: [1000, 2000, 5000] }
+        )
+        .toBe(glossary2.responseData.fullyQualifiedName);
+
       // Verify term is now in glossary2
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
@@ -127,7 +191,6 @@ test.describe('Glossary Hierarchy', () => {
   });
 
   // H-M05: Move term with children to different glossary
-  // Skipped due to known issue: https://github.com/open-metadata/OpenMetadata/pull/24794
   test('should move term with children to different glossary', async ({
     page,
   }) => {
@@ -162,6 +225,24 @@ test.describe('Glossary Hierarchy', () => {
         glossary2.responseData.fullyQualifiedName
       );
       await waitForAllLoadersToDisappear(page);
+
+      // moveAsync returns 200 immediately; the actual hierarchy change is
+      // processed asynchronously (change-event consumer, ~1 req/s).
+      // Poll the API until the parent term's glossary field updates before
+      // asserting the UI — otherwise the UI check races the async write.
+      await expect
+        .poll(
+          async () => {
+            const res = await apiContext.get(
+              `/api/v1/glossaryTerms/${parentTerm.responseData.id}`
+            );
+            const term = await res.json();
+
+            return term.glossary?.fullyQualifiedName;
+          },
+          { timeout: 60_000, intervals: [1000, 2000, 5000] }
+        )
+        .toBe(glossary2.responseData.fullyQualifiedName);
 
       // Verify parent and child are now in glossary2
       await redirectToHomePage(page);

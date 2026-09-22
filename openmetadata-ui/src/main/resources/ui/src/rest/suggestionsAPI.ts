@@ -21,7 +21,7 @@ import {
   SuggestionType,
 } from '../types/taskSuggestion';
 import EntityLink from '../utils/EntityLink';
-import APIClient from './index';
+import APIClient from './axiosClient';
 import {
   resolveTask,
   Task,
@@ -31,6 +31,8 @@ import {
 } from './tasksAPI';
 
 const TASKS_BASE_URL = '/tasks';
+
+const SUGGESTION_FIELDS = 'about,payload,createdBy';
 
 export type ListSuggestionsParams = ListParams & {
   entityFQN?: string;
@@ -80,10 +82,39 @@ const buildEntityLink = (task: Task): string => {
     | undefined;
 
   if (fieldPath) {
-    return EntityLink.getEntityLink(entityType, entityFQN, fieldPath);
+    // Task fieldPath uses dot notation (e.g. "columns.col_name.description").
+    // Entity links use '::' to separate the field category from the column path
+    // (e.g. "<#E::table::FQN::columns::col_name>"). Only the first dot is a
+    // category separator; remaining dots are part of the column name (nested
+    // columns like "address.zip" must be preserved as-is at index [3]).
+    // A bare "description" or "tags" means entity-level — no field suffix needed.
+    const linkField = fieldPath
+      .replace(/\.(description|tags)$/, '')
+      .replace(/^(description|tags)$/, '')
+      .replace(/^([^.]+)\./, '$1::');
+
+    return linkField
+      ? EntityLink.getEntityLink(entityType, entityFQN, linkField)
+      : EntityLink.getEntityLink(entityType, entityFQN);
   }
 
   return EntityLink.getEntityLink(entityType, entityFQN);
+};
+
+const getTaskCreatedBy = (task: Task): Task['createdBy'] | undefined => {
+  if (task.createdBy?.id) {
+    return task.createdBy;
+  }
+
+  if (task.createdById) {
+    return {
+      id: task.createdById,
+      name: task.updatedBy ?? task.createdById,
+      type: 'user',
+    };
+  }
+
+  return undefined;
 };
 
 const taskToSuggestion = (task: Task): Suggestion => {
@@ -100,7 +131,7 @@ const taskToSuggestion = (task: Task): Suggestion => {
       | string
       | undefined,
     tagLabels: (payload?.tagsToAdd as TagLabel[] | undefined) ?? undefined,
-    createdBy: task.createdBy,
+    createdBy: getTaskCreatedBy(task),
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
     updatedBy: task.updatedBy,
@@ -118,7 +149,7 @@ export const getSuggestionsList = async (
       limit: params?.limit,
       before: params?.before,
       after: params?.after,
-      fields: 'about,payload,createdBy',
+      fields: SUGGESTION_FIELDS,
     },
   });
 
@@ -137,11 +168,11 @@ export const getSuggestionsByUserId = async (
       aboutEntity: params?.entityFQN,
       type: TaskEntityType.Suggestion,
       status: TaskEntityStatus.Open,
-      createdBy: userId,
+      createdById: userId,
       limit: params?.limit,
       before: params?.before,
       after: params?.after,
-      fields: 'about,payload,createdBy',
+      fields: SUGGESTION_FIELDS,
     },
   });
 
@@ -160,12 +191,13 @@ export const updateSuggestionStatus = async (
       ? TaskResolutionType.Approved
       : TaskResolutionType.Rejected;
 
+  const tagLabelsValue = data.tagLabels
+    ? JSON.stringify(data.tagLabels)
+    : undefined;
   const newValue =
     data.type === SuggestionType.SuggestDescription
       ? data.description
-      : data.tagLabels
-      ? JSON.stringify(data.tagLabels)
-      : undefined;
+      : tagLabelsValue;
 
   const result = await resolveTask(data.id, {
     resolutionType,
@@ -178,7 +210,7 @@ export const updateSuggestionStatus = async (
 export const approveRejectAllSuggestions = async (
   userId: string,
   entityFQN: string,
-  _suggestionType: SuggestionType,
+  suggestionType: SuggestionType,
   action: SuggestionAction
 ): Promise<AxiosResponse> => {
   const response = await APIClient.get<PagingResponse<Task[]>>(TASKS_BASE_URL, {
@@ -186,9 +218,9 @@ export const approveRejectAllSuggestions = async (
       aboutEntity: entityFQN,
       type: TaskEntityType.Suggestion,
       status: TaskEntityStatus.Open,
-      createdBy: userId,
+      createdById: userId,
       limit: 100,
-      fields: 'about,payload,createdBy',
+      fields: SUGGESTION_FIELDS,
     },
   });
 
@@ -197,19 +229,29 @@ export const approveRejectAllSuggestions = async (
       ? TaskResolutionType.Approved
       : TaskResolutionType.Rejected;
 
-  const promises = response.data.data.map((task) => {
+  const filteredTasks = response.data.data.filter(
+    (task) =>
+      mapSuggestionTypeFromPayload(
+        task.payload as Record<string, unknown> | undefined
+      ) === suggestionType
+  );
+
+  // Resolve sequentially to avoid optimistic-lock version conflicts on the entity.
+  for (const task of filteredTasks) {
     const suggestion = taskToSuggestion(task);
+    const tagLabelsValue = suggestion.tagLabels
+      ? JSON.stringify(suggestion.tagLabels)
+      : undefined;
     const newValue =
       suggestion.type === SuggestionType.SuggestDescription
         ? suggestion.description
-        : suggestion.tagLabels
-        ? JSON.stringify(suggestion.tagLabels)
-        : undefined;
+        : tagLabelsValue;
 
-    return resolveTask(task.id, { resolutionType, newValue });
-  });
-
-  await Promise.allSettled(promises);
+    // Mirror Promise.allSettled behavior: one failure must not block remaining tasks.
+    await resolveTask(task.id, { resolutionType, newValue }).catch(
+      () => undefined
+    );
+  }
 
   return { data: {} } as AxiosResponse;
 };

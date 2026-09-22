@@ -16,7 +16,6 @@ import {
   LineageData,
   LineageEntityReference,
 } from '../../../../components/Lineage/Lineage.interface';
-import { User } from '../../../../generated/entity/teams/user';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
 import LineageTabContent from './LineageTabContent';
 
@@ -41,6 +40,40 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   TooltipTrigger: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
+  Owner: jest.fn().mockReturnValue(<></>),
+  Breadcrumbs: jest
+    .fn()
+    .mockImplementation(
+      ({
+        items,
+        maxItems,
+      }: {
+        items: { id: string; label: React.ReactNode }[];
+        maxItems?: number;
+      }) => {
+        const shouldCollapse = Boolean(maxItems && items.length > maxItems);
+        const displayItems = shouldCollapse
+          ? [items[0], { id: 'ellipsis', label: null }, items[items.length - 1]]
+          : items;
+
+        return (
+          <ol>
+            {displayItems.map((item, index) => (
+              <li key={item.id}>
+                {shouldCollapse && index === 1 ? (
+                  <svg data-testid="dots-horizontal-icon" />
+                ) : (
+                  <span>{item.label}</span>
+                )}
+                {index < displayItems.length - 1 && (
+                  <svg data-testid="chevron-right-icon" />
+                )}
+              </li>
+            ))}
+          </ol>
+        );
+      }
+    ),
 }));
 
 jest.mock('react-i18next', () => ({
@@ -67,6 +100,7 @@ jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => ({
     .mockImplementation(({ onSearch, placeholder, searchValue }) => (
       <div data-testid="search-bar">
         <input
+          aria-label={placeholder}
           data-testid="search-input"
           placeholder={placeholder}
           value={searchValue}
@@ -160,13 +194,13 @@ jest.mock('../../../../enums/common.enum', () => ({
 }));
 
 // Mock utility functions
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/EntityDisplayUtils', () => ({
   getServiceLogo: jest
     .fn()
     .mockReturnValue(<div data-testid="service-logo">ServiceLogo</div>),
 }));
 
-jest.mock('../../../../utils/EntityLineageUtils', () => ({
+jest.mock('../../../../utils/EntityLineageNodeUtils', () => ({
   getUpstreamDownstreamNodesEdges: jest.fn(),
 }));
 
@@ -180,24 +214,6 @@ jest.mock('../../../../utils/SearchClassBase', () => ({
         <div data-testid={`entity-icon-${entityType}`}>EntityIcon</div>
       )),
   },
-}));
-
-// Mock OwnerLabel component
-jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest
-    .fn()
-    .mockImplementation(({ owners }) => (
-      <div data-testid="owner-label">
-        {owners?.map((owner: User) => owner.name).join(', ')}
-      </div>
-    )),
-}));
-
-// Mock NoOwnerFound component
-jest.mock('../../../common/NoOwner/NoOwnerFound', () => ({
-  NoOwnerFound: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="no-owner-found">No Owner</div>),
 }));
 
 // Mock data
@@ -262,7 +278,7 @@ const defaultProps = {
 
 describe('LineageTabContent', () => {
   const mockGetUpstreamDownstreamNodesEdges = jest.requireMock(
-    '../../../../utils/EntityLineageUtils'
+    '../../../../utils/EntityLineageNodeUtils'
   ).getUpstreamDownstreamNodesEdges;
 
   beforeEach(() => {
@@ -720,7 +736,7 @@ describe('LineageTabContent', () => {
   describe('Service Logo Integration', () => {
     it('should call getServiceLogo with correct parameters', () => {
       const { getServiceLogo } = jest.requireMock(
-        '../../../../utils/CommonUtils'
+        '../../../../utils/EntityDisplayUtils'
       );
 
       render(<LineageTabContent {...defaultProps} />);
@@ -743,7 +759,7 @@ describe('LineageTabContent', () => {
       });
 
       const { getServiceLogo } = jest.requireMock(
-        '../../../../utils/CommonUtils'
+        '../../../../utils/EntityDisplayUtils'
       );
 
       render(<LineageTabContent {...defaultProps} filter="upstream" />);

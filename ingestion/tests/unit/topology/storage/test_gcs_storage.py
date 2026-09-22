@@ -11,14 +11,15 @@
 """
 Unit tests for GCS Object store source
 """
+
 import datetime
 import uuid
 from collections import namedtuple
-from typing import List
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pandas as pd
+from google.api_core.exceptions import NotFound
 
 from metadata.generated.schema.entity.data.container import (
     ContainerDataModel,
@@ -100,9 +101,7 @@ MOCK_OBJECT_STORE_CONFIG = {
     },
 }
 MOCK_BUCKETS_RESPONSE = [
-    MockBucketResponse(
-        name="test_transactions", time_created=datetime.datetime(2000, 1, 1)
-    ),
+    MockBucketResponse(name="test_transactions", time_created=datetime.datetime(2000, 1, 1)),
     MockBucketResponse(name="test_sales", time_created=datetime.datetime(2000, 2, 2)),
     MockBucketResponse(name="events", time_created=datetime.datetime(2000, 3, 3)),
 ]
@@ -116,7 +115,7 @@ MOCK_METADATA_FILE_RESPONSE = {
         }
     ]
 }
-EXPECTED_BUCKETS: List[GCSBucketResponse] = [
+EXPECTED_BUCKETS: list[GCSBucketResponse] = [
     GCSBucketResponse(
         name="test_transactions",
         project_id="my-gcp-project",
@@ -160,14 +159,14 @@ class StorageUnitTest(TestCase):
     """
 
     @patch(
-        "metadata.ingestion.source.storage.storage_service.StorageServiceSource.test_connection"
+        "metadata.ingestion.source.storage.storage_service.StorageServiceSource.get_manifest_file",
+        return_value=None,
     )
-    def __init__(self, method_name: str, test_connection) -> None:
+    @patch("metadata.ingestion.source.storage.storage_service.StorageServiceSource.test_connection")
+    def __init__(self, method_name: str, test_connection, _get_manifest_file) -> None:
         super().__init__(method_name)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.model_validate(
-            MOCK_OBJECT_STORE_CONFIG
-        )
+        self.config = OpenMetadataWorkflowConfig.model_validate(MOCK_OBJECT_STORE_CONFIG)
 
         # This already validates that the source can be initialized
         self.object_store_source = GcsSource.create(
@@ -176,9 +175,7 @@ class StorageUnitTest(TestCase):
         )
         self.gcs_reader = get_reader(
             config_source=GCSConfig(),
-            client=self.object_store_source.gcs_clients.storage_client.clients[
-                "my-gcp-project"
-            ],
+            client=self.object_store_source.gcs_clients.storage_client.clients["my-gcp-project"],
         )
 
     def test_create_from_invalid_source(self):
@@ -217,13 +214,13 @@ class StorageUnitTest(TestCase):
         )
 
     def test_gcs_buckets_fetching(self):
-        self.object_store_source.gcs_clients.storage_client.clients[
-            "my-gcp-project"
-        ].list_buckets = lambda: MOCK_BUCKETS_RESPONSE
+        self.object_store_source.gcs_clients.storage_client.clients["my-gcp-project"].list_buckets = lambda: (
+            MOCK_BUCKETS_RESPONSE
+        )
         self.assertListEqual(self.object_store_source.fetch_buckets(), EXPECTED_BUCKETS)
 
     def test_load_metadata_file_gcs(self):
-        metadata_entry: List[MetadataEntry] = self.return_metadata_entry()
+        metadata_entry: list[MetadataEntry] = self.return_metadata_entry()
 
         self.assertEqual(1, len(metadata_entry))
         self.assertEqual(
@@ -236,12 +233,28 @@ class StorageUnitTest(TestCase):
         )
 
     def test_no_metadata_file_returned_when_file_not_present(self):
-        with self.assertRaises(ReadException):
+        blob = Mock()
+        blob.download_as_string.side_effect = NotFound("metadata file not found")
+        bucket = Mock()
+        bucket.get_blob.return_value = blob
+
+        with (
+            patch.object(self.gcs_reader.client, "get_bucket", return_value=bucket) as get_bucket,
+            self.assertRaises(ReadException) as raised,
+        ):
             self.gcs_reader.read(
                 path=OPENMETADATA_TEMPLATE_FILE_NAME,
                 bucket_name="test",
                 verbose=False,
             )
+
+        self.assertEqual(
+            f"Error fetching file [{OPENMETADATA_TEMPLATE_FILE_NAME}] from GCS: 404 metadata file not found",
+            str(raised.exception),
+        )
+        get_bucket.assert_called_once_with("test")
+        bucket.get_blob.assert_called_once_with(OPENMETADATA_TEMPLATE_FILE_NAME)
+        blob.download_as_string.assert_called_once_with()
 
     def test_generate_unstructured_container(self):
         bucket_response = GCSBucketResponse(
@@ -264,17 +277,13 @@ class StorageUnitTest(TestCase):
                 ),
                 fullPath="gs://test_bucket",
             ),
-            self.object_store_source._generate_unstructured_container(
-                bucket_response=bucket_response
-            ),
+            self.object_store_source._generate_unstructured_container(bucket_response=bucket_response),
         )
 
     def test_generate_structured_container(self):
-        self.object_store_source._get_sample_file_path = (
-            lambda bucket, metadata_entry: "transactions/file_1.csv"
-        )
+        self.object_store_source._get_sample_file_path = lambda bucket, metadata_entry: "transactions/file_1.csv"
         self.object_store_source._fetch_metric = lambda bucket, metric: 100.0
-        columns: List[Column] = [
+        columns: list[Column] = [
             Column(
                 name=ColumnName("transaction_id"),
                 dataType=DataType.INT,
@@ -305,7 +314,7 @@ class StorageUnitTest(TestCase):
                 creation_date=datetime.datetime(2000, 1, 1).isoformat(),
                 parent=entity_ref,
                 sourceUrl=SourceUrl(
-                    f"https://console.cloud.google.com/storage/browser/test_bucket/transactions?project=my-gcp-project"
+                    f"https://console.cloud.google.com/storage/browser/test_bucket/transactions?project=my-gcp-project"  # noqa: F541
                 ),
                 fullPath="gs://test_bucket/transactions",
             ),
@@ -386,9 +395,7 @@ class StorageUnitTest(TestCase):
 
     def test_get_columns_threads_session_through(self):
         sentinel_session = object()
-        with patch.object(
-            self.object_store_source, "extract_column_definitions", return_value=[]
-        ) as mock_extract:
+        with patch.object(self.object_store_source, "extract_column_definitions", return_value=[]) as mock_extract:
             self.object_store_source._get_columns(
                 container_name="test_bucket",
                 sample_key="test.json",
@@ -408,18 +415,12 @@ class StorageUnitTest(TestCase):
         )
         self.assertEqual(
             "transactions/",
-            self.object_store_source._get_sample_file_prefix(
-                metadata_entry=input_metadata
-            ),
+            self.object_store_source._get_sample_file_prefix(metadata_entry=input_metadata),
         )
 
     def test_get_sample_file_prefix_for_unstructured_metadata(self):
         input_metadata = MetadataEntry(dataPath="transactions")
-        self.assertIsNone(
-            self.object_store_source._get_sample_file_prefix(
-                metadata_entry=input_metadata
-            )
-        )
+        self.assertIsNone(self.object_store_source._get_sample_file_prefix(metadata_entry=input_metadata))
 
     def test_get_sample_file_prefix_for_structured_and_not_partitioned_metadata(self):
         input_metadata = MetadataEntry(
@@ -429,17 +430,15 @@ class StorageUnitTest(TestCase):
         )
         self.assertEqual(
             "transactions/",
-            self.object_store_source._get_sample_file_prefix(
-                metadata_entry=input_metadata
-            ),
+            self.object_store_source._get_sample_file_prefix(metadata_entry=input_metadata),
         )
 
-    def test_get_sample_file_path_with_invalid_prefix(self):
-        self.object_store_source._get_sample_file_prefix = (
-            lambda metadata_entry: "/transactions"
-        )
-        self.assertIsNone(
-            self.object_store_source._get_sample_file_path(
+    def test_get_sample_file_path_returns_none_when_prefix_has_no_files(self):
+        self.object_store_source._get_sample_file_prefix = lambda metadata_entry: "/transactions"
+        client = self.object_store_source.gcs_clients.storage_client.clients["my-gcp-project"]
+
+        with patch.object(client, "list_blobs", return_value=[]) as list_blobs:
+            result = self.object_store_source._get_sample_file_path(
                 bucket=GCSBucketResponse(
                     name="test_bucket",
                     project_id="my-gcp-project",
@@ -451,15 +450,19 @@ class StorageUnitTest(TestCase):
                     isPartitioned=False,
                 ),
             )
+
+        self.assertIsNone(result)
+        list_blobs.assert_called_once_with(
+            "test_bucket",
+            prefix="/transactions",
+            max_results=1000,
         )
 
     def test_get_sample_file_path_randomly(self):
-        self.object_store_source._get_sample_file_prefix = (
-            lambda metadata_entry: "/transactions"
+        self.object_store_source._get_sample_file_prefix = lambda metadata_entry: "/transactions"
+        self.object_store_source.gcs_clients.storage_client.clients["my-gcp-project"].list_blobs = (
+            lambda bucket, prefix, max_results: MOCK_OBJECT_FILE_PATHS
         )
-        self.object_store_source.gcs_clients.storage_client.clients[
-            "my-gcp-project"
-        ].list_blobs = lambda bucket, prefix, max_results: MOCK_OBJECT_FILE_PATHS
 
         candidate = self.object_store_source._get_sample_file_path(
             bucket=GCSBucketResponse(
@@ -483,7 +486,5 @@ class StorageUnitTest(TestCase):
         )
 
     def return_metadata_entry(self):
-        container_config = StorageContainerConfig.model_validate(
-            MOCK_METADATA_FILE_RESPONSE
-        )
+        container_config = StorageContainerConfig.model_validate(MOCK_METADATA_FILE_RESPONSE)
         return container_config.entries

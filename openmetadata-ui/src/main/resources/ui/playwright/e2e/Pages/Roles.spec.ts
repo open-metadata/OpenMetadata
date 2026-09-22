@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { RolesClass } from '../../support/access-control/RolesClass';
+import { expect, test } from '../../support/fixtures/base';
 import {
-  descriptionBox,
   getApiContext,
+  getDescriptionBox,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -48,15 +48,21 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.ROLES);
 
-    // Wait for loader to disappear using assertion-based wait
-    await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+    await waitForAllLoadersToDisappear(page);
 
     // Verify roles page is ready
     await expect(page.locator('[data-testid="add-role"]')).toBeVisible();
   });
 
   test('Roles page should work properly', async ({ page }) => {
-    test.slow();
+    // 8 sequential test.step blocks that each renavigate to the roles list
+    // and paginate via getElementWithPagination (50-page loop, 30s loader
+    // wait each). Under CI load the whole thing has been hitting the
+    // 180s test.slow() ceiling — a 3-minute burn per attempt before the
+    // retry starts. Cap at 120s so failures fail fast and Playwright's
+    // per-test retry recovers the run without triple-timing-out.
+    // Happy-path runtime for this test on a warm shard is ~60-90s.
+    test.setTimeout(120_000);
 
     const roleName = `Role-test-${uuid()}`;
     const description = `This is ${roleName} description`;
@@ -78,7 +84,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.locator('#name').fill(roleName);
 
       // Entering description
-      const descriptionField = page.locator(descriptionBox);
+      const descriptionField = getDescriptionBox(page);
       await expect(descriptionField).toBeVisible();
       await descriptionField.fill(description);
 
@@ -124,7 +130,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       ]);
 
       // Wait for loader to disappear after submission
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       // Verify the role is added successfully
       await expect(page).toHaveURL(`/settings/access/roles/${roleName}`);
@@ -145,7 +151,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await policiesTab.click();
 
       // Wait for policies tab content to load
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       // Verifying the added policies - use proper assertions
       await expect(
@@ -168,8 +174,13 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await teamsTab.click();
 
       // Wait for teams tab content to load
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
-      await expect(page.getByRole('cell', { name: 'No data' })).toBeVisible();
+      await waitForAllLoadersToDisappear(page);
+      await expect(
+        // Engine-agnostic: AntD puts the empty state in a plain cell, the
+        // react-aria grid renders it as the row's rowheader — but both sit
+        // in a row whose accessible name is the placeholder text.
+        page.getByRole('row', { name: 'No data' })
+      ).toBeVisible();
 
       // click on the users tab
       const usersTab = page.locator('[role="tab"]:has-text("Users")');
@@ -177,12 +188,17 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await usersTab.click();
 
       // Wait for users tab content to load
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
-      await expect(page.getByRole('cell', { name: 'No data' })).toBeVisible();
+      await waitForAllLoadersToDisappear(page);
+      await expect(
+        // Engine-agnostic: AntD puts the empty state in a plain cell, the
+        // react-aria grid renders it as the row's rowheader — but both sit
+        // in a row whose accessible name is the placeholder text.
+        page.getByRole('row', { name: 'No data' })
+      ).toBeVisible();
 
       // Navigate to roles list page to verify the added role
       await settingClick(page, GlobalSettingOptions.ROLES);
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       const roleLocator = page.locator(
         `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
@@ -227,7 +243,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.locator('#name').fill(roleName);
 
       // Entering description
-      const descriptionField = page.locator(descriptionBox);
+      const descriptionField = getDescriptionBox(page);
       await expect(descriptionField).toBeVisible();
       await descriptionField.fill(description);
 
@@ -247,19 +263,12 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     await test.step('Edit created role', async () => {
-      await settingClick(page, GlobalSettingOptions.ROLES);
-
-      // Wait for roles page to be ready
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
-
-      // Edit description
-      const roleLocator = page.locator(
-        `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
-      );
-      await getElementWithPagination(page, roleLocator);
-
-      // Wait for role details page to load
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      // Direct-nav to the role detail page. The previous pattern
+      // (settingClick → paginate the roles list until the row is found →
+      // click it) can burn 30s+ of loader waits per hop; the URL is
+      // deterministic from roleName so skip the round-trip entirely.
+      await page.goto(`/settings/access/roles/${roleName}`);
+      await waitForAllLoadersToDisappear(page);
 
       const editDescriptionButton = page.locator(
         '[data-testid="edit-description"]'
@@ -268,7 +277,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await editDescriptionButton.click();
 
       // Wait for description editor to be visible
-      const descriptionField = page.locator(descriptionBox);
+      const descriptionField = getDescriptionBox(page);
       await expect(descriptionField).toBeVisible();
       await descriptionField.fill(`${description}-updated`);
 
@@ -287,7 +296,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       ]);
 
       // Wait for loader to disappear and verify description updated
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
       await expect(page.locator('[data-testid="inactive-link"]')).toBeVisible();
 
       // Asserting updated description
@@ -330,25 +339,15 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       ]);
 
       // Wait for loader and verify header updated
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
       const headerDisplayName = page.getByTestId('entity-header-display-name');
       await expect(headerDisplayName).toBeVisible();
       await expect(headerDisplayName).toContainText(updatedRoleName);
     });
 
     await test.step('Add new policy to created role', async () => {
-      await settingClick(page, GlobalSettingOptions.ROLES);
-
-      // Wait for roles page to be ready
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
-
-      const roleLocator = page.locator(
-        `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
-      );
-      await getElementWithPagination(page, roleLocator);
-
-      // Wait for role details page to load
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await page.goto(`/settings/access/roles/${roleName}`);
+      await waitForAllLoadersToDisappear(page);
 
       // Click add policy button
       const addPolicyButton = page.locator('[data-testid="add-policy"]');
@@ -392,7 +391,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       // Wait for modal to close and UI to update
       await expect(modalContainer).not.toBeVisible();
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       // Verify policy was added
       await expect(
@@ -404,18 +403,8 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     await test.step('Remove added policy from created role', async () => {
-      await settingClick(page, GlobalSettingOptions.ROLES);
-
-      // Wait for roles page to be ready
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
-
-      const roleLocator = page.locator(
-        `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
-      );
-      await getElementWithPagination(page, roleLocator);
-
-      // Wait for role details page to load
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await page.goto(`/settings/access/roles/${roleName}`);
+      await waitForAllLoadersToDisappear(page);
 
       // Remove policy
       await removePolicyFromRole(
@@ -425,7 +414,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       );
 
       // Wait for UI to update after removal
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       // Validating if the policy is removed successfully
       await expect(
@@ -437,18 +426,8 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     await test.step('Check if last policy is not removed', async () => {
-      await settingClick(page, GlobalSettingOptions.ROLES);
-
-      // Wait for roles page to be ready
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
-
-      const roleLocator = page.locator(
-        `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
-      );
-      await getElementWithPagination(page, roleLocator);
-
-      // Wait for role details page to load
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await page.goto(`/settings/access/roles/${roleName}`);
+      await waitForAllLoadersToDisappear(page);
 
       // Removing second policy from the role
       await removePolicyFromRole(
@@ -458,7 +437,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       );
 
       // Wait for UI to update after removal
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       // Validating if the policy is removed successfully
       await expect(
@@ -491,47 +470,45 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     await test.step('Delete created Role', async () => {
-      await settingClick(page, GlobalSettingOptions.ROLES);
+      // Delete from the role's own detail page instead of paginating the
+      // shared roles list. The list carries every role in the environment
+      // (hundreds of leftover PW fixtures under a shared nightly backend) and
+      // getElementWithPagination gives up after 50 pages — the created role,
+      // sorted by name after all "PW%Roles-*" fixtures, now falls past that
+      // cap. The detail URL is deterministic from roleName, matching the
+      // pattern the edit steps above already use.
+      await page.goto(`/settings/access/roles/${roleName}`);
+      await waitForAllLoadersToDisappear(page);
 
-      // Wait for roles page to be ready
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      const manageButton = page.getByTestId('manage-button');
+      await expect(manageButton).toBeVisible();
+      await manageButton.click();
 
-      const roleLocator = page.locator(
-        `[data-testid="delete-action-${updatedRoleName}"]`
-      );
-      await getElementWithPagination(page, roleLocator);
-
-      // Wait for delete button to be visible and click it
-      await expect(roleLocator).toBeVisible();
-
-      // Wait for confirmation modal to be visible
-      const confirmationInput = page.locator(
-        '[data-testid="confirmation-text-input"]'
-      );
-      await expect(confirmationInput).toBeVisible();
-      await confirmationInput.fill('DELETE');
+      const deleteButton = page.getByTestId('delete-button-title');
+      await expect(deleteButton).toBeVisible();
+      await deleteButton.click();
 
       const confirmButton = page.locator('[data-testid="confirm-button"]');
       await expect(confirmButton).toBeVisible();
       await expect(confirmButton).toBeEnabled();
 
-      await Promise.all([
-        // Wait for API call to complete
-        page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/roles') &&
-            response.status() === 200
-        ),
-        confirmButton.click(),
-      ]);
+      const deleteResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/roles') &&
+          response.request().method() === 'DELETE'
+      );
+      await confirmButton.click();
+      const response = await deleteResponse;
 
-      // Wait for modal to close and UI to update
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      expect(response.status()).toBe(200);
+
+      // Wait for redirect to the roles list and UI to settle
+      await waitForAllLoadersToDisappear(page);
 
       // Validate deleted role is no longer visible
       await expect(
         page.locator(
-          `[data-testid="role-name"][href="/settings/access/roles/${updatedRoleName}"]`
+          `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
         )
       ).not.toBeVisible();
     });
@@ -570,13 +547,6 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
 
-    // Wait for confirmation modal
-    const confirmationInput = page.locator(
-      '[data-testid="confirmation-text-input"]'
-    );
-    await expect(confirmationInput).toBeVisible();
-    await confirmationInput.fill('DELETE');
-
     const confirmButton = page.locator('[data-testid="confirm-button"]');
     await expect(confirmButton).toBeVisible();
     await expect(confirmButton).toBeEnabled();
@@ -591,7 +561,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     ]);
 
     // Wait for UI to update and verify role is deleted
-    await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+    await waitForAllLoadersToDisappear(page);
     await expect(roleLocator).not.toBeVisible();
 
     await role.delete(apiContext);

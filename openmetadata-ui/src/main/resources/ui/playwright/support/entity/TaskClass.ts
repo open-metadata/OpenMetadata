@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { EntityTypeEndpoint } from './Entity.interface';
 
@@ -22,8 +23,8 @@ export interface CreateTaskData {
   priority?: string;
   assignees?: string[];
   about?: string;
-  aboutType?: string;
   domain?: string;
+  payload?: Record<string, unknown>;
 }
 
 export interface TaskResponseData {
@@ -38,6 +39,7 @@ export interface TaskResponseData {
   status: string;
   priority?: string;
   createdBy?: { id: string; name: string };
+  createdById?: string;
   assignees?: { id: string; name: string }[];
 }
 
@@ -56,8 +58,8 @@ export class TaskClass {
       priority: data?.priority ?? 'Medium',
       assignees: data?.assignees,
       about: data?.about,
-      aboutType: data?.aboutType,
       domain: data?.domain,
+      payload: data?.payload,
     };
   }
 
@@ -73,7 +75,7 @@ export class TaskClass {
     const response = await apiContext.post('/api/v1/tasks', {
       data: this.data,
     });
-    const responseData = await response.json();
+    const responseData = await okJson(response, 'TaskClass.create');
     this.responseData = responseData;
 
     return responseData;

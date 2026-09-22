@@ -11,16 +11,16 @@
 """
 Base local reader
 """
+
 import traceback
 from abc import ABC, abstractmethod
-from typing import List, Optional, Union
 
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-class ReadException(Exception):
+class ReadException(Exception):  # noqa: N818
     """
     To be raised by any errors with the read calls
     """
@@ -32,20 +32,20 @@ class Reader(ABC):
     """
 
     @abstractmethod
-    def read(self, path: str, **kwargs) -> Union[str, bytes]:
+    def read(self, path: str, **kwargs) -> str | bytes:
         """
         Given a string, return a string
         """
         raise NotImplementedError("Missing read implementation")
 
     @abstractmethod
-    def _get_tree(self) -> List[str]:
+    def _get_tree(self) -> list[str]:
         """
         Return the filenames of the root
         """
         raise NotImplementedError("Missing get_tree implementation")
 
-    def get_tree(self) -> Optional[List[str]]:
+    def get_tree(self) -> list[str] | None:
         """
         If something happens, return None
         """
@@ -56,7 +56,7 @@ class Reader(ABC):
             logger.error(f"Error getting file tree [{err}]")
         return None
 
-    def download(self, path: str, local_file_path: str, **kwargs):
+    def download(self, path: str, local_file_path: str, **kwargs):  # noqa: B027
         """
         Given a path, download the file
         """

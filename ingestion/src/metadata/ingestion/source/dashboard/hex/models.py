@@ -11,8 +11,8 @@
 """
 Hex API Response Models
 """
+
 from datetime import datetime
-from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -20,51 +20,49 @@ from pydantic import BaseModel, Field
 class Creator(BaseModel):
     """Creator information"""
 
-    email: Optional[str] = None
+    email: str | None = None
 
 
 class Owner(BaseModel):
     """Owner information"""
 
-    email: Optional[str] = None
+    email: str | None = None
 
 
 class ProjectStatus(BaseModel):
     """Project status"""
 
-    name: Optional[str] = None
+    name: str | None = None
 
 
 class Category(BaseModel):
     """Project category"""
 
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: str | None = None
+    description: str | None = None
 
 
 class Reviews(BaseModel):
     """Project reviews settings"""
 
-    required: Optional[bool] = None
+    required: bool | None = None
 
 
 class AppViews(BaseModel):
     """App view counts"""
 
-    allTime: Optional[int] = Field(None, alias="all_time")
-    lastSevenDays: Optional[int] = Field(None, alias="last_seven_days")
-    lastFourteenDays: Optional[int] = Field(None, alias="last_fourteen_days")
-    lastThirtyDays: Optional[int] = Field(None, alias="last_thirty_days")
+    allTime: int | None = Field(None, alias="all_time")  # noqa: N815
+    lastSevenDays: int | None = Field(None, alias="last_seven_days")  # noqa: N815
+    lastFourteenDays: int | None = Field(None, alias="last_fourteen_days")  # noqa: N815
+    lastThirtyDays: int | None = Field(None, alias="last_thirty_days")  # noqa: N815
 
 
 class ProjectAnalytics(BaseModel):
     """Project analytics data"""
 
-    appViews: Optional[AppViews] = Field(None, alias="app_views")
-    lastViewedAt: Optional[datetime] = Field(None, alias="last_viewed_at")
-    publishedResultsUpdatedAt: Optional[datetime] = Field(
-        None, alias="published_results_updated_at"
-    )
+    appViews: AppViews | None = Field(None, alias="app_views")  # noqa: N815
+    lastViewedAt: datetime | None = Field(None, alias="last_viewed_at")  # noqa: N815
+    publishedResultsUpdatedAt: datetime | None = Field(None, alias="published_results_updated_at")  # noqa: N815
 
 
 class Project(BaseModel):
@@ -72,59 +70,59 @@ class Project(BaseModel):
 
     id: str
     title: str
-    description: Optional[str] = None
-    type: Optional[str] = None
-    creator: Optional[Creator] = None
-    owner: Optional[Owner] = None
-    status: Optional[ProjectStatus] = None
-    categories: List[Category] = Field(default_factory=list)
-    reviews: Optional[Reviews] = None
-    analytics: Optional[ProjectAnalytics] = None
-    lastEditedAt: Optional[datetime] = Field(None, alias="last_edited_at")
-    lastPublishedAt: Optional[datetime] = Field(None, alias="last_published_at")
-    createdAt: Optional[datetime] = Field(None, alias="created_at")
-    archivedAt: Optional[datetime] = Field(None, alias="archived_at")
-    trashedAt: Optional[datetime] = Field(None, alias="trashed_at")
-    schedules: List = Field(default_factory=list)
+    description: str | None = None
+    type: str | None = None
+    creator: Creator | None = None
+    owner: Owner | None = None
+    status: ProjectStatus | None = None
+    categories: list[Category] = Field(default_factory=list)
+    reviews: Reviews | None = None
+    analytics: ProjectAnalytics | None = None
+    lastEditedAt: datetime | None = Field(None, alias="last_edited_at")  # noqa: N815
+    lastPublishedAt: datetime | None = Field(None, alias="last_published_at")  # noqa: N815
+    createdAt: datetime | None = Field(None, alias="created_at")  # noqa: N815
+    archivedAt: datetime | None = Field(None, alias="archived_at")  # noqa: N815
+    trashedAt: datetime | None = Field(None, alias="trashed_at")  # noqa: N815
+    schedules: list = Field(default_factory=list)
 
 
 class Pagination(BaseModel):
     """Pagination information"""
 
-    after: Optional[str] = None
-    before: Optional[str] = None
+    after: str | None = None
+    before: str | None = None
 
 
 class ProjectListResponse(BaseModel):
     """List Projects API Response"""
 
-    values: List[Project] = Field(default_factory=list)
-    pagination: Optional[Pagination] = None
+    values: list[Project] = Field(default_factory=list)
+    pagination: Pagination | None = None
 
 
 class ProjectRunInput(BaseModel):
     """Project run input parameter"""
 
     name: str
-    value: Optional[str] = None
+    value: str | None = None
 
 
 class ProjectRun(BaseModel):
     """Project run information"""
 
-    projectId: str = Field(alias="project_id")
-    runId: str = Field(alias="run_id")
-    status: Optional[str] = None
-    startedAt: Optional[datetime] = Field(None, alias="started_at")
-    completedAt: Optional[datetime] = Field(None, alias="completed_at")
-    inputs: List[ProjectRunInput] = Field(default_factory=list)
+    projectId: str = Field(alias="project_id")  # noqa: N815
+    runId: str = Field(alias="run_id")  # noqa: N815
+    status: str | None = None
+    startedAt: datetime | None = Field(None, alias="started_at")  # noqa: N815
+    completedAt: datetime | None = Field(None, alias="completed_at")  # noqa: N815
+    inputs: list[ProjectRunInput] = Field(default_factory=list)
 
 
 class ProjectRunsResponse(BaseModel):
     """Get Project Runs API Response"""
 
-    runs: List[ProjectRun] = Field(default_factory=list)
-    nextPage: Optional[str] = Field(None, alias="next_page")
+    runs: list[ProjectRun] = Field(default_factory=list)
+    nextPage: str | None = Field(None, alias="next_page")  # noqa: N815
 
 
 class DataConnection(BaseModel):
@@ -132,12 +130,12 @@ class DataConnection(BaseModel):
 
     id: str
     name: str
-    type: Optional[str] = None
-    description: Optional[str] = None
+    type: str | None = None
+    description: str | None = None
 
 
 class DataConnectionsResponse(BaseModel):
     """Data Connections API Response"""
 
-    connections: List[DataConnection] = Field(default_factory=list)
-    nextPage: Optional[str] = Field(None, alias="next_page")
+    connections: list[DataConnection] = Field(default_factory=list)
+    nextPage: str | None = Field(None, alias="next_page")  # noqa: N815

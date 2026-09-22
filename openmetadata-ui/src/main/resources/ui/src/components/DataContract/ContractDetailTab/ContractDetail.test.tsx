@@ -19,10 +19,12 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
+import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { DataContractMode } from '../../../constants/DataContract.constants';
 import {
   ContractExecutionStatus,
+  ContractSecurity,
   DataContract,
 } from '../../../generated/entity/data/dataContract';
 import { Column } from '../../../generated/entity/data/table';
@@ -32,8 +34,7 @@ import {
   getContractResultByResultId,
   validateContractById,
 } from '../../../rest/contractAPI';
-import '../../../test/unit/mocks/mui.mock';
-import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
 import {
   downloadContractAsODCSYaml,
   downloadContractYamlFile,
@@ -41,6 +42,197 @@ import {
 } from '../../../utils/DataContract/DataContractUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ContractDetail } from './ContractDetail';
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Badge: jest.fn(({ children }: { children?: React.ReactNode }) => (
+    <span>{children}</span>
+  )),
+  BadgeWithIcon: jest.fn(({ children }: { children?: React.ReactNode }) => (
+    <span>{children}</span>
+  )),
+  Box: jest.fn(
+    ({
+      children,
+      className,
+      ...rest
+    }: {
+      children?: React.ReactNode;
+      className?: string;
+      [key: string]: unknown;
+    }) => (
+      <div className={className} {...rest}>
+        {children}
+      </div>
+    )
+  ),
+  Button: jest.fn(
+    ({
+      children,
+      isDisabled,
+      onClick,
+      ...rest
+    }: {
+      children: React.ReactNode;
+      isDisabled?: boolean;
+      onClick?: () => void;
+      [key: string]: unknown;
+    }) => (
+      <button disabled={isDisabled} onClick={onClick} {...rest}>
+        {children}
+      </button>
+    )
+  ),
+  ButtonUtility: jest.fn(
+    ({
+      onClick,
+      ...rest
+    }: {
+      onClick?: () => void;
+      [key: string]: unknown;
+    }) => <button onClick={onClick} {...rest} />
+  ),
+  Card: Object.assign(
+    jest.fn(
+      ({
+        children,
+        className,
+        style,
+      }: {
+        children: React.ReactNode;
+        className?: string;
+        style?: React.CSSProperties;
+      }) => (
+        <div className={className} style={style}>
+          {children}
+        </div>
+      )
+    ),
+    {
+      Content: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+      Footer: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+      Header: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+    }
+  ),
+  Divider: jest.fn(
+    ({
+      className,
+      orientation,
+    }: {
+      className?: string;
+      orientation?: string;
+    }) => (
+      <div
+        className={className}
+        role="separator"
+        {...(orientation
+          ? { 'aria-orientation': orientation as 'horizontal' | 'vertical' }
+          : {})}
+      />
+    )
+  ),
+  Dropdown: (() => {
+    const OnActionCtx = React.createContext<
+      ((key: string) => void) | undefined
+    >(undefined);
+
+    return {
+      Root: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+      Popover: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+      Menu: jest.fn(
+        ({
+          children,
+          onAction,
+          ...rest
+        }: {
+          children: React.ReactNode;
+          onAction?: (key: string) => void;
+          [key: string]: unknown;
+        }) => (
+          <OnActionCtx.Provider value={onAction}>
+            <div {...rest}>{children}</div>
+          </OnActionCtx.Provider>
+        )
+      ),
+      Item: jest.fn(
+        ({
+          label,
+          id,
+          isDisabled,
+          ...rest
+        }: {
+          label?: string;
+          id?: string;
+          isDisabled?: boolean;
+          [key: string]: unknown;
+        }) => {
+          const onAction = React.useContext(OnActionCtx);
+
+          return (
+            <button
+              className={isDisabled ? 'disabled' : undefined}
+              disabled={isDisabled}
+              {...rest}
+              onClick={() => onAction?.(id ?? '')}>
+              {label}
+            </button>
+          );
+        }
+      ),
+      Separator: jest.fn(() => <hr />),
+    };
+  })(),
+  Tooltip: jest.fn(
+    ({
+      children,
+      title,
+    }: {
+      children: React.ReactNode;
+      title: React.ReactNode;
+    }) => (
+      <div title={typeof title === 'string' ? title : undefined}>
+        {children}
+      </div>
+    )
+  ),
+  TooltipTrigger: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  )),
+  Typography: jest.fn(
+    ({
+      as: Tag = 'span',
+      children,
+      className,
+      ...rest
+    }: {
+      as?: React.ElementType;
+      children?: React.ReactNode;
+      className?: string;
+      [key: string]: unknown;
+    }) => (
+      <Tag className={className} {...rest}>
+        {children}
+      </Tag>
+    )
+  ),
+  Owner: jest.fn(({ owners }: { owners?: unknown[] }) => (
+    <div data-testid="owner-label">
+      {owners?.length ? `${owners.length} owner(s)` : 'No owners'}
+    </div>
+  )),
+  toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components')
+    .toOwnerRefs,
+  toOwnerRef: jest.requireActual('@openmetadata/ui-core-components').toOwnerRef,
+}));
 
 jest.mock('../../../rest/contractAPI', () => ({
   exportContractToODCSYaml: jest.fn(),
@@ -55,8 +247,11 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
 }));
 
 jest.mock('../../../utils/BlockEditorUtils', () => ({
+  formatServerContent: jest.fn().mockReturnValue('formatted content'),
+}));
+
+jest.mock('../../../utils/BlockEditorPureUtils', () => ({
   isDescriptionContentEmpty: jest.fn(),
-  formatContent: jest.fn().mockReturnValue('formatted content'),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -64,24 +259,20 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: function MockOwnerLabel({ owners }: { owners: unknown[] }) {
-    return (
-      <div data-testid="owner-label">
-        {owners?.length ? `${owners.length} owner(s)` : 'No owners'}
-      </div>
-    );
-  },
-}));
-
 jest.mock('../../AlertBar/AlertBar', () => {
-  return function MockAlertBar({ message }: any) {
+  return function MockAlertBar({ message }: { message?: React.ReactNode }) {
     return <div data-testid="alert-bar">{message}</div>;
   };
 });
 
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return function MockErrorPlaceHolder({ type, children }: any) {
+  return function MockErrorPlaceHolder({
+    type,
+    children,
+  }: {
+    type?: string;
+    children?: React.ReactNode;
+  }) {
     return (
       <div data-testid="error-placeholder" data-type={type}>
         {children}
@@ -91,7 +282,11 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
 });
 
 jest.mock('../ContractExecutionChart/ContractExecutionChart.component', () => {
-  return function MockContractExecutionChart({ contract }: any) {
+  return function MockContractExecutionChart({
+    contract,
+  }: {
+    contract?: DataContract;
+  }) {
     return (
       <div data-testid="contract-execution-chart">
         Chart for {contract?.name}
@@ -105,7 +300,11 @@ jest.mock('../ContractQualityCard/ContractQualityCard.component', () => {
 });
 
 jest.mock('../ContractSecurity/ContractSecurityCard.component', () => {
-  return function MockContractSecurityCard({ security }: any) {
+  return function MockContractSecurityCard({
+    security,
+  }: {
+    security?: ContractSecurity;
+  }) {
     return (
       <div data-testid="contract-security-card">
         ContractSecurityCard - {security?.dataClassification}
@@ -115,7 +314,11 @@ jest.mock('../ContractSecurity/ContractSecurityCard.component', () => {
 });
 
 jest.mock('../ContractViewSwitchTab/ContractViewSwitchTab.component', () => {
-  return function MockContractViewSwitchTab({ handleModeChange }: any) {
+  return function MockContractViewSwitchTab({
+    handleModeChange,
+  }: {
+    handleModeChange: (e: { target: { value: DataContractMode } }) => void;
+  }) {
     return (
       <div data-testid="contract-view-switch-tab">
         <button
@@ -164,7 +367,7 @@ jest.mock('../ODCSImportModal', () => {
 });
 
 jest.mock('../ContractYaml/ContractYaml.component', () => {
-  return function MockContractYaml({ contract }: any) {
+  return function MockContractYaml({ contract }: { contract?: DataContract }) {
     return <div data-testid="contract-yaml">YAML for {contract?.name}</div>;
   };
 });
@@ -193,22 +396,6 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockImplementation(() => {
     return <div>RichTextEditorPreviewerV1</div>;
   });
-});
-
-jest.mock('../../common/Table/Table', () => {
-  return function MockTable({ dataSource, loading }: any) {
-    return (
-      <div data-testid="mock-table">
-        <div>Loading: {loading ? 'true' : 'false'}</div>
-        <div>Data Length: {dataSource?.length || 0}</div>
-        {dataSource?.map((item: any) => (
-          <div data-testid={`table-row-${item.id}`} key={item.id}>
-            {item.name}
-          </div>
-        ))}
-      </div>
-    );
-  };
 });
 
 jest.mock('react-i18next', () => ({
@@ -531,6 +718,7 @@ describe('ContractDetail', () => {
 
     it('should validate contract when validate button is clicked', async () => {
       (validateContractById as jest.Mock).mockResolvedValue({});
+      const onContractUpdated = jest.fn();
 
       render(
         <ContractDetail
@@ -538,6 +726,7 @@ describe('ContractDetail', () => {
           contract={mockContract}
           entityId="test-entity-id"
           entityType="table"
+          onContractUpdated={onContractUpdated}
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -552,6 +741,7 @@ describe('ContractDetail', () => {
       });
 
       expect(validateContractById).toHaveBeenCalledWith('contract-1');
+      expect(onContractUpdated).toHaveBeenCalled();
       expect(showSuccessToast).toHaveBeenCalledWith(
         'message.contract-validation-trigger-successfully'
       );
@@ -584,7 +774,7 @@ describe('ContractDetail', () => {
     });
 
     it('should not validate when contract id is missing', async () => {
-      const contractWithoutId = { ...mockContract, id: '' } as DataContract;
+      const contractWithoutId = { ...mockContract, id: '' };
 
       render(
         <ContractDetail
@@ -887,7 +1077,7 @@ describe('ContractDetail', () => {
   });
 
   describe('Contract Security', () => {
-    it('should display security section when contract has security data', () => {
+    it('should display security section when contract has security data', async () => {
       const contractWithSecurity: DataContract = {
         ...mockContract,
         security: {
@@ -913,11 +1103,11 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      // Check that the security card is rendered
+      // security-card is non-lazy; contract-security-card is inside lazy ContractSecurityCard
       expect(screen.getByTestId('security-card')).toBeInTheDocument();
-      expect(screen.getByTestId('contract-security-card')).toBeInTheDocument();
-
-      // Check the content
+      expect(
+        await screen.findByTestId('contract-security-card')
+      ).toBeInTheDocument();
       expect(
         screen.getByText('ContractSecurityCard - PII,Sensitive')
       ).toBeInTheDocument();
@@ -1177,7 +1367,9 @@ describe('ContractDetail', () => {
           contract={{
             ...mockContract,
             latestResult: {
-              ...mockContract.latestResult!,
+              ...(mockContract.latestResult as NonNullable<
+                typeof mockContract.latestResult
+              >),
               status: ContractExecutionStatus.Failed,
             },
           }}
@@ -1207,7 +1399,9 @@ describe('ContractDetail', () => {
           contract={{
             ...mockContract,
             latestResult: {
-              ...mockContract.latestResult!,
+              ...(mockContract.latestResult as NonNullable<
+                typeof mockContract.latestResult
+              >),
               status: ContractExecutionStatus.Aborted,
             },
           }}

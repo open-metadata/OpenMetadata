@@ -11,11 +11,15 @@
 """
 Test Airflow processing
 """
+
+from datetime import datetime
 from unittest import TestCase
 from unittest.mock import patch
 from urllib.parse import quote
 
 import pytest
+from sqlalchemy import JSON, Boolean, Column, DateTime, LargeBinary, MetaData, String, Table, create_engine
+from sqlalchemy.orm import DeclarativeBase, Session
 
 # pylint: disable=unused-import
 try:
@@ -23,6 +27,9 @@ try:
 except ImportError:
     pytest.skip("Airflow dependencies not installed", allow_module_level=True)
 
+from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
+    SQLiteConnection,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -124,9 +131,7 @@ SERIALIZED_DAG = {
                 "template_fields_renderers": {},
                 "inlets": [
                     {
-                        "__var": {
-                            "tables": ["sample_data.ecommerce_db.shopify.dim_location"]
-                        },
+                        "__var": {"tables": ["sample_data.ecommerce_db.shopify.dim_location"]},
                         "__type": "dict",
                     }
                 ],
@@ -139,9 +144,7 @@ SERIALIZED_DAG = {
             {
                 "outlets": [
                     {
-                        "__var": {
-                            "tables": ["sample_data.ecommerce_db.shopify.dim_staff"]
-                        },
+                        "__var": {"tables": ["sample_data.ecommerce_db.shopify.dim_staff"]},
                         "__type": "dict",
                     }
                 ],
@@ -170,6 +173,87 @@ SERIALIZED_DAG = {
 }
 
 
+class Airflow2Base(DeclarativeBase):
+    pass
+
+
+class Airflow2SerializedDagModel(Airflow2Base):
+    __tablename__ = "serialized_dag"
+
+    dag_id = Column(String(250), primary_key=True)
+    fileloc = Column(String(2000), nullable=False)
+    _data = Column("data", JSON)
+    _data_compressed = Column("data_compressed", LargeBinary)
+    last_updated = Column(DateTime, nullable=False)
+
+
+class Airflow2DagModel(Airflow2Base):
+    __tablename__ = "dag"
+
+    dag_id = Column(String(250), primary_key=True)
+    is_paused = Column(Boolean)
+
+
+@pytest.mark.parametrize("date_column", ["logical_date", "execution_date"])
+@pytest.mark.parametrize(
+    "dates",
+    [
+        [(None, 1), (None, 4), (None, 2), (None, 3)],
+        [(1, 6), (None, 4), (2, 2), (None, 3)],
+        [(1, 6), (4, 4), (2, 2), (3, 3)],
+    ],
+    ids=["asset-triggered", "mixed", "scheduled"],
+)
+def test_get_pipeline_status_selects_latest_runs(date_column, dates):
+    config = OpenMetadataWorkflowConfig.model_validate(MOCK_CONFIG)
+    config.source.serviceConnection.root.config.connection = SQLiteConnection(databaseMode=":memory:")
+    config.source.serviceConnection.root.config.numberOfStatus = 2
+    with patch.object(AirflowSource, "test_connection"):
+        source = AirflowSource(config.source, OpenMetadata(config.workflowConfig.openMetadataServerConfig))
+
+    dag_run = Table(
+        "dag_run",
+        MetaData(),
+        Column("dag_id", String),
+        Column("run_id", String),
+        Column("queued_at", DateTime),
+        Column(date_column, DateTime),
+        Column("start_date", DateTime),
+        Column("state", String),
+    )
+    try:
+        dag_run.create(source.connection)
+        with Session(source.connection) as session:
+            rows = [
+                {
+                    "dag_id": "my_dag",
+                    "run_id": run_id,
+                    date_column: datetime(2026, 1, date_day) if date_day else None,
+                    "start_date": datetime(2026, 1, start_day),
+                    "state": "success",
+                }
+                for run_id, (date_day, start_day) in zip(["run_1", "run_4", "run_2", "run_3"], dates, strict=True)
+            ]
+            rows.append(
+                {
+                    "dag_id": "other_dag",
+                    "run_id": "other_run",
+                    date_column: datetime(2026, 1, 7),
+                    "start_date": datetime(2026, 1, 7),
+                    "state": "success",
+                }
+            )
+            session.execute(dag_run.insert(), rows)
+            session.commit()
+            source._session = session
+
+            runs = source.get_pipeline_status("my_dag")
+
+            assert [run.run_id for run in runs] == ["run_4", "run_3"]
+    finally:
+        source.connection.dispose()
+
+
 class TestAirflow(TestCase):
     """
     Test Airflow model processing
@@ -186,10 +270,8 @@ class TestAirflow(TestCase):
             "AIRFLOW_DB": "airflow",
         },
     )
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
-    )
-    def __init__(self, methodName, test_connection) -> None:
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(MOCK_CONFIG)
@@ -223,9 +305,7 @@ class TestAirflow(TestCase):
             dag.tasks[0].inlets,
             [
                 {
-                    "__var": {
-                        "tables": ["sample_data.ecommerce_db.shopify.dim_location"]
-                    },
+                    "__var": {"tables": ["sample_data.ecommerce_db.shopify.dim_location"]},
                     "__type": "dict",
                 }
             ],
@@ -239,6 +319,46 @@ class TestAirflow(TestCase):
                 }
             ],
         )
+
+    def test_parsing_mapped_task_xlets(self):
+        """
+        A dynamically mapped task keeps its inlets and outlets in
+        `partial_kwargs`; they must still reach the task model
+        """
+        mapped_task = {
+            "task_id": "mapped",
+            "_is_mapped": True,
+            "_task_type": "EmptyOperator",
+            "partial_kwargs": {
+                "inlets": [
+                    {
+                        "__var": {"tables": ["sample_data.ecommerce_db.shopify.dim_location"]},
+                        "__type": "dict",
+                    }
+                ],
+                "outlets": [
+                    {
+                        "__var": {"tables": ["sample_data.ecommerce_db.shopify.dim_staff"]},
+                        "__type": "dict",
+                    }
+                ],
+            },
+        }
+
+        task = AirflowTask(**mapped_task)
+
+        assert task.inlets == mapped_task["partial_kwargs"]["inlets"]
+        assert task.outlets == mapped_task["partial_kwargs"]["outlets"]
+
+    def test_parsing_top_level_xlets_win_over_partial_kwargs(self):
+        task = AirflowTask(
+            task_id="plain",
+            _outlets=[{"__var": {"tables": ["a.b.c.d"]}, "__type": "dict"}],
+            partial_kwargs={"outlets": [{"__var": {"tables": ["x.y.z.w"]}, "__type": "dict"}]},
+        )
+
+        assert task.outlets == [{"__var": {"tables": ["a.b.c.d"]}, "__type": "dict"}]
+        assert task.inlets is None
 
     def test_get_dag_owners(self):
         """Test DAG owner extraction from tasks"""
@@ -258,9 +378,7 @@ class TestAirflow(TestCase):
         self.assertEqual("my_owner", self.airflow.fetch_dag_owners(data))
 
         # If there are no owners, return None
-        data = {
-            "tasks": [{"something": None}, {"another_thing": None}, {"random": None}]
-        }
+        data = {"tasks": [{"something": None}, {"another_thing": None}, {"random": None}]}
         self.assertIsNone(self.airflow.fetch_dag_owners(data))
 
     def test_get_schedule_interval(self):
@@ -443,103 +561,82 @@ class TestAirflow(TestCase):
         result = get_schedule_interval(pipeline_data)
         self.assertEqual("invalid_format", result)
 
-    @patch("metadata.ingestion.source.pipeline.airflow.metadata.DagModel")
-    @patch(
-        "metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session"
-    )
-    def test_get_pipelines_list_with_is_paused_query(
-        self, mock_session, mock_dag_model
-    ):
-        """
-        Test that the is_paused column is queried correctly
-        instead of the entire DagModel
-        """
-        # Mock the session and query
-        mock_session_instance = mock_session.return_value
-        mock_query = mock_session_instance.query.return_value
-        mock_filter = mock_query.filter.return_value
-        mock_scalar = mock_filter.scalar.return_value
+    @patch("metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session")
+    def test_get_pipelines_list_reads_pause_state_without_per_dag_queries(self, mock_session):
+        rows = [
+            ("active_dag", SERIALIZED_DAG, "/dags/active.py", None, False),
+            ("paused_dag", SERIALIZED_DAG, "/dags/paused.py", None, True),
+        ]
+        self.airflow._session = None
+        self.airflow.source_config.includeUnDeployedPipelines = True
+        session = self._configure_paginated_session(mock_session, [rows, []])
 
-        # Test case 1: DAG is not paused
-        mock_scalar.return_value = False
+        pipelines = list(self.airflow.get_pipelines_list())
 
-        # Create a mock serialized DAG result
-        mock_serialized_dag = ("test_dag", {"dag": {"tasks": []}}, "/path/to/dag.py")
-
-        # Mock the session query for SerializedDagModel
-        mock_query_chain = mock_session_instance.query.return_value
-        mock_query_chain = mock_query_chain.select_from.return_value
-        mock_query_chain = mock_query_chain.filter.return_value
-        mock_query_chain = mock_query_chain.limit.return_value
-        mock_query_chain.offset.return_value.all.return_value = [mock_serialized_dag]
-
-        # This would normally be called in get_pipelines_list, but we're testing the specific query
-        # Verify that the query is constructed correctly
-        is_paused_result = (
-            mock_session_instance.query(mock_dag_model.is_paused)
-            .filter(mock_dag_model.dag_id == "test_dag")
-            .scalar()
+        self.assertEqual(
+            [(pipeline.dag_id, pipeline.state) for pipeline in pipelines],
+            [("active_dag", "Active"), ("paused_dag", "Inactive")],
         )
+        self.assertEqual(session.query.call_count, 2)
 
-        # Verify the query was called correctly
-        mock_session_instance.query.assert_called_with(mock_dag_model.is_paused)
-        mock_query.filter.assert_called()
-        mock_filter.scalar.assert_called()
+    def test_airflow_2_reads_pause_state_and_preserves_serialized_only_dag(self):
+        engine = create_engine("sqlite://")
+        Airflow2Base.metadata.create_all(engine)
+        timestamp = datetime(2026, 1, 1)
 
-        # Test case 2: DAG is paused
-        mock_scalar.return_value = True
-        is_paused_result = (
-            mock_session_instance.query(mock_dag_model.is_paused)
-            .filter(mock_dag_model.dag_id == "test_dag")
-            .scalar()
-        )
-        self.assertTrue(is_paused_result)
+        with Session(engine) as session:
+            session.add_all(
+                [
+                    Airflow2DagModel(dag_id="active_dag", is_paused=False),
+                    Airflow2DagModel(dag_id="paused_dag", is_paused=True),
+                    Airflow2SerializedDagModel(
+                        dag_id="active_dag",
+                        fileloc="/dags/active.py",
+                        _data=SERIALIZED_DAG,
+                        last_updated=timestamp,
+                    ),
+                    Airflow2SerializedDagModel(
+                        dag_id="paused_dag",
+                        fileloc="/dags/paused.py",
+                        _data=SERIALIZED_DAG,
+                        last_updated=timestamp,
+                    ),
+                    Airflow2SerializedDagModel(
+                        dag_id="serialized_only_dag",
+                        fileloc="/dags/serialized_only.py",
+                        _data=SERIALIZED_DAG,
+                        last_updated=timestamp,
+                    ),
+                ]
+            )
+            session.commit()
+            self.airflow._session = session
+            self.airflow.source_config.includeUnDeployedPipelines = True
 
-    @patch("metadata.ingestion.source.pipeline.airflow.metadata.DagModel")
-    @patch(
-        "metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session"
-    )
-    def test_get_pipelines_list_with_is_paused_query_error(
-        self, mock_session, mock_dag_model
-    ):
-        """
-        Test error handling when is_paused query fails
-        """
-        # Mock the session to raise an exception
-        mock_session_instance = mock_session.return_value
-        mock_filter = mock_session_instance.query.return_value.filter.return_value
-        mock_filter.scalar.side_effect = Exception("Database error")
+            with (
+                patch(
+                    "metadata.ingestion.source.pipeline.airflow.metadata.SerializedDagModel",
+                    Airflow2SerializedDagModel,
+                ),
+                patch(
+                    "metadata.ingestion.source.pipeline.airflow.metadata.DagModel",
+                    Airflow2DagModel,
+                ),
+            ):
+                pipelines = list(self.airflow.get_pipelines_list())
 
-        # Create a mock serialized DAG result
-        mock_serialized_dag = ("test_dag", {"dag": {"tasks": []}}, "/path/to/dag.py")
-
-        # Mock the session query for SerializedDagModel
-        mock_query_chain = mock_session_instance.query.return_value
-        mock_query_chain = mock_query_chain.select_from.return_value
-        mock_query_chain = mock_query_chain.filter.return_value
-        mock_query_chain = mock_query_chain.limit.return_value
-        mock_query_chain.offset.return_value.all.return_value = [mock_serialized_dag]
-
-        # This would normally be called in get_pipelines_list,
-        # but we're testing the error handling
-        try:
-            mock_session_instance.query(mock_dag_model.is_paused).filter(
-                mock_dag_model.dag_id == "test_dag"
-            ).scalar()
-        except Exception:  # pylint: disable=broad-exception-caught
-            # Expected to fail, but in the actual code
-            # this would be caught and default to Active
-            pass
-
-        # Verify the query was attempted
-        mock_session_instance.query.assert_called_with(mock_dag_model.is_paused)
+        assert [(pipeline.dag_id, pipeline.state) for pipeline in pipelines] == [
+            ("active_dag", "Active"),
+            ("paused_dag", "Inactive"),
+            ("serialized_only_dag", "Active"),
+        ]
 
     @patch("metadata.ingestion.source.pipeline.airflow.metadata.SerializedDagModel")
-    @patch(
-        "metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session"
-    )
+    @patch("metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session")
     def test_get_pipelines_list_selects_latest_dag_version(
-        self, mock_session, mock_serialized_dag_model  # pylint: disable=unused-argument
+        self,
+        mock_session,
+        mock_serialized_dag_model,  # pylint: disable=unused-argument
     ):
         """
         Test that when multiple versions of a DAG exist in serialized_dag table,
@@ -562,9 +659,7 @@ class TestAirflow(TestCase):
         }
 
         # Mock the subquery that gets max timestamp
-        mock_subquery_result = (
-            mock_session_instance.query.return_value.group_by.return_value
-        )
+        mock_subquery_result = mock_session_instance.query.return_value.group_by.return_value
         mock_subquery = mock_subquery_result.subquery.return_value
         mock_subquery.c.dag_id = "dag_id"
         mock_subquery.c.max_timestamp = "max_timestamp"
@@ -587,33 +682,99 @@ class TestAirflow(TestCase):
         # This simulates what get_pipelines_list() does:
         # 1. Create subquery with max timestamp
         subquery_result = (
-            mock_session_instance.query(
-                mock_serialized_dag_model.dag_id, "max_timestamp"
-            )
+            mock_session_instance.query(mock_serialized_dag_model.dag_id, "max_timestamp")
             .group_by(mock_serialized_dag_model.dag_id)
             .subquery()
         )
 
         # 2. Query with join to get latest version
-        result = (
-            mock_session_instance.query()
-            .join(subquery_result)
-            .filter()
-            .order_by()
-            .limit(100)
-            .offset(0)
-            .all()
-        )
+        result = mock_session_instance.query().join(subquery_result).filter().order_by().limit(100).offset(0).all()
 
         # Verify the query structure was used
         mock_session_instance.query.assert_called()
         self.assertEqual(result, mock_query_result)
 
+    @staticmethod
+    def _configure_paginated_session(mock_session, all_side_effect):
+        """
+        Configure a create_and_bind_session mock as a self-returning query
+        chain whose paginated .all() is driven by all_side_effect (a list of
+        per-page results, or an Exception to raise on fetch).
+        """
+        session_instance = mock_session.return_value
+        query = session_instance.query.return_value
+        for method in (
+            "join",
+            "outerjoin",
+            "select_from",
+            "filter",
+            "group_by",
+            "subquery",
+            "order_by",
+            "limit",
+            "offset",
+        ):
+            getattr(query, method).return_value = query
+        query.scalar.return_value = False
+        query.all.side_effect = all_side_effect
+        return session_instance
+
     @patch("metadata.ingestion.source.pipeline.airflow.metadata.SerializedDagModel")
     @patch("metadata.ingestion.source.pipeline.airflow.metadata.DagModel")
-    @patch(
-        "metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session"
-    )
+    @patch("metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session")
+    def test_get_pipelines_list_records_page_fetch_failure(
+        self,
+        mock_session,
+        mock_dag_model,  # pylint: disable=unused-argument
+        mock_serialized_dag_model,  # pylint: disable=unused-argument
+    ):
+        """
+        A DB error while fetching a DAG page is recorded in the run summary
+        and stops production without crashing (P1-3).
+        """
+        self.airflow._session = None
+        self.airflow.source_config.includeUnDeployedPipelines = True
+        self.airflow.status.failures.clear()
+        self._configure_paginated_session(mock_session, Exception("db down"))
+
+        result = list(self.airflow.get_pipelines_list())
+
+        self.assertEqual(result, [])
+        self.assertEqual(len(self.airflow.status.failures), 1)
+        self.assertEqual(self.airflow.status.failures[0].name, "Airflow DAG Pagination")
+        self.assertIn("offset 0", self.airflow.status.failures[0].error)
+        self.assertFalse(self.airflow._dag_listing_complete)
+        self.assertEqual(list(self.airflow.mark_pipelines_as_deleted()), [])
+
+    @patch("metadata.ingestion.source.pipeline.airflow.metadata.SerializedDagModel")
+    @patch("metadata.ingestion.source.pipeline.airflow.metadata.DagModel")
+    @patch("metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session")
+    def test_get_pipelines_list_records_malformed_dag(
+        self,
+        mock_session,
+        mock_dag_model,  # pylint: disable=unused-argument
+        mock_serialized_dag_model,  # pylint: disable=unused-argument
+    ):
+        """
+        A malformed DAG is recorded as a failure while valid DAGs are still
+        yielded (P1-1).
+        """
+        good_row = ("good_dag", SERIALIZED_DAG, "loc", None, False)
+        bad_row = ("bad_dag", "not-a-dict", "loc", None, False)
+        self.airflow._session = None
+        self.airflow.source_config.includeUnDeployedPipelines = True
+        self.airflow.status.failures.clear()
+        self._configure_paginated_session(mock_session, [[good_row, bad_row], []])
+
+        result = list(self.airflow.get_pipelines_list())
+
+        self.assertEqual([dag.dag_id for dag in result], ["good_dag"])
+        self.assertEqual(len(self.airflow.status.failures), 1)
+        self.assertEqual(self.airflow.status.failures[0].name, "bad_dag")
+
+    @patch("metadata.ingestion.source.pipeline.airflow.metadata.SerializedDagModel")
+    @patch("metadata.ingestion.source.pipeline.airflow.metadata.DagModel")
+    @patch("metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session")
     def test_get_pipelines_list_with_multiple_dag_versions_airflow_3(
         self,
         mock_session,
@@ -628,9 +789,7 @@ class TestAirflow(TestCase):
         mock_session_instance = mock_session.return_value
 
         # Mock subquery
-        mock_subquery_result = (
-            mock_session_instance.query.return_value.group_by.return_value
-        )
+        mock_subquery_result = mock_session_instance.query.return_value.group_by.return_value
         mock_subquery = mock_subquery_result.subquery.return_value
         mock_subquery.c.dag_id = "dag_id"
         mock_subquery.c.max_timestamp = "max_timestamp"
@@ -661,9 +820,7 @@ class TestAirflow(TestCase):
         # This simulates what get_pipelines_list() does for Airflow 3.x:
         # 1. Create subquery with max timestamp
         subquery_result = (
-            mock_session_instance.query(
-                mock_serialized_dag_model.dag_id, "max_timestamp"
-            )
+            mock_session_instance.query(mock_serialized_dag_model.dag_id, "max_timestamp")
             .group_by(mock_serialized_dag_model.dag_id)
             .subquery()
         )
@@ -748,9 +905,7 @@ class TestAirflow(TestCase):
 
     @patch("metadata.ingestion.source.pipeline.airflow.metadata.func")
     @patch("metadata.ingestion.source.pipeline.airflow.metadata.SerializedDagModel")
-    @patch(
-        "metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session"
-    )
+    @patch("metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session")
     def test_latest_dag_subquery_uses_max_timestamp(
         self,
         mock_session,
@@ -790,11 +945,7 @@ class TestAirflow(TestCase):
 
         # Filter task instances to only include current task names
         # This mimics what happens in yield_pipeline_status
-        filtered_tasks = [
-            task
-            for task in historical_task_instances
-            if task["task_id"] in current_task_names
-        ]
+        filtered_tasks = [task for task in historical_task_instances if task["task_id"] in current_task_names]
 
         # Verify old task is filtered out
         filtered_task_ids = [task["task_id"] for task in filtered_tasks]
@@ -895,6 +1046,33 @@ class TestAirflow(TestCase):
             assert "_flt_3_dag_id=" in url
             assert "_flt_3_task_id=" in url
             assert "flt1_dag_id_equals" not in url
+
+    def test_task_description_uses_doc_fallback(self):
+        """Tasks documented via doc/doc_yaml (not doc_md) still get a description (P1-14)."""
+        self.airflow._is_remote_airflow_3 = False
+        dag = AirflowDagDetails(
+            dag_id="d",
+            fileloc="/d.py",
+            data=AirflowDag.model_validate(SERIALIZED_DAG),
+            tasks=[
+                AirflowTask(task_id="plain", doc="PLAIN DOC"),
+                AirflowTask(task_id="yml", doc_yaml="k: v"),
+                AirflowTask(task_id="md", doc_md="# MD"),
+                AirflowTask(task_id="empty"),
+            ],
+            schedule_interval=None,
+            owner=None,
+        )
+
+        def description_of(task):
+            return task.description.root if task.description else None
+
+        by_name = {str(task.name): task for task in self.airflow.get_tasks_from_dag(dag, "http://localhost:8080")}
+
+        assert description_of(by_name["plain"]) == "PLAIN DOC"
+        assert description_of(by_name["yml"]) == "k: v"
+        assert description_of(by_name["md"]) == "# MD"
+        assert by_name["empty"].description is None
 
     def test_task_source_url_with_special_characters(self):
         """Test URL encoding for DAG and task IDs with special characters (Airflow 2.x)"""
@@ -1050,9 +1228,7 @@ class TestAirflow(TestCase):
         original_session = getattr(self.airflow, "_session", None)
         self.airflow._session = mock_session
         try:
-            result = self.airflow.get_task_instances(
-                "my_dag", ["run_1", "run_2"], serialized_tasks
-            )
+            result = self.airflow.get_task_instances("my_dag", ["run_1", "run_2"], serialized_tasks)
         finally:
             self.airflow._session = original_session
 
@@ -1126,8 +1302,7 @@ class TestAirflow(TestCase):
                         end_date=None,
                     )
                     for r in all_rows
-                    if r._asdict()["run_id"] == run_id
-                    and r._asdict()["task_id"] in allowed
+                    if r._asdict()["run_id"] == run_id and r._asdict()["task_id"] in allowed
                 ]
             return grouped
 
@@ -1140,9 +1315,7 @@ class TestAirflow(TestCase):
         original_session = getattr(self.airflow, "_session", None)
         self.airflow._session = mock_session
         try:
-            actual = self.airflow.get_task_instances(
-                "etl_dag", run_ids, serialized_tasks
-            )
+            actual = self.airflow.get_task_instances("etl_dag", run_ids, serialized_tasks)
         finally:
             self.airflow._session = original_session
 
@@ -1150,9 +1323,7 @@ class TestAirflow(TestCase):
 
         # Single bulk query, not one per run_id
         mock_session.query.assert_called_once()
-        self.assertEqual(
-            set(actual.keys()), {"scheduled__1", "scheduled__2", "manual__3"}
-        )
+        self.assertEqual(set(actual.keys()), {"scheduled__1", "scheduled__2", "manual__3"})
         for run_id in actual:
             self.assertEqual(
                 [(t.task_id, t.state) for t in actual[run_id]],
@@ -1271,9 +1442,7 @@ class TestAirflow(TestCase):
         original_session = getattr(self.airflow, "_session", None)
         self.airflow._session = mock_session
         try:
-            result = self.airflow.get_task_instances(
-                "my_dag", ["run_1", "run_2"], serialized_tasks
-            )
+            result = self.airflow.get_task_instances("my_dag", ["run_1", "run_2"], serialized_tasks)
         finally:
             self.airflow._session = original_session
 
@@ -1322,9 +1491,7 @@ class TestAirflow(TestCase):
         original_session = getattr(self.airflow, "_session", None)
         self.airflow._session = mock_session
         try:
-            result = self.airflow.get_task_instances(
-                "my_dag", ["run_1", "run_2"], serialized_tasks
-            )
+            result = self.airflow.get_task_instances("my_dag", ["run_1", "run_2"], serialized_tasks)
         finally:
             self.airflow._session = original_session
 
@@ -1372,9 +1539,7 @@ class TestAirflow(TestCase):
         original_session = getattr(self.airflow, "_session", None)
         self.airflow._session = mock_session
         try:
-            result = self.airflow.get_task_instances(
-                "my_dag", ["run_requested"], serialized_tasks
-            )
+            result = self.airflow.get_task_instances("my_dag", ["run_requested"], serialized_tasks)
         finally:
             self.airflow._session = original_session
 
@@ -1438,24 +1603,24 @@ class TestAirflow(TestCase):
             bulk_call_log.append(list(run_ids))
             return {run_id: [] for run_id in run_ids}
 
-        with patch.object(
-            airflow_module, "_TASK_INSTANCE_RUN_ID_CHUNK_SIZE", chunk_size
-        ), patch.object(
-            self.airflow, "get_pipeline_status", return_value=dag_runs
-        ), patch.object(
-            self.airflow, "get_task_instances", side_effect=fake_get_task_instances
-        ), patch.object(
-            self.airflow,
-            "context",
-            MagicMock(get=MagicMock(return_value=context_value)),
-        ), patch.object(
-            self.airflow, "metadata", MagicMock()
-        ), patch(
-            "metadata.ingestion.source.pipeline.airflow.metadata.fqn.build",
-            return_value="svc.my_dag",
-        ), patch(
-            "metadata.ingestion.source.pipeline.airflow.metadata.datetime_to_ts",
-            return_value=1,
+        with (
+            patch.object(airflow_module, "_TASK_INSTANCE_RUN_ID_CHUNK_SIZE", chunk_size),
+            patch.object(self.airflow, "get_pipeline_status", return_value=dag_runs),
+            patch.object(self.airflow, "get_task_instances", side_effect=fake_get_task_instances),
+            patch.object(
+                self.airflow,
+                "context",
+                MagicMock(get=MagicMock(return_value=context_value)),
+            ),
+            patch.object(self.airflow, "metadata", MagicMock()),
+            patch(
+                "metadata.ingestion.source.pipeline.airflow.metadata.fqn.build",
+                return_value="svc.my_dag",
+            ),
+            patch(
+                "metadata.ingestion.source.pipeline.airflow.metadata.datetime_to_ts",
+                return_value=1,
+            ),
         ):
             results = list(self.airflow.yield_pipeline_status(pipeline_details))
 
@@ -1525,24 +1690,24 @@ class TestAirflow(TestCase):
                 raise RuntimeError("simulated chunk failure")
             return {run_id: [] for run_id in run_ids}
 
-        with patch.object(
-            airflow_module, "_TASK_INSTANCE_RUN_ID_CHUNK_SIZE", chunk_size
-        ), patch.object(
-            self.airflow, "get_pipeline_status", return_value=dag_runs
-        ), patch.object(
-            self.airflow, "get_task_instances", side_effect=fake_get_task_instances
-        ), patch.object(
-            self.airflow,
-            "context",
-            MagicMock(get=MagicMock(return_value=context_value)),
-        ), patch.object(
-            self.airflow, "metadata", MagicMock()
-        ), patch(
-            "metadata.ingestion.source.pipeline.airflow.metadata.fqn.build",
-            return_value="svc.my_dag",
-        ), patch(
-            "metadata.ingestion.source.pipeline.airflow.metadata.datetime_to_ts",
-            return_value=1,
+        with (
+            patch.object(airflow_module, "_TASK_INSTANCE_RUN_ID_CHUNK_SIZE", chunk_size),
+            patch.object(self.airflow, "get_pipeline_status", return_value=dag_runs),
+            patch.object(self.airflow, "get_task_instances", side_effect=fake_get_task_instances),
+            patch.object(
+                self.airflow,
+                "context",
+                MagicMock(get=MagicMock(return_value=context_value)),
+            ),
+            patch.object(self.airflow, "metadata", MagicMock()),
+            patch(
+                "metadata.ingestion.source.pipeline.airflow.metadata.fqn.build",
+                return_value="svc.my_dag",
+            ),
+            patch(
+                "metadata.ingestion.source.pipeline.airflow.metadata.datetime_to_ts",
+                return_value=1,
+            ),
         ):
             results = list(self.airflow.yield_pipeline_status(pipeline_details))
 
@@ -1556,18 +1721,47 @@ class TestAirflow(TestCase):
             self.assertIsNone(either.left)
             self.assertIsNotNone(either.right)
 
-        yielded_run_ids = {
-            either.right.pipeline_status.executionId for either in results
-        }
+        yielded_run_ids = {either.right.pipeline_status.executionId for either in results}
         self.assertEqual(yielded_run_ids, {f"run_{i}" for i in range(total_runs)})
 
         # Runs in the failed middle chunk have empty taskStatus lists
         failed_chunk_runs = {f"run_{i}" for i in range(10, 20)}
         failed_statuses = [
-            e.right.pipeline_status
-            for e in results
-            if e.right.pipeline_status.executionId in failed_chunk_runs
+            e.right.pipeline_status for e in results if e.right.pipeline_status.executionId in failed_chunk_runs
         ]
         self.assertEqual(len(failed_statuses), 10)
         for status in failed_statuses:
             self.assertEqual(status.taskStatus, [])
+
+    def test_get_pipeline_status_cache_returns_same_result(self):
+        """
+        A second call for the same dag_id returns the cached result without
+        hitting the session again.
+        """
+        from collections import namedtuple
+        from unittest.mock import MagicMock
+
+        Row = namedtuple("Row", ["dag_id", "run_id", "queued_at", "date_value", "start_date", "state"])
+
+        rows = [
+            Row(dag_id="dag_cached", run_id="run_1", queued_at=None, date_value=None, start_date=None, state="success"),
+        ]
+
+        mock_session = MagicMock()
+        mock_query = MagicMock()
+        mock_query.filter.return_value.order_by.return_value.limit.return_value.all.return_value = rows
+        mock_session.query.return_value = mock_query
+
+        # session is a @property backed by _session — inject mock directly
+        self.airflow._session = mock_session
+        self.airflow._status_cache_dag_id = None
+        try:
+            first = self.airflow.get_pipeline_status("dag_cached")
+            second = self.airflow.get_pipeline_status("dag_cached")
+        finally:
+            self.airflow._session = None
+            self.airflow._status_cache_dag_id = None
+
+        # Session was queried only once — second call used the cache
+        self.assertEqual(mock_session.query.call_count, 1)
+        self.assertIs(first, second)

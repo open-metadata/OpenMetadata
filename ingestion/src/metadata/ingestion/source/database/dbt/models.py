@@ -9,48 +9,61 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Models required for dbt 
+Models required for dbt
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel
 
 
 class DbtFiles(BaseModel):
-    dbt_catalog: Optional[dict] = None
+    dbt_catalog: dict | None = None
     dbt_manifest: dict
-    dbt_sources: Optional[dict] = None
-    dbt_run_results: Optional[List[dict]] = None
+    dbt_sources: dict | None = None
+    dbt_run_results: list[dict] | None = None
 
 
 class DbtObjects(BaseModel):
-    dbt_catalog: Optional[Any] = None
+    dbt_catalog: Any | None = None
     dbt_manifest: Any
-    dbt_sources: Optional[Any] = None
-    dbt_run_results: Optional[List[Any]] = None
+    dbt_sources: Any | None = None
+    dbt_run_results: list[Any] | None = None
 
 
 class DbtFilteredModel(BaseModel):
-    is_filtered: Optional[bool] = False
-    message: Optional[str] = None
-    model_fqn: Optional[str] = None
+    is_filtered: bool | None = False
+    message: str | None = None
+    model_fqn: str | None = None
 
 
 class DbtMetaOpenmetadata(BaseModel):
-    tier: Optional[str] = None
-    domain: Optional[str] = None
-    glossary: Optional[List[str]] = None
-    customProperties: Optional[Dict[str, Any]] = None
-    tags: Optional[List[str]] = None
+    tier: str | None = None
+    domain: str | None = None
+    dataProducts: list[str] | None = None  # noqa: N815
+    glossary: list[str] | None = None
+    customProperties: dict[str, Any] | None = None  # noqa: N815
+    tags: list[str] | None = None
 
 
 class DbtMeta(BaseModel):
-    openmetadata: Optional[DbtMetaOpenmetadata] = None
+    openmetadata: DbtMetaOpenmetadata | None = None
 
 
 class SnapshotNodeLocation(BaseModel):
     """Resolved schema and database for a dbt snapshot node after applying config overrides."""
 
     schema_: str
-    database: Optional[str] = None
+    database: str | None = None
+
+
+class UpstreamNode(BaseModel):
+    """An upstream dependency of a dbt node, keeping the dbt names alongside the table FQN.
+
+    ``ref()``/``source()`` expressions carry the dbt *name*, while the FQN is built from
+    the model *alias*, so both are needed to map a reference back to its table.
+    """
+
+    name: str
+    qualified_name: str | None = None
+    fqn: str

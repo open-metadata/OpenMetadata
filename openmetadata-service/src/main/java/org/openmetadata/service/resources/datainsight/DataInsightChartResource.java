@@ -54,6 +54,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.seeding.SeedDataGate;
 
 @Slf4j
 @Path("/v1/analytics/dataInsights/charts")
@@ -85,9 +86,12 @@ public class DataInsightChartResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      return;
+    }
     // Find the existing webAnalyticEventTypes and add them from json files
     List<DataInsightChart> dataInsightCharts =
-        repository.getEntitiesFromSeedData(".*json/data/dataInsight/.*\\.json$");
+        repository.getEntitiesFromSeedData(".*json/data/dataInsight/(?!custom/).*\\.json$");
     for (DataInsightChart dataInsightChart : dataInsightCharts) {
       repository.initializeEntity(dataInsightChart);
     }
@@ -166,24 +170,8 @@ public class DataInsightChartResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the data insight chart", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET

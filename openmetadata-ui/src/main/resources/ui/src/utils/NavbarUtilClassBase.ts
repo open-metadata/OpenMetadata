@@ -10,11 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { HELP_ITEMS } from '../constants/Navbar.constants';
 
 class NavbarUtilClassBase {
   public getHelpItems() {
     return HELP_ITEMS;
+  }
+
+  public getUserProfileExtraItems(): ItemType[] {
+    return [];
   }
 }
 

@@ -106,7 +106,8 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const popover = screen.getByTestId('entity-popover-card').parentElement;
+    const popover = screen.getByTestId('entity-popover-card')
+      .parentElement as HTMLElement;
 
     expect(popover).toHaveStyle({
       position: 'absolute',
@@ -194,9 +195,10 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const popover = screen.getByTestId('entity-popover-card').parentElement;
+    const popover = screen.getByTestId('entity-popover-card')
+      .parentElement as HTMLElement;
 
-    fireEvent.mouseEnter(popover!);
+    fireEvent.mouseEnter(popover);
 
     expect(mockIsOverPopoverRef.current).toBe(true);
     expect(mockHoverTimeoutRef.current).toBeNull();
@@ -214,9 +216,10 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const popover = screen.getByTestId('entity-popover-card').parentElement;
+    const popover = screen.getByTestId('entity-popover-card')
+      .parentElement as HTMLElement;
 
-    fireEvent.mouseLeave(popover!);
+    fireEvent.mouseLeave(popover);
 
     expect(mockOnMouseLeave).toHaveBeenCalledTimes(1);
   });
@@ -301,7 +304,8 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const popover = screen.getByTestId('entity-popover-card').parentElement;
+    const popover = screen.getByTestId('entity-popover-card')
+      .parentElement as HTMLElement;
 
     expect(popover).toHaveStyle({
       pointerEvents: 'all',

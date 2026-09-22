@@ -1,0 +1,10 @@
+{
+  "$id": "https://open-metadata.org/schema/type/conversationSource.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ConversationSource",
+  "description": "Origin of a conversation.",
+  "javaType": "org.openmetadata.schema.type.ConversationSource",
+  "type": "string",
+  "enum": ["User", "Activity"],
+  "javaEnums": [{"name": "User"}, {"name": "Activity"}]
+}

@@ -16,7 +16,7 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import {
   createNewPage,
-  descriptionBox,
+  fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
 } from '../../../utils/common';
@@ -37,45 +37,48 @@ test.describe('Glossary P3 Tests', () => {
     await redirectToHomePage(page);
   });
 
-  // G-C11: Create glossary with unicode/emoji in name
-  test('should create glossary with unicode characters in name', async ({
-    page,
-  }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-    const unicodeName = `Glossary_日本語_${Date.now()}`;
+  // G-C10 / G-C11: Create glossary with special and unicode characters in name
+  const glossaryNameCases = [
+    { label: 'special characters', name: `Test_Glossary-${Date.now()}` },
+    { label: 'unicode characters', name: `Glossary_日本語_${Date.now()}` },
+  ];
 
-    try {
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-
-      await page.click('[data-testid="add-glossary"]');
-      await page.getByTestId('form-heading').waitFor();
-
-      // Use name with unicode characters
-      await page.fill('[data-testid="name"]', unicodeName);
-      await page
-        .locator(descriptionBox)
-        .fill('Glossary with unicode characters');
-
-      const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
-      await page.click('[data-testid="save-glossary"]');
+  glossaryNameCases.forEach(({ label, name }) => {
+    test(`should create glossary with ${label} in name`, async ({ page }) => {
+      const { apiContext, afterAction } = await getApiContext(page);
+      const glossary = new Glossary();
 
       try {
-        const response = await glossaryResponse;
-        glossary.responseData = await response.json();
+        await sidebarClick(page, SidebarItem.GLOSSARY);
 
-        // Verify glossary was created
-        await expect(page.getByTestId('entity-header-name')).toBeVisible();
-      } catch {
-        // Some systems may not support unicode in names - test passes if we get here
-        expect(true).toBe(true);
+        await page.click('[data-testid="add-glossary"]');
+        await page.getByTestId('form-heading').waitFor();
+
+        await page.fill('[data-testid="name"]', name);
+        await fillDescriptionBox(page, `Glossary with ${label}`);
+
+        const [response] = await Promise.all([
+          page.waitForResponse(
+            (res) =>
+              res.url().endsWith('/api/v1/glossaries') &&
+              res.request().method() === 'POST'
+          ),
+          // A stale navigation toast can overlap this centered button. Keyboard
+          // activation exercises the same form submission without a pointer race.
+          page.getByTestId('save-glossary').press('Enter'),
+        ]);
+        glossary.responseData = await response.json();
+        expect(response.ok()).toBe(true);
+
+        // Verify glossary was created with the exact name
+        await expect(page.getByTestId('entity-header-name')).toHaveText(name);
+      } finally {
+        if (glossary.responseData) {
+          await glossary.delete(apiContext);
+        }
+        await afterAction();
       }
-    } finally {
-      if (glossary.responseData) {
-        await glossary.delete(apiContext);
-      }
-      await afterAction();
-    }
+    });
   });
 
   // T-U24: Update term style - remove color
@@ -213,9 +216,8 @@ test.describe('Glossary P3 Tests', () => {
       await waitForAllLoadersToDisappear(page);
 
       // Search should not crash - either shows results, table, or empty state
-      const table = page.getByTestId('glossary-term-table');
+      const table = page.getByTestId('glossary-terms-table');
       const emptyState = page.getByText(/no.*term.*found|no.*result/i);
-      const tableRows = page.locator('tbody .ant-table-row');
 
       // eslint-disable-next-line playwright/no-wait-for-timeout -- search results need time to render after special character input
       await page.waitForTimeout(1000);
@@ -255,88 +257,6 @@ test.describe('Glossary P3 Tests', () => {
       ) {
         // Vote count should be visible (even if 0)
         await expect(voteSection.first()).toBeVisible();
-      }
-    } finally {
-      await glossary.delete(apiContext);
-      await afterAction();
-    }
-  });
-
-  // AF-05: Reply to existing comment
-  test('should navigate to activity feed for potential reply', async ({
-    page,
-  }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-
-    try {
-      await glossary.create(apiContext);
-      await glossary.visitEntityPage(page);
-
-      // Navigate to activity feed tab
-      const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-
-      if (await activityTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await activityTab.click();
-
-        // Verify activity tab is active
-        await expect(activityTab).toHaveAttribute('aria-selected', 'true');
-      }
-    } finally {
-      await glossary.delete(apiContext);
-      await afterAction();
-    }
-  });
-
-  // AF-06: Edit own comment
-  test('should access activity feed for comment editing', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-
-    try {
-      await glossary.create(apiContext);
-      await glossary.visitEntityPage(page);
-
-      // Navigate to activity feed tab
-      const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-
-      if (await activityTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await activityTab.click();
-
-        // Check if there are any existing comments with edit option
-        const editButtons = page.getByTestId('edit-message');
-        const hasEditOption = await editButtons.count();
-
-        // Test passes whether there are comments or not
-        expect(hasEditOption >= 0).toBe(true);
-      }
-    } finally {
-      await glossary.delete(apiContext);
-      await afterAction();
-    }
-  });
-
-  // AF-07: Delete own comment
-  test('should access activity feed for comment deletion', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-
-    try {
-      await glossary.create(apiContext);
-      await glossary.visitEntityPage(page);
-
-      // Navigate to activity feed tab
-      const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-
-      if (await activityTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await activityTab.click();
-
-        // Check if there are any existing comments with delete option
-        const deleteButtons = page.getByTestId('delete-message');
-        const hasDeleteOption = await deleteButtons.count();
-
-        // Test passes whether there are comments or not
-        expect(hasDeleteOption >= 0).toBe(true);
       }
     } finally {
       await glossary.delete(apiContext);
@@ -390,25 +310,18 @@ test.describe('Glossary P3 Tests', () => {
   test('should show loading state during navigation', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
     try {
       await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
 
-      // Navigate to glossary page
       await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-      // The page should eventually load without errors
-
-      // Verify page is loaded (loader should be gone)
-      const loader = page.getByTestId('loader');
-      const skeleton = page.locator('.ant-skeleton');
-
-      // Either loader/skeleton is not visible, or content is loaded
-      const isLoaded =
-        (await loader.isVisible().catch(() => false)) === false ||
-        (await skeleton.isVisible().catch(() => false)) === false;
-
-      expect(isLoaded).toBeTruthy();
+      await expect(page.getByTestId('glossary-terms-table')).toBeVisible({
+        timeout: 10000,
+      });
     } finally {
       await glossary.delete(apiContext);
       await afterAction();
@@ -452,8 +365,8 @@ test.describe('Glossary P3 Tests', () => {
     }
   });
 
-  // EC-05: Special characters in all fields
-  test('should handle special characters in term fields', async ({
+  // EC-05 / EC-06: Special characters and unicode/emoji in term payload fields
+  test('should handle special characters and unicode in term fields', async ({
     browser,
   }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
@@ -462,9 +375,8 @@ test.describe('Glossary P3 Tests', () => {
     try {
       await glossary.create(apiContext);
 
-      // Create term with special characters in description and synonyms
-      const response = await apiContext.post('/api/v1/glossaryTerms', {
-        data: {
+      const termPayloads = [
+        {
           glossary: glossary.responseData.id,
           name: `SpecialTerm_${Date.now()}`,
           displayName: `Special-Term_${Date.now()}`,
@@ -472,44 +384,28 @@ test.describe('Glossary P3 Tests', () => {
             'Description with special chars: &amp; "quotes" & apostrophe',
           synonyms: ['synonym-1', 'synonym_2', 'synonym-3'],
         },
-      });
-
-      // Should either succeed or return validation/not found error (all are valid behaviors)
-      expect([200, 201, 400, 404, 422]).toContain(response.status());
-    } finally {
-      await glossary.delete(apiContext);
-      await afterAction();
-    }
-  });
-
-  // EC-06: Unicode/emoji handling
-  test('should handle unicode and emoji in description', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    const glossary = new Glossary();
-
-    try {
-      await glossary.create(apiContext);
-
-      // Create term with unicode in description
-      const response = await apiContext.post('/api/v1/glossaryTerms', {
-        data: {
+        {
           glossary: glossary.responseData.id,
           name: `UnicodeTerm_${Date.now()}`,
           displayName: `UnicodeTerm_${Date.now()}`,
           description: 'Description with unicode characters: cafe, naive',
         },
-      });
+      ];
 
-      // Should either succeed or return validation/not found error (all are valid behaviors)
-      expect([200, 201, 400, 404, 422]).toContain(response.status());
+      for (const data of termPayloads) {
+        const response = await apiContext.post('/api/v1/glossaryTerms', {
+          data,
+        });
 
-      if (response.ok()) {
-        const data = await response.json();
+        // Should either succeed or return validation/not found error (all are valid behaviors)
+        expect([200, 201, 400, 404, 422]).toContain(response.status());
 
-        // Verify content was saved
-        expect(data.description).toContain('unicode');
+        if (response.ok()) {
+          const responseData = await response.json();
+
+          // Verify content was saved
+          expect(responseData.description).toBe(data.description);
+        }
       }
     } finally {
       await glossary.delete(apiContext);
@@ -677,8 +573,8 @@ test.describe('Glossary P3 Tests', () => {
       // Wait for page to load
 
       // Page should be functional - either shows table or empty state
-      const table = page.getByTestId('glossary-term-table');
-      const pageContent = page.locator('.glossary-details');
+      const table = page.getByTestId('glossary-terms-table');
+      const pageContent = page.getByTestId('glossary-details');
 
       const isLoaded =
         (await table.isVisible({ timeout: 10000 }).catch(() => false)) ||
@@ -687,14 +583,16 @@ test.describe('Glossary P3 Tests', () => {
       // If there are terms, try to expand some levels
       if (await table.isVisible({ timeout: 2000 }).catch(() => false)) {
         for (let i = 0; i < Math.min(termIds.length, 2); i++) {
-          const expandIcon = page.locator('.ant-table-row-expand-icon').first();
+          const expandIcon = page
+            .locator('[data-testid="expand-icon"]')
+            .first();
 
           if (
             await expandIcon.isVisible({ timeout: 2000 }).catch(() => false)
           ) {
             await expandIcon.click();
             await page
-              .locator('.ant-table-row')
+              .locator('tr[data-row-key]')
               .first()
               .waitFor({ state: 'visible' });
           } else {
@@ -789,7 +687,9 @@ test.describe('Glossary P3 Tests', () => {
   test('should show error state when navigating to non-existent glossary', async ({
     browser,
   }) => {
-    const { page, afterAction } = await createNewPage(browser);
+    const { page, afterAction } = await createNewPage(browser, {
+      navigate: true,
+    });
 
     try {
       // Navigate directly to a non-existent glossary (without redirectToHomePage)
@@ -839,7 +739,9 @@ test.describe('Glossary P3 Tests', () => {
   test('should show error state when navigating to non-existent term', async ({
     browser,
   }) => {
-    const { apiContext, page, afterAction } = await createNewPage(browser);
+    const { apiContext, page, afterAction } = await createNewPage(browser, {
+      navigate: true,
+    });
     const glossary = new Glossary();
 
     try {
@@ -900,7 +802,7 @@ test.describe('Glossary P3 Tests', () => {
       await page.getByTestId('name').waitFor();
 
       await page.fill('[data-testid="name"]', 'TestTerm');
-      await page.locator(descriptionBox).fill('Test description');
+      await fillDescriptionBox(page, 'Test description');
 
       const addReferenceBtn = page.getByTestId('add-reference');
       await addReferenceBtn.click();

@@ -12,8 +12,6 @@
 Pydantic Model to validate Quick Sight responses
 """
 
-from typing import List, Optional, Union
-
 from pydantic import BaseModel, Field
 
 
@@ -21,61 +19,59 @@ class DataSourceResp(BaseModel):
     datasource_arn: str = Field(alias="DataSourceArn")
     schema_name: str = Field(alias="Schema")
     table_name: str = Field(alias="Name")
-    columns: Optional[list] = Field(alias="InputColumns")
+    columns: list | None = Field(alias="InputColumns")
 
 
 class DataSourceRespQuery(BaseModel):
     datasource_arn: str = Field(alias="DataSourceArn")
     query: str = Field(alias="SqlQuery")
     table_name: str = Field(alias="Name")
-    columns: Optional[list] = Field(alias="Columns")
+    columns: list | None = Field(alias="Columns")
 
 
 class DataSourceRespS3(BaseModel):
     datasource_arn: str = Field(alias="DataSourceArn")
-    columns: Optional[list] = Field(alias="InputColumns")
+    columns: list | None = Field(alias="InputColumns")
 
 
 class VersionSheet(BaseModel):
-    ChartId: Optional[str] = Field(None, alias="SheetId")
-    Name: Optional[str] = None
+    ChartId: str | None = Field(None, alias="SheetId")
+    Name: str | None = None
 
 
 class DashboardVersion(BaseModel):
-    Status: Optional[str] = None
-    Arn: Optional[str] = None
-    SourceEntityArn: Optional[str] = None
-    DataSetArns: Optional[List] = None
-    Description: Optional[str] = None
-    Charts: Optional[List[VersionSheet]] = Field(None, alias="Sheets")
+    Status: str | None = None
+    Arn: str | None = None
+    SourceEntityArn: str | None = None
+    DataSetArns: list | None = None
+    Description: str | None = None
+    Charts: list[VersionSheet] | None = Field(None, alias="Sheets")
 
 
 class DashboardDetail(BaseModel):
     DashboardId: str
-    Arn: Optional[str] = None
+    Arn: str | None = None
     Name: str
-    Version: Optional[DashboardVersion] = None
+    Version: DashboardVersion | None = None
 
 
 class DashboardResp(BaseModel):
     Dashboard: DashboardDetail
-    Status: Optional[int] = None
-    RequestId: Optional[str] = None
+    Status: int | None = None
+    RequestId: str | None = None
 
 
 class DataSourceModel(BaseModel):
     Name: str
     Type: str
     DataSourceId: str
-    DataSourceParameters: Optional[dict] = None
-    data_source_resp: Optional[
-        Union[DataSourceRespS3, DataSourceRespQuery, DataSourceResp]
-    ] = None
+    DataSourceParameters: dict | None = None
+    data_source_resp: DataSourceRespS3 | DataSourceRespQuery | DataSourceResp | None = None
 
 
 class DescribeDataSourceResponse(BaseModel):
-    DataSource: Optional[DataSourceModel] = None
-    RequestId: Optional[str] = None
-    Status: Optional[int] = None
-    dataset_id: Optional[str] = None
-    dataset_name: Optional[str] = None
+    DataSource: DataSourceModel | None = None
+    RequestId: str | None = None
+    Status: int | None = None
+    dataset_id: str | None = None
+    dataset_name: str | None = None

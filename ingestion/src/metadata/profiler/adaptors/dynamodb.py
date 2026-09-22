@@ -11,7 +11,8 @@
 """
 DyanmoDB adaptor for the NoSQL profiler.
 """
-from typing import TYPE_CHECKING, Dict, List
+
+from typing import TYPE_CHECKING
 
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
@@ -32,9 +33,7 @@ class DynamoDB(NoSQLAdaptor):
         table = self.client.Table(table.name.root)
         return table.item_count
 
-    def scan(
-        self, table: Table, columns: List[Column], limit: int
-    ) -> List[Dict[str, any]]:
+    def scan(self, table: Table, columns: list[Column], limit: int) -> list[dict[str, any]]:
         table = self.client.Table(table.name.root)
         response = table.scan(Limit=limit)
         return response["Items"]

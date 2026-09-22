@@ -13,7 +13,8 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
-from typing import List, Type, cast
+
+from typing import cast
 
 from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
@@ -34,15 +35,13 @@ class RedshiftProfilerInterface(SQAProfilerInterface):
 
     def _compute_system_metrics(
         self,
-        metrics: Type[System],
+        metrics: type[System],
         runner: QueryRunner,
         *args,
         **kwargs,
-    ) -> List[SystemProfile]:
+    ) -> list[SystemProfile]:
         logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")
-        self.system_metrics_class = cast(
-            Type[RedshiftSystemMetricsComputer], self.system_metrics_class
-        )
+        self.system_metrics_class = cast(type[RedshiftSystemMetricsComputer], self.system_metrics_class)  # noqa: TC006
         instance = self.system_metrics_class(
             session=self.session,
             runner=runner,

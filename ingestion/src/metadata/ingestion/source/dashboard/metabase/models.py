@@ -11,14 +11,14 @@
 """
 Metabase Models
 """
+
 import ast
 import json
-from typing import List, Optional
+from typing import Annotated
 
 from pydantic import BaseModel, BeforeValidator, Field, field_validator, model_validator
-from typing_extensions import Annotated
 
-MetabaseStrId = Annotated[str, BeforeValidator(lambda x: str(x))]
+MetabaseStrId = Annotated[str, BeforeValidator(lambda x: str(x))]  # noqa: PLW0108
 
 
 class MetabaseUser(BaseModel):
@@ -27,12 +27,12 @@ class MetabaseUser(BaseModel):
     """
 
     id: MetabaseStrId
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    common_name: Optional[str] = None
-    email: Optional[str] = None
-    is_superuser: Optional[bool] = False
-    last_edit_timestamp: Optional[str] = Field(None, alias="timestamp")
+    first_name: str | None = None
+    last_name: str | None = None
+    common_name: str | None = None
+    email: str | None = None
+    is_superuser: bool | None = False
+    last_edit_timestamp: str | None = Field(None, alias="timestamp")
 
 
 class MetabaseDashboard(BaseModel):
@@ -40,10 +40,10 @@ class MetabaseDashboard(BaseModel):
     Metabase dashboard model
     """
 
-    description: Optional[str] = None
+    description: str | None = None
     name: str
     id: MetabaseStrId
-    collection_id: Optional[MetabaseStrId] = None
+    collection_id: MetabaseStrId | None = None
 
 
 class MetabaseCollection(BaseModel):
@@ -56,22 +56,22 @@ class MetabaseCollection(BaseModel):
 
 
 class MetabaseDashboardList(BaseModel):
-    data: List[MetabaseDashboard] = []
+    data: list[MetabaseDashboard] = []
 
 
 class MetabaseCollectionList(BaseModel):
-    collections: List[MetabaseCollection] = []
+    collections: list[MetabaseCollection] = []
 
 
 class Native(BaseModel):
-    query: Optional[str] = None
+    query: str | None = None
 
 
 class DatasetQuery(BaseModel):
     model_config = {"extra": "ignore"}
 
-    type: Optional[str] = None
-    native: Optional[Native] = None
+    type: str | None = None
+    native: Native | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -103,14 +103,14 @@ class MetabaseChart(BaseModel):
     Metabase card model
     """
 
-    description: Optional[str] = None
-    table_id: Optional[MetabaseStrId] = None
-    database_id: Optional[MetabaseStrId] = None
-    name: Optional[str] = None
-    dataset_query: Optional[DatasetQuery] = None
-    id: Optional[MetabaseStrId] = None
-    display: Optional[str] = None
-    dashboard_ids: List[str] = []
+    description: str | None = None
+    table_id: MetabaseStrId | None = None
+    database_id: MetabaseStrId | None = None
+    name: str | None = None
+    dataset_query: DatasetQuery | None = None
+    id: MetabaseStrId | None = None
+    display: str | None = None
+    dashboard_ids: list[str] = []
 
     @field_validator("dataset_query", mode="before")
     @classmethod
@@ -141,18 +141,13 @@ class MetabaseChart(BaseModel):
             # Strategy 3: More sophisticated quote replacement
             try:
                 # Handle None values and booleans
-                json_str = (
-                    v.replace("'", '"')
-                    .replace("None", "null")
-                    .replace("True", "true")
-                    .replace("False", "false")
-                )
+                json_str = v.replace("'", '"').replace("None", "null").replace("True", "true").replace("False", "false")
                 return json.loads(json_str)
             except json.JSONDecodeError:
                 pass
 
             # If all strategies fail, log and return None
-            print(f"Failed to parse dataset_query string: {v[:100]}...")
+            print(f"Failed to parse dataset_query string: {v[:100]}...")  # noqa: T201
             return None
 
         # For any other type, return as is and let Pydantic handle validation
@@ -168,16 +163,16 @@ class MetabaseDashboardDetails(BaseModel):
     Metabase dashboard details model
     """
 
-    description: Optional[str] = None
-    card_ids: List[str] = []
-    name: Optional[str] = None
+    description: str | None = None
+    card_ids: list[str] = []
+    name: str | None = None
     id: MetabaseStrId
-    creator_id: Optional[MetabaseStrId] = None
-    collection_id: Optional[MetabaseStrId] = None
+    creator_id: MetabaseStrId | None = None
+    collection_id: MetabaseStrId | None = None
 
 
 class MetabaseDatabaseDetails(BaseModel):
-    db: Optional[str] = None
+    db: str | None = None
 
 
 class MetabaseDatabase(BaseModel):
@@ -185,12 +180,12 @@ class MetabaseDatabase(BaseModel):
     Metabase database model
     """
 
-    details: Optional[MetabaseDatabaseDetails] = None
+    details: MetabaseDatabaseDetails | None = None
 
 
 class MetabaseTable(BaseModel):
-    table_schema: Optional[str] = Field(None, alias="schema")
-    db: Optional[MetabaseDatabase] = None
-    name: Optional[str] = None
-    id: Optional[MetabaseStrId] = None
-    display_name: Optional[str] = None
+    table_schema: str | None = Field(None, alias="schema")
+    db: MetabaseDatabase | None = None
+    name: str | None = None
+    id: MetabaseStrId | None = None
+    display_name: str | None = None

@@ -13,11 +13,14 @@ Usage Workflow Definition
 """
 
 from metadata.config.common import WorkflowExecutionError
+from metadata.entity_resolution.table import TableServiceBinding
 from metadata.ingestion.api.steps import BulkSink, Processor, Source, Stage
+from metadata.ingestion.bulksink.metadata_usage import MetadataUsageBulkSink
 from metadata.utils.importer import (
     import_bulk_sink_type,
     import_processor_class,
     import_stage_class,
+    import_table_reference_normalizer,
 )
 from metadata.utils.logger import ingestion_logger
 from metadata.workflow.ingestion import IngestionWorkflow
@@ -50,9 +53,7 @@ class UsageWorkflow(IngestionWorkflow):
             )
 
         source_class = self.import_source_class()
-        source: Source = source_class.create(
-            self.config.source.model_dump(), self.metadata
-        )
+        source: Source = source_class.create(self.config.source.model_dump(), self.metadata)
         logger.debug(f"Source type:{source_type},{source_class} configured")
         source.prepare()
         logger.debug(f"Source type:{source_type},{source_class}  prepared")
@@ -67,9 +68,7 @@ class UsageWorkflow(IngestionWorkflow):
         processor: Processor = processor_class.create(
             processor_config,
             self.metadata,
-            connection_type=str(
-                self.config.source.serviceConnection.root.config.type.value
-            ),
+            connection_type=str(self.config.source.serviceConnection.root.config.type.value),
         )
         logger.debug(f"Processor Type: {processor_type}, {processor_class} configured")
 
@@ -91,8 +90,12 @@ class UsageWorkflow(IngestionWorkflow):
         bulk_sink_class = import_bulk_sink_type(bulk_sink_type=bulk_sink_type)
         bulk_sink_config = self.config.bulkSink.model_dump().get("config", {})
         bulk_sink: BulkSink = bulk_sink_class.create(bulk_sink_config, self.metadata)
-        logger.info(
-            f"BulkSink type:{self.config.bulkSink.type},{bulk_sink_class} configured"
-        )
+        if isinstance(bulk_sink, MetadataUsageBulkSink) and self.config.source.serviceName:
+            connection = self.config.source.serviceConnection
+            if connection is None or connection.root.config is None or connection.root.config.type is None:
+                raise WorkflowExecutionError("A service connection type is required for usage table resolution")
+            normalizer = import_table_reference_normalizer(self.service_type, connection.root.config.type.value)
+            bulk_sink.table_services = (TableServiceBinding(self.config.source.serviceName, normalizer),)
+        logger.info("BulkSink type:%s,%s configured", bulk_sink_type, bulk_sink_class)
 
         return bulk_sink

@@ -22,7 +22,8 @@
       "filterByDomain",
       "filterByGeneralMetadataEvents",
       "filterByUpdaterIsBot"
-    ]
+    ],
+    "containerEntities" : [ "dashboardService" ]
   },
   {
     "name" : "dashboard",
@@ -34,7 +35,8 @@
       "filterByDomain",
       "filterByGeneralMetadataEvents",
       "filterByUpdaterIsBot"
-    ]
+    ],
+    "containerEntities" : [ "dashboardService" ]
   },
   {
     "name" : "dashboardService",
@@ -58,7 +60,8 @@
       "filterByDomain",
       "filterByGeneralMetadataEvents",
       "filterByUpdaterIsBot"
-    ]
+    ],
+    "containerEntities" : [ "databaseService" ]
   },
   {
     "name" : "databaseSchema",
@@ -70,7 +73,8 @@
       "filterByDomain",
       "filterByGeneralMetadataEvents",
       "filterByUpdaterIsBot"
-    ]
+    ],
+    "containerEntities" : [ "databaseService", "database" ]
   },
   {
     "name" : "databaseService",
@@ -106,22 +110,11 @@
       "filterByDomain",
       "filterByGeneralMetadataEvents",
       "filterByUpdaterIsBot"
-    ]
+    ],
+    "containerEntities" : [ "glossary" ]
   },
   {
     "name" : "ingestionPipeline",
-    "supportedFilters" : [
-      "filterByOwnerName",
-      "filterByFqn",
-      "filterByEventType",
-      "filterByUpdaterName",
-      "filterByDomain",
-      "filterByGeneralMetadataEvents",
-      "filterByUpdaterIsBot"
-    ]
-  },
-  {
-    "name" : "location",
     "supportedFilters" : [
       "filterByOwnerName",
       "filterByFqn",
@@ -154,7 +147,8 @@
       "filterByDomain",
       "filterByGeneralMetadataEvents",
       "filterByUpdaterIsBot"
-    ]
+    ],
+    "containerEntities" : [ "mlmodelService" ]
   },
   {
     "name" : "mlmodelService",
@@ -178,7 +172,8 @@
       "filterByDomain",
       "filterByGeneralMetadataEvents",
       "filterByUpdaterIsBot"
-    ]
+    ],
+    "containerEntities" : [ "pipelineService" ]
   },
   {
     "name" : "pipelineService",
@@ -214,7 +209,8 @@
       "filterByDomain",
       "filterByGeneralMetadataEvents",
       "filterByUpdaterIsBot"
-    ]
+    ],
+    "containerEntities" : [ "databaseService", "database", "databaseSchema" ]
   },
   {
     "name" : "tag",
@@ -226,7 +222,8 @@
       "filterByDomain",
       "filterByGeneralMetadataEvents",
       "filterByUpdaterIsBot"
-    ]
+    ],
+    "containerEntities" : [ "classification" ]
   },
   {
     "name" : "tagCategory",
@@ -250,7 +247,8 @@
       "filterByDomain",
       "filterByGeneralMetadataEvents",
       "filterByUpdaterIsBot"
-    ]
+    ],
+    "containerEntities" : [ "messagingService" ]
   },
   {
     "name" : "metadataService",
@@ -274,7 +272,8 @@
       "filterByDomain",
       "filterByGeneralMetadataEvents",
       "filterByUpdaterIsBot"
-    ]
+    ],
+    "containerEntities" : [ "dashboardService" ]
   },
   {
     "name" : "announcement",
@@ -300,6 +299,29 @@
       "filterByEventType",
       "filterByUpdaterName",
       "filterByDomain",
+      "filterByUpdaterIsBot"
+    ]
+  },
+  {
+    "name" : "domain",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ]
+  },
+  {
+    "name" : "dataProduct",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
       "filterByUpdaterIsBot"
     ]
   }

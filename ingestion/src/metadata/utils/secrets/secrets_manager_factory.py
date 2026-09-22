@@ -12,7 +12,6 @@
 """
 Secrets manager factory module
 """
-from typing import Optional
 
 from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
     SecretsManagerClientLoader,
@@ -39,8 +38,8 @@ class SecretsManagerFactory(metaclass=Singleton):
 
     def __init__(
         self,
-        secrets_manager_provider: Optional[SecretsManagerProvider] = None,
-        secrets_manager_loader: Optional[SecretsManagerClientLoader] = None,
+        secrets_manager_provider: SecretsManagerProvider | None = None,
+        secrets_manager_loader: SecretsManagerClientLoader | None = None,
     ):
         """Here the concrete class object is no passed to avoid the creation of circular dependencies
 
@@ -57,11 +56,11 @@ class SecretsManagerFactory(metaclass=Singleton):
         )
 
     @property
-    def secrets_manager_provider(self) -> Optional[SecretsManagerProvider]:
+    def secrets_manager_provider(self) -> SecretsManagerProvider | None:
         return self._secrets_manager_provider
 
     @property
-    def secrets_manager_loader(self) -> Optional[SecretsManagerClientLoader]:
+    def secrets_manager_loader(self) -> SecretsManagerClientLoader | None:
         return self._secrets_manager_loader
 
     def _get_secrets_manager(
@@ -75,10 +74,7 @@ class SecretsManagerFactory(metaclass=Singleton):
         :param secrets_manager_loader: how to retrieve the secrets manager keys from the environment
         :return: a secrets manager
         """
-        if (
-            secrets_manager_provider is None
-            or secrets_manager_provider == SecretsManagerProvider.db
-        ):
+        if secrets_manager_provider is None or secrets_manager_provider == SecretsManagerProvider.db:
             return DBSecretsManager()
         if secrets_manager_provider in (
             SecretsManagerProvider.aws,

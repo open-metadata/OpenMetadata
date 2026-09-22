@@ -12,20 +12,18 @@
 Couchbase source models.
 """
 
-from typing import List, Optional
-
 from pydantic import BaseModel
 
 
 class IndexKey(BaseModel):
     """A Bigtable index key."""
 
-    index_key: List[str] = []
-    condition: Optional[str] = None
-    is_primary: Optional[bool] = False
+    index_key: list[str] = []
+    condition: str | None = None
+    is_primary: bool | None = False
 
 
 class IndexObject(BaseModel):
     """A Bigtable cell value."""
 
-    indexes: Optional[IndexKey] = None
+    indexes: IndexKey | None = None

@@ -12,7 +12,6 @@
 """
 Validator for table rule library SQL expression
 """
-from typing import Dict
 
 from jinja2 import StrictUndefined, Template, TemplateSyntaxError, UndefinedError
 
@@ -32,6 +31,7 @@ logger = test_suite_logger()
 RESERVED_PARAMS = {"table_name"}
 
 DATABASES_WITHOUT_DATABASE_CONCEPT = {
+    DatabaseServiceType.Athena.value,
     DatabaseServiceType.Mysql.value,
     DatabaseServiceType.MariaDB.value,
     DatabaseServiceType.SQLite.value,
@@ -44,12 +44,12 @@ class TableRuleLibrarySqlExpressionValidator(BaseTestValidator):
 
     runtime_params: RuleLibrarySqlExpressionRuntimeParameters
 
-    def _get_user_params(self) -> Dict[str, str]:
+    def _get_user_params(self) -> dict[str, str]:
         """Extract user-defined parameters from test case parameterValues."""
         params = {}
         if self.test_case.parameterValues:
             for param in self.test_case.parameterValues:
-                if param.name and param.value and param.name not in RESERVED_PARAMS:
+                if param.name and param.value and param.name not in RESERVED_PARAMS:  # noqa: SIM102
                     if not param.name.endswith("RuntimeParameters"):
                         params[param.name] = param.value
         return params
@@ -81,13 +81,10 @@ class TableRuleLibrarySqlExpressionValidator(BaseTestValidator):
             template = Template(sql_template.root, undefined=StrictUndefined)
             return template.render(**params)
         except TemplateSyntaxError as e:
-            raise ValueError(
-                f"Invalid Jinja2 syntax in SQL expression: {e.message}"
-            ) from e
+            raise ValueError(f"Invalid Jinja2 syntax in SQL expression: {e.message}") from e
         except UndefinedError as e:
             raise ValueError(
-                f"Undefined variable in SQL expression: {e.message}. "
-                f"Available parameters: {list(params.keys())}"
+                f"Undefined variable in SQL expression: {e.message}. Available parameters: {list(params.keys())}"
             ) from e
 
     def _run_results(self, sql_expression) -> int:
@@ -107,17 +104,13 @@ class TableRuleLibrarySqlExpressionValidator(BaseTestValidator):
 
     def _run_validation(self) -> TestCaseResult:
         """Execute the table-level SQL expression validation."""
-        self.runtime_params = self.get_runtime_parameters(
-            RuleLibrarySqlExpressionRuntimeParameters
-        )
+        self.runtime_params = self.get_runtime_parameters(RuleLibrarySqlExpressionRuntimeParameters)
 
         table_name = self.get_table_name()
         sql_expression = self.compile_sql_expression(table_name)
         count: int = self._run_results(sql_expression)
 
-        result_message = (
-            f"Table '{table_name}' has {count} rows matching the condition. Expected 0."
-        )
+        result_message = f"Table '{table_name}' has {count} rows matching the condition. Expected 0."
 
         return self.get_test_case_result_object(
             self.execution_date,

@@ -16,7 +16,6 @@ Utils module to parse the jsonschema
 import json
 import traceback
 from enum import Enum
-from typing import List, Optional, Tuple, Type
 
 from pydantic import BaseModel
 
@@ -41,9 +40,7 @@ class JsonSchemaDataTypes(Enum):
     UNKNOWN = "unknown"
 
 
-def parse_json_schema(
-    schema_text: str, cls: Type[BaseModel] = FieldModel
-) -> Optional[List[FieldModel]]:
+def parse_json_schema(schema_text: str, cls: type[BaseModel] = FieldModel) -> list[FieldModel] | None:
     """
     Method to parse the jsonschema
     """
@@ -54,19 +51,17 @@ def parse_json_schema(
                 name=json_schema_data.get("title", "default"),
                 dataType=JsonSchemaDataTypes(json_schema_data.get("type")).name,
                 description=json_schema_data.get("description"),
-                children=get_json_schema_fields(
-                    json_schema_data.get("properties", {}), cls=cls
-                ),
+                children=get_json_schema_fields(json_schema_data.get("properties", {}), cls=cls),
             )
         ]
-        return field_models
+        return field_models  # noqa: RET504, TRY300
     except Exception as exc:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
         logger.warning(f"Unable to parse the jsonschema: {exc}")
     return None
 
 
-def get_child_models(key, value, field_models, cls: Type[BaseModel] = FieldModel):
+def get_child_models(key, value, field_models, cls: type[BaseModel] = FieldModel):
     """
     Method to parse the child objects in the json schema.
     Handles oneOf union types (e.g., Debezium CDC nullable fields).
@@ -78,10 +73,7 @@ def get_child_models(key, value, field_models, cls: Type[BaseModel] = FieldModel
             # Find the non-null object schema in the union
             object_schema = None
             for option in value["oneOf"]:
-                if (
-                    isinstance(option, dict)
-                    and option.get("type") == JsonSchemaDataTypes.RECORD.value
-                ):
+                if isinstance(option, dict) and option.get("type") == JsonSchemaDataTypes.RECORD.value:
                     object_schema = option
                     break
 
@@ -91,12 +83,9 @@ def get_child_models(key, value, field_models, cls: Type[BaseModel] = FieldModel
                     name=key,
                     displayName=value.get("title") or object_schema.get("title"),
                     dataType=JsonSchemaDataTypes.RECORD.name,
-                    description=value.get("description")
-                    or object_schema.get("description"),
+                    description=value.get("description") or object_schema.get("description"),
                 )
-                children = get_json_schema_fields(
-                    object_schema.get("properties", {}), cls=cls
-                )
+                children = get_json_schema_fields(object_schema.get("properties", {}), cls=cls)
                 cls_obj.children = children
                 field_models.append(cls_obj)
                 return
@@ -121,9 +110,7 @@ def get_child_models(key, value, field_models, cls: Type[BaseModel] = FieldModel
         if value.get("type") == JsonSchemaDataTypes.RECORD.value:
             children = get_json_schema_fields(value.get("properties"), cls=cls)
         if value.get("type") == JsonSchemaDataTypes.ARRAY.value:
-            datatype_display, children = get_json_schema_array_fields(
-                value.get("items"), cls=cls
-            )
+            datatype_display, children = get_json_schema_array_fields(value.get("items"), cls=cls)
             cls_obj.dataTypeDisplay = f"ARRAY<{datatype_display}>"
         cls_obj.children = children
         field_models.append(cls_obj)
@@ -133,8 +120,9 @@ def get_child_models(key, value, field_models, cls: Type[BaseModel] = FieldModel
 
 
 def get_json_schema_array_fields(
-    array_items, cls: Type[BaseModel] = FieldModel
-) -> Optional[Tuple[str, List[FieldModel]]]:
+    array_items,
+    cls: type[BaseModel] = FieldModel,
+) -> tuple[str, list[FieldModel]] | None:
     """
     Recursively convert the parsed array schema into required models
     """
@@ -149,9 +137,7 @@ def get_json_schema_array_fields(
     )
 
 
-def get_json_schema_fields(
-    properties, cls: Type[BaseModel] = FieldModel
-) -> Optional[List[FieldModel]]:
+def get_json_schema_fields(properties, cls: type[BaseModel] = FieldModel) -> list[FieldModel] | None:
     """
     Recursively convert the parsed schema into required models
     """

@@ -14,16 +14,10 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-
 from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (
     SQATestSuiteInterface,
 )
 
 
 class SnowflakeTestSuiteInterface(SQATestSuiteInterface):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def create_session(self):
-        super().create_session()
-        self.set_session_tag(self.session)
+    """Snowflake SQLAlchemy test-suite interface."""

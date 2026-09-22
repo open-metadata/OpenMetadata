@@ -1,18 +1,17 @@
+import random
 from datetime import datetime
 
 import pytest
 from dirty_equals import IsApprox, IsPositiveInt
 from pydantic import BaseModel
-from sqlalchemy import VARBINARY
+from sqlalchemy import VARBINARY, MetaData, create_engine, text
 from sqlalchemy import Column as SQAColumn
-from sqlalchemy import MetaData
 from sqlalchemy import Table as SQATable
-from sqlalchemy import create_engine, text
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Connection, make_url
 from sqlalchemy.sql import sqltypes
 
-from _openmetadata_testutils.postgres.conftest import postgres_container
+from _openmetadata_testutils.postgres.conftest import postgres_container  # noqa: F401
 from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
 from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.entity.data.table import Table, TableProfilerConfig
@@ -36,12 +35,13 @@ class TestParameters(BaseModel):
     table2_fqn: str
     expected: TestCaseResult
     table_profile_config: TableProfilerConfig = None
+    deterministic_sample_salt: str | None = None
 
     def __init__(self, *args, **kwargs):
         if args:
             # Map positional arguments to fields
             field_names = list(self.__annotations__.keys())
-            kwargs.update(dict(zip(field_names, args)))
+            kwargs.update(dict(zip(field_names, args)))  # noqa: B905
 
         super().__init__(**kwargs)
 
@@ -57,9 +57,7 @@ class TestParameters(BaseModel):
                     testDefinitionName="tableDiff",
                     computePassedFailedRowCount=True,
                     parameterValues=[
-                        TestCaseParameterValue(
-                            name="keyColumns", value="['customer_id']"
-                        ),
+                        TestCaseParameterValue(name="keyColumns", value="['customer_id']"),
                     ],
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.customer",
@@ -76,9 +74,7 @@ class TestParameters(BaseModel):
                     testDefinitionName="tableDiff",
                     computePassedFailedRowCount=True,
                     parameterValues=[
-                        TestCaseParameterValue(
-                            name="keyColumns", value="['customer_id']"
-                        ),
+                        TestCaseParameterValue(name="keyColumns", value="['customer_id']"),
                     ],
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.customer",
@@ -105,19 +101,15 @@ class TestParameters(BaseModel):
                     testDefinitionName="tableDiff",
                     computePassedFailedRowCount=True,
                     parameterValues=[
-                        TestCaseParameterValue(
-                            name="keyColumns", value="['customer_id']"
-                        ),
+                        TestCaseParameterValue(name="keyColumns", value="['customer_id']"),
                     ],
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.customer",
-                TestCaseResult.model_construct(
+                TestCaseResult(
                     timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Success,
                     failedRows=0,
-                    # we use approximations around the 99.5 confidence interval since the
-                    # sampling in data diff uses hash based partitioning
-                    passedRows=IsApprox(10, delta=15) & IsPositiveInt,
+                    passedRows=11,
                 ),
                 TableProfilerConfig(
                     profileSampleConfig=ProfileSampleConfig(
@@ -128,6 +120,7 @@ class TestParameters(BaseModel):
                         },
                     ),
                 ),
+                "abcde",
             ),
             (
                 TestCaseDefinition(
@@ -135,9 +128,7 @@ class TestParameters(BaseModel):
                     testDefinitionName="tableDiff",
                     computePassedFailedRowCount=True,
                     parameterValues=[
-                        TestCaseParameterValue(
-                            name="keyColumns", value="['customer_id']"
-                        ),
+                        TestCaseParameterValue(name="keyColumns", value="['customer_id']"),
                     ],
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.changed_customer",
@@ -248,11 +239,7 @@ class TestParameters(BaseModel):
                     name="without_first_name_with_extra_column",
                     testDefinitionName="tableDiff",
                     computePassedFailedRowCount=True,
-                    parameterValues=[
-                        TestCaseParameterValue(
-                            name="useColumns", value="['last_name', 'email']"
-                        )
-                    ],
+                    parameterValues=[TestCaseParameterValue(name="useColumns", value="['last_name', 'email']")],
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.customer_without_first_name",
                 TestCaseResult(
@@ -308,11 +295,7 @@ class TestParameters(BaseModel):
                     name="postgres_different_case_columns_fail",
                     testDefinitionName="tableDiff",
                     computePassedFailedRowCount=True,
-                    parameterValues=[
-                        TestCaseParameterValue(
-                            name="caseSensitiveColumns", value="true"
-                        )
-                    ],
+                    parameterValues=[TestCaseParameterValue(name="caseSensitiveColumns", value="true")],
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.customer_different_case_columns",
                 TestCaseResult(
@@ -344,11 +327,7 @@ class TestParameters(BaseModel):
                     name="postgres_different_case_columns_success",
                     testDefinitionName="tableDiff",
                     computePassedFailedRowCount=True,
-                    parameterValues=[
-                        TestCaseParameterValue(
-                            name="caseSensitiveColumns", value="false"
-                        )
-                    ],
+                    parameterValues=[TestCaseParameterValue(name="caseSensitiveColumns", value="false")],
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.customer_different_case_columns",
                 TestCaseResult(
@@ -386,6 +365,7 @@ def test_happy_paths(
     prepare_data,
     ingest_postgres_metadata,
     ingest_mysql_service,
+    monkeypatch: pytest.MonkeyPatch,
     patched_metadata,
     parameters: TestParameters,
     sink_config,
@@ -417,9 +397,7 @@ def test_happy_paths(
         "MYSQL_SERVICE": ingest_mysql_service,
     }
     for k, v in table2_service.items():
-        parameters.table2_fqn = parameters.table2_fqn.replace(
-            k, v.fullyQualifiedName.root
-        )
+        parameters.table2_fqn = parameters.table2_fqn.replace(k, v.fullyQualifiedName.root)
     parameters.test_case_defintion.parameterValues.extend(
         [
             TestCaseParameterValue(
@@ -429,9 +407,10 @@ def test_happy_paths(
         ]
     )
     if parameters.table_profile_config:
-        metadata.create_or_update_table_profiler_config(
-            table1.fullyQualifiedName.root, parameters.table_profile_config
-        )
+        metadata.create_or_update_table_profiler_config(table1.fullyQualifiedName.root, parameters.table_profile_config)
+    if parameters.deterministic_sample_salt:
+        sample_salt = parameters.deterministic_sample_salt
+        monkeypatch.setattr(random, "choices", lambda *_args, **_kwargs: list(sample_salt))
     workflow_config = {
         "source": {
             "type": "postgres",
@@ -451,18 +430,14 @@ def test_happy_paths(
         "workflowConfig": workflow_config,
     }
     run_workflow(TestSuiteWorkflow, workflow_config)
-    metadata.create_or_update_table_profiler_config(
-        table1.fullyQualifiedName.root, TableProfilerConfig()
-    )
+    metadata.create_or_update_table_profiler_config(table1.fullyQualifiedName.root, TableProfilerConfig())
     test_case_entity = metadata.get_by_name(
         TestCase,
         f"{table1.fullyQualifiedName.root}.{parameters.test_case_defintion.name}",
         fields=["*"],
     )
     assert "ERROR: Unexpected error" not in test_case_entity.testCaseResult.result
-    parameters.expected.timestamp = (
-        test_case_entity.testCaseResult.timestamp
-    )  # timestamp is not deterministic
+    parameters.expected.timestamp = test_case_entity.testCaseResult.timestamp  # timestamp is not deterministic
     assert_equal_pydantic_objects(parameters.expected, test_case_entity.testCaseResult)
 
 
@@ -531,16 +506,12 @@ def test_happy_paths(
         pytest.param(
             None,
             None,
-            marks=pytest.mark.skip(
-                reason="TODO: implement test - table2 does not exist"
-            ),
+            marks=pytest.mark.skip(reason="TODO: implement test - table2 does not exist"),
         ),
         pytest.param(
             None,
             None,
-            marks=pytest.mark.skip(
-                reason="TODO: implement test - where clause is invalid"
-            ),
+            marks=pytest.mark.skip(reason="TODO: implement test - where clause is invalid"),
         ),
     ],
 )
@@ -574,9 +545,7 @@ def test_error_paths(
     cleanup_fqns(TestCase, f"{table1.fullyQualifiedName.root}.{parameters.name}")
     for parameter in parameters.parameterValues:
         if parameter.name == "table2":
-            parameter.value = parameter.value.replace(
-                "POSTGRES_SERVICE", postgres_service.fullyQualifiedName.root
-            )
+            parameter.value = parameter.value.replace("POSTGRES_SERVICE", postgres_service.fullyQualifiedName.root)
     workflow_config = {
         "source": {
             "type": "postgres",
@@ -596,60 +565,32 @@ def test_error_paths(
         "workflowConfig": workflow_config,
     }
     run_workflow(TestSuiteWorkflow, workflow_config)
-    test_case_entity: TestCase = metadata.get_or_create_test_case(
-        f"{table1.fullyQualifiedName.root}.{parameters.name}"
-    )
-    expected.timestamp = (
-        test_case_entity.testCaseResult.timestamp
-    )  # timestamp is not deterministic
+    test_case_entity: TestCase = metadata.get_or_create_test_case(f"{table1.fullyQualifiedName.root}.{parameters.name}")
+    expected.timestamp = test_case_entity.testCaseResult.timestamp  # timestamp is not deterministic
     assert_equal_pydantic_objects(expected, test_case_entity.testCaseResult)
 
 
 def add_changed_tables(connection: Connection):
-    connection.execute(
-        text("CREATE TABLE customer_200 AS SELECT * FROM customer LIMIT 200;")
-    )
-    connection.execute(
-        text("CREATE TABLE customer_different_case_columns AS SELECT * FROM customer;")
-    )
-    connection.execute(
-        text(
-            'ALTER TABLE customer_different_case_columns RENAME COLUMN first_name TO "First_Name";'
-        )
-    )
+    connection.execute(text("CREATE TABLE customer_200 AS SELECT * FROM customer LIMIT 200;"))
+    connection.execute(text("CREATE TABLE customer_different_case_columns AS SELECT * FROM customer;"))
+    connection.execute(text('ALTER TABLE customer_different_case_columns RENAME COLUMN first_name TO "First_Name";'))
     # TODO: this appears to be unsupported by data diff. Cross data type comparison is flaky.
     # connection.execute(
     #     text("ALTER TABLE customer_different_case_columns ALTER COLUMN store_id TYPE decimal")
     # )
     connection.execute(text("CREATE TABLE changed_customer AS SELECT * FROM customer;"))
-    connection.execute(
-        text(
-            "UPDATE changed_customer SET first_name = 'John' WHERE MOD(customer_id, 2) = 0;"
-        )
-    )
-    connection.execute(
-        text("DELETE FROM changed_customer WHERE MOD(customer_id, 13) = 0;")
-    )
-    connection.execute(
-        text("CREATE TABLE customer_without_first_name AS SELECT * FROM customer;")
-    )
-    connection.execute(
-        text("ALTER TABLE customer_without_first_name DROP COLUMN first_name;")
-    )
-    connection.execute(
-        text("CREATE TABLE customer_int_first_name AS SELECT * FROM customer;")
-    )
-    connection.execute(
-        text("ALTER TABLE customer_int_first_name DROP COLUMN first_name;")
-    )
-    connection.execute(
-        text("ALTER TABLE customer_int_first_name ADD COLUMN first_name INT;")
-    )
+    connection.execute(text("UPDATE changed_customer SET first_name = 'John' WHERE MOD(customer_id, 2) = 0;"))
+    connection.execute(text("DELETE FROM changed_customer WHERE MOD(customer_id, 13) = 0;"))
+    connection.execute(text("CREATE TABLE customer_without_first_name AS SELECT * FROM customer;"))
+    connection.execute(text("ALTER TABLE customer_without_first_name DROP COLUMN first_name;"))
+    connection.execute(text("CREATE TABLE customer_int_first_name AS SELECT * FROM customer;"))
+    connection.execute(text("ALTER TABLE customer_int_first_name DROP COLUMN first_name;"))
+    connection.execute(text("ALTER TABLE customer_int_first_name ADD COLUMN first_name INT;"))
     connection.execute(text("UPDATE customer_int_first_name SET first_name = 1;"))
 
 
 @pytest.fixture(scope="module")
-def prepare_data(postgres_container, mysql_container):
+def prepare_data(postgres_container, mysql_container):  # noqa: F811
     dvdrental = create_engine(
         make_url(postgres_container.get_connection_url()).set(database="dvdrental"),
         isolation_level="AUTOCOMMIT",
@@ -663,14 +604,8 @@ def prepare_data(postgres_container, mysql_container):
         isolation_level="AUTOCOMMIT",
     )
     copy_table_between_postgres(dvdrental, other, "customer", 10)
-    mysql_container = create_engine(
-        make_url(mysql_container.get_connection_url()).set(
-            database=mysql_container.dbname
-        )
-    )
-    dvdrental = create_engine(
-        make_url(postgres_container.get_connection_url()).set(database="dvdrental")
-    )
+    mysql_container = create_engine(make_url(mysql_container.get_connection_url()).set(database=mysql_container.dbname))
+    dvdrental = create_engine(make_url(postgres_container.get_connection_url()).set(database="dvdrental"))
     copy_table(dvdrental, mysql_container, "customer")
     copy_table(dvdrental, mysql_container, "changed_customer")
 
@@ -684,25 +619,13 @@ def copy_table(source_engine, destination_engine, table_name):
     for column in source_table.columns:
         # we copy all the columns without constraints, indexes or defaults
         # as we are only interested in the data
-        if (
-            isinstance(column.type, postgresql.base.BYTEA)
-            and destination_engine.dialect.name == "mssql"
-        ):
+        if isinstance(column.type, postgresql.base.BYTEA) and destination_engine.dialect.name == "mssql":
             column_copy = SQAColumn(column.name, VARBINARY)
-        elif (
-            isinstance(column.type, sqltypes.BOOLEAN)
-            and destination_engine.dialect.name == "mssql"
-        ):
+        elif isinstance(column.type, sqltypes.BOOLEAN) and destination_engine.dialect.name == "mssql":
             column_copy = SQAColumn(column.name, sqltypes.Boolean)
-        elif (
-            isinstance(column.type, sqltypes.TIMESTAMP)
-            and destination_engine.dialect.name == "mssql"
-        ):
+        elif isinstance(column.type, sqltypes.TIMESTAMP) and destination_engine.dialect.name == "mssql":
             column_copy = SQAColumn(column.name, sqltypes.DateTime)
-        elif (
-            isinstance(column.type, sqltypes.DATE)
-            and destination_engine.dialect.name == "mssql"
-        ):
+        elif isinstance(column.type, sqltypes.DATE) and destination_engine.dialect.name == "mssql":
             column_copy = SQAColumn(column.name, sqltypes.DateTime)
         elif isinstance(column.type, postgresql.json.JSONB):
             column_copy = SQAColumn(column.name, sqltypes.JSON)
@@ -715,18 +638,13 @@ def copy_table(source_engine, destination_engine, table_name):
         batch_size = 1000
         for i in range(0, len(data), batch_size):
             batch = data[i : i + batch_size]
-            destination_connection.execute(
-                source_table.insert(), [dict(row._mapping) for row in batch]
-            )
+            destination_connection.execute(source_table.insert(), [dict(row._mapping) for row in batch])
         destination_connection.commit()
 
 
 @pytest.fixture
 def patched_metadata(metadata, postgres_service, ingest_mysql_service, monkeypatch):
-    dbs_by_name = {
-        service.fullyQualifiedName.root: service
-        for service in [postgres_service, ingest_mysql_service]
-    }
+    dbs_by_name = {service.fullyQualifiedName.root: service for service in [postgres_service, ingest_mysql_service]}
 
     def override_result_by_fqn(func):
         def inner(*args, **kwargs):
@@ -750,9 +668,7 @@ def patched_metadata(metadata, postgres_service, ingest_mysql_service, monkeypat
     return metadata
 
 
-def copy_table_between_postgres(
-    source_engine, dest_engine, table_name: str, limit: int
-):
+def copy_table_between_postgres(source_engine, dest_engine, table_name: str, limit: int):
     source_metadata = MetaData()
     source_table = SQATable(table_name, source_metadata, autoload_with=source_engine)
 
