@@ -75,18 +75,20 @@ class EvaluationScopeRuntimeParameters(BaseModel):
 
     profile_sample: float | None = None
     profile_sample_type: ProfileSampleType | None = None
+    # Whether the sampler actually read a subset. A configured amount does not say so on its
+    # own: a 100% percentage that is not randomized resolves to the whole table, and that run
+    # has none of a sample's caveats.
+    sampling_applied: bool = False
     partition_details: PartitionProfilerConfig | None = None
-    partition_predicate: str | None = Field(
-        None,
-        description="The partition filter as SQL, when the sampler can compile one. Rendered "
-        "verbatim into the result message; falls back to `partition_details` when absent.",
-    )
+    # The partition filter as SQL, when the sampler can compile one. Rendered verbatim into the
+    # result message; falls back to `partition_details` when absent.
+    partition_predicate: str | None = None
     sample_query: str | None = None
 
     @property
     def is_sampled(self) -> bool:
         """Whether only part of the table was read"""
-        return bool(self.profile_sample) or bool(self.sample_query)
+        return self.sampling_applied
 
     @property
     def is_partitioned(self) -> bool:

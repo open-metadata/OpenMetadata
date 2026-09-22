@@ -121,7 +121,12 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
         )
 
     def _get_test_parameters(self) -> dict:
-        """Get Test Parameters"""
+        """Get Test Parameters
+
+        A datetime window is left as the test case configured it: the failure threshold is a
+        number, and there is no meaningful way to widen a date by one. The result message says
+        as much rather than claiming a tolerance that never applied.
+        """
         column = self.get_column()
 
         if is_date_time(column.type):
@@ -141,8 +146,7 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
                 pre_processor=convert_timestamp,
             )
         else:
-            min_bound = self.get_min_bound(self.MIN_BOUND)
-            max_bound = self.get_max_bound(self.MAX_BOUND)
+            min_bound, max_bound = self.get_bounds(self.MIN_BOUND, self.MAX_BOUND)
 
         return {
             self.MIN_BOUND: min_bound,
