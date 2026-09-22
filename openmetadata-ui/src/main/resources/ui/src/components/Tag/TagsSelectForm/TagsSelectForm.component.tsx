@@ -14,9 +14,7 @@ import { Form } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { DefaultOptionType } from 'antd/lib/select';
 import { useState } from 'react';
-import { TagSource } from '../../../generated/type/tagLabel';
 import AsyncSelectList from '../../common/AsyncSelectList/AsyncSelectList';
-import TreeAsyncSelectList from '../../common/AsyncSelectList/TreeAsyncSelectList';
 import './tag-select-fom.style.less';
 import { TagsSelectFormProps } from './TagsSelectForm.interface';
 
@@ -27,9 +25,7 @@ const TagSelectForm = ({
   onSubmit,
   onCancel,
   tagData,
-  tagType,
   filterOptions,
-  multiSelect,
 }: TagsSelectFormProps) => {
   const [form] = useForm();
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
@@ -50,34 +46,22 @@ const TagSelectForm = ({
       data-testid="tag-form"
       form={form}
       initialValues={{
-        tags: multiSelect === false ? defaultValue?.[0] : defaultValue,
+        tags: defaultValue,
       }}
       name="tagsForm"
       onFinish={handleSave}>
       <Form.Item noStyle name="tags">
-        {tagType === TagSource.Classification && fetchApi ? (
-          <AsyncSelectList
-            open
-            fetchOptions={fetchApi}
-            filterOptions={filterOptions}
-            initialOptions={tagData}
-            isSubmitLoading={isSubmitLoading}
-            mode="multiple"
-            optionClassName="tag-select-box"
-            placeholder={placeholder}
-            onCancel={onCancel}
-          />
-        ) : (
-          <TreeAsyncSelectList
-            filterOptions={filterOptions}
-            initialOptions={tagData}
-            isMultiSelect={multiSelect}
-            isSubmitLoading={isSubmitLoading}
-            optionClassName="tag-select-box"
-            placeholder={placeholder}
-            onCancel={onCancel}
-          />
-        )}
+        <AsyncSelectList
+          open
+          fetchOptions={fetchApi}
+          filterOptions={filterOptions}
+          initialOptions={tagData}
+          isSubmitLoading={isSubmitLoading}
+          mode="multiple"
+          optionClassName="tag-select-box"
+          placeholder={placeholder}
+          onCancel={onCancel}
+        />
       </Form.Item>
     </Form>
   );
