@@ -141,6 +141,18 @@ def get_source_table_details(stream: AirbyteStream, source_connection: AirbyteSo
     )
 
 
+def render_stream_pattern(pattern: str, stream: AirbyteStream) -> str | None:
+    """
+    Render an Airbyte destination name template over ``{namespace}`` and ``{stream}``.
+
+    Returns None when the template needs a namespace the stream does not carry, so the caller
+    falls back to a name it can actually build rather than emitting a literal ``{namespace}``.
+    """
+    if "{namespace}" in pattern and not stream.namespace:
+        return None
+    return pattern.replace("{namespace}", stream.namespace or "").replace("{stream}", stream.name)
+
+
 def is_object_store_connector(resolved_type: str | None) -> bool:
     """
     Whether the connector reads from or writes to an object store rather than a database.

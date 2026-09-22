@@ -116,6 +116,11 @@ S3_DESTINATION_PATH_KEY = "s3_bucket_path"
 # the public-API slug. Kept small on purpose — add a type (e.g. "Google PubSub") once
 # there is a live connection to confirm its reported type string.
 MESSAGING_CONNECTOR_TYPES = frozenset({"Kafka", "kafka"})
+
+# The Kafka destination names each topic from a free-form template over ``{namespace}`` and
+# ``{stream}`` (destination-kafka 0.1.11 declares no default), so the topic is only the stream
+# name when the user wrote it that way.
+KAFKA_TOPIC_PATTERN_KEY = "topic_pattern"
 SEARCH_CONNECTOR_TYPES = frozenset({"Elasticsearch", "ElasticSearch", "elasticsearch"})
 
 # Both ambiguity guards (same-named API collections, same-path containers) decide a match is

@@ -41,6 +41,7 @@ from metadata.utils.logger import ingestion_logger
 from .constants import (  # noqa: TID252
     DESTINATION_TYPE_LOOKUP,
     ES_MATCH_LIMIT,
+    KAFKA_TOPIC_PATTERN_KEY,
     MESSAGING_CONNECTOR_TYPES,
     S3_CONNECTOR_TYPES,
     SEARCH_CONNECTOR_TYPES,
@@ -56,6 +57,7 @@ from .utils import (  # noqa: TID252
     get_destination_table_details,
     get_source_container_path,
     get_source_table_details,
+    render_stream_pattern,
 )
 
 if TYPE_CHECKING:
@@ -158,7 +160,11 @@ class _ServiceScopedResolver(EntityResolver):
     def _service_names(self, source: "AirbyteSource") -> list[str]:
         raise NotImplementedError
 
-    def _build_fqn(self, source: "AirbyteSource", service_name: str, stream: AirbyteStream) -> str | None:
+    def _entity_names(self, stream: AirbyteStream, connection: Connection, direction: str) -> list[str]:
+        """The names this stream could carry in the target service, most likely first."""
+        raise NotImplementedError
+
+    def _build_fqn(self, source: "AirbyteSource", service_name: str, entity_name: str) -> str | None:
         raise NotImplementedError
 
     def _entity_type(self):
@@ -182,24 +188,33 @@ class _ServiceScopedResolver(EntityResolver):
             )
             return None
 
+        entity_names = self._entity_names(stream, connection, direction)
         for service_name in service_names:
-            entity_fqn = self._build_fqn(source, service_name, stream)
-            entity = source.metadata.get_by_name(entity=self._entity_type(), fqn=entity_fqn) if entity_fqn else None
-            if entity:
-                return EntityReference(id=entity.id, type=self.om_type)
+            for entity_name in entity_names:
+                entity_fqn = self._build_fqn(source, service_name, entity_name)
+                entity = source.metadata.get_by_name(entity=self._entity_type(), fqn=entity_fqn) if entity_fqn else None
+                if entity:
+                    return EntityReference(id=entity.id, type=self.om_type)
 
         logger.warning(
-            "Airbyte lineage [%s]: %s [%s] not found in services %s",
+            "Airbyte lineage [%s]: %s %s not found in services %s",
             pipeline_name,
             self.om_type,
-            stream.name,
+            entity_names,
             service_names,
         )
         return None
 
 
 class TopicResolver(_ServiceScopedResolver):
-    """Message queues (Kafka) → OpenMetadata ``topic`` (topic name == stream name)."""
+    """
+    Message queues (Kafka) → OpenMetadata ``topic``.
+
+    A Kafka *source* reads one topic per stream, so the stream name is the topic name. A Kafka
+    *destination* names the topic from its own ``topic_pattern``, a free-form template over
+    ``{namespace}`` and ``{stream}`` with no default (verified against destination-kafka
+    0.1.11's spec), so the pattern is rendered rather than assumed.
+    """
 
     om_type = "topic"
 
@@ -209,17 +224,33 @@ class TopicResolver(_ServiceScopedResolver):
     def _entity_type(self) -> type[Topic]:
         return Topic
 
-    def _build_fqn(self, source: "AirbyteSource", service_name: str, stream: AirbyteStream) -> str | None:
+    def _entity_names(self, stream: AirbyteStream, connection: Connection, direction: str) -> list[str]:
+        if direction == SOURCE:
+            return [stream.name]
+        pattern = connection.resolved_configuration.get(KAFKA_TOPIC_PATTERN_KEY)
+        rendered = render_stream_pattern(pattern, stream) if pattern else None
+        # The destination also normalises the rendered name, so the bare stream name is kept as
+        # a fallback rather than relying on the pattern alone.
+        return [name for name in (rendered, stream.name) if name]
+
+    def _build_fqn(self, source: "AirbyteSource", service_name: str, entity_name: str) -> str | None:
         return fqn.build(
             metadata=source.metadata,
             entity_type=Topic,
             service_name=service_name,
-            topic_name=stream.name,
+            topic_name=entity_name,
         )
 
 
 class SearchIndexResolver(_ServiceScopedResolver):
-    """Search stores (Elasticsearch) → OpenMetadata ``searchIndex`` (index == stream name)."""
+    """
+    Search stores (Elasticsearch) → OpenMetadata ``searchIndex``.
+
+    destination-elasticsearch exposes no index-naming option (verified against 0.2.0's spec):
+    it always writes ``<namespace>_<stream>``, falling back to the bare stream name when the
+    source reports no namespace. Looking the index up by stream name alone therefore missed
+    every namespaced stream, which is every relational source.
+    """
 
     om_type = "searchIndex"
 
@@ -229,12 +260,17 @@ class SearchIndexResolver(_ServiceScopedResolver):
     def _entity_type(self) -> type[SearchIndex]:
         return SearchIndex
 
-    def _build_fqn(self, source: "AirbyteSource", service_name: str, stream: AirbyteStream) -> str | None:
+    def _entity_names(self, stream: AirbyteStream, connection: Connection, direction: str) -> list[str]:
+        if direction == SOURCE or not stream.namespace:
+            return [stream.name]
+        return [f"{stream.namespace}_{stream.name}", stream.name]
+
+    def _build_fqn(self, source: "AirbyteSource", service_name: str, entity_name: str) -> str | None:
         return fqn.build(
             metadata=source.metadata,
             entity_type=SearchIndex,
             service_name=service_name,
-            search_index_name=stream.name,
+            search_index_name=entity_name,
         )
 
 
