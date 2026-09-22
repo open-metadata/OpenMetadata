@@ -612,9 +612,10 @@ export class OverviewPageObject extends RightPanelBase {
    */
   async removeDomain(domainName: string): Promise<OverviewPageObject> {
     await this.addDomainIcon.waitFor({ state: 'visible' });
-    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-    await this.addDomainIcon.click({ force: true });
+    await this.addDomainIcon.scrollIntoViewIfNeeded();
+    await this.addDomainIcon.click();
 
+    await this.loader.waitFor({ state: 'detached' });
     await this.domainSearchBar.waitFor({ state: 'visible' });
 
     const searchDomainPromise = this.page.waitForResponse(
