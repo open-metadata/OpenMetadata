@@ -2257,7 +2257,9 @@ export const openDataProductDrawer = async (page: Page, domain: Domain) => {
   await domainOption.click();
 
   // Wait for the DomainSelectableList Popover overlay to close before returning.
-  await page.locator('.domain-select-popover').waitFor({ state: 'hidden', timeout: 5000 });
+  await page
+    .locator('.domain-select-popover')
+    .waitFor({ state: 'hidden', timeout: 5000 });
 };
 
 const parseRequestBody = (postData: string | null | undefined) => {
