@@ -124,6 +124,18 @@ const TestDefinitionTable = ({
     []
   );
 
+  // A refetch dims the rows in place instead of unmounting them. aria-busy is
+  // what carries the state to a screen reader, since there is no longer a
+  // visual placeholder saying the list is being replaced.
+  //
+  // The rows being kept are the PREVIOUS query's rows, so their controls are
+  // held shut until the new ones land. Acting on one would patch a definition
+  // the list has already moved on from, and the arriving response would
+  // overwrite the toggle, showing a successful edit as if it had reverted.
+  // Disabled rather than pointer-events-none so the controls also leave the
+  // tab order instead of staying reachable but inert-looking.
+  const isRefetching = isLoading && !isInitialLoading;
+
   const renderEnabledCell = (record: TestDefinition) => {
     const entityPermissions = testDefinitionPermissions[record.name];
     const hasEditPermission = entityPermissions?.[Operation.EditAll];
@@ -146,7 +158,7 @@ const TestDefinitionTable = ({
           <Switch
             checked={record.enabled ?? true}
             data-testid={`enable-switch-${record.name}`}
-            disabled={isExternal || !hasEditPermission}
+            disabled={isExternal || !hasEditPermission || isRefetching}
             size="small"
             onChange={(checked) => onEnableToggle(record, checked)}
           />
@@ -190,7 +202,7 @@ const TestDefinitionTable = ({
         <Tooltip title={editTooltip}>
           <Button
             data-testid={`edit-test-definition-${record.name}`}
-            disabled={!hasEditPermission}
+            disabled={!hasEditPermission || isRefetching}
             icon={<IconEdit height={16} width={16} />}
             type="text"
             onClick={() => onEdit(record)}
@@ -200,7 +212,7 @@ const TestDefinitionTable = ({
         <Tooltip title={deleteTooltip}>
           <Button
             data-testid={`delete-test-definition-${record.name}`}
-            disabled={isSystemProvider || !hasDeletePermission}
+            disabled={isSystemProvider || !hasDeletePermission || isRefetching}
             icon={<IconDelete height={16} width={16} />}
             type="text"
             onClick={() => onDelete(record)}
@@ -232,11 +244,6 @@ const TestDefinitionTable = ({
       <Table.Cell>{renderActionsCell(record)}</Table.Cell>
     </Table.Row>
   );
-
-  // A refetch dims the rows in place instead of unmounting them. aria-busy is
-  // what carries the state to a screen reader, since there is no longer a
-  // visual placeholder saying the list is being replaced.
-  const isRefetching = isLoading && !isInitialLoading;
 
   return (
     <>

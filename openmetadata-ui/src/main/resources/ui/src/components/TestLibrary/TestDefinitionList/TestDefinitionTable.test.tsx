@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import TestDefinitionTable from './TestDefinitionTable.component';
 import { TestDefinitionTableProps } from './TestDefinitionTable.interface';
@@ -28,6 +29,13 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () => ({
 }));
 
 const mockOnSortChange = jest.fn();
+
+const FULL_PERMISSIONS = {
+  columnValuesToBeNotNull: {
+    [Operation.EditAll]: true,
+    [Operation.Delete]: true,
+  },
+} as unknown as TestDefinitionTableProps['testDefinitionPermissions'];
 
 const TEST_DEFINITIONS = [
   {
@@ -109,6 +117,46 @@ describe('TestDefinitionTable loading', () => {
     expect(
       screen.queryByText('message.no-test-definitions-yet')
     ).not.toBeInTheDocument();
+  });
+
+  // The retained rows belong to the PREVIOUS query. Acting on one would patch a
+  // definition the list has moved on from, and the arriving response would
+  // overwrite the toggle so a successful edit looked reverted.
+  it('should hold the retained row controls shut while refetching', () => {
+    render(
+      <TestDefinitionTable
+        {...makeProps({
+          isLoading: true,
+          isInitialLoading: false,
+          testDefinitionPermissions: FULL_PERMISSIONS,
+        })}
+      />
+    );
+
+    expect(
+      screen.getByTestId('enable-switch-columnValuesToBeNotNull')
+    ).toBeDisabled();
+    expect(
+      screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
+    ).toBeDisabled();
+    expect(
+      screen.getByTestId('delete-test-definition-columnValuesToBeNotNull')
+    ).toBeDisabled();
+  });
+
+  it('should leave the row controls usable once the refetch lands', () => {
+    render(
+      <TestDefinitionTable
+        {...makeProps({ testDefinitionPermissions: FULL_PERMISSIONS })}
+      />
+    );
+
+    expect(
+      screen.getByTestId('enable-switch-columnValuesToBeNotNull')
+    ).not.toBeDisabled();
+    expect(
+      screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
+    ).not.toBeDisabled();
   });
 
   it('should not dim or mark the table busy when idle', () => {
