@@ -125,7 +125,7 @@ final class FrameworkSeedLoader {
     }
   }
 
-  private static AIGovernanceFramework createOrReuse(
+  static AIGovernanceFramework createOrReuse(
       AIGovernanceFrameworkRepository frameworkRepository,
       AIGovernanceFramework framework,
       String frameworkFqn) {
