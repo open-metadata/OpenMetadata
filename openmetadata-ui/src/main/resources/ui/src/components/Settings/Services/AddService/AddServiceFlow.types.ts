@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ConfigData } from '../../interface/service.interface';
+import { ConfigData } from '../../../../interface/service.interface';
 
 export interface ServiceConfig {
   name: string;

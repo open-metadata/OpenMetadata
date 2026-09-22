@@ -13,8 +13,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ServiceCategory } from '../../enums/service.enum';
-import { getServiceByFQN } from '../../rest/serviceAPI';
+import { ServiceCategory } from '../enums/service.enum';
+import { getServiceByFQN } from '../rest/serviceAPI';
 
 const SERVICE_NAME_VALIDATION_DEBOUNCE_MS = 400;
 const SERVICE_CATEGORY_LABEL_KEYS: Partial<Record<ServiceCategory, string>> = {

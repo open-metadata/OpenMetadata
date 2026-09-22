@@ -587,6 +587,146 @@ export const DataAssetSummaryPanelV1 = ({
     }
   }, [entityPermissions, dataAsset?.fullyQualifiedName]);
 
+  // The four layouts below are different subsets of the same section set, so each
+  // section is rendered by one helper rather than copied per layout.
+  const renderDescriptionSection = (
+    changeSummaryEntry: ChangeSummaryEntry | undefined
+  ) => (
+    <DescriptionSection
+      changeSummaryEntry={changeSummaryEntry}
+      description={dataAsset.description}
+      entityFqn={dataAsset.fullyQualifiedName}
+      entityType={entityType}
+      hasPermission={editDescriptionPermission}
+      onDescriptionUpdate={handleDescriptionUpdate}
+    />
+  );
+
+  const renderOverviewSection = () => (
+    <OverviewSection
+      componentType={componentType}
+      entityInfoV1={entityInfo}
+      isDomainVisible={isDomainVisible}
+      onLinkClick={onLinkClick}
+    />
+  );
+
+  const renderOwnersSection = () => (
+    <div
+      className="owners-section"
+      key={`owners-${dataAsset.id}-${
+        (dataAsset.owners as EntityReference[])?.length || 0
+      }`}>
+      <div className="owners-header">
+        <span className="owners-title">{t('label.owner-plural')}</span>
+        {editOwnerPermission && (
+          <UserTeamSelectableList
+            hasPermission={Boolean(editOwnerPermission)}
+            multiple={{
+              team: entityRules.canAddMultipleTeamOwner,
+              user: entityRules.canAddMultipleUserOwners,
+            }}
+            owner={dataAsset.owners as EntityReference[]}
+            triggerDataTestId="edit-owners"
+            onUpdate={(owners) => onOwnerUpdate?.(owners ?? [])}
+          />
+        )}
+      </div>
+      <div className="owners-content">
+        <Owner
+          hasPermission={editOwnerPermission}
+          isCompactView={false}
+          owners={dataAsset.owners as EntityReference[]}
+          placeHolder={t('label.no-entity-assigned', {
+            entity: t('label.owner-lowercase-plural'),
+          })}
+          showLabel={false}
+        />
+      </div>
+    </div>
+  );
+
+  const renderDomainsSection = () => (
+    <div>
+      <DomainsSection
+        domains={dataAsset.domains}
+        entityFqn={dataAsset.fullyQualifiedName}
+        entityId={dataAsset.id}
+        entityType={entityType}
+        hasPermission={editDomainPermission}
+        key={`domains-${dataAsset.id}-${
+          (dataAsset.domains as EntityReference[])?.length || 0
+        }`}
+        onDomainUpdate={onDomainUpdate}
+      />
+    </div>
+  );
+
+  const renderTierSection = () => (
+    <div>
+      <TierSection
+        entityId={dataAsset.id}
+        entityType={entityType}
+        hasPermission={editTierPermission}
+        key={`tier-${dataAsset.id}-${tier?.tagFQN || 'no-tier'}`}
+        tags={dataAsset.tags}
+        tier={tier}
+        onTierUpdate={onTierUpdate}
+      />
+    </div>
+  );
+
+  const renderGlossaryTermsSection = () => (
+    <div>
+      <GlossaryTermsSection
+        entityId={dataAsset.id}
+        entityType={entityType}
+        hasPermission={editGlossaryTermsPermission}
+        key={`glossary-terms-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
+        maxVisibleGlossaryTerms={3}
+        tags={dataAsset.tags}
+        onGlossaryTermsUpdate={onGlossaryTermsUpdate}
+      />
+    </div>
+  );
+
+  // `excludeGlossaryTags` keeps glossary terms out of the layouts that render a
+  // dedicated glossary section elsewhere (or none at all).
+  const renderTagsSection = (excludeGlossaryTags = false) => (
+    <div>
+      <TagsSection
+        entityId={dataAsset.id}
+        entityType={entityType}
+        hasPermission={editTagsPermission}
+        key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
+        tags={
+          excludeGlossaryTags
+            ? dataAsset.tags?.filter(
+                (tag: TagLabel) => tag.source !== TagSource.Glossary
+              )
+            : dataAsset.tags
+        }
+        onTagsUpdate={onTagsUpdate}
+      />
+    </div>
+  );
+
+  const renderDataProductsSection = () => (
+    <div>
+      <DataProductsSection
+        activeDomains={dataAsset.domains as EntityReference[]}
+        dataProducts={dataAsset.dataProducts as EntityReference[]}
+        entityId={dataAsset.id}
+        entityType={entityType}
+        hasPermission={editDataProductPermission}
+        key={`data-products-${dataAsset.id}-${
+          dataAsset.dataProducts?.length ?? 0
+        }`}
+        onDataProductsUpdate={onDataProductsUpdate}
+      />
+    </div>
+  );
+
   // Renders the shared layout for entity types with the full set of summary
   // sections (description, overview, data quality, lineage, owners, domains,
   // tier, glossary terms, tags, data products).
@@ -620,20 +760,8 @@ export const DataAssetSummaryPanelV1 = ({
     return (
       <>
         {renderEntityDebugTestId(entityType)}
-        <DescriptionSection
-          changeSummaryEntry={descriptionChangeSummaryEntry}
-          description={dataAsset.description}
-          entityFqn={dataAsset.fullyQualifiedName}
-          entityType={entityType}
-          hasPermission={editDescriptionPermission}
-          onDescriptionUpdate={handleDescriptionUpdate}
-        />
-        <OverviewSection
-          componentType={componentType}
-          entityInfoV1={entityInfo}
-          isDomainVisible={isDomainVisible}
-          onLinkClick={onLinkClick}
-        />
+        {renderDescriptionSection(descriptionChangeSummaryEntry)}
+        {renderOverviewSection()}
         {renderDataQualitySection()}
         {shouldShowLineageSection && (
           <LineageSection
@@ -643,98 +771,12 @@ export const DataAssetSummaryPanelV1 = ({
             onLineageClick={onLineageClick}
           />
         )}
-        <div
-          className="owners-section"
-          key={`owners-${dataAsset.id}-${
-            (dataAsset.owners as EntityReference[])?.length || 0
-          }`}>
-          <div className="owners-header">
-            <span className="owners-title">{t('label.owner-plural')}</span>
-            {editOwnerPermission && (
-              <UserTeamSelectableList
-                hasPermission={Boolean(editOwnerPermission)}
-                multiple={{
-                  team: entityRules.canAddMultipleTeamOwner,
-                  user: entityRules.canAddMultipleUserOwners,
-                }}
-                owner={dataAsset.owners as EntityReference[]}
-                triggerDataTestId="edit-owners"
-                onUpdate={(owners) => onOwnerUpdate?.(owners ?? [])}
-              />
-            )}
-          </div>
-          <div className="owners-content">
-            <Owner
-              hasPermission={editOwnerPermission}
-              isCompactView={false}
-              owners={dataAsset.owners as EntityReference[]}
-              placeHolder={t('label.no-entity-assigned', {
-                entity: t('label.owner-lowercase-plural'),
-              })}
-              showLabel={false}
-            />
-          </div>
-        </div>
-        <div>
-          <DomainsSection
-            domains={dataAsset.domains}
-            entityFqn={dataAsset.fullyQualifiedName}
-            entityId={dataAsset.id}
-            entityType={entityType}
-            hasPermission={editDomainPermission}
-            key={`domains-${dataAsset.id}-${
-              (dataAsset.domains as EntityReference[])?.length || 0
-            }`}
-            onDomainUpdate={onDomainUpdate}
-          />
-        </div>
-        <div>
-          <TierSection
-            entityId={dataAsset.id}
-            entityType={entityType}
-            hasPermission={editTierPermission}
-            key={`tier-${dataAsset.id}-${tier?.tagFQN || 'no-tier'}`}
-            tags={dataAsset.tags}
-            tier={tier}
-            onTierUpdate={onTierUpdate}
-          />
-        </div>
-        <div>
-          <GlossaryTermsSection
-            entityId={dataAsset.id}
-            entityType={entityType}
-            hasPermission={editGlossaryTermsPermission}
-            key={`glossary-terms-${dataAsset.id}-${
-              dataAsset.tags?.length ?? 0
-            }`}
-            maxVisibleGlossaryTerms={3}
-            tags={dataAsset.tags}
-            onGlossaryTermsUpdate={onGlossaryTermsUpdate}
-          />
-        </div>
-        <div>
-          <TagsSection
-            entityId={dataAsset.id}
-            entityType={entityType}
-            hasPermission={editTagsPermission}
-            key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
-            tags={dataAsset.tags}
-            onTagsUpdate={onTagsUpdate}
-          />
-        </div>
-        <div>
-          <DataProductsSection
-            activeDomains={dataAsset.domains as EntityReference[]}
-            dataProducts={dataAsset.dataProducts as EntityReference[]}
-            entityId={dataAsset.id}
-            entityType={entityType}
-            hasPermission={editDataProductPermission}
-            key={`data-products-${dataAsset.id}-${
-              dataAsset.dataProducts?.length ?? 0
-            }`}
-            onDataProductsUpdate={onDataProductsUpdate}
-          />
-        </div>
+        {renderOwnersSection()}
+        {renderDomainsSection()}
+        {renderTierSection()}
+        {renderGlossaryTermsSection()}
+        {renderTagsSection()}
+        {renderDataProductsSection()}
       </>
     );
   };
@@ -744,67 +786,10 @@ export const DataAssetSummaryPanelV1 = ({
   ) => (
     <>
       <span className="d-none" data-testid="KnowledgePageSummary" />
-      <DescriptionSection
-        changeSummaryEntry={descriptionChangeSummaryEntry}
-        description={dataAsset.description}
-        entityFqn={dataAsset.fullyQualifiedName}
-        entityType={entityType}
-        hasPermission={editDescriptionPermission}
-        onDescriptionUpdate={handleDescriptionUpdate}
-      />
-      <div
-        className="owners-section"
-        key={`owners-${dataAsset.id}-${
-          (dataAsset.owners as EntityReference[])?.length || 0
-        }`}>
-        <div className="owners-header">
-          <span className="owners-title">{t('label.owner-plural')}</span>
-          {editOwnerPermission && (
-            <UserTeamSelectableList
-              hasPermission={Boolean(editOwnerPermission)}
-              multiple={{
-                team: entityRules.canAddMultipleTeamOwner,
-                user: entityRules.canAddMultipleUserOwners,
-              }}
-              owner={dataAsset.owners as EntityReference[]}
-              triggerDataTestId="edit-owners"
-              onUpdate={(owners) => onOwnerUpdate?.(owners ?? [])}
-            />
-          )}
-        </div>
-        <div className="owners-content">
-          <Owner
-            hasPermission={editOwnerPermission}
-            isCompactView={false}
-            owners={dataAsset.owners as EntityReference[]}
-            placeHolder={t('label.no-entity-assigned', {
-              entity: t('label.owner-lowercase-plural'),
-            })}
-            showLabel={false}
-          />
-        </div>
-      </div>
-      <div>
-        <TagsSection
-          entityId={dataAsset.id}
-          entityType={entityType}
-          hasPermission={editTagsPermission}
-          key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
-          tags={dataAsset.tags}
-          onTagsUpdate={onTagsUpdate}
-        />
-      </div>
-      <div>
-        <GlossaryTermsSection
-          entityId={dataAsset.id}
-          entityType={entityType}
-          hasPermission={editGlossaryTermsPermission}
-          key={`glossary-terms-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
-          maxVisibleGlossaryTerms={3}
-          tags={dataAsset.tags}
-          onGlossaryTermsUpdate={onGlossaryTermsUpdate}
-        />
-      </div>
+      {renderDescriptionSection(descriptionChangeSummaryEntry)}
+      {renderOwnersSection()}
+      {renderTagsSection()}
+      {renderGlossaryTermsSection()}
     </>
   );
 
@@ -812,82 +797,11 @@ export const DataAssetSummaryPanelV1 = ({
     descriptionChangeSummaryEntry: ChangeSummaryEntry | undefined
   ) => (
     <>
-      <DescriptionSection
-        changeSummaryEntry={descriptionChangeSummaryEntry}
-        description={dataAsset.description}
-        entityFqn={dataAsset.fullyQualifiedName}
-        entityType={entityType}
-        hasPermission={editDescriptionPermission}
-        onDescriptionUpdate={handleDescriptionUpdate}
-      />
-      <div
-        className="owners-section"
-        key={`owners-${dataAsset.id}-${
-          (dataAsset.owners as EntityReference[])?.length || 0
-        }`}>
-        <div className="owners-header">
-          <span className="owners-title">{t('label.owner-plural')}</span>
-          {editOwnerPermission && (
-            <UserTeamSelectableList
-              hasPermission={Boolean(editOwnerPermission)}
-              multiple={{
-                team: entityRules.canAddMultipleTeamOwner,
-                user: entityRules.canAddMultipleUserOwners,
-              }}
-              owner={dataAsset.owners as EntityReference[]}
-              triggerDataTestId="edit-owners"
-              onUpdate={(owners) => onOwnerUpdate?.(owners ?? [])}
-            />
-          )}
-        </div>
-        <div className="owners-content">
-          <Owner
-            hasPermission={editOwnerPermission}
-            isCompactView={false}
-            owners={dataAsset.owners as EntityReference[]}
-            placeHolder={t('label.no-entity-assigned', {
-              entity: t('label.owner-lowercase-plural'),
-            })}
-            showLabel={false}
-          />
-        </div>
-      </div>
-      <div>
-        <DomainsSection
-          domains={dataAsset.domains}
-          entityFqn={dataAsset.fullyQualifiedName}
-          entityId={dataAsset.id}
-          entityType={entityType}
-          hasPermission={editDomainPermission}
-          key={`domains-${dataAsset.id}-${
-            (dataAsset.domains as EntityReference[])?.length || 0
-          }`}
-          onDomainUpdate={onDomainUpdate}
-        />
-      </div>
-      <div>
-        <TierSection
-          entityId={dataAsset.id}
-          entityType={entityType}
-          hasPermission={editTierPermission}
-          key={`tier-${dataAsset.id}-${tier?.tagFQN || 'no-tier'}`}
-          tags={dataAsset.tags}
-          tier={tier}
-          onTierUpdate={onTierUpdate}
-        />
-      </div>
-      <div>
-        <TagsSection
-          entityId={dataAsset.id}
-          entityType={entityType}
-          hasPermission={editTagsPermission}
-          key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
-          tags={dataAsset.tags?.filter(
-            (tag: TagLabel) => tag.source !== TagSource.Glossary
-          )}
-          onTagsUpdate={onTagsUpdate}
-        />
-      </div>
+      {renderDescriptionSection(descriptionChangeSummaryEntry)}
+      {renderOwnersSection()}
+      {renderDomainsSection()}
+      {renderTierSection()}
+      {renderTagsSection(true)}
     </>
   );
 
@@ -895,68 +809,10 @@ export const DataAssetSummaryPanelV1 = ({
     descriptionChangeSummaryEntry: ChangeSummaryEntry | undefined
   ) => (
     <>
-      <DescriptionSection
-        changeSummaryEntry={descriptionChangeSummaryEntry}
-        description={dataAsset.description}
-        entityFqn={dataAsset.fullyQualifiedName}
-        entityType={entityType}
-        hasPermission={editDescriptionPermission}
-        onDescriptionUpdate={handleDescriptionUpdate}
-      />
-      <OverviewSection
-        componentType={componentType}
-        entityInfoV1={entityInfo}
-        isDomainVisible={isDomainVisible}
-        onLinkClick={onLinkClick}
-      />
-      {dataAsset.owners && (
-        <div
-          className="owners-section"
-          key={`owners-${dataAsset.id}-${
-            (dataAsset.owners as EntityReference[])?.length || 0
-          }`}>
-          <div className="owners-header">
-            <span className="owners-title">{t('label.owner-plural')}</span>
-            {editOwnerPermission && (
-              <UserTeamSelectableList
-                hasPermission={Boolean(editOwnerPermission)}
-                multiple={{
-                  team: entityRules.canAddMultipleTeamOwner,
-                  user: entityRules.canAddMultipleUserOwners,
-                }}
-                owner={dataAsset.owners as EntityReference[]}
-                triggerDataTestId="edit-owners"
-                onUpdate={(owners) => onOwnerUpdate?.(owners ?? [])}
-              />
-            )}
-          </div>
-          <div className="owners-content">
-            <Owner
-              hasPermission={editOwnerPermission}
-              isCompactView={false}
-              owners={dataAsset.owners as EntityReference[]}
-              placeHolder={t('label.no-entity-assigned', {
-                entity: t('label.owner-lowercase-plural'),
-              })}
-              showLabel={false}
-            />
-          </div>
-        </div>
-      )}
-      {dataAsset.tags && (
-        <div>
-          <TagsSection
-            entityId={dataAsset.id}
-            entityType={entityType}
-            hasPermission={editTagsPermission}
-            key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
-            tags={dataAsset.tags?.filter(
-              (tag: TagLabel) => tag.source !== TagSource.Glossary
-            )}
-            onTagsUpdate={onTagsUpdate}
-          />
-        </div>
-      )}
+      {renderDescriptionSection(descriptionChangeSummaryEntry)}
+      {renderOverviewSection()}
+      {dataAsset.owners && renderOwnersSection()}
+      {dataAsset.tags && renderTagsSection(true)}
     </>
   );
 
