@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -26,11 +27,14 @@ import org.openmetadata.service.rdf.storage.RdfStorageInterface.EntityWriteReque
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.ImageFromDockerfile;
+import org.testcontainers.images.builder.Transferable;
 
 /**
  * Pins the RDF readiness contract against real servers. The OpenMetadata Graph Store extension is
- * optional: indexing must proceed on Apache Jena Fuseki without it and on datasets that lack the
- * recommended settings, and fail only with the real cause when the dataset cannot be used at all.
+ * optional: indexing must proceed on Apache Jena Fuseki without it and on datasets that lack its
+ * recommended timeouts. Readiness fails, naming the real cause and leaving the dataset as it found
+ * it, only when the dataset cannot be used: it is missing, refuses the credentials or writes, or
+ * its default graph hides the named graphs indexing writes into.
  */
 class RdfStorageReadinessIT {
   private static final String BASE = "https://open-metadata.org/";
@@ -39,6 +43,18 @@ class RdfStorageReadinessIT {
   private static final String WRITER_PASSWORD = "test-writer";
   private static final String ADMIN_CREATED_DATASET = "readiness_admin_created";
   private static final String STOCK_DATASET = "stock";
+  private static final String STOCK_WITHOUT_UNION = "stock_without_union";
+  private static final String STOCK_READ_ONLY = "stock_read_only";
+  private static final String STOCK_WITHOUT_UPDATE = "stock_without_update";
+  private static final String STOCK_CONFIG_PATH = "/tmp/stock-config.ttl";
+  private static final String READ_WRITE =
+      "fuseki:serviceQuery \"sparql\" ; fuseki:serviceUpdate \"update\" ;"
+          + " fuseki:serviceReadWriteGraphStore \"data\"";
+  private static final String READ_ONLY =
+      "fuseki:serviceQuery \"sparql\" ; fuseki:serviceReadGraphStore \"data\"";
+  private static final String WITHOUT_UPDATE =
+      "fuseki:serviceQuery \"sparql\" ; fuseki:serviceReadWriteGraphStore \"data\"";
+  private static final String UNION_DISABLED = "does not enable tdb2:unionDefaultGraph";
   private static final int FUSEKI_PORT = 3030;
   private static final HttpClient HTTP = HttpClient.newHttpClient();
 
@@ -61,15 +77,14 @@ class RdfStorageReadinessIT {
     stock =
         new GenericContainer<>(image)
             .withExposedPorts(FUSEKI_PORT)
+            .withCopyToContainer(Transferable.of(stockConfig()), STOCK_CONFIG_PATH)
             .withCreateContainerCmdModifier(command -> command.withEntrypoint("java"))
             .withCommand(
                 "-Xmx512m",
                 "-cp",
                 "/fuseki/fuseki-server.jar",
                 "org.apache.jena.fuseki.main.cmds.FusekiMainCmd",
-                "--mem",
-                "--update",
-                "/" + STOCK_DATASET)
+                "--config=" + STOCK_CONFIG_PATH)
             .waitingFor(Wait.forHttp("/$/ping").withStartupTimeout(Duration.ofMinutes(2)));
     shipped.start();
     stock.start();
@@ -90,7 +105,7 @@ class RdfStorageReadinessIT {
   @Test
   void provisionedDatasetIsReadyAndAcceptsBulkAppends() {
     try (JenaFusekiStorage storage = storage(shipped, "openmetadata", "admin", ADMIN_PASSWORD)) {
-      assertDoesNotThrow(storage::ensureStorageReady);
+      assertReadyLeavingNoTrace(storage);
       assertBulkAppendIsReadable(storage);
     }
   }
@@ -98,17 +113,44 @@ class RdfStorageReadinessIT {
   @Test
   void fusekiWithoutTheExtensionIsReadyAndAcceptsBulkAppends() {
     try (JenaFusekiStorage storage = storage(stock, STOCK_DATASET, null, null)) {
-      assertDoesNotThrow(storage::ensureStorageReady);
+      assertReadyLeavingNoTrace(storage);
       assertBulkAppendIsReadable(storage);
     }
   }
 
   @Test
-  void datasetCreatedThroughTheAdminApiIsReadyAndAcceptsBulkAppends() {
+  void datasetCreatedThroughTheAdminApiFailsNamingUnionDefaultGraph() {
     try (JenaFusekiStorage storage =
         storage(shipped, ADMIN_CREATED_DATASET, "admin", ADMIN_PASSWORD)) {
-      assertDoesNotThrow(storage::ensureStorageReady);
-      assertBulkAppendIsReadable(storage);
+      final String failure = assertNotReadyLeavingNoTrace(storage);
+      assertTrue(failure.contains(UNION_DISABLED), failure);
+      assertTrue(failure.contains("'" + ADMIN_CREATED_DATASET + "'"), failure);
+    }
+  }
+
+  @Test
+  void fusekiWithoutUnionDefaultGraphFailsNamingIt() {
+    try (JenaFusekiStorage storage = storage(stock, STOCK_WITHOUT_UNION, null, null)) {
+      final String failure = assertNotReadyLeavingNoTrace(storage);
+      assertTrue(failure.contains(UNION_DISABLED), failure);
+      assertTrue(failure.contains("'" + STOCK_WITHOUT_UNION + "'"), failure);
+    }
+  }
+
+  @Test
+  void readOnlyDatasetFailsNamingTheMethodsItAllows() {
+    try (JenaFusekiStorage storage = storage(stock, STOCK_READ_ONLY, null, null)) {
+      final String failure = assertNotReadyLeavingNoTrace(storage);
+      assertTrue(
+          failure.contains("is read-only (its Graph Store allows GET,HEAD,OPTIONS)"), failure);
+    }
+  }
+
+  @Test
+  void datasetWithoutSparqlUpdateFailsNamingTheRejection() {
+    try (JenaFusekiStorage storage = storage(stock, STOCK_WITHOUT_UPDATE, null, null)) {
+      final String failure = assertNotReadyLeavingNoTrace(storage);
+      assertTrue(failure.contains("did not accept a SPARQL update (HTTP 400)"), failure);
     }
   }
 
@@ -151,6 +193,22 @@ class RdfStorageReadinessIT {
     }
   }
 
+  /** Readiness writes a probe triple, so its triple count must be back where it started. */
+  private static void assertReadyLeavingNoTrace(final JenaFusekiStorage storage) {
+    final long before = storage.getTripleCount();
+    assertDoesNotThrow(storage::ensureStorageReady);
+    assertEquals(before, storage.getTripleCount(), "readiness must remove its probe triple");
+  }
+
+  private static String assertNotReadyLeavingNoTrace(final JenaFusekiStorage storage) {
+    final long before = storage.getTripleCount();
+    final IllegalStateException failure =
+        assertThrows(IllegalStateException.class, storage::ensureStorageReady);
+    assertEquals(
+        before, storage.getTripleCount(), "failed readiness must leave the dataset as found");
+    return failure.getMessage();
+  }
+
   private static void assertBulkAppendIsReadable(final JenaFusekiStorage storage) {
     final UUID id = UUID.randomUUID();
     final Model model = ModelFactory.createDefaultModel();
@@ -182,6 +240,31 @@ class RdfStorageReadinessIT {
             .withUsername(username)
             .withPassword(password)
             .withWriteMaxRetries(0));
+  }
+
+  /** One dataset per shape readiness must judge, each on its own TDB2 location. */
+  private static String stockConfig() {
+    return String.join(
+        "\n",
+        "@prefix fuseki: <http://jena.apache.org/fuseki#> .",
+        "@prefix tdb2: <http://jena.apache.org/2016/tdb#> .",
+        stockService(STOCK_DATASET, READ_WRITE, true),
+        stockService(STOCK_WITHOUT_UNION, READ_WRITE, false),
+        stockService(STOCK_READ_ONLY, READ_ONLY, true),
+        stockService(STOCK_WITHOUT_UPDATE, WITHOUT_UPDATE, true));
+  }
+
+  private static String stockService(
+      final String dataset, final String endpoints, final boolean unionDefaultGraph) {
+    return """
+        <#%1$s> a fuseki:Service ;
+            fuseki:name "%1$s" ;
+            %2$s ;
+            fuseki:dataset [ a tdb2:DatasetTDB2 ;
+                             tdb2:location "/tmp/tdb2/%1$s" ;
+                             tdb2:unionDefaultGraph %3$s ] .
+        """
+        .formatted(dataset, endpoints, unionDefaultGraph);
   }
 
   private static void createDatasetThroughAdminApi(final String dataset) throws Exception {

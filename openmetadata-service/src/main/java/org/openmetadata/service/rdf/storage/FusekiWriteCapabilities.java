@@ -17,6 +17,7 @@ import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.net.HttpURLConnection.HTTP_UNAUTHORIZED;
 
 import java.net.http.HttpHeaders;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -26,10 +27,13 @@ import java.util.regex.Pattern;
  * response. The OpenMetadata Graph Store extension advertises these guarantees, but it is
  * optional: without it the dataset stays usable and each unmet guarantee is reported instead. A
  * bound of {@link Long#MAX_VALUE} means the server advertised none, so the client's own upload
- * budget and write deadline apply.
+ * budget and write deadline apply. The extension also advertises {@code tdb2:unionDefaultGraph},
+ * but indexing cannot run without it, so {@link UnionDefaultGraphProbe} observes it directly on
+ * every Fuseki instead.
  */
 record FusekiWriteCapabilities(long timeoutMillis, long maxBytes, List<String> missingGuarantees) {
   static final String REQUEST_ID = "Fuseki-Request-Id";
+  static final String ALLOW = "Allow";
   static final String DEADLINE = "X-OpenMetadata-Write-Timeout-Ms";
   static final String LIMIT = "X-OpenMetadata-Max-Upload-Bytes";
   static final String UNION = "X-OpenMetadata-Union-Default-Graph";
@@ -43,6 +47,10 @@ record FusekiWriteCapabilities(long timeoutMillis, long maxBytes, List<String> m
           + " Fuseki's shiro.ini";
   private static final String UNUSABLE_ENDPOINT =
       "Fuseki dataset endpoint %s is not usable (HTTP %d)";
+  private static final String READ_ONLY_GRAPH_STORE =
+      "Fuseki dataset '%s' at %s is read-only (its Graph Store allows %s): serve its data endpoint"
+          + " with fuseki:serviceReadWriteGraphStore, or start Fuseki with --update";
+  private static final String APPEND_METHOD = "POST";
 
   private static final long NOT_ADVERTISED = Long.MAX_VALUE;
   private static final Pattern POSITIVE_LONG = Pattern.compile("[1-9]\\d{0,17}");
@@ -51,11 +59,6 @@ record FusekiWriteCapabilities(long timeoutMillis, long maxBytes, List<String> m
 
   private static final List<Guarantee> GUARANTEES =
       List.of(
-          new Guarantee(
-              UNION,
-              Boolean::parseBoolean,
-              "tdb2:unionDefaultGraph is not enabled, so SPARQL without a GRAPH clause cannot"
-                  + " see indexed entities"),
           new Guarantee(
               QUERY,
               IS_POSITIVE,
@@ -74,7 +77,9 @@ record FusekiWriteCapabilities(long timeoutMillis, long maxBytes, List<String> m
               IS_POSITIVE,
               "the extension advertised no usable upload limit, so the client budget applies"));
 
-  static final List<String> EXTENSION_HEADERS = GUARANTEES.stream().map(Guarantee::header).toList();
+  /** The extension sends all of these, so any one of them identifies it. */
+  private static final List<String> EXTENSION_HEADERS =
+      List.of(DEADLINE, LIMIT, UNION, QUERY, UPDATE);
 
   private static final FusekiWriteCapabilities WITHOUT_EXTENSION =
       new FusekiWriteCapabilities(
@@ -82,8 +87,8 @@ record FusekiWriteCapabilities(long timeoutMillis, long maxBytes, List<String> m
           NOT_ADVERTISED,
           List.of(
               "the OpenMetadata Graph Store extension is not installed: uploads hold Fuseki's write"
-                  + " lock while they transfer and have no server-side deadline, and"
-                  + " tdb2:unionDefaultGraph and the arq timeouts cannot be verified"));
+                  + " lock while they transfer and have no server-side deadline, and the arq"
+                  + " timeouts cannot be verified"));
 
   FusekiWriteCapabilities {
     missingGuarantees = List.copyOf(missingGuarantees);
@@ -97,6 +102,7 @@ record FusekiWriteCapabilities(long timeoutMillis, long maxBytes, List<String> m
       final int status, final HttpHeaders headers, final String server, final String dataset) {
     requireUsableStatus(status, server, dataset);
     requireRegisteredDataset(headers, server, dataset);
+    requireWritableGraphStore(headers, server, dataset);
     return hasExtension(headers) ? advertisedBy(headers) : WITHOUT_EXTENSION;
   }
 
@@ -134,6 +140,26 @@ record FusekiWriteCapabilities(long timeoutMillis, long maxBytes, List<String> m
                   + " on the response: nothing is registered under that name, or the endpoint is"
                   + " not Fuseki"));
     }
+  }
+
+  /**
+   * Indexing appends through Graph Store POST, and Fuseki's read-only Graph Store leaves POST out of
+   * {@code Allow}. A response without the header proves nothing either way, so it is not rejected.
+   */
+  private static void requireWritableGraphStore(
+      final HttpHeaders headers, final String server, final String dataset) {
+    final List<String> allowed = headers.allValues(ALLOW);
+    if (!allowed.isEmpty() && !allowsAppend(allowed)) {
+      throw new IllegalStateException(
+          READ_ONLY_GRAPH_STORE.formatted(dataset, server, String.join(",", allowed)));
+    }
+  }
+
+  private static boolean allowsAppend(final List<String> allowed) {
+    return allowed.stream()
+        .flatMap(methods -> Arrays.stream(methods.split(",")))
+        .map(String::trim)
+        .anyMatch(APPEND_METHOD::equalsIgnoreCase);
   }
 
   private static String missingDatasetMessage(

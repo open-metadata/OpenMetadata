@@ -25,12 +25,13 @@ import org.junit.jupiter.api.Test;
 /**
  * Header fixtures are the OPTIONS {@code /<dataset>/data} responses captured from real servers:
  * the shipped {@code docker/rdf-store} image, a dataset created through {@code POST /$/datasets} on
- * that image, Apache Jena Fuseki 6.2.0 without the extension, and a path with no dataset behind it.
+ * that image, Apache Jena Fuseki 6.2.0 without the extension, a dataset served with
+ * {@code fuseki:serviceReadGraphStore}, and a path with no dataset behind it.
  */
 class FusekiWriteCapabilitiesTest {
   private static final String SERVER = "http://fuseki:3030";
   private static final String DATASET = "openmetadata";
-  private static final String ALLOW = "Allow";
+  private static final String ALLOW = FusekiWriteCapabilities.ALLOW;
   private static final String READ_WRITE = "GET,HEAD,OPTIONS,PUT,POST";
   private static final long CLIENT_BUDGET = 16L * 1024 * 1024;
   private static final long CLIENT_DEADLINE = 48_000;
@@ -72,6 +73,9 @@ class FusekiWriteCapabilitiesTest {
   private static final Map<String, List<String>> STOCK_FUSEKI =
       Map.of(FusekiWriteCapabilities.REQUEST_ID, List.of("1"), ALLOW, List.of(READ_WRITE));
 
+  private static final Map<String, List<String>> READ_ONLY_GRAPH_STORE =
+      Map.of(FusekiWriteCapabilities.REQUEST_ID, List.of("9"), ALLOW, List.of("GET,HEAD,OPTIONS"));
+
   private static final Map<String, List<String>> NO_DATASET_AT_PATH =
       Map.of(ALLOW, List.of("GET, HEAD, OPTIONS"));
 
@@ -95,20 +99,50 @@ class FusekiWriteCapabilitiesTest {
   }
 
   @Test
-  void datasetCreatedThroughTheAdminApiIsUsableButNamesEachMissingSetting() {
+  void datasetCreatedThroughTheAdminApiNamesEachMissingTimeoutAndLeavesUnionToTheProbe() {
     final FusekiWriteCapabilities capabilities = negotiate(200, CREATED_THROUGH_ADMIN_API);
 
     assertEquals(67108864, capabilities.maxBytes());
     final String missing = String.join(" | ", capabilities.missingGuarantees());
-    assertEquals(3, capabilities.missingGuarantees().size(), missing);
-    assertTrue(missing.contains("tdb2:unionDefaultGraph"), missing);
+    assertEquals(2, capabilities.missingGuarantees().size(), missing);
     assertTrue(missing.contains("arq:queryTimeout"), missing);
     assertTrue(missing.contains("arq:updateTimeout"), missing);
   }
 
   @Test
+  void readOnlyGraphStoreFailsNamingTheMethodsItAllows() {
+    final IllegalStateException failure =
+        assertThrows(IllegalStateException.class, () -> negotiate(200, READ_ONLY_GRAPH_STORE));
+
+    assertTrue(failure.getMessage().contains("'" + DATASET + "'"), failure.getMessage());
+    assertTrue(failure.getMessage().contains("read-only"), failure.getMessage());
+    assertTrue(failure.getMessage().contains("GET,HEAD,OPTIONS"), failure.getMessage());
+  }
+
+  @Test
+  void writableGraphStoreIsRecognisedWhateverTheListSpacing() {
+    final Map<String, List<String>> headers = new HashMap<>(STOCK_FUSEKI);
+    headers.put(ALLOW, List.of("GET, HEAD, OPTIONS, PUT, POST"));
+
+    assertEquals(1, negotiate(200, headers).missingGuarantees().size());
+  }
+
+  @Test
+  void graphStoreWithoutAnAllowHeaderIsNotJudgedReadOnly() {
+    final Map<String, List<String>> headers = new HashMap<>(STOCK_FUSEKI);
+    headers.remove(ALLOW);
+
+    assertEquals(1, negotiate(200, headers).missingGuarantees().size());
+  }
+
+  @Test
   void eachAbsentOrInvalidAdvertisedValueDegradesInsteadOfFailing() {
-    for (String header : FusekiWriteCapabilities.EXTENSION_HEADERS) {
+    for (String header :
+        List.of(
+            FusekiWriteCapabilities.QUERY,
+            FusekiWriteCapabilities.UPDATE,
+            FusekiWriteCapabilities.DEADLINE,
+            FusekiWriteCapabilities.LIMIT)) {
       for (String replacement : new String[] {null, "invalid"}) {
         final Map<String, List<String>> headers = new HashMap<>(PROVISIONED);
         headers.remove(header);
