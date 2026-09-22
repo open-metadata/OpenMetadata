@@ -219,6 +219,12 @@ jest.mock('../../../rest/ingestionPipelineAPI', () => ({
   getIngestionPipelines: jest.fn(),
 }));
 
+// The button fetches the suite pipelines for its own run state; RunTestCaseButton's tests cover it.
+jest.mock('./RunTestCaseButton/RunTestCaseButton', () => ({
+  __esModule: true,
+  default: () => <div data-testid="run-test-case-button" />,
+}));
+
 jest.mock('../../../utils/CronUtils', () => ({
   getNextCronRunTimestamp: jest.fn(),
 }));

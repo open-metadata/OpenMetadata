@@ -4869,6 +4869,7 @@
     "test-case-insight-description": "Access a centralized view of your dataset's health based on configured test validations.",
     "test-case-name-validation": "Name cannot contain double colons (::), quotes (\"), or greater-than symbols (>).",
     "test-case-not-run-yet": "This test has not run yet. Add it to a pipeline to start collecting results.",
+    "test-case-run-already-in-progress": "A run of this test case's suite pipeline is already in progress. Running again will start another.",
     "test-case-run-queued": "Run queued — waiting for the ingestion pipeline to start.",
     "test-case-schedule-description": "The data quality tests can be scheduled to run at the desired frequency. The timezone is in UTC.",
     "test-case-status-sub-header": "Visualize the health of your data validation tests with a breakdown of success, failure, and aborted cases.",
