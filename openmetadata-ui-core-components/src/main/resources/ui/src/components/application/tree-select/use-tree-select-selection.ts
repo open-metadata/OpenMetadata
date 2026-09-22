@@ -24,10 +24,7 @@ interface UseTreeSelectSelectionReturn<T> {
   selectedData: TreeSelectNode<T>[];
   isNodeSelected: (nodeId: string) => boolean;
   /** Selected vs selectable descendants, for a parent's checked/partial state. */
-  getDescendantSelection: (node: TreeSelectNode<T>) => {
-    selected: number;
-    total: number;
-  };
+  getDescendantSelection: (node: TreeSelectNode<T>) => DescendantSelection;
   toggleNodeSelection: (
     node: TreeSelectNode<T>,
     parentNode?: TreeSelectNode<T>
@@ -36,6 +33,27 @@ interface UseTreeSelectSelectionReturn<T> {
   clearSelection: () => void;
   removeLastSelectedOption: () => void;
 }
+
+export interface DescendantSelection {
+  selected: number;
+  total: number;
+  hasLoadedChildren: boolean;
+}
+
+// A loaded branch's children decide the row outright; unexpanded, its own membership does.
+export const getNodeSelectionState = (
+  { selected, total, hasLoadedChildren }: DescendantSelection,
+  isSelected: boolean
+) => {
+  const isFullySelected = hasLoadedChildren
+    ? selected === total
+    : isSelected || (total > 0 && selected === total);
+
+  return {
+    isFullySelected,
+    isPartiallySelected: !isFullySelected && selected > 0,
+  };
+};
 
 const getAllChildrenIds = <T>(node: TreeSelectNode<T>): string[] => {
   const ids = [node.id];
@@ -203,8 +221,7 @@ export const useTreeSelectSelection = <T = unknown>({
       };
       walk(node);
 
-      // A collapsed branch has no children to walk, so also count selections
-      // that name it as their parent — that is how a seeded value arrives.
+      // A collapsed branch has nothing to walk, so count selections naming it as parent.
       selectedNodes.forEach((selected, id) => {
         if (selected.parentId === node.id) {
           selectedIds.add(id);
@@ -213,8 +230,9 @@ export const useTreeSelectSelection = <T = unknown>({
 
       return {
         selected: selectedIds.size,
-        // `count` is the branch's real size; the walk only sees what is loaded.
-        total: node.count ?? loadedTotal,
+        // Loaded children reflect pruning; the badge count only judges an unexpanded branch.
+        total: loadedTotal > 0 ? loadedTotal : node.count ?? 0,
+        hasLoadedChildren: loadedTotal > 0,
       };
     },
     [selectedNodes]

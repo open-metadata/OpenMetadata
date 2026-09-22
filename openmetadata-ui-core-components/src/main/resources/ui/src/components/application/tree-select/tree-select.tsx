@@ -48,6 +48,7 @@ import {
   useTreeSelectSearch,
 } from './use-tree-select-search';
 import {
+  getNodeSelectionState,
   hasExclusiveChildren,
   useTreeSelectSelection,
 } from './use-tree-select-selection';
@@ -490,12 +491,10 @@ export const TreeSelect = <T = unknown,>({
 
       return visibleNodes.map((node) => {
         const isExclusiveGroup = hasExclusiveChildren(node);
-        // A parent reads as checked once every selectable descendant is, and as
-        // partial while only some are — its own membership is not enough.
-        const { selected, total } = getDescendantSelection(node);
-        const isFullySelected =
-          isNodeSelected(node.id) || (total > 0 && selected === total);
-        const isPartiallySelected = !isFullySelected && selected > 0;
+        const { isFullySelected, isPartiallySelected } = getNodeSelectionState(
+          getDescendantSelection(node),
+          isNodeSelected(node.id)
+        );
 
         return (
           <Tree.Item id={node.id} key={node.id} textValue={node.label}>

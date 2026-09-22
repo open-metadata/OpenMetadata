@@ -11,15 +11,7 @@
  *  limitations under the License.
  */
 
-/**
- * Trigger parts shared by FilterSelect and TreeSelect.
- *
- * They live here rather than in `filter-select.tsx` because that module imports
- * `TreeSelect` for the `FilterSelect.Tree` compound. Importing them from there
- * closes a cycle, and the bundler then emits `FilterSelect.Tree = TreeSelect`
- * ahead of the `TreeSelect` declaration — a temporal-dead-zone ReferenceError
- * that blanks the page at import time.
- */
+// Shared by FilterSelect and TreeSelect; not in filter-select.tsx, whose Tree compound would cycle.
 import { SearchLg } from '@untitledui/icons';
 import type { HTMLAttributes, Ref } from 'react';
 import { Button } from '@/components/base/buttons/button';
@@ -27,9 +19,7 @@ import { Input } from '@/components/base/input/input';
 import { Typography } from '@/components/foundations/typography';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 
-// Narrow wrapper so the icon prop's type doesn't widen to the raw
-// `@untitledui/icons` FC, whose `children` type clashes with consumers that
-// augment ReactNode globally (e.g. react-i18next).
+// Narrowed so the icon prop's type doesn't widen to the raw @untitledui/icons FC.
 export const SearchInputIcon = (props: HTMLAttributes<HTMLOrSVGElement>) => (
   <SearchLg aria-hidden="true" {...props} />
 );
