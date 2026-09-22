@@ -28,6 +28,7 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.metric import Metric, MetricType, Type
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.unitycatalog.metric_views import (
     build_metric_name,
     build_metric_request,
@@ -89,7 +90,10 @@ def metric_view(metadata, database_service, create_table):
 @pytest.fixture
 def ingest_metrics(metadata, metric_view, request):
     """Run the adapter's output through the Metric API, cleaning up afterwards."""
-    created = []
+    # Keyed by id, not a list: the idempotency test ingests twice, and the second run
+    # upserts the same entities. A list would queue each id twice and the repeat
+    # hard-delete would 404.
+    created: dict[str, Metric] = {}
 
     def _ingest():
         definition = parse_metric_view(METRIC_VIEW_YAML)
@@ -101,11 +105,11 @@ def ingest_metrics(metadata, metric_view, request):
             )
             entity = metadata.create_or_update(data=create_request)
             entities.append(entity)
-            created.append(entity)
+            created[model_str(entity.id)] = entity
         return entities
 
     def teardown():
-        for entity in created:
+        for entity in created.values():
             metadata.delete(entity=Metric, entity_id=entity.id, hard_delete=True)
 
     request.addfinalizer(teardown)
