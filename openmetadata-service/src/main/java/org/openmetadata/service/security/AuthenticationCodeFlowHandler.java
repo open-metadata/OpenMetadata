@@ -133,6 +133,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   public static final String REDIRECT_URI_KEY = "redirectUri";
 
   private static final String MCP_CALLBACK_PATH = "/mcp/callback";
+  private static final String AUTH_CALLBACK_PATH = "/auth/callback";
 
   public static final String OIDC_CREDENTIAL_PROFILE = "oidcCredentialProfile";
   public static final String SESSION_REDIRECT_URI = "sessionRedirectUri";
@@ -399,7 +400,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
             "MCP OAuth flow detected - using registered callback URL, final redirect: {}",
             redirectUri);
       } else {
-        redirectUri = requireRedirectUri(requestedRedirectUri);
+        redirectUri = requireRedirectUri(req, requestedRedirectUri);
       }
 
       // The active-session shortcut mints an OpenMetadata-internal JWT (issuer = deployment
@@ -413,7 +414,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
           User user = getSessionUser(activeSession.get());
           if (user != null) {
             JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user, activeSession.get());
-            sendRedirectWithToken(resp, redirectUri, user, jwtAuthMechanism.getJWTToken());
+            sendRedirectWithToken(req, resp, redirectUri, user, jwtAuthMechanism.getJWTToken());
             return;
           }
           sessionService.revokeSession(req, resp);
@@ -513,7 +514,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         throw new TechnicalException("Bad authentication response");
       }
 
-      String redirectUri = requireRedirectUriOrDefault(pendingSession.getRedirectUri());
+      String redirectUri = requireRedirectUriOrDefault(req, pendingSession.getRedirectUri());
       LOG.debug("Authentication response successful");
       AuthenticationSuccessResponse successResponse = (AuthenticationSuccessResponse) response;
 
@@ -592,7 +593,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       UserSession activeSession = maybeActiveSession.get();
 
       JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user, activeSession);
-      sendRedirectWithToken(resp, redirectUri, user, jwtAuthMechanism.getJWTToken());
+      sendRedirectWithToken(req, resp, redirectUri, user, jwtAuthMechanism.getJWTToken());
     } catch (IllegalArgumentException e) {
       try {
         org.openmetadata.service.security.SecurityUtil.writeErrorResponse(
@@ -949,9 +950,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   }
 
   private void sendRedirectWithToken(
-      HttpServletResponse response, String redirectUri, User user, String accessToken)
+      HttpServletRequest request,
+      HttpServletResponse response,
+      String redirectUri,
+      User user,
+      String accessToken)
       throws IOException {
-    String validatedRedirectUri = requireRedirectUriOrDefault(redirectUri);
+    String validatedRedirectUri = requireRedirectUriOrDefault(request, redirectUri);
     SecurityUtil.sendRedirectWithToken(
         response, validatedRedirectUri, accessToken, user.getEmail(), user.getName());
   }
@@ -1191,20 +1196,55 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return (OIDCTokenResponse) response;
   }
 
-  private String requireRedirectUri(String redirectUri) {
+  /**
+   * Redirect targets a login round-trip may land on.
+   *
+   * <p>The frontend always asks to land on {@code <its own origin>/auth/callback}, so the
+   * deployment's real external origin — not {@code oidcConfiguration.serverUrl} — decides whether
+   * that request is legitimate. Deriving the list from {@code serverUrl} alone rejected every
+   * deployment whose {@code serverUrl} was not byte-identical to the browser's origin, which is the
+   * normal case behind an ingress and left SSO unusable with no config-only remedy (issue #26311).
+   *
+   * <p>The request origin is client-influenced (see {@link SecurityUtil#requestOrigin}), so it is
+   * only ever combined with OpenMetadata's own two fixed callback paths. A forged
+   * {@code X-Forwarded-Host} therefore buys nothing: the token rides the response back to whoever
+   * made the request, so the forger can only redirect themselves. Any other target still has to
+   * match a configured entry.
+   */
+  private Set<String> trustedRedirectUris(HttpServletRequest req) {
     Set<String> trusted =
         trustedRedirects(
             authenticationConfiguration.getCallbackUrl(),
-            serverUrl + "/auth/callback",
-            serverUrl + "/mcp/callback");
+            serverUrl + AUTH_CALLBACK_PATH,
+            serverUrl + MCP_CALLBACK_PATH);
+    String requestOrigin = SecurityUtil.requestOrigin(req);
+    if (!nullOrEmpty(requestOrigin)) {
+      trusted.add(requestOrigin + AUTH_CALLBACK_PATH);
+      trusted.add(requestOrigin + MCP_CALLBACK_PATH);
+    }
     trusted.addAll(listOrEmpty(authenticationConfiguration.getAdditionalTrustedRedirectUris()));
-    return SecurityUtil.validateRedirectUri(redirectUri, trusted);
+    return trusted;
   }
 
-  private String requireRedirectUriOrDefault(String redirectUri) {
+  private String requireRedirectUri(HttpServletRequest req, String redirectUri) {
+    Set<String> trusted = trustedRedirectUris(req);
+    try {
+      return SecurityUtil.validateRedirectUri(redirectUri, trusted);
+    } catch (IllegalArgumentException e) {
+      // Without the candidate set on the wire-facing 400 this is undiagnosable from the outside.
+      LOG.warn(
+          "Rejected login redirect URI [{}] - trusted targets are {}: {}",
+          redirectUri,
+          trusted,
+          e.getMessage());
+      throw e;
+    }
+  }
+
+  private String requireRedirectUriOrDefault(HttpServletRequest req, String redirectUri) {
     String targetRedirectUri =
-        nullOrEmpty(redirectUri) ? serverUrl + "/auth/callback" : redirectUri;
-    return requireRedirectUri(targetRedirectUri);
+        nullOrEmpty(redirectUri) ? serverUrl + AUTH_CALLBACK_PATH : redirectUri;
+    return requireRedirectUri(req, targetRedirectUri);
   }
 
   private User getSessionUser(UserSession session) {

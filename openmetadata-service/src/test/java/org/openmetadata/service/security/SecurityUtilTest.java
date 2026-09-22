@@ -18,6 +18,7 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.Claim;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.WriteListener;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
@@ -1282,6 +1283,96 @@ class SecurityUtilTest {
     } finally {
       Locale.setDefault(previous);
     }
+  }
+
+  @Test
+  void requestOrigin_prefersForwardedHeadersOverConnector() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("X-Forwarded-Proto")).thenReturn("https");
+    when(request.getHeader("X-Forwarded-Host")).thenReturn("om.example.org");
+    when(request.getScheme()).thenReturn("http");
+    when(request.getServerName()).thenReturn("localhost");
+    when(request.getServerPort()).thenReturn(8585);
+
+    assertEquals("https://om.example.org", SecurityUtil.requestOrigin(request));
+  }
+
+  @Test
+  void requestOrigin_keepsForwardedHostPort() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("X-Forwarded-Proto")).thenReturn("https");
+    when(request.getHeader("X-Forwarded-Host")).thenReturn("om.example.org:8443");
+
+    assertEquals("https://om.example.org:8443", SecurityUtil.requestOrigin(request));
+  }
+
+  @Test
+  void requestOrigin_fallsBackToConnectorSchemeWhenProtoHeaderMissing() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("X-Forwarded-Host")).thenReturn("om.example.org");
+    when(request.getScheme()).thenReturn("https");
+
+    assertEquals("https://om.example.org", SecurityUtil.requestOrigin(request));
+  }
+
+  @Test
+  void requestOrigin_omitsDefaultPortFromConnectorOrigin() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getScheme()).thenReturn("https");
+    when(request.getServerName()).thenReturn("om.example.org");
+    when(request.getServerPort()).thenReturn(443);
+
+    assertEquals("https://om.example.org", SecurityUtil.requestOrigin(request));
+  }
+
+  @Test
+  void requestOrigin_rejectsForwardedHostCarryingPath() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("X-Forwarded-Proto")).thenReturn("https");
+    when(request.getHeader("X-Forwarded-Host")).thenReturn("om.example.org/evil");
+
+    assertNull(SecurityUtil.requestOrigin(request));
+  }
+
+  @Test
+  void requestOrigin_rejectsForwardedHostCarryingUserInfo() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("X-Forwarded-Proto")).thenReturn("https");
+    when(request.getHeader("X-Forwarded-Host")).thenReturn("attacker@om.example.org");
+
+    assertNull(SecurityUtil.requestOrigin(request));
+  }
+
+  @Test
+  void requestOrigin_rejectsNonWebForwardedProto() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("X-Forwarded-Proto")).thenReturn("javascript");
+    when(request.getHeader("X-Forwarded-Host")).thenReturn("om.example.org");
+
+    assertNull(SecurityUtil.requestOrigin(request));
+  }
+
+  @Test
+  void requestOrigin_normalizesForwardedProtoCase() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("X-Forwarded-Proto")).thenReturn("HTTPS");
+    when(request.getHeader("X-Forwarded-Host")).thenReturn("om.example.org");
+
+    assertEquals("https://om.example.org", SecurityUtil.requestOrigin(request));
+  }
+
+  @Test
+  void requestOrigin_returnsNullWhenForwardedHostHasNoUsableScheme() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("X-Forwarded-Host")).thenReturn("om.example.org");
+
+    assertNull(SecurityUtil.requestOrigin(request));
+  }
+
+  @Test
+  void requestOrigin_returnsNullWhenNothingIdentifiesTheOrigin() {
+    assertNull(SecurityUtil.requestOrigin(null));
+    assertNull(SecurityUtil.requestOrigin(mock(HttpServletRequest.class)));
   }
 
   private static Map<String, Claim> jwtClaims(Map<String, Object> values) {

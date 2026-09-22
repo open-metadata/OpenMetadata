@@ -22,6 +22,7 @@ import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
 import com.auth0.jwt.interfaces.Claim;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.client.Invocation;
@@ -60,6 +61,10 @@ public final class SecurityUtil {
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
   public static final String ISSUER_CLAIM = "iss";
   public static final String EMAIL_VERIFIED_CLAIM = "email_verified";
+
+  private static final String FORWARDED_PROTO_HEADER = "X-Forwarded-Proto";
+  private static final String FORWARDED_HOST_HEADER = "X-Forwarded-Host";
+  private static final Set<String> WEB_SCHEMES = Set.of("http", "https");
 
   private SecurityUtil() {}
 
@@ -742,6 +747,95 @@ public final class SecurityUtil {
       }
     }
     return redirects;
+  }
+
+  /**
+   * The scheme-and-authority the client actually reached this deployment on, or {@code null} when it
+   * cannot be determined.
+   *
+   * <p>Jetty's {@code getScheme()} / {@code getServerName()} describe the connector, and only
+   * reflect the external hop when {@code server.applicationConnectors[].useForwardedHeaders} is
+   * enabled — off by default, and not surfaced by the shipped Docker or Helm configs. The standard
+   * proxy headers are therefore read first so a deployment behind an ingress resolves its own origin
+   * with no extra configuration, falling back to the connector's view for a direct deployment.
+   *
+   * <p>Callers must treat the result as client-influenced: it is safe to trust for a fixed,
+   * first-party path on this deployment (where a forged host can only redirect the forger back to
+   * themselves) and not safe as a general-purpose allow-list entry.
+   */
+  public static String requestOrigin(HttpServletRequest request) {
+    if (request == null) {
+      return null;
+    }
+    String forwardedHost = firstHeaderValue(request, FORWARDED_HOST_HEADER);
+    return nullOrEmpty(forwardedHost)
+        ? connectorOrigin(request)
+        : forwardedOrigin(request, forwardedHost);
+  }
+
+  private static String forwardedOrigin(HttpServletRequest request, String forwardedHost) {
+    String forwardedProto = firstHeaderValue(request, FORWARDED_PROTO_HEADER);
+    String scheme = nullOrEmpty(forwardedProto) ? request.getScheme() : forwardedProto;
+    if (!isWebScheme(scheme)) {
+      return null;
+    }
+    return validOrigin(scheme.toLowerCase(Locale.ROOT) + "://" + forwardedHost);
+  }
+
+  /**
+   * Only {@code http} and {@code https} can carry a browser redirect, so anything else in a proxy
+   * header is a forgery attempt or a misconfiguration and must not reach the allow-list.
+   */
+  private static boolean isWebScheme(String scheme) {
+    return !nullOrEmpty(scheme) && WEB_SCHEMES.contains(scheme.toLowerCase(Locale.ROOT));
+  }
+
+  private static String connectorOrigin(HttpServletRequest request) {
+    String scheme = request.getScheme();
+    if (!isWebScheme(scheme) || nullOrEmpty(request.getServerName())) {
+      return null;
+    }
+    int port = request.getServerPort();
+    boolean isDefaultPort =
+        port <= 0
+            || ("https".equalsIgnoreCase(scheme) && port == 443)
+            || ("http".equalsIgnoreCase(scheme) && port == 80);
+    String authority =
+        isDefaultPort ? request.getServerName() : request.getServerName() + ":" + port;
+    return validOrigin(scheme + "://" + authority);
+  }
+
+  /**
+   * Accept an origin only if it parses and carries nothing but scheme and host[:port]. A proxy
+   * header holding user-info or a path would otherwise widen the derived redirect target beyond the
+   * fixed callback path the caller intends to append, and an unparseable one would abort validation
+   * for an otherwise legitimate candidate.
+   */
+  private static String validOrigin(String origin) {
+    try {
+      URI uri = new URI(origin);
+      boolean isBareOrigin =
+          uri.isAbsolute()
+              && !nullOrEmpty(uri.getHost())
+              && nullOrEmpty(uri.getRawUserInfo())
+              && nullOrEmpty(uri.getRawPath())
+              && nullOrEmpty(uri.getRawQuery())
+              && nullOrEmpty(uri.getRawFragment());
+      return isBareOrigin ? uri.toString() : null;
+    } catch (URISyntaxException e) {
+      LOG.debug("Ignoring unparseable request origin {}", origin);
+      return null;
+    }
+  }
+
+  private static String firstHeaderValue(HttpServletRequest request, String header) {
+    String value = request.getHeader(header);
+    if (nullOrEmpty(value)) {
+      return null;
+    }
+    // A chain of proxies appends to these headers; the left-most entry is the original client hop.
+    int comma = value.indexOf(',');
+    return (comma < 0 ? value : value.substring(0, comma)).trim();
   }
 
   private static URI parseTrustedRedirectUri(String value) {

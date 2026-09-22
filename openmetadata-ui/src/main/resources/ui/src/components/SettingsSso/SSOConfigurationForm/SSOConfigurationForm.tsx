@@ -611,7 +611,7 @@ const SSOConfigurationFormRJSF = ({
       // Ensure callback URL is visible for public clients
       authConfig.callbackUrl = {
         'ui:title': 'Callback URL',
-        'ui:placeholder': 'e.g. https://myapp.com/auth/callback',
+        'ui:placeholder': 'e.g. https://myapp.com/callback',
       } as UISchemaObject;
       // Ensure publicKeyUrls is visible for public clients (not auto-populated)
       authConfig.publicKeyUrls = {
