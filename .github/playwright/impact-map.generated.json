@@ -6962,7 +6962,7 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Metric/AddMetric/AddMetricForm.component.tsx"
+        "openmetadata-ui/src/main/resources/ui/src/components/Metric/AddMetric/AddMetricForm.tsx"
       ],
       "specs": [
         "playwright/e2e/Features/MetricHierarchy.spec.ts"
