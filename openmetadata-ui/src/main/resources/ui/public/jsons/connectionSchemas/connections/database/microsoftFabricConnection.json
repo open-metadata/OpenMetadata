@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MicrosoftFabricConnection",
   "description": "Microsoft Fabric Warehouse and Lakehouse Connection Config",
   "type": "object",

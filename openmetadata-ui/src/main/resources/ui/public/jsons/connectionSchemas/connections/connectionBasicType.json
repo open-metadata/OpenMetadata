@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ConnectionType",
   "description": "This schema defines basic common types that are used by other schemas.",
   "definitions": {

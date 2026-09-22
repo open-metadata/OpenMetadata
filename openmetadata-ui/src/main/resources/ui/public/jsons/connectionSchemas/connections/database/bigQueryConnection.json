@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "BigQueryConnection",
   "description": "Google BigQuery Connection Config",
   "type": "object",
@@ -56,7 +55,6 @@
     "credentials": {
       "title": "GCP Credentials",
       "description": "GCP Credentials",
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "type": "object",
       "javaType": "org.openmetadata.schema.security.credentials.GCPCredentials",
       "definitions": {
@@ -154,7 +152,6 @@
           "description": "We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP Credentials Path",
           "oneOf": [
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.GCPValues",
               "title": "GCP Credentials Values",
@@ -287,7 +284,6 @@
               }
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.GCPExternalAccount",
               "title": "GCP External Account",

@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AzureSQLConnection",
   "description": "Azure SQL Connection Config",
   "type": "object",

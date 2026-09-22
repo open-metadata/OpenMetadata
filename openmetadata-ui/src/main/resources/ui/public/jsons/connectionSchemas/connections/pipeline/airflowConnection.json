@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AirflowConnection",
   "description": "Airflow Metadata Database Connection Config",
   "type": "object",
@@ -41,7 +40,6 @@
       "description": "Choose between database connection or REST API connection to fetch metadata from Airflow.",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "AirflowRestApiConnection",
           "description": "Airflow REST API Connection Config for connecting via REST API.",
           "type": "object",
@@ -73,7 +71,6 @@
               "description": "Choose an authentication method: Basic Auth (username/password), Access Token, GCP Service Account (for Cloud Composer), or AWS Credentials (for MWAA).",
               "oneOf": [
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Basic Auth",
                   "description": "Username and password for Airflow API authentication.",
                   "type": "object",
@@ -98,7 +95,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Access Token",
                   "description": "Static access token for Airflow API authentication.",
                   "type": "object",
@@ -117,7 +113,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "GCP Service Account",
                   "description": "GCP credentials for Google Cloud Composer. Supports service account values, credentials path, workload identity (external account), and ADC. Tokens are auto-refreshed at runtime.",
                   "type": "object",
@@ -126,7 +121,6 @@
                     "credentials": {
                       "title": "GCP Credentials",
                       "description": "GCP credentials configuration.",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.GCPCredentials",
                       "definitions": {
@@ -224,7 +218,6 @@
                           "description": "We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP Credentials Path",
                           "oneOf": [
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "type": "object",
                               "javaType": "org.openmetadata.schema.security.credentials.GCPValues",
                               "title": "GCP Credentials Values",
@@ -357,7 +350,6 @@
                               }
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "type": "object",
                               "javaType": "org.openmetadata.schema.security.credentials.GCPExternalAccount",
                               "title": "GCP External Account",
@@ -469,7 +461,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "MWAA Authentication",
                   "description": "AWS MWAA (Managed Workflows for Apache Airflow) authentication configuration.",
                   "type": "object",
@@ -489,7 +480,6 @@
                         "awsConfig": {
                           "title": "AWS Configuration",
                           "description": "AWS credentials for generating MWAA CLI token.",
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "type": "object",
                           "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
                           "properties": {
@@ -592,7 +582,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "BackendConnection",
           "description": "Lineage Backend Connection Config",
           "type": "object",
@@ -644,7 +633,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "MysqlConnection",
           "description": "Mysql Database Connection Config",
           "type": "object",
@@ -697,7 +685,6 @@
               "mask": true,
               "oneOf": [
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Basic Auth",
                   "description": "Common Database Connection Config",
                   "javaType": "org.openmetadata.schema.services.connections.database.common.basicAuth",
@@ -713,7 +700,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "IAM Auth Configuration Source",
                   "description": "IAM Auth Database Connection Config",
                   "type": "object",
@@ -721,7 +707,6 @@
                   "properties": {
                     "awsConfig": {
                       "title": "AWS Credentials Configuration",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "description": "AWS credentials configs.",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -790,7 +775,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Azure Configuration Source",
                   "description": "Azure Database Connection Config",
                   "type": "object",
@@ -798,7 +782,6 @@
                   "properties": {
                     "azureConfig": {
                       "title": "Azure Credentials Configuration",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "description": "Azure Cloud Credentials",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",
@@ -841,7 +824,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "GCP CloudSQL Configuration Source",
                   "description": "GCP CloudSQL Database Connection Config. Uses the Google Cloud SQL Python Connector.",
                   "type": "object",
@@ -862,7 +844,6 @@
                     "gcpConfig": {
                       "title": "GCP Credentials Configuration",
                       "description": "GCP credentials to use. If not provided, Application Default Credentials will be used.",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.GCPCredentials",
                       "definitions": {
@@ -960,7 +941,6 @@
                           "description": "We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP Credentials Path",
                           "oneOf": [
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "type": "object",
                               "javaType": "org.openmetadata.schema.security.credentials.GCPValues",
                               "title": "GCP Credentials Values",
@@ -1093,7 +1073,6 @@
                               }
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "type": "object",
                               "javaType": "org.openmetadata.schema.security.credentials.GCPExternalAccount",
                               "title": "GCP External Account",
@@ -1225,7 +1204,6 @@
               "mask": true,
               "oneOf": [
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Validate SSL Client Config",
                   "description": "OpenMetadata Client configured to validate SSL certificates.",
                   "type": "object",
@@ -1463,7 +1441,6 @@
           ]
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "PostgresConnection",
           "description": "Postgres Database Connection Config",
           "type": "object",
@@ -1518,7 +1495,6 @@
               "mask": true,
               "oneOf": [
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Basic Auth",
                   "description": "Common Database Connection Config",
                   "javaType": "org.openmetadata.schema.services.connections.database.common.basicAuth",
@@ -1534,7 +1510,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "IAM Auth Configuration Source",
                   "description": "IAM Auth Database Connection Config",
                   "type": "object",
@@ -1542,7 +1517,6 @@
                   "properties": {
                     "awsConfig": {
                       "title": "AWS Credentials Configuration",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "description": "AWS credentials configs.",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -1611,7 +1585,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Azure Configuration Source",
                   "description": "Azure Database Connection Config",
                   "type": "object",
@@ -1619,7 +1592,6 @@
                   "properties": {
                     "azureConfig": {
                       "title": "Azure Credentials Configuration",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "description": "Azure Cloud Credentials",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",
@@ -1805,7 +1777,6 @@
               "mask": true,
               "oneOf": [
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Validate SSL Client Config",
                   "description": "OpenMetadata Client configured to validate SSL certificates.",
                   "type": "object",
@@ -1952,7 +1923,6 @@
           ]
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "SQLiteConnection",
           "description": "SQLite Database Connection Config",
           "type": "object",

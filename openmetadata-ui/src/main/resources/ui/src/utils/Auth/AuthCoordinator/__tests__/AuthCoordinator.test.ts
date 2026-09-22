@@ -576,22 +576,25 @@ describe('AuthCoordinator', () => {
       expect(mockNotifyDone).toHaveBeenCalledWith(payload);
     });
 
-    // Greptile P1 (r4035047159): the previous impl used the fail-silent
-    // `setOidcToken`, which meant a broken storage layer (private-browsing
-    // IndexedDB, quota, SW crash) let the leader broadcast `done` with a
-    // payload no sibling tab could trust across a reload — followers
-    // accepted it in-memory, but the next cold-load read stale storage
-    // and re-triggered refresh (or bounced to sign-in if the refresh path
-    // itself also happened to be unhealthy at that moment). The strict
+    // Greptile P1 (r4035047159 + r4039793087): the fail-silent
+    // `setOidcToken` used to let the leader broadcast `done` with a
+    // payload no sibling tab could trust across a reload. The strict
     // variant now propagates the write error out of `publish`; the
     // `try/catch` in `CrossTabLock.runExclusive` broadcasts `failed`
-    // instead, followers retry through the lock, and the coordinator
-    // emits `refresh-failed` for the downstream interceptor + queue.
-    it('publish-hook storage failure broadcasts failed and emits refresh-failed', async () => {
-      coordinator.registerRenewer(async () => ({
+    // instead, and followers retry through the lock. Crucially, though,
+    // the follow-up on r4039793087 requires this leader tab to STAY
+    // logged in with the fresh token — the renewer succeeded, the token
+    // is in `inMemoryState` for the tab's lifetime, and only the
+    // cross-reload durability was lost. `refresh-failed` must NOT fire
+    // for a persist-only failure, or the interceptor and queue drain
+    // would sign the user out on a transient SW hiccup even though the
+    // token is perfectly valid.
+    it('publish-hook storage failure keeps the tab logged in and does not emit refresh-failed', async () => {
+      const payload = {
         expiresAt: Date.now() + 300_000,
         idToken: 'never-persisted',
-      }));
+      };
+      coordinator.registerRenewer(async () => payload);
       const { setOidcTokenStrict } = jest.requireMock(
         '../../../SwTokenStorageUtils'
       );
@@ -599,21 +602,43 @@ describe('AuthCoordinator', () => {
         new Error('IndexedDB write failed')
       );
       const failures: unknown[] = [];
+      const refreshed: unknown[] = [];
+      coordinator.on('refresh-failed', (p) => failures.push(p));
+      coordinator.on('refreshed', (p) => refreshed.push(p));
+
+      const token = await coordinator.ensureFreshToken();
+
+      // Persist failed, so followers must NOT get a `done` (they'd
+      // otherwise trust a payload no cold-reload can recover); the
+      // CrossTabLock's own try/catch handles broadcasting `failed`.
+      expect(mockNotifyDone).not.toHaveBeenCalled();
+      // But the current tab keeps the renewed token in hand — the
+      // in-memory fallback lives for the tab's lifetime, the queue
+      // drain gets a valid token, and no sign-out is triggered.
+      expect(token).toBe('never-persisted');
+      expect(refreshed).toEqual([payload]);
+      expect(failures).toEqual([]);
+    });
+
+    // Complements the test above and the sibling test at the top of
+    // this file ('emits refresh-failed and rejects on renewer error'):
+    // when the renewer itself throws (as opposed to the persist step
+    // throwing after a successful renewer), the tab has no fresh token
+    // in hand — the coordinator must still surface `refresh-failed` and
+    // reject so the interceptor's error handler can drive sign-out. The
+    // publish-hook path above is the specific case that must NOT trip
+    // sign-out; this exists to keep them adjacent in the file.
+    it('renewer failure still emits refresh-failed and rejects (paired with publish-hook happy-path)', async () => {
+      coordinator.registerRenewer(async () => {
+        throw new Error('IdP unreachable');
+      });
+      const failures: unknown[] = [];
       coordinator.on('refresh-failed', (p) => failures.push(p));
 
       await expect(coordinator.ensureFreshToken()).rejects.toThrow(
-        /IndexedDB write failed/
+        /IdP unreachable/
       );
-
-      // `notifyDone` must NOT fire when the persist fails — otherwise
-      // followers accept an unpersisted payload. `notifyFailed` fires
-      // instead via CrossTabLock's own try/catch (its postMessage runs
-      // through the `channel` on the lock instance, so this test's
-      // field-swap `mockNotifyFailed` doesn't observe it directly; the
-      // observable is `notifyDone` staying uncalled + `refresh-failed`
-      // bus event with the storage-error reason).
-      expect(mockNotifyDone).not.toHaveBeenCalled();
-      expect(failures).toEqual([{ reason: 'IndexedDB write failed' }]);
+      expect(failures).toEqual([{ reason: 'IdP unreachable' }]);
     });
   });
 
