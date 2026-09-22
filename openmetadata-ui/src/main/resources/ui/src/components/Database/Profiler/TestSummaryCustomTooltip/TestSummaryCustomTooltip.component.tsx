@@ -30,7 +30,6 @@ import {
   formatDateTime,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { formatNumberWithComma } from '../../../../utils/NumberUtils';
-import { toOwnerRefs } from '../../../../utils/Owner/ownerConversionUtils';
 import './test-summary-custom-tooltip.less';
 
 const OMITTED_TOOLTIP_PAYLOAD_KEYS = [
@@ -220,7 +219,7 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
                 as="span"
                 className="font-medium"
                 data-testid="assignee">
-                <Owner owners={toOwnerRefs(incidentAssignees)} />
+                <Owner owners={incidentAssignees} />
               </Typography>
             </li>
           )}

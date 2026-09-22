@@ -181,8 +181,7 @@ public class EventSubscriptionResource
         .forEach(
             subscription -> {
               try {
-                EventSubscriptionScheduler.getInstance()
-                    .addSubscriptionPublisher(subscription, true);
+                EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(subscription);
               } catch (Exception ex) {
                 LOG.error("Failed to initialize subscription: {}", subscription.getId(), ex);
               }
@@ -348,7 +347,7 @@ public class EventSubscriptionResource
     EventSubscription eventSub =
         mapper.createToEntity(request, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, eventSub);
-    EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub, false);
+    EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub);
     return response;
   }
 
@@ -1698,7 +1697,11 @@ public class EventSubscriptionResource
     if (event instanceof ChangeEvent changeEvent) {
       return changeEvent.getTimestamp();
     } else if (event instanceof FailedEventResponse failedEvent) {
-      return failedEvent.getChangeEvent().getTimestamp();
+      // A failure recorded by a consumer that makes its own deliveries carries no change event,
+      // so fall back to when the failure itself was recorded.
+      return failedEvent.getChangeEvent() == null
+          ? failedEvent.getTimestamp()
+          : failedEvent.getChangeEvent().getTimestamp();
     }
     throw new IllegalArgumentException("Unknown event type: " + event.getClass());
   }

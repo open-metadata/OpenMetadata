@@ -13,6 +13,7 @@
 
 import {
   Autocomplete,
+  ClassificationTag,
   type SelectItemType,
 } from '@openmetadata/ui-core-components';
 import { debounce } from 'lodash';
@@ -35,8 +36,7 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { ensureComboboxMenuOpen } from '../../../utils/formPureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
-import { fetchGlossaryList } from '../../../utils/TagsUtils';
-import { ClassificationTag, GlossaryTag } from '../atoms/Tag';
+import GlossaryTermPicker from '../GlossaryTermPicker/GlossaryTermPicker';
 
 type TagSelectItem = SelectItemType & { labelColor?: string };
 
@@ -89,6 +89,7 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
   tagType = TagSource.Classification,
 }) => {
   const { t } = useTranslation();
+  const isGlossary = tagType === TagSource.Glossary;
   const [options, setOptions] = useState<TagSelectItem[]>([]);
   const tagDataMap = useRef<Map<string, TagLabel>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
@@ -106,10 +107,7 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
 
   const fetchOptions = async (searchText: string) => {
     try {
-      const response =
-        tagType === TagSource.Glossary
-          ? await fetchGlossaryList(searchText, 1)
-          : await tagClassBase.getTags(searchText, 1, true);
+      const response = await tagClassBase.getTags(searchText, 1, true);
       const fetched: SelectOption[] = response?.data || [];
       fetched.forEach((opt) => {
         setBoundedTagData(tagDataMap.current, opt.value, opt.data as TagLabel);
@@ -138,6 +136,10 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
   ).current;
 
   useEffect(() => {
+    // The glossary branch renders a tree picker that fetches its own data.
+    if (isGlossary) {
+      return;
+    }
     if (initialOptions.length > 0) {
       initialOptions.forEach((opt) => {
         setBoundedTagData(tagDataMap.current, opt.value, opt.data as TagLabel);
@@ -237,6 +239,20 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
     [options, t]
   );
 
+  // A flat autocomplete cannot express the hierarchy or mutual exclusivity.
+  if (isGlossary) {
+    return (
+      <GlossaryTermPicker
+        data-testid="tag-suggestion"
+        label={label}
+        placeholder={placeholder}
+        required={required}
+        value={value}
+        onChange={onChange}
+      />
+    );
+  }
+
   return (
     <div
       data-testid="tag-suggestion"
@@ -253,11 +269,9 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
         }
         renderTag={(item, onRemove) => {
           const tagData = tagDataMap.current.get(String(item.id));
-          const TagComponent =
-            tagType === TagSource.Glossary ? GlossaryTag : ClassificationTag;
 
           return (
-            <TagComponent
+            <ClassificationTag
               color={tagData?.style?.color}
               icon={tagData?.style?.iconURL}
               key={String(item.id)}

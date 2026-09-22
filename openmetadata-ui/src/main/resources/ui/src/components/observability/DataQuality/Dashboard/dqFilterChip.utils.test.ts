@@ -10,28 +10,56 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { chipLabel, chipTriggerClassName } from './dqFilterChip.utils';
+import {
+  chipChevronClassName,
+  chipCountBadgeClassName,
+  chipTriggerClassName,
+  chipTriggerSelectedClassName,
+} from './dqFilterChip.utils';
 
 describe('dqFilterChip utils', () => {
-  describe('chipLabel', () => {
-    it('should return the bare label when the count is zero', () => {
-      expect(chipLabel('Tags', 0)).toBe('Tags');
+  describe('chipTriggerClassName', () => {
+    it('should carry the bordered pill treatment', () => {
+      // The owner trigger sits beside FilterSelect chips rendered with
+      // `bordered`; a borderless trigger here is the visual drift this guards
+      // against.
+      expect(chipTriggerClassName).toContain('tw:shadow-xs-skeuomorphic');
+      expect(chipTriggerClassName).toContain('tw:after:outline-primary');
+      expect(chipTriggerClassName).toContain('tw:bg-primary');
+      expect(chipTriggerClassName).toContain('tw:px-3.5');
     });
 
-    it('should append the count when it is greater than zero', () => {
-      expect(chipLabel('Tags', 3)).toBe('Tags · 3');
-    });
-
-    it('should not append a negative count', () => {
-      expect(chipLabel('Owner', -1)).toBe('Owner');
+    it('should not carry the borderless quick-filter treatment', () => {
+      expect(chipTriggerClassName).not.toContain('tw:text-tertiary');
+      expect(chipTriggerClassName).not.toContain('tw:p-1 ');
     });
   });
 
-  describe('chipTriggerClassName', () => {
-    it('should be a non-empty class string matching the secondary chip look', () => {
-      expect(typeof chipTriggerClassName).toBe('string');
-      expect(chipTriggerClassName).toContain('tw:inline-flex');
-      expect(chipTriggerClassName).toContain('tw:text-secondary');
+  describe('chipTriggerSelectedClassName', () => {
+    it('should brand the trigger the way FilterSelect does', () => {
+      expect(chipTriggerSelectedClassName).toContain(
+        'tw:text-fg-brand-primary'
+      );
+      expect(chipTriggerSelectedClassName).toContain('tw:after:outline-brand');
+    });
+  });
+
+  describe('chipChevronClassName', () => {
+    it('should brand the chevron once a value is picked, like FilterSelect does', () => {
+      // A chevron left grey beside a branded label is the drift this guards
+      // against; the two colours are one Tailwind group, so it is either/or.
+      expect(chipChevronClassName(true)).toContain('tw:text-fg-brand-primary');
+      expect(chipChevronClassName(true)).not.toContain('tw:text-fg-quaternary');
+      expect(chipChevronClassName(false)).toContain('tw:text-fg-quaternary');
+    });
+  });
+
+  describe('chipCountBadgeClassName', () => {
+    it('should be a round brand badge with equal height and min width', () => {
+      expect(chipCountBadgeClassName).toContain('tw:rounded-full');
+      expect(chipCountBadgeClassName).toContain('tw:h-[18px]');
+      expect(chipCountBadgeClassName).toContain('tw:min-w-[18px]');
+      expect(chipCountBadgeClassName).toContain('tw:bg-utility-brand-50');
     });
   });
 });

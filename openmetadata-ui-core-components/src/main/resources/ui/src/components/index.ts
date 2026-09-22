@@ -110,6 +110,13 @@ export {
 } from './application/form-field/form-field';
 export * from './application/accordion/accordion';
 export * from './application/breadcrumbs/breadcrumbs';
+export * from './application/tag/tag-chip-content';
+export * from './application/tag/classification-tag';
+export * from './application/tag/glossary-tag';
+export * from './application/tag/domain-tag';
+export * from './application/tag/data-product-tag';
+export * from './application/tag/auto-classification-tag';
+export * from './application/tag/tag.types';
 export * from './application/tree/tree';
 export * from './application/tree-select/tree-select.types';
 export * from './application/tree-select/tree-select';
@@ -171,6 +178,12 @@ export * from './application/page-header/page-header';
 // Foundations
 export * from './foundations/dot-icon';
 export * from './foundations/featured-icon/featured-icon';
+// `Icon` itself is intentionally NOT re-exported here: it (and the ICON_MAP it
+// carries, a plain object referencing ~44 icon components) would otherwise be
+// pulled into every consumer of this barrel whether or not they use it. Icon
+// is only reachable as `@openmetadata/ui-core-components/icon` (see
+// package.json `exports`) so callers opt in — and, ideally, React.lazy it.
+export * from './foundations/icon/icon.types';
 export * from './foundations/typography';
 
 // Other components
@@ -180,6 +193,7 @@ export * from './checkbox-icons';
 export * from './application/owner/owner';
 export * from './application/owner/owner-chip';
 export * from './application/owner/owner-avatar-stack';
+export * from './application/owner/owner-renderer';
 export * from './application/owner/owner-utils';
 export type {
   OwnerProps,

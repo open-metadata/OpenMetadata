@@ -45,9 +45,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import (
+    EntityExtension,
     EntityName,
     FullyQualifiedEntityName,
     Markdown,
+    SqlQuery,
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -60,6 +62,9 @@ from metadata.ingestion.source.connections import (
 )
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.ingestion.source.database.custom_property_extension_mixin import (
+    CustomPropertyExtensionMixin,
+)
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
@@ -67,9 +72,11 @@ from metadata.ingestion.source.database.external_table_lineage_mixin import (
 from metadata.ingestion.source.database.glue.models import Column as GlueColumn
 from metadata.ingestion.source.database.glue.models import (
     DatabasePage,
+    GlueTable,
     StorageDetails,
     TablePage,
 )
+from metadata.ingestion.source.database.glue.utils import get_schema_definition
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
@@ -82,7 +89,7 @@ if TYPE_CHECKING:
 logger = ingestion_logger()
 
 
-class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
+class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, DatabaseServiceSource):
     """
     Implements the necessary methods to extract
     Database metadata from Glue Source
@@ -100,6 +107,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         self.schema_description_map = {}
         self.schema_catalog_id_map = {}
         self.external_location_map = {}
+        self._init_custom_properties()
         with close_on_failure(self._connection):
             self.test_connection()
 
@@ -283,6 +291,15 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                 try:
                     table_name = table.Name
                     table_name = self.standardize_table_name(schema_name, table_name)
+                    # Glue types a view as VIRTUAL_VIEW whatever the table format underneath is,
+                    # so this stays the one answer to "is this a view" that the source works from.
+                    is_view = table.TableType == "VIRTUAL_VIEW"
+                    if is_view and not self.source_config.includeViews:
+                        logger.debug("Skipping view [%s]: includeViews is off", table_name)
+                        continue
+                    if not is_view and not self.source_config.includeTables:
+                        logger.debug("Skipping table [%s]: includeTables is off", table_name)
+                        continue
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
@@ -332,7 +349,9 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         table_name, table_type = table_name_and_type
         table = self.context.get().table_data
         table_constraints = None
-        storage_descriptor = table.StorageDescriptor
+        # A view can come back with an explicit null storage descriptor, which the model default
+        # does not cover, and this runs before the try below that would report the failure.
+        storage_descriptor = table.StorageDescriptor or StorageDetails()
         database_name = self.context.get().database
         schema_name = self.context.get().database_schema
         if storage_descriptor.Location:
@@ -342,10 +361,15 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
             )
         try:
             columns = self.get_columns(storage_descriptor)
+            # An Iceberg view is typed Iceberg rather than View, so keying off the Glue type
+            # keeps it from being the one kind of view that loses its definition.
+            is_view = table.TableType == "VIRTUAL_VIEW"
+            schema_definition = get_schema_definition(table, schema_name, table_name) if is_view else None
             table_request = CreateTableRequest(
                 name=EntityName(table_name),
                 tableType=table_type,
                 description=table.Description,
+                schemaDefinition=SqlQuery(schema_definition) if schema_definition else None,
                 columns=list(columns),
                 tableConstraints=table_constraints,
                 databaseSchema=FullyQualifiedEntityName(
@@ -364,6 +388,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                 ),
                 fileFormat=self.get_format(storage_descriptor),
                 locationPath=storage_descriptor.Location,
+                extension=EntityExtension(extensions) if (extensions := self.get_table_extensions(table)) else None,
             )
             yield Either(right=table_request)
             self.register_record(table_request=table_request)
@@ -376,8 +401,22 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                 )
             )
 
+    def get_table_extensions(self, table: GlueTable) -> dict[str, str] | None:
+        """Glue table Parameters as custom properties.
+
+        Takes the table rather than a name, unlike the CommonDbSourceService hook of the same
+        name: GlueSource does not inherit that hook, and yield_table already holds the table.
+        """
+        if not self.custom_properties_enabled or not table.Parameters:
+            return None
+        return self.build_entity_extension(
+            table.Parameters.model_dump(),
+            source_label="Glue table parameters",
+        )
+
     def prepare(self):
-        """Nothing to prepare"""
+        super().prepare()
+        self._load_string_property_type_ref()
 
     def _get_column_object(self, column: GlueColumn) -> Column:
         if column.Type.lower().startswith("union"):
@@ -495,7 +534,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
 
     @classmethod
     def get_format(cls, storage: StorageDetails) -> FileFormat | None:
-        library = storage.SerdeInfo.SerializationLibrary
+        library = storage.SerdeInfo.SerializationLibrary if storage.SerdeInfo else None
         if library is None:
             return None
         if library.endswith(".LazySimpleSerDe"):

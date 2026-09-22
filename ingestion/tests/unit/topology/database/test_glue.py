@@ -13,12 +13,17 @@
 Test Glue using the topology
 """
 
+import base64
+import hashlib
 import json
 import logging
+import textwrap
+import time
 from copy import deepcopy
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import Mock, patch
+from uuid import UUID
 
 import pytest
 
@@ -33,8 +38,10 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.customProperty import PropertyType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.api.status import Status
 from metadata.ingestion.source.database.glue.metadata import GlueSource
 from metadata.ingestion.source.database.glue.models import (
     Column as GlueColumn,
@@ -48,8 +55,18 @@ from metadata.ingestion.source.database.glue.models import (
     TablePage,
     TableParameters,
 )
+from metadata.ingestion.source.database.glue.utils import get_schema_definition
+from metadata.utils.logger import StatusWarningHandler, ingestion_logger
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"
+
+
+def _disambiguated(base, raw):
+    """A name the sanitizer had to rewrite carries a digest of the raw key, so two source keys
+    that reduce to the same base stay distinct."""
+    return f"{base}_{hashlib.md5(raw.encode('utf-8'), usedforsecurity=False).hexdigest()[:8]}"
+
+
 with open(mock_file_path) as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
@@ -426,6 +443,26 @@ class GlueUnitTest(TestCase):
         )
 
 
+@pytest.fixture
+def glue_source():
+    with patch.object(GlueSource, "test_connection", return_value=False):
+        workflow_config = OpenMetadataWorkflowConfig.model_validate(mock_glue_config)
+        source = GlueSource.create(
+            mock_glue_config["source"],
+            workflow_config.workflowConfig.openMetadataServerConfig,
+        )
+    # The topology context is process wide, so a leftover Glue table_data here would be
+    # picked up by the next connector's tests. Restore whatever was there afterwards.
+    context = source.context.get().__dict__
+    original_context = context.copy()
+    context["database_service"] = MOCK_DATABASE_SERVICE.name.root
+    context["database"] = MOCK_DATABASE.name.root
+    context["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+    yield source
+    context.clear()
+    context.update(original_context)
+
+
 class TestGlueColumnDeduplication:
     """Glue may return a partition key in StorageDescriptor.Columns as well as in PartitionKeys.
 
@@ -434,23 +471,8 @@ class TestGlueColumnDeduplication:
     """
 
     @pytest.fixture
-    def source(self):
-        with patch.object(GlueSource, "test_connection", return_value=False):
-            workflow_config = OpenMetadataWorkflowConfig.model_validate(mock_glue_config)
-            glue_source = GlueSource.create(
-                mock_glue_config["source"],
-                workflow_config.workflowConfig.openMetadataServerConfig,
-            )
-        # The topology context is process wide, so a leftover Glue table_data here would be
-        # picked up by the next connector's tests. Restore whatever was there afterwards.
-        context = glue_source.context.get().__dict__
-        original_context = context.copy()
-        context["database_service"] = MOCK_DATABASE_SERVICE.name.root
-        context["database"] = MOCK_DATABASE.name.root
-        context["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
-        yield glue_source
-        context.clear()
-        context.update(original_context)
+    def source(self, glue_source):
+        return glue_source
 
     @staticmethod
     def _glue_table(columns, partition_keys, is_iceberg=False) -> GlueTable:
@@ -535,3 +557,648 @@ class TestGlueColumnDeduplication:
             assert self._column_names(source, table) == ["event_id", "load_date"]
 
         assert caplog.records == []
+
+
+class TestGlueViewModel:
+    """The view text has to survive parsing before anything downstream can use it.
+
+    GlueTable leaves pydantic's extra="ignore" default in place, so a field the model does not
+    declare is dropped without a word when boto3's response is fed in.
+    """
+
+    def test_view_text_survives_model_parsing(self):
+        page = TablePage(
+            TableList=[
+                {
+                    "Name": "hive_view",
+                    "TableType": "VIRTUAL_VIEW",
+                    "ViewOriginalText": "SELECT id FROM events",
+                    "ViewExpandedText": "SELECT `events`.`id` FROM `default`.`events`",
+                }
+            ]
+        )
+
+        table = page.TableList[0]
+        assert table.ViewOriginalText == "SELECT id FROM events"
+        assert table.ViewExpandedText == "SELECT `events`.`id` FROM `default`.`events`"
+
+
+def _blob(sql: str, **extra) -> str:
+    """The base64 document a Presto/Trino view carries, built the way Athena builds it."""
+    return base64.b64encode(json.dumps({"originalSql": sql, **extra}).encode()).decode()
+
+
+def _view(original=None, expanded=None, name="sample_view") -> GlueTable:
+    return GlueTable(
+        Name=name,
+        TableType="VIRTUAL_VIEW",
+        ViewOriginalText=original,
+        ViewExpandedText=expanded,
+    )
+
+
+class TestGlueSchemaDefinition:
+    """Glue stores a Hive view as plain SQL and a Presto/Trino view as a comment wrapping a
+    base64 document, and hands back only the raw text either way, so the source has to work
+    out which one it is holding."""
+
+    @pytest.mark.parametrize(
+        "table,expected",
+        [
+            (
+                _view(original=f"/* Presto View: {_blob('SELECT id FROM events')} */"),
+                "CREATE VIEW default.sample_view AS SELECT id FROM events",
+            ),
+            (
+                _view(original=f"/* Trino View: {_blob('SELECT 1')} */"),
+                "CREATE VIEW default.sample_view AS SELECT 1",
+            ),
+            (
+                _view(original=f"/* Presto Materialized View: {_blob('SELECT 2')} */"),
+                "CREATE VIEW default.sample_view AS SELECT 2",
+            ),
+            (
+                _view(original=f"/* Presto View: {_blob('SELECT 3').rstrip('=')} */"),
+                "CREATE VIEW default.sample_view AS SELECT 3",
+            ),
+            (
+                _view(original="/* Presto View: " + "\n".join(textwrap.wrap(_blob("SELECT 4"), 8)) + " */"),
+                "CREATE VIEW default.sample_view AS SELECT 4",
+            ),
+            (
+                _view(original="SELECT id FROM events"),
+                "CREATE VIEW default.sample_view AS SELECT id FROM events",
+            ),
+            (
+                _view(original="CREATE VIEW default.sample_view AS SELECT 1"),
+                "CREATE VIEW default.sample_view AS SELECT 1",
+            ),
+            (
+                _view(original="CREATE OR REPLACE VIEW default.sample_view AS SELECT 1"),
+                "CREATE OR REPLACE VIEW default.sample_view AS SELECT 1",
+            ),
+            (
+                _view(original="", expanded="SELECT `events`.`id` FROM `default`.`events`"),
+                "CREATE VIEW default.sample_view AS SELECT `events`.`id` FROM `default`.`events`",
+            ),
+            (
+                _view(original="   \n\t ", expanded="SELECT 1"),
+                "CREATE VIEW default.sample_view AS SELECT 1",
+            ),
+            (_view(original=None, expanded="/* Presto View */"), None),
+            (_view(original="-- generated by Athena"), None),
+            (_view(original="/* Presto View */\n-- nothing else here"), None),
+            (_view(), None),
+        ],
+        ids=[
+            "presto_blob",
+            "trino_blob",
+            "presto_materialized_blob",
+            "blob_padding_stripped",
+            "blob_wrapped_lines",
+            "hive_plain_select_wrapped",
+            "already_create_view",
+            "create_or_replace_view",
+            "original_empty_uses_expanded",
+            "original_whitespace_uses_expanded",
+            "expanded_marker_only_is_not_a_definition",
+            "line_comment_only_is_not_a_definition",
+            "mixed_comments_only_is_not_a_definition",
+            "both_absent",
+        ],
+    )
+    def test_schema_definition(self, table, expected):
+        assert get_schema_definition(table, "default", table.Name) == expected
+
+    def test_hyphenated_names_are_quoted(self):
+        """Glue allows a hyphen in a database name, and an unquoted one is not parseable SQL."""
+        table = _view(original="SELECT 1", name="my-view")
+
+        assert (
+            get_schema_definition(table, "zipcode-db", table.Name) == 'CREATE VIEW "zipcode-db"."my-view" AS SELECT 1'
+        )
+
+    def test_quote_in_a_name_is_doubled(self):
+        table = _view(original="SELECT 1", name='odd"name')
+
+        assert get_schema_definition(table, "default", table.Name) == 'CREATE VIEW default."odd""name" AS SELECT 1'
+
+
+class TestGlueSchemaDefinitionWarnings:
+    """A view whose text Glue simply does not store needs no operator action, so that stays at
+    debug. A payload Glue did hand us that we could not decode is the only case worth a warning."""
+
+    @pytest.mark.parametrize(
+        "original",
+        [
+            "/* Presto View: bm90IGpzb24= */",
+            "/* Presto View: " + base64.b64encode(json.dumps({"foo": "bar"}).encode()).decode() + " */",
+            "/* Presto View: " + base64.b64encode(b"\xff\xfe").decode() + " */",
+            "/* Presto View: not!valid!base64 */",
+        ],
+        ids=["not_json", "no_original_sql", "not_utf8", "not_base64"],
+    )
+    def test_unreadable_payload_warns(self, original, caplog):
+        with caplog.at_level(logging.WARNING):
+            assert get_schema_definition(_view(original=original), "default", "sample_view") is None
+
+        assert len(caplog.records) == 1
+
+    def test_missing_definition_is_not_a_warning(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            assert get_schema_definition(_view(expanded="/* Presto View */"), "default", "sample_view") is None
+
+        assert caplog.records == []
+
+    @staticmethod
+    def _warnings_in_the_run_summary(table):
+        """Count what the workflow summary would report for this table.
+
+        Every WARNING on the ingestion logger reaches Status through StatusWarningHandler, which
+        Step attaches for the length of a run, so this is the summary the operator actually sees.
+        """
+        status = Status()
+        handler = StatusWarningHandler(status)
+        ingestion_logger().addHandler(handler)
+        try:
+            assert get_schema_definition(table, "default", "sample_view") is None
+        finally:
+            ingestion_logger().removeHandler(handler)
+        return status.warnings
+
+    def test_an_unreadable_payload_is_counted_in_the_run_summary(self):
+        """Deliberate: a payload Glue handed us and we could not read is a data problem the
+        operator can act on, so it belongs in the count."""
+        assert len(self._warnings_in_the_run_summary(_view(original="/* Presto View: not!valid!base64 */"))) == 1
+
+    def test_a_view_glue_holds_no_text_for_is_not_counted_in_the_run_summary(self):
+        """Nothing to act on, so it must not inflate the count on a catalog full of such views."""
+        assert self._warnings_in_the_run_summary(_view(expanded="/* Presto View */")) == []
+
+
+class TestGlueViewRequest:
+    """The definition has to reach CreateTableRequest, and only for views."""
+
+    @staticmethod
+    def _request(source, table, table_type):
+        source.context.get().__dict__["table_data"] = table
+        with patch("metadata.ingestion.source.database.glue.metadata.fqn") as mock_fqn:
+            mock_fqn.build = mock_fqn_build
+            return next(source.yield_table((table.Name, table_type))).right
+
+    def test_view_request_carries_the_schema_definition(self, glue_source):
+        table = _view(original=f"/* Presto View: {_blob('SELECT id FROM events')} */", name="presto_view")
+
+        request = self._request(glue_source, table, TableType.View)
+
+        assert request.tableType is TableType.View
+        assert request.schemaDefinition.root == "CREATE VIEW default.presto_view AS SELECT id FROM events"
+
+    def test_view_without_a_definition_is_still_ingested(self, glue_source):
+        request = self._request(glue_source, _view(expanded="/* Presto View */"), TableType.View)
+
+        assert request is not None
+        assert request.schemaDefinition is None
+        assert glue_source.status.failures == []
+
+    def test_view_with_a_null_storage_descriptor_is_still_ingested(self, glue_source):
+        table = _view(original="SELECT 1")
+        table.StorageDescriptor = None
+
+        request = self._request(glue_source, table, TableType.View)
+
+        assert request.schemaDefinition.root == "CREATE VIEW default.sample_view AS SELECT 1"
+        assert request.locationPath is None
+
+    @pytest.mark.parametrize(
+        "table_type",
+        [TableType.Regular, TableType.External, TableType.Iceberg],
+        ids=["regular", "external", "iceberg"],
+    )
+    def test_non_view_tables_get_no_schema_definition(self, glue_source, table_type):
+        """View text on a table Glue did not type as a view must not change what we send."""
+        table = _view(original="SELECT 1", name="ordinary_table")
+        table.TableType = "EXTERNAL_TABLE"
+
+        assert self._request(glue_source, table, table_type).schemaDefinition is None
+
+
+class TestGlueIcebergView:
+    """Glue types an Iceberg view as VIRTUAL_VIEW and also stamps table_type=ICEBERG on it, and
+    the Iceberg branch wins the type ladder, so keying the definition off TableType.View alone
+    would leave exactly this shape without one."""
+
+    @staticmethod
+    def _iceberg_view() -> GlueTable:
+        return GlueTable(
+            Name="iceberg_view",
+            TableType="VIRTUAL_VIEW",
+            Parameters=TableParameters(table_type="ICEBERG"),
+            ViewOriginalText="SELECT id FROM events",
+        )
+
+    def test_iceberg_view_is_typed_iceberg(self, glue_source):
+        glue_source._get_glue_tables = lambda: [TablePage(TableList=[self._iceberg_view()])]
+
+        with patch("metadata.ingestion.source.database.glue.metadata.fqn") as mock_fqn:
+            mock_fqn.build = mock_fqn_build
+            assert list(glue_source.get_tables_name_and_type()) == [("iceberg_view", TableType.Iceberg)]
+
+    def test_iceberg_view_still_carries_its_definition(self, glue_source):
+        request = TestGlueViewRequest._request(glue_source, self._iceberg_view(), TableType.Iceberg)
+
+        assert request.tableType is TableType.Iceberg
+        assert request.schemaDefinition.root == "CREATE VIEW default.iceberg_view AS SELECT id FROM events"
+
+    def test_an_iceberg_table_is_still_left_alone(self, glue_source):
+        """The Iceberg branch is reached by ordinary tables too, which must stay unchanged."""
+        table = GlueTable(
+            Name="iceberg_table",
+            TableType="EXTERNAL_TABLE",
+            Parameters=TableParameters(table_type="ICEBERG"),
+            ViewOriginalText="SELECT 1",
+        )
+
+        request = TestGlueViewRequest._request(glue_source, table, TableType.Iceberg)
+
+        assert request.schemaDefinition is None
+
+
+class TestGlueIncludeFlags:
+    """Glue ingested every table and view whatever these flags said, unlike the generic path and
+    unlike Delta Lake, which is the other source that hand-builds its requests."""
+
+    @staticmethod
+    def _tables() -> list[GlueTable]:
+        return [
+            GlueTable(Name="ordinary_table", TableType="EXTERNAL_TABLE"),
+            GlueTable(Name="a_view", TableType="VIRTUAL_VIEW", ViewOriginalText="SELECT 1"),
+            GlueTable(
+                Name="iceberg_view",
+                TableType="VIRTUAL_VIEW",
+                Parameters=TableParameters(table_type="ICEBERG"),
+            ),
+        ]
+
+    def _names(self, source, **flags):
+        for flag, value in flags.items():
+            setattr(source.source_config, flag, value)
+        tables = self._tables()
+        source._get_glue_tables = lambda: [TablePage(TableList=tables)]
+        with patch("metadata.ingestion.source.database.glue.metadata.fqn") as mock_fqn:
+            mock_fqn.build = mock_fqn_build
+            return [name for name, _ in source.get_tables_name_and_type()]
+
+    def test_both_flags_on_is_the_default_and_keeps_everything(self, glue_source):
+        assert self._names(glue_source) == ["ordinary_table", "a_view", "iceberg_view"]
+
+    def test_include_views_off_drops_every_view_format(self, glue_source):
+        assert self._names(glue_source, includeViews=False) == ["ordinary_table"]
+
+    def test_include_tables_off_keeps_only_views(self, glue_source):
+        assert self._names(glue_source, includeTables=False) == ["a_view", "iceberg_view"]
+
+    def test_both_off_yields_nothing(self, glue_source):
+        assert self._names(glue_source, includeTables=False, includeViews=False) == []
+
+
+class TestGlueViewDefinitionEdges:
+    """Cases where a definition that looks fine still resolves to the wrong lineage, or to none."""
+
+    def test_a_select_mentioning_create_view_is_still_wrapped(self):
+        """The header check has to read the head of the statement. Matching anywhere would take
+        the text inside this literal for a header and leave the SELECT without a target."""
+        table = _view(original="SELECT 'CREATE VIEW' AS ddl FROM audit_log")
+
+        assert get_schema_definition(table, "default", "sample_view") == (
+            "CREATE VIEW default.sample_view AS SELECT 'CREATE VIEW' AS ddl FROM audit_log"
+        )
+
+    @pytest.mark.parametrize(
+        "original",
+        [
+            "\n  CREATE VIEW default.sample_view AS SELECT 1",
+            "/* a leading comment */ CREATE VIEW default.sample_view AS SELECT 1",
+            "-- a leading line comment\nCREATE VIEW default.sample_view AS SELECT 1",
+        ],
+        ids=["leading_whitespace", "leading_block_comment", "leading_line_comment"],
+    )
+    def test_a_real_header_is_never_wrapped_twice(self, original):
+        definition = get_schema_definition(_view(original=original), "default", "sample_view")
+
+        assert definition == original.strip()
+        assert definition.count("CREATE VIEW") == 1
+
+    def test_the_statement_names_the_table_under_its_stored_name(self, glue_source):
+        """standardize_table_name truncates to 128 chars, so naming the raw Glue name here would
+        point the lineage target at an entity the catalog does not hold. This one has to run the
+        whole path, because the truncation happens in get_tables_name_and_type."""
+        long_name = "v" * 200
+        glue_source._get_glue_tables = lambda: [TablePage(TableList=[_view(original="SELECT 1", name=long_name)])]
+
+        with patch("metadata.ingestion.source.database.glue.metadata.fqn") as mock_fqn:
+            mock_fqn.build = mock_fqn_build
+            requests = [
+                next(glue_source.yield_table(name_and_type)).right
+                for name_and_type in glue_source.get_tables_name_and_type()
+            ]
+
+        stored_name = requests[0].name.root
+        assert stored_name == long_name[:128]
+        assert requests[0].schemaDefinition.root == f"CREATE VIEW default.{stored_name} AS SELECT 1"
+
+    def test_a_view_with_a_null_serde_info_is_still_ingested(self, glue_source):
+        """StorageDetails() defaults SerdeInfo to a non-null value, so only an explicit null
+        reaches the guard in get_format."""
+        table = _view(original="SELECT 1")
+        table.StorageDescriptor = StorageDetails(SerdeInfo=None)
+
+        request = TestGlueViewRequest._request(glue_source, table, TableType.View)
+
+        assert request.fileFormat is None
+        assert request.schemaDefinition.root == "CREATE VIEW default.sample_view AS SELECT 1"
+
+    def test_a_comment_heavy_definition_does_not_hang_the_header_check(self):
+        """A repeated group whose body can also match the "*/" that ends it backtracks
+        exponentially: this input took ~1s at 98 chars and doubled every 8 more, so a view
+        definition of a couple of hundred characters would have hung the ingestion worker."""
+        adversarial = "/*" + "*//*" * 400
+
+        start = time.perf_counter()
+        definition = get_schema_definition(_view(original=adversarial), "default", "sample_view")
+        elapsed = time.perf_counter() - start
+
+        assert elapsed < 5
+        # The trailing "/*" is never closed, so this is not comment-only and gets wrapped.
+        assert definition.startswith("CREATE VIEW default.sample_view AS /*")
+
+    def test_an_unterminated_presto_header_does_not_hang_the_payload_match(self):
+        """Trimming the payload with \\s* on both sides put three quantifiers on one run of
+        whitespace, so a header that never closes cost O(n^3): ~0.27s at 800 spaces, and eight
+        minutes at 16k. The trailing "!" is there to survive the strip in _read_definition."""
+        adversarial = "/* Presto View:" + " " * 20000 + "!"
+
+        start = time.perf_counter()
+        definition = get_schema_definition(_view(original=adversarial), "default", "sample_view")
+        elapsed = time.perf_counter() - start
+
+        assert elapsed < 5
+        # Not a payload and not comment-only, so it is wrapped like any other text.
+        assert definition.startswith("CREATE VIEW default.sample_view AS /* Presto View:")
+
+    def test_create_viewsomething_is_not_read_as_a_header(self):
+        table = _view(original="CREATE VIEWS FROM whatever")
+
+        assert get_schema_definition(table, "default", "sample_view") == (
+            "CREATE VIEW default.sample_view AS CREATE VIEWS FROM whatever"
+        )
+
+
+@pytest.fixture
+def custom_property_source():
+    """GlueSource with custom properties enabled and the catalog pages wired to the JSON fixture."""
+    with patch.object(GlueSource, "test_connection", return_value=False):
+        workflow_config = OpenMetadataWorkflowConfig.model_validate(mock_glue_config)
+        glue_source = GlueSource.create(
+            mock_glue_config["source"],
+            workflow_config.workflowConfig.openMetadataServerConfig,
+        )
+    # The topology context is process wide, so a leftover table_data here would be picked up by
+    # the next connector's tests. Restore whatever was there afterwards.
+    context = glue_source.context.get().__dict__
+    original_context = context.copy()
+    context["database_service"] = MOCK_DATABASE_SERVICE.name.root
+    context["database"] = MOCK_DATABASE.name.root
+    context["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+    glue_source.source_config.includeCustomProperties = True
+    glue_source._string_property_type_ref = PropertyType(
+        EntityReference(id=UUID("00000000-0000-0000-0000-000000000001"), type="type")
+    )
+    glue_source._get_glue_tables = lambda: [TablePage(**mock_data.get("mock_table_paginator"))]
+    yield glue_source
+    context.clear()
+    context.update(original_context)
+
+
+def _glue_table_with_params(params: dict | None, name: str = "tbl") -> GlueTable:
+    return GlueTable(
+        Name=name,
+        TableType="EXTERNAL_TABLE",
+        Parameters=TableParameters(**params) if params is not None else None,
+        StorageDescriptor=StorageDetails(Columns=[GlueColumn(Name="id", Type="string")]),
+    )
+
+
+class TestTableParametersPreservesUnknownKeys:
+    """Glue parameters other than table_type must survive model validation, or there is nothing
+    to ingest as custom properties."""
+
+    def test_unknown_parameters_are_preserved(self):
+        params = TableParameters(table_type="ICEBERG", EXTERNAL="TRUE")
+
+        assert params.model_dump() == {"table_type": "ICEBERG", "EXTERNAL": "TRUE"}
+
+    def test_table_type_attribute_access_still_works(self):
+        """The shape used to detect Iceberg tables in get_tables_name_and_type and _iter_columns."""
+        params = TableParameters(table_type="ICEBERG", EXTERNAL="TRUE")
+
+        assert params.table_type == "ICEBERG"
+
+    def test_absent_table_type_dumps_as_none(self):
+        """The falsy-value filter relies on this to keep table_type out of non-Iceberg extensions."""
+        assert TableParameters(EXTERNAL="TRUE").model_dump() == {
+            "table_type": None,
+            "EXTERNAL": "TRUE",
+        }
+
+    def test_dotted_parameter_keys_survive(self):
+        params = TableParameters(**{"skip.header.line.count": "2"})
+
+        assert params.model_dump()["skip.header.line.count"] == "2"
+
+    def test_table_page_round_trips_parameters(self):
+        """The regression guard for the root cause: TablePage validation used to drop these."""
+        page = TablePage(**mock_data.get("mock_table_paginator"))
+        by_name = {table.Name: table for table in page.TableList}
+
+        assert by_name["cloudfront_logs2"].Parameters.model_dump()["skip.header.line.count"] == "2"
+        assert by_name["cloudfront_logs"].Parameters.model_dump()["EXTERNAL"] == "TRUE"
+
+
+class TestGlueGetTableExtensionsEarlyExits:
+    def test_returns_none_when_flag_disabled(self, custom_property_source):
+        """GlueUnitTest drives yield_table against a real OpenMetadata object, so the flag check
+        has to come before anything that would touch self.metadata."""
+        custom_property_source.source_config.includeCustomProperties = False
+        table = _glue_table_with_params({"EXTERNAL": "TRUE"})
+
+        with patch.object(custom_property_source, "metadata") as mock_metadata:
+            assert custom_property_source.get_table_extensions(table) is None
+
+        assert mock_metadata.create_or_update_custom_property.call_count == 0
+
+    def test_returns_none_without_type_ref(self, custom_property_source):
+        custom_property_source._string_property_type_ref = None
+        table = _glue_table_with_params({"EXTERNAL": "TRUE"})
+
+        assert custom_property_source.get_table_extensions(table) is None
+
+    def test_returns_none_when_table_has_no_parameters(self, custom_property_source):
+        table = _glue_table_with_params(None)
+
+        assert custom_property_source.get_table_extensions(table) is None
+
+    def test_returns_none_when_all_values_filtered_out(self, custom_property_source):
+        table = _glue_table_with_params({})
+
+        with patch.object(custom_property_source, "metadata"):
+            assert custom_property_source.get_table_extensions(table) is None
+
+
+class TestGlueAppliesToAllTableTypes:
+    """Unlike Athena, whose $properties metatable is Iceberg-only, every Glue table carries
+    Parameters, so the extension is built regardless of table type."""
+
+    @pytest.mark.parametrize(
+        "table_type",
+        [TableType.Regular, TableType.External, TableType.View, TableType.Iceberg],
+    )
+    def test_extension_built_for_every_table_type(self, custom_property_source, table_type):
+        table = _glue_table_with_params({"EXTERNAL": "TRUE"})
+        table.TableType = table_type.value
+
+        with patch.object(custom_property_source, "metadata"):
+            assert custom_property_source.get_table_extensions(table) == {"EXTERNAL": "TRUE"}
+
+
+class TestGlueCustomPropertyValues:
+    def test_non_string_value_is_coerced(self, custom_property_source):
+        """Custom properties are registered as `string`; the server validates each value against
+        that schema and rejects the whole table on a mismatch."""
+        table = _glue_table_with_params({"retention_days": 5})
+
+        with patch.object(custom_property_source, "metadata"):
+            assert custom_property_source.get_table_extensions(table) == {"retention_days": "5"}
+
+    def test_table_type_is_dropped_when_absent(self, custom_property_source):
+        table = _glue_table_with_params({"EXTERNAL": "TRUE"})
+
+        with patch.object(custom_property_source, "metadata"):
+            assert "table_type" not in custom_property_source.get_table_extensions(table)
+
+    def test_table_type_is_kept_when_present(self, custom_property_source):
+        """table_type is a genuine Glue parameter key, so it is ingested like any other."""
+        table = _glue_table_with_params({"table_type": "ICEBERG"})
+
+        with patch.object(custom_property_source, "metadata"):
+            assert custom_property_source.get_table_extensions(table) == {"table_type": "ICEBERG"}
+
+    def test_dotted_key_is_preserved_verbatim(self, custom_property_source):
+        table = _glue_table_with_params({"skip.header.line.count": "2"})
+
+        with patch.object(custom_property_source, "metadata"):
+            assert custom_property_source.get_table_extensions(table) == {"skip.header.line.count": "2"}
+
+    def test_invalid_chars_are_sanitized(self, custom_property_source):
+        table = _glue_table_with_params({"owner/team": "data-eng"})
+
+        with patch.object(custom_property_source, "metadata") as mock_metadata:
+            assert custom_property_source.get_table_extensions(table) == {
+                _disambiguated("owner__team", "owner/team"): "data-eng"
+            }
+
+        request = mock_metadata.create_or_update_custom_property.call_args_list[0].args[0]
+        assert request.createCustomPropertyRequest.displayName == "owner/team"
+
+    def test_registration_failure_drops_only_that_property(self, custom_property_source):
+        """An unregistered key in the extension fails the whole table server side, so a property
+        whose definition could not be created must not be emitted."""
+        table = _glue_table_with_params({"bad": "x", "good": "y"})
+
+        def fail_on_bad(ometa_custom_property):
+            if ometa_custom_property.createCustomPropertyRequest.displayName == "bad":
+                raise RuntimeError("boom")
+
+        with patch.object(custom_property_source, "metadata") as mock_metadata:
+            mock_metadata.create_or_update_custom_property.side_effect = fail_on_bad
+            result = custom_property_source.get_table_extensions(table)
+
+        assert result == {"good": "y"}
+        assert "Table:bad" not in custom_property_source._processed_prop
+
+    def test_shared_key_registered_once_across_tables(self, custom_property_source):
+        with patch.object(custom_property_source, "metadata") as mock_metadata:
+            table = _glue_table_with_params({"EXTERNAL": "TRUE"}, "t1")
+            custom_property_source.get_table_extensions(table)
+            table = _glue_table_with_params({"EXTERNAL": "TRUE"}, "t2")
+            custom_property_source.get_table_extensions(table)
+
+        assert mock_metadata.create_or_update_custom_property.call_count == 1
+
+    def test_leading_underscore_key_is_prefixed(self, custom_property_source):
+        """Glue parameter keys are operator-authored, so underscore-prefixed names are routine and
+        would otherwise be rejected by the server's customPropertyName pattern."""
+        table = _glue_table_with_params({"_internal_owner": "data-eng"})
+
+        with patch.object(custom_property_source, "metadata") as mock_metadata:
+            assert custom_property_source.get_table_extensions(table) == {
+                _disambiguated("p__internal_owner", "_internal_owner"): "data-eng"
+            }
+
+        request = mock_metadata.create_or_update_custom_property.call_args_list[0].args[0]
+        assert request.createCustomPropertyRequest.displayName == "_internal_owner"
+
+
+class TestGluePrepareLoadsTypeRef:
+    def test_prepare_fetches_type_ref_when_enabled(self, custom_property_source):
+        custom_property_source._string_property_type_ref = None
+
+        with patch.object(custom_property_source, "metadata") as mock_metadata:
+            custom_property_source.prepare()
+
+        assert mock_metadata.get_property_type_ref.call_count == 1
+
+    def test_prepare_skips_fetch_when_disabled(self, custom_property_source):
+        """A disabled pipeline must not call the server at all."""
+        custom_property_source.source_config.includeCustomProperties = False
+
+        with patch.object(custom_property_source, "metadata") as mock_metadata:
+            custom_property_source.prepare()
+
+        assert mock_metadata.get_property_type_ref.call_count == 0
+
+
+class TestGlueYieldTableExtension:
+    """End to end through the real fixture: the extension must reach CreateTableRequest."""
+
+    @staticmethod
+    def _requests(source):
+        # get_tables_name_and_type stashes table_data on the context as it yields, so the producer
+        # has to be consumed lazily rather than materialised first.
+        with patch.object(source, "metadata"):
+            for table_name_and_type in source.get_tables_name_and_type():
+                yield next(source.yield_table(table_name_and_type)).right
+
+    def test_extension_attached_to_create_table_request(self, custom_property_source):
+        with patch(
+            "metadata.ingestion.source.database.glue.metadata.fqn.build",
+            side_effect=mock_fqn_build,
+        ):
+            by_name = {r.name.root: r for r in self._requests(custom_property_source)}
+
+        assert by_name["cloudfront_logs"].extension.root == {
+            "EXTERNAL": "TRUE",
+            "transient_lastDdlTime": "1652441537",
+        }
+        assert by_name["cloudfront_logs2"].extension.root["skip.header.line.count"] == "2"
+
+    def test_extension_is_none_when_flag_disabled(self, custom_property_source):
+        custom_property_source.source_config.includeCustomProperties = False
+
+        with patch(
+            "metadata.ingestion.source.database.glue.metadata.fqn.build",
+            side_effect=mock_fqn_build,
+        ):
+            requests = list(self._requests(custom_property_source))
+
+        assert all(request.extension is None for request in requests)

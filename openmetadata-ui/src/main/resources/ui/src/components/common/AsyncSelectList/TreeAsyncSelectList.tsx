@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import {
+  ClassificationTag,
+  GlossaryTag,
+} from '@openmetadata/ui-core-components';
 import { Button, Empty, Form, Space, TreeSelect, TreeSelectProps } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -55,8 +58,6 @@ import {
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
-import ClassificationTag from '../atoms/Tag/ClassificationTag';
-import GlossaryTag from '../atoms/Tag/GlossaryTag';
 import { KeyDownStopPropagationWrapper } from '../KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import Loader from '../Loader/Loader';
 import './async-select-list.less';
@@ -351,7 +352,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
         EntityType.GLOSSARY_TERM;
     const TagComponent = isGlossaryTerm ? GlossaryTag : ClassificationTag;
 
-    const chip = (
+    return (
       <TagComponent
         closeButtonTestId="remove-tags"
         color={tag.style?.color}
@@ -359,6 +360,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
         icon={tag.style?.iconURL}
         label={tagLabel}
         size="sm"
+        tooltip={isDerived ? t('message.derived-tag-warning') : undefined}
         onDelete={
           isDerived
             ? undefined
@@ -368,14 +370,6 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
               }
         }
       />
-    );
-
-    return isDerived ? (
-      <Tooltip title={t('message.derived-tag-warning')}>
-        <TooltipTrigger>{chip}</TooltipTrigger>
-      </Tooltip>
-    ) : (
-      chip
     );
   };
 

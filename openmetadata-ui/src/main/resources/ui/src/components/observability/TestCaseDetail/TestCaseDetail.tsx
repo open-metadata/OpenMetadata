@@ -39,6 +39,7 @@ import {
 } from '../../../pages/IncidentManager/IncidentManagerDetailPage/IncidentManagerDetailPage.utils';
 import { useTestCaseDetailPage } from '../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCaseDetailPage';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import Fqn from '../../../utils/Fqn';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
@@ -46,7 +47,6 @@ import {
   getEntityDetailsPath,
   getServiceDetailsPath,
 } from '../../../utils/RouterUtils';
-import { stringToHTML } from '../../../utils/StringUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { BetaBadge } from '../../common/Badge/Badge.component';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -64,6 +64,7 @@ import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVers
 import { OBSERVABILITY_ROUTES } from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
+import RunTestCaseButton from './RunTestCaseButton/RunTestCaseButton';
 import './test-case-detail.less';
 import { TestCaseDetailProps } from './TestCaseDetail.types';
 
@@ -316,11 +317,11 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
           className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
           data-testid="entity-header-display-name"
           ellipsis={{
-            tooltip: breakableTooltipText(stringToHTML(displayName)),
+            tooltip: breakableTooltipText(renderHighlightedText(displayName)),
           }}
           size="text-lg"
           weight="bold">
-          {stringToHTML(displayName)}
+          {renderHighlightedText(displayName)}
         </Typography>
       )}
       <Typography
@@ -438,24 +439,27 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                 </Box>
                 <Box align="center" className="tw:shrink-0" gap={2}>
                   {!isVersionPage && (
-                    <ManageButton
-                      isRecursiveDelete
-                      afterDeleteAction={() =>
-                        navigate(
-                          observabilityRouterClassBase.getDataQualityPagePath()
-                        )
-                      }
-                      allowSoftDelete={false}
-                      canDelete={hasDeletePermission}
-                      displayName={testCase.displayName}
-                      editDisplayNamePermission={editDisplayNamePermission}
-                      entityFQN={testCase.fullyQualifiedName}
-                      entityId={testCase.id}
-                      entityName={testCase.name}
-                      entityType={EntityType.TEST_CASE}
-                      extraDropdownContent={extraDropdownContent}
-                      onEditDisplayName={handleDisplayNameChange}
-                    />
+                    <>
+                      <RunTestCaseButton testCase={testCase} />
+                      <ManageButton
+                        isRecursiveDelete
+                        afterDeleteAction={() =>
+                          navigate(
+                            observabilityRouterClassBase.getDataQualityPagePath()
+                          )
+                        }
+                        allowSoftDelete={false}
+                        canDelete={hasDeletePermission}
+                        displayName={testCase.displayName}
+                        editDisplayNamePermission={editDisplayNamePermission}
+                        entityFQN={testCase.fullyQualifiedName}
+                        entityId={testCase.id}
+                        entityName={testCase.name}
+                        entityType={EntityType.TEST_CASE}
+                        extraDropdownContent={extraDropdownContent}
+                        onEditDisplayName={handleDisplayNameChange}
+                      />
+                    </>
                   )}
                 </Box>
               </Box>

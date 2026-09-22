@@ -546,13 +546,13 @@ public class SearchRepository {
     try {
       EntityLifecycleEventDispatcher dispatcher = EntityLifecycleEventDispatcher.getInstance();
       SearchIndexHandler searchHandler = new SearchIndexHandler(this);
-      // Drop any stale handler bound to a previous SearchRepository instance. Test suites and
+      // Displace any stale handler bound to a previous SearchRepository instance. Test suites and
       // app bootstrap construct SearchRepository more than once and replace the singleton via
       // Entity.setSearchRepository(...); without this the dispatcher keeps delivering events to
       // the first instance and state maintained on the current instance (e.g. activeStagedIndices
-      // used for reindex write-routing) is never consulted.
-      dispatcher.unregisterHandler(searchHandler.getHandlerName());
-      dispatcher.registerHandler(searchHandler);
+      // used for reindex write-routing) is never consulted. Replace rather than unregister then
+      // register, so no concurrent entity write can slip through an unhandled window.
+      dispatcher.replaceHandler(searchHandler);
       LOG.info("Successfully registered SearchIndexHandler for entity lifecycle events");
     } catch (Exception e) {
       LOG.error("Failed to register SearchIndexHandler", e);
@@ -857,7 +857,8 @@ public class SearchRepository {
                               entry.getValue().indexPattern(), entry.getValue().mappingContent()),
                       (left, right) -> left,
                       TreeMap::new));
-      Map<String, String> liveFingerprints = searchClient.getIndexTemplateFingerprints("om_*");
+      Map<String, String> liveFingerprints =
+          searchClient.getIndexTemplateFingerprints(indexTemplateNamePattern());
       return expectedFingerprints.entrySet().stream()
           .allMatch(
               expected ->
@@ -868,6 +869,18 @@ public class SearchRepository {
           exception.getMessage());
       return false;
     }
+  }
+
+  /**
+   * Template-name wildcard for this deployment only. Template names are {@code om_} + the
+   * cluster-alias-prefixed index name, so a bare {@code om_*} reads every co-tenant's templates on
+   * a shared cluster — visible to a search role that is otherwise confined to its own prefix,
+   * because index-template actions cannot be pattern-scoped by the security plugin.
+   */
+  private String indexTemplateNamePattern() {
+    return nullOrEmpty(clusterAlias)
+        ? "om_*"
+        : "om_" + clusterAlias + IndexMapping.INDEX_NAME_SEPARATOR + "*";
   }
 
   public void createOrUpdateIndexTemplate(String entityType) throws IOException {
@@ -953,7 +966,33 @@ public class SearchRepository {
     if (!(vectorIndexService instanceof OpenSearchVectorService)) {
       return;
     }
+    double[] weights = resolveHybridWeights();
+    updateHybridSearchPipeline(weights[0], weights[1]);
+  }
 
+  /**
+   * The RRF pipeline body for the effective hybrid weights, ready to inline into a search
+   * request's {@code search_pipeline} field. Empty unless semantic search is on and the backend is
+   * OpenSearch.
+   *
+   * <p>Resolved per call rather than baked into a stored pipeline: the weights live in search
+   * settings, so inlining is what makes an admin's weight change take effect on the next query
+   * instead of waiting for a reindex to re-PUT a cluster-global object that a prefix-scoped search
+   * role is not allowed to write anyway.
+   */
+  public Optional<String> getHybridRrfPipelineDefinition() {
+    if (!isVectorEmbeddingEnabled()
+        || !vectorServiceInitialized
+        || !(vectorIndexService instanceof OpenSearchVectorService)) {
+      return Optional.empty();
+    }
+    double[] weights = resolveHybridWeights();
+    return Optional.of(
+        OpenSearchVectorService.buildHybridRrfPipelineDefinition(weights[0], weights[1]));
+  }
+
+  /** Effective {keyword, semantic} weights: search settings when present, else config defaults. */
+  private double[] resolveHybridWeights() {
     ElasticSearchConfiguration cfg = getSearchConfiguration();
     NaturalLanguageSearchConfiguration nlConfig = cfg.getNaturalLanguageSearch();
     double keywordWeight = nlConfig.getKeywordWeight() != null ? nlConfig.getKeywordWeight() : 0.6;
@@ -974,8 +1013,7 @@ public class SearchRepository {
     } catch (Exception e) {
       LOG.warn("Failed to load hybrid weights from Settings, using config defaults", e);
     }
-
-    updateHybridSearchPipeline(keywordWeight, semanticWeight);
+    return new double[] {keywordWeight, semanticWeight};
   }
 
   public void updateHybridSearchPipeline(double keywordWeight, double semanticWeight) {

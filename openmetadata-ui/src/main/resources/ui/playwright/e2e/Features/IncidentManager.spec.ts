@@ -38,6 +38,7 @@ import { makeRetryRequest } from '../../utils/serviceIngestion';
 import { sidebarClick } from '../../utils/sidebar';
 import { waitForTaskResolveResponse } from '../../utils/task';
 import { verifyTestCaseLastRunBanner } from '../../utils/testCases';
+import { clickAndWaitFor } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 let user1: UserClass;
@@ -1019,6 +1020,74 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await expect(
       page.locator(`[data-testid="lineage-node-${nodeFqn}"]`)
     ).toBeVisible();
+  });
+
+  /**
+   * Delete a comment from an incident's task tab
+   * @description #33112 was reported on the Incident Manager page, but the rest of
+   * the task-comment coverage exercises the activity-feed drawer only. This runs
+   * the same post-then-delete flow through TestCaseIncidentTab, which renders the
+   * task tab (and so CommentCard) rather than the drawer.
+   */
+  test('Delete a task comment from the incident task tab', async ({ page }) => {
+    const testCase = table1.testCasesResponseData[0];
+    const testCaseName = testCase?.['name'] as string;
+
+    await visitProfilerTab(page, table1);
+    await waitForAllLoadersToDisappear(page);
+
+    await page.getByTestId(testCaseName).getByText(testCaseName).click();
+    await expect(page.getByTestId('entity-page-header')).toBeVisible();
+
+    await openIncidentTaskTab(page, true);
+
+    const taskTab = page.getByTestId('task-tab');
+    await expect(taskTab).toBeVisible();
+
+    // Post a comment to delete. Unique per run so the card can be matched by
+    // text rather than by position.
+    const message = `Incident tab comment ${Date.now()}`;
+    // The input is a trigger that opens the editor - it cannot be filled.
+    const commentInput = taskTab.getByTestId('comments-input-field');
+    await expect(commentInput).toBeVisible();
+    await commentInput.click();
+
+    const editor = taskTab.locator('[data-testid="editor-wrapper"] .ql-editor');
+    await expect(editor).toBeVisible({ timeout: 15_000 });
+    await editor.click();
+    await editor.type(message);
+
+    // Anchored so it cannot match the tab's own GET of the task with its comments.
+    const postResponse = await clickAndWaitFor(
+      page,
+      taskTab.getByTestId('send-button'),
+      /\/api\/v1\/tasks\/[^/]+\/comments$/
+    );
+    const postedTask = await postResponse.json();
+    const comments = postedTask.comments ?? [];
+    const commentId = comments[comments.length - 1]?.id as string;
+
+    const card = taskTab
+      .locator('[data-testid="feed-reply-card"]')
+      .filter({ hasText: message });
+    await expect(card).toBeVisible();
+
+    // The affordance is revealed on hover but stays mounted, so it is present
+    // for the keyboard too - hovering here mirrors what a mouse user does.
+    await card.hover();
+
+    await card.getByTestId('delete-message').click();
+    await clickAndWaitFor(
+      page,
+      page.getByTestId('save-button'),
+      new RegExp(`/comments/${commentId}$`)
+    );
+
+    await expect(
+      taskTab
+        .locator('[data-testid="feed-reply-card"]')
+        .filter({ hasText: message })
+    ).toHaveCount(0);
   });
 
   /**

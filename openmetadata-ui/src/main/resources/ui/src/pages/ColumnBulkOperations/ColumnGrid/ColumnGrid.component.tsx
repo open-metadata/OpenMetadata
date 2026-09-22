@@ -17,9 +17,11 @@ import {
   ButtonUtility,
   Card,
   EmptyPlaceholder,
+  GlossaryTag,
   Input,
   Table,
   Toggle,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -52,14 +54,13 @@ import { ReactComponent as PendingChangesIcon } from '../../../assets/svg/ic_pen
 import { ReactComponent as UniqueColumnsIcon } from '../../../assets/svg/ic_unique-column.svg';
 import AsyncSelectList from '../../../components/common/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSelectList.interface';
-import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
-import { useFormDrawerWithRef } from '../../../components/common/atoms/drawer';
+import { useFormDrawerWithRef } from '../../../components/common/atoms/drawer/useFormDrawer';
 import { useFilterSelection } from '../../../components/common/atoms/filters/useFilterSelection';
 import {
   CellRenderer,
   ColumnConfig,
 } from '../../../components/common/atoms/shared/types';
-import GlossaryTag from '../../../components/common/atoms/Tag/GlossaryTag';
+import GlossaryTermPicker from '../../../components/common/GlossaryTermPicker/GlossaryTermPicker';
 import Loader from '../../../components/common/Loader/Loader';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
@@ -235,12 +236,11 @@ const ColumnGridTruncatingTagBadges: React.FC<
         const fullLabel = tag.name || tag.tagFQN.split('.').pop() || '';
 
         return (
-          <div
-            className="tw:min-w-0 tw:flex-1 tw:basis-0 tw:overflow-hidden"
-            key={tag.tagFQN}
-            title={fullLabel}>
-            {renderBadge(tag, index)}
-          </div>
+          <Tooltip key={tag.tagFQN} title={fullLabel}>
+            <div className="tw:min-w-0 tw:flex-1 tw:basis-0 tw:overflow-hidden">
+              {renderBadge(tag, index)}
+            </div>
+          </Tooltip>
         );
       })}
       {remaining > 0 && <Typography as="span">+{remaining}</Typography>}
@@ -358,21 +358,9 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
         };
       });
 
-    const glossaryTermOptions: SelectOption[] = currentTags
-      .filter((tag: TagLabel) => tag.source === TagSource.Glossary)
-      .map((tag: TagLabel) => {
-        const displayLabel = getTagDisplayLabel(tag);
-
-        return {
-          label: displayLabel,
-          value: tag.tagFQN ?? '',
-          data: {
-            ...tag,
-            displayName: tag.displayName || displayLabel,
-            name: tag.name || displayLabel,
-          },
-        };
-      });
+    const glossaryTermValue: TagLabel[] = currentTags.filter(
+      (tag: TagLabel) => tag.source === TagSource.Glossary
+    );
 
     return (
       <div
@@ -504,37 +492,17 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
             className="tw:text-sm tw:font-semibold tw:text-secondary">
             {t('label.glossary-term-plural')}
           </Typography>
-          <TreeAsyncSelectList
-            hasNoActionButtons
-            getPopupContainer={(triggerNode) => triggerNode.parentElement}
-            initialOptions={glossaryTermOptions}
+          <GlossaryTermPicker
+            data-testid="glossary-terms-picker"
             key={`glossaryTerms-${drawerKey}`}
-            open={false}
             placeholder={t('label.select-tags')}
+            value={glossaryTermValue}
             onChange={(selectedTerms) => {
-              const options = (
-                Array.isArray(selectedTerms) ? selectedTerms : [selectedTerms]
-              ) as SelectOption[];
-              const newTerms: TagLabel[] = options
-                .filter((option: SelectOption) => option.data)
-                .map((option: SelectOption) => {
-                  const termData = option.data as {
-                    fullyQualifiedName?: string;
-                    name?: string;
-                    displayName?: string;
-                    description?: string;
-                  };
-
-                  return {
-                    tagFQN: termData.fullyQualifiedName ?? option.value,
-                    source: TagSource.Glossary,
-                    labelType: LabelType.Manual,
-                    state: State.Confirmed,
-                    name: termData.name,
-                    displayName: termData.displayName,
-                    description: termData.description,
-                  };
-                });
+              const newTerms: TagLabel[] = selectedTerms.map((term) => ({
+                ...term,
+                labelType: term.labelType ?? LabelType.Manual,
+                state: term.state ?? State.Confirmed,
+              }));
               selectedRowsData.forEach((selectedRow) => {
                 const rowId = selectedRow.id;
                 const foundRow = allRows.find(

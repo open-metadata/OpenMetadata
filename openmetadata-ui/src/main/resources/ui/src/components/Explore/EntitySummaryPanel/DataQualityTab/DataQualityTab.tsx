@@ -42,10 +42,9 @@ import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getTableFQNFromColumnFQN } from '../../../../utils/FqnUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
-import { toOwnerRefs } from '../../../../utils/Owner/ownerConversionUtils';
 import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import DataQualitySection from '../../../common/DataQualitySection';
+import DataQualitySection from '../../../common/DataQualitySection/DataQualitySection';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../../common/Loader/Loader';
 import '../../../common/OverviewSection/OverviewSection.less';
@@ -162,7 +161,7 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
           value: (
             <div className="assignee-info">
               <Owner
-                owners={toOwnerRefs(assignee ? [assignee] : [])}
+                owners={assignee ? [assignee] : []}
                 placeHolder={t('label.no-entity', {
                   entity: t('label.assignee'),
                 })}

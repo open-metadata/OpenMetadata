@@ -1,0 +1,18 @@
+{
+  "$id": "https://open-metadata.org/schema/api/rdf/agentSparqlQuery.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AgentSparqlQuery",
+  "description": "Permissioned read-only SPARQL SELECT request for agent tools. The server selects the dataset, inference policy, and protective limits; only the query text is caller-controlled.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.rdf.AgentSparqlQuery",
+  "properties": {
+    "query": {
+      "description": "SPARQL SELECT query. Explicit LIMIT and OFFSET are honored within server maxima. FROM, FROM NAMED, GRAPH, and SERVICE are rejected.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100000
+    }
+  },
+  "required": ["query"],
+  "additionalProperties": false
+}

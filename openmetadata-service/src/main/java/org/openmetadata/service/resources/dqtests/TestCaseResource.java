@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.dqtests;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.Include.ALL;
@@ -48,6 +49,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.BundleSuiteBulkAddRequest;
 import org.openmetadata.schema.api.tests.BundleSuiteBulkAddRequestBulkAll;
 import org.openmetadata.schema.api.tests.BundleSuiteBulkAddRequestBulkByIds;
+import org.openmetadata.schema.api.tests.BundleSuiteBulkRemoveRequest;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.entity.teams.User;
@@ -106,8 +108,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   private final TestCaseResultMapper testCaseResultMapper = new TestCaseResultMapper();
   static final String FIELDS =
       "owners,reviewers,entityStatus,testSuite,testDefinition,testSuites,incidentId,incidentStatus,domains,tags,followers,dataProducts";
+  // dataQualityDimension stays excluded for documents indexed before the rename: they hold it as a
+  // string, which fails to deserialize into the EntityReference until testCase is reindexed.
   static final String SEARCH_FIELDS_EXCLUDE =
-      "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension,testCaseType,originEntityFQN,followers";
+      "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension,dataQualityDimensionName,testCaseType,originEntityFQN,followers";
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {
@@ -998,7 +1002,64 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     TestSuite testSuite =
         Entity.getEntity(Entity.TEST_SUITE, testSuiteId, "domains,owners", null, false);
 
-    ResourceContextInterface testCaseRC = TestCaseResourceContext.builder().id(id).build();
+    authorizeLogicalTestCaseDeletion(securityContext, testSuite, List.of(id));
+
+    DeleteResponse<TestCase> response =
+        repository.deleteTestCaseFromLogicalTestSuite(testSuiteId, id);
+    return response.toResponse();
+  }
+
+  @POST
+  @Path("/logicalTestCases/bulk/remove")
+  @Operation(
+      operationId = "removeManyTestCasesFromBundleTestSuite",
+      summary = "Remove test cases from a logical test suite",
+      description =
+          "Remove a list of test cases from a logical test suite. Ids the suite does not contain "
+              + "are ignored.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully removed the test cases from the logical test suite.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestSuite.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Test suite for instance {testSuiteId} is not found")
+      })
+  public Response removeManyTestCasesFromBundleTestSuite(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid BundleSuiteBulkRemoveRequest bundleSuiteBulkRemoveRequest) {
+
+    TestSuite testSuite =
+        Entity.getEntity(
+            Entity.TEST_SUITE,
+            bundleSuiteBulkRemoveRequest.getTestSuiteId(),
+            "domains,owners",
+            null,
+            false);
+
+    // Ids the suite does not contain are ignored rather than rejected, so authorization is scoped
+    // to the memberships that are really going to be removed. Authorizing every requested id would
+    // let one id that is absent, already removed, or simply not readable by the caller fail the
+    // whole request for callers who rely on per test case delete permission.
+    List<UUID> testCaseIds =
+        repository.getLogicalTestSuiteMemberIds(
+            testSuite.getId(), listOrEmpty(bundleSuiteBulkRemoveRequest.getTestCaseIds()));
+    authorizeLogicalTestCaseDeletion(securityContext, testSuite, testCaseIds);
+
+    if (testCaseIds.isEmpty()) {
+      return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, ENTITY_NO_CHANGE)
+          .toResponse();
+    }
+    return repository.deleteTestCasesFromLogicalTestSuite(testSuite, testCaseIds).toResponse();
+  }
+
+  private void authorizeLogicalTestCaseDeletion(
+      SecurityContext securityContext, TestSuite testSuite, List<UUID> testCaseIds) {
     OperationContext testCaseDeleteOpContext =
         new OperationContext(Entity.TEST_CASE, MetadataOperation.DELETE);
 
@@ -1006,16 +1067,25 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         TestCaseResourceContext.builder().entity(testSuite).build();
     OperationContext testSuiteEditAllOpContext =
         new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_ALL);
+    AuthRequest testSuiteEditAllRequest = new AuthRequest(testSuiteEditAllOpContext, testSuiteRC);
 
-    List<AuthRequest> requests =
-        List.of(
-            new AuthRequest(testCaseDeleteOpContext, testCaseRC),
-            new AuthRequest(testSuiteEditAllOpContext, testSuiteRC));
-    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
+    if (testCaseIds.isEmpty()) {
+      authorizer.authorizeRequests(
+          securityContext, List.of(testSuiteEditAllRequest), AuthorizationLogic.ANY);
+      return;
+    }
 
-    DeleteResponse<TestCase> response =
-        repository.deleteTestCaseFromLogicalTestSuite(testSuiteId, id);
-    return response.toResponse();
+    // Each test case is checked on its own: the caller either can delete that test case or can
+    // edit the suite it is being removed from
+    for (UUID testCaseId : testCaseIds) {
+      List<AuthRequest> requests =
+          List.of(
+              testSuiteEditAllRequest,
+              new AuthRequest(
+                  testCaseDeleteOpContext,
+                  TestCaseResourceContext.builder().id(testCaseId).build()));
+      authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
+    }
   }
 
   @PUT
