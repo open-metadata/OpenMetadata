@@ -39,14 +39,13 @@ import java.util.List;
 import java.util.function.Predicate;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.tests.MetricMigrationSqlFixture.MigrationScripts;
 import org.openmetadata.it.tests.MetricMigrationTestSupport.IndexExpectation;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
-@Execution(ExecutionMode.CONCURRENT)
+@Isolated("executes the shipped 2.1.0 migration scripts against the shared database")
 class MetricMigrationIT {
 
   /**
