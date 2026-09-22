@@ -1585,7 +1585,7 @@ export const createAnnouncement = async (
 
   await page.getByTestId('add-announcement').click();
 
-  await expect(page.getByTestId('add-announcement')).toContainText(
+  await expect(page.getByTestId('add-announcement-dialog')).toContainText(
     'Make an announcement'
   );
 
@@ -1750,21 +1750,24 @@ export const editAnnouncement = async (
   }).toPass({ timeout: 30000 });
 
   // Wait for the edit announcement modal to open
-  await expect(page.locator('.ant-modal-header')).toContainText(
+  await expect(page.getByTestId('edit-announcement-dialog')).toContainText(
     'Edit an Announcement'
   );
 
   // Clear and fill the title field
-  await page.fill('[data-testid="edit-announcement"] #title', '');
-  await page.fill('[data-testid="edit-announcement"] #title', data.title);
+  await page.fill('[data-testid="edit-announcement-dialog"] #title', '');
+  await page.fill(
+    '[data-testid="edit-announcement-dialog"] #title',
+    data.title
+  );
 
   // Clear and fill the description field
   await page
-    .locator('[data-testid="edit-announcement"]')
+    .locator('[data-testid="edit-announcement-dialog"]')
     .locator(descriptionBox)
     .fill('');
   await page
-    .locator('[data-testid="edit-announcement"]')
+    .locator('[data-testid="edit-announcement-dialog"]')
     .locator(descriptionBox)
     .fill(data.description);
 
@@ -1775,15 +1778,14 @@ export const editAnnouncement = async (
       response.request().method() === 'PATCH'
   );
   await page
-    .locator(
-      '[data-testid="edit-announcement"] .ant-modal-footer .ant-btn-primary'
-    )
+    .getByTestId('edit-announcement-dialog')
+    .getByTestId('announcement-submit')
     .click();
   await updateResponse;
 
   // Wait for modal to close
   await expect(
-    page.locator('[data-testid="edit-announcement"]')
+    page.locator('[data-testid="edit-announcement-dialog"]')
   ).not.toBeVisible();
 
   // Verify the changes were applied within the drawer
@@ -1817,7 +1819,7 @@ export const createInactiveAnnouncement = async (
 
   await page.getByTestId('add-announcement').click();
 
-  await expect(page.locator('.ant-modal-header')).toContainText(
+  await expect(page.getByTestId('add-announcement-dialog')).toContainText(
     'Make an announcement'
   );
 

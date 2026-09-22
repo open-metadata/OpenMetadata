@@ -65,7 +65,7 @@ const Harness = ({
       open
       form={form}
       submitLabel="label.submit"
-      testId="add-announcement"
+      testId="add-announcement-dialog"
       title="message.make-an-announcement"
       onCancel={jest.fn()}
       onSubmit={onSubmit}
