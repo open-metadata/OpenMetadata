@@ -120,6 +120,9 @@ export const unmockDeleteApi = async (
  */
 export const openDeleteModal = async (page: Page) => {
   await page.click('[data-testid="manage-button"]');
+  await page
+    .locator('[data-testid="delete-button"]')
+    .waitFor({ state: 'visible' });
   await page.click('[data-testid="delete-button"]');
 
   await expect(page.locator('[role="dialog"]')).toBeVisible();
