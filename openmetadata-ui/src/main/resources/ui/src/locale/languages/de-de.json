@@ -4869,6 +4869,7 @@
     "test-case-insight-description": "Zugriff auf eine zentrale Ansicht der Gesundheit Ihres Datensatzes basierend auf konfigurierten Testvalidierungen.",
     "test-case-name-validation": "Der Name darf keine doppelten Doppelpunkte (::), Anführungszeichen (\") oder Größer-als-Symbole (>) enthalten.",
     "test-case-not-run-yet": "Dieser Test wurde noch nicht ausgeführt. Fügen Sie ihn einer Pipeline hinzu, um Ergebnisse zu erfassen.",
+    "test-case-run-already-in-progress": "Eine Ausführung der Suite-Pipeline dieses Testfalls läuft bereits. Eine erneute Ausführung startet eine weitere.",
     "test-case-run-queued": "Ausführung in Warteschlange — wartet auf den Start der Ingestion-Pipeline.",
     "test-case-schedule-description": "Die Datenqualitätstests können mit der gewünschten Häufigkeit geplant werden. Die Zeitzone ist UTC.",
     "test-case-status-sub-header": "Visualisieren Sie die Gesundheit Ihrer Datenvalidierungstests mit einer Aufschlüsselung von erfolgreichen, fehlgeschlagenen und abgebrochenen Fällen.",

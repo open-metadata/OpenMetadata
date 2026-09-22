@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Query Parser Config",
   "description": "Configuration for SQL query parser selection for lineage and usage extraction.",
   "type": "object",
