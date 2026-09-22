@@ -21,7 +21,7 @@ import { getOwnerRenderer } from '../../application/owner/owner-renderer';
 import { OwnerOverflowPopoverContent } from '../../application/owner/owner-overflow-popover-content';
 import type { AvatarSize, OwnerEntityReference } from '../../../types';
 import { TooltipTrigger } from '../tooltip/tooltip';
-import { getAvatarColorTokens, getFirstAlphanumeric } from './utils';
+import { getFirstAlphanumeric } from './utils';
 import type { AvatarProps } from './avatar';
 import { Avatar } from './avatar';
 
@@ -82,30 +82,20 @@ export const AvatarGroup = ({
         ? rawDisplayName
         : owner.name ?? owner.id;
     const isTeam = owner.type === 'team';
-    const colorTokens = !isTeam ? getAvatarColorTokens(nameStr) : undefined;
     const TeamIcon = owner.icon;
 
+    // Users get an auto theme-adapting color from their name (Avatar's default
+    // `colorVariant`); teams keep a neutral gray surface.
     const avatar = (
       <Avatar
         alt={nameStr}
-        className={isTeam ? 'tw:opacity-60' : undefined}
+        className={isTeam ? 'tw:bg-utility-gray-200 tw:opacity-60' : undefined}
         contrastBorder={!isTeam}
         initials={
           !isTeam ? getFirstAlphanumeric(nameStr).toUpperCase() : undefined
         }
         placeholderIcon={isTeam ? TeamIcon ?? TeamsIcon : undefined}
         size={resolvedSize}
-        style={
-          isTeam
-            ? {
-                backgroundColor: 'var(--tw-color-utility-gray-200)',
-              }
-            : {
-                backgroundColor: colorTokens!.background,
-                color: colorTokens!.textColor,
-                outlineColor: colorTokens!.border,
-              }
-        }
       />
     );
 
@@ -157,6 +147,7 @@ export const AvatarGroup = ({
             <Avatar
               contrastBorder
               className="tw:bg-secondary tw:text-secondary"
+              colorVariant="neutral"
               initials={`+${overflowCount}`}
               size={resolvedSize}
             />

@@ -38,6 +38,7 @@ import {
 } from '../../utils/KnowledgeGraph.utils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
+import CustomNode from './GraphElements/CustomNode';
 import { ZOOM_IN_FACTOR, ZOOM_OUT_FACTOR } from './KnowledgeGraph.constants';
 import {
   KnowledgeGraphDrawer,
@@ -201,6 +202,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     new URLSearchParams(location.search).get(FULLSCREEN_QUERY_PARAM_KEY) ===
     'true';
   const canvas = useKnowledgeGraphCanvas({
+    NodeComponent: CustomNode,
     data: presented.data,
     unfiltered: presented.unfiltered,
     mode,
@@ -453,6 +455,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                   aria-busy={result.loading}
                   aria-label={t('label.knowledge-graph')}
                   className="knowledge-graph-canvas"
+                  data-graph-origin={canvas.viewportOrigin}
                   data-ready={canvas.ready}
                   data-testid="knowledge-graph-canvas"
                   ref={canvas.containerRef}

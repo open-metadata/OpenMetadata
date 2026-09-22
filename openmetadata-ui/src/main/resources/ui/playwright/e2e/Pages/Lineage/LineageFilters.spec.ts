@@ -39,6 +39,7 @@ import {
   connectEdgeBetweenNodesViaAPI,
   fitToScreen,
   openImpactAnalysisTab,
+  performZoomOut,
   rearrangeNodes,
   setLineageDepthAndVerify,
   visitLineageTab,
@@ -124,7 +125,7 @@ const getSearchIndexForEntity = (entity: EntityClassUnion) => {
   return searchIndex;
 };
 
-test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
+test.describe('Lineage Filters', () => {
   const lineageEntity = new TableClass();
   const entities = Object.values(allEntities).map(
     (EntityClass) => new EntityClass()
@@ -132,12 +133,22 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
   const [depth1Entity, ...depth2ndEntities] = entities;
 
   test.beforeAll(async ({ browser }) => {
+    // Explicit hook budget: 15 sequential entity creations (each also creating
+    // its own service), then 15 lineage edges, then the index polling — well
+    // past the 60s default. Do NOT use test.slow() here; an explicit number
+    // keeps a failing attempt from grinding, per ExplorePageRightPanel.
+    test.setTimeout(240_000);
+
     const { apiContext, afterAction } = await getDefaultAdminAPIContext(
       browser
     );
 
     await lineageEntity.create(apiContext);
-    await Promise.all(entities.map((entity) => entity.create(apiContext)));
+    // Sequential: 15 entities each also create their own service, and firing
+    // them in parallel makes the server reset connections (socket hang up).
+    for (const entity of entities) {
+      await entity.create(apiContext);
+    }
 
     await connectEdgeBetweenNodesViaAPI(
       apiContext,
@@ -370,7 +381,11 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
 
           await page
             .getByTestId('drop-down-menu')
-            .getByLabel(filterValue)
+            .getByTestId('loader')
+            .waitFor({ state: 'hidden' });
+          await page
+            .getByTestId('drop-down-menu')
+            .getByText(filterValue)
             .click();
 
           const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
@@ -417,7 +432,7 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
             .waitFor({ state: 'hidden' });
           await page
             .getByTestId('drop-down-menu')
-            .getByLabel(filterValue)
+            .getByText(filterValue)
             .click();
 
           const lineageRes = page.waitForResponse(
@@ -478,6 +493,8 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
   });
 
   test('Verify Impact Analysis service filter selection', async ({ page }) => {
+    test.slow();
+
     await openImpactAnalysisTab(page);
     await page.locator('[aria-label="Filters"]').click();
 
@@ -531,12 +548,9 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
         await searchResponse;
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(serviceName)
+          .getByText(serviceName)
           .waitFor();
-        await page
-          .getByTestId('drop-down-menu')
-          .getByTestId(serviceName)
-          .click();
+        await page.getByTestId('drop-down-menu').getByText(serviceName).click();
 
         const entitiesToShow = [entity];
 
@@ -635,12 +649,9 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
         await searchResponse;
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(serviceName)
+          .getByText(serviceName)
           .waitFor();
-        await page
-          .getByTestId('drop-down-menu')
-          .getByTestId(serviceName)
-          .click();
+        await page.getByTestId('drop-down-menu').getByText(serviceName).click();
 
         const entitiesToShow = [lineageEntity, depth1Entity, entity];
 
@@ -686,6 +697,8 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
   test('Verify Impact Analysis service type filter selection', async ({
     page,
   }) => {
+    test.slow();
+
     await openImpactAnalysisTab(page);
     await page.locator('[aria-label="Filters"]').click();
 
@@ -714,12 +727,9 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
         await searchResponse;
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(serviceType)
+          .getByText(serviceType)
           .waitFor();
-        await page
-          .getByTestId('drop-down-menu')
-          .getByTestId(serviceType)
-          .click();
+        await page.getByTestId('drop-down-menu').getByText(serviceType).click();
 
         const entitiesToShow = [entity];
 
@@ -794,12 +804,9 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
         await searchResponse;
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(serviceType)
+          .getByText(serviceType)
           .waitFor();
-        await page
-          .getByTestId('drop-down-menu')
-          .getByTestId(serviceType)
-          .click();
+        await page.getByTestId('drop-down-menu').getByText(serviceType).click();
 
         const entitiesToShow = [lineageEntity, depth1Entity, entity];
 
@@ -906,7 +913,11 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
         'entityResponseData.database.name',
         ''
       );
-      await page.getByTestId('drop-down-menu').getByLabel(databaseName).click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByTestId('loader')
+        .waitFor({ state: 'hidden' });
+      await page.getByTestId('drop-down-menu').getByText(databaseName).click();
 
       const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
       await page.getByTestId('update-btn').click();
@@ -953,7 +964,11 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
       );
       await page
         .getByTestId('drop-down-menu')
-        .getByLabel(databaseSchemaName)
+        .getByTestId('loader')
+        .waitFor({ state: 'hidden' });
+      await page
+        .getByTestId('drop-down-menu')
+        .getByText(databaseSchemaName)
         .click();
 
       const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
@@ -999,7 +1014,11 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
         'entityResponseData.columns[0].name',
         ''
       );
-      await page.getByTestId('drop-down-menu').getByLabel(columnName).click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByTestId('loader')
+        .waitFor({ state: 'hidden' });
+      await page.getByTestId('drop-down-menu').getByText(columnName).click();
 
       const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
       await page.getByTestId('update-btn').click();
@@ -1038,6 +1057,9 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
     const searchSelect = page.getByTestId('lineage-search');
     await expect(searchSelect).toBeVisible();
     const topicEntity = entities[1];
+    const topicFqn = get(topicEntity, 'entityResponseData.fullyQualifiedName');
+    await performZoomOut(page);
+    await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
 
     await searchSelect.click();
     await page
@@ -1045,8 +1067,6 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
       .getByRole('combobox')
       .fill(topicEntity.entity.name);
 
-    const topicFqn = get(topicEntity, 'entityResponseData.fullyQualifiedName');
-    await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
     await page.getByTestId(`option-${topicFqn}`).click();
 
     await page.locator('.lineage-entity-panel').waitFor();

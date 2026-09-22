@@ -12,7 +12,10 @@
  */
 import type { Meta, StoryObj } from '@storybook/react';
 import React, { useState } from 'react';
-import { GlossaryTerm } from '../icons';
+import { Edit, GlossaryTerm } from '../icons';
+import { ButtonUtility } from '../components/base/buttons/button-utility';
+import { Card } from '../components/base/card/card';
+import { GlossaryTag } from '../components/application/tag/glossary-tag';
 import { FilterSelect } from '../components/application/filter-select/filter-select';
 import type {
   TreeSelectDataResponse,
@@ -111,12 +114,63 @@ const GLOSSARY_TERMS: Record<string, TreeSelectNode[]> = {
 
 const GLOSSARY_ROOTS = ['Finance', 'Customer', 'PII'];
 
+const childrenOf = (id: string) => GLOSSARY_TERMS[id] ?? [];
+
+// Keeps any node that matches, plus the ancestors needed to reach it.
+const filterSubtree = (
+  nodes: TreeSelectNode[],
+  query: string
+): TreeSelectNode[] =>
+  nodes.reduce<TreeSelectNode[]>((matches, node) => {
+    const children = filterSubtree(childrenOf(node.id), query);
+    const selfMatches = node.label.toLowerCase().includes(query);
+
+    if (selfMatches || children.length > 0) {
+      matches.push({
+        ...node,
+        children,
+        isLeaf: children.length === 0,
+        lazyLoad: false,
+      });
+    }
+
+    return matches;
+  }, []);
+
 const fetchGlossaryTerms = async ({
   parentId,
+  searchTerm,
 }: {
   parentId?: string;
+  searchTerm?: string;
 }): Promise<TreeSelectDataResponse> => {
   await wait(300);
+
+  // Mirrors the server: a search returns each glossary with its terms nested.
+  if (searchTerm) {
+    const query = searchTerm.toLowerCase();
+
+    return {
+      nodes: GLOSSARY_ROOTS.reduce<TreeSelectNode[]>((roots, name) => {
+        const children = filterSubtree(childrenOf(name), query);
+
+        if (children.length > 0) {
+          roots.push({
+            id: name,
+            label: name,
+            value: name,
+            allowSelection: false,
+            children,
+            icon: <GlossaryIcon />,
+            isLeaf: false,
+            lazyLoad: false,
+          });
+        }
+
+        return roots;
+      }, []),
+    };
+  }
 
   if (parentId) {
     return { nodes: GLOSSARY_TERMS[parentId] ?? [] };
@@ -170,6 +224,65 @@ export const GlossaryTermFilter: StoryObj = {
           value={value}
           onChange={(next) => setValue(Array.isArray(next) ? next : [])}
         />
+      </div>
+    );
+  },
+};
+
+// The entity-widget shape: edit icon as trigger, terms visible, one PATCH on Apply.
+export const WidgetEditPopover: StoryObj = {
+  render: () => {
+    const [terms, setTerms] = useState<TreeSelectNode[]>([]);
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+      <div style={{ width: 400 }}>
+        <Card size="sm">
+          <Card.Header
+            className="tw:border-0 tw:p-4"
+            extra={
+              <FilterSelect.Tree
+                multiple
+                searchable
+                showSelectAll
+                commitMode="staged"
+                fetchData={fetchGlossaryTerms}
+                isOpen={isOpen}
+                label="Glossary Term"
+                renderTrigger={({ toggle }) => (
+                  <ButtonUtility
+                    color="tertiary"
+                    icon={Edit}
+                    size="xs"
+                    tooltip="Edit Glossary Terms"
+                    onClick={toggle}
+                  />
+                )}
+                value={terms}
+                onChange={(next) => setTerms(Array.isArray(next) ? next : [])}
+                onOpenChange={setIsOpen}
+              />
+            }
+            title="Glossary Term"
+          />
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 8,
+              padding: '0 16px 16px',
+            }}>
+            {terms.length > 0 ? (
+              terms.map((term) => (
+                <GlossaryTag key={term.id} label={term.label} size="sm" />
+              ))
+            ) : (
+              <span style={{ color: '#667085', fontSize: 13 }}>
+                No Glossary Terms
+              </span>
+            )}
+          </div>
+        </Card>
       </div>
     );
   },
