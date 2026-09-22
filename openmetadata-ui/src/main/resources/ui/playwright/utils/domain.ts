@@ -2256,10 +2256,10 @@ export const openDataProductDrawer = async (page: Page, domain: Domain) => {
   await domainOption.waitFor({ state: 'visible', timeout: 5000 });
   await domainOption.click();
 
-  // Confirm selection so the dropdown overlay is fully gone before next interaction.
-  await expect(domainContainer.getByTitle(domain.data.displayName)).toBeVisible(
-    { timeout: 5000 }
-  );
+  // Wait for the dropdown to close before the next interaction.
+  await expect(domainInput).toHaveAttribute('aria-expanded', 'false', {
+    timeout: 5000,
+  });
 };
 
 const parseRequestBody = (postData: string | null | undefined) => {
