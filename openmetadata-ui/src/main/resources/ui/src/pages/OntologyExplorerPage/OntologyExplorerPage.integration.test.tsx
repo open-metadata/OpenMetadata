@@ -67,8 +67,9 @@ jest.mock('../../components/OntologyExplorer/OntologyGraphG6', () => {
     )),
   };
 });
-jest.mock('react-codemirror2', () => ({
-  Controlled: () => <div data-testid="query-editor" />,
+jest.mock('@uiw/react-codemirror', () => ({
+  __esModule: true,
+  default: () => <div data-testid="query-editor" />,
 }));
 jest.mock('../../rest/glossaryAPI');
 jest.mock('../../rest/metricsAPI');
