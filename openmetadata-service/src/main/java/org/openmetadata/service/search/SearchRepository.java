@@ -1505,17 +1505,33 @@ public class SearchRepository {
   }
 
   private void syncTableColumns(Table table, ChangeDescription changeDescription) {
-    // Check if columns were actually modified
-    boolean columnsChanged = hasColumnsChanged(changeDescription);
-
-    if (columnsChanged) {
+    if (hasColumnsChanged(changeDescription)) {
       // Columns were added/removed/modified - do full reindex
       deleteTableColumns(table);
       indexTableColumns(table);
-    } else {
+    } else if (!isTagsOnlyChange(changeDescription)) {
       // Only inherited fields changed - use efficient update
       updateTableColumnsInheritedFields(table);
     }
+  }
+
+  /**
+   * A tags-only table change is left entirely to the descriptor-driven cascade, which is the
+   * designated writer of {@code tags} on column documents.
+   *
+   * <p>Running the inherited-field update as well would put two update-by-query operations on the
+   * same column documents milliseconds apart. Both are submitted with {@code
+   * wait_for_completion=false} and {@code conflicts=proceed}, so whichever loses the version race is
+   * skipped silently — no failure, no retry, nothing in the response — and the tag write is the one
+   * that tends to lose, leaving the column doc without the term. Nothing in the inherited-field map
+   * changes on a tags-only edit except the table's version/updatedAt mirrored onto the column, which
+   * the next column-affecting change or reindex refreshes.
+   */
+  private boolean isTagsOnlyChange(ChangeDescription changeDescription) {
+    return changeDescription != null
+        && changedFieldNames(changeDescription).findAny().isPresent()
+        && changedFieldNames(changeDescription)
+            .allMatch(fieldName -> fieldName.startsWith(Entity.FIELD_TAGS));
   }
 
   /**
@@ -3660,6 +3676,13 @@ public class SearchRepository {
    * tagLabel.json} defaults the field to {@code Manual}, so a doc missing it most likely carries a
    * manual label. Getting this backwards trades a visible, reindex-clearable orphan for silent
    * removal of a label a user set — the very stripping this block exists to stop.
+   *
+   * <p>Unlike the add block, this one walks the labels already on the child doc rather than the
+   * labels it was handed, so it has to tolerate a malformed one. A Painless exception is not covered
+   * by {@code conflicts=proceed}: it aborts the whole update-by-query, and since the fan-out is
+   * submitted with {@code wait_for_completion=false} the abort surfaces only in the task result,
+   * which nothing reads. One stored label missing {@code tagFQN} would otherwise silently drop the
+   * removal for every other document in the request.
    */
   private String deleteTagLabelListBlock(String tagPath) {
     return String.format(
@@ -3667,12 +3690,17 @@ public class SearchRepository {
         if (%1$s != null && params.tagDeleted != null) {
           for (int i = %1$s.size() - 1; i >= 0; i--) {
             def existingTag = %1$s[i];
-            boolean systemApplied = existingTag.labelType != null
-                && (existingTag.labelType.equalsIgnoreCase('%2$s')
-                    || existingTag.labelType.equalsIgnoreCase('%3$s'));
+            if (existingTag == null || existingTag.tagFQN == null) {
+              continue;
+            }
+            def existingLabelType = existingTag.labelType;
+            boolean systemApplied = existingLabelType != null
+                && (existingLabelType.equalsIgnoreCase('%2$s')
+                    || existingLabelType.equalsIgnoreCase('%3$s'));
             if (systemApplied) {
               for (int j = 0; j < params.tagDeleted.size(); j++) {
-                if (existingTag.tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
+                def removedTag = params.tagDeleted[j];
+                if (removedTag != null && existingTag.tagFQN.equalsIgnoreCase(removedTag.tagFQN)) {
                   %1$s.remove(i);
                   break;
                 }

@@ -61,6 +61,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkDisabledTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.populateTagLabel;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
@@ -8893,7 +8894,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     for (Column column : listOrEmpty(columns)) {
       validateTags(column.getTags());
       column.setTags(addDerivedTags(column.getTags()));
-      checkMutuallyExclusive(column.getTags());
+      checkMutuallyExclusiveForUserAppliedTags(column.getTags());
       if (column.getChildren() != null) {
         validateColumnTags(column.getChildren());
       }
@@ -9809,7 +9810,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // For PUT, we don't delete any existing tags
         // Merge the tags for validation and recording purposes
         EntityUtil.mergeTags(updatedTags, origTags);
-        checkMutuallyExclusive(updatedTags);
+        checkMutuallyExclusiveForUserAppliedTags(updatedTags);
       } else {
         // PATCH and an explicit PUT override replace tags.
         // Use Set for O(1) lookup performance instead of O(n) stream().anyMatch()
@@ -9828,7 +9829,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             addedTags.add(updatedTag);
           }
         }
-        checkMutuallyExclusive(updatedTags);
+        checkMutuallyExclusiveForUserAppliedTags(updatedTags);
       }
 
       // Filter out certification tags — handled exclusively by updateCertification()

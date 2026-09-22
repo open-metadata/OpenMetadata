@@ -1029,7 +1029,7 @@ public final class Entity {
    * EntityRepository.applyTags}). {@code PROPAGATED} is the schema's marker for a propagated label
    * and survives both read and write.
    */
-  static List<TagLabel> propagatedParentTags(List<TagLabel> parentTags) {
+  public static List<TagLabel> propagatedParentTags(List<TagLabel> parentTags) {
     return listOrEmpty(parentTags).stream()
         .filter(tag -> TagLabel.TagSource.GLOSSARY.equals(tag.getSource()))
         .filter(tag -> !TagLabel.LabelType.DERIVED.equals(tag.getLabelType()))

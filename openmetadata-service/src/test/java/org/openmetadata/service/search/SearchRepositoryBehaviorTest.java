@@ -1105,9 +1105,15 @@ class SearchRepositoryBehaviorTest {
             .stream().allMatch(tag -> tag.getLabelType() == TagLabel.LabelType.PROPAGATED));
   }
 
+  /**
+   * A tags-only change must leave the column documents to the tag cascade alone. Running the
+   * inherited-field update as well put two update-by-query operations on the same documents
+   * milliseconds apart; both are submitted with {@code conflicts=proceed}, so whichever lost the
+   * version race was skipped silently, and the tag write was usually the loser.
+   */
   @Test
   @SuppressWarnings("unchecked")
-  void tableTagOnlyChangeUsesTargetedColumnUpdateInsteadOfFullReindex() throws Exception {
+  void tableTagOnlyChangeLeavesColumnDocsToTheTagCascade() throws Exception {
     SearchRepository repo =
         newRepository(
             Map.of(Entity.TABLE, TABLE_MAPPING, Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
@@ -1145,7 +1151,7 @@ class SearchRepositoryBehaviorTest {
 
     verify(searchClient, never()).deleteEntityByFields(anyList(), anyList());
     verify(searchClient, never()).createEntities(anyString(), anyList());
-    verify(searchClient)
+    verify(searchClient, never())
         .updateChildren(
             eq(List.of("cluster_column_search_index")),
             eq(new ImmutablePair<>("table.id", tableId.toString())),

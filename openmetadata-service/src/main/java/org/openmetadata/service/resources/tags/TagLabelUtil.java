@@ -428,6 +428,18 @@ public class TagLabelUtil {
             || TagLabel.LabelType.PROPAGATED.equals(tagLabel.getLabelType()));
   }
 
+  /**
+   * Mutual-exclusivity applies to labels a user actually applied, never to projections. A field now
+   * reads back its parent's glossary terms as PROPAGATED, so a GET → PUT round trip would otherwise
+   * present the parent's term and the field's own term together and reject a table that saved fine
+   * before. Projections are already excluded from {@code tag_usage}; exclude them here for the same
+   * reason.
+   */
+  public static void checkMutuallyExclusiveForUserAppliedTags(List<TagLabel> tagLabels) {
+    checkMutuallyExclusive(
+        listOrEmpty(tagLabels).stream().filter(tag -> !isSystemGenerated(tag)).toList());
+  }
+
   public static void checkMutuallyExclusive(List<TagLabel> tagLabels) {
     Map<String, TagLabel> map = new HashMap<>();
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
