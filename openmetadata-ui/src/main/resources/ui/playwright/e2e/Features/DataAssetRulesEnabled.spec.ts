@@ -301,7 +301,7 @@ test.describe(
           )
         ).not.toBeVisible();
 
-        // Verify no domain overflow button (only single domain, not multiple)
+        // Single domain assigned, so no overflow button.
         await expect(page.getByTestId('show-all-domains')).not.toBeVisible();
       } finally {
         await testGlossaryTerm.delete(apiContext);

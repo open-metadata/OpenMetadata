@@ -315,9 +315,8 @@ export const MutuallyExclusive: StoryObj = {
   },
 };
 
-// Inline "create" row: an entity picker that also lets the user launch a
-// create form for a new entity, prefilled with the current search term. The
-// consumer owns the label (translated) and the create flow (e.g. a modal).
+// The consumer owns the translated create-row label and the create flow itself
+// (e.g. a modal); TreeSelect only surfaces the trigger and the search term.
 export const WithCreate: StoryObj = {
   render: () => {
     const [value, setValue] = useState<TreeSelectNode[]>([]);
