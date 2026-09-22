@@ -70,6 +70,7 @@ export const QualityTab = () => {
     fetchAllTests,
     onTestCaseUpdate,
     allTestCases,
+    allTestCasesPermissions,
     isTestsLoading,
     testCasePaging,
     table,
@@ -477,6 +478,7 @@ export const QualityTab = () => {
                 (await getResourceLimit('dataQuality', true, true));
             }}
             breadcrumbData={tableBreadcrumb}
+            entityPermissions={allTestCasesPermissions}
             fetchTestCases={handleSortTestCase}
             hasActiveFilters={hasActiveFilters}
             isEditAllowed={editTest}
