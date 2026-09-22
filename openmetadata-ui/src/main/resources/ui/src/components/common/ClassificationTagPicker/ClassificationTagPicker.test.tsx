@@ -14,9 +14,9 @@
 import { TreeSelectNode } from '@openmetadata/ui-core-components';
 import { render, screen } from '@testing-library/react';
 import {
-    LabelType,
-    State,
-    TagSource
+  LabelType,
+  State,
+  TagSource,
 } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import ClassificationTagPicker from './ClassificationTagPicker';

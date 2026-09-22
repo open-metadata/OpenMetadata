@@ -17,10 +17,10 @@ import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
-    WidgetCommentButton,
-    WidgetEditButton,
-    WidgetPlusButton,
-    WidgetRequestButton
+  WidgetCommentButton,
+  WidgetEditButton,
+  WidgetPlusButton,
+  WidgetRequestButton,
 } from '../../../components/common/WidgetActionButton/WidgetActionButton';
 import { LIST_SIZE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -32,8 +32,8 @@ import { stopPropagationIfInteractive } from '../../../utils/InteractiveTargetUt
 import { getTierTags } from '../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import {
-    getRequestTagsPath,
-    getUpdateTagsPath
+  getRequestTagsPath,
+  getUpdateTagsPath,
 } from '../../../utils/TaskNavigationUtils';
 import ClassificationTagPicker from '../../common/ClassificationTagPicker/ClassificationTagPicker';
 import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import {
-    TreeSelectDataFetcher,
-    TreeSelectNode
+  TreeSelectDataFetcher,
+  TreeSelectNode,
 } from '@openmetadata/ui-core-components';
 import { Tag as TagIcon } from '@openmetadata/ui-core-components/icons';
 import axios, { AxiosError } from 'axios';
@@ -21,9 +21,9 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
-    buildTagLabelFromResult,
-    getTagDisplayLabel,
-    RawTagResult
+  buildTagLabelFromResult,
+  getTagDisplayLabel,
+  RawTagResult,
 } from '../../Tag/TagSelector/TagSelector.utils';
 
 // Flat fetcher — classification tags have no hierarchy, every node is a leaf.

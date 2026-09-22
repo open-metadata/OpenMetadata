@@ -15,11 +15,11 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { EntityTags } from 'Models';
 import { MemoryRouter } from 'react-router-dom';
 import {
-    LabelType,
-    State,
-    TagLabel,
-    TagLabelMetadata,
-    TagSource
+  LabelType,
+  State,
+  TagLabel,
+  TagLabelMetadata,
+  TagSource,
 } from '../../../generated/type/tagLabel';
 import { ClassificationTagPickerProps } from '../../common/ClassificationTagPicker/ClassificationTagPicker';
 import { GlossaryTermPickerProps } from '../../common/GlossaryTermPicker/GlossaryTermPicker';

@@ -12,10 +12,10 @@
  */
 
 import {
-    LabelType,
-    State,
-    TagLabel,
-    TagSource
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
 } from '../../../generated/type/tagLabel';
 
 export interface RawTagResult {

@@ -13,11 +13,11 @@
 
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import {
-    buildTagLabelFromFqn,
-    buildTagLabelFromResult,
-    getTagDisplayLabel,
-    getTagStyle,
-    RawTagResult
+  buildTagLabelFromFqn,
+  buildTagLabelFromResult,
+  getTagDisplayLabel,
+  getTagStyle,
+  RawTagResult,
 } from './TagSelector.utils';
 
 const makeResult = (overrides?: Partial<RawTagResult>): RawTagResult => ({
