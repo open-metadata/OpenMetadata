@@ -20,6 +20,7 @@ import { DomainTagsProps } from './DomainTags.types';
 
 const DomainTags: FC<DomainTagsProps> = ({
   domains,
+  labels,
   onRemove,
   maxVisible = 5,
   size = 'sm',
@@ -56,7 +57,7 @@ const DomainTags: FC<DomainTagsProps> = ({
       className={className}
       data-testid={dataTestId ?? 'domain-tags-container'}>
       <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-1.5">
-        {visibleDomains.map((domain) => (
+        {visibleDomains.map((domain, index) => (
           <DomainTag
             closeButtonTestId={`remove-domain-${domain.fullyQualifiedName}`}
             data-testid={`domain-tag-${domain.fullyQualifiedName}`}
@@ -69,6 +70,7 @@ const DomainTags: FC<DomainTagsProps> = ({
             inheritedLabel={inheritedLabel}
             key={domain.id ?? domain.fullyQualifiedName}
             label={getEntityName(domain)}
+            labelNode={labels?.[index]}
             size={size}
             onDelete={onRemove ? () => onRemove(domain) : undefined}
           />

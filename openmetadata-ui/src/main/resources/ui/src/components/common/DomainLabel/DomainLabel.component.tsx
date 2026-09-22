@@ -36,6 +36,7 @@ export const DomainLabel = ({
   afterDomainUpdateAction,
   hasPermission,
   domains,
+  domainDisplayName,
   entityType,
   entityFqn,
   entityId,
@@ -116,6 +117,9 @@ export const DomainLabel = ({
       return (
         <DomainTags
           domains={activeDomain}
+          labels={
+            Array.isArray(domainDisplayName) ? domainDisplayName : undefined
+          }
           maxVisible={headerLayout && multiple ? 1 : activeDomain.length}
         />
       );
@@ -134,6 +138,7 @@ export const DomainLabel = ({
     );
   }, [
     activeDomain,
+    domainDisplayName,
     showDomainHeading,
     textClassName,
     multiple,

@@ -11,11 +11,17 @@
  *  limitations under the License.
  */
 import type { TagSize } from '@openmetadata/ui-core-components';
+import { ReactNode } from 'react';
 import { EntityReference } from '../../../generated/entity/type';
 
 export interface DomainTagsProps {
   /** Domains to display as chips. */
   domains?: EntityReference[];
+  /**
+   * Optional per-domain label nodes (index-matched to `domains`), e.g. the
+   * version-diff decorated names. Falls back to the domain's entity name.
+   */
+  labels?: ReactNode[];
   /**
    * When provided, each chip renders a remove (X) button that calls this with
    * the removed domain. When omitted, chips link to the domain detail page.

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { HTMLAttributes } from 'react';
+import { HTMLAttributes, ReactNode } from 'react';
 
 /**
  * xs — 10 px font / 16 px badge padding
@@ -21,6 +21,11 @@ export type TagSize = 'xs' | 'sm' | 'md';
 
 export interface EntityTagProps extends HTMLAttributes<HTMLSpanElement> {
   label: string;
+  /**
+   * Rich label content rendered in place of `label` text (e.g. a version-diff
+   * decorated node). `label` is still used for the accessible/tooltip text.
+   */
+  labelNode?: ReactNode;
   /** Hex color from ENTITY_PALETTE_HEX. Omit to use DEFAULT_TAG_COLOR. */
   color?: string;
   /**

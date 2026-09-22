@@ -34,6 +34,8 @@ interface TagChipContentProps {
   labelClassName?: string;
   /** Test id set on the label element (e.g. the legacy `domain-link` hook). */
   labelTestId?: string;
+  /** Rich label content rendered in place of `label` (e.g. a diff node). */
+  labelContent?: ReactNode;
   iconSize: number;
   iconTestId?: string;
   /** Rendered after the label, inside the chip (e.g. an inherit glyph). */
@@ -52,6 +54,7 @@ export const TagChipContent: FC<TagChipContentProps> = ({
   defaultIcon,
   labelClassName,
   labelTestId,
+  labelContent,
   iconSize,
   iconTestId,
   trailing,
@@ -69,7 +72,7 @@ export const TagChipContent: FC<TagChipContentProps> = ({
       <span
         className={cx('tw:block tw:truncate', labelClassName)}
         data-testid={labelTestId}>
-        {label}
+        {labelContent ?? label}
       </span>
     </div>
   );

@@ -32,6 +32,7 @@ import { EntityTagProps } from './tag.types';
  */
 export const DomainTag: FC<EntityTagProps> = ({
   label,
+  labelNode,
   color,
   icon,
   size = 'sm',
@@ -78,6 +79,7 @@ export const DomainTag: FC<EntityTagProps> = ({
       iconTestId="domain-icon"
       label={label}
       labelClassName={cx('tag-color-text')}
+      labelContent={labelNode}
       labelTestId="domain-link"
       maxWidth={maxWidth}
       trailing={inheritedGlyph}
