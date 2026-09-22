@@ -43,7 +43,6 @@ interface DropdownSearchFieldProps {
   onChange: (value: string) => void;
 }
 
-// The search row both dropdowns put above their list, so the two stay identical.
 export const DropdownSearchField = ({
   value,
   placeholder,
@@ -73,7 +72,6 @@ interface DropdownStagedFooterProps {
   onApply: () => void;
 }
 
-// Clear all | Cancel | Apply(N) — the staged footer both dropdowns end with.
 export const DropdownStagedFooter = ({
   count,
   isClearDisabled,
@@ -122,7 +120,6 @@ interface DropdownStatusFooterProps {
   onClear: () => void;
 }
 
-// "N selected | Clear all" — the applied-state footer both dropdowns end with.
 export const DropdownStatusFooter = ({
   count,
   isClearDisabled,
