@@ -68,6 +68,7 @@ export const useTestDefinitionListPage = () => {
     testDefinitions,
     setTestDefinitions,
     isLoading,
+    isInitialLoading,
     fetchTestDefinitions,
     handleEnableToggle,
   } = useTestDefinitionData({
@@ -146,6 +147,7 @@ export const useTestDefinitionListPage = () => {
   return {
     testDefinitions,
     isLoading,
+    isInitialLoading,
     createPermission,
     viewPermission,
     testDefinitionPermissions,

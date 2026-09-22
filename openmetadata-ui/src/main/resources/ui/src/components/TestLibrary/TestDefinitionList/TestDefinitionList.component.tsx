@@ -38,6 +38,7 @@ const TestDefinitionList = () => {
   const {
     testDefinitions,
     isLoading,
+    isInitialLoading,
     createPermission,
     viewPermission,
     testDefinitionPermissions,
@@ -165,6 +166,7 @@ const TestDefinitionList = () => {
 
             <TestDefinitionTable
               hasActiveFilters={hasActiveFilters}
+              isInitialLoading={isInitialLoading}
               isLoading={isLoading}
               pagingData={pagingData}
               permissionLoading={permissionLoading}

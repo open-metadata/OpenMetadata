@@ -18,7 +18,10 @@ import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interf
 
 export interface TestDefinitionTableProps {
   testDefinitions: TestDefinition[];
+  /** Any fetch in flight. Dims the table; does not replace its rows. */
   isLoading: boolean;
+  /** The very first fetch, when there is nothing to keep on screen. */
+  isInitialLoading: boolean;
   pagingData: NextPreviousProps;
   showPagination: boolean;
   testDefinitionPermissions: Record<string, OperationPermission>;

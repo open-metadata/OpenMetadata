@@ -63,6 +63,11 @@ export const useTestDefinitionData = ({
 
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // Whether a page has ever been rendered. Re-sorting, filtering and searching
+  // all refetch, and blanking the table to skeletons each time reads as the
+  // whole page reloading. Only the first load has nothing to show, so only the
+  // first load gets skeletons; a refetch keeps the previous rows on screen.
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   // Sequence number of the newest fetch. Typing in the search box issues one
   // request per debounced term, and a slow response for an earlier term can
   // land after a later one - leaving the list showing rows for a search the
@@ -114,6 +119,7 @@ export const useTestDefinitionData = ({
         // it is still in flight and owns the spinner.
         if (requestId === latestRequestRef.current) {
           setIsLoading(false);
+          setHasLoadedOnce(true);
         }
       }
     },
@@ -179,6 +185,9 @@ export const useTestDefinitionData = ({
     testDefinitions,
     setTestDefinitions,
     isLoading,
+    // The first load only. A later refetch reports through isLoading, which
+    // drives the pager and a dimmed table rather than replacing the rows.
+    isInitialLoading: isLoading && !hasLoadedOnce,
     fetchTestDefinitions,
     handleEnableToggle,
   };

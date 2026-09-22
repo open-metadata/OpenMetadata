@@ -42,6 +42,7 @@ import { TestDefinitionTableProps } from './TestDefinitionTable.interface';
 const TestDefinitionTable = ({
   testDefinitions,
   isLoading,
+  isInitialLoading,
   pagingData,
   showPagination,
   testDefinitionPermissions,
@@ -232,76 +233,90 @@ const TestDefinitionTable = ({
     </Table.Row>
   );
 
+  // A refetch dims the rows in place instead of unmounting them. aria-busy is
+  // what carries the state to a screen reader, since there is no longer a
+  // visual placeholder saying the list is being replaced.
+  const isRefetching = isLoading && !isInitialLoading;
+
   return (
     <>
-      <Table
-        aria-label={t('label.data-quality-rule-plural')}
-        data-testid="test-definition-table"
-        size="sm"
-        sortDescriptor={sortDescriptor}
-        onSortChange={handleSortChange}>
-        <Table.Header columns={columns}>
-          {(col) => (
-            <Table.Head
-              allowsSorting={col.allowsSorting}
-              className={col.className}
-              id={col.id}
-              isRowHeader={col.id === 'name'}
-              key={col.id}
-              label={col.label}
-            />
-          )}
-        </Table.Header>
-        <Table.Body
-          dependencies={[
-            testDefinitionPermissions,
-            permissionLoading,
-            testDefinitions,
-          ]}
-          items={isLoading ? [] : testDefinitions}
-          renderEmptyState={() =>
-            isLoading ? (
-              loadingSkeletons
-            ) : (
-              <Box className="tw:relative tw:min-h-80 tw:w-full">
-                <EmptyPlaceholder
-                  actions={
-                    hasActiveFilters && onClearFilters
-                      ? [
-                          {
-                            key: 'clear-filters',
-                            label: t('label.clear-filter-plural'),
-                            color: 'primary' as const,
-                            onPress: onClearFilters,
-                          },
-                        ]
-                      : undefined
-                  }
-                  description={t(
-                    hasActiveFilters
-                      ? 'message.no-results-for-filters-description'
-                      : 'message.no-test-definitions-yet-description'
-                  )}
-                  icon={
-                    hasActiveFilters ? (
-                      <FilterOffIcon className="tw:text-fg-quaternary" />
-                    ) : (
-                      <FileShield02 className="tw:text-fg-brand-primary" />
-                    )
-                  }
-                  title={t(
-                    hasActiveFilters
-                      ? 'message.no-results-for-filters'
-                      : 'message.no-test-definitions-yet'
-                  )}
-                  variant="blank"
-                />
-              </Box>
-            )
-          }>
-          {(record) => renderRow(record)}
-        </Table.Body>
-      </Table>
+      <div
+        aria-busy={isLoading}
+        className={
+          isRefetching
+            ? 'tw:opacity-60 tw:transition-opacity tw:duration-150'
+            : 'tw:transition-opacity tw:duration-150'
+        }
+        data-testid="test-definition-table-container">
+        <Table
+          aria-label={t('label.data-quality-rule-plural')}
+          data-testid="test-definition-table"
+          size="sm"
+          sortDescriptor={sortDescriptor}
+          onSortChange={handleSortChange}>
+          <Table.Header columns={columns}>
+            {(col) => (
+              <Table.Head
+                allowsSorting={col.allowsSorting}
+                className={col.className}
+                id={col.id}
+                isRowHeader={col.id === 'name'}
+                key={col.id}
+                label={col.label}
+              />
+            )}
+          </Table.Header>
+          <Table.Body
+            dependencies={[
+              testDefinitionPermissions,
+              permissionLoading,
+              testDefinitions,
+            ]}
+            items={isInitialLoading ? [] : testDefinitions}
+            renderEmptyState={() =>
+              isInitialLoading ? (
+                loadingSkeletons
+              ) : (
+                <Box className="tw:relative tw:min-h-80 tw:w-full">
+                  <EmptyPlaceholder
+                    actions={
+                      hasActiveFilters && onClearFilters
+                        ? [
+                            {
+                              key: 'clear-filters',
+                              label: t('label.clear-filter-plural'),
+                              color: 'primary' as const,
+                              onPress: onClearFilters,
+                            },
+                          ]
+                        : undefined
+                    }
+                    description={t(
+                      hasActiveFilters
+                        ? 'message.no-results-for-filters-description'
+                        : 'message.no-test-definitions-yet-description'
+                    )}
+                    icon={
+                      hasActiveFilters ? (
+                        <FilterOffIcon className="tw:text-fg-quaternary" />
+                      ) : (
+                        <FileShield02 className="tw:text-fg-brand-primary" />
+                      )
+                    }
+                    title={t(
+                      hasActiveFilters
+                        ? 'message.no-results-for-filters'
+                        : 'message.no-test-definitions-yet'
+                    )}
+                    variant="blank"
+                  />
+                </Box>
+              )
+            }>
+            {(record) => renderRow(record)}
+          </Table.Body>
+        </Table>
+      </div>
       {showPagination && <NextPrevious {...pagingData} />}
     </>
   );
