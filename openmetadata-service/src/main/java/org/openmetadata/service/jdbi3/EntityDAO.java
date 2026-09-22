@@ -77,6 +77,17 @@ public interface EntityDAO<T extends EntityInterface> {
   int MAX_IN_LIST_CHUNK_SIZE = 30_000;
 
   /**
+   * Physical SQL name for {@code entityType} — the identifier a hand-written statement may embed in
+   * a qualifying position (a {@code <table>} define, a {@code FROM} clause). Entity DAOs already
+   * answer this through {@link #getTableName()}; this is the same mapping for the entity types that
+   * have no repository at hand, so a relationship write can qualify {@code entity_relationship} by
+   * its {@code fromEntity} without a second lookup.
+   */
+  static String physicalTableName(String entityType) {
+    return entityType + "_entity";
+  }
+
+  /**
    * Run a SQL IN-list query in {@link #MAX_IN_LIST_CHUNK_SIZE}-sized chunks and concatenate the
    * results, keeping each statement under the database parameter ceiling. For inputs at or below
    * the chunk size the list is passed straight through, preserving the single-query behavior (and
