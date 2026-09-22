@@ -1,10 +1,28 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.monitoring;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.zaxxer.hikari.metrics.IMetricsTracker;
+import com.zaxxer.hikari.metrics.PoolStats;
+import com.zaxxer.hikari.metrics.micrometer.MicrometerMetricsTrackerFactory;
 import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.prometheusmetrics.PrometheusConfig;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
@@ -12,7 +30,18 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+/**
+ * {@code db.pool.connections} replaces a Counter that nothing ever incremented, so
+ * {@code db_connections_total} sat at zero for every deployment that scraped it (#26555).
+ *
+ * <p>The gauge derives its value from HikariCP's own instrumentation, so these tests drive the real
+ * {@link MicrometerMetricsTrackerFactory} rather than hand-registering meters under names HikariCP
+ * is merely assumed to use — a rename upstream has to fail here, not in production.
+ */
 class OpenMetadataMetricsTest {
+  private static final String REQUEST_POOL = "openmetadata-hikari-pool";
+  private static final String QUARTZ_POOL = "openmetadata-quartz-pool";
+  private static final String POOL_CONNECTIONS = "db.pool.connections";
 
   private SimpleMeterRegistry registry;
 
@@ -22,59 +51,149 @@ class OpenMetadataMetricsTest {
   }
 
   @Test
-  void dbPoolConnectionsGaugeReflectsHikariCPPoolSize() {
-    AtomicInteger activeConnections = new AtomicInteger(5);
-    AtomicInteger idleConnections = new AtomicInteger(15);
-
-    Gauge.builder("hikaricp.connections.active", activeConnections, AtomicInteger::doubleValue)
-        .register(registry);
-    Gauge.builder("hikaricp.connections.idle", idleConnections, AtomicInteger::doubleValue)
-        .register(registry);
-
+  void readsZeroBeforeAnyPoolPublishesMetrics() {
     new OpenMetadataMetrics(registry);
 
-    Gauge total = registry.find("db.pool.connections").gauge();
-    assertNotNull(total, "db.pool.connections gauge should be registered");
-    assertEquals(20.0, total.value(), 0.01, "Should equal active + idle");
-
-    activeConnections.set(10);
-    idleConnections.set(10);
-    assertEquals(20.0, total.value(), 0.01, "Should reflect updated pool state");
-
-    activeConnections.set(0);
-    idleConnections.set(0);
-    assertEquals(0.0, total.value(), 0.01, "Should be zero when pool is empty");
+    // Metrics are bound during bundle initialization, before the data source exists; a scrape in
+    // that window must not blow up on the missing HikariCP gauges.
+    assertEquals(0.0, poolConnections(), 0.01);
   }
 
   @Test
-  void dbPoolConnectionsGaugeReturnsZeroWithoutHikariCP() {
-    new OpenMetadataMetrics(registry);
+  void reportsConnectionsHeldByThePool() {
+    ControllablePoolStats requestPool = new ControllablePoolStats(5, 15);
+    try (IMetricsTracker tracker = attachPool(REQUEST_POOL, requestPool)) {
+      assertNotNull(tracker);
+      new OpenMetadataMetrics(registry);
 
-    Gauge total = registry.find("db.pool.connections").gauge();
-    assertNotNull(total, "db.pool.connections gauge should be registered");
-    assertEquals(0.0, total.value(), 0.01, "Should be zero when HikariCP metrics are absent");
+      assertEquals(20.0, poolConnections(), 0.01);
+    }
   }
 
   @Test
-  void prometheusScrapeExposesDbPoolConnectionsGauge() {
-    PrometheusMeterRegistry promRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+  void followsThePoolAsConnectionsAreBorrowedAndOpened() {
+    ControllablePoolStats requestPool = new ControllablePoolStats(5, 15);
+    try (IMetricsTracker tracker = attachPool(REQUEST_POOL, requestPool)) {
+      assertNotNull(tracker);
+      new OpenMetadataMetrics(registry);
 
-    AtomicInteger activeConnections = new AtomicInteger(3);
-    AtomicInteger idleConnections = new AtomicInteger(7);
+      requestPool.set(18, 2);
+      assertEquals(
+          20.0, poolConnections(), 0.01, "borrowing a connection does not change the total");
 
-    Gauge.builder("hikaricp.connections.active", activeConnections, AtomicInteger::doubleValue)
-        .register(promRegistry);
-    Gauge.builder("hikaricp.connections.idle", idleConnections, AtomicInteger::doubleValue)
-        .register(promRegistry);
+      requestPool.set(18, 12);
+      assertEquals(30.0, poolConnections(), 0.01, "growing the pool raises the total");
+    }
+  }
 
-    new OpenMetadataMetrics(promRegistry);
+  @Test
+  void sumsEveryPoolRatherThanWhicheverOneIsFoundFirst() {
+    // The request pool is no longer the only one: the Quartz job stores and the Flowable engine
+    // each
+    // hold their own. Picking a single gauge would report an arbitrary one of them.
+    try (IMetricsTracker request = attachPool(REQUEST_POOL, new ControllablePoolStats(4, 16));
+        IMetricsTracker quartz = attachPool(QUARTZ_POOL, new ControllablePoolStats(1, 2))) {
+      assertNotNull(request);
+      assertNotNull(quartz);
+      new OpenMetadataMetrics(registry);
 
-    String scrape = promRegistry.scrape();
-    assertTrue(
-        scrape.contains("db_pool_connections"),
-        "Prometheus scrape should contain db_pool_connections metric");
-    assertTrue(
-        scrape.contains("# TYPE db_pool_connections gauge"),
-        "db_pool_connections should be exposed as a gauge type");
+      assertEquals(23.0, poolConnections(), 0.01);
+    }
+  }
+
+  @Test
+  void dropsPoolsThatHaveBeenShutDown() {
+    ControllablePoolStats requestPool = new ControllablePoolStats(4, 16);
+    try (IMetricsTracker request = attachPool(REQUEST_POOL, requestPool)) {
+      assertNotNull(request);
+      new OpenMetadataMetrics(registry);
+
+      // Flowable closes its schema-update pool once the migration is done; its connections are gone
+      // and must stop counting.
+      IMetricsTracker migration =
+          attachPool("openmetadata-flowable-migration", new ControllablePoolStats(0, 10));
+      assertEquals(30.0, poolConnections(), 0.01);
+
+      migration.close();
+      assertEquals(20.0, poolConnections(), 0.01);
+    }
+  }
+
+  @Test
+  void ignoresPoolsWhoseStatsHaveBeenCollected() {
+    // Micrometer holds gauge state weakly: a pool dropped without close() reads NaN until the
+    // registry catches up. Left in the sum it would take the whole metric to NaN.
+    Gauge.builder("hikaricp.connections", () -> Double.NaN)
+        .tag("pool", "collected")
+        .register(registry);
+    try (IMetricsTracker request = attachPool(REQUEST_POOL, new ControllablePoolStats(4, 16))) {
+      assertNotNull(request);
+      new OpenMetadataMetrics(registry);
+
+      assertEquals(20.0, poolConnections(), 0.01);
+    }
+  }
+
+  @Test
+  void prometheusScrapeExposesTheGauge() {
+    PrometheusMeterRegistry prometheusRegistry =
+        new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+    try (IMetricsTracker request =
+        attachPool(prometheusRegistry, REQUEST_POOL, new ControllablePoolStats(3, 7))) {
+      assertNotNull(request);
+      new OpenMetadataMetrics(prometheusRegistry);
+
+      String scrape = prometheusRegistry.scrape();
+      assertTrue(
+          scrape.contains("# TYPE db_pool_connections gauge"),
+          () -> "expected a db_pool_connections gauge in:\n" + scrape);
+      assertTrue(
+          scrape.contains("db_pool_connections 10.0"),
+          () -> "expected db_pool_connections to report the pool size in:\n" + scrape);
+      assertFalse(
+          scrape.contains("db_connections_total"),
+          () -> "the always-zero counter must be gone from:\n" + scrape);
+    }
+  }
+
+  private double poolConnections() {
+    Gauge gauge = registry.find(POOL_CONNECTIONS).gauge();
+    assertNotNull(gauge, "db.pool.connections must be registered");
+    return gauge.value();
+  }
+
+  private IMetricsTracker attachPool(String poolName, PoolStats stats) {
+    return attachPool(registry, poolName, stats);
+  }
+
+  private static IMetricsTracker attachPool(
+      MeterRegistry meterRegistry, String poolName, PoolStats stats) {
+    return new MicrometerMetricsTrackerFactory(meterRegistry).create(poolName, stats);
+  }
+
+  /** A {@link PoolStats} whose counts the test drives, standing in for a live HikariCP pool. */
+  private static final class ControllablePoolStats extends PoolStats {
+    private final AtomicInteger active = new AtomicInteger();
+    private final AtomicInteger idle = new AtomicInteger();
+
+    private ControllablePoolStats(int active, int idle) {
+      super(0L); // never cache, so a change is visible to the very next read
+      set(active, idle);
+    }
+
+    private void set(int activeConnections, int idleConnections) {
+      active.set(activeConnections);
+      idle.set(idleConnections);
+    }
+
+    @Override
+    protected void update() {
+      activeConnections = active.get();
+      idleConnections = idle.get();
+      totalConnections = activeConnections + idleConnections;
+      maxConnections = 100;
+      minConnections = 10;
+      pendingThreads = 0;
+    }
   }
 }
