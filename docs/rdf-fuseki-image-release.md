@@ -110,9 +110,8 @@ Closing this needs three decisions and one workflow:
 
 The workflow itself is a `docker/build-push-action` step with `context: docker/rdf-store`,
 `platforms: linux/amd64,linux/arm64`, gated on a release tag plus a `paths:` filter for
-`docker/rdf-store/**`. **I have not created it** — `.github/workflows/**` is treated as a
-supply-chain surface in this repo and edits need explicit maintainer sign-off. Say the word and I
-will add it.
+`docker/rdf-store/**`. It does not exist yet: `.github/workflows/**` is treated as a supply-chain
+surface in this repo, and adding it needs explicit maintainer sign-off.
 
 ## Deploy
 

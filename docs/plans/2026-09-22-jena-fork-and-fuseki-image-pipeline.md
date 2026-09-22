@@ -13,9 +13,9 @@
 ## Recommendation: split this into two tracks
 
 Goals 2–4 do not require goal 1. They are satisfied today by `docker/rdf-store/`, which downloads
-the released Fuseki tarball, compiles our `FusekiAutoModule` against it, and ships an image — I built
-and ran it on 2026-09-22 and it meets every guarantee OpenMetadata probes for. Only **goal 1 needs
-the source fork**, and the fork is the expensive part.
+the released Fuseki tarball, compiles our `FusekiAutoModule` against it, and ships an image; a build
+of it on 2026-09-22 met every guarantee OpenMetadata probes for. Only **goal 1 needs the source
+fork**, and the fork is the expensive part.
 
 | | Track A — image pipeline | Track B — source fork |
 |---|---|---|
@@ -113,7 +113,7 @@ parameterize the legacy-layout guard, which currently hardcodes
 `DATASET_TDB2_DIR="${LEGACY_TDB2_DIR}/openmetadata"`. Default `RDF_DATASET_FAMILY=openmetadata` in the
 Dockerfile so existing deployments are unaffected.
 
-**Validated 2026-09-22.** I built these templates and rendered both families. The `openmetadata`
+**Validated 2026-09-22.** Both families were rendered from these templates. The `openmetadata`
 render is byte-identical to today's shipped `config.ttl` (`diff` clean), so the default path cannot
 regress; the `collate` render produces `collate`, `collate_a`, `collate_b` with 15 matching shiro
 rules. Booting Fuseki 6.0.0 against the rendered `collate` config created all six directories
@@ -145,9 +145,9 @@ Decisions needed:
   compiled against the pinned `fuseki-server.jar` and must be rebuilt when either moves.
 - **Platforms.** `linux/amd64,linux/arm64`. Image is ~393 MB per platform.
 
-The workflow is a `docker/build-push-action` step with `context: docker/rdf-store`. **Not created
-here** — `.github/workflows/**` is a supply-chain surface in this repo and needs explicit maintainer
-sign-off.
+The workflow is a `docker/build-push-action` step with `context: docker/rdf-store`. It does not
+exist yet: `.github/workflows/**` is a supply-chain surface in this repo, and adding it needs
+explicit maintainer sign-off.
 
 ## Track B — the source fork
 
