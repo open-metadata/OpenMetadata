@@ -29,11 +29,14 @@ export const RefreshCw01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    strokeWidth={2}
     viewBox="0 0 24 24"
     width={size}
     {...props}>
-    <path d="M21 10s-2.005-2.732-3.634-4.362a9 9 0 1 0 2.282 8.862M21 10V4m0 6h-6" />
+    <path
+      d="M21 10s-2.005-2.732-3.634-4.362a9 9 0 1 0 2.282 8.862M21 10V4m0 6h-6"
+      stroke="currentColor"
+      strokeWidth={2}
+    />
   </svg>
 );
 RefreshCw01.displayName = 'RefreshCw01';

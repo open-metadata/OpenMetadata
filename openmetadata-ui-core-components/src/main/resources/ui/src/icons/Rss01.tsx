@@ -29,11 +29,14 @@ export const Rss01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    strokeWidth={2}
     viewBox="0 0 24 24"
     width={size}
     {...props}>
-    <path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16M6 19a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
+    <path
+      d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16M6 19a1 1 0 1 1-2 0 1 1 0 0 1 2 0"
+      stroke="currentColor"
+      strokeWidth={2}
+    />
   </svg>
 );
 Rss01.displayName = 'Rss01';

@@ -29,11 +29,14 @@ export const SearchMd: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    strokeWidth={2}
     viewBox="0 0 24 24"
     width={size}
     {...props}>
-    <path d="m21 21-4.35-4.35M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0" />
+    <path
+      d="m21 21-4.35-4.35M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0"
+      stroke="currentColor"
+      strokeWidth={2}
+    />
   </svg>
 );
 SearchMd.displayName = 'SearchMd';

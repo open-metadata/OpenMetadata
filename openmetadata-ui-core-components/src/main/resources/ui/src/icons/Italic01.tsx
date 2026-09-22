@@ -29,11 +29,10 @@ export const Italic01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    strokeWidth={2}
     viewBox="0 0 24 24"
     width={size}
     {...props}>
-    <path d="M19 4h-9m4 16H5M15 4 9 20" />
+    <path d="M19 4h-9m4 16H5M15 4 9 20" stroke="currentColor" strokeWidth={2} />
   </svg>
 );
 Italic01.displayName = 'Italic01';

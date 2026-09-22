@@ -29,11 +29,14 @@ export const ArrowCircleBrokenUp: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    strokeWidth={2}
     viewBox="0 0 24 24"
     width={size}
     {...props}>
-    <path d="M7 20.662A10 10 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10a10 10 0 0 1-5 8.662M16 12l-4-4m0 0-4 4m4-4v14" />
+    <path
+      d="M7 20.662A10 10 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10a10 10 0 0 1-5 8.662M16 12l-4-4m0 0-4 4m4-4v14"
+      stroke="currentColor"
+      strokeWidth={2}
+    />
   </svg>
 );
 ArrowCircleBrokenUp.displayName = 'ArrowCircleBrokenUp';

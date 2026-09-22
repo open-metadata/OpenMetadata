@@ -29,11 +29,14 @@ export const Bold01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    strokeWidth={2}
     viewBox="0 0 24 24"
     width={size}
     {...props}>
-    <path d="M6 12h8a4 4 0 0 0 0-8H6zm0 0h9a4 4 0 0 1 0 8H6z" />
+    <path
+      d="M6 12h8a4 4 0 0 0 0-8H6zm0 0h9a4 4 0 0 1 0 8H6z"
+      stroke="currentColor"
+      strokeWidth={2}
+    />
   </svg>
 );
 Bold01.displayName = 'Bold01';

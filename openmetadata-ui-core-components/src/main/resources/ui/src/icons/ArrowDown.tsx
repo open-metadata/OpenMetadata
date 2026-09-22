@@ -29,11 +29,10 @@ export const ArrowDown: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    strokeWidth={2}
     viewBox="0 0 24 24"
     width={size}
     {...props}>
-    <path d="M12 5v14m0 0 7-7m-7 7-7-7" />
+    <path d="M12 5v14m0 0 7-7m-7 7-7-7" stroke="currentColor" strokeWidth={2} />
   </svg>
 );
 ArrowDown.displayName = 'ArrowDown';

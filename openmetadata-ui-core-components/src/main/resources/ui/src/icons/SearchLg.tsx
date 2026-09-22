@@ -29,11 +29,14 @@ export const SearchLg: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    strokeWidth={2}
     viewBox="0 0 24 24"
     width={size}
     {...props}>
-    <path d="m21 21-3.5-3.5m2.5-6a8.5 8.5 0 1 1-17 0 8.5 8.5 0 0 1 17 0" />
+    <path
+      d="m21 21-3.5-3.5m2.5-6a8.5 8.5 0 1 1-17 0 8.5 8.5 0 0 1 17 0"
+      stroke="currentColor"
+      strokeWidth={2}
+    />
   </svg>
 );
 SearchLg.displayName = 'SearchLg';

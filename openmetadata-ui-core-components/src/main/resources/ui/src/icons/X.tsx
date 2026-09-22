@@ -29,11 +29,10 @@ export const X: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    strokeWidth={2}
     viewBox="0 0 24 24"
     width={size}
     {...props}>
-    <path d="M17 7 7 17M7 7l10 10" />
+    <path d="M17 7 7 17M7 7l10 10" stroke="currentColor" strokeWidth={2} />
   </svg>
 );
 X.displayName = 'X';

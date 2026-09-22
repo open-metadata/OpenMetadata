@@ -29,11 +29,10 @@ export const Menu02: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    strokeWidth={2}
     viewBox="0 0 24 24"
     width={size}
     {...props}>
-    <path d="M3 12h12M3 6h18M3 18h18" />
+    <path d="M3 12h12M3 6h18M3 18h18" stroke="currentColor" strokeWidth={2} />
   </svg>
 );
 Menu02.displayName = 'Menu02';

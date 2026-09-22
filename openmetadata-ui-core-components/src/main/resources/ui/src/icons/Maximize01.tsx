@@ -29,11 +29,14 @@ export const Maximize01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    strokeWidth={2}
     viewBox="0 0 24 24"
     width={size}
     {...props}>
-    <path d="m14 10 7-7m0 0h-6m6 0v6m-11 5-7 7m0 0h6m-6 0v-6" />
+    <path
+      d="m14 10 7-7m0 0h-6m6 0v6m-11 5-7 7m0 0h6m-6 0v-6"
+      stroke="currentColor"
+      strokeWidth={2}
+    />
   </svg>
 );
 Maximize01.displayName = 'Maximize01';

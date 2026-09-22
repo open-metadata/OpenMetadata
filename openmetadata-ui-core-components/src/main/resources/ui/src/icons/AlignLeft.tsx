@@ -29,11 +29,14 @@ export const AlignLeft: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    strokeWidth={2}
     viewBox="0 0 24 24"
     width={size}
     {...props}>
-    <path d="M16 10H3m17-4H3m17 8H3m13 4H3" />
+    <path
+      d="M16 10H3m17-4H3m17 8H3m13 4H3"
+      stroke="currentColor"
+      strokeWidth={2}
+    />
   </svg>
 );
 AlignLeft.displayName = 'AlignLeft';
