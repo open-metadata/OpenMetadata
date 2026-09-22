@@ -96,7 +96,12 @@ class PubSubConnection(BaseConnection[PubSubConnectionConfig, PubSubClient]):
         """
         connection = self.service_connection
         try:
-            if connection.useEmulator and connection.hostPort:
+            if connection.useEmulator:
+                if not connection.hostPort:
+                    raise ValueError(
+                        "hostPort is required when using the Pub/Sub emulator "
+                        "(e.g. 'localhost:8085')."
+                    )
                 if connection.hostPort == "pubsub.googleapis.com":
                     raise ValueError(
                         "When using the Pub/Sub emulator, 'hostPort' must be set "
@@ -121,6 +126,8 @@ class PubSubConnection(BaseConnection[PubSubConnectionConfig, PubSubClient]):
                             impersonate_service_account=target,
                             lifetime=impersonate.lifetime or 3600,
                         )
+                    else:
+                        gcp_credentials = get_gcp_default_credentials()
                 else:
                     gcp_credentials = get_gcp_default_credentials()
 

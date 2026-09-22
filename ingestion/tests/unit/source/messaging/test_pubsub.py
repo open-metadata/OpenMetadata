@@ -282,6 +282,57 @@ class TestPubSubConnection:
         mock_subscriber.assert_called_once_with(credentials=impersonated_creds)
         mock_schema_client.assert_called_once_with(credentials=impersonated_creds)
 
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.get_gcp_default_credentials")
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.set_google_credentials")
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.PublisherClient")
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.SubscriberClient")
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.SchemaServiceClient")
+    def test_get_connection_whitespace_sa_falls_back_to_adc(
+        self, mock_schema_client, mock_subscriber, mock_publisher, mock_set_creds, mock_get_default_creds
+    ):
+        """A whitespace-only impersonation SA must fall back to ADC rather than leaving
+        all clients with credentials=None, which causes 403 on every API call."""
+        from metadata.ingestion.source.messaging.pubsub.connection import PubSubConnection
+
+        default_creds = MagicMock()
+        mock_get_default_creds.return_value = default_creds
+        mock_connection = MagicMock()
+        mock_connection.projectId = "test-project"
+        mock_connection.useEmulator = False
+        mock_connection.hostPort = None
+        mock_connection.schemaRegistryEnabled = True
+        mock_connection.gcpConfig = MagicMock()
+        mock_connection.gcpConfig.gcpImpersonateServiceAccount = MagicMock()
+        mock_connection.gcpConfig.gcpImpersonateServiceAccount.impersonateServiceAccount = "   "
+
+        PubSubConnection(mock_connection)._get_client()
+
+        mock_get_default_creds.assert_called_once()
+        mock_publisher.assert_called_once_with(credentials=default_creds)
+        mock_subscriber.assert_called_once_with(credentials=default_creds)
+        mock_schema_client.assert_called_once_with(credentials=default_creds)
+
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.set_google_credentials")
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.PublisherClient")
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.SubscriberClient")
+    def test_get_connection_emulator_without_hostport_raises(
+        self, mock_subscriber, mock_publisher, mock_set_creds
+    ):
+        """useEmulator=True without hostPort must raise immediately instead of falling
+        through to the GCP-credentials branch and raising a confusing gcpConfig error."""
+        from metadata.ingestion.source.messaging.pubsub.connection import PubSubConnection
+
+        mock_connection = MagicMock()
+        mock_connection.projectId = "test-project"
+        mock_connection.useEmulator = True
+        mock_connection.hostPort = None
+        mock_connection.schemaRegistryEnabled = False
+
+        with pytest.raises(ValueError, match="hostPort is required"):
+            PubSubConnection(mock_connection)._get_client()
+
+        mock_set_creds.assert_not_called()
+
     def test_get_project_id_from_connection(self):
         """Test _get_project_id extracts project ID from connection config"""
         from metadata.ingestion.source.messaging.pubsub.connection import (
