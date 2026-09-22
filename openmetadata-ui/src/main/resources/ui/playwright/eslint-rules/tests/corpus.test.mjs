@@ -43,8 +43,10 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     'om-playwright/justified-rule-disable': 10,
     'om-playwright/no-blanket-test-slow': 1,
     // main's count, less the six positional locators the CodeMirror 6 selectors
-    // replaced (MetricCustomUnitFlow, CustomProperties, customProperty, metric).
-    'om-playwright/no-positional-locator': 1177,
+    // replaced (MetricCustomUnitFlow, CustomProperties, customProperty, metric),
+    // less one in entity.ts: replyAnnouncement now targets the announcement
+    // banner's title button instead of the first of a list of items.
+    'om-playwright/no-positional-locator': 1176,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 2,
     'playwright/no-wait-for-selector': 25,
