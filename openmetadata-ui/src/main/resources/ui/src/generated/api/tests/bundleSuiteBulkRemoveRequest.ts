@@ -10,12 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 /**
- * @deprecated Import `FilterSelectDropdown` directly. This module only exists
- * so Collate `main` keeps building against this branch: it still imports this
- * path, and Collate cannot be fixed first because its own migration
- * (openmetadata-collate#6487) pins this branch as its submodule. Delete this
- * file once #6487 has merged — nothing in OpenMetadata imports it.
+ * Request object for bulk-removing test cases from a logical (bundle) test suite.
  */
-export { default } from '../common/FilterSelectDropdown/FilterSelectDropdown';
+export interface BundleSuiteBulkRemoveRequest {
+    /**
+     * Ids of the test cases to remove from the test suite.
+     */
+    testCaseIds: string[];
+    /**
+     * TestSuite ID from which we will be removing the test cases.
+     */
+    testSuiteId: string;
+}

@@ -47,7 +47,12 @@ const insertChildrenIntoTree = <T>(
 ): TreeSelectNode<T>[] =>
   nodes.map((node) => {
     if (node.id === parentId) {
-      return { ...node, children, isLeaf: children.length === 0 };
+      // An empty result must not make it a leaf, or it loses its chevron.
+      return {
+        ...node,
+        children,
+        isLeaf: children.length > 0 ? false : node.isLeaf,
+      };
     }
     if (node.children) {
       return {

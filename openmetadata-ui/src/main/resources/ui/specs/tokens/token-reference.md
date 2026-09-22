@@ -4,9 +4,9 @@
 
 Master map of every **project (`--om-*`) token** — the tokens components reference. Each references the matching upstream `globals.css` token (or holds a raw value) and resolves to the value shown. Full layering: [../README.md](../README.md).
 
-Total project tokens: **807**.
+Total project tokens: **836**.
 
-## Spacing (62)
+## Spacing (60)
 
 padding / margin / gap. See foundations/spacing.md.
 
@@ -42,7 +42,6 @@ padding / margin / gap. See foundations/spacing.md.
 | `--om-space-24` | `24px` |
 | `--om-space-26` | `26px` |
 | `--om-space-28` | `28px` |
-| `--om-space-28_8` | `28.8px` |
 | `--om-space-30` | `30px` |
 | `--om-space-32` | `32px` |
 | `--om-space-35` | `35px` |
@@ -66,7 +65,6 @@ padding / margin / gap. See foundations/spacing.md.
 | `--om-space-96` | `96px` |
 | `--om-space-100` | `100px` |
 | `--om-space-120` | `120px` |
-| `--om-space-124` | `124px` |
 | `--om-space-144` | `144px` |
 | `--om-space-154` | `154px` |
 | `--om-space-176` | `176px` |
@@ -270,7 +268,7 @@ transition / animation. See foundations/motion.md.
 | `--om-ease-out` | `cubic-bezier(0, 0, 0.2, 1)` |
 | `--om-ease-standard` | `cubic-bezier(0.4, 0, 0.2, 1)` |
 
-## Semantic colors (53)
+## Semantic colors (71)
 
 Prefer these — they adapt to dark mode.
 
@@ -329,6 +327,24 @@ Prefer these — they adapt to dark mode.
 | `--om-color-text-success` | `#079455` |
 | `--om-color-text-tertiary` | `#535862` |
 | `--om-color-text-warning` | `#dc6803` |
+| `--om-color-utility-blue-light-100` | `#e0f2fe` |
+| `--om-color-utility-blue-light-700` | `#026aa2` |
+| `--om-color-utility-error-100` | `#fee4e2` |
+| `--om-color-utility-error-700` | `#b42318` |
+| `--om-color-utility-gray-100` | `#f5f5f5` |
+| `--om-color-utility-gray-700` | `#414651` |
+| `--om-color-utility-green-100` | `#d3f8df` |
+| `--om-color-utility-green-700` | `#087443` |
+| `--om-color-utility-orange-100` | `#ffead5` |
+| `--om-color-utility-orange-700` | `#c4320a` |
+| `--om-color-utility-purple-100` | `#ebe9fe` |
+| `--om-color-utility-purple-700` | `#5925dc` |
+| `--om-color-utility-success-100` | `#dcfae6` |
+| `--om-color-utility-success-700` | `#067647` |
+| `--om-color-utility-warning-100` | `#fef0c7` |
+| `--om-color-utility-warning-700` | `#b54708` |
+| `--om-color-utility-yellow-100` | `#fef7c3` |
+| `--om-color-utility-yellow-700` | `#a15c07` |
 
 ## Absolute colors (3)
 
@@ -338,11 +354,11 @@ Prefer these — they adapt to dark mode.
 | `--om-color-transparent` | `transparent` |
 | `--om-color-white` | `#ffffff` |
 
-## Palette colors (324)
+## Palette colors (347)
 
 Fixed swatches; do NOT adapt to dark mode. Prefer semantic tokens.
 
-<details><summary>Show all 324</summary>
+<details><summary>Show all 347</summary>
 
 | Token | Value |
 | --- | --- |
@@ -646,6 +662,29 @@ Fixed swatches; do NOT adapt to dark mode. Prefer semantic tokens.
 | `--om-color-violet-800` | `#5720b7` |
 | `--om-color-violet-900` | `#491c96` |
 | `--om-color-violet-950` | `#2e125e` |
+| `--om-color-visualization-blue-2` | `#3ca2f4` |
+| `--om-color-visualization-blue-600` | `#1677ff` |
+| `--om-color-visualization-chart-blue-1` | `#4689ff` |
+| `--om-color-visualization-desert` | `#b56727` |
+| `--om-color-visualization-dq-failed` | `#cb5a50` |
+| `--om-color-visualization-electric-violet` | `#9747ff` |
+| `--om-color-visualization-gray-1` | `#a1a1aa` |
+| `--om-color-visualization-gray-300` | `#d0d5dd` |
+| `--om-color-visualization-gray-400` | `#98a2b3` |
+| `--om-color-visualization-green-3` | `#48ca9e` |
+| `--om-color-visualization-green-3-translucent` | `#48ca9e30` |
+| `--om-color-visualization-green-4` | `#039855` |
+| `--om-color-visualization-lemon-zest` | `#ffd700` |
+| `--om-color-visualization-my-sin` | `#feb019` |
+| `--om-color-visualization-pink-salmon` | `#ff92ae` |
+| `--om-color-visualization-purple-2` | `#7147e8` |
+| `--om-color-visualization-red-3` | `#f24822` |
+| `--om-color-visualization-red-3-translucent` | `#ff7c501a` |
+| `--om-color-visualization-riptide` | `#76e9c6` |
+| `--om-color-visualization-san-marino` | `#416bb3` |
+| `--om-color-visualization-silver-tree` | `#5cae95` |
+| `--om-color-visualization-test-success` | `#12b76a` |
+| `--om-color-visualization-yellow-2` | `#ffbe0e` |
 | `--om-color-warning-25` | `#fffcf5` |
 | `--om-color-warning-50` | `#fffaeb` |
 | `--om-color-warning-100` | `#fef0c7` |
@@ -673,11 +712,11 @@ Fixed swatches; do NOT adapt to dark mode. Prefer semantic tokens.
 
 </details>
 
-## Legacy colors (228)
+## Legacy colors (220)
 
 Exact migrated one-offs (migration debt). Do not use in new code; re-express with a semantic token.
 
-<details><summary>Show all 228</summary>
+<details><summary>Show all 220</summary>
 
 | Token | Value |
 | --- | --- |
@@ -697,7 +736,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-0-0-0-0-13` | `rgba(0, 0, 0, 0.13)` |
 | `--om-legacy-color-0-0-0-0-15` | `rgba(0, 0, 0, 0.15)` |
 | `--om-legacy-color-0-0-0-0-25` | `rgba(0, 0, 0, 0.25)` |
-| `--om-legacy-color-0-0-0-0-051` | `#0000000d` |
 | `--om-legacy-color-0-0-0-0-059` | `#0000000f` |
 | `--om-legacy-color-0-0-0-0-102` | `#0000001a` |
 | `--om-legacy-color-0c5460` | `#0c5460` |
@@ -799,7 +837,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-111827` | `#111827` |
 | `--om-legacy-color-155724` | `#155724` |
 | `--om-legacy-color-344054` | `#344054` |
-| `--om-legacy-color-373737` | `#373737` |
 | `--om-legacy-color-444444` | `#444` |
 | `--om-legacy-color-515151` | `#515151` |
 | `--om-legacy-color-595959` | `#595959` |
@@ -808,7 +845,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-757575` | `#757575` |
 | `--om-legacy-color-777777` | `#777` |
 | `--om-legacy-color-856404` | `#856404` |
-| `--om-legacy-color-a9dcb5` | `#a9dcb5` |
 | `--om-legacy-color-a9efc5` | `#a9efc5` |
 | `--om-legacy-color-a84c3d` | `#a84c3d` |
 | `--om-legacy-color-afafc1` | `#afafc1` |
@@ -816,7 +852,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-b1b1b7` | `rgb(177, 177, 183)` |
 | `--om-legacy-color-b4d5ff` | `#b4d5ff` |
 | `--om-legacy-color-b1271c` | `#b1271c` |
-| `--om-legacy-color-bbbbbb` | `#bbb` |
 | `--om-legacy-color-bee5eb` | `#bee5eb` |
 | `--om-legacy-color-c3e6cb` | `#c3e6cb` |
 | `--om-legacy-color-c6b5f6` | `#c6b5f6` |
@@ -843,7 +878,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-dde3ea` | `#dde3ea` |
 | `--om-legacy-color-e1e4e8` | `#e1e4e8` |
 | `--om-legacy-color-e2dfd4` | `#e2dfd4` |
-| `--om-legacy-color-e2e2e2` | `#e2e2e2` |
 | `--om-legacy-color-e4e4e4` | `#e4e4e4` |
 | `--om-legacy-color-e5ebff` | `#e5ebff` |
 | `--om-legacy-color-e6f1fe` | `#e6f1fe` |
@@ -860,7 +894,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-eeeeee` | `#eeeeee` |
 | `--om-legacy-color-ef6820` | `#ef6820` |
 | `--om-legacy-color-efbdc1` | `#efbdc1` |
-| `--om-legacy-color-efefef` | `#efefef` |
 | `--om-legacy-color-f0f0f0` | `#f0f0f0` |
 | `--om-legacy-color-f0f1f3` | `#f0f1f3` |
 | `--om-legacy-color-f0f5ff` | `#f0f5ff` |
@@ -889,11 +922,9 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-f8faff` | `#f8faff` |
 | `--om-legacy-color-f9f5ff` | `#f9f5ff` |
 | `--om-legacy-color-f9fafc` | `#f9fafc` |
-| `--om-legacy-color-f9fbfc` | `#f9fbfc` |
 | `--om-legacy-color-f9816c` | `#f9816c` |
 | `--om-legacy-color-f44336` | `#f44336` |
 | `--om-legacy-color-f59638` | `#f59638` |
-| `--om-legacy-color-fbb4ae` | `#fbb4ae` |
 | `--om-legacy-color-fbf8f8` | `#fbf8f8` |
 | `--om-legacy-color-fbfaf9` | `#fbfaf9` |
 | `--om-legacy-color-fbfcff` | `#fbfcff` |
