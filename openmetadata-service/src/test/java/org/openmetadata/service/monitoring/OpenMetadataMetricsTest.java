@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.zaxxer.hikari.metrics.IMetricsTracker;
 import com.zaxxer.hikari.metrics.PoolStats;
@@ -26,6 +27,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.prometheusmetrics.PrometheusConfig;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
+import java.lang.ref.WeakReference;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -88,9 +90,8 @@ class OpenMetadataMetricsTest {
 
   @Test
   void sumsEveryPoolRatherThanWhicheverOneIsFoundFirst() {
-    // The request pool is no longer the only one: the Quartz job stores and the Flowable engine
-    // each
-    // hold their own. Picking a single gauge would report an arbitrary one of them.
+    // The request pool is no longer the only one: the Quartz job stores and the Flowable
+    // engine each hold their own. Picking a single gauge would report an arbitrary one.
     try (IMetricsTracker request = attachPool(REQUEST_POOL, new ControllablePoolStats(4, 16));
         IMetricsTracker quartz = attachPool(QUARTZ_POOL, new ControllablePoolStats(1, 2))) {
       assertNotNull(request);
@@ -132,6 +133,32 @@ class OpenMetadataMetricsTest {
 
       assertEquals(20.0, poolConnections(), 0.01);
     }
+  }
+
+  @Test
+  void keepsReadingThePoolAfterGarbageCollection() {
+    // Micrometer gauges reference their state weakly unless the builder opts out, and a gauge whose
+    // state has been collected reports NaN forever. Registering this one through a supplier that
+    // the registry does not hold strongly would swap the always-zero bug for an eventually-NaN one,
+    // which no assertion taken immediately after registration can catch.
+    try (IMetricsTracker request = attachPool(REQUEST_POOL, new ControllablePoolStats(5, 15))) {
+      assertNotNull(request);
+      new OpenMetadataMetrics(registry);
+      assertEquals(20.0, poolConnections(), 0.01);
+
+      assumeTrue(weakReferencesGetCleared(), "JVM never cleared a weak reference; probe is moot");
+
+      assertEquals(20.0, poolConnections(), 0.01, "gauge must still read HikariCP after a GC");
+    }
+  }
+
+  /** Runs GC until a throwaway weak reference is cleared, proving the probe above is meaningful. */
+  private static boolean weakReferencesGetCleared() {
+    WeakReference<Object> canary = new WeakReference<>(new Object());
+    for (int attempt = 0; attempt < 20 && canary.get() != null; attempt++) {
+      System.gc();
+    }
+    return canary.get() == null;
   }
 
   @Test
