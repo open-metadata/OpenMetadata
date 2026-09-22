@@ -369,3 +369,13 @@ SET @ddl = (
 PREPARE stmt FROM @ddl;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+-- Perf: the entity_usage unique key is (usageDate, id), so any lookup that filters on `id` alone
+-- (insertOrReplaceCount/insertOrUpdateCount recomputing count7/count30, getUsageById,
+-- getLatestUsage, getLatestUsageBatch, delete-by-id) cannot use it -- usageDate is the leading
+-- column and is not constrained. Those statements full-scan entity_usage once each, and the
+-- insert path fires two such subqueries per usage event, so the scans scale with both table size
+-- and write rate. A single-column index on id makes them all index seeks.
+-- Plain ALTER: InnoDB ADD INDEX is online + atomic, and the migration runner skips already-applied
+-- statements by hash, so re-runs are a no-op without an information_schema pre-check.
+ALTER TABLE entity_usage ADD INDEX idx_entity_usage_id (id);
