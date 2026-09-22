@@ -374,22 +374,19 @@ test.describe(
         await expect
           .poll(
             async () => {
+              // Filtered by FQN server-side: an unfiltered window holds every
+              // incident other workers opened at the same time, and the
+              // endpoint's default page of 10 can drop this one.
               const response = await apiContext.get(
-                `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&startTs=${
-                  failedTimestamp - 60_000
-                }&endTs=${failedTimestamp + 60_000}`
+                `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&testCaseFQN=${encodeURIComponent(
+                  failedTestCase.fullyQualifiedName
+                )}&startTs=${failedTimestamp - 60_000}&endTs=${
+                  failedTimestamp + 60_000
+                }`
               );
               const { data } = await response.json();
 
-              return Boolean(
-                data?.some(
-                  (incident: {
-                    testCaseReference?: { fullyQualifiedName?: string };
-                  }) =>
-                    incident.testCaseReference?.fullyQualifiedName ===
-                    failedTestCase.fullyQualifiedName
-                )
-              );
+              return Boolean(data?.length);
             },
             { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
           )

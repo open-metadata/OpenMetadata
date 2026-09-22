@@ -91,6 +91,17 @@ export interface UseTestCaseIncidentHeaderResult {
 }
 
 /**
+ * Status each task transition leaves the incident in, so a transition that the
+ * server applied can still be reflected when reading the new status back fails.
+ */
+const TRANSITION_RESULT_STATUS: Record<string, TestCaseResolutionStatusTypes> =
+  {
+    ack: TestCaseResolutionStatusTypes.ACK,
+    assign: TestCaseResolutionStatusTypes.Assigned,
+    reassign: TestCaseResolutionStatusTypes.Assigned,
+  };
+
+/**
  * Incident-context data + handlers for the test-case details strip
  * (owner / incident / status / assignee / severity / table / test type).
  * Shared by the OSS antd renderer (IncidentManagerPageHeader) and the
@@ -192,13 +203,33 @@ export const useTestCaseIncidentHeader = ({
 
       try {
         await transitionIncident(taskId, request);
-        const refreshed = await getListTestCaseIncidentByStateId(taskId);
-        const latest = refreshed?.data?.[0];
-        if (latest) {
-          onIncidentStatusUpdate(latest);
-        }
       } catch (error) {
         showErrorToast(error as AxiosError);
+
+        return;
+      }
+
+      // The transition already landed, so the header must move off the old
+      // status even when the read-back fails - leaving it on the previous one
+      // would invite the user to repeat a transition the server has applied.
+      let latest: TestCaseResolutionStatus | undefined;
+      try {
+        const refreshed = await getListTestCaseIncidentByStateId(taskId);
+        latest = refreshed?.data?.[0];
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+
+      const transitionResult =
+        TRANSITION_RESULT_STATUS[request.transitionId ?? ''];
+
+      if (latest) {
+        onIncidentStatusUpdate(latest);
+      } else if (transitionResult) {
+        onIncidentStatusUpdate({
+          ...testCaseStatusData,
+          testCaseResolutionStatusType: transitionResult,
+        });
       }
     },
     [isDeleted, testCaseStatusData, onIncidentStatusUpdate]

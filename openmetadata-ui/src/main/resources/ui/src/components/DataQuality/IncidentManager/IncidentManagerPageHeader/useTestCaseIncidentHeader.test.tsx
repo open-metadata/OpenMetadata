@@ -348,6 +348,57 @@ describe('useTestCaseIncidentHeader', () => {
     ).toHaveBeenCalled();
   });
 
+  // The server has applied the transition by the time the read-back runs, so a
+  // read-back that fails or comes back empty must not leave the header on New -
+  // it would invite the user to acknowledge the same incident again.
+  it.each([
+    [
+      'fails',
+      () =>
+        (getListTestCaseIncidentByStateId as jest.Mock).mockRejectedValueOnce(
+          new Error('read-back failed')
+        ),
+    ],
+    [
+      'returns nothing',
+      () =>
+        (getListTestCaseIncidentByStateId as jest.Mock).mockResolvedValueOnce({
+          data: [],
+        }),
+    ],
+  ])(
+    'handleAcknowledgeIncident should move off New when the read-back %s',
+    async (_label, stubReadBack) => {
+      (getListTestCaseIncidentByStateId as jest.Mock).mockResolvedValueOnce({
+        ...MOCK_TEST_CASE_INCIDENT,
+        data: [
+          {
+            ...MOCK_TEST_CASE_INCIDENT.data[0],
+            testCaseResolutionStatusType: TestCaseResolutionStatusTypes.New,
+          },
+        ],
+      });
+
+      const { result } = renderIncidentHeaderHook();
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      expect(
+        result.current.testCaseStatusData?.testCaseResolutionStatusType
+      ).toBe(TestCaseResolutionStatusTypes.New);
+
+      stubReadBack();
+
+      await act(async () => {
+        await result.current.handleAcknowledgeIncident();
+      });
+
+      expect(
+        result.current.testCaseStatusData?.testCaseResolutionStatusType
+      ).toBe(TestCaseResolutionStatusTypes.ACK);
+    }
+  );
+
   it('handleDomainUpdate should patch the test case domains', async () => {
     const { result } = renderIncidentHeaderHook();
 
