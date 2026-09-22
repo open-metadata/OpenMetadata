@@ -79,13 +79,15 @@ const triggerTabFocus = async () => {
 // HTTP round trip.
 const createMockAxios = () => {
   let rejectedHandler: ((error: unknown) => Promise<unknown>) | null = null;
+  let fulfilledHandler: ((value: unknown) => unknown) | null = null;
   const axios = {
     interceptors: {
       response: {
         use: (
-          _fulfilled: (value: unknown) => unknown,
+          fulfilled: (value: unknown) => unknown,
           rejected: (error: unknown) => Promise<unknown>
         ) => {
+          fulfilledHandler = fulfilled;
           rejectedHandler = rejected;
 
           return 1;
@@ -99,6 +101,11 @@ const createMockAxios = () => {
   return {
     axios,
     triggerError: (error: unknown) => rejectedHandler?.(error),
+    // The circuit-breaker's cycle counter resets on any 2xx that passes
+    // through the fulfilled interceptor; expose it so tests can simulate
+    // a real success landing between two 401 cycles.
+    triggerSuccess: (response: unknown = { status: 200, data: {} }) =>
+      fulfilledHandler?.(response),
   };
 };
 
@@ -218,21 +225,169 @@ describe('AuthCoordinator', () => {
 
     coordinator.install(axios, isRefreshable, onRefreshStart);
 
-    const error = {
+    // Distinct config objects per triggerError — real axios always
+    // constructs a fresh config per request, so the per-request retry
+    // counter is per-request; sharing one config across three triggers
+    // would erroneously look like a triple-retry of the same request
+    // and trip the per-request cap (which lives above onRefreshStart).
+    const mkError = () => ({
       response: { status: 401, data: {} },
       config: { url: '/api/v1/tables' },
-    };
+    });
 
     // Three concurrent 401s land while the same refresh cycle is in flight.
-    triggerError(error);
-    triggerError(error);
-    triggerError(error);
+    triggerError(mkError());
+    triggerError(mkError());
+    triggerError(mkError());
 
     expect(onRefreshStart).toHaveBeenCalledTimes(1);
 
     resolveRenewer({ expiresAt: Date.now() + 300_000, idToken: 'fresh' });
     await Promise.resolve();
     await Promise.resolve();
+  });
+
+  // Circuit-breaker layer 1: per-request retry cap. A single request that
+  // keeps 401'ing (permissions bug whose body happens to match a
+  // refreshable-error string, cached response with a stale header,
+  // etc.) fails deterministically for its caller rather than spinning
+  // through the refresh path forever.
+  it('caps per-request retries — a request that stays 401 after MAX_PER_REQUEST_RETRIES is thrown to its caller', async () => {
+    const renewer = jest.fn(async () => ({
+      expiresAt: Date.now() + 300_000,
+      idToken: 'fresh',
+    }));
+    coordinator.registerRenewer(renewer);
+    const { axios, triggerError } = createMockAxios();
+    const isRefreshable = jest.fn(() => true);
+    coordinator.install(axios, isRefreshable);
+    const config = { url: '/api/v1/tables' };
+    const error = { response: { status: 401, data: {} }, config };
+
+    // First hit enqueues + triggers refresh; second hit for the same
+    // config (after a refresh handed back a working token but the
+    // endpoint still 401s) enqueues again. The third one exceeds the
+    // per-request cap and rejects with the raw error.
+    triggerError(error);
+    await Promise.resolve();
+    triggerError(error);
+    await Promise.resolve();
+
+    await expect(triggerError(error)).rejects.toBe(error);
+  });
+
+  // Circuit-breaker layer 2: consecutive-cycle cap. If N refresh cycles
+  // fire back-to-back with no 2xx interleaved, the auth state is broken
+  // beyond auto-recovery — emit `refresh-failed` (AuthProvider drives
+  // sign-out) instead of continuing to spin. Every 2xx resets the
+  // counter so a normal burst of stale-header 401s at cold-load doesn't
+  // consume the budget a real recovery would need later.
+  it('circuit-breaks after MAX_CONSECUTIVE_REFRESH_CYCLES cycles without an intervening 2xx and emits refresh-failed', async () => {
+    const renewer = jest.fn(async () => ({
+      expiresAt: Date.now() + 300_000,
+      idToken: 'fresh',
+    }));
+    coordinator.registerRenewer(renewer);
+    const failures: unknown[] = [];
+    coordinator.on('refresh-failed', (p) => failures.push(p));
+    const { axios, triggerError } = createMockAxios();
+    coordinator.install(axios, () => true);
+
+    // Each pair here uses a distinct config so the per-request retry
+    // cap doesn't fire first — this test exercises layer 2, not layer 1.
+    const mkError = (path: string) => ({
+      response: { status: 401, data: {} },
+      config: { url: `/api/v1/${path}` },
+    });
+
+    // Awaiting the pending returned by `triggerError` ensures the full
+    // cycle has completed (ensureFreshToken → drain), so `inflight` is
+    // back to null before the next trigger. The mock's `axios.request`
+    // is a plain jest.fn (not a real axios), so drain "succeeds" from
+    // its perspective but the fulfilled interceptor is never actually
+    // invoked — meaning the cycle counter is NOT reset between iters,
+    // which is what this test needs.
+    // MAX_CONSECUTIVE_REFRESH_CYCLES=3: cycles 1..3 are tolerated;
+    // cycle 4 trips the breaker → emits `refresh-failed` and throws.
+    for (let i = 0; i < 3; i++) {
+      await triggerError(mkError(`endpoint-${i}`));
+    }
+
+    expect(failures).toEqual([]);
+
+    await expect(triggerError(mkError('endpoint-4'))).rejects.toBeDefined();
+    expect(failures).toHaveLength(1);
+    expect(failures[0]).toEqual({
+      reason: expect.stringMatching(/circuit-breaker tripped/),
+    });
+  });
+
+  // Concurrent 401s during a single in-flight refresh must share one
+  // cycle-counter increment. Without this, a page that fires 5 API calls
+  // in parallel at cold-load and gets 5 stale-header 401s back would eat
+  // the whole cycle budget in one go — the breaker would trip on the
+  // very first refresh cycle even though the refresh is working fine.
+  it('concurrent 401s during a single refresh cycle share one counter increment', async () => {
+    let resolveRenewer!: (r: { expiresAt: number; idToken: string }) => void;
+    const renewer = jest.fn(
+      () =>
+        new Promise<{ expiresAt: number; idToken: string }>((r) => {
+          resolveRenewer = r;
+        })
+    );
+    coordinator.registerRenewer(renewer);
+    const failures: unknown[] = [];
+    coordinator.on('refresh-failed', (p) => failures.push(p));
+    const { axios, triggerError } = createMockAxios();
+    coordinator.install(axios, () => true);
+
+    // Fire 5 concurrent 401s WHILE the renewer is still pending — none
+    // has been retried yet, so per-request caps don't fire; all should
+    // share the same in-flight refresh and count as one cycle.
+    for (let i = 0; i < 5; i++) {
+      triggerError({
+        response: { status: 401, data: {} },
+        config: { url: `/api/v1/burst-${i}` },
+      });
+    }
+
+    // Let the executor of the renewal promise run.
+    await Promise.resolve();
+    resolveRenewer({ expiresAt: Date.now() + 300_000, idToken: 'fresh' });
+    await Promise.resolve();
+
+    // 5 parallel 401s share one cycle → breaker doesn't fire (cap is 3).
+    expect(failures).toEqual([]);
+  });
+
+  // Any successful 2xx on the shared axios instance resets the
+  // consecutive-cycle counter — a legitimate cycle earlier in the
+  // session must not eat into the budget of a real recovery later.
+  it('a successful 2xx response resets the consecutive-cycle counter', async () => {
+    const renewer = jest.fn(async () => ({
+      expiresAt: Date.now() + 300_000,
+      idToken: 'fresh',
+    }));
+    coordinator.registerRenewer(renewer);
+    const failures: unknown[] = [];
+    coordinator.on('refresh-failed', (p) => failures.push(p));
+    const { axios, triggerError, triggerSuccess } = createMockAxios();
+    coordinator.install(axios, () => true);
+
+    for (let i = 0; i < 5; i++) {
+      triggerError({
+        response: { status: 401, data: {} },
+        config: { url: `/api/v1/endpoint-${i}` },
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+      // Simulate a real success response landing between refresh cycles.
+      triggerSuccess();
+    }
+
+    // 5 cycles > 3 cap, but each was reset by a 2xx immediately after —
+    // no circuit-break should fire.
+    expect(failures).toEqual([]);
   });
 
   it('does not fire onRefreshStart for a 401 that isRefreshable filters out', async () => {

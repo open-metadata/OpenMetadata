@@ -46,9 +46,50 @@ const RENEWER_WAIT_TIMEOUT_MS = 5_000;
 // can force the sign-out path instead of spinning against a broken IdP.
 const MAX_RECOVERY_ATTEMPTS = 1;
 
+// Circuit-breaker limits on the interceptor's 401 → refresh → retry chain.
+// Two independent counters, both required — one alone doesn't cover
+// every runaway pattern:
+//
+//   * `MAX_PER_REQUEST_RETRIES` caps how many times a SINGLE request can
+//     be re-issued through the refresh path. A misbehaving endpoint that
+//     always returns 401 (permissions bug whose body happens to match
+//     `REFRESHABLE_AUTH_ERRORS`, cached response with a stale-header
+//     server-side, etc.) is thrown back to its caller after this many
+//     retries rather than being re-queued forever.
+//
+//   * `MAX_CONSECUTIVE_REFRESH_CYCLES` caps how many refresh cycles can
+//     fire in a row across the WHOLE app without any authenticated 2xx
+//     landing in between. Every 2xx resolves the counter to 0. If we hit
+//     the cap the auth state is broken beyond auto-recovery (server
+//     rotated its signing key and the refresh path returns tokens still
+//     signed with the old kid, IdP is handing back an unverifiable
+//     token, session was hard-revoked, etc.) — emit `refresh-failed`
+//     and let the AuthProvider's subscription drive the sign-out path.
+//     Concurrent 401s during the same cycle share the inflight refresh
+//     and don't increment (only "new cycle" increments), so a burst of
+//     parallel requests during a legitimate refresh doesn't trip the
+//     breaker.
+//
+// Together: single bad endpoint → its caller fails deterministically.
+// Whole-app-persistent 401 → user lands on /signin in bounded time
+// instead of spinning ~2 req/s indefinitely. No request storm survives
+// either guard.
+const MAX_PER_REQUEST_RETRIES = 2;
+const MAX_CONSECUTIVE_REFRESH_CYCLES = 3;
+
+// Bus event name — extracted so the interceptor and refresh paths share
+// one literal (satisfies `no-duplicate-string`).
+const REFRESH_FAILED_EVENT: AuthCoordinatorEvent = 'refresh-failed';
+
 export class AuthCoordinator {
   private renewer: Renewer | null = null;
   private inflight: Promise<string> | null = null;
+  // Counts refresh cycles that fired since the last authenticated 2xx.
+  // Reset on any success interceptor firing. Incremented ONLY when a new
+  // cycle starts (`inflight === null`), so concurrent 401s during a
+  // single in-flight refresh share one increment. See
+  // `MAX_CONSECUTIVE_REFRESH_CYCLES`.
+  private consecutiveRefreshCycles = 0;
   private readonly bus = new TypedEventBus();
   private readonly queue = new RefreshQueue();
   private readonly timer = new ProactiveTimer();
@@ -88,7 +129,15 @@ export class AuthCoordinator {
     onRefreshStart?: () => void
   ): Unsubscribe {
     const id = axios.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        // Any authenticated 2xx proves the refresh chain is healthy end
+        // to end — reset the circuit-breaker counter so a genuine burst
+        // of stale-header 401s at cold-load doesn't consume the budget
+        // that a real recovery would need later.
+        this.consecutiveRefreshCycles = 0;
+
+        return response;
+      },
       async (error) => {
         const status = error?.response?.status;
         const url = error?.config?.url ?? '';
@@ -96,13 +145,45 @@ export class AuthCoordinator {
         if (status !== 401 || !isRefreshable(status, url, body)) {
           throw error;
         }
-        // Fire once per active refresh cycle — `inflight` is set
-        // synchronously by `ensureFreshToken()` below, so only the 401 that
-        // starts a new cycle (not the concurrent ones queued behind it)
-        // triggers this callback.
-        if (!this.inflight && onRefreshStart) {
-          onRefreshStart();
+
+        // Per-request cap. Attach an idempotent counter to the request
+        // config on each 401 that reaches us — after the cap we throw
+        // instead of enqueueing so a single bad endpoint (permissions
+        // bug whose body happens to match REFRESHABLE_AUTH_ERRORS, a
+        // cached response with a stale header, etc.) fails
+        // deterministically for its caller rather than spinning through
+        // the refresh path forever.
+        const cfg = error.config as
+          | { __omAuthRetries?: number }
+          | undefined;
+        const retries = (cfg?.__omAuthRetries ?? 0) + 1;
+        if (cfg) {
+          cfg.__omAuthRetries = retries;
         }
+        if (retries > MAX_PER_REQUEST_RETRIES) {
+          throw error;
+        }
+
+        // Consecutive-cycle circuit breaker. Only increment on a new
+        // cycle (no in-flight refresh) so concurrent 401s piggyback on
+        // the running refresh without inflating the counter. Once we
+        // hit the cap the auth state is broken beyond auto-recovery —
+        // emit `refresh-failed` (AuthProvider's subscription drives
+        // sign-out) and stop feeding the loop.
+        if (!this.inflight) {
+          this.consecutiveRefreshCycles += 1;
+          if (this.consecutiveRefreshCycles > MAX_CONSECUTIVE_REFRESH_CYCLES) {
+            this.bus.emit(REFRESH_FAILED_EVENT, {
+              reason: `Auth refresh loop circuit-breaker tripped after ${MAX_CONSECUTIVE_REFRESH_CYCLES} consecutive cycles without a 2xx`,
+            });
+
+            throw error;
+          }
+          if (onRefreshStart) {
+            onRefreshStart();
+          }
+        }
+
         const pending = this.queue.enqueue(error.config);
         // Force past the storage-freshness fast-path: the 401 we're
         // handling right now is the server telling us the current stored
@@ -356,7 +437,7 @@ export class AuthCoordinator {
         message.type === 'failed'
           ? message.reason ?? 'leader failed after retries'
           : 'leader broadcast unusable payload after retries';
-      this.bus.emit('refresh-failed', { reason });
+      this.bus.emit(REFRESH_FAILED_EVENT, { reason });
 
       throw new Error(reason);
     }
@@ -399,7 +480,7 @@ export class AuthCoordinator {
     // bounded-retry give-up path: emit `refresh-failed` so downstream
     // consumers (interceptors, the queue drain) see the same signal.
     const reason = err instanceof Error ? err.message : String(err);
-    this.bus.emit('refresh-failed', { reason });
+    this.bus.emit(REFRESH_FAILED_EVENT, { reason });
 
     throw err;
   }
