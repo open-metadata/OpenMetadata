@@ -71,6 +71,9 @@ test.describe('Glossary Hierarchy', () => {
             const res = await apiContext.get(
               `/api/v1/glossaryTerms/${childTerm.responseData.id}`
             );
+            if (!res.ok()) {
+              return true; // truthy → poll retries; avoids false-pass on transient errors
+            }
             const term = await res.json();
 
             return term.parent;
