@@ -39,6 +39,7 @@ const DqFilterChip = ({
   if (filter.type === DQ_FILTER_TYPES.GLOSSARY_TERM) {
     return (
       <GlossaryTermPicker
+        bordered
         commitMode="staged"
         data-testid={`search-dropdown-${filter.label}`}
         // The bar owns which chip is open, so it can close this one.
@@ -82,10 +83,7 @@ const DqFilterChip = ({
               {filter.selectedOwnerKeys.length}
             </span>
           )}
-          <ChevronDown
-            className="tw:size-3.5 tw:shrink-0 tw:text-fg-quaternary"
-            data-icon="true"
-          />
+          <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
         </button>
       </UserTeamSelectableList>
     );
