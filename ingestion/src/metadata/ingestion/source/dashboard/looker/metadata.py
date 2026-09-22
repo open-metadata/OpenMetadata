@@ -121,6 +121,7 @@ from metadata.ingestion.source.dashboard.looker.measures import (
     candidates_from_explore,
     candidates_from_view,
     merge_candidates,
+    order_parents_first,
     related_metric_names,
     table_column_references,
 )
@@ -433,7 +434,13 @@ class LookerSource(DashboardServiceSource):
         that aggregates views from all repositories.
         """
         if self.repository_credentials and self._main_lookml_repos:
-            all_projects: set[str] = {model.project_name for model in all_lookml_models}
+            # Deduplicated but *ordered*, following the models: `yield_standalone_datamodels`
+            # takes the first project, and a set's iteration order changes between processes
+            # (string hashing is randomised), which would give every standalone view's
+            # measures a different hashed Metric name on each run. Following the model order
+            # also keeps that project paired with the `_all_lookml_models[0]` name the same
+            # method uses.
+            all_projects = dict.fromkeys(model.project_name for model in all_lookml_models)
             self._project_parsers: dict[str, BulkLkmlParser] = {}
 
             # Create readers for all repositories
@@ -945,12 +952,22 @@ class LookerSource(DashboardServiceSource):
         # would otherwise cost twenty identical lookups.
         source_tables: dict[str, list[Table]] = {}
 
-        for candidate in self._metric_candidates.values():
+        # The server resolves `relatedMetrics` when the metric is created, so a reference may
+        # only name a metric already written. `order_parents_first` is what arranges that;
+        # the membership test is the backstop for a reference cycle, which no ordering can
+        # satisfy and which would otherwise fail the whole request.
+        emitted: set[str] = set()
+
+        for candidate in order_parents_first(self._metric_candidates):
             try:
                 if candidate.tags and self.source_config.includeTags:
                     yield from self.yield_data_model_tags(candidate.tags)
 
-                related = list(related_metric_names(service, candidate, self._metric_candidates))
+                related = [
+                    name
+                    for name in related_metric_names(service, candidate, self._metric_candidates)
+                    if name in emitted
+                ]
                 metric_request = build_metric_request(
                     service,
                     candidate,
@@ -966,6 +983,7 @@ class LookerSource(DashboardServiceSource):
                 yield Either(right=metric_request)  # pyright: ignore[reportCallIssue]
 
                 metric_name = model_str(metric_request.name)
+                emitted.add(metric_name)
                 yield from self._yield_metric_lineage(candidate, metric_name, related, source_tables)
             except Exception as err:
                 yield Either(  # pyright: ignore[reportCallIssue]

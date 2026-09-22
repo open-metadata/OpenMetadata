@@ -332,6 +332,35 @@ def merge_candidates(
     return known
 
 
+def order_parents_first(known: dict[tuple[str, str, str], MeasureCandidate]) -> list[MeasureCandidate]:
+    """Candidates ordered so that every measure a candidate references comes before it.
+
+    ``relatedMetrics`` is resolved server-side when the metric is *created*, so a derived
+    measure whose parent has not been written yet is rejected. Collection order gives no such
+    guarantee: the Looker API lists an explore's fields alphabetically, which puts
+    ``avg_revenue`` before the ``${total_revenue}`` it is computed from.
+
+    A reference cycle -- which LookML rejects, but which nothing here can rely on -- is broken
+    at whichever member is reached first, so the walk terminates instead of recursing forever.
+    """
+    ordered: list[MeasureCandidate] = []
+    visited: set[tuple[str, str, str]] = set()
+
+    def visit(candidate: MeasureCandidate) -> None:
+        if candidate.key in visited:
+            return
+        visited.add(candidate.key)
+        for reference in measure_references(candidate.sql):
+            parent = known.get((candidate.project, candidate.view, reference))
+            if parent is not None:
+                visit(parent)
+        ordered.append(candidate)
+
+    for candidate in known.values():
+        visit(candidate)
+    return ordered
+
+
 def build_metric_request(
     service: str,
     candidate: MeasureCandidate,

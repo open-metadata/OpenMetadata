@@ -50,7 +50,8 @@ class LookMlView(BaseModel):
     measures: list[LookMlField] = Field([], description="Measures to ingest as cols")
     dimensions: list[LookMlField] = Field([], description="Dimensions to ingest as cols")
     # `_extract_column_lineage` has always iterated "dimension_groups"; without this field the
-    # getattr returned [] and dimension-group column lineage never ran.
+    # getattr returned [] and dimension-group column lineage never ran. `get_model_fields` has
+    # to carry them as columns too, or the lineage it builds has no target to resolve against.
     dimension_groups: list[LookMlField] = Field([], description="Dimension groups to ingest as cols")
     source_file: Includes | None = Field(None, description="lkml file path")
     derived_table: LookMlDerivedTableField | None = Field(None, description="To track lineage with the source")

@@ -33,12 +33,14 @@ from metadata.generated.schema.entity.data.metric import (
 )
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.looker.measures import (
+    MeasureCandidate,
     build_metric_request,
     candidates_from_explore,
     candidates_from_view,
     looker_metric_name,
     measure_references,
     merge_candidates,
+    order_parents_first,
     table_column_references,
 )
 from metadata.ingestion.source.dashboard.looker.models import LkmlFile
@@ -198,6 +200,76 @@ def test_an_explore_dimension_is_not_a_metric():
     dimension = explore_field(name="orders.status", view="orders", type="string", measure=False)
 
     assert candidates_from_explore(explore(dimension), PROJECT) == []
+
+
+# --------------------------------------------------------------------------------------
+# Emission order
+# --------------------------------------------------------------------------------------
+
+
+def measure_candidate(name: str, sql: str | None = None, view: str = "orders") -> MeasureCandidate:
+    return MeasureCandidate(
+        project=PROJECT,
+        view=view,
+        name=name,
+        label=None,
+        description=None,
+        measure_type="number",
+        sql=sql,
+        filters=[],
+        value_format_name=None,
+        tags=[],
+        dimensions=[],
+        from_lookml=True,
+    )
+
+
+def ordered_names(candidates: list[MeasureCandidate]) -> list[str]:
+    known = {candidate.key: candidate for candidate in candidates}
+    return [candidate.name for candidate in order_parents_first(known)]
+
+
+def test_a_derived_measure_is_ordered_after_the_measures_it_references(candidates):
+    """The API hands us fields alphabetically, so `avg_order_value` arrives first."""
+    alphabetical = sorted(candidates.values(), key=lambda candidate: candidate.name)
+    names = ordered_names(alphabetical)
+
+    assert names.index("total_revenue") < names.index("avg_order_value")
+    assert names.index("count") < names.index("avg_order_value")
+
+
+def test_ordering_keeps_every_candidate_exactly_once(candidates):
+    names = ordered_names(list(candidates.values()))
+
+    assert sorted(names) == sorted(candidate.name for candidate in candidates.values())
+
+
+def test_a_reference_to_another_views_measure_is_not_a_parent():
+    """`${field}` is view-scoped, so a same-named measure on another view does not reorder."""
+    names = ordered_names(
+        [
+            measure_candidate("revenue_ratio", sql="${total_revenue} / 2", view="orders"),
+            measure_candidate("total_revenue", view="returns"),
+        ]
+    )
+
+    assert names == ["revenue_ratio", "total_revenue"]
+
+
+def test_a_reference_cycle_terminates_and_keeps_both_measures():
+    """LookML rejects a cycle, but a malformed view must not hang the run."""
+    names = ordered_names(
+        [
+            measure_candidate("a", sql="${b} + 1"),
+            measure_candidate("b", sql="${a} + 1"),
+        ]
+    )
+
+    assert sorted(names) == ["a", "b"]
+
+
+def test_a_measure_referencing_itself_terminates():
+    assert ordered_names([measure_candidate("a", sql="${a} + 1")]) == ["a"]
 
 
 # --------------------------------------------------------------------------------------

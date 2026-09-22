@@ -129,7 +129,11 @@ def _views() -> dict[str, LookMlView]:
 
 
 def _explore() -> LookmlModelExplore:
-    """An explore exposing `my_view`'s measures the way the Looker API reports them."""
+    """An explore exposing `my_view`'s measures the way the Looker API reports them.
+
+    The field list is alphabetical, as the API returns it -- which is what puts the derived
+    `avg_revenue` ahead of the `total_revenue` it is computed from.
+    """
     return LookmlModelExplore(
         name="my_explore",
         model_name="my_model",
@@ -140,6 +144,20 @@ def _explore() -> LookmlModelExplore:
             dimensions=[],
             measures=[
                 LookmlModelExploreField(
+                    name="my_view.api_only_measure",
+                    view="my_view",
+                    project_name=PROJECT,
+                    measure=True,
+                    type="count",
+                ),
+                LookmlModelExploreField(
+                    name="my_view.avg_revenue",
+                    view="my_view",
+                    project_name=PROJECT,
+                    measure=True,
+                    type="number",
+                ),
+                LookmlModelExploreField(
                     name="my_view.total_revenue",
                     view="my_view",
                     project_name=PROJECT,
@@ -147,16 +165,19 @@ def _explore() -> LookmlModelExplore:
                     type="sum",
                     label="Total Revenue",
                 ),
-                LookmlModelExploreField(
-                    name="my_view.api_only_measure",
-                    view="my_view",
-                    project_name=PROJECT,
-                    measure=True,
-                    type="count",
-                ),
             ],
         ),
     )
+
+
+def _looker_source(**source_config) -> LookerSource:
+    with patch(
+        "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection",
+        return_value=False,
+    ):
+        config_dict = _config(**source_config)
+        config = OpenMetadataWorkflowConfig.model_validate(config_dict)
+        return LookerSource.create(config_dict["source"], config.workflowConfig.openMetadataServerConfig)
 
 
 def _run_bulk_stage(source_config: dict, db_service_prefixes: list[str] | None = None):
@@ -165,13 +186,7 @@ def _run_bulk_stage(source_config: dict, db_service_prefixes: list[str] | None =
     The sink commits its buffer on a Barrier, so `_build_data_model` only returns an entity
     once one has gone past -- the same ordering the real run has.
     """
-    with patch(
-        "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection",
-        return_value=False,
-    ):
-        config_dict = _config(**source_config)
-        config = OpenMetadataWorkflowConfig.model_validate(config_dict)
-        looker = LookerSource.create(config_dict["source"], config.workflowConfig.openMetadataServerConfig)
+    looker = _looker_source(**source_config)
     looker.context.get().__dict__["dashboard_service"] = SERVICE
 
     views = _views()
@@ -313,6 +328,26 @@ def test_metric_names_are_stable_across_runs():
     assert len(first) == 5
 
 
+def test_project_order_follows_the_models_rather_than_set_iteration():
+    """`yield_standalone_datamodels` attributes every standalone view to the first project,
+    and that project is part of the hashed Metric name. Collecting the projects into a `set`
+    reorders them between processes -- string hashing is randomised -- which would mint a new
+    Metric for every standalone measure on each run. Enough projects are used here that a
+    reintroduced `set` cannot pass by coincidence.
+    """
+    projects = ("zeta", "alpha", "zeta", "mu", "ecommerce", "sales", "ops", "finance", "core")
+
+    looker = _looker_source()
+    looker._repo_credentials = True
+    looker._reader_class = MagicMock()
+    looker._main_lookml_repos = [MagicMock(path="/tmp/repo")]
+
+    with patch("metadata.ingestion.source.dashboard.looker.metadata.BulkLkmlParser", return_value=MagicMock()):
+        looker.parser = [MagicMock(project_name=name) for name in projects]
+
+    assert list(looker._project_parsers) == list(dict.fromkeys(projects))
+
+
 # --------------------------------------------------------------------------------------
 # Lineage
 # --------------------------------------------------------------------------------------
@@ -334,6 +369,20 @@ def test_related_metrics_records_the_same_dependency(by_display_name):
     parent = looker_metric_name(SERVICE, PROJECT, "my_view", "total_revenue")
 
     assert [model_str(related) for related in by_display_name["avg_revenue"].relatedMetrics] == [parent]
+
+
+def test_a_derived_measure_is_emitted_after_the_parent_it_references(records):
+    """The server resolves `relatedMetrics` at create time, so the parent has to exist first.
+
+    The explore lists its fields alphabetically, so collection order alone puts `avg_revenue`
+    ahead of `${total_revenue}` and the create would be rejected.
+    """
+    names = [model_str(metric.name) for metric in _metrics(records)]
+
+    parent = names.index(looker_metric_name(SERVICE, PROJECT, "my_view", "total_revenue"))
+    child = names.index(looker_metric_name(SERVICE, PROJECT, "my_view", "avg_revenue"))
+
+    assert parent < child
 
 
 def test_table_to_metric_lineage_carries_column_lineage():
