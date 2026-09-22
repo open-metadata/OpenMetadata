@@ -1056,9 +1056,7 @@ describe('DataAssetsHeader component', () => {
         />
       );
 
-      fireEvent.click(
-        await screen.findByTestId('announcements-widget-item')
-      );
+      fireEvent.click(await screen.findByTestId('announcements-widget-item'));
 
       expect(await screen.findByTestId('announcement-drawer')).toHaveAttribute(
         'data-create-permission',
@@ -1079,9 +1077,7 @@ describe('DataAssetsHeader component', () => {
         />
       );
 
-      fireEvent.click(
-        await screen.findByTestId('announcements-widget-item')
-      );
+      fireEvent.click(await screen.findByTestId('announcements-widget-item'));
 
       expect(await screen.findByTestId('announcement-drawer')).toHaveAttribute(
         'data-create-permission',
