@@ -340,10 +340,10 @@ test.describe(
 
 test.describe(
   'Test Case Details Page - Incident strip',
-  { tag: ['@Features', '@Observability'] },
+  { tag: ['@Observability'] },
   () => {
-    let failedTable!: TableClass;
-    let failedTestCase!: { name: string; fullyQualifiedName: string };
+    let failedTable: TableClass;
+    let failedTestCase: { name: string; fullyQualifiedName: string };
 
     test.beforeAll(
       'Create a test case whose failed run opens an incident',
@@ -427,7 +427,8 @@ test.describe(
       await test.step('Acknowledge updates the strip and the header chip', async () => {
         const transition = page.waitForResponse(
           (response) =>
-            /\/api\/v1\/tasks\/[^/]+\/resolve$/.test(response.url()) &&
+            response.url().includes('/api/v1/tasks/') &&
+            response.url().endsWith('/resolve') &&
             response.request().method() === 'POST'
         );
         await acknowledge.click();

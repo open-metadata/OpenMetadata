@@ -91,14 +91,15 @@ export interface UseTestCaseIncidentHeaderResult {
 }
 
 /**
- * Status each task transition leaves the incident in, so a transition that the
- * server applied can still be reflected when reading the new status back fails.
+ * Status a transition leaves the incident in, for reflecting a transition the
+ * server applied when reading the new status back fails. Only transitions whose
+ * every displayed field is derivable belong here: `ack` changes nothing but the
+ * type, whereas `assign` also sets an assignee that lives on the status the
+ * read-back would have returned.
  */
 const TRANSITION_RESULT_STATUS: Record<string, TestCaseResolutionStatusTypes> =
   {
     ack: TestCaseResolutionStatusTypes.ACK,
-    assign: TestCaseResolutionStatusTypes.Assigned,
-    reassign: TestCaseResolutionStatusTypes.Assigned,
   };
 
 /**

@@ -13,6 +13,7 @@
 
 import { BadgeWithDot, Button } from '@openmetadata/ui-core-components';
 import { AlertTriangle, ArrowUpRight } from '@untitledui/icons';
+import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -47,12 +48,16 @@ const IncidentDetails = ({
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:gap-4 tw:border-t tw:px-5 tw:py-3 tw:lg:flex-row tw:lg:items-center ${config.dividerClassName} ${config.incidentClassName}`}
+      className={classNames(
+        'tw:flex tw:flex-col tw:gap-4 tw:border-t tw:px-5 tw:py-3 tw:lg:flex-row tw:lg:items-center',
+        config.dividerClassName,
+        config.incidentClassName
+      )}
       data-testid="test-case-last-run-incident">
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-3">
         <AlertTriangle
           aria-hidden="true"
-          className={`tw:shrink-0 ${config.statusClassName}`}
+          className={classNames('tw:shrink-0', config.statusClassName)}
           data-testid="test-case-incident-icon"
           size={20}
         />
@@ -88,7 +93,7 @@ const IncidentDetails = ({
         data-testid="test-case-incident-actions">
         {canAcknowledge && (
           <Button
-            className={`tw:shrink-0 ${config.actionBorderClassName}`}
+            className={classNames('tw:shrink-0', config.actionBorderClassName)}
             color="secondary"
             data-testid="acknowledge-incident-button"
             isLoading={isAcknowledging}
