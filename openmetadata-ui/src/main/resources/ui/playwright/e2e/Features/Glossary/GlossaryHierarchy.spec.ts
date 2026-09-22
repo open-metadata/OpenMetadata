@@ -63,8 +63,7 @@ test.describe('Glossary Hierarchy', () => {
         glossary.responseData.fullyQualifiedName
       );
 
-      // moveAsync returns 200 immediately; the actual hierarchy change is
-      // processed asynchronously. Poll until the term's parent is cleared.
+      // moveAsync is async — poll until the backend clears the term's parent.
       await expect
         .poll(
           async () => {
@@ -72,7 +71,7 @@ test.describe('Glossary Hierarchy', () => {
               `/api/v1/glossaryTerms/${childTerm.responseData.id}`
             );
             if (!res.ok()) {
-              return true; // truthy → poll retries; avoids false-pass on transient errors
+              return true; // keep retrying on transient errors
             }
             const term = await res.json();
 
@@ -82,10 +81,7 @@ test.describe('Glossary Hierarchy', () => {
         )
         .toBeFalsy();
 
-      // Refresh responseData so cleanup uses the post-move FQN.
-      // Moving to root rewrites the term's fullyQualifiedName in the DB, and
-      // GlossaryTerm.delete() looks up by name — without this, the finally
-      // block tries to delete by the stale pre-move FQN and 404s.
+      // Refresh so cleanup deletes by the post-move FQN, not the stale one.
       const refreshed = await apiContext.get(
         `/api/v1/glossaryTerms/${childTerm.responseData.id}`
       );

@@ -2256,9 +2256,7 @@ export const openDataProductDrawer = async (page: Page, domain: Domain) => {
   await domainOption.waitFor({ state: 'visible', timeout: 5000 });
   await domainOption.click();
 
-  // Wait for the Ant Design Select dropdown to close before returning.
-  // Without this, the dropdown's overlay intercepts the next click (e.g.
-  // on the Glossary Terms TreeSelect trigger) and the popover never opens.
+  // Confirm selection so the dropdown overlay is fully gone before next interaction.
   await expect(domainContainer.getByTitle(domain.data.displayName)).toBeVisible(
     { timeout: 5000 }
   );
