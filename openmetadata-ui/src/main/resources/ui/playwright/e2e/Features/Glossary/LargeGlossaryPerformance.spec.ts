@@ -13,10 +13,7 @@
 import test, { expect, Page } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import {
-  createNewPage,
-  waitForToastStackToClear,
-} from '../../../utils/common';
+import { createNewPage, waitForToastStackToClear } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   confirmationDragAndDropGlossary,
