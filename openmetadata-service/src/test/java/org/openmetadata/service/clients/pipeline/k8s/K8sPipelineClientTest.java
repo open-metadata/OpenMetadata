@@ -91,11 +91,15 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.RunOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
 import org.openmetadata.service.jdbi3.BotRepository;
@@ -244,6 +248,35 @@ class K8sPipelineClientTest {
         createdJob.getMetadata().getLabels().get("app.kubernetes.io/run-id"),
         response.getRunId(),
         "The run ID must be reported back so the server can record the queued status");
+  }
+
+  /**
+   * K8s rebuilds a run from the pipeline it is handed, so a run's scope reaches the job through the
+   * interface default: a scoped copy, leaving the caller's pipeline as it was.
+   */
+  @Test
+  void testRunPipelineScopesTheJobToTheRunsTestCases() throws Exception {
+    IngestionPipeline pipeline =
+        createTestPipeline("suite-pipeline", null)
+            .withPipelineType(PipelineType.TEST_SUITE)
+            .withSourceConfig(new SourceConfig().withConfig(new TestSuitePipeline()));
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenReturn(new V1Job());
+
+    client.runPipelineWithOptions(
+        pipeline,
+        testService,
+        RunOptions.withSourceConfigOverride(Map.of("testCases", List.of("row_count"))));
+
+    ArgumentCaptor<V1Job> jobCaptor = ArgumentCaptor.forClass(V1Job.class);
+    verify(batchApi).createNamespacedJob(eq(NAMESPACE), jobCaptor.capture());
+    V1PodSpec podSpec = jobCaptor.getValue().getSpec().getTemplate().getSpec();
+    String workflowConfig = toEnvMap(podSpec.getContainers().getFirst().getEnv()).get("config");
+    assertTrue(workflowConfig.contains("testCases"), workflowConfig);
+    assertTrue(workflowConfig.contains("row_count"), workflowConfig);
+    assertNull(
+        JsonUtils.convertValue(pipeline.getSourceConfig().getConfig(), TestSuitePipeline.class)
+            .getTestCases());
   }
 
   @Test
