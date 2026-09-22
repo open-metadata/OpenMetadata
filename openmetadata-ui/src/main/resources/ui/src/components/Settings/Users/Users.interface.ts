@@ -33,4 +33,5 @@ export enum UserPageTabs {
   FOLLOWING = 'following',
   ACCESS_TOKEN = 'access-token',
   PERMISSIONS = 'permissions',
+  CUSTOM_PROPERTIES = 'custom-properties',
 }

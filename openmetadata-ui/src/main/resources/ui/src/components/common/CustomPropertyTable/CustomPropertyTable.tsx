@@ -58,6 +58,25 @@ const PropertyValue = withSuspenseFallback(
   )
 );
 
+/**
+ * Callers outside the customizable-page system (team, user) have no GenericProvider above
+ * them and hand the entity and its update handler in as props instead.
+ */
+const resolveEntitySource = <T extends ExtentionEntitiesKeys>({
+  entityDetailsProp,
+  onEntityUpdate,
+  contextEntityDetails,
+  contextOnUpdate,
+}: {
+  entityDetailsProp?: ExtentionEntities[T];
+  onEntityUpdate?: CustomPropertyProps<T>['onEntityUpdate'];
+  contextEntityDetails: ExtentionEntities[T];
+  contextOnUpdate: CustomPropertyProps<T>['onEntityUpdate'];
+}) => ({
+  entityDetails: entityDetailsProp ?? contextEntityDetails,
+  onUpdate: onEntityUpdate ?? contextOnUpdate,
+});
+
 export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   entityType,
   hasEditAccess,
@@ -65,13 +84,22 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   hasPermission,
   maxDataCap,
   isRenderedInRightPanel = false,
+  entityDetails: entityDetailsProp,
+  onEntityUpdate,
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
   const {
-    data: entityDetails,
-    onUpdate,
+    data: contextEntityDetails,
+    onUpdate: contextOnUpdate,
     filterWidgets,
   } = useGenericContext<ExtentionEntities[T]>();
+
+  const { entityDetails, onUpdate } = resolveEntitySource<T>({
+    entityDetailsProp,
+    onEntityUpdate,
+    contextEntityDetails,
+    contextOnUpdate,
+  });
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
   const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
     useState<boolean>(true);

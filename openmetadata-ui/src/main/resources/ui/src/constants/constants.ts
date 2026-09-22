@@ -411,6 +411,8 @@ export const ENTITY_PATH = {
   agentExecutions: 'agentExecution',
   mcpExecutions: 'mcpExecution',
   promptTemplates: 'promptTemplate',
+  teams: 'team',
+  users: 'user',
 };
 
 export const CUSTOM_PROPERTIES_DOCS =

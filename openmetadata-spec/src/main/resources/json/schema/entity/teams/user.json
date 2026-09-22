@@ -3,6 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "User",
   "description": "A `User` represents a user of OpenMetadata. A user can be part of 0 or more teams. A special type of user called Bot is used for automation. A user can be an owner of zero or more data assets. A user can also follow zero or more data assets.",
+  "$comment": "@om-entity-type",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.teams.User",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
@@ -184,6 +185,10 @@
         "$ref": "../../type/personaPreferences.json"
       },
       "default": []
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
   "additionalProperties": false,

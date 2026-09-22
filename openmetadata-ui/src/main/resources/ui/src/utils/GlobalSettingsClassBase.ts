@@ -908,6 +908,24 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.WORKSHEETS}`,
             icon: WorksheetIcon,
           },
+          {
+            label: t('label.team-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.team-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.TEAMS}`,
+            icon: TeamsIcon,
+          },
+          {
+            label: t('label.user-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.user-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.USERS}`,
+            icon: UsersIcon,
+          },
         ].sort((a, b) => a.label.localeCompare(b.label)),
       },
       {
