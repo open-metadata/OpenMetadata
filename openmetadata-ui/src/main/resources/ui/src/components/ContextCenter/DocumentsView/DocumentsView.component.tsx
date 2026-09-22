@@ -596,9 +596,7 @@ const FileRow: FC<FileRowProps> = ({
           data-testid="preview-btn"
           icon={<Eye height={20} width={20} />}
           tooltip={t('label.preview')}
-          onClick={
-            isPreviewSupported ? () => onOpenPreview?.(file) : undefined
-          }
+          onClick={isPreviewSupported ? () => onOpenPreview?.(file) : undefined}
         />
         <ButtonUtility
           color="tertiary"
