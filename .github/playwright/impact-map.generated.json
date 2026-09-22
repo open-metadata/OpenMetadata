@@ -4066,7 +4066,6 @@
         "playwright/e2e/Flow/SearchRBAC.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
-        "playwright/e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts",
         "playwright/e2e/Pages/SubDomainPagination.spec.ts",
         "playwright/e2e/Pages/TaskComments.spec.ts",
