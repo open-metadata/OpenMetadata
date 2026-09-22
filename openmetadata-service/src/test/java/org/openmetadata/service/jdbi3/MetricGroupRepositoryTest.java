@@ -16,9 +16,9 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -140,18 +141,22 @@ class MetricGroupRepositoryTest {
   }
 
   @Test
-  void visibleMetricCountRejectsAnUnboundedPermissionScanBeforeLoadingMembers() {
+  void visibleMetricCountStopsAtTheScanCapInsteadOfFailingTheHierarchyListing() {
     UUID groupId = UUID.randomUUID();
-    when(groupDAO.countMembers(groupId, Relationship.HAS.ordinal(), "%"))
-        .thenReturn(MetricGroupRepository.MAX_PERMISSION_FILTER_SCAN_SIZE + 1);
+    List<String> fullBatch =
+        IntStream.range(0, 500).mapToObj(i -> JsonUtils.pojoToJson(metric("m" + i))).toList();
+    // A group half again as large as the cap. Returning members past the cap rather than an
+    // endless stream matters: if the bound regresses the scan walks all 15,000 and the assertion
+    // below reports 15000, instead of the test hanging on a stub that never runs dry.
+    when(groupDAO.listMemberJsons(
+            eq(groupId), eq(Relationship.HAS.ordinal()), eq("%"), eq(500), anyInt()))
+        .thenAnswer(invocation -> (int) invocation.getArgument(4) < 15_000 ? fullBatch : List.of());
 
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> repository.visibleMetricCount(groupId, ignored -> true));
+    int count = repository.visibleMetricCount(groupId, ignored -> true);
 
-    assertTrue(exception.getMessage().contains("Narrow the query"));
-    verify(groupDAO, never()).listMemberJsons(groupId, Relationship.HAS.ordinal(), "%", 500, 0);
+    assertEquals(MetricGroupRepository.MAX_PERMISSION_FILTER_SCAN_SIZE, count);
+    verify(groupDAO, times(MetricGroupRepository.MAX_PERMISSION_FILTER_SCAN_SIZE / 500))
+        .listMemberJsons(eq(groupId), eq(Relationship.HAS.ordinal()), eq("%"), eq(500), anyInt());
   }
 
   @Test

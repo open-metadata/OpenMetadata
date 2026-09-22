@@ -419,10 +419,32 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
         : groupDAO.countMembers(groupId, Relationship.HAS.ordinal(), nameLike);
   }
 
+  /**
+   * Counts the members of {@code groupId} the caller may see, scanning at most {@link
+   * #MAX_PERMISSION_FILTER_SCAN_SIZE} candidates.
+   *
+   * <p>Permissions are evaluated in Java, so an exact count costs one visibility test per member.
+   * The paged listing paths refuse a scan past that cap and ask the caller to narrow the query.
+   * That answer does not work here: this count decorates every row of the hierarchy listing and
+   * there is no query to narrow, so refusing took the whole listing down with it for any
+   * permission-filtered user who could see one oversized group. Stop at the cap instead — a group
+   * that large under-reports its badge, which is the milder failure.
+   */
   int visibleMetricCount(UUID groupId, Predicate<EntityReference> isVisible) {
     CollectionDAO.MetricGroupDAO groupDAO = (CollectionDAO.MetricGroupDAO) dao;
-    validatePermissionFilteredScanSize(groupDAO, groupId, null, "%", false);
-    return scanMemberIds(groupDAO, groupId, 0, 0, null, "%", false, isVisible).total();
+    int visible = 0;
+    int scanned = 0;
+    List<EntityReference> batch;
+    do {
+      batch = memberReferences(groupDAO, groupId, MEMBER_SCAN_BATCH_SIZE, scanned, "%", false);
+      for (EntityReference reference : batch) {
+        if (isVisible.test(reference)) {
+          visible++;
+        }
+      }
+      scanned += batch.size();
+    } while (batch.size() == MEMBER_SCAN_BATCH_SIZE && scanned < MAX_PERMISSION_FILTER_SCAN_SIZE);
+    return visible;
   }
 
   private void validatePermissionFilteredScanSize(
