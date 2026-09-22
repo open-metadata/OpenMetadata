@@ -23,6 +23,11 @@ interface UseTreeSelectSelectionOptions<T> {
 interface UseTreeSelectSelectionReturn<T> {
   selectedData: TreeSelectNode<T>[];
   isNodeSelected: (nodeId: string) => boolean;
+  /** Selected vs selectable descendants, for a parent's checked/partial state. */
+  getDescendantSelection: (node: TreeSelectNode<T>) => {
+    selected: number;
+    total: number;
+  };
   toggleNodeSelection: (
     node: TreeSelectNode<T>,
     parentNode?: TreeSelectNode<T>
@@ -181,6 +186,40 @@ export const useTreeSelectSelection = <T = unknown>({
     setSelectedNodes(new Map(nodes.map((node) => [node.id, node])));
   }, []);
 
+  const getDescendantSelection = useCallback(
+    (node: TreeSelectNode<T>) => {
+      let loadedTotal = 0;
+      const selectedIds = new Set<string>();
+      const walk = (current: TreeSelectNode<T>) => {
+        current.children?.forEach((child) => {
+          if (child.allowSelection !== false) {
+            loadedTotal += 1;
+            if (selectedNodes.has(child.id)) {
+              selectedIds.add(child.id);
+            }
+          }
+          walk(child);
+        });
+      };
+      walk(node);
+
+      // A collapsed branch has no children to walk, so also count selections
+      // that name it as their parent — that is how a seeded value arrives.
+      selectedNodes.forEach((selected, id) => {
+        if (selected.parentId === node.id) {
+          selectedIds.add(id);
+        }
+      });
+
+      return {
+        selected: selectedIds.size,
+        // `count` is the branch's real size; the walk only sees what is loaded.
+        total: node.count ?? loadedTotal,
+      };
+    },
+    [selectedNodes]
+  );
+
   const clearSelection = useCallback(() => {
     parentOfSelected.current = new Map();
     setSelectedNodes(new Map());
@@ -207,6 +246,7 @@ export const useTreeSelectSelection = <T = unknown>({
   return {
     selectedData,
     isNodeSelected,
+    getDescendantSelection,
     toggleNodeSelection,
     setSelection,
     clearSelection,
