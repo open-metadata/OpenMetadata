@@ -12,6 +12,7 @@
  */
 import {
   TreeSelect,
+  TreeSelectDataResponse,
   TreeSelectNode,
   TreeSelectProps,
 } from '@openmetadata/ui-core-components';
@@ -20,11 +21,16 @@ import { useTranslation } from 'react-i18next';
 import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import Fqn from '../../../utils/Fqn';
+import {
+  GlossaryPickerValue,
+  pruneNodes,
+  toTagLabel,
+} from './GlossaryTagSuggestionUtils';
 import { useGlossaryTreeData } from './useGlossaryTreeData';
 
 // Straight from the core component so they never drift; the rest is fixed here.
 type InheritedTreeSelectProps = Pick<
-  TreeSelectProps<TagLabel>,
+  TreeSelectProps<GlossaryPickerValue>,
   | 'multiple'
   | 'commitMode'
   | 'isOpen'
@@ -33,13 +39,20 @@ type InheritedTreeSelectProps = Pick<
   | 'label'
   | 'placeholder'
   | 'required'
+  | 'disabled'
+  | 'autoFocus'
   | 'data-testid'
 >;
 
 export interface GlossaryTermPickerProps extends InheritedTreeSelectProps {
   // Non-glossary sources are ignored; the caller owns merging them back.
   value?: TagLabel[];
-  onChange?: (terms: TagLabel[]) => void;
+  // `terms` is PATCH-safe; `nodes` carries the source entities.
+  onChange?: (terms: TagLabel[], nodes: GlossaryPickerValue[]) => void;
+  // FQNs to hide, e.g. the term a relation is being added to.
+  excludeFqns?: string[];
+  // Lets a glossary itself be the value, for pickers that choose a parent.
+  selectGlossaries?: boolean;
 }
 
 // The one glossary-term surface: core `TreeSelect` plus a `TagLabel` contract.
@@ -54,17 +67,37 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
   label,
   placeholder,
   required = false,
+  disabled = false,
+  autoFocus = false,
   'data-testid': dataTestId,
+  excludeFqns,
+  selectGlossaries = false,
 }) => {
   const { t } = useTranslation();
-  const fetchData = useGlossaryTreeData();
+  const fetchGlossaryTree = useGlossaryTreeData();
+
+  const excluded = useMemo(() => new Set(excludeFqns ?? []), [excludeFqns]);
+
+  // Pruned on fetch, not via `filterNode`, which the tree applies to searches only.
+  const fetchData = useCallback(
+    async (
+      params: Parameters<typeof fetchGlossaryTree>[0]
+    ): Promise<TreeSelectDataResponse<GlossaryPickerValue>> => {
+      const response = await fetchGlossaryTree(params);
+
+      return excluded.size === 0
+        ? response
+        : { ...response, nodes: pruneNodes(response.nodes, excluded) };
+    },
+    [fetchGlossaryTree, excluded]
+  );
 
   const selectedValue = useMemo(
     () =>
       value
         .filter((tag) => tag.source === TagSource.Glossary)
         .map(
-          (tag): TreeSelectNode<TagLabel> => ({
+          (tag): TreeSelectNode<GlossaryPickerValue> => ({
             id: tag.tagFQN,
             label: tag.displayName || tag.name || tag.tagFQN,
             value: tag.tagFQN,
@@ -79,8 +112,8 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
   const handleChange = useCallback(
     (
       selectedNodes:
-        | TreeSelectNode<TagLabel>[]
-        | TreeSelectNode<TagLabel>
+        | TreeSelectNode<GlossaryPickerValue>[]
+        | TreeSelectNode<GlossaryPickerValue>
         | null
     ) => {
       const nodes = selectedNodes
@@ -88,15 +121,20 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
         : [];
 
       // An applied label carries server fields the listing never returns.
-      const applied = new Map(value.map((tag) => [tag.tagFQN, tag]));
-
-      onChange?.(
-        nodes
-          .map((node) => applied.get(node.value) ?? node.data)
-          .filter((tag): tag is TagLabel => Boolean(tag))
+      const applied = new Map<string, GlossaryPickerValue>(
+        value.map((tag) => [tag.tagFQN, tag])
       );
+
+      const selected = nodes
+        .map((node) => applied.get(node.value) ?? node.data)
+        .filter(
+          (tag): tag is GlossaryPickerValue =>
+            Boolean(tag) && (selectGlossaries || !tag?.isGlossaryRoot)
+        );
+
+      onChange?.(selected.map(toTagLabel), selected);
     },
-    [onChange, value]
+    [onChange, value, selectGlossaries]
   );
 
   // The server already filtered; filtering again would hide matching glossaries.
@@ -107,8 +145,15 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
       cascadeSelection
       lazyLoad
       searchable
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- opt-in, for a picker opened without a click
+      autoFocus={autoFocus}
       commitMode={commitMode}
       data-testid={dataTestId}
+      disabled={disabled}
+      // A glossary with no terms, rather than the generic "no data".
+      emptyBranchMessage={t('label.no-entity-added', {
+        entity: t('label.term-plural'),
+      })}
       fetchData={fetchData}
       filterNode={keepAllNodes}
       isOpen={isOpen}
@@ -118,6 +163,8 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
         placeholder ??
         t('label.select-field', { field: t('label.glossary-term-plural') })
       }
+      // Stable test hook: the popover's testid varies per instance, this does not.
+      popoverClassName="glossary-term-picker-popover"
       renderTrigger={renderTrigger}
       required={required}
       searchPlaceholder={t('label.search-entity', {

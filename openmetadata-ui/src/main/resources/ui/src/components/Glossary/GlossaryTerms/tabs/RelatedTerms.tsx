@@ -23,10 +23,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
-import {
-  NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import {
@@ -39,10 +36,7 @@ import {
   EntityReference,
 } from '../../../../generated/entity/type';
 import { TermRelation } from '../../../../generated/type/termRelation';
-import {
-  getGlossaryTermsByIds,
-  searchGlossaryTermsPaginated,
-} from '../../../../rest/glossaryAPI';
+import { getGlossaryTermsByIds } from '../../../../rest/glossaryAPI';
 import { listRelationshipTypes } from '../../../../rest/ontologyAPI';
 import { getTextFromHtmlString } from '../../../../utils/BlockEditorPureUtils';
 import {
@@ -162,7 +156,6 @@ const RelatedTerms = () => {
   const [isAdding, setIsAdding] = useState<boolean>(false);
   const [editingRows, setEditingRows] = useState<RelationEditRow[]>([]);
   const [relationTypes, setRelationTypes] = useState<RelationshipType[]>([]);
-  const [preloadedTerms, setPreloadedTerms] = useState<GlossaryTerm[]>([]);
   const [termStyles, setTermStyles] = useState<Record<string, Style>>({});
 
   const termRelations = useMemo(() => {
@@ -182,22 +175,9 @@ const RelatedTerms = () => {
     }
   }, []);
 
-  const fetchAllTerms = useCallback(async () => {
-    try {
-      const result = await searchGlossaryTermsPaginated({
-        offset: 0,
-        limit: PAGE_SIZE_MEDIUM,
-      });
-      setPreloadedTerms(result.data);
-    } catch {
-      // silently handle
-    }
-  }, []);
-
   useEffect(() => {
     fetchRelationTypes();
-    fetchAllTerms();
-  }, [fetchRelationTypes, fetchAllTerms]);
+  }, [fetchRelationTypes]);
 
   const relatedTermIds = useMemo(
     () => [
@@ -555,7 +535,6 @@ const RelatedTerms = () => {
     onRelationTypeChange: handleRelationTypeChange,
     onRemove: handleRemoveRow,
     onTermsChange: handleTermsChange,
-    preloadedTerms,
     relationTypeOptions,
     rows: editingRows,
   };

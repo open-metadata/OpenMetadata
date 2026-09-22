@@ -318,16 +318,13 @@ const TagsContainerV2 = ({
       <TagSelectForm
         defaultValue={selectedTagsInternal ?? []}
         fetchApi={fetchAPI}
-        multiSelect={multiSelect}
         placeholder={getTagPlaceholder(isGlossaryType)}
         tagData={initialOptions}
-        tagType={tagType}
         onCancel={handleCancel}
         onSubmit={handleSave}
       />
     );
   }, [
-    multiSelect,
     isGlossaryType,
     selectedTagsInternal,
     getTagPlaceholder,

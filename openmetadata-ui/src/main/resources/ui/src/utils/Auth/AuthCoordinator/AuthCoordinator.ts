@@ -272,6 +272,14 @@ export class AuthCoordinator {
     renewer: Renewer,
     attempt: number
   ): Promise<string> {
+    // Capture the renewer's result outside the try/catch. If publish (the
+    // strict persist) throws AFTER renewer succeeds, we still hold a valid
+    // token in memory; the current tab must stay authenticated for the rest
+    // of its session rather than emit `refresh-failed` and sign the user
+    // out. Only the durability across reload is lost, and CrossTabLock's
+    // own try/catch already broadcasts `failed` for followers to retry.
+    // Greptile P1 (r4039793087).
+    let renewedResult: RenewResult | undefined;
     let outcome;
     try {
       // Persist + broadcast under the same lock the renewer holds. If we
@@ -283,38 +291,32 @@ export class AuthCoordinator {
       // token and invalidate the first tab's fresh session. See the
       // greptile P1 finding and the docblock on
       // `CrossTabLock.runExclusive`.
-      outcome = await this.lock.runExclusive<RenewResult>(() => renewer(), {
-        publish: async (result) => {
-          // Persist BEFORE broadcasting so a sibling tab that immediately
-          // reads storage can never observe the old expired token behind
-          // a fresh `done`. Use the strict variant so a silent-write
-          // failure (private-browsing IndexedDB, quota, SW crash) throws
-          // out of `publish` — the try/catch in
-          // `CrossTabLock.runExclusive` then broadcasts `failed` under
-          // the same lock hold, and followers retry through the lock
-          // instead of trusting an unpersisted `done` payload the next
-          // cold-load would see stale storage behind. Greptile P1
-          // (r4035047159).
-          await setOidcTokenStrict(result.idToken);
-          this.lock.notifyDone(result);
-        },
-      });
-    } catch (err) {
-      // Follower timed out waiting for the leader (slow IdP, leader tab
-      // closed mid-refresh, missed broadcast). Retry through the lock so
-      // any other follower that also fell back races us for the exclusive
-      // slot instead of running its own renewer in parallel.
-      if (err instanceof LockTimeoutError && attempt < MAX_RECOVERY_ATTEMPTS) {
-        return this.runExclusiveRefresh(renewer, attempt + 1);
-      }
-      // Leader's own renewer threw. `runExclusive` already broadcast
-      // `failed` to followers; propagate the failure here. Also the
-      // bounded-retry give-up path: emit `refresh-failed` so downstream
-      // consumers (interceptors, the queue drain) see the same signal.
-      const reason = err instanceof Error ? err.message : String(err);
-      this.bus.emit('refresh-failed', { reason });
+      outcome = await this.lock.runExclusive<RenewResult>(
+        async () => {
+          const result = await renewer();
+          renewedResult = result;
 
-      throw err;
+          return result;
+        },
+        {
+          publish: async (result) => {
+            // Persist BEFORE broadcasting so a sibling tab that immediately
+            // reads storage can never observe the old expired token behind
+            // a fresh `done`. Use the strict variant so a silent-write
+            // failure (private-browsing IndexedDB, quota, SW crash) throws
+            // out of `publish` — the try/catch in
+            // `CrossTabLock.runExclusive` then broadcasts `failed` under
+            // the same lock hold, and followers retry through the lock
+            // instead of trusting an unpersisted `done` payload the next
+            // cold-load would see stale storage behind. Greptile P1
+            // (r4035047159).
+            await setOidcTokenStrict(result.idToken);
+            this.lock.notifyDone(result);
+          },
+        }
+      );
+    } catch (err) {
+      return this.handleLeaderPathError(err, renewer, attempt, renewedResult);
     }
 
     if (outcome.role === 'follower') {
@@ -344,6 +346,43 @@ export class AuthCoordinator {
     // hook above; here we only wire the coordinator-side side-effects
     // (emit `refreshed`, schedule the proactive timer).
     return this.applyRefreshed(outcome.value);
+  }
+
+  // Extracted from `runExclusiveRefresh` to keep its cyclomatic complexity
+  // under the project's sonarjs ceiling — the three-way classification
+  // (retryable follower timeout / persist-only failure with token in hand /
+  // real renewer failure) is meaningful and worth reading on its own.
+  private async handleLeaderPathError(
+    err: unknown,
+    renewer: Renewer,
+    attempt: number,
+    renewedResult: RenewResult | undefined
+  ): Promise<string> {
+    // Follower timed out waiting for the leader (slow IdP, leader tab
+    // closed mid-refresh, missed broadcast). Retry through the lock so
+    // any other follower that also fell back races us for the exclusive
+    // slot instead of running its own renewer in parallel.
+    if (err instanceof LockTimeoutError && attempt < MAX_RECOVERY_ATTEMPTS) {
+      return this.runExclusiveRefresh(renewer, attempt + 1);
+    }
+    // Renewer succeeded but the persist/broadcast step threw — the
+    // strict-write path keeps the fresh token in `inMemoryState` so
+    // `getOidcToken` in this tab still returns it. Apply the refresh
+    // locally so this tab stays authenticated for its session, rather
+    // than signing the user out because a sibling tab won't survive
+    // reload. Followers already got `failed` via CrossTabLock's own
+    // try/catch and will retry through the lock.
+    if (renewedResult) {
+      return this.applyRefreshed(renewedResult);
+    }
+    // Leader's own renewer threw. `runExclusive` already broadcast
+    // `failed` to followers; propagate the failure here. Also the
+    // bounded-retry give-up path: emit `refresh-failed` so downstream
+    // consumers (interceptors, the queue drain) see the same signal.
+    const reason = err instanceof Error ? err.message : String(err);
+    this.bus.emit('refresh-failed', { reason });
+
+    throw err;
   }
 
   private applyRefreshed(result: RenewResult): string {
