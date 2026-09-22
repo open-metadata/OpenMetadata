@@ -187,7 +187,13 @@ export class AuthCoordinator {
       // token instead of racing the write.
       try {
         const stored = await getOidcToken();
-        if (stored) {
+        // Re-check `this.inflight` AFTER the storage read: a
+        // concurrent `ensureFreshToken({force:true})` (e.g. from the
+        // 401 interceptor) may have set it during our await. Falling
+        // through to the inflight join below yields the freshly-
+        // minted token instead of the stale one storage just handed
+        // us (code-review finding).
+        if (!this.inflight && stored) {
           const { exp } = extractDetailsFromToken(stored);
           if (typeof exp !== 'number' || exp <= 0) {
             return stored;

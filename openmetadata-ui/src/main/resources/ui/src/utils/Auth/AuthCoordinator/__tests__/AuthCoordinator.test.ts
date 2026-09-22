@@ -488,6 +488,58 @@ describe('AuthCoordinator', () => {
     }
   });
 
+  // Regression for the code-review finding on the fast-path guard: a
+  // concurrent forced call can set `this.inflight` DURING an unforced
+  // caller's `await getOidcToken()`. The fast-path must re-check
+  // `inflight` after the await, not just before, or the unforced
+  // caller hands back the just-known-stale stored token.
+  it('unforced ensureFreshToken awaits an inflight refresh that starts during its storage read', async () => {
+    let resolveRenewer!: (r: { expiresAt: number; idToken: string }) => void;
+    const renewer = jest.fn(
+      () =>
+        new Promise<{ expiresAt: number; idToken: string }>((r) => {
+          resolveRenewer = r;
+        })
+    );
+    coordinator.registerRenewer(renewer);
+
+    // getOidcToken deferred so the fast-path is guaranteed to be
+    // mid-await when the concurrent force:true call fires.
+    let releaseStorageRead!: (value: string) => void;
+    mockedGetOidcToken.mockReturnValueOnce(
+      new Promise<string>((r) => {
+        releaseStorageRead = r;
+      })
+    );
+    mockedExtractDetailsFromToken.mockReturnValueOnce({
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      isExpired: false,
+      timeoutExpiry: 3600 * 1000,
+    });
+
+    try {
+      const unforced = coordinator.ensureFreshToken();
+      await Promise.resolve();
+
+      // Concurrent forced caller starts a real refresh — `inflight`
+      // is now set. Without the post-await re-check the pending
+      // unforced caller would still return the stale storage read.
+      const forced = coordinator.ensureFreshToken({ force: true });
+      await Promise.resolve();
+
+      releaseStorageRead('stale');
+      resolveRenewer({ expiresAt: Date.now() + 300_000, idToken: 'fresh' });
+
+      await expect(unforced).resolves.toBe('fresh');
+      await expect(forced).resolves.toBe('fresh');
+      expect(renewer).toHaveBeenCalledTimes(1);
+    } finally {
+      mockedGetOidcToken.mockReset();
+      mockedGetOidcToken.mockImplementation(async () => 'stale-token');
+      mockedExtractDetailsFromToken.mockReset();
+    }
+  });
+
   // Regression: a persistently-failing endpoint polled while unrelated
   // requests succeed used to slip past the "reset on 2xx" breaker.
   it('interleaved 2xx responses do NOT reset the rate-limit window', async () => {
