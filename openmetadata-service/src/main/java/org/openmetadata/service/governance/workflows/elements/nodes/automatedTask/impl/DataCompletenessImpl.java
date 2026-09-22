@@ -168,6 +168,10 @@ public class DataCompletenessImpl implements JavaDelegate {
 
     FieldCompletenessInfo info = new FieldCompletenessInfo();
 
+    // Custom properties live under extension.<name>; the field picker emits the bare name
+    // (e.g. "HyperLinkTest"), so resolve it to its extension path when it is not a standard field.
+    fieldPath = resolveFieldPath(entityMap, fieldPath);
+
     // Handle nested fields with dot notation
     String[] parts = fieldPath.split("\\.");
 
@@ -221,6 +225,27 @@ public class DataCompletenessImpl implements JavaDelegate {
     }
 
     return info;
+  }
+
+  /**
+   * Rewrites a bare custom-property name to its extension path (e.g. "HyperLinkTest" ->
+   * "extension.HyperLinkTest"). A path is left untouched when it already targets extension or its
+   * first segment is a real top-level attribute, so standard paths like "columns.description" stay
+   * as-is.
+   */
+  private String resolveFieldPath(Map<String, Object> entityMap, String fieldPath) {
+    if (fieldPath == null || fieldPath.startsWith("extension.") || entityMap == null) {
+      return fieldPath;
+    }
+    String firstPart = fieldPath.split("\\.", 2)[0];
+    if (entityMap.containsKey(firstPart)) {
+      return fieldPath;
+    }
+    Object extension = entityMap.get("extension");
+    if (extension instanceof Map<?, ?> extensionMap && extensionMap.containsKey(firstPart)) {
+      return "extension." + fieldPath;
+    }
+    return fieldPath;
   }
 
   /**
