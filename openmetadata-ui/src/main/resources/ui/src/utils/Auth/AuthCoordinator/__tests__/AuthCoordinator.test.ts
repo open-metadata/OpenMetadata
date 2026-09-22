@@ -279,10 +279,16 @@ describe('AuthCoordinator', () => {
     const { axios, triggerError } = createMockAxios();
     coordinator.install(axios, () => true);
 
-    // Distinct config per error to avoid the per-request cap tripping first.
+    // Distinct config per error to avoid the per-request cap tripping
+    // first. Bearer=`fresh` matches what the renewer above mints so
+    // every failure looks like "the just-minted token is still being
+    // rejected" — the exact refresh-loop signal cycles should count.
     const mkError = (path: string) => ({
       response: { status: 401, data: {} },
-      config: { url: `/api/v1/${path}` },
+      config: {
+        headers: { Authorization: 'Bearer fresh' },
+        url: `/api/v1/${path}`,
+      },
     });
 
     for (let i = 0; i < 3; i++) {
@@ -298,6 +304,47 @@ describe('AuthCoordinator', () => {
     });
   });
 
+  // Greptile P1 r4070169658: N requests sent with the SAME stale token
+  // return 401 sequentially — each after the previous refresh has
+  // completed. Without the stale-vs-minted check, each 401 would see
+  // no in-flight refresh, start a new cycle, and the 4th one would
+  // wrongly trip the breaker even though every refresh succeeded.
+  it('does not count stragglers carrying pre-refresh tokens as cycles', async () => {
+    const renewer = jest.fn(async () => ({
+      expiresAt: Date.now() + 300_000,
+      idToken: 'fresh',
+    }));
+    coordinator.registerRenewer(renewer);
+    const failures: unknown[] = [];
+    coordinator.on('refresh-failed', (p) => failures.push(p));
+    const { axios, triggerError } = createMockAxios();
+    coordinator.install(axios, () => true);
+
+    // First 401 seeds lastMintedToken via its refresh. It has no
+    // Authorization yet (nothing to compare against), so it counts as
+    // the first cycle.
+    await triggerError({
+      config: { url: '/api/v1/first' },
+      response: { status: 401, data: {} },
+    });
+
+    // Every subsequent request was sent with the OLD stale token before
+    // the first refresh finished. Their 401s arrive AFTER the refresh —
+    // Bearer !== the freshly-minted `fresh` — so they must retry
+    // silently and not be counted as new cycles.
+    for (let i = 0; i < 6; i++) {
+      await triggerError({
+        config: {
+          headers: { Authorization: 'Bearer stale' },
+          url: `/api/v1/straggler-${i}`,
+        },
+        response: { status: 401, data: {} },
+      });
+    }
+
+    expect(failures).toEqual([]);
+  });
+
   // Regression: a persistently-failing endpoint polled while unrelated
   // requests succeed used to slip past the "reset on 2xx" breaker.
   it('interleaved 2xx responses do NOT reset the rate-limit window', async () => {
@@ -311,10 +358,15 @@ describe('AuthCoordinator', () => {
     const { axios, triggerError, triggerSuccess } = createMockAxios();
     coordinator.install(axios, () => true);
 
+    // Bearer=`fresh` matches the renewer's mint so each 401 is a
+    // "just-minted token still rejected" signal that must count.
     for (let i = 0; i < 3; i++) {
       await triggerError({
         response: { status: 401, data: {} },
-        config: { url: `/api/v1/poll-${i}` },
+        config: {
+          headers: { Authorization: 'Bearer fresh' },
+          url: `/api/v1/poll-${i}`,
+        },
       });
       triggerSuccess();
     }
@@ -324,7 +376,10 @@ describe('AuthCoordinator', () => {
     await expect(
       triggerError({
         response: { status: 401, data: {} },
-        config: { url: '/api/v1/poll-4' },
+        config: {
+          headers: { Authorization: 'Bearer fresh' },
+          url: '/api/v1/poll-4',
+        },
       })
     ).rejects.toBeDefined();
     expect(failures).toHaveLength(1);

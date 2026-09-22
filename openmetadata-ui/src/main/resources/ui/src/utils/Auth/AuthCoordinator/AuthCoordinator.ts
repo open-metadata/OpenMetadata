@@ -55,6 +55,12 @@ export class AuthCoordinator {
   private renewer: Renewer | null = null;
   private inflight: Promise<string> | null = null;
   private refreshCycleTimestamps: number[] = [];
+  // Last token minted by a successful refresh. Used by the interceptor
+  // to distinguish "the freshly-minted token is being rejected" (a real
+  // refresh-loop signal — count a cycle) from "an in-flight request
+  // predating the refresh returned 401 with its stale token" (routine
+  // straggler — retry silently, don't inflate the cycle counter).
+  private lastMintedToken: string | null = null;
   private readonly bus = new TypedEventBus();
   private readonly queue = new RefreshQueue();
   private readonly timer = new ProactiveTimer();
@@ -116,21 +122,8 @@ export class AuthCoordinator {
           throw error;
         }
 
-        // Increment only on a NEW cycle so concurrent 401s during one
-        // in-flight refresh share the entry.
-        if (!this.inflight) {
-          const now = Date.now();
-          this.refreshCycleTimestamps = this.refreshCycleTimestamps.filter(
-            (t) => now - t < REFRESH_WINDOW_MS
-          );
-          this.refreshCycleTimestamps.push(now);
-          if (
-            this.refreshCycleTimestamps.length > MAX_REFRESH_CYCLES_PER_WINDOW
-          ) {
-            this.bus.emit(REFRESH_FAILED_EVENT, {
-              reason: `Auth refresh loop circuit-breaker tripped: > ${MAX_REFRESH_CYCLES_PER_WINDOW} cycles in ${REFRESH_WINDOW_MS}ms`,
-            });
-
+        if (this.shouldCountNewCycle(error.config)) {
+          if (this.recordCycleAndCheckBreaker()) {
             throw error;
           }
           if (onRefreshStart) {
@@ -411,6 +404,7 @@ export class AuthCoordinator {
   }
 
   private applyRefreshed(result: RenewResult): string {
+    this.lastMintedToken = result.idToken;
     this.bus.emit('refreshed', {
       expiresAt: result.expiresAt,
       idToken: result.idToken,
@@ -420,6 +414,55 @@ export class AuthCoordinator {
     });
 
     return result.idToken;
+  }
+
+  // Only count a cycle when the failing request carried the
+  // most-recently minted token — that is a genuine "refresh didn't
+  // help" signal. A 401 with a token older than the last mint is an
+  // in-flight straggler that predates the refresh: retrying it with
+  // the current token clears it silently without inflating the counter
+  // (Greptile P1 r4070169658). Also skip on concurrent 401s during one
+  // in-flight refresh so they share the entry.
+  private shouldCountNewCycle(config: unknown): boolean {
+    if (this.inflight) {
+      return false;
+    }
+    if (this.lastMintedToken === null) {
+      return true;
+    }
+
+    return this.extractBearer(config) === this.lastMintedToken;
+  }
+
+  // Returns true if the breaker just tripped (caller should throw).
+  private recordCycleAndCheckBreaker(): boolean {
+    const now = Date.now();
+    this.refreshCycleTimestamps = this.refreshCycleTimestamps.filter(
+      (t) => now - t < REFRESH_WINDOW_MS
+    );
+    this.refreshCycleTimestamps.push(now);
+    if (this.refreshCycleTimestamps.length > MAX_REFRESH_CYCLES_PER_WINDOW) {
+      this.bus.emit(REFRESH_FAILED_EVENT, {
+        reason: `Auth refresh loop circuit-breaker tripped: > ${MAX_REFRESH_CYCLES_PER_WINDOW} cycles in ${REFRESH_WINDOW_MS}ms`,
+      });
+
+      return true;
+    }
+
+    return false;
+  }
+
+  private extractBearer(config: unknown): string | null {
+    const headers = (
+      config as { headers?: Record<string, unknown> } | undefined
+    )?.headers;
+    const raw = headers?.Authorization ?? headers?.authorization;
+    if (typeof raw !== 'string') {
+      return null;
+    }
+    const match = /^Bearer\s+(.+)$/i.exec(raw);
+
+    return match ? match[1] : null;
   }
 
   private isRenewResult(value: unknown): value is RenewResult {
