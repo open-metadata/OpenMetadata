@@ -521,3 +521,36 @@ def get_postgres_time_column_name(engine) -> str:
 def get_schema_names(self, connection, **kw):
     result = connection.execute(sql.text(POSTGRES_GET_SCHEMA_NAMES).columns(nspname=sqltypes.Unicode))
     return [name for (name,) in result]
+
+
+DEFAULT_QUERY_STATEMENT_SOURCE = "pg_stat_statements"
+# An optionally schema-qualified identifier. Deliberately narrower than Postgres
+# allows - no quoted identifiers - because every documented value fits this shape.
+# A bare identifier, or a double-quoted one - Postgres needs quoting for names that are
+# case-sensitive or contain spaces, and queryStatementSource is documented as a fully
+# qualified relation name, so those have to keep working. A quoted name cannot break out:
+# the closing quote must be followed by end-of-string or ".<part>", and "" is an escaped
+# quote, so the whole value stays a relation reference.
+_RELATION_PART = r'(?:[A-Za-z_][A-Za-z0-9_$]*|"(?:[^"]|"")+")'
+# Matched with fullmatch, not match: "$" would also accept a trailing newline.
+QUERY_STATEMENT_SOURCE_PATTERN = re.compile(rf"{_RELATION_PART}(?:\.{_RELATION_PART})?")
+
+
+def validate_query_statement_source(query_statement_source: str | None) -> str:
+    """Return a relation name that is safe to interpolate into the query-history SQL.
+
+    queryStatementSource names a relation, so it is interpolated into the FROM
+    clause rather than bound as a parameter, and it was previously used verbatim -
+    which left the rest of the statement open to being rewritten. Constraining it
+    to an identifier keeps the documented custom-view support,
+    'my_schema.custom_pg_stat_statements', while leaving no room for that.
+    """
+    if not query_statement_source:
+        return DEFAULT_QUERY_STATEMENT_SOURCE
+    if not QUERY_STATEMENT_SOURCE_PATTERN.fullmatch(query_statement_source):
+        raise ValueError(
+            f"Invalid queryStatementSource [{query_statement_source}]: expected an optionally "
+            "schema-qualified identifier, such as 'pg_stat_statements' or "
+            "'my_schema.custom_pg_stat_statements'"
+        )
+    return query_statement_source
