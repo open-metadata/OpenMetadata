@@ -619,7 +619,8 @@ export const TreeSelect = <T = unknown,>({
     }
     setOpen(false);
     setShowSelectedOnly(false);
-  }, [isStaged, setSelection, value, setOpen]);
+    clearSearch();
+  }, [isStaged, setSelection, value, setOpen, clearSearch]);
 
   // Closing through the trigger is a non-Apply close, so it discards the draft.
   const toggleOpen = useCallback(() => {
@@ -756,7 +757,8 @@ export const TreeSelect = <T = unknown,>({
     onChange?.(multiple ? selectedData : selectedData[0] ?? null);
     setOpen(false);
     setShowSelectedOnly(false);
-  }, [onChange, multiple, selectedData, setOpen]);
+    clearSearch();
+  }, [onChange, multiple, selectedData, setOpen, clearSearch]);
 
   const treeDropdownContent = (
     <div
