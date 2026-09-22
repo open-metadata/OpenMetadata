@@ -156,5 +156,23 @@ class TestQueryStoreFilter:
         ],
     )
     def test_no_filter_anchors_the_header_at_position_zero(self, query):
-        assert "NOT LIKE '/*" not in query
-        assert query.count("""NOT LIKE '%%/* {{"app":""") == 2
+        assert """NOT LIKE '/* {{"app": "OpenMetadata",""" not in query
+        assert query.count("""NOT LIKE '%%/* {{"app": "OpenMetadata",""") == 1
+
+    @pytest.mark.parametrize(
+        "query",
+        [
+            MSSQL_SQL_STATEMENT,
+            MSSQL_SQL_STATEMENT_CURRENT_DB,
+            MSSQL_SQL_STATEMENT_FROM_QUERY_STORE,
+            MSSQL_GET_STORED_PROCEDURE_QUERIES,
+        ],
+    )
+    def test_dbt_filter_stays_anchored(self, query):
+        """Only OpenMetadata's own marker moved inside the statement.
+
+        dbt still emits its comment as a batch preamble, so matching it anywhere
+        would only drop user queries that quote the marker in their own text.
+        """
+        assert query.count("""NOT LIKE '/* {{"app": "dbt",""") == 1
+        assert """NOT LIKE '%%/* {{"app": "dbt",""" not in query
