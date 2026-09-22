@@ -2257,13 +2257,16 @@ export const expandTreeNodeByName = async (
     }).toPass({ timeout: 30000 });
   }
 
-  const nodeText = popover.getByText(displayName, { exact: true });
-  if (!search) {
-    await expect(nodeText).toBeVisible({ timeout: 10000 });
-  }
-  await nodeText.scrollIntoViewIfNeeded();
+  // Locate the row by its ARIA role + accessible name — no XPath, no positional
+  // predicate. React-aria renders each TreeGrid item as role="row" and derives
+  // the accessible name from its text content, so this is stable to DOM refactors.
+  const treeItem = popover.getByRole('row', { name: displayName, exact: true });
 
-  const treeItem = nodeText.locator('xpath=ancestor::*[@role="row"][1]');
+  if (!search) {
+    await expect(treeItem).toBeVisible({ timeout: 10000 });
+  }
+  await treeItem.scrollIntoViewIfNeeded();
+
   const alreadyExpanded =
     (await treeItem.getAttribute('aria-expanded')) === 'true';
 
