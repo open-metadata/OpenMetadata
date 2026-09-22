@@ -11,22 +11,15 @@
  *  limitations under the License.
  */
 
-/**
- * Trigger parts shared by FilterSelect and TreeSelect.
- *
- * They live here rather than in `filter-select.tsx` because that module imports
- * `TreeSelect` for the `FilterSelect.Tree` compound. Importing them from there
- * closes a cycle, and the bundler then emits `FilterSelect.Tree = TreeSelect`
- * ahead of the `TreeSelect` declaration — a temporal-dead-zone ReferenceError
- * that blanks the page at import time.
- */
+// Shared by FilterSelect and TreeSelect; not in filter-select.tsx, whose Tree compound would cycle.
 import { SearchLg } from '@untitledui/icons';
-import type { HTMLAttributes } from 'react';
+import type { HTMLAttributes, Ref } from 'react';
+import { Button } from '@/components/base/buttons/button';
+import { Input } from '@/components/base/input/input';
 import { Typography } from '@/components/foundations/typography';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 
-// Narrow wrapper so the icon prop's type doesn't widen to the raw
-// `@untitledui/icons` FC, whose `children` type clashes with consumers that
-// augment ReactNode globally (e.g. react-i18next).
+// Narrowed so the icon prop's type doesn't widen to the raw @untitledui/icons FC.
 export const SearchInputIcon = (props: HTMLAttributes<HTMLOrSVGElement>) => (
   <SearchLg aria-hidden="true" {...props} />
 );
@@ -40,3 +33,121 @@ export const TriggerCountBadge = ({ count }: { count: number }) => (
     {count}
   </Typography>
 );
+
+interface DropdownSearchFieldProps {
+  value: string;
+  placeholder: string;
+  inputDataTestId?: string;
+  isDisabled?: boolean;
+  wrapperRef?: Ref<HTMLDivElement>;
+  onChange: (value: string) => void;
+}
+
+export const DropdownSearchField = ({
+  value,
+  placeholder,
+  inputDataTestId,
+  isDisabled,
+  wrapperRef,
+  onChange,
+}: DropdownSearchFieldProps) => (
+  <div className="tw:px-3 tw:pt-3 tw:pb-2" ref={wrapperRef}>
+    <Input
+      icon={SearchInputIcon}
+      inputDataTestId={inputDataTestId}
+      isDisabled={isDisabled}
+      placeholder={placeholder}
+      size="sm"
+      value={value}
+      onChange={onChange}
+    />
+  </div>
+);
+
+interface DropdownStagedFooterProps {
+  count: number;
+  isClearDisabled?: boolean;
+  onClear: () => void;
+  onCancel: () => void;
+  onApply: () => void;
+}
+
+export const DropdownStagedFooter = ({
+  count,
+  isClearDisabled,
+  onClear,
+  onCancel,
+  onApply,
+}: DropdownStagedFooterProps) => {
+  const { t } = useCoreTranslation();
+
+  return (
+    <div className="tw:mt-2 tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-3 tw:pr-3 tw:pl-3">
+      <Button
+        className="tw:px-2 tw:py-1.5"
+        color="tertiary"
+        data-testid="clear-filter-btn"
+        isDisabled={isClearDisabled ?? count === 0}
+        size="sm"
+        onPress={onClear}>
+        {t('label.clear-all')}
+      </Button>
+      <div className="tw:flex tw:items-center tw:gap-2">
+        <Button
+          className="tw:py-1.5"
+          color="secondary"
+          data-testid="close-btn"
+          size="sm"
+          onPress={onCancel}>
+          {t('label.cancel')}
+        </Button>
+        <Button
+          className="tw:py-1.5"
+          color="primary"
+          data-testid="update-btn"
+          size="sm"
+          onPress={onApply}>
+          {count > 0 ? t('label.apply-count', { count }) : t('label.apply')}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+interface DropdownStatusFooterProps {
+  count: number;
+  isClearDisabled?: boolean;
+  onClear: () => void;
+}
+
+export const DropdownStatusFooter = ({
+  count,
+  isClearDisabled,
+  onClear,
+}: DropdownStatusFooterProps) => {
+  const { t } = useCoreTranslation();
+
+  return (
+    <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-2 tw:pr-3 tw:pl-5">
+      <Typography
+        className="not-prose"
+        color="secondary"
+        data-testid="selected-count"
+        size="text-xs"
+        weight="regular">
+        {count === 0
+          ? t('label.none-selected')
+          : t('label.count-selected', { count })}
+      </Typography>
+      <Button
+        className="tw:px-2 tw:py-1.5"
+        color="tertiary"
+        data-testid="clear-filter-btn"
+        isDisabled={isClearDisabled ?? count === 0}
+        size="sm"
+        onPress={onClear}>
+        {t('label.clear-all')}
+      </Button>
+    </div>
+  );
+};
