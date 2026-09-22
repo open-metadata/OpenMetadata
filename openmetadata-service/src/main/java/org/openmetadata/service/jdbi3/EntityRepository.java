@@ -8482,14 +8482,35 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (nullOrEmpty(tags)) {
       return Collections.emptyList();
     }
-    return tags.stream()
-        .map(
-            tag -> {
-              TagLabel copy = JsonUtils.deepCopy(tag, TagLabel.class);
-              copy.setLabelType(TagLabel.LabelType.DERIVED);
-              return copy;
-            })
-        .toList();
+    return tags.stream().map(EntityRepository::derivedTagLabel).toList();
+  }
+
+  /**
+   * Field-by-field rather than {@link JsonUtils#deepCopy}, which serializes the label into a token
+   * buffer and parses it back. This runs once per parent label per entity, so a thousand-row list
+   * page under a service carrying a handful of tags would otherwise pay thousands of Jackson round
+   * trips per hop to change one enum. {@code style} and {@code metadata} are the only non-scalar
+   * fields and are copied in turn when set, so the parent still shares nothing mutable with the
+   * copy.
+   */
+  private static TagLabel derivedTagLabel(TagLabel tag) {
+    return new TagLabel()
+        .withTagFQN(tag.getTagFQN())
+        .withName(tag.getName())
+        .withDisplayName(tag.getDisplayName())
+        .withDescription(tag.getDescription())
+        .withStyle(tag.getStyle() == null ? null : JsonUtils.deepCopy(tag.getStyle(), Style.class))
+        .withSource(tag.getSource())
+        .withLabelType(TagLabel.LabelType.DERIVED)
+        .withState(tag.getState())
+        .withHref(tag.getHref())
+        .withReason(tag.getReason())
+        .withAppliedAt(tag.getAppliedAt())
+        .withAppliedBy(tag.getAppliedBy())
+        .withMetadata(
+            tag.getMetadata() == null
+                ? null
+                : JsonUtils.deepCopy(tag.getMetadata(), TagLabelMetadata.class));
   }
 
   private List<EntityReference> inheritedEntityReferences(List<EntityReference> references) {

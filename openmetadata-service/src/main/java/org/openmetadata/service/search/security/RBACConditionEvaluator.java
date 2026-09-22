@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
@@ -43,6 +44,17 @@ public class RBACConditionEvaluator {
   private final StandardEvaluationContext spelContext;
   private static final Set<MetadataOperation> SEARCH_RELEVANT_OPS =
       Set.of(MetadataOperation.VIEW_BASIC, MetadataOperation.VIEW_ALL, MetadataOperation.ALL);
+
+  /**
+   * Function names already reported by {@link #warnUntranslatedFunction}. Conditions that ship in
+   * the product hit that path — {@code TeamOnlyPolicy} carries {@code !matchTeam()} on {@code All}
+   * operations — and the ElasticSearch path has no compiled-query cache, so warning per call would
+   * emit a line on every search request from every affected user. Capped because the names come
+   * from user-authored policy conditions.
+   */
+  private static final Set<String> WARNED_UNTRANSLATED_FUNCTIONS = ConcurrentHashMap.newKeySet();
+
+  private static final int MAX_WARNED_UNTRANSLATED_FUNCTIONS = 128;
 
   public RBACConditionEvaluator(QueryBuilderFactory queryBuilderFactory) {
     this.queryBuilderFactory = queryBuilderFactory;
@@ -269,10 +281,14 @@ public class RBACConditionEvaluator {
    * Warn so adding a policy function without a search translation is at least visible.
    */
   private void warnUntranslatedFunction(String methodName) {
+    if (WARNED_UNTRANSLATED_FUNCTIONS.size() >= MAX_WARNED_UNTRANSLATED_FUNCTIONS
+        || !WARNED_UNTRANSLATED_FUNCTIONS.add(methodName)) {
+      return;
+    }
     LOG.warn(
         "No search translation for policy condition function '{}'. Its clause is omitted from the "
             + "RBAC search filter, so search results may not match the authorization decision "
-            + "for this rule.",
+            + "for this rule. This is logged once per function name.",
         methodName);
   }
 

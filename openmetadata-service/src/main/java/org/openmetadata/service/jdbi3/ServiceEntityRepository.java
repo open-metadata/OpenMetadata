@@ -26,8 +26,10 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -40,6 +42,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheInvalidationPubSub;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -49,6 +52,7 @@ import org.openmetadata.service.security.policyevaluator.ServiceAttributeResolve
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
+@Slf4j
 public abstract class ServiceEntityRepository<
         T extends ServiceEntityInterface, S extends ServiceConnectionEntityInterface>
     extends EntityRepository<T> {
@@ -236,7 +240,7 @@ public abstract class ServiceEntityRepository<
     // so a Deny rule meant to hide that service's assets would quietly grant access instead.
     // Only on hard delete: a soft-deleted service still resolves (the snapshot reads Include.ALL)
     // and so still hides its assets, and rewriting the condition would not survive a restore.
-    if (hardDelete) {
+    if (hardDelete && !anotherServiceGoesByName(service.getName(), service.getId())) {
       PolicyConditionUpdater.updateAllPolicyConditions(
           condition ->
               PolicyConditionUpdater.removeFromCondition(
@@ -292,7 +296,8 @@ public abstract class ServiceEntityRepository<
   protected void postUpdate(T original, T updated) {
     super.postUpdate(original, updated);
     invalidateServiceAttributes(updated);
-    if (!original.getName().equals(updated.getName())) {
+    if (!original.getName().equals(updated.getName())
+        && !anotherServiceGoesByName(original.getName(), updated.getId())) {
       PolicyConditionUpdater.updateAllPolicyConditions(
           condition ->
               PolicyConditionUpdater.renameInCondition(
@@ -300,6 +305,43 @@ public abstract class ServiceEntityRepository<
                   original.getName(),
                   updated.getName(),
                   PolicyConditionUpdater.SERVICE_FUNCTIONS));
+    }
+  }
+
+  /**
+   * True when some other service — of any type — still answers to {@code name}.
+   *
+   * <p>A {@code matchAnyServiceName} argument is a bare name, and names are unique only within a
+   * service type: a databaseService and a dashboardService can both be called {@code prod}, and a
+   * rule naming {@code prod} covers both. Rewriting that argument on behalf of one of them would
+   * retarget the rule away from the other, and removing it on hard delete would drop the other from
+   * the rule entirely — either way a Deny silently stops hiding assets it was written to hide. So
+   * the condition is only maintained once no other service can still be meant by the name.
+   */
+  private boolean anotherServiceGoesByName(String name, UUID excludedServiceId) {
+    for (String serviceEntityType : Entity.getServiceEntityTypes()) {
+      if (!Entity.hasEntityRepository(serviceEntityType)) {
+        continue;
+      }
+      if (serviceWithNameExists(serviceEntityType, name, excludedServiceId)) {
+        LOG.info(
+            "Leaving matchAnyServiceName('{}') conditions alone: a {} still goes by that name",
+            name,
+            serviceEntityType);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean serviceWithNameExists(
+      String serviceEntityType, String name, UUID excludedServiceId) {
+    try {
+      EntityInterface other =
+          Entity.getEntityByName(serviceEntityType, name, "", Include.NON_DELETED);
+      return !other.getId().equals(excludedServiceId);
+    } catch (EntityNotFoundException e) {
+      return false;
     }
   }
 

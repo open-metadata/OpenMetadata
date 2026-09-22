@@ -59,9 +59,23 @@ public interface ResourceContextInterface {
     return entity == null ? null : entity.getService();
   }
 
-  /** Tags on {@link #getServiceReference()}, empty when the resource has no service. */
+  /**
+   * Tags on {@link #getServiceReference()}, empty when the resource has no service.
+   *
+   * <p>This and the two accessors below must be derived from the reference rather than answered as
+   * "absent", or an implementation that resolves a real entity — {@code TestCaseResourceContext}
+   * resolving the tested table, the task and conversation contexts resolving their about-entity —
+   * would report no service tags, type or environment for a resource that plainly has all three,
+   * and every {@code matchAnyServiceTag} / {@code matchAnyServiceType} / {@code
+   * matchAnyServiceEnvironment} Deny would silently fail open there while {@code
+   * matchAnyServiceName} kept matching.
+   *
+   * <p>An interface cannot memoize on the instance, so the three share a request-scoped memo keyed
+   * by service id; {@link ResourceContext} and {@link CreateResourceContext} override them with
+   * per-context memoization instead.
+   */
   default List<TagLabel> getServiceTags() {
-    return Collections.emptyList();
+    return ServiceAttributeCache.resolve(getServiceReference()).tags();
   }
 
   /**
@@ -70,7 +84,7 @@ public interface ResourceContextInterface {
    * {@code databaseService}/{@code dashboardService} entity type carried by its reference.
    */
   default String getServiceType() {
-    return null;
+    return ServiceAttributeCache.resolve(getServiceReference()).serviceType();
   }
 
   /**
@@ -78,6 +92,6 @@ public interface ResourceContextInterface {
    * Development} — or null when the resource has no service or the admin has not set one.
    */
   default String getServiceEnvironment() {
-    return null;
+    return ServiceAttributeCache.resolve(getServiceReference()).environment();
   }
 }
