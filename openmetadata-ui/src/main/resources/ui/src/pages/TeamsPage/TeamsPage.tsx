@@ -248,6 +248,10 @@ const TeamsPage = () => {
           TabSpecificField.PARENTS,
           TabSpecificField.PROFILE,
           TabSpecificField.OWNERS,
+          // This fetch races the advanced one on mount and replaces state wholesale, so
+          // without `extension` here a basic response landing second strips the custom
+          // property values the advanced fetch just merged in.
+          TabSpecificField.EXTENSION,
         ],
         include: Include.All,
       });

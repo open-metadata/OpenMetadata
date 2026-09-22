@@ -193,7 +193,7 @@ describe('Test Teams Page', () => {
     expect(mockGetTeamByName.mock.calls[0]).toEqual([
       'test',
       {
-        fields: ['userCount', 'parents', 'profile', 'owners'],
+        fields: ['userCount', 'parents', 'profile', 'owners', 'extension'],
         include: 'all',
       },
     ]);
