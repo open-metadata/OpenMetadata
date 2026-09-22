@@ -22,9 +22,13 @@ import {
 } from '../../../../generated/tests/testCaseIncidentGroup';
 import { Paging } from '../../../../generated/type/paging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
-import { listIncidentGroups } from '../../../../rest/incidentManagerAPI';
+import {
+  IncidentSortType,
+  listIncidentGroups,
+} from '../../../../rest/incidentManagerAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
+  DEFAULT_INCIDENT_SORT_TYPE,
   INCIDENT_GROUPS_PAGE_SIZE,
   INCIDENT_GROUP_BY_PARAM,
 } from './IncidentGroups.constants';
@@ -57,6 +61,14 @@ export const useIncidentGroups = () => {
     []
   );
   const [paging, setPaging] = useState<Paging>();
+  /**
+   * Ordering of the incident count. Local rather than in the URL: unlike the
+   * dimension it is a view preference the endpoint defaults on its own, so a
+   * shared link carries the groups without having to carry their order too.
+   */
+  const [sortType, setSortType] = useState<IncidentSortType>(
+    DEFAULT_INCIDENT_SORT_TYPE
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   // Guards against a slow response for a dimension the user already left.
@@ -72,6 +84,7 @@ export const useIncidentGroups = () => {
       const response = await listIncidentGroups({
         groupBy,
         limit: INCIDENT_GROUPS_PAGE_SIZE,
+        sortType,
       });
 
       if (latestRequest.current !== requestId) {
@@ -97,7 +110,7 @@ export const useIncidentGroups = () => {
         setIsLoading(false);
       }
     }
-  }, [groupBy, t]);
+  }, [groupBy, sortType, t]);
 
   useEffect(() => {
     fetchIncidentGroups();
@@ -128,13 +141,20 @@ export const useIncidentGroups = () => {
     [groupBy, navigate, searchParams]
   );
 
+  const handleSortTypeChange = useCallback(
+    (updatedSortType: IncidentSortType) => setSortType(updatedSortType),
+    []
+  );
+
   return {
     groupBy,
     incidentGroups,
     paging,
+    sortType,
     isLoading,
     isError,
     handleGroupByChange,
+    handleSortTypeChange,
     refreshIncidentGroups: fetchIncidentGroups,
   };
 };

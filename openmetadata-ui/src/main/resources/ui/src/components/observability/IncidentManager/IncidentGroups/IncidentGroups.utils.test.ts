@@ -11,9 +11,30 @@
  *  limitations under the License.
  */
 
-import { IncidentGroupBy } from '../../../../generated/tests/testCaseIncidentGroup';
+import {
+  IncidentGroupBy,
+  IncidentTrendDirection,
+  TestCaseIncidentGroup,
+} from '../../../../generated/tests/testCaseIncidentGroup';
 import { DEFAULT_INCIDENT_GROUP_BY } from './IncidentGroups.constants';
-import { parseIncidentGroupBy } from './IncidentGroups.utils';
+import {
+  countRecurringIncidentGroups,
+  getAssigneeInitials,
+  getIncidentGroupAssignees,
+  getIncidentGroupByOption,
+  getIncidentGroupName,
+  getIncidentGroupSubLine,
+  parseIncidentGroupBy,
+} from './IncidentGroups.utils';
+
+const group = (
+  overrides: Partial<TestCaseIncidentGroup> = {}
+): TestCaseIncidentGroup => ({
+  groupBy: IncidentGroupBy.TestDefinition,
+  name: 'columnValuesToBeUnique',
+  incidentCount: 3,
+  ...overrides,
+});
 
 describe('parseIncidentGroupBy', () => {
   it('should keep every dimension the API accepts', () => {
@@ -31,5 +52,134 @@ describe('parseIncidentGroupBy', () => {
     expect(parseIncidentGroupBy(['table', 'owner'])).toBe(
       DEFAULT_INCIDENT_GROUP_BY
     );
+  });
+});
+
+describe('getIncidentGroupByOption', () => {
+  it('should carry the label of the dimension the groups were fetched with', () => {
+    expect(getIncidentGroupByOption(IncidentGroupBy.Table).labelKey).toBe(
+      'label.table'
+    );
+    expect(getIncidentGroupByOption(IncidentGroupBy.Owner).labelKey).toBe(
+      'label.test-case-owner'
+    );
+    expect(
+      getIncidentGroupByOption(IncidentGroupBy.TestDefinition).labelKey
+    ).toBe('label.test-case-type');
+  });
+});
+
+describe('getIncidentGroupName', () => {
+  it('should prefer the display name and fall back to the name', () => {
+    expect(getIncidentGroupName(group({ displayName: 'Row count' }))).toBe(
+      'Row count'
+    );
+    expect(getIncidentGroupName(group())).toBe('columnValuesToBeUnique');
+  });
+});
+
+describe('getIncidentGroupSubLine', () => {
+  it('should place a table group under the rest of its FQN', () => {
+    expect(
+      getIncidentGroupSubLine(
+        group({
+          groupBy: IncidentGroupBy.Table,
+          name: 'dim_address',
+          fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address',
+        })
+      )
+    ).toBe('sample_data · ecommerce_db · shopify');
+  });
+
+  it('should keep a quoted FQN part whole', () => {
+    expect(
+      getIncidentGroupSubLine(
+        group({
+          groupBy: IncidentGroupBy.Table,
+          name: 'dim_address',
+          fullyQualifiedName: 'sample_data."ecommerce.db".shopify.dim_address',
+        })
+      )
+    ).toBe('sample_data · ecommerce.db · shopify');
+  });
+
+  it('should leave a test definition and an owner without a sub-line', () => {
+    expect(
+      getIncidentGroupSubLine(
+        group({ fullyQualifiedName: 'columnValuesToBeUnique' })
+      )
+    ).toBe('');
+    expect(
+      getIncidentGroupSubLine(
+        group({
+          groupBy: IncidentGroupBy.Owner,
+          name: 'adam.matthews',
+          fullyQualifiedName: 'adam.matthews',
+        })
+      )
+    ).toBe('');
+  });
+
+  it('should return nothing when the group carries no FQN', () => {
+    expect(getIncidentGroupSubLine(group())).toBe('');
+  });
+});
+
+describe('getAssigneeInitials', () => {
+  it('should take up to two initials from the assignee name', () => {
+    expect(getAssigneeInitials('tomas.montiel')).toBe('TM');
+    expect(getAssigneeInitials('mohit')).toBe('M');
+    expect(getAssigneeInitials('paul_james_jones')).toBe('PJ');
+    expect(getAssigneeInitials('')).toBe('');
+  });
+});
+
+describe('getIncidentGroupAssignees', () => {
+  it('should count the overflow from assigneeCount, not from the capped array', () => {
+    expect(
+      getIncidentGroupAssignees(
+        group({ assignees: ['a', 'b', 'c'], assigneeCount: 7 })
+      )
+    ).toEqual({ visible: ['a', 'b', 'c'], overflowCount: 4 });
+  });
+
+  it('should show no more than three avatars', () => {
+    expect(
+      getIncidentGroupAssignees(
+        group({ assignees: ['a', 'b', 'c', 'd'], assigneeCount: 4 })
+      )
+    ).toEqual({ visible: ['a', 'b', 'c'], overflowCount: 1 });
+  });
+
+  it('should fall back to the array length when the count is absent', () => {
+    expect(getIncidentGroupAssignees(group({ assignees: ['a'] }))).toEqual({
+      visible: ['a'],
+      overflowCount: 0,
+    });
+  });
+
+  it('should report nothing for an unassigned group', () => {
+    expect(getIncidentGroupAssignees(group())).toEqual({
+      visible: [],
+      overflowCount: 0,
+    });
+  });
+});
+
+describe('countRecurringIncidentGroups', () => {
+  it('should count only the rising groups of the loaded page', () => {
+    expect(
+      countRecurringIncidentGroups([
+        group({ trendDirection: IncidentTrendDirection.Rising }),
+        group({ trendDirection: IncidentTrendDirection.Rising }),
+        group({ trendDirection: IncidentTrendDirection.Falling }),
+        group({ trendDirection: IncidentTrendDirection.Steady }),
+        group(),
+      ])
+    ).toBe(2);
+  });
+
+  it('should count nothing for an empty page', () => {
+    expect(countRecurringIncidentGroups([])).toBe(0);
   });
 });

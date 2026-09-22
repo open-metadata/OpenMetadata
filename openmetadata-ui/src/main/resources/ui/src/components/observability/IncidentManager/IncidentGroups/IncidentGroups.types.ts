@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
-import { FC, ReactNode } from 'react';
-import { IncidentGroupBy } from '../../../../generated/tests/testCaseIncidentGroup';
+import { FC } from 'react';
+import {
+  IncidentGroupBy,
+  IncidentTrendDirection,
+  Severities,
+  TestCaseIncidentGroup,
+} from '../../../../generated/tests/testCaseIncidentGroup';
+import { IncidentSortType } from '../../../../rest/incidentManagerAPI';
 
 export interface IncidentGroupByOption {
   key: IncidentGroupBy;
@@ -26,10 +32,19 @@ export interface IncidentGroupByDropdownProps {
   onChange: (groupBy: IncidentGroupBy) => void;
 }
 
-export interface IncidentGroupsViewProps {
-  /**
-   * Rendered once the groups are loaded. The group table lands here; until then
-   * the view carries the dimension picker and the loading/empty/error states.
-   */
-  children?: ReactNode;
+export interface IncidentGroupsTableProps {
+  groups: TestCaseIncidentGroup[];
+  /** Dimension the groups were fetched with; names the first column. */
+  groupBy: IncidentGroupBy;
+  /** Ordering of the incident count, as the endpoint's `sortType` takes it. */
+  sortType: IncidentSortType;
+  onSortTypeChange: (sortType: IncidentSortType) => void;
+}
+
+export interface IncidentTrendSparklineProps {
+  /** Incidents opened per bucket, as the server bucketed them. */
+  trend?: number[];
+  trendDirection?: IncidentTrendDirection;
+  /** Grades a rising trend; a falling or steady one colours the same either way. */
+  severity?: Severities;
 }
