@@ -18,6 +18,7 @@ import {
   parseResponseJson,
   searchAndGetDocumentRow,
   uploadDocument as uploadDocumentToApi,
+  waitForDocumentProcessingComplete,
 } from '../../utils/ContextCenterUtil';
 import { test } from '../fixtures/pages';
 
@@ -123,27 +124,6 @@ const mockSearchHitWithOverride = async (
   );
 };
 
-/**
- * Serve the file's bytes for the preview download directly from the test.
- * The CI Playwright stack has no object storage configured, so the real
- * `/download` endpoint 404s (`resolveAsset` → null). Routing it keeps the
- * preview pipeline (fetch → renderer dispatch → DOM) fully exercised on real
- * bytes without depending on a storage backend.
- */
-const mockFileDownload = async (
-  page: Page,
-  fileId: string,
-  body: Buffer,
-  contentType: string
-): Promise<void> => {
-  await page.route(
-    (url) => url.pathname.endsWith(`/drive/files/${fileId}/download`),
-    async (route) => {
-      await route.fulfill({ body, contentType, status: 200 });
-    }
-  );
-};
-
 const openFilePreviewModal = async (
   page: Page,
   row: Locator,
@@ -187,12 +167,7 @@ test.describe('Context Center - Document File Preview', () => {
       fileName,
       Buffer.from(MARKDOWN_CONTENT)
     );
-    await mockFileDownload(
-      page,
-      document.id,
-      Buffer.from(MARKDOWN_CONTENT),
-      'text/markdown'
-    );
+    await waitForDocumentProcessingComplete(apiContext, document.id);
     await mockSearchHitWithOverride(page, apiContext, document.id, {
       fileType: 'Text',
       fileExtension: 'md',
@@ -225,12 +200,7 @@ test.describe('Context Center - Document File Preview', () => {
       fileName,
       Buffer.from(TEXT_CONTENT)
     );
-    await mockFileDownload(
-      page,
-      document.id,
-      Buffer.from(TEXT_CONTENT),
-      'text/plain'
-    );
+    await waitForDocumentProcessingComplete(apiContext, document.id);
     await mockSearchHitWithOverride(page, apiContext, document.id, {
       fileType: 'Text',
       fileExtension: 'txt',
@@ -261,12 +231,7 @@ test.describe('Context Center - Document File Preview', () => {
       fileName,
       buildMinimalPdfBuffer()
     );
-    await mockFileDownload(
-      page,
-      document.id,
-      buildMinimalPdfBuffer(),
-      'application/pdf'
-    );
+    await waitForDocumentProcessingComplete(apiContext, document.id);
     await mockSearchHitWithOverride(page, apiContext, document.id, {
       fileType: 'PDF',
       fileExtension: 'pdf',
@@ -296,12 +261,7 @@ test.describe('Context Center - Document File Preview', () => {
       fileName,
       Buffer.from(ONE_PIXEL_PNG_BASE64, 'base64')
     );
-    await mockFileDownload(
-      page,
-      document.id,
-      Buffer.from(ONE_PIXEL_PNG_BASE64, 'base64'),
-      'image/png'
-    );
+    await waitForDocumentProcessingComplete(apiContext, document.id);
     await mockSearchHitWithOverride(page, apiContext, document.id, {
       fileType: 'Image',
       fileExtension: 'png',
@@ -333,6 +293,7 @@ test.describe('Context Center - Document File Preview', () => {
       fileName,
       Buffer.from('unsupported preview fallback test content')
     );
+    await waitForDocumentProcessingComplete(apiContext, document.id);
     // A `fileType` with no dedicated renderer (Document/Spreadsheet/
     // Presentation/Archive/Other) is resolveRenderer's default case, so the
     // row must gate the preview button off while still offering download.
@@ -365,12 +326,7 @@ test.describe('Context Center - Document File Preview', () => {
       fileName,
       Buffer.from(TEXT_CONTENT)
     );
-    await mockFileDownload(
-      page,
-      document.id,
-      Buffer.from(TEXT_CONTENT),
-      'text/plain'
-    );
+    await waitForDocumentProcessingComplete(apiContext, document.id);
     await mockSearchHitWithOverride(page, apiContext, document.id, {
       fileType: 'Text',
       fileExtension: 'txt',
@@ -405,12 +361,7 @@ test.describe('Context Center - Document File Preview', () => {
       fileName,
       Buffer.from(TEXT_CONTENT)
     );
-    await mockFileDownload(
-      page,
-      document.id,
-      Buffer.from(TEXT_CONTENT),
-      'text/plain'
-    );
+    await waitForDocumentProcessingComplete(apiContext, document.id);
     await mockSearchHitWithOverride(page, apiContext, document.id, {
       fileType: 'Text',
       fileExtension: 'txt',
