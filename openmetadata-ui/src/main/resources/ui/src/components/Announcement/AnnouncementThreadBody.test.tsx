@@ -211,4 +211,49 @@ describe('AnnouncementThreadBody', () => {
       expect.objectContaining({ status: AnnouncementStatus.Expired })
     );
   });
+
+  it('should ignore a slow response for a tab that is no longer selected', async () => {
+    let resolveActive: (value: unknown) => void = (_value) => undefined;
+
+    (listAnnouncements as jest.Mock)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveActive = resolve;
+          })
+      )
+      .mockResolvedValueOnce({
+        data: [{ ...baseAnnouncement, id: 'expired-row' }],
+        paging: {},
+      });
+
+    const { rerender } = render(
+      <AnnouncementThreadBody
+        {...mockProps}
+        statusFilter={AnnouncementStatus.Active}
+      />
+    );
+
+    await act(async () => {
+      rerender(
+        <AnnouncementThreadBody
+          {...mockProps}
+          statusFilter={AnnouncementStatus.Expired}
+        />
+      );
+    });
+
+    expect(screen.getByTestId('rendered-ids')).toHaveTextContent('expired-row');
+
+    // The Active request lands last; it must not repaint the Expired tab.
+    await act(async () => {
+      resolveActive({
+        data: [{ ...baseAnnouncement, id: 'active-row' }],
+        paging: {},
+      });
+    });
+
+    expect(screen.getByTestId('rendered-ids')).toHaveTextContent('expired-row');
+    expect(screen.queryByText('active-row')).not.toBeInTheDocument();
+  });
 });
