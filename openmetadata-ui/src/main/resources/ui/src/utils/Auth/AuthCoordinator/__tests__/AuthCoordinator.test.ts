@@ -364,6 +364,77 @@ describe('AuthCoordinator', () => {
     expect(renewer).toHaveBeenCalledTimes(1);
   });
 
+  // Regression for the code-review finding on the straggler fix: a
+  // 401 that arrives while OUR refresh is in flight must not resolve
+  // its retry against the stale stored token (storage isn't updated
+  // until the refresh completes). The fast-path in ensureFreshToken
+  // must defer to `this.inflight` in that window.
+  it('a straggler during an in-flight refresh awaits the fresh token instead of reusing stale storage', async () => {
+    let resolveRenewer!: (r: { expiresAt: number; idToken: string }) => void;
+    const renewer = jest.fn(
+      () =>
+        new Promise<{ expiresAt: number; idToken: string }>((r) => {
+          resolveRenewer = r;
+        })
+    );
+    coordinator.registerRenewer(renewer);
+    const failures: unknown[] = [];
+    coordinator.on('refresh-failed', (p) => failures.push(p));
+    const { axios, triggerError } = createMockAxios();
+    coordinator.install(axios, () => true);
+
+    // Storage still holds the stale token during the in-flight window.
+    // The fast-path must NOT return it — it must defer to `this.inflight`.
+    mockedGetOidcToken.mockResolvedValue('stale');
+    mockedExtractDetailsFromToken.mockReturnValue({
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      isExpired: false,
+      timeoutExpiry: 3600 * 1000,
+    });
+
+    try {
+      // First 401 kicks off the refresh cycle (counted, `inflight` set).
+      triggerError({
+        config: {
+          headers: { Authorization: 'Bearer stale' },
+          url: '/api/v1/first',
+        },
+        response: { status: 401, data: {} },
+      });
+      await Promise.resolve();
+
+      // Straggler arrives WHILE the renewer promise is still pending.
+      // shouldCountNewCycle returns false (inflight is set), so pump
+      // fires with force:false. The fast-path's inflight guard must
+      // prevent it from returning 'stale' from storage.
+      const straggler = triggerError({
+        config: {
+          headers: { Authorization: 'Bearer stale' },
+          url: '/api/v1/straggler',
+        },
+        response: { status: 401, data: {} },
+      });
+      // Directly assert what ensureFreshToken(force:false) resolves to
+      // in this exact window: without the guard it would return 'stale'
+      // from storage; with the guard it awaits `inflight`.
+      const strandedFreshTokenPromise = coordinator.ensureFreshToken();
+
+      // Now the renewer settles.
+      resolveRenewer({ expiresAt: Date.now() + 300_000, idToken: 'fresh' });
+
+      await expect(strandedFreshTokenPromise).resolves.toBe('fresh');
+
+      await straggler;
+
+      expect(failures).toEqual([]);
+      expect(renewer).toHaveBeenCalledTimes(1);
+    } finally {
+      mockedGetOidcToken.mockReset();
+      mockedGetOidcToken.mockImplementation(async () => 'stale-token');
+      mockedExtractDetailsFromToken.mockReset();
+    }
+  });
+
   // Regression: a persistently-failing endpoint polled while unrelated
   // requests succeed used to slip past the "reset on 2xx" breaker.
   it('interleaved 2xx responses do NOT reset the rate-limit window', async () => {

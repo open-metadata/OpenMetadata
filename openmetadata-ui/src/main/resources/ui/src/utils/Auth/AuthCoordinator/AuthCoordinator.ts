@@ -160,11 +160,15 @@ export class AuthCoordinator {
   async ensureFreshToken(options: { force?: boolean } = {}): Promise<string> {
     const force = options.force ?? false;
 
-    if (!force) {
+    if (!force && !this.inflight) {
       // Fast-path: reuse a still-time-fresh stored token (another tab
-      // may have already refreshed it) instead of hitting the IdP again.
-      // `force:true` callers skip this because a 401 IS proof the stored
-      // token is server-rejected regardless of `exp`.
+      // may have already refreshed it) instead of hitting the IdP.
+      // `force:true` callers skip this because a 401 IS proof the
+      // stored token is server-rejected regardless of `exp`. Also skip
+      // while OUR own refresh is in flight: storage may still hold the
+      // stale, server-rejected token until the refresh persists —
+      // returning `this.inflight` below yields the freshly-minted
+      // token instead of racing the write.
       try {
         const stored = await getOidcToken();
         if (stored) {
