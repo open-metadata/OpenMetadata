@@ -20,6 +20,11 @@ public class Migration extends MigrationProcessImpl {
   public void runDataMigration() {
     MigrationUtil migrationUtil = new MigrationUtil(handle);
     migrationUtil.backfillGlossaryTermRelationCardinality();
+    // Repair installs already upgraded to 2.0.0/2.0.1: v200 dropped DataConsumerPolicy's
+    // CreateTask-Rule via a stale L1 cache (#32668), and v200 will not re-run on those installs.
+    // Re-invoke the now cache-safe helpers here. Idempotent - no-op when the rules already exist.
+    MigrationUtil.addCreateTaskRuleToDataConsumerPolicy(collectionDAO);
+    MigrationUtil.addTaskRuleToDataConsumerPolicy(collectionDAO);
     try {
       addAliasesSearchSettings();
     } catch (Exception e) {
