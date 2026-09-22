@@ -60,8 +60,7 @@ class SamplingStability(Enum):
     """Location statistics (mean, median, stddev, shares of rows) survive sampling."""
 
     SCALES_WITH_SAMPLE = (
-        "This test adds up rows, and only the sampled rows were read. The whole table adds up to "
-        "proportionally more."
+        "This test adds up rows, and only the sampled rows were read. The whole table adds up to proportionally more."
     )
     """Sums and counts: a 10% sample gives roughly a tenth of the table's value."""
 
