@@ -116,7 +116,7 @@ export const DomainLabel = ({
       return (
         <DomainTags
           domains={activeDomain}
-          maxVisible={headerLayout && multiple ? 1 : undefined}
+          maxVisible={headerLayout && multiple ? 1 : activeDomain.length}
         />
       );
     }

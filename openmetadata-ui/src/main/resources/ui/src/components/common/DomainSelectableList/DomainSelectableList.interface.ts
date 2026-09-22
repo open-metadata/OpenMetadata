@@ -40,4 +40,5 @@ export interface DomainSelectableListProps {
   wrapInButton?: boolean;
   overlayClassName?: string;
   isClearable?: boolean;
+  'data-testid'?: string;
 }

@@ -127,8 +127,10 @@ export class OverviewPageObject extends RightPanelBase {
     );
     this.searchBar = this.page.getByTestId('search-bar-container');
     this.tagSearchBar = this.searchBar.getByTestId('tag-select-search-bar');
-    this.domainTree = this.page.getByTestId('domain-selectable-tree');
-    this.domainSearchBar = this.domainTree.getByTestId('searchbar');
+    this.domainTree = this.page.getByTestId('domain-selectable-tree-popover');
+    this.domainSearchBar = this.page.getByTestId(
+      'domain-selectable-tree-search'
+    );
     this.domainList = this.page.locator('.domains-content');
     this.tagListContainer = this.page.locator('.tags-section');
     this.tierListContainer = this.page.getByTestId('cards');
@@ -160,7 +162,7 @@ export class OverviewPageObject extends RightPanelBase {
       'owner-select-teams-search-bar'
     );
     this.listItem = this.page.locator('.selectable-list-item');
-    this.domainTreeNode = this.domainTree.locator('.ant-tree-treenode');
+    this.domainTreeNode = this.page.locator('[data-testid^="tree-node-"]');
     this.clearTierButton = this.tierListContainer.getByTestId('clear-tier');
     this.tagsSection = this.container.locator('.tags-section, [class*="tags"]');
     this.tierSection = this.container.locator('.tier-section, [class*="tier"]');
@@ -613,7 +615,7 @@ export class OverviewPageObject extends RightPanelBase {
     // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
     await this.addDomainIcon.click({ force: true });
 
-    await this.domainTree.waitFor({ state: 'visible' });
+    await this.domainSearchBar.waitFor({ state: 'visible' });
 
     const searchDomainPromise = this.page.waitForResponse(
       (response) =>

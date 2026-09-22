@@ -693,9 +693,11 @@ test.describe(
         await waitForAllLoadersToDisappear(page);
 
         // Verify Domain
-        await expect(page.getByTestId('domain-link')).toContainText(
-          domain.responseData.displayName
-        );
+        await expect(
+          page.getByTestId(
+            `domain-tag-${domain.responseData.fullyQualifiedName}`
+          )
+        ).toBeVisible();
 
         // Verify Owners
         await expect(
@@ -781,16 +783,16 @@ test.describe(
         await page.getByTestId('add-domain').click();
         await waitForAllLoadersToDisappear(page);
 
-        // Verify checkboxes ARE visible (multi-select mode)
+        // Verify checkboxes ARE present (multi-select mode)
         await expect(
-          page.locator('.domain-selectable-tree .ant-tree-checkbox').first()
-        ).toBeVisible();
+          page.locator('[data-testid^="checkbox-"]')
+        ).not.toHaveCount(0);
 
         // Close the selector by clicking cancel btn
-        await page.getByTestId('cancelAssociatedTag').click();
+        await page.getByTestId('close-btn').click();
 
         // Wait for domain selector to be fully closed
-        await page.getByTestId('domain-selectable-tree').waitFor({
+        await page.getByTestId('domain-selectable-tree-search').waitFor({
           state: 'detached',
         });
 
@@ -803,14 +805,14 @@ test.describe(
         // Verify both domains are visible (multi-select mode allows multiple)
         // Use filter to find specific domain links
         await expect(
-          page
-            .getByTestId('domain-link')
-            .filter({ hasText: testDomain1.data.displayName })
+          page.getByTestId(
+            `domain-tag-${testDomain1.responseData.fullyQualifiedName}`
+          )
         ).toBeVisible();
         await expect(
-          page
-            .getByTestId('domain-link')
-            .filter({ hasText: testDomain2.data.displayName })
+          page.getByTestId(
+            `domain-tag-${testDomain2.responseData.fullyQualifiedName}`
+          )
         ).toBeVisible();
       } finally {
         await testGlossaryTerm.delete(apiContext);

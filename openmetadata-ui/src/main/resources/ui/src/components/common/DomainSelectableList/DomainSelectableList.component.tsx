@@ -39,7 +39,9 @@ const DomainSelectableList = ({
   popoverProps,
   restrictedDomains,
   selectedDomain,
+  showAllDomains,
   isClearable,
+  'data-testid': dataTestId = 'domain-selectable-tree',
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const { isVersionView } = useGenericContext<Domain>();
@@ -92,6 +94,7 @@ const DomainSelectableList = ({
 
   return (
     <DomainSelect
+      data-testid={dataTestId}
       disabled={disabled}
       hasPermission={hasPermission}
       isClearable={isClearable}
@@ -100,6 +103,7 @@ const DomainSelectableList = ({
       renderTrigger={renderTrigger}
       restrictedDomains={restrictedDomains}
       selectedDomain={selectedDomain}
+      showAllDomains={showAllDomains}
       triggerVariant="button"
       onOpenChange={handleOpenChange}
       onUpdate={

@@ -78,6 +78,7 @@ export const DomainTag: FC<EntityTagProps> = ({
       iconTestId="domain-icon"
       label={label}
       labelClassName={cx('tag-color-text')}
+      labelTestId="domain-link"
       maxWidth={maxWidth}
       trailing={inheritedGlyph}
     />

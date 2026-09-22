@@ -150,8 +150,24 @@ describe('DomainSelect', () => {
     expect(nodes).toHaveLength(1);
   });
 
-  it('should filter out restricted domains from results', async () => {
+  it('should keep only the allowed (restricted) domains and their descendants', async () => {
+    // restrictedDomains carries the domains a domain-restricted user may use.
     renderSelect({ restrictedDomains: [financeRef] });
+
+    const { nodes } = await lastProps().fetchData({});
+
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].id).toBe('Finance');
+  });
+
+  it('should drop domains that are not in the allowed list', async () => {
+    const marketingRef: EntityReference = {
+      id: 'd2',
+      type: 'domain',
+      name: 'Marketing',
+      fullyQualifiedName: 'Marketing',
+    };
+    renderSelect({ restrictedDomains: [marketingRef] });
 
     const { nodes } = await lastProps().fetchData({});
 

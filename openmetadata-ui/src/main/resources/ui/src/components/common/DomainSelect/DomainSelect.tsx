@@ -68,22 +68,28 @@ const DomainSelect: FC<DomainSelectProps> = ({
     commitMode ??
     (triggerVariant !== 'input' && multiple ? 'staged' : 'immediate');
 
-  const restrictedFqns = useMemo(
+  const allowedFqns = useMemo(
     () =>
-      new Set(
-        (restrictedDomains ?? [])
-          .map((domain) => domain.fullyQualifiedName)
-          .filter(Boolean) as string[]
-      ),
+      (restrictedDomains ?? [])
+        .map((domain) => domain.fullyQualifiedName)
+        .filter(Boolean) as string[],
     [restrictedDomains]
   );
 
-  const dropRestricted = useCallback(
+  // `restrictedDomains` carries the domains a domain-restricted user is allowed
+  // to use, so keep only those and their descendants (mirrors the shared
+  // `filterDomainsToAllowed`). An empty list means "no restriction" — show all.
+  const filterAllowedNodes = useCallback(
     (nodes: TreeSelectNode<EntityReference>[]) =>
-      restrictedFqns.size === 0
+      allowedFqns.length === 0
         ? nodes
-        : nodes.filter((node) => !restrictedFqns.has(node.value)),
-    [restrictedFqns]
+        : nodes.filter((node) =>
+            allowedFqns.some(
+              (allowed) =>
+                node.value === allowed || node.value.startsWith(`${allowed}.`)
+            )
+          ),
+    [allowedFqns]
   );
 
   // The pure mappers cannot build JSX, so the domain glyph is attached here
@@ -120,7 +126,7 @@ const DomainSelect: FC<DomainSelectProps> = ({
 
         return {
           nodes: withDomainIcon(
-            dropRestricted(domainsToTreeNodes(results ?? []))
+            filterAllowedNodes(domainsToTreeNodes(results ?? []))
           ),
         };
       }
@@ -131,7 +137,7 @@ const DomainSelect: FC<DomainSelectProps> = ({
       );
 
       const nodes = withDomainIcon(
-        dropRestricted(domainsToTreeNodes(data ?? []))
+        filterAllowedNodes(domainsToTreeNodes(data ?? []))
       );
 
       // Scope-switcher: a single "All Domains" root with every domain nested
@@ -156,7 +162,7 @@ const DomainSelect: FC<DomainSelectProps> = ({
 
       return { nodes };
     },
-    [dropRestricted, withDomainIcon, showAllDomains, t]
+    [filterAllowedNodes, withDomainIcon, showAllDomains, t]
   );
 
   const value = useMemo(() => {
