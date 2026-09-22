@@ -11,6 +11,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.AnnouncementStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
@@ -110,6 +111,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getWorkflowDefinitionIdCondition());
     conditions.add(getEntityLinkCondition());
     conditions.add(getActiveCondition(tableName));
+    conditions.add(getAnnouncementStatusCondition(tableName));
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
     conditions.add(getExcludeProviderCondition(tableName));
@@ -441,6 +443,27 @@ public class ListFilter extends Filter<ListFilter> {
     }
 
     return String.format("(startTime > %d OR endTime < %d)", now, now);
+  }
+
+  /**
+   * An announcement's stored {@code status} is only a snapshot of its last write, so the generated
+   * {@code status} column still reads {@code Active} once the window has closed. Deriving the
+   * status from the window instead keeps the filter honest, and both {@code startTime} and {@code
+   * endTime} are indexed.
+   */
+  private String getAnnouncementStatusCondition(String tableName) {
+    String status = queryParams.get("status");
+    if (status == null || !"announcement_entity".equals(tableName)) {
+      return "";
+    }
+
+    long now = System.currentTimeMillis();
+
+    return switch (AnnouncementStatus.fromValue(status)) {
+      case Active -> String.format("(startTime <= %d AND endTime >= %d)", now, now);
+      case Scheduled -> String.format("startTime > %d", now);
+      case Expired -> String.format("endTime < %d", now);
+    };
   }
 
   private String getEntityStatusCondition(String tableName) {

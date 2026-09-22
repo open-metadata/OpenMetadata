@@ -14,7 +14,7 @@ import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { confirmStateInitialValue } from '../../constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -22,7 +22,6 @@ import {
   AnnouncementEntity,
   listAnnouncements,
 } from '../../rest/announcementsAPI';
-import { getAnnouncementStatus } from '../../utils/AnnouncementsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
@@ -33,37 +32,6 @@ import {
 import AnnouncementThreads from './AnnouncementThreads';
 
 const PAGE_SIZE = 100;
-
-// The server pages announcements ordered by name, not status, so a status tab
-// filtering a single page would hide matches sitting on later pages — and show
-// an empty tab when every match happens to live past the first 100. Filtering
-// has to happen in the browser (the stored `status` is only a snapshot of the
-// last write), so every page is pulled first. Capped so a runaway cursor cannot
-// loop forever; an entity with more announcements than this truncates, which is
-// the behaviour a single page already had.
-const MAX_PAGES = 20;
-
-const fetchAllAnnouncements = async (entityLink: string) => {
-  const collected: AnnouncementEntity[] = [];
-  let after: string | undefined;
-
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const res = await listAnnouncements({
-      entityLink,
-      limit: PAGE_SIZE,
-      after,
-    });
-
-    collected.push(...(res.data ?? []));
-    after = res.paging?.after;
-
-    if (!after) {
-      break;
-    }
-  }
-
-  return collected;
-};
 
 const AnnouncementThreadBody = ({
   threadLink,
@@ -76,32 +44,30 @@ const AnnouncementThreadBody = ({
   const { t } = useTranslation();
   const [announcements, setAnnouncements] = useState<AnnouncementEntity[]>([]);
   const [confirmationState, setConfirmationState] = useState<ConfirmState>(
-    confirmStateInitialValue,
+    confirmStateInitialValue
   );
   const [isThreadLoading, setIsThreadLoading] = useState(true);
-
-  const visibleAnnouncements = useMemo(
-    () =>
-      statusFilter
-        ? announcements.filter(
-            (announcement) =>
-              getAnnouncementStatus(announcement) === statusFilter,
-          )
-        : announcements,
-    [announcements, statusFilter],
-  );
 
   const getThreads = async () => {
     setIsThreadLoading(true);
 
     try {
-      setAnnouncements(await fetchAllAnnouncements(threadLink));
+      // Status is filtered server-side, where it is derived from the
+      // announcement's window rather than the stored snapshot. Filtering a
+      // fetched page here would drop matches sitting on later pages.
+      const res = await listAnnouncements({
+        entityLink: threadLink,
+        limit: PAGE_SIZE,
+        status: statusFilter,
+      });
+
+      setAnnouncements(res.data ?? []);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
         t('server.entity-fetch-error', {
           entity: t('label.thread-plural-lowercase'),
-        }),
+        })
       );
     } finally {
       setIsThreadLoading(false);
@@ -132,7 +98,7 @@ const AnnouncementThreadBody = ({
 
   const onUpdateAnnouncement = async (
     announcementId: string,
-    data: Operation[],
+    data: Operation[]
   ): Promise<void> => {
     await updateAnnouncementHandler(announcementId, data);
     loadNewThreads();
@@ -140,9 +106,9 @@ const AnnouncementThreadBody = ({
 
   useEffect(() => {
     getThreads();
-  }, [threadLink, refetchThread]);
+  }, [threadLink, refetchThread, statusFilter]);
 
-  if (isEmpty(visibleAnnouncements) && !isThreadLoading) {
+  if (isEmpty(announcements) && !isThreadLoading) {
     return (
       <ErrorPlaceHolder
         className="h-auto mt-24"
@@ -159,7 +125,7 @@ const AnnouncementThreadBody = ({
       className="announcement-thread-body"
       data-testid="announcement-thread-body">
       <AnnouncementThreads
-        announcements={visibleAnnouncements}
+        announcements={announcements}
         editPermission={editPermission}
         updateAnnouncementHandler={onUpdateAnnouncement}
         onConfirmation={onConfirmation}
