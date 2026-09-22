@@ -21,12 +21,14 @@ import {
 import { randomUUID } from 'crypto';
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
-import { toLower } from 'lodash';
+import { escapeRegExp, toLower } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
 import { installServerLoadReducers } from '../support/fixtures/serverLoad';
+import { okJson } from './apiResponse';
 import { waitForAllLoadersToDisappear } from './entity';
+import { waitForSearchIndexed } from './polling';
 import { sidebarClick } from './sidebar';
 import { getToken as getTokenFromStorage } from './tokenStorage';
 
@@ -149,21 +151,78 @@ export const getToken = async (page: Page) => {
   return await getTokenFromStorage(page);
 };
 
+// Failures that mean the request never reached the server. Anything the server
+// actually saw comes back as a status code instead, so these -- and only these
+// -- are safe to send again.
+const UNSENT_REQUEST_ERROR =
+  /socket hang up|ECONNRESET|EPIPE|socket disconnected|other side closed/i;
+
+const REQUEST_METHODS = new Set([
+  'delete',
+  'fetch',
+  'get',
+  'head',
+  'patch',
+  'post',
+  'put',
+]);
+
+/**
+ * Re-sends a request that died with the connection rather than with a response.
+ *
+ * `conf/openmetadata.yaml` closes idle connections after `SERVER_IDLE_TIMEOUT`
+ * (60s), while this context asks for `Connection: keep-alive`. A request handed
+ * to a connection the server is closing in the same instant loses that race and
+ * surfaces as `apiRequestContext.post: socket hang up`, which failed a shard on
+ * a `POST /services/databaseServices` during fixture setup. There is no
+ * handshake that would let the client see the close coming, so retrying once on
+ * a fresh connection is the only fix available on this side.
+ */
+const retryUnsentRequests = (context: APIRequestContext): APIRequestContext =>
+  new Proxy(context, {
+    get(target, property) {
+      // Read against the target, not the proxy: a getter that used `this`
+      // would otherwise re-enter this trap.
+      const value = Reflect.get(target, property);
+
+      if (typeof value !== 'function') {
+        return value;
+      }
+      if (!REQUEST_METHODS.has(String(property))) {
+        return value.bind(target);
+      }
+
+      return async (...args: unknown[]) => {
+        try {
+          return await value.apply(target, args);
+        } catch (error) {
+          if (!UNSENT_REQUEST_ERROR.test(String(error))) {
+            throw error;
+          }
+
+          return await value.apply(target, args);
+        }
+      };
+    },
+  });
+
 export const getAuthContext = async (token: string) => {
   const isH2Mode = process.env.PW_PROTOCOL === 'h2';
 
-  return await request.newContext({
-    baseURL:
-      process.env.PLAYWRIGHT_TEST_BASE_URL ??
-      (isH2Mode ? 'https://localhost:8585' : 'http://localhost:8585'),
-    // Default timeout is 30s making it to 1m for AUTs
-    timeout: 90000,
-    ignoreHTTPSErrors: isH2Mode,
-    extraHTTPHeaders: {
-      ...(isH2Mode ? {} : { Connection: 'keep-alive' }),
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  return retryUnsentRequests(
+    await request.newContext({
+      baseURL:
+        process.env.PLAYWRIGHT_TEST_BASE_URL ??
+        (isH2Mode ? 'https://localhost:8585' : 'http://localhost:8585'),
+      // Default timeout is 30s making it to 1m for AUTs
+      timeout: 90000,
+      ignoreHTTPSErrors: isH2Mode,
+      extraHTTPHeaders: {
+        ...(isH2Mode ? {} : { Connection: 'keep-alive' }),
+        Authorization: `Bearer ${token}`,
+      },
+    })
+  );
 };
 
 const DISABLE_ETAG_CONDITIONAL_READS_KEY = 'OM_DISABLE_ETAG_CONDITIONAL_READS';
@@ -249,8 +308,8 @@ export const redirectToHomePage = async (
 };
 
 export const redirectToExplorePage = async (page: Page) => {
-  await page.goto('/explore');
-  await page.waitForURL('**/explore');
+  await page.goto('/explore', { waitUntil: 'domcontentloaded' });
+  await page.waitForURL('**/explore', { waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -442,9 +501,7 @@ export const toastNotification = async (
     .filter({ hasText: message })
     .first();
 
-  await toast.waitFor({ state: 'visible', timeout });
-
-  await expect(toast.getByTestId('alert-icon')).toBeVisible();
+  await expect(toast).toBeVisible({ timeout });
 };
 
 /**
@@ -489,6 +546,33 @@ export const waitForToastStackToClear = async (
 };
 
 /**
+ * Closes every toast currently on screen so a click on something beneath one is
+ * not swallowed.
+ *
+ * `waitForToastStackToClear` is the right tool when the stack drains on its own.
+ * An error toast does not: chromium-09 spent its entire 60s timeout retrying a
+ * click on the glossary form's Save button while an "Entity not found: glossary"
+ * toast sat over it at bottom-center. The toast was not even this test's -- the
+ * Glossary landing page raises it while restoring a glossary a parallel worker
+ * had already deleted -- so waiting for it to leave would have waited forever.
+ */
+export const dismissToasts = async (page: Page) => {
+  // Re-query between passes: closing one toast re-lays out the stack, and the
+  // handles collected before the click go stale.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const closeIcons = await page.getByTestId('alert-icon-close').all();
+
+    if (closeIcons.length === 0) {
+      return;
+    }
+
+    for (const closeIcon of closeIcons) {
+      await closeIcon.click({ timeout: 2_000 }).catch(() => undefined);
+    }
+  }
+};
+
+/**
  * Asserts that the page is showing no error toast, optionally narrowed to the
  * ones carrying `message`.
  *
@@ -520,7 +604,8 @@ export const clickOutside = async (page: Page) => {
 };
 
 /**
- * Blocks until every open Ant Design overlay has finished its enter animation.
+ * Blocks until every open Ant Design overlay — dropdown menus, select popups
+ * and popovers alike — has finished its enter animation.
  *
  * Ant Design animates a dropdown open with `transform: scaleY(0.8) -> scaleY(1)`
  * around `transform-origin: 0 0`, and rc-motion applies the start class one frame
@@ -537,8 +622,62 @@ export const waitForAntdPopupToSettle = async (page: Page) => {
   await expect(
     page.locator(
       '.ant-dropdown:not(.ant-dropdown-hidden)[class*="-appear"], ' +
-        '.ant-dropdown:not(.ant-dropdown-hidden)[class*="-enter"]'
+        '.ant-dropdown:not(.ant-dropdown-hidden)[class*="-enter"], ' +
+        '.ant-select-dropdown:not(.ant-select-dropdown-hidden)[class*="-appear"], ' +
+        '.ant-select-dropdown:not(.ant-select-dropdown-hidden)[class*="-enter"], ' +
+        '.ant-popover:not(.ant-popover-hidden)[class*="-appear"], ' +
+        '.ant-popover:not(.ant-popover-hidden)[class*="-enter"]'
     )
+  ).toHaveCount(0);
+};
+
+/**
+ * Parks the pointer clear of the page content and waits for hover popovers to go.
+ *
+ * Clicking an item inside an overlay leaves the pointer at that item's
+ * coordinates. When the overlay unmounts, whatever it was covering receives the
+ * hover, and an `EntityPopOverCard` underneath opens at `z-index: 9999` over the
+ * trigger that was just used. Nothing moves the pointer afterwards, so the card
+ * never gets a `mouseleave`: it stays up intercepting pointer events, and the
+ * next click retries against `.ant-popover-inner-content` until the test times
+ * out rather than failing on anything the test is about.
+ */
+export const dismissHoverPopovers = async (page: Page) => {
+  await page.mouse.move(0, 0);
+  await expect(
+    page.locator('.ant-popover:not(.ant-popover-hidden)')
+  ).toHaveCount(0);
+};
+
+/**
+ * Blocks until every open Ant Design modal has finished its enter animation.
+ *
+ * Waiting for a modal to be `visible` is satisfied by its first scaled frame.
+ * A press begun then puts mousedown on a control inside the dialog and mouseup
+ * where that control has since moved to, so the browser never synthesises a
+ * click: the control takes focus and nothing happens. rc-motion strips the
+ * `-appear`/`-enter` classes on `animationend`, so their absence is the signal
+ * that the dialog's geometry is final.
+ */
+export const waitForAntdModalToSettle = async (page: Page) => {
+  await expect(
+    page.locator('.ant-modal[class*="-appear"], .ant-modal[class*="-enter"]')
+  ).toHaveCount(0);
+};
+
+/**
+ * The same wait for a dialog built from `ui-core-components` rather than Antd.
+ *
+ * Those are React Aria: `ModalOverlay` and `Modal` carry `data-entering` for the
+ * length of a 300 ms `zoom-in-95`, and they render none of the `.ant-modal`
+ * classes, so `waitForAntdModalToSettle` resolves against them immediately and
+ * the press it was meant to protect still lands mid-animation. Match on the
+ * attribute React Aria actually sets, scoped to overlays that wrap a dialog so
+ * an unrelated entering element cannot hold this open.
+ */
+export const waitForAriaModalToSettle = async (page: Page) => {
+  await expect(
+    page.locator('[data-entering]:has([role="dialog"])')
   ).toHaveCount(0);
 };
 
@@ -785,6 +924,42 @@ export const removeSingleSelectDomain = async (
   );
 };
 
+export const searchDataProductOptions = async (
+  page: Page,
+  dataProduct: { displayName: string; fullyQualifiedName?: string }
+): Promise<Locator> => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  try {
+    await waitForSearchIndexed(
+      apiContext,
+      dataProduct.fullyQualifiedName,
+      'dataProduct'
+    );
+  } finally {
+    await afterAction();
+  }
+  const input = page.locator('[data-testid="data-product-selector"] input');
+  if ((await input.inputValue()) === dataProduct.displayName) {
+    await input.clear();
+  }
+  const responsePromise = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      response.request().method() === 'GET' &&
+      url.pathname === '/api/v1/search/query' &&
+      url.searchParams.get('index') === 'dataProduct' &&
+      url.searchParams.get('q') ===
+        dataProduct.displayName.replaceAll('"', '\\"')
+    );
+  });
+  await input.fill(dataProduct.displayName);
+  expect((await responsePromise).status()).toBe(200);
+  await waitForAllLoadersToDisappear(page);
+  return page
+    .locator('.ant-select-dropdown:visible')
+    .getByTestId('tag-' + dataProduct.fullyQualifiedName);
+};
+
 export const assignDataProduct = async (
   page: Page,
   domain: { name: string; displayName: string; fullyQualifiedName?: string },
@@ -804,7 +979,7 @@ export const assignDataProduct = async (
     await expect
       .poll(
         async () => {
-          await page.reload();
+          await page.reload({ waitUntil: 'domcontentloaded' });
           await waitForAllLoadersToDisappear(page);
 
           return page
@@ -839,26 +1014,7 @@ export const assignDataProduct = async (
     .click();
 
   for (const dataProduct of dataProducts) {
-    const tagLocator = page.getByTestId(
-      `tag-${dataProduct.fullyQualifiedName}`
-    );
-
-    await expect(async () => {
-      // Match any Data Product search response. The dropdown filters by the
-      // asset's domain only when the "Data Product Domain Validation" rule is
-      // enabled; when it is disabled the query carries no domain, so we cannot
-      // key the wait on the domain name. The tag visibility check below is the
-      // real synchronization guard.
-      const searchDataProduct = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/search/query')
-      );
-      await page.locator('[data-testid="data-product-selector"] input').clear();
-      await page
-        .locator('[data-testid="data-product-selector"] input')
-        .fill(dataProduct.displayName);
-      await searchDataProduct;
-      await expect(tagLocator).toBeVisible({ timeout: 2_000 });
-    }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
+    const tagLocator = await searchDataProductOptions(page, dataProduct);
 
     await tagLocator.click();
   }
@@ -884,7 +1040,7 @@ export const assignDataProduct = async (
       await expect
         .poll(
           async () => {
-            await page.reload();
+            await page.reload({ waitUntil: 'domcontentloaded' });
             await waitForAllLoadersToDisappear(page);
 
             return page
@@ -1045,46 +1201,69 @@ export const waitForSearchResult = async (
   page: Page,
   searchTerm: string,
   result: Locator,
-  tabSelector?: Locator
+  tabSelector: Locator,
+  indexedReferences: { owners?: string[]; domains?: string[] }
 ) => {
-  let hasSubmittedSearch = false;
-
-  await expect
-    .poll(
-      async () => {
-        // Swallow the timeout: this wait only exists to let the search settle
-        // before checking the result, and the enclosing poll is what decides
-        // success. Left unhandled, a single slow search rejects and the
-        // exception aborts the whole poll instead of counting as "not yet" —
-        // so a 45s budget could fail after one 15s iteration.
-        const searchResponse = page
-          .waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/search/query') &&
-              response.request().method() === 'GET',
-            { timeout: 15_000 }
-          )
-          .catch(() => null);
-
-        if (hasSubmittedSearch) {
-          await Promise.all([searchResponse, page.reload()]);
-        } else {
-          await page.getByTestId('searchBox').fill(searchTerm);
-          await Promise.all([
-            searchResponse,
-            page.getByTestId('searchBox').press('Enter'),
-          ]);
-          hasSubmittedSearch = true;
-        }
-        await waitForAllLoadersToDisappear(page);
-        await tabSelector?.click();
-        await waitForAllLoadersToDisappear(page);
-
-        return result.isVisible();
-      },
-      { timeout: 45_000, intervals: [1_000, 2_000, 5_000] }
-    )
-    .toBe(true);
+  const { apiContext, afterAction } = await getApiContext(page);
+  try {
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext.get('/api/v1/search/query', {
+            params: {
+              q: `fullyQualifiedName:${JSON.stringify(searchTerm)}`,
+              index: 'table',
+              size: 1,
+            },
+          });
+          const body = await okJson<{
+            hits: {
+              hits: {
+                _source: {
+                  fullyQualifiedName: string;
+                  owners?: {
+                    name?: string;
+                    displayName?: string;
+                    fullyQualifiedName?: string;
+                  }[];
+                  domains?: {
+                    name?: string;
+                    displayName?: string;
+                    fullyQualifiedName?: string;
+                  }[];
+                };
+              }[];
+            };
+          }>(response, `Indexed references for ${searchTerm}`);
+          const source = body.hits.hits.find(
+            (hit) => hit._source.fullyQualifiedName === searchTerm
+          )?._source;
+          return Boolean(
+            source &&
+              Object.entries(indexedReferences).every(([field, names]) =>
+                names.every((name) =>
+                  source[field as keyof typeof indexedReferences]?.some(
+                    (reference) =>
+                      [
+                        reference.name,
+                        reference.displayName,
+                        reference.fullyQualifiedName,
+                      ].includes(name)
+                  )
+                )
+              )
+          );
+        },
+        { timeout: 45_000, intervals: [1_000, 2_000, 5_000] }
+      )
+      .toBe(true);
+  } finally {
+    await afterAction();
+  }
+  await page.getByTestId('searchBox').fill(searchTerm);
+  await page.getByTestId('searchBox').press('Enter');
+  await tabSelector.click();
+  await expect(result).toBeVisible();
 };
 
 export const verifyDomainPropagation = async (
@@ -1114,7 +1293,7 @@ export const verifyDomainPropagation = async (
             fullyQualifiedName?: string;
             domains?: { name?: string; fullyQualifiedName?: string }[];
           };
-        }[] = response.ok() ? (await response.json())?.hits?.hits ?? [] : [];
+        }[] = (await okJson(response, 'Domain propagation search')).hits.hits;
         const source = hits.find(
           (hit) =>
             hit._source?.fullyQualifiedName === childFqnSearchTerm ||
@@ -1180,22 +1359,13 @@ export const waitForDeletionFromSearchIndex = async (
           )}&index=${searchIndex}&from=0&size=10`
         );
 
-        // This poll resolves on `false` ("entity gone"), the OPPOSITE
-        // polarity of verifyDomainPropagation — so a transient search error
-        // must read as "still present" (keep polling), never as an empty
-        // result set, or a single flaky 5xx would pass the gate against a
-        // stale index.
-        if (!response.ok()) {
-          return true;
-        }
-
         const hits: {
           _source?: {
             name?: string;
             displayName?: string;
             fullyQualifiedName?: string;
           };
-        }[] = (await response.json())?.hits?.hits ?? [];
+        }[] = (await okJson(response, 'Search deletion readiness')).hits.hits;
 
         return hits.some((hit) =>
           matchNames.some(
@@ -1228,65 +1398,9 @@ export const closeFirstPopupAlert = async (page: Page) => {
 };
 
 export const reloadAndWaitForNetworkIdle = async (page: Page) => {
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
 
   await waitForAllLoadersToDisappear(page);
-};
-
-/**
- * Utility function to handle API calls with retry logic for connection-related errors.
- * This is particularly useful for cleanup operations that might fail due to network issues.
- *
- * @param apiCall - The API call function to execute
- * @param operationName - Name of the operation for logging purposes
- * @param maxRetries - Maximum number of retry attempts (default: 3)
- * @param baseDelay - Base delay in milliseconds for exponential backoff (default: 1000)
- * @returns The result of the API call if successful
- */
-export const executeWithRetry = async <T>(
-  apiCall: () => Promise<T>,
-  operationName: string,
-  maxRetries = 3,
-  baseDelay = 1000
-): Promise<T | void> => {
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      return await apiCall();
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-
-      // Check if it's a retriable error (connection-related issues)
-      const isRetriableError =
-        errorMessage.includes('socket hang up') ||
-        errorMessage.includes('ECONNRESET') ||
-        errorMessage.includes('ENOTFOUND') ||
-        errorMessage.includes('ETIMEDOUT') ||
-        errorMessage.includes('Connection refused') ||
-        errorMessage.includes('ECONNREFUSED');
-
-      if (isRetriableError && attempt < maxRetries - 1) {
-        // Exponential backoff: 1s, 2s, 4s
-        const delay = baseDelay * Math.pow(2, attempt);
-        console.log(
-          `${operationName} attempt ${
-            attempt + 1
-          } failed with retriable error: ${errorMessage}. Retrying in ${delay}ms...`
-        );
-        await new Promise((resolve) => setTimeout(resolve, delay));
-
-        continue;
-      } else {
-        console.error(
-          `Failed to ${operationName} after ${attempt + 1} attempts:`,
-          errorMessage
-        );
-
-        // Don't throw the error to prevent test failures - just log it
-        break;
-      }
-    }
-  }
 };
 
 export const readElementInListWithScroll = async (
@@ -1334,24 +1448,26 @@ export const readElementInListWithScroll = async (
 
 export const testPaginationNavigation = async (
   page: Page,
+  navigate: () => Promise<unknown>,
   apiEndpointPattern: string,
   waitForLoadSelector?: string,
   validateUrl = true,
   validateRowCount = true
 ) => {
-  const responseMatcher = (response: { url: () => string }) => {
-    const url = response.url();
+  const responseMatcher = (response: ResponseWithRequest) => {
+    const url = new URL(response.url());
     return (
-      url.includes(apiEndpointPattern) &&
-      !url.includes('limit=0') &&
-      (url.includes('limit=') ||
-        url.includes('after=') ||
-        url.includes('before='))
+      response.request().method() === 'GET' &&
+      url.pathname.endsWith(apiEndpointPattern) &&
+      url.searchParams.get('limit') !== '0' &&
+      (url.searchParams.has('limit') ||
+        url.searchParams.has('after') ||
+        url.searchParams.has('before'))
     );
   };
 
   const page1ResponsePromise = page.waitForResponse(responseMatcher);
-
+  await navigate();
   const page1Response = await page1ResponsePromise;
   expect(page1Response.status()).toBe(200);
 
@@ -1405,7 +1521,7 @@ export const testPaginationNavigation = async (
 
   const reloadResponsePromise = page.waitForResponse(responseMatcher);
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
 
   const reloadResponse = await reloadResponsePromise;
   expect(reloadResponse.status()).toBe(200);
@@ -1442,19 +1558,29 @@ export const testPaginationNavigation = async (
     }
     await page.waitForLoadState('domcontentloaded');
     const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
+    // Ant's Dropdown defaults to `trigger: ['hover']`, so the menu opens on
+    // `mouseenter` and on nothing else. A hover that does not cross an element
+    // boundary dispatches a mousemove and no enter event, and the wait below
+    // then spends its whole timeout on a trigger that was never triggered --
+    // the trace for this failure has the button enabled, marked as the hover
+    // target, and no `.ant-dropdown` overlay in any snapshot. Parking the
+    // pointer elsewhere first guarantees the crossing; retrying the pair costs
+    // nothing when the first attempt works. The metrics copy of this helper
+    // already carried a click fallback for the same reason.
     await expect(async () => {
+      await page.mouse.move(0, 0);
       await pageSizeDropdown.hover();
-      if (!(await menuItem.isVisible())) {
-        await pageSizeDropdown.click();
-      }
-      await expect(menuItem).toBeVisible({ timeout: 2_000 });
-    }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
+      await expect(menuItem).toBeVisible({ timeout: 5_000 });
+    }).toPass({ timeout: 30_000 });
+    await waitForAntdPopupToSettle(page);
 
-    const pageSizeChangePromise = page.waitForResponse((response) =>
-      response.url().includes(apiEndpointPattern)
+    const pageSizeChangePromise = page.waitForResponse(
+      (response) =>
+        responseMatcher(response) &&
+        new URL(response.url()).searchParams.get('limit') === '25'
     );
     await menuItem.click();
-    await pageSizeChangePromise;
+    expect((await pageSizeChangePromise).status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
 
     await expect(pageSizeDropdown).toHaveText('25 / Page');
@@ -1496,31 +1622,45 @@ export const fetchCompletedCsvAsyncJobResult = async (
   apiContext: APIRequestContext,
   jobId: string
 ) => {
+  if (!jobId) {
+    throw new Error('CSV export returned no job ID');
+  }
+
+  const jobUrl = `/api/v1/csvAsyncJobs/${encodeURIComponent(jobId)}`;
   await expect
     .poll(
       async () => {
-        const response = await apiContext.get('/api/v1/csvAsyncJobs?limit=50');
-
-        if (!response.ok()) {
-          return undefined;
+        const response = await apiContext.get(jobUrl);
+        const job = await okJson<CsvAsyncJob>(response, `CSV export ${jobId}`);
+        if (job.jobId !== jobId) {
+          throw new Error(
+            `CSV export ${jobId}: received a different job ${job.jobId}`
+          );
+        }
+        if (!['QUEUED', 'RUNNING', 'COMPLETED'].includes(job.status)) {
+          throw new Error(
+            `CSV export ${jobId} ended with ${job.status}; expected COMPLETED`
+          );
         }
 
-        const jobs = (await response.json()) as CsvAsyncJob[];
-
-        return jobs.find((job) => job.jobId === jobId)?.status;
+        return job.status;
       },
-      { timeout: 90_000 }
+      {
+        timeout: 90_000,
+        message: `CSV export ${jobId} must complete successfully`,
+      }
     )
     .toBe('COMPLETED');
 
-  const resultResponse = await apiContext.get(
-    `/api/v1/csvAsyncJobs/${jobId}/result`,
-    {
-      headers: { Accept: 'text/csv' },
-    }
-  );
+  const resultResponse = await apiContext.get(`${jobUrl}/result`, {
+    headers: { Accept: 'text/csv' },
+  });
 
-  expect(resultResponse.ok()).toBeTruthy();
+  if (!resultResponse.ok()) {
+    throw new Error(
+      `CSV export ${jobId} result: HTTP ${resultResponse.status()}`
+    );
+  }
 
   return resultResponse.text();
 };
@@ -1580,7 +1720,7 @@ export const testMetricsPaginationNavigation = async (page: Page) => {
 
   const reloadResponsePromise = waitForMetricsSearchResponse(page);
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
 
   const reloadResponse = await reloadResponsePromise;
   expect(reloadResponse.status()).toBe(200);
@@ -1641,7 +1781,7 @@ export const testClientSidePaginationNavigation = async (
   const currentUrl = page.url();
   expect(new URL(currentUrl).searchParams.get('currentPage')).toBe('2');
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
 
   if (waitForLoadSelector) {
     await page.locator(waitForLoadSelector).waitFor({ state: 'visible' });
@@ -1669,13 +1809,9 @@ export const testClientSidePaginationNavigation = async (
   }
 
   const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
-  await expect(async () => {
-    await pageSizeDropdown.hover();
-    if (!(await menuItem.isVisible())) {
-      await pageSizeDropdown.click();
-    }
-    await expect(menuItem).toBeVisible({ timeout: 2_000 });
-  }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
+  await pageSizeDropdown.hover();
+  await expect(menuItem).toBeVisible();
+  await waitForAntdPopupToSettle(page);
   await menuItem.click();
   await waitForAllLoadersToDisappear(page);
 
@@ -1719,7 +1855,7 @@ export const testCompletePaginationWithSearch = async (
     skipUrlParamCheck = false,
   } = config;
 
-  await page.goto(`${baseUrl}`);
+  await page.goto(`${baseUrl}`, { waitUntil: 'domcontentloaded' });
   await page.locator(waitForLoadSelector).waitFor({ state: 'visible' });
 
   await waitForAllLoadersToDisappear(page);
@@ -1783,7 +1919,7 @@ export const testCompletePaginationWithSearch = async (
     response.url().includes(searchApiPattern)
   );
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   const reloadResponse = await reloadPromise;
   expect(reloadResponse.status()).toBe(200);
 
@@ -1874,6 +2010,35 @@ export const testTableSorting = async (
   expect(afterSecondClickValue).not.toBe(afterFirstClickValue);
 };
 
+const hasTableNameSearchFilter = (
+  filter: unknown,
+  searchTerm: string
+): boolean => {
+  if (!filter || typeof filter !== 'object') return false;
+  if (Array.isArray(filter)) {
+    return filter.some((clause) =>
+      hasTableNameSearchFilter(clause, searchTerm)
+    );
+  }
+  if (
+    'wildcard' in filter &&
+    filter.wildcard &&
+    typeof filter.wildcard === 'object'
+  ) {
+    const matchesName = Object.entries(filter.wildcard).some(
+      ([field, pattern]) =>
+        ['name.keyword', 'displayName.keyword'].includes(field) &&
+        typeof pattern === 'string' &&
+        pattern.replace(/\\(.)/g, '$1') === `*${searchTerm}*`
+    );
+    if (matchesName) return true;
+  }
+
+  return Object.values(filter).some((clause) =>
+    hasTableNameSearchFilter(clause, searchTerm)
+  );
+};
+
 export const testTableSearch = async (
   page: Page,
   searchIndex: string,
@@ -1881,22 +2046,71 @@ export const testTableSearch = async (
   notVisibleText: string
 ) => {
   await waitForAllLoadersToDisappear(page);
+  const searchbar = page.getByTestId('searchbar');
+  await expect(searchbar).toBeVisible();
 
+  // Table listings use name/displayName wildcard filters; other lists use q.
+  // Match the entered term so an earlier unfiltered response cannot satisfy the wait.
+  const responsePromise = page.waitForResponse(
+    (response) => {
+      const url = new URL(response.url());
+      const query = (url.searchParams.get('q') ?? '').replace(/\\(.)/g, '$1');
+
+      return (
+        response.request().method() === 'GET' &&
+        url.pathname === '/api/v1/search/query' &&
+        url.searchParams.get('index') === searchIndex &&
+        (query.includes(searchTerm) ||
+          hasTableNameSearchFilter(
+            JSON.parse(url.searchParams.get('query_filter') ?? 'null'),
+            searchTerm
+          ))
+      );
+    },
+    { timeout: 20_000 }
+  );
+  await searchbar.fill(searchTerm);
+  expect((await responsePromise).status()).toBe(200);
+  await waitForAllLoadersToDisappear(page);
+  await expect(
+    page.getByRole('row').filter({
+      has: page.getByText(new RegExp(`^${escapeRegExp(searchTerm)}$`, 'i')),
+    })
+  ).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(notVisibleText, { exact: true })).toBeHidden({
+    timeout: 10_000,
+  });
+};
+
+export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
+  await expect(trigger).toBeVisible();
+  const nestedControl = trigger.locator(
+    'input[role="combobox"], button[aria-haspopup="listbox"]'
+  );
+  const control = (await nestedControl.count()) === 1 ? nestedControl : trigger;
+  await control.focus();
+
+  // The listbox popup is a non-modal react-aria popover, and that is exactly
+  // what wires useCloseOnScroll: while it is open, ANY capture-phase scroll
+  // whose target contains the trigger closes it — a drawer body, a scrollable
+  // form panel, the document, or the scroll Playwright performs itself as part
+  // of a click's actionability checks. A one-shot open-then-click therefore
+  // dismisses the popup as often as it selects from it, and nothing reopens
+  // it, so the option click waits out the entire test timeout on a node that
+  // was detached mid-click. Reopening converges rather than looping: the
+  // dismissed attempt leaves the page scrolled where the option already sits
+  // in view, so the retry's click needs no scroll and cannot close the popup.
   await expect(async () => {
-    const waitForSearchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*index=${searchIndex}*`
-    );
-    await page.getByTestId('searchbar').fill(searchTerm);
-    await waitForSearchResponse;
-    await waitForAllLoadersToDisappear(page);
-
-    await expect(page.getByText(searchTerm).first()).toBeVisible({
-      timeout: 5_000,
-    });
-    await expect(page.getByText(notVisibleText).first()).not.toBeVisible({
-      timeout: 5_000,
-    });
-  }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
+    if ((await control.getAttribute('aria-expanded')) !== 'true') {
+      if ((await control.getAttribute('role')) === 'combobox') {
+        await control.press('ArrowDown');
+      } else {
+        await control.click({ timeout: 5_000 });
+      }
+    }
+    await expect(option).toBeVisible({ timeout: 5_000 });
+    await option.click({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000 });
 };
 
 // React-aria closes a non-modal popover (Select, ComboBox) when an ancestor of
@@ -1925,7 +2139,7 @@ export const selectOptionWithRetry = async (
       await scrollIntoViewAndSettle(trigger);
       await trigger.click();
     }
-
-    await option.click({ timeout: 2000 });
-  }).toPass({ timeout: 15000 });
+    await expect(option).toBeVisible({ timeout: 5_000 });
+    await option.click({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000 });
 };

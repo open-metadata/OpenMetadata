@@ -213,7 +213,7 @@ test.describe(
       // Verify URL has the key BEFORE reloading
       await expect(page).toHaveURL(/key=last7days/);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await page.waitForLoadState('domcontentloaded');
       await waitForAllLoadersToDisappear(page);
       const response = await incidentListResponse;

@@ -237,9 +237,10 @@ class AdvancedSearchClassBase {
     let pendingResolve: ((result: AsyncFetchListValuesResult) => void) | null =
       null;
     const debouncedFetch = debounce((search: string) => {
-      // An in-flight response must settle its own search, even if a newer search is queued.
+      // Started requests own their resolvers; only queued searches share this slot.
       const resolve = pendingResolve;
       pendingResolve = null;
+
       getAggregateFieldOptions(
         searchIndex,
         entityField,

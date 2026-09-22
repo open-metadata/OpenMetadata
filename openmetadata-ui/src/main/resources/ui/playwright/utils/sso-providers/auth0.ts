@@ -151,7 +151,7 @@ export const auth0ProviderFixture: SsoProviderFixture = {
   },
 
   async performLogin(page: Page) {
-    await page.goto('/signin');
+    await page.goto('/signin', { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: this.signInButtonPattern }).click();
     // Auth0 SDK redirects to ${domain}/authorize; the mock's interaction
     // handler auto-approves as `admin` and redirects back to /callback with

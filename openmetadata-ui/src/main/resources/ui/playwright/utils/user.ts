@@ -127,7 +127,9 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
   const userResponse = page.waitForResponse(
     `/api/v1/users/name/${encodedUserName}?fields=*`
   );
-  await page.goto(`/users/${encodedUserName}`);
+  await page.goto(`/users/${encodedUserName}`, {
+    waitUntil: 'domcontentloaded',
+  });
 
   // A 404/5xx satisfies the wait just as a 200 does, and the page then drops
   // its loader and renders an error state. Callers that guard their assertions
@@ -140,6 +142,7 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
   ).toBeTruthy();
 
   await waitForAllLoadersToDisappear(page);
+  await expect(page.getByTestId('user-email-value')).toBeVisible();
 };
 
 export const softDeleteUserProfilePage = async (

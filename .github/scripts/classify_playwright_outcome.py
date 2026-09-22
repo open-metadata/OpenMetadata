@@ -110,6 +110,10 @@ def _test_record(
         "status": str(test.get("status") or "unknown"),
         "attempts": len(attempts),
         "retries": max(0, len(attempts) - 1),
+        "firstAttemptStatus": attempts[0].get("status", "unknown")
+        if attempts
+        else "not-run",
+        "expectedStatus": test.get("expectedStatus", "passed"),
         "firstError": first_error,
         "errorFingerprint": (
             hashlib.sha256(first_error.encode("utf-8")).hexdigest()
@@ -438,6 +442,21 @@ def classify_playwright_outcome(
         "schemaVersion": 1,
         "classification": classification,
         "matrixOutcome": matrix_outcome,
+        "measurement": {
+            "firstAttemptPassed": sum(
+                record["firstAttemptStatus"] == record["expectedStatus"]
+                and record["firstAttemptStatus"] in {"passed", "failed"}
+                for record in product_records
+            ),
+            "firstAttemptFailed": sum(
+                record["firstAttemptStatus"]
+                in {"passed", "failed", "timedOut", "interrupted"}
+                and record["firstAttemptStatus"] != record["expectedStatus"]
+                for record in product_records
+            ),
+            "retriedTests": sum(record["retries"] > 0 for record in product_records),
+            "skippedTests": len(skipped),
+        },
         "counts": {
             "tests": len(product_records),
             "passed": len(passed),
@@ -552,6 +571,8 @@ def main() -> int:
     parser.add_argument("--source-sha", default="")
     parser.add_argument("--output", required=True)
     parser.add_argument("--summary")
+    parser.add_argument("--coverage", type=Path)
+    parser.add_argument("--artifact-integrity-outcome", default="unknown")
     parser.add_argument("--enforce", action="store_true")
     args = parser.parse_args()
 
@@ -596,6 +617,26 @@ def main() -> int:
         "runAttempt": os.environ.get("GITHUB_RUN_ATTEMPT", ""),
         "eventName": os.environ.get("GITHUB_EVENT_NAME", ""),
     }
+
+    result["measurement"]["artifactIntegrityVerified"] = (
+        args.artifact_integrity_outcome == "success"
+    )
+    if args.coverage and args.coverage.exists():
+        coverage = json.loads(args.coverage.read_text())
+        result["measurement"]["quarantinedTests"] = coverage.get("quarantinedTests")
+        result["measurement"]["coverageVerified"] = (
+            not any(
+                coverage.get(key)
+                for key in [
+                    "missingTestIds",
+                    "unexpectedTestIds",
+                    "duplicatePlanTestIds",
+                    "duplicateExecutionTestIds",
+                    "nativeEvidenceIssues",
+                ]
+            )
+            and coverage.get("plannedTests", 0) > 0
+        )
 
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)

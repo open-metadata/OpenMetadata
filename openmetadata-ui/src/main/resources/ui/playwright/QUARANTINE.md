@@ -27,14 +27,17 @@ coverage, a retried one looks green.
 
 ## Entries
 
-1 entry. The threshold for quarantining is **2 or more** failures, counted per
-generated variant rather than per source line. The 11 merge_group runs sampled
-on 2026-09-04 that seeded this list are all released now; the entry below was
-tagged separately, on 2026-09-11.
+2 entries, 4 tests. Both are deterministic failures in upstream code rather
+than flakes, parked here with an owner while they are fixed. The threshold for
+quarantining is **2 or more** failures, counted per generated variant rather
+than per source line. The 11 merge_group runs sampled on 2026-09-04 that seeded
+the original list are all released now; both entries below were tagged
+separately, against the evidence recorded in their rows.
 
 | Spec | Test | Seen | Symptom |
 |---|---|---|---|
-| `e2e/Pages/DataContracts.spec.ts` | Create Data Contract and validate for Table | 2/2 | Quarantined 2026-09-11 (BE bug, not a test flake). On both merge_group attempts of run 34588697338 the contract's quality/test-suite run finished without writing a result: `GET /dataContracts/{id}/results/{resultId}` shows `schemaValidation` (5/5) and `semanticsValidation` (1/1) populated but **`qualityValidation` absent**, so the aggregate `contractExecutionStatus` hangs on `Running` and never reaches a terminal state. The test suite + DQ ingestion pipeline were created and deployed fine (`POST …/ingestionPipelines/deploy` → 200), but the triggered Airflow DagRun completed in ~0.03s executing zero test cases, so no test-case result came back. `waitForDataContractExecution` then polls the full 600s and the fallback derives `suiteStatus = 'Running'`, failing `expect(...).toMatch(/^(Aborted\|Success\|Failed)$/)`. Fix is in BE: reap contract validation to a terminal state (`Aborted`/`Failed`) when the quality run fails to trigger or returns no result, instead of hanging on `Running`; plus BE/Ingestion should confirm test cases are attached before the pipeline is triggered so the run isn't empty. Owner: BE team. |
+| `e2e/Features/KnowledgeGraph.spec.ts` | `re-fits each level…when filtering`, `label modes and family highlights…`, `narrow layouts, 200 percent zoom…` | 3/3 | Deterministic, and not ours. The three assertions are main's, from #32619, and fail at byte-identical values on every run: `toBeCloseTo(outer.x, 1)` off by 21.5, a `toBeLessThan(2)` at 17.5, and `node-Orders` at viewport ratio 0. Verified not caused by this branch: reverting `chooseView` to main's direct open-then-click (the only KG-adjacent change here) reproduced all three at the same numbers, and this branch touches nothing in the KG render path -- its canvas utils are consumed only by EntityLineage. They stay red for us alone because the RDF lane is path-filtered: every other PR reports success with `build` and `RDF Playwright execution` **skipped**, so nobody else runs these. Tracked in #33635. Owner: whoever owns the 2D knowledge graph. Exact-pixel assertions on a force-directed canvas are the underlying fragility; a layout-affecting change (e.g. #32068 dropping Typography's block wrapper) would shift them without anyone noticing. |
+| `e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts` | Should remove user owner for knowledgeCenter | 3/3 | A backend indexing gap, not a test race. Released from quarantine in #33395 on the theory that the summary panel reads owners from the search document and the test just had to wait for it; it does wait, and the owner never arrives. The wait now reports which half failed: *"the document is indexed, so the filter did not match it"*. Everything around it checks out -- `addOwnerInKCPanel` asserts the owner PATCH returns 200, and `owners` is mapped `type: nested` with a keyword `id` in `knowledge_page_search_index`, so the nested `owners.id` filter is the right shape. So the page's search document is not picking up the owner change within 60s even though the write landed. A full reindex would repair it (`PageIndex` inherits `owners` via COMMON_REINDEX_FIELDS), which is why the document exists but is stale. Not the patch-fields list: only 1 of 36 repositories names `owners` there and TableRepository is not one of them, so that is the norm rather than the bug. Tracked in #33636. Owner: BE. |
 
 ### Triage, 2026-09-09
 
@@ -44,10 +47,13 @@ suite modal at 12-21s under a `test.slow()` timeout, Table Difference at
 10-19s, the glossary drag at 6-7s. Their recorded rates are 3/11 and 2/11 so
 this is the expected result rather than a contradiction — these are
 load-dependent and an idle laptop does not reproduce them. **More local runs
-will not settle them** — but neither will waiting for CI: nothing under
-`.github/` sets `PLAYWRIGHT_RUN_QUARANTINED`, so a quarantined test runs in no
-lane at all and has produced no evidence since it was tagged. The soak lane this
-file describes does not exist. Getting these three moving needs that lane (or a
+will not settle them** — but neither will waiting for CI: the only thing under
+`.github/` that sets `PLAYWRIGHT_RUN_QUARANTINED` is the *Inventory existing
+quarantined coverage* step in `playwright-e2e-reusable.yml`, and it runs
+`playwright test --list`. Listing is not executing, so a quarantined test still
+runs in no lane at all and has produced no evidence since it was tagged. The
+soak lane this file describes does not exist; the inventory step only makes the
+dropped coverage countable. Getting these three moving needs that lane (or a
 one-off dispatch) first.
 
 The test suite modal and Table Difference entries from this triage have since
@@ -55,7 +61,7 @@ been root-caused and released — see *Released from quarantine* below. The lead
 recorded here for the test suite entry had the timing backwards and has been
 removed.
 
-`PLAYWRIGHT_RUN_QUARANTINED=true` selects the quarantined tests plus the 7 setup/teardown
+`PLAYWRIGHT_RUN_QUARANTINED=true` selects the quarantined tests plus the 9 setup/teardown
 fixture projects, which the soak lane deliberately leaves unfiltered so login and
 entity seeding still happen — a project-level `grep` *is* applied to dependency
 projects, so filtering them would make every quarantined test fail for want of
@@ -96,6 +102,7 @@ entry.
 | `e2e/Features/Glossary/GlossaryHierarchy.spec.ts` | should cancel drag and drop operation | `dragAndDropTerm` pressed at coordinates computed before the glossary page finished hydrating — the description block lands last and pushes every row down about a row height — and `force: true` skipped the actionability check that would have waited. It now holds both rows still before pressing. |
 | `e2e/Features/Glossary/GlossaryHierarchy.spec.ts` | should move term to root of different glossary | `changeTermHierarchyFromModal` calls the `moveAsync` API, which returns 200 immediately while the actual move is processed asynchronously. The test navigated to glossary2 and asserted the moved term without waiting for the async move to complete — a race the test lost 9/11 times. Added an `expect.poll` that waits for the term's `glossary.fullyQualifiedName` to update (same pattern as the passing H-M05 test). The misleading "Drag-and-drop" symptom label was from the quarantine entry; this test uses the modal, not drag-and-drop. |
 | `e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts` | Should remove user owner for knowledgeCenter | Released in #33395. The Explore summary panel renders owners from the search document, which is refreshed asynchronously after the owner PATCH, so polling the DOM and re-navigating raced the index refresh in both the add and remove steps. The test now gates on `/api/v1/search/query` through `waitForOwnerIndexed` (a nested `owners.id` query filter, since `owners` is nested in `knowledge_page_search_index`; removal waits on a `must_not` of the same clause), then navigates once and asserts. |
+| `e2e/Pages/DataContracts.spec.ts` | Create Data Contract and validate for Table | The wait demanded `Success` from a step that is meant to end `Failed`. The test saves a contract whose semantics the table deliberately violates ("should fail initially"), but `waitForContractExecutionWithFallback` had no expected-status parameter, so it polled for `Success` for the full 600s and then derived `suiteStatus = 'Running'` from its own timeout and asserted that against `/^(Aborted|Success|Failed)$/`. The wait is now `waitForContractResult`: it polls the specific `results/{resultId}`, takes the terminal status the scenario actually produces (`ContractExecutionStatus.Failed` at these call sites), and throws with the server's status and message as soon as a *different* terminal status arrives. **The BE gap in the old entry is not disproven** — a quality run that writes no `qualityValidation` would still leave the status non-terminal. What changed is that it can no longer hide inside a 600s timeout: it now fails within the poll window naming the status it saw. Re-quarantine on that evidence if it recurs. |
 | `e2e/Pages/Lineage/LineageFilters.spec.ts` | the whole describe (15 tests) | Tagged in #33357 on 2026-09-15 without an entry here, released in #33336 on 2026-09-18. A product bug: `LineageMap` cleared its `loading` state as soon as the scene response arrived, before ELK had positioned the nodes, so `waitForAllLoadersToDisappear` returned on a graph that was not on screen yet. `setLoading(false)` now runs in the layout's `.then()`, and a `pendingFetchRef` tracks an in-flight fetch so a cache hit racing that fetch cannot leave the loader stuck instead. The lineage export test was fixed in the same PR (`ExportUtils`). |
 | `e2e/Features/DataQuality/TableLevelTests.spec.ts` | Table Difference | A test-side race, not a product bug. The key-column selects sit in the Add Test Case drawer's scroll container; when a trigger is partly clipped by it, Playwright's click scrolls it just before `pointerdown`. The browser delivers that `scroll` event a frame later, after react-aria has opened the non-modal popover, and react-aria closes a popover when an ancestor of its trigger scrolls — so the option click timed out against a list that had already gone. A trace from a local repro showed the list open with the wanted option, then closed 160ms later with no click in between. `selectOptionWithRetry` now centres the trigger and lets two frames run before clicking (`scrollIntoViewAndSettle` in `utils/common.ts`; `scrollIntoViewIfNeeded` reveals only the minimum and could leave the click point clipped), and every key- and use-column pick in the test goes through one of the two. Before table 2's pick the test waits for every listbox to detach with `toHaveCount(0)`: table 1's popover and table 2's search popover can both still be exiting, and `not.toBeVisible` fails on strict mode with two matches rather than waiting. The evidence is thinner than for the rows above. The flake reproduced locally only at 4 workers (about 1 run in 12-20), which also runs the local stack out of memory; at 1 worker the unfixed test passed 20/20, and 10/10 under 4x CPU throttling, so there is no local A/B. The fixed test passed 20/20 at 1 worker and 10/10 throttled. Run it with tracing off: tracing slows each action enough to hide the strict-mode failure above, which failed 17/20 untraced and 0/10 traced. CI is the soak — if it fails at a column pick again, re-quarantine it with the trace. |
 

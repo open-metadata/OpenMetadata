@@ -461,42 +461,44 @@ const handlePropertyValueInput = async (
     .locator('input');
   const entityRefProperties = ['entityReference', 'entityReferenceList'];
   const isEntityRefProperty = entityRefProperties.includes(propertyType || '');
-  // Fill the input only if it's visible
-  if (await inputElement.isVisible()) {
-    // Convert object values to JSON strings
-    const stringValue = isObject(value) ? JSON.stringify(value) : value;
+  await expect(inputElement).toBeVisible();
+  // Convert object values to JSON strings
+  const stringValue = isObject(value) ? JSON.stringify(value) : value;
 
-    await inputElement.click();
+  // Autofocus can load these options before this helper runs. Opening an
+  // already focused picker need not issue another request.
+  await inputElement.click();
 
-    if (isEntityRefProperty) {
-      await expect(
-        page.locator('[role="listbox"]:visible').getByRole('option')
-      ).not.toHaveCount(0);
-    }
+  // An entity-reference picker fetches its options, so the list has to arrive
+  // before anything is typed into the box (from main).
+  if (isEntityRefProperty) {
+    await expect(
+      page.locator('[role="listbox"]:visible').getByRole('option')
+    ).not.toHaveCount(0);
+  }
 
-    await fillPropertyValue(inputElement, stringValue);
+  await fillPropertyValue(inputElement, stringValue);
 
-    if (MULTISELECT_OPERATORS.includes(operator)) {
-      await page
-        .locator('[role="listbox"]:visible')
-        .getByRole('option', { name: String(value), exact: true })
-        .click();
-    } else if (
-      ((operator === 'equal' || operator === 'not_equal') &&
-        propertyType === 'dateTime-cp') ||
-      propertyType === 'date-cp'
-    ) {
-      await page.keyboard.press('Enter');
-    }
+  if (MULTISELECT_OPERATORS.includes(operator)) {
+    await page
+      .locator('[role="listbox"]:visible')
+      .getByRole('option', { name: String(value), exact: true })
+      .click();
+  } else if (
+    ((operator === 'equal' || operator === 'not_equal') &&
+      propertyType === 'dateTime-cp') ||
+    propertyType === 'date-cp'
+  ) {
+    await page.keyboard.press('Enter');
+  }
 
-    // Handle entity reference selection
-    if (isEntityRefProperty) {
-      await page
-        .locator('[role="listbox"]:visible [role="option"]')
-        .filter({ hasText: value as string })
-        .first()
-        .click();
-    }
+  // Handle entity reference selection
+  if (isEntityRefProperty) {
+    await page
+      .locator('[role="listbox"]:visible [role="option"]')
+      .filter({ hasText: value as string })
+      .first()
+      .click();
   }
 };
 
@@ -604,7 +606,9 @@ export const verifySearchResults = async (
               const retryResponse = await apiContext.get(response.url());
 
               if (!retryResponse.ok()) {
-                return false;
+                throw new Error(
+                  `HTTP ${retryResponse.status()} querying ${retryResponse.url()}`
+                );
               }
 
               const searchData =

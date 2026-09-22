@@ -22,7 +22,7 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { debounce, startCase } from 'lodash';
 import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DownloadIcon } from '../../assets/svg/ic-download.svg';
@@ -147,8 +147,16 @@ const PlatformLineage = () => {
     },
     [navigate]
   );
+  // `debounce` only coalesces calls inside its own window, so the empty search
+  // that `onFocus` starts and a search for what the user then types are two
+  // requests in flight at once — and the empty one is the slower of the pair,
+  // since it has no term to narrow three indices by. Without this guard its
+  // late answer overwrites the newer one and the list shows results for a
+  // query the box is no longer holding.
+  const searchOrder = useRef(0);
   const debouncedSearch = useCallback(
     debounce(async (value: string) => {
+      const request = ++searchOrder.current;
       try {
         setIsSearchLoading(true);
         const searchIndices = [
@@ -165,6 +173,10 @@ const PlatformLineage = () => {
           includeDeleted: false,
         });
 
+        if (request !== searchOrder.current) {
+          return;
+        }
+
         setOptions(
           response.hits.hits.map((hit) => ({
             value: hit._source.fullyQualifiedName ?? '',
@@ -179,7 +191,9 @@ const PlatformLineage = () => {
           }))
         );
       } finally {
-        setIsSearchLoading(false);
+        if (request === searchOrder.current) {
+          setIsSearchLoading(false);
+        }
       }
     }, 300),
     []

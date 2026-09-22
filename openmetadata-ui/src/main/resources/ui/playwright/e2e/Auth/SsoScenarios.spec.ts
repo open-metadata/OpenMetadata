@@ -28,6 +28,7 @@ import {
   restoreSecurityConfig,
   SecurityConfigSnapshot,
 } from '../../utils/ssoAuth';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 // Every fixture the AuthCoordinator scenario matrix runs against. Scenarios 1–6
 // covered here; commit 10 layers scenarios 7–9 (misconfig, self-signup) on top.
@@ -352,9 +353,10 @@ for (const fixture of FIXTURES) {
           await fixture.performLogin(page);
           await fixture.forceTokenExpiry(page);
 
-          const refreshPromise = page.waitForResponse(
-            (resp) =>
-              resp.url().includes(AUTH_REFRESH_PATH) && resp.status() === 200,
+          const refreshPromise = waitForResponseWithStatus(
+            page,
+            (resp) => resp.url().includes(AUTH_REFRESH_PATH),
+            200,
             { timeout: 30_000 }
           );
 
@@ -551,6 +553,10 @@ for (const fixture of FIXTURES) {
           // is the correct synchronization point (no wall-clock sleep, no
           // banned `networkidle`). oidc-client's own async work is fire-
           // and-forget inside a hidden iframe and is not asserted on.
+          // This scenario asserts what the silent-callback entry actually loads,
+          // so it has to wait for `load` rather than short-circuit at
+          // domcontentloaded.
+          // eslint-disable-next-line om-playwright/no-implicit-navigation-load -- see above
           await page.goto('/silent-callback', { waitUntil: 'load' });
 
           // Full-app shell markers MUST NOT be present in the iframe DOM.

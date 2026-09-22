@@ -20,7 +20,11 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { getApiContext, uuid } from '../../utils/common';
+import {
+  getApiContext,
+  uuid,
+  waitForAntdModalToSettle,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { visitUserProfilePage } from '../../utils/user';
 import { redirectToUserPage } from '../../utils/userDetails';
@@ -573,6 +577,7 @@ test.describe('User with different Roles', () => {
     await userPage.locator('[role="dialog"].ant-modal').waitFor({
       state: 'visible',
     });
+    await waitForAntdModalToSettle(userPage);
     await userPage.fill(
       '[data-testid="displayName-input"]',
       'New Display Name'

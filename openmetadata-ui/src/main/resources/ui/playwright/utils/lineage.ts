@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
+import { readFile } from 'fs/promises';
 import { get, isEmpty } from 'lodash';
 import type { LineageScene } from '../../src/generated/api/lineage/lineageScene';
 import { SidebarItem } from '../constant/sidebar';
@@ -33,11 +34,12 @@ import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { WorksheetClass } from '../support/entity/WorksheetClass';
 import {
+  chooseSelectOption,
   clickOutside,
   getApiContext,
   getEntityTypeSearchIndexMapping,
-  selectOptionWithRetry,
   toastNotification,
+  waitForAntdPopupToSettle,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { parseCSV } from './entityImport';
@@ -157,6 +159,201 @@ export const performZoomOut = async (page: Page, xTimes = 10) => {
   }
 };
 
+/**
+ * Drags the React Flow camera by (dx, dy) without touching a node.
+ *
+ * The grip has to be a point the pane itself owns: starting the drag on a node
+ * moves that node instead of the camera, and starting it on a connection handle
+ * begins drawing an edge.
+ */
+const panCanvas = async (page: Page, dx: number, dy: number) => {
+  const paneBounds = await page.locator('.react-flow__pane').boundingBox();
+  if (!paneBounds) {
+    throw new Error('The lineage canvas has no bounds');
+  }
+
+  const grip = await page.evaluate((bounds) => {
+    for (let row = 0.2; row <= 0.85; row += 0.1) {
+      for (let column = 0.4; column <= 0.9; column += 0.1) {
+        const x = bounds.x + bounds.width * column;
+        const y = bounds.y + bounds.height * row;
+        if (
+          document
+            .elementFromPoint(x, y)
+            ?.classList.contains('react-flow__pane')
+        ) {
+          return { x, y };
+        }
+      }
+    }
+
+    return null;
+  }, paneBounds);
+
+  if (!grip) {
+    throw new Error('The lineage canvas has no empty point to drag from');
+  }
+
+  await page.mouse.move(grip.x, grip.y);
+  await page.mouse.down();
+  await page.mouse.move(grip.x + dx, grip.y + dy, { steps: 8 });
+  await page.mouse.up();
+};
+
+/**
+ * Pans until the marker's midpoint is the point the canvas actually receives.
+ *
+ * Edit mode paints a 110px node palette over the pane's left edge
+ * (`.entity-lineage.sidebar.open` is absolute at `left: 0` with a z-index above
+ * the canvas), while fitView measures the whole pane. A midpoint that lands in
+ * that strip still satisfies `toBeInViewport` — that compares against the
+ * viewport rectangle, not against what is painted on top — so the coordinate
+ * click below goes to the palette instead: the edge is never selected, the
+ * toolbar never opens, and the caller's retry loop repeats the same dead click
+ * until the test times out.
+ */
+const clearMidpointOfOverlays = async (page: Page, marker: Locator) => {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const box = await marker.boundingBox();
+    if (!box) {
+      return false;
+    }
+
+    const shift = await page.evaluate(
+      ([pointX, pointY]) => {
+        const top = document.elementFromPoint(pointX, pointY);
+        const flow = document.querySelector('.react-flow');
+        if (!top || !flow || top.closest('.react-flow')) {
+          return null;
+        }
+
+        // Climb to the outermost element that is still only the overlay: the
+        // first ancestor that also wraps the canvas is the shared container,
+        // and shifting by its width would throw the graph off screen.
+        let overlay = top;
+        while (
+          overlay.parentElement &&
+          overlay.parentElement !== document.body &&
+          !overlay.parentElement.contains(flow)
+        ) {
+          overlay = overlay.parentElement;
+        }
+        const bounds = overlay.getBoundingClientRect();
+        const margin = 8;
+        const right = bounds.right - pointX + margin;
+        const left = pointX - bounds.left + margin;
+        const down = bounds.bottom - pointY + margin;
+        const up = pointY - bounds.top + margin;
+        const dx = right <= left ? right : -left;
+        const dy = down <= up ? down : -up;
+
+        return Math.abs(dx) <= Math.abs(dy) ? { dx, dy: 0 } : { dx: 0, dy };
+      },
+      [box.x + box.width / 2, box.y + box.height / 2]
+    );
+
+    if (!shift) {
+      return true;
+    }
+
+    await panCanvas(page, shift.dx, shift.dy);
+  }
+
+  return false;
+};
+
+const clickCanvasEdge = async (page: Page, marker: Locator) => {
+  await fitToScreen(page);
+  await expect(marker).toBeInViewport();
+  const viewport = page.locator('.react-flow__viewport');
+  const getZoom = () =>
+    viewport.evaluate(
+      (element) => new DOMMatrix(getComputedStyle(element).transform).a
+    );
+  const zoom = await getZoom();
+  const initialBounds = await marker.boundingBox();
+  if (!initialBounds) {
+    throw new Error('The canvas edge midpoint has no bounds');
+  }
+
+  // At overview scale neighbouring curves collapse into the same screen pixel.
+  // Zoom around this edge before clicking, using React Flow's wheel interaction.
+  if (zoom < 1) {
+    await page.mouse.move(
+      initialBounds.x + initialBounds.width / 2,
+      initialBounds.y + initialBounds.height / 2
+    );
+    await page.mouse.wheel(0, -500 * Math.log2(1 / zoom));
+    await expect.poll(getZoom).toBeGreaterThanOrEqual(0.99);
+  }
+
+  expect(
+    await clearMidpointOfOverlays(page, marker),
+    'the edge midpoint stayed behind an overlay'
+  ).toBe(true);
+
+  await expect(marker).toBeInViewport();
+
+  // The click below is by screen coordinate, so the midpoint has to stop moving
+  // first. React Flow re-lays the graph out after every deletion, and a box read
+  // while that is in flight puts the click on a NEIGHBOURING edge -- which still
+  // opens a toolbar and still deletes something, just not the edge asked for.
+  // Hold until two consecutive reads agree before taking the coordinates.
+  let previous: { x: number; y: number } | null = null;
+  await expect
+    .poll(
+      async () => {
+        const box = await marker.boundingBox();
+        if (!box) {
+          previous = null;
+
+          return false;
+        }
+        const settled =
+          previous !== null &&
+          Math.abs(box.x - previous.x) < 1 &&
+          Math.abs(box.y - previous.y) < 1;
+        previous = { x: box.x, y: box.y };
+
+        return settled;
+      },
+      { timeout: 15_000 }
+    )
+    .toBe(true);
+
+  const bounds = await marker.boundingBox();
+  if (!bounds) {
+    throw new Error('The canvas edge midpoint has no bounds');
+  }
+
+  // Canvas edges receive real pointer events through the React Flow pane above
+  // the test-only midpoint marker, rather than through the marker's DOM button.
+  await page.mouse.click(
+    bounds.x + bounds.width / 2,
+    bounds.y + bounds.height / 2
+  );
+};
+
+// computeEdgeDataTestId only names the midpoint marker `pipeline-label-*` once
+// the edge's own details have loaded — the scene returns skeletal edges and each
+// pipeline arrives later via getLineageEdge. Until then the same marker still
+// carries the plain `edge-*` id. Exactly one is present for a given edge and
+// both open the same toolbar, so accept either rather than racing the hydration.
+const edgeMarker = (
+  page: Page,
+  fromNodeFqn: string | undefined,
+  toNodeFqn: string | undefined,
+  isPipeline: boolean
+) => {
+  const plainEdge = page.getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`);
+
+  return isPipeline
+    ? page
+        .getByTestId(`pipeline-label-${fromNodeFqn}-${toNodeFqn}`)
+        .or(plainEdge)
+    : plainEdge;
+};
+
 export const clickEdgeBetweenNodes = async (
   page: Page,
   fromNode: EntityClass,
@@ -166,14 +363,10 @@ export const clickEdgeBetweenNodes = async (
   const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
-  const edgeDiv = page.getByTestId(
-    isPipeline
-      ? `pipeline-label-${fromNodeFqn}-${toNodeFqn}`
-      : `edge-${fromNodeFqn}-${toNodeFqn}`
+  await clickCanvasEdge(
+    page,
+    edgeMarker(page, fromNodeFqn, toNodeFqn, isPipeline)
   );
-  await expect(edgeDiv).toBeVisible();
-
-  await edgeDiv.dispatchEvent('click');
 };
 
 export const clickEdgeBetweenColumns = async (
@@ -183,9 +376,7 @@ export const clickEdgeBetweenColumns = async (
 ) => {
   const edgeDiv = page.getByTestId(`column-edge-${fromNodeFqn}-${toNodeFqn}`);
 
-  await expect(edgeDiv).toBeVisible();
-
-  await edgeDiv.dispatchEvent('click');
+  await clickCanvasEdge(page, edgeDiv);
 };
 
 export const deleteEdge = async (
@@ -194,43 +385,116 @@ export const deleteEdge = async (
   toNode: EntityClass
 ) => {
   const addPipeline = page.getByTestId('add-pipeline');
+  const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
+  const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
+  const fromNodeId = get(fromNode, 'entityResponseData.id');
+  const toNodeId = get(toNode, 'entityResponseData.id');
 
-  // `clickEdgeBetweenNodes` dispatches a synthetic click on a react-flow edge
-  // label. `dispatchEvent` takes no actionability wait, so if the graph re-lays
-  // out between resolving the label and firing the event — which it does while
-  // nodes are still settling — the click lands on a node that is no longer wired
-  // up, the toolbar never opens, and the wait for `add-pipeline` below burns the
-  // whole test timeout on an action that silently did nothing. Retry the pair
-  // until the toolbar is actually there.
+  // clickEdgeBetweenNodes fires a synthetic click on a react-flow edge label,
+  // and that takes no actionability wait: when the graph re-lays out between
+  // resolving the label and firing the event the click lands on a node that is
+  // no longer wired up, the toolbar never opens, and the wait below burns the
+  // whole test timeout on an action that silently did nothing. main carries the
+  // same guard; this branch lost it. Retry the pair until the toolbar is there.
   await expect(async () => {
     await clickEdgeBetweenNodes(page, fromNode, toNode, true);
     await expect(addPipeline).toBeVisible({ timeout: 5_000 });
+
+    // EdgeInteractionOverlay renders from the context's selectedEdge and pins
+    // its button to that edge's midpoint; nothing else in the DOM names the
+    // selection. Overlapping curves can hand a coordinate click to a neighbour,
+    // so check the toolbar came up on the marker we aimed at -- otherwise the
+    // delete below removes an edge this call never named and the loop only
+    // finds out several iterations later. Compared against every marker rather
+    // than a pixel budget, so it does not depend on a tuned threshold.
+    const nearestToToolbar = await page.evaluate(() => {
+      const toolbar = document.querySelector('[data-testid="add-pipeline"]');
+      if (!toolbar) {
+        return '';
+      }
+      const bounds = toolbar.getBoundingClientRect();
+      const toolbarX = bounds.x + bounds.width / 2;
+      const toolbarY = bounds.y + bounds.height / 2;
+      let nearest = '';
+      let shortest = Number.POSITIVE_INFINITY;
+      for (const marker of Array.from(
+        document.querySelectorAll<HTMLElement>('[data-edge-state]')
+      )) {
+        const box = marker.getBoundingClientRect();
+        const distance = Math.hypot(
+          box.x + box.width / 2 - toolbarX,
+          box.y + box.height / 2 - toolbarY
+        );
+        if (distance < shortest) {
+          shortest = distance;
+          nearest = marker.getAttribute('data-testid') ?? '';
+        }
+      }
+
+      return nearest;
+    });
+    expect(
+      [
+        `pipeline-label-${fromNodeFqn}-${toNodeFqn}`,
+        `edge-${fromNodeFqn}-${toNodeFqn}`,
+      ],
+      'the edge toolbar opened on a different edge'
+    ).toContain(nearestToToolbar);
   }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 3_000] });
 
-  await addPipeline.dispatchEvent('click');
+  await addPipeline.click();
 
-  await expect(page.getByRole('dialog').first()).toBeVisible();
+  const edgeDialog = page.getByTestId('add-edge-modal').getByRole('dialog');
+  await expect(edgeDialog).toBeVisible();
+  // Ant zooms the dialog in, and toBeVisible is satisfied on the first scaled
+  // frame. A press begun then can put mousedown on the button and mouseup past
+  // it once the dialog settles, which focuses the button without ever
+  // dispatching a click -- the screenshot of this failure is exactly that:
+  // "Remove edge" wearing its focus ring, no confirmation behind it.
+  await expect(edgeDialog).not.toHaveClass(/ant-zoom-(appear|enter)/);
+  await edgeDialog.getByTestId('remove-edge-button').click();
 
-  await page
-    .locator(
-      '[data-testid="add-edge-modal"] [data-testid="remove-edge-button"]'
-    )
-    .dispatchEvent('click');
+  const confirmation = page.getByTestId('delete-edge-confirmation-modal');
+  await expect(confirmation).toBeVisible();
 
-  await expect(page.locator('[role="dialog"]').first()).toBeVisible();
-
-  const deleteRes = page.waitForResponse('/api/v1/lineage/**');
+  const deleteRes = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'DELETE' &&
+      new URL(response.url()).pathname.startsWith('/api/v1/lineage/')
+  );
   const sceneRes = page.waitForResponse('**/api/v1/lineage/scene?*');
-  await page
-    .locator(
-      '[data-testid="delete-edge-confirmation-modal"] [data-testid="confirm-button"]'
-    )
-    .click();
-  await deleteRes;
-  await page
-    .getByTestId('delete-edge-confirmation-modal')
-    .waitFor({ state: 'detached' });
+  await confirmation.getByTestId('confirm-button').click();
+  const deleteResponse = await deleteRes;
+  expect(deleteResponse.ok()).toBe(true);
+  await expect(confirmation).toBeHidden();
+
+  // The canvas refetches the scene right after the delete. Wait for it before
+  // moving on, so the next action does not race the re-render (from main).
   await sceneRes;
+
+  // Confirm THIS edge is the one that went. The canvas click is by coordinate,
+  // so a stale midpoint can select a neighbour: without a check the run deletes
+  // some other edge, reports success, and only fails several iterations later
+  // when the edge it skipped is asked for and no longer exists.
+  //
+  // Check the request, not the canvas. Whether the marker disappears says
+  // nothing about which edge went: the canvas refetches the scene immediately
+  // after the DELETE and that read can still contain the edge -- measured on
+  // this branch at 265ms and 774ms after a 200, with the scene response body
+  // still listing it -- and nothing refetches again, so the stale render never
+  // resolves on its own. The request path names the ids the server actually
+  // acted on, which is the thing this guard is for.
+  const deletedPath = new URL(deleteResponse.url()).pathname.split('/');
+  const deletedFromId = deletedPath[deletedPath.length - 3];
+  const deletedToId = deletedPath[deletedPath.length - 1];
+
+  expect(
+    deletedFromId,
+    'the delete removed an edge from a different node'
+  ).toBe(fromNodeId);
+  expect(deletedToId, 'the delete removed an edge to a different node').toBe(
+    toNodeId
+  );
 };
 
 export const deleteEdgeBetweenNodesViaAPI = (
@@ -304,6 +568,14 @@ export const fitToScreen = async (page: Page) => {
   const fitToScreenItem = page.getByRole('menuitem', { name: 'Fit to screen' });
 
   await page.getByTestId('fit-screen').click();
+  await expect(fitToScreenItem).toBeVisible();
+  // Ant grows this menu scaleY(0.8) -> scaleY(1), so a click computed against
+  // the scaled menu lands beside the item. The menu closes anyway, so the
+  // detach wait below still passes and the whole call becomes a silent no-op --
+  // which is how a lineage node stays outside the viewport through a dozen
+  // re-fits and verifyNodePresent waits out its retry on a node React Flow
+  // never rendered.
+  await waitForAntdPopupToSettle(page);
   await fitToScreenItem.click();
 
   // The menu closes with an exit animation, so without this it lingers in the
@@ -348,34 +620,14 @@ export const connectEdgeBetweenNodes = async (
       response.request().method() === 'PUT' &&
       new URL(response.url()).pathname.endsWith('/api/v1/lineage')
   );
-  const sceneRefresh = page.waitForResponse(async (response) => {
-    if (
-      response.request().method() !== 'GET' ||
-      !new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') ||
-      !response.ok()
-    ) {
-      return false;
-    }
-
-    const scene = (await response.json()) as LineageScene;
-    const sourceSceneNode = scene.nodes.find(
-      (node) =>
-        (node.sourceEntity as { id?: string } | undefined)?.id === fromNodeId
-    );
-    const targetSceneNode = scene.nodes.find(
-      (node) =>
-        (node.sourceEntity as { id?: string } | undefined)?.id === toNodeId
-    );
-
-    return Boolean(
-      sourceSceneNode &&
-        targetSceneNode &&
-        scene.edges.some(
-          (edge) =>
-            edge.from === sourceSceneNode.id && edge.to === targetSceneNode.id
-        )
-    );
-  });
+  // Match the refresh on method and path alone. Filtering it on a healthy
+  // payload would swallow a failed scene fetch into a wait timeout instead of
+  // the status assertion below, which is what actually names the failure.
+  const sceneRefresh = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene')
+  );
 
   await dragConnection(
     page,
@@ -388,6 +640,23 @@ export const connectEdgeBetweenNodes = async (
   ]);
   expect(lineageResponse.ok()).toBeTruthy();
   expect(sceneResponse.ok()).toBeTruthy();
+
+  const scene = (await sceneResponse.json()) as LineageScene;
+  const sceneNodeId = (entityId: string | undefined) =>
+    scene.nodes.find(
+      (node) =>
+        (node.sourceEntity as { id?: string } | undefined)?.id === entityId
+    )?.id;
+  const sourceSceneNodeId = sceneNodeId(fromNodeId);
+  const targetSceneNodeId = sceneNodeId(toNodeId);
+
+  expect(sourceSceneNodeId).toBeDefined();
+  expect(targetSceneNodeId).toBeDefined();
+  expect(
+    scene.edges.some(
+      (edge) => edge.from === sourceSceneNodeId && edge.to === targetSceneNodeId
+    )
+  ).toBeTruthy();
 };
 
 export const connectEntityEdgeBetweenNodesViaAPI = (
@@ -408,6 +677,97 @@ export const connectEntityEdgeBetweenNodesViaAPI = (
   );
 };
 
+/**
+ * Assert a lineage node is on the canvas.
+ *
+ * LineageMap renders with React Flow's onlyRenderVisibleElements, so a node
+ * outside the viewport is absent from the DOM rather than merely off-screen: a
+ * bare toBeVisible fails for a node that is in the graph but out of frame,
+ * which reads as "the lineage is wrong" when it only means the camera moved.
+ * Widen the frame and re-check instead of asserting against whatever the last
+ * interaction happened to leave on screen.
+ */
+export const expectLineageNodeVisible = async (
+  page: Page,
+  fqn: string | undefined
+) => {
+  if (!fqn) {
+    throw new Error(
+      'expectLineageNodeVisible was given no fully qualified name'
+    );
+  }
+
+  const node = page.getByTestId(`lineage-node-${fqn}`);
+
+  await expect(async () => {
+    if ((await node.count()) === 0) {
+      if ((await page.getByTestId('fit-screen').count()) > 0) {
+        await fitToScreen(page);
+      } else {
+        await performZoomOut(page);
+      }
+    }
+
+    await expect(node).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 60_000 });
+};
+
+/**
+ * Opens a lineage node's side drawer, re-fitting the canvas until the click
+ * actually lands.
+ *
+ * `fitToScreen` on its own is not enough. LineageMap renders with React Flow's
+ * `onlyRenderVisibleElements` and the camera drifts every time a drawer opens
+ * and closes, so a node can be attached to the DOM and still sit outside the
+ * viewport. Playwright cannot rescue that: React Flow transforms the canvas
+ * rather than scrolling it, so `scrollIntoViewIfNeeded` logs "done scrolling"
+ * and the click retries on "element is outside of the viewport" until the test
+ * dies. One Mlmodel run spent 367s of its 480s budget on a single such click,
+ * 682 retries, and then reported only that the browser had closed.
+ *
+ * Bounding the click and re-fitting between attempts turns that into either a
+ * successful click or a fast, legible failure.
+ */
+export const openLineageNodeDrawer = async (
+  page: Page,
+  fqn: string | undefined
+) => {
+  // A node testid built from `undefined` matches nothing, and the retry below
+  // would spend its whole budget re-fitting for it. Say so immediately.
+  if (!fqn) {
+    throw new Error('openLineageNodeDrawer called without a node FQN');
+  }
+
+  const trigger = page
+    .getByTestId(`lineage-node-${fqn}`)
+    .getByTestId('entity-header-display-name')
+    .getByRole('button');
+
+  // Recover when the click fails, not when the node is missing from the DOM.
+  // Attachment is not proof the trigger can be pressed: the canvas can keep an
+  // attached node clipped outside the viewport, and React Flow transforms
+  // rather than scrolls, so Playwright's scroll-into-view cannot reach it.
+  // Gating recovery on `count() === 0` skipped that case and re-clicked the
+  // same unreachable trigger until the 90s budget ran out.
+  //
+  // The escalation is the one verifyNodePresent uses, for the same reason: a
+  // fit is capped at the band's minZoom floor (0.9 in the Field band), so on a
+  // tall scene it cannot widen the view far enough, and re-fitting on every
+  // attempt throws away the zoom-out that can. Press first -- the node is
+  // usually right there -- then fit, then widen progressively.
+  let attempt = 0;
+  await expect(async () => {
+    if (attempt === 1) {
+      await fitToScreen(page);
+    } else if (attempt > 1) {
+      await performZoomOut(page, 3);
+    }
+    attempt += 1;
+
+    await trigger.click({ timeout: 10_000 });
+  }).toPass({ timeout: 90_000 });
+};
+
 export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
   const name =
@@ -416,7 +776,40 @@ export const verifyNodePresent = async (page: Page, node: EntityClass) => {
     '';
   const lineageNode = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
 
-  await lineageNode.waitFor({ state: 'attached' });
+  // LineageMap renders with React Flow's onlyRenderVisibleElements, so a node
+  // outside the current viewport is not merely off-screen -- it is absent from
+  // the DOM, and scrollIntoViewIfNeeded cannot reveal what was never rendered.
+  // Verifying several nodes in a row pans the canvas as it goes, so the later
+  // ones can end up outside the viewport that the last fit established; re-fit
+  // until this node renders instead of waiting out the test on one the canvas
+  // has moved away from.
+  // Fitting cannot widen the view far enough on a tall scene, and re-fitting
+  // actively undoes any attempt to. `fitSceneBounds` passes the band's own
+  // minZoom to `fitBounds` and then, a frame later, forces the zoom back up
+  // with `if (instance.getZoom() < minZoom) instance.zoomTo(minZoom)`. In the
+  // Field band that floor is 0.9, so a fit always lands at 0.9 however tall
+  // the graph is, and a node outside that viewport is not merely off-screen --
+  // `onlyRenderVisibleElements` means it is not in the DOM at all.
+  //
+  // Measured from a failing Stored Procedure scene: fit put the canvas at
+  // scale(0.9), three zoom-out clicks took it to 0.52, and the next attempt's
+  // fit reset it to 0.9 again -- the same four values cycling while the node
+  // never rendered. So fit once for the common case where the canvas has just
+  // panned away, then stop fitting and let the zoom-out accumulate. The canvas
+  // minZoom is 0.1, and only a scene fit re-applies the band floor.
+  let attempted = false;
+  await expect(async () => {
+    if ((await lineageNode.count()) === 0) {
+      if (attempted) {
+        await performZoomOut(page, 3);
+      } else {
+        await fitToScreen(page);
+        attempted = true;
+      }
+    }
+    await expect(lineageNode).toBeAttached({ timeout: 5_000 });
+  }).toPass({ timeout: 60_000 });
+
   await lineageNode.scrollIntoViewIfNeeded();
 
   await expect(lineageNode).toBeVisible();
@@ -600,7 +993,7 @@ export const editPipelineEdgeDescription = async (
   await page.click(
     `[data-testid="pipeline-label-${fromNodeFqn}-${toNodeFqn}"]`
   );
-  await page.locator('.edge-info-drawer').isVisible();
+  await expect(page.locator('.edge-info-drawer')).toBeVisible();
 
   await page.click('.edge-info-drawer [data-testid="edit-description"]');
   await page.locator('.ProseMirror').first().click();
@@ -686,7 +1079,15 @@ export const applyPipelineFromModal = async (
 
   const saveRes = page.waitForResponse('/api/v1/lineage');
   await saveButton.click();
-  await saveRes;
+  const saved = await saveRes;
+  expect(saved.status()).toBe(200);
+  expect(saved.request().postDataJSON()).toMatchObject({
+    edge: {
+      fromEntity: { id: get(fromNode, 'entityResponseData.id') },
+      toEntity: { id: get(toNode, 'entityResponseData.id') },
+      lineageDetails: { pipeline: { id: pipelineItem?.entityResponseData.id } },
+    },
+  });
 
   await page.getByTestId('add-edge-modal').waitFor({
     state: 'detached',
@@ -783,7 +1184,7 @@ export const removeColumnLineage = async (
   // Only a fresh /api/v1/lineage/scene response proves the removal
   // actually persisted.
   const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await lineageRes;
 
   await waitForAllLoadersToDisappear(page);
@@ -1045,7 +1446,7 @@ export const verifyExportLineagePNG = async (
     });
 
   if (!isPNGSelected) {
-    await selectOptionWithRetry(
+    await chooseSelectOption(
       page.getByTestId('export-type-select'),
       page.getByRole('option', { name: 'PNG' })
     );
@@ -1064,8 +1465,6 @@ export const verifyExportLineagePNG = async (
 
   try {
     const [download] = await Promise.all([
-      // Platform lineage renders up to 500 nodes at pixelRatio:3 — give the PNG
-      // render enough headroom before the download event fires.
       page.waitForEvent('download', { timeout: 120_000 }),
       page.click(
         '[data-testid="export-entity-modal"] [data-testid="submit-button"]:visible'
@@ -1075,6 +1474,12 @@ export const verifyExportLineagePNG = async (
     const filePath = await download.path();
 
     expect(filePath).not.toBeNull();
+    const png = await readFile(filePath!);
+    expect(png.subarray(0, 8)).toEqual(
+      Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
+    );
+    expect(png.readUInt32BE(16)).toBeGreaterThan(0);
+    expect(png.readUInt32BE(20)).toBeGreaterThan(0);
   } catch (error) {
     // Only the download wait is ambiguous about its cause. A click or selector
     // failure already says what went wrong, so a stray page error must never
@@ -1275,16 +1680,31 @@ export const verifyPlatformLineageForEntity = async (
     .click();
   await page.getByTestId('search-entity-select').locator('input').fill(fromFqn);
 
-  const focusSceneResponse = page.waitForResponse(
-    (response) =>
-      new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
-      new URL(response.url()).searchParams.get('focusFqn') === fromFqn
-  );
+  // The scene for this focus is very often already in the query cache — the
+  // entity's own lineage tab fetched exactly this focusFqn earlier in the same
+  // test — and navigating here then re-renders from cache without issuing a
+  // request at all. Requiring one makes the wait hang until the test dies, so
+  // assert it only when it actually happens; the node assertions below are
+  // what prove the scene arrived either way.
+  const focusSceneResponse = page
+    .waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
+        new URL(response.url()).searchParams.get('focusFqn') === fromFqn,
+      { timeout: 30_000 }
+    )
+    .catch(() => null);
   await page.getByTestId(`node-suggestion-${fromFqn}`).click();
-  await expect(page).toHaveURL((url) =>
-    url.pathname.endsWith(`/${encodeURIComponent(fromFqn)}`)
-  );
-  expect((await focusSceneResponse).ok()).toBeTruthy();
+  await expect
+    .poll(() =>
+      new URL(page.url()).pathname.endsWith(`/${encodeURIComponent(fromFqn)}`)
+    )
+    .toBe(true);
+
+  const focusScene = await focusSceneResponse;
+  if (focusScene) {
+    expect(focusScene.ok()).toBeTruthy();
+  }
 
   await page.getByTestId('lineage-layer-btn').click();
 
@@ -1295,13 +1715,19 @@ export const verifyPlatformLineageForEntity = async (
   const fromNode = page.getByTestId(`lineage-node-${fromFqn}`);
   await expect(fromNode).toBeVisible();
 
-  // ensure node will be visible in the viewport
-  await performZoomOut(page);
+  // Fit rather than zoom out. Zooming is not just framing here: LineageMap's
+  // `handleMove` reads the new zoom, and when it crosses into a shallower
+  // semantic band it calls `getParentSceneRequest` and navigates to the parent
+  // scene -- so the entity this function is about to assert on gets folded into
+  // its service node ("pw-ml-model-service-… · 1 model" in the screenshot for
+  // this failure) and is genuinely absent from the DOM. `fit-screen` goes
+  // through `fitViewWithoutSemanticZoom`, which suppresses that.
+  await fitToScreen(page);
 
   await expect(fromNode).toBeVisible();
 
   if (toFqn) {
-    await expect(page.getByTestId(`lineage-node-${toFqn}`)).toBeVisible();
+    await expectLineageNodeVisible(page, toFqn);
   }
 };
 

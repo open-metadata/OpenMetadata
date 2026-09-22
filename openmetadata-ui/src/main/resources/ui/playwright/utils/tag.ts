@@ -32,6 +32,7 @@ import {
   uuid,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const TAG_INVALID_NAMES = {
   MIN_LENGTH: 'c',
@@ -60,7 +61,9 @@ export const visitClassificationPage = async (
       url.url().includes('/api/v1/tags') &&
       url.url().includes(`parent=${encodeURIComponent(classificationName)}`)
   );
-  await page.goto(`/tags/${encodeURIComponent(classificationName)}`);
+  await page.goto(`/tags/${encodeURIComponent(classificationName)}`, {
+    waitUntil: 'domcontentloaded',
+  });
 
   await expect(
     page
@@ -205,7 +208,7 @@ export const removeAssetsFromTag = async (
   await page.getByTestId('delete-all-button').click();
   await assetsRemoveRes;
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await page
     .getByTestId('tags-container')
     .getByTestId('loader')
@@ -422,11 +425,12 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
   await editor.clear();
   await editor.fill(updatedDescription);
 
-  const editDescription = page.waitForResponse(
+  const editDescription = waitForResponseWithStatus(
+    page,
     (response) =>
       response.request().method() === 'PATCH' &&
-      response.url().includes('/api/v1/tags/') &&
-      response.status() === 200
+      response.url().includes('/api/v1/tags/'),
+    200
   );
   await page.getByTestId('save').click();
   await editDescription;

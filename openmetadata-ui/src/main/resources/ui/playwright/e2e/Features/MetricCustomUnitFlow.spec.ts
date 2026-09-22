@@ -19,6 +19,7 @@ import {
   descriptionBox,
   redirectToHomePage,
   uuid,
+  waitForAntdPopupToSettle,
   waitForMetricsSearchResponse,
 } from '../../utils/common';
 import {
@@ -44,8 +45,12 @@ const selectMetricFormOption = async (
     .getByTitle(title, { exact: true });
 
   await expect(option).toBeVisible();
-  // eslint-disable-next-line playwright/no-force-option -- Ant select option can be obscured during page scroll.
-  await option.click({ force: true });
+  // Settle first, then click for real. `force` was hiding this bug rather than
+  // fixing it: skipping actionability means clicking the coordinates the option
+  // occupied while the popup was still growing from scaleY(0.8), so the press
+  // lands beside the option and the select keeps its placeholder.
+  await waitForAntdPopupToSettle(page);
+  await option.click();
   await expect(field).toContainText(title);
 };
 

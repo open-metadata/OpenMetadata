@@ -13,7 +13,12 @@
 import { expect, Page } from '@playwright/test';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { MetricClass } from '../support/entity/MetricClass';
-import { clickOutside, descriptionBox, uuid } from './common';
+import {
+  clickOutside,
+  descriptionBox,
+  uuid,
+  waitForAntdPopupToSettle,
+} from './common';
 import { hardDeleteEntity, waitForAllLoadersToDisappear } from './entity';
 
 export const updateMetricType = async (page: Page, metric: string) => {
@@ -49,6 +54,13 @@ export const updateUnitOfMeasurement = async (
   unitOfMeasurement: string
 ) => {
   await page.click(`[data-testid="edit-measurement-unit-button"]`);
+  // The unit list is an Antd popup, so it grows scaleY(0.8) -> scaleY(1) after
+  // it opens. A click computed against the still-scaling box lands beside the
+  // item: the popup stays open, nothing is selected, no PATCH is ever sent and
+  // the wait below burns the whole test budget. Observed with Measurement Unit
+  // left at "--" and the list still on screen at timeout. Same failure, and
+  // same fix, as the option click in addMetric below.
+  await waitForAntdPopupToSettle(page);
   const patchPromise = page.waitForResponse(
     (response) => response.request().method() === 'PATCH'
   );
@@ -66,6 +78,8 @@ export const updateUnitOfMeasurement = async (
 
 export const removeUnitOfMeasurement = async (page: Page) => {
   await page.click(`[data-testid="edit-measurement-unit-button"]`);
+  // Same popup, same animation -- see updateUnitOfMeasurement above.
+  await waitForAntdPopupToSettle(page);
   const patchPromise = page.waitForResponse(
     (response) => response.request().method() === 'PATCH'
   );
@@ -243,8 +257,13 @@ export const addMetric = async (page: Page) => {
       .locator('.ant-select-dropdown:visible')
       .getByTitle(title, { exact: true });
     await expect(option).toBeVisible();
-    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-    await option.click({ force: true });
+    // Settle, then click for real. `force` only skipped the actionability
+    // check — it still needs a box, and this failed with "Element is not
+    // visible" when the press landed while the filtered list was re-rendering.
+    // MetricCustomUnitFlow carried a byte-identical copy of this helper and the
+    // same failure.
+    await waitForAntdPopupToSettle(page);
+    await option.click();
     await expect(field).toContainText(title);
   };
 

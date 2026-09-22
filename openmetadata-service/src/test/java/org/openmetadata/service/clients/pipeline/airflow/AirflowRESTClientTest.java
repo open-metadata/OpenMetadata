@@ -14,6 +14,8 @@ package org.openmetadata.service.clients.pipeline.airflow;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -48,6 +50,34 @@ import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
 
 class AirflowRESTClientTest {
+
+  @Test
+  void triggeredRunsReturnTheIdentitySentToAirflow() throws Exception {
+    try (AirflowTestServer server = new AirflowTestServer()) {
+      String basePath = "/airflow";
+      String prefix = basePath + "/pluginsv2/api/v2/openmetadata";
+      server.enqueue(
+          "GET",
+          prefix + "/health-auth",
+          200,
+          "{\"version\":\"" + PipelineServiceClient.getServerVersion() + "\"}");
+      server.enqueue("POST", prefix + "/trigger", 200, "{\"message\":\"triggered\"}");
+      server.enqueue("POST", prefix + "/trigger", 200, "{\"message\":\"triggered\"}");
+      AirflowRESTClient client = newClient(server, basePath);
+      IngestionPipeline pipeline = ingestionPipeline("orders_metadata", false);
+
+      PipelineServiceClientResponse first = client.runPipeline(pipeline, null);
+      PipelineServiceClientResponse second = client.runPipeline(pipeline, null);
+
+      assertNotNull(first.getRunId());
+      assertNotNull(second.getRunId());
+      assertFalse(first.getRunId().isBlank());
+      assertNotEquals(first.getRunId(), second.getRunId());
+      List<RequestRecord> requests = server.requests("POST", prefix + "/trigger");
+      assertEquals("run_id=" + first.getRunId(), requests.getFirst().query());
+      assertEquals("run_id=" + second.getRunId(), requests.getLast().query());
+    }
+  }
 
   @Test
   void buildUriDetectsPluginsV2EndpointsAndReportsHealthyStatus() throws Exception {

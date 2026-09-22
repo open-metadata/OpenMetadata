@@ -12,6 +12,7 @@
  */
 
 import { expect, Page } from '@playwright/test';
+import { escapeRegExp } from 'lodash';
 import { GlobalSettingOptions } from '../constant/settings';
 import { settingClick } from './sidebar';
 
@@ -54,7 +55,7 @@ export const navigateToSSOConfiguration = async (page: Page) => {
 
   // Wait for the SSO settings URL — covers all states:
   // provider selector (no config), overview (existing config), or form card
-  await page.waitForURL(/settings\/sso/);
+  await page.waitForURL(/settings\/sso/, { waitUntil: 'domcontentloaded' });
 };
 
 /**
@@ -73,8 +74,8 @@ export const enableSSOEditMode = async (page: Page) => {
     if (await editButton.isVisible()) {
       await editButton.click();
       // Wait for form to be in edit mode
-      await page.getByTestId('save-sso-configuration').isVisible();
-      await page.getByTestId('cancel-sso-configuration').isVisible();
+      await expect(page.getByTestId('save-sso-configuration')).toBeVisible();
+      await expect(page.getByTestId('cancel-sso-configuration')).toBeVisible();
     }
   }
   // If provider selector exists, we're already in configuration mode
@@ -265,17 +266,17 @@ export const resetToProviderSelector = async (page: Page) => {
  * Verify SSO configuration form is in read-only mode
  */
 export const verifyReadOnlyMode = async (page: Page) => {
-  await page.getByTestId('edit-sso-configuration').isVisible();
-  await page.locator('input[disabled]').first().isVisible();
+  await expect(page.getByTestId('edit-sso-configuration')).toBeVisible();
+  await expect(page.locator('input[disabled]').first()).toBeVisible();
 };
 
 /**
  * Verify SSO configuration form is in edit mode
  */
 export const verifyEditMode = async (page: Page) => {
-  await page.getByTestId('save-sso-configuration').isVisible();
-  await page.getByTestId('cancel-sso-configuration').isVisible();
-  await page.locator('input:not([disabled])').first().isVisible();
+  await expect(page.getByTestId('save-sso-configuration')).toBeVisible();
+  await expect(page.getByTestId('cancel-sso-configuration')).toBeVisible();
+  await expect(page.locator('input:not([disabled])').first()).toBeVisible();
 };
 
 /**
@@ -295,7 +296,7 @@ export const verifyGoogleSSOFields = async (page: Page) => {
   ];
 
   for (const field of expectedFields) {
-    await page.getByText(field).isVisible();
+    await expect(page.getByText(field)).toBeVisible();
   }
 };
 
@@ -307,7 +308,7 @@ export const verifyValidationErrors = async (
   expectedErrors: string[]
 ) => {
   for (const error of expectedErrors) {
-    await page.getByText(error).isVisible();
+    await expect(page.getByText(error)).toBeVisible();
   }
 };
 
@@ -316,7 +317,7 @@ export const verifyValidationErrors = async (
  */
 export const saveSSOConfiguration = async (page: Page) => {
   await page.getByTestId('save-sso-configuration').click();
-  await page.waitForURL('**/signin');
+  await page.waitForURL('**/signin', { waitUntil: 'domcontentloaded' });
 };
 
 /**
@@ -339,7 +340,7 @@ export const saveSSOConfigurationWithVerification = async (page: Page) => {
   const saveResponse = await savePromise;
 
   // Verify we're redirected to signin page
-  await page.waitForURL('**/signin');
+  await page.waitForURL('**/signin', { waitUntil: 'domcontentloaded' });
 
   return {
     validationResponse,
@@ -387,39 +388,19 @@ export const verifyProviderFields = async (
       'sso-configuration-form-array-field-template-allowedEmailRegistrationDomains',
     'Allowed Domains':
       'sso-configuration-form-array-field-template-allowedDomains',
+    'OIDC Request Scopes': 'sso-configuration-form-array-field-template-scope',
   };
 
-  // Verify visible fields
+  const fieldLocator = (field: string) => {
+    const testId = ARRAY_FIELD_TESTIDS[field];
+    return testId
+      ? page.getByTestId(testId)
+      : page.getByLabel(new RegExp(`^${escapeRegExp(field)}\\s*\\*?$`));
+  };
   for (const field of expectedVisibleFields) {
-    const labelLocator = page.getByLabel(field);
-    const labelCount = await labelLocator.count();
-
-    if (labelCount > 0) {
-      await expect(labelLocator.first()).toBeVisible();
-    } else {
-      const testId = ARRAY_FIELD_TESTIDS[field];
-
-      if (testId) {
-        await expect(page.getByTestId(testId)).toBeVisible();
-      } else {
-        throw new Error(`Field not found: ${field}`);
-      }
-    }
+    await expect(fieldLocator(field)).toBeVisible();
   }
-
-  // Verify hidden fields
   for (const field of expectedHiddenFields) {
-    const labelLocator = page.getByLabel(field);
-    const labelCount = await labelLocator.count();
-
-    if (labelCount > 0) {
-      await expect(labelLocator).not.toBeVisible();
-    } else {
-      const testId = ARRAY_FIELD_TESTIDS[field];
-
-      if (testId) {
-        await expect(page.getByTestId(testId)).not.toBeVisible();
-      }
-    }
+    await expect(fieldLocator(field)).toBeHidden();
   }
 };

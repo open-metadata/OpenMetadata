@@ -183,7 +183,7 @@ test.describe.serial(
                 )
                 .then((res) => res.json());
 
-              return response.data[0].status;
+              return response.data?.[0]?.status;
             },
             {
               // Custom expect message for reporting, optional.
@@ -195,7 +195,7 @@ test.describe.serial(
           .toBe('success');
 
         // update page
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         // Click on the logs button
         await page.click('[data-testid="logs"]');

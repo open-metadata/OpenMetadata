@@ -291,7 +291,7 @@ test.describe('Data Product Domain Migration', () => {
       expect(patchResponse.ok()).toBeTruthy();
 
       // Refresh page to see updated domain
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       // Verify domain changed

@@ -44,6 +44,7 @@ const hasDedicatedIngestionLane =
 const hasDedicatedImportExportLane =
   Boolean(shardPlan) || process.env.PW_DEDICATED_IMPORT_EXPORT === 'true';
 const isPlannedShard = Boolean(shardPlan);
+const isMergeGroup = process.env.GITHUB_EVENT_NAME === 'merge_group';
 const hasPreseededState = process.env.PW_PRESEEDED_STATE === 'true';
 const authDependencies = hasPreseededState ? [] : ['setup'];
 const entityDependencies = hasPreseededState
@@ -54,6 +55,8 @@ const shardGrep = shardPlan?.grep ? new RegExp(shardPlan.grep) : undefined;
 const dedicatedStateTestIgnore = hasDedicatedIngestionLane
   ? [
       '**/SearchSettings.spec.ts',
+      '**/AIMode/CustomPropertiesPanel.spec.ts',
+      '**/SearchIndexApplication.spec.ts',
       '**/SearchSeparation/**',
       '**/*AfterReindex.spec.ts',
     ]
@@ -148,11 +151,14 @@ const combineGrep = (base?: RegExp) => {
 // Each conditional group is annotated separately: TypeScript does not propagate a
 // contextual type into a spread expression, so inlining these ternaries would widen
 // the tuples to arrays and break assignability to ReporterDescription.
-const htmlReporter: ReporterDescription[] = isPlannedShard
-  ? []
-  : [['html', { outputFolder: './playwright/output/playwright-report' }]];
+const htmlReporter: ReporterDescription[] =
+  isPlannedShard || isMergeGroup
+    ? []
+    : [['html', { outputFolder: './playwright/output/playwright-report' }]];
 
-const blobReporter: ReporterDescription[] = isPlannedShard
+const blobReporter: ReporterDescription[] = isMergeGroup
+  ? []
+  : isPlannedShard
   ? [
       [
         'blob',
@@ -206,10 +212,8 @@ export default defineConfig({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only; PLAYWRIGHT_RETRIES (set per workflow via the reusable's
-   * `retries` input) overrides the CI default of 1. The parens are semantic:
-   * without them `?? CI ? 1 : 0` collapses every override to 1. */
-  retries: Number(process.env.PLAYWRIGHT_RETRIES ?? (process.env.CI ? 1 : 0)),
+  globalSetup: './playwright/globalSetup.ts',
+  retries: 0,
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI
     ? Number(process.env.PW_WORKERS ?? shardPlan?.workers ?? 3)
@@ -236,8 +240,14 @@ export default defineConfig({
      * assertions are calibrated for the default motion path. */
     reducedMotion: 'reduce',
 
-    /* Collect trace and video on every failure (not just retries) for debugging */
-    trace: 'on-first-retry',
+    /* Both are failure-only, so they cost nothing on a green run and exist
+     * exactly when something has to be explained. That matters most in the
+     * merge queue, which rebases onto a moving target: a local rerun is a
+     * different SHA with different neighbouring changes, so "reproduce it
+     * locally" is not a debugging path for a 2am queue break. The bulky
+     * always-on artifacts (html, blob) stay off for merge groups -- see
+     * htmlReporter/blobReporter above. */
+    trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
 
     /* Add navigation timeout to prevent infinite hangs on networkidle waits.
@@ -309,9 +319,19 @@ export default defineConfig({
       ],
     },
     {
+      name: 'visual-regression-setup',
+      testMatch: '**/visual-regression.setup.ts',
+      dependencies: entityDependencies,
+      teardown: 'visual-regression-teardown',
+    },
+    {
+      name: 'visual-regression-teardown',
+      testMatch: '**/visual-regression.teardown.ts',
+    },
+    {
       name: 'visual-regression',
       testMatch: '**/VisualRegression/**/*.spec.ts',
-      dependencies: ['setup', 'entity-data-setup'],
+      dependencies: ['visual-regression-setup'],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 900 },
@@ -348,7 +368,10 @@ export default defineConfig({
         '**/SSOSelfSignup.spec.ts',
         '**/SSOSessionLimit.spec.ts',
       ],
-      use: { ...devices['Desktop Chrome'], trace: 'retain-on-failure' },
+      use: {
+        ...devices['Desktop Chrome'],
+        trace: 'retain-on-failure',
+      },
       fullyParallel: false,
       workers: 1,
     },
@@ -383,7 +406,13 @@ export default defineConfig({
       // The graph's fit/centering geometry differs under reduced motion, so
       // its boundingBox assertions run on the default motion path.
       use: { ...devices['Desktop Chrome'], reducedMotion: 'no-preference' },
-      dependencies: ['setup', 'entity-data-setup'],
+      // ontology-rdf-setup is the only gate that proves the live projection is
+      // really writing — it round-trips a probe entity through SPARQL before
+      // letting dependents start. Without it this project builds its fixture
+      // table while the projection is still coming up, and the one test that
+      // reads the real /rdf/graph/explore sees that table as a bare node whose
+      // relationships never arrive, however long it waits.
+      dependencies: ['setup', 'entity-data-setup', 'ontology-rdf-setup'],
       grep: /knowledge-graph/,
       teardown: 'entity-data-teardown',
     },
@@ -499,6 +528,7 @@ export default defineConfig({
           {
             name: 'Reindex',
             testMatch: [
+              '**/SearchIndexApplication.spec.ts',
               '**/SearchSeparation/*.spec.ts',
               '**/*AfterReindex.spec.ts',
             ],
@@ -510,7 +540,10 @@ export default defineConfig({
           },
           {
             name: 'GlobalSettings',
-            testMatch: '**/SearchSettings.spec.ts',
+            testMatch: [
+              '**/SearchSettings.spec.ts',
+              '**/AIMode/CustomPropertiesPanel.spec.ts',
+            ],
             grep: shardGrep,
             use: { ...devices['Desktop Chrome'] },
             dependencies: authDependencies,

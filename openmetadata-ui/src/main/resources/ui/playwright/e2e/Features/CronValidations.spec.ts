@@ -37,7 +37,9 @@ test.describe('Cron Validations', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await redirectToHomePage(page);
 
     // Navigate to Settings > Applications > Search Indexing Application
-    await page.goto('/settings/apps/SearchIndexingApplication');
+    await page.goto('/settings/apps/SearchIndexingApplication', {
+      waitUntil: 'domcontentloaded',
+    });
     await waitForAllLoadersToDisappear(page);
 
     await page.click('[data-testid="edit-button"]');

@@ -375,7 +375,9 @@ export default defineConfig(async ({ mode }) => {
     },
 
     css: {
-      preprocessorMaxWorkers: true,
+      // Less intermittently crashes on shared imports in Vite's worker pool.
+      // Compile in-process so that valid stylesheets build deterministically.
+      preprocessorMaxWorkers: 0,
       preprocessorOptions: {
         less: {
           javascriptEnabled: true,
@@ -455,6 +457,10 @@ export default defineConfig(async ({ mode }) => {
       // count, and we're not the right project to be carrying it.
       modulePreload: { polyfill: false },
       rollupOptions: {
+        // rolldown ships this detector off by default, so nothing here has ever
+        // been checked for cycles. See the onwarn note below for why that went
+        // unnoticed.
+        checks: { circularDependency: true },
         // `/silent-callback` renders a dedicated HTML entry so its
         // dependency graph is exactly `oidc-client` + the tiny
         // `silentCallbackEntry.ts` — no React, no antd, none of the
@@ -482,9 +488,16 @@ export default defineConfig(async ({ mode }) => {
               },
             }),
         onwarn(warning, warn) {
-          if (isPlaywrightBundle && warning.code === 'CIRCULAR_CHUNK') {
-            throw new Error(warning.message);
-          }
+          // This used to throw on `CIRCULAR_CHUNK` under the coarse bundle.
+          // That is Rollup's warning code, and `vite` resolves to
+          // `npm:rolldown-vite` — rolldown never emits it (its code is
+          // CIRCULAR_DEPENDENCY), so the guard could not fire and the build
+          // looked checked while being unchecked.
+          //
+          // Reported rather than thrown, on purpose: since nothing has been
+          // looking, the size of the existing backlog is unknown, and failing
+          // the build on it sight-unseen would be a guess about what is
+          // already there rather than a guard against what is added.
           warn(warning);
         },
         output: {

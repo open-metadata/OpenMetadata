@@ -44,6 +44,7 @@ import {
 } from '../utils/EdgeStyleUtils';
 import { getEdgePathData } from '../utils/EntityLineageEdgeUtils';
 import { getEntityName } from '../utils/EntityNameUtils';
+import { findClosestCanvasEdge } from '../utils/Lineage/CanvasHitTest.utils';
 import { useLineageStore } from './useLineageStore';
 
 interface UseCanvasEdgeRendererProps {
@@ -549,16 +550,13 @@ export function useCanvasEdgeRenderer({
         return null;
       }
 
-      const hitLineWidth = 12 / viewport.zoom;
-      ctx.lineWidth = hitLineWidth;
-
-      for (const { edge, path } of edgeHitPathsRef.current) {
-        if (ctx.isPointInStroke(path, x, y)) {
-          return edge;
-        }
-      }
-
-      return null;
+      return findClosestCanvasEdge(
+        ctx,
+        edgeHitPathsRef.current,
+        x,
+        y,
+        12 / viewport.zoom
+      );
     },
     [viewport]
   );

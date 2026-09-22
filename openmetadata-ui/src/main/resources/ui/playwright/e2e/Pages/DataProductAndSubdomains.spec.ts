@@ -29,6 +29,7 @@ import {
   redirectToHomePage,
   toastNotification,
   uuid,
+  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import {
   checkAssetsCount,
@@ -246,40 +247,40 @@ test.describe('Data Product Comprehensive Tests', () => {
         state: 'visible',
       });
 
-      // Search for user with retry mechanism (ES indexing can take time)
+      // Wait for fixture indexing before issuing the UI search
       const searchBar = page.getByTestId('searchbar');
       // Use displayName for selecting from list (UI shows displayName)
+      // main's #32252 turned this option into a `<button data-testid=
+      // "owner-option">`, so the listitem role this used to match is gone.
+      // Its locator, but not its five-attempt retry loop: the deterministic
+      // waitForSearchIndexed + exact response matcher below replaced that.
       const expertItem = page
         .locator('[data-testid="owner-option"]')
         .filter({ hasText: user.getUserDisplayName() });
-      const maxRetries = 5;
 
-      for (let retry = 0; retry < maxRetries; retry++) {
-        await searchBar.clear();
-        const searchResponse = page.waitForResponse(
-          (res) =>
-            res.url().includes('/api/v1/search/query') &&
-            res.url().includes('user')
-        );
-        // Search using name field
-        await searchBar.fill(user.getUserName());
-        await searchResponse;
-        await waitForAllLoadersToDisappear(page);
-
-        const isVisible = await expertItem.isVisible().catch(() => false);
-        if (isVisible) {
-          break;
-        }
-
-        if (retry < maxRetries - 1) {
-          await waitForSearchIndexed(
-            apiContext,
-            user.getUserName(),
-            'user_search_index',
-            { timeout: 3000 }
-          ).catch(() => undefined);
-        }
-      }
+      await waitForSearchIndexed(
+        apiContext,
+        user.responseData.fullyQualifiedName,
+        'user_search_index'
+      );
+      await searchBar.clear();
+      const searchResponse = waitForResponseWithStatus(
+        page,
+        (response) => {
+          const url = new URL(response.url());
+          return (
+            response.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            ['user', 'user_search_index'].includes(
+              url.searchParams.get('index') ?? ''
+            ) &&
+            (url.searchParams.get('q') ?? '').includes(user.getUserName())
+          );
+        },
+        200
+      );
+      await searchBar.fill(user.getUserName());
+      await searchResponse;
 
       await expertItem.waitFor({ state: 'visible', timeout: 5000 });
       await expertItem.click();
@@ -397,16 +398,27 @@ test.describe('Data Product Comprehensive Tests', () => {
         .or(assetModal.getByText(assetName))
         .first();
 
-      // The modal re-queries only when the search text changes, and a table
-      // created moments ago may not be in the search index yet -- so a single
-      // fill can settle on an empty result set that never refreshes. Re-type
-      // to re-issue the query until the asset actually shows up.
-      await expect(async () => {
-        await assetModal.getByTestId('searchbar').fill('');
-        await assetModal.getByTestId('searchbar').fill(assetName);
-
-        await expect(assetCard).toBeVisible({ timeout: 5_000 });
-      }).toPass({ timeout: 60_000 });
+      await waitForSearchIndexed(
+        apiContext,
+        table.entityResponseData.fullyQualifiedName,
+        'table',
+        { minVersion: table.entityResponseData.version }
+      );
+      const assetSearch = waitForResponseWithStatus(
+        page,
+        (response) => {
+          const url = new URL(response.url());
+          return (
+            response.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            (url.searchParams.get('q') ?? '').includes(assetName)
+          );
+        },
+        200
+      );
+      await assetModal.getByTestId('searchbar').fill(assetName);
+      await assetSearch;
+      await expect(assetCard).toBeVisible();
 
       await assetCard.click();
 
@@ -452,7 +464,8 @@ test.describe('Data Product Comprehensive Tests', () => {
 
       // Navigate to the data product
       await page.goto(
-        `/dataProduct/${encodeURIComponent(dpData.fullyQualifiedName)}`
+        `/dataProduct/${encodeURIComponent(dpData.fullyQualifiedName)}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await waitForAllLoadersToDisappear(page);
 
@@ -532,7 +545,9 @@ test.describe('Multiple Subdomains Tests', () => {
 
       // Navigate to first subdomain
       const subDomainFqn = subDomain1.responseData.fullyQualifiedName;
-      await page.goto(`/domain/${encodeURIComponent(subDomainFqn!)}`);
+      await page.goto(`/domain/${encodeURIComponent(subDomainFqn!)}`, {
+        waitUntil: 'domcontentloaded',
+      });
 
       // Check subdomains tab for nested subdomain
       await page.getByTestId('subdomains').click();
@@ -574,7 +589,9 @@ test.describe('Multiple Subdomains Tests', () => {
 
       // Navigate to first subdomain
       const subDomainFqn1 = subDomain1.responseData.fullyQualifiedName;
-      await page.goto(`/domain/${encodeURIComponent(subDomainFqn1!)}`);
+      await page.goto(`/domain/${encodeURIComponent(subDomainFqn1!)}`, {
+        waitUntil: 'domcontentloaded',
+      });
 
       // Verify we're on first subdomain
       await expect(
@@ -650,7 +667,8 @@ test.describe('Multiple Subdomains Tests', () => {
       await page.goto(
         `/table/${encodeURIComponent(
           table1.entityResponseData.fullyQualifiedName
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
 
       await expect(page.getByTestId('domain-link')).toContainText(
@@ -661,7 +679,8 @@ test.describe('Multiple Subdomains Tests', () => {
       await page.goto(
         `/table/${encodeURIComponent(
           table2.entityResponseData.fullyQualifiedName
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
 
       await expect(page.getByTestId('domain-link')).toContainText(
@@ -751,7 +770,9 @@ test.describe('Multiple Subdomains Tests', () => {
 
       // Check subdomain assets count
       const subDomainFqn = subDomain.responseData.fullyQualifiedName;
-      await page.goto(`/domain/${encodeURIComponent(subDomainFqn!)}`);
+      await page.goto(`/domain/${encodeURIComponent(subDomainFqn!)}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await checkAssetsCount(page, 1);
 
       // Check parent domain - assets in subdomains should also count toward parent
@@ -788,11 +809,21 @@ test.describe('Multiple Subdomains Tests', () => {
 
       // Navigate to subdomain
       const subDomainFqn = subDomain.responseData.fullyQualifiedName;
-      await page.goto(`/domain/${encodeURIComponent(subDomainFqn!)}`);
+      await page.goto(`/domain/${encodeURIComponent(subDomainFqn!)}`, {
+        waitUntil: 'domcontentloaded',
+      });
 
       // Delete the subdomain (recursive delete)
       await page.getByTestId('manage-button').click();
-      await page.getByTestId('delete-button').click();
+      // The manage menu is an Ant dropdown, and pressing an item while it is
+      // still scaling puts mousedown and mouseup in different places, so no
+      // click is synthesised -- the item just takes focus. The snapshot for
+      // this failure is exactly that: the menu still open with "Delete"
+      // [active] and no dialog behind it.
+      const deleteMenuItem = page.getByTestId('delete-button');
+      await expect(deleteMenuItem).toBeVisible();
+      await waitForAntdPopupToSettle(page);
+      await deleteMenuItem.click();
 
       await expect(page.getByRole('dialog')).toBeVisible();
 
@@ -1003,3 +1034,5 @@ test.describe('Data Product Name in Entity Name Cell', () => {
     }
   });
 });
+
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';

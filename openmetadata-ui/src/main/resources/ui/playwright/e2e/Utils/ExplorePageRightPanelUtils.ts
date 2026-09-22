@@ -82,5 +82,11 @@ export const addOwnerInKCPanel = async (page: Page, ownerName: string) => {
     .filter({ hasText: ownerName })
     .click();
   await page.getByTestId('selectable-list-update-btn').click();
-  await patchResponse;
+  // Assert the write, not just that a response arrived: a rejected PATCH left
+  // the caller polling the search index for an owner that was never persisted,
+  // which surfaced 60s later as an indexing timeout rather than as the failed
+  // update it actually was.
+  const patch = await patchResponse;
+
+  expect(patch.status(), await patch.text()).toBe(200);
 };

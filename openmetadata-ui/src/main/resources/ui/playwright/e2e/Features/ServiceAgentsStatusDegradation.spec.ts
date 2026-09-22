@@ -39,7 +39,8 @@ const stubProgressStream = (page: Page) =>
 
 const visitAgentsTab = async (page: Page, serviceFQN: string) => {
   await page.goto(
-    `/service/databaseServices/${getEncodedFqn(serviceFQN)}/agents/metadata`
+    `/service/databaseServices/${getEncodedFqn(serviceFQN)}/agents/metadata`,
+    { waitUntil: 'domcontentloaded' }
   );
   await page.getByTestId('data-assets-header').waitFor();
 };

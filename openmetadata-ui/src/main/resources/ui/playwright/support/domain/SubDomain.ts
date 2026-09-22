@@ -12,11 +12,7 @@
  */
 import { APIRequestContext } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
-import {
-  okJson,
-  quoteFqnSegment,
-  withNotFoundRetry,
-} from '../../utils/apiResponse';
+import { okJson, quoteFqnSegment } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { Domain } from './Domain';
 
@@ -77,7 +73,8 @@ export class SubDomain {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/domains/name/${encodeURIComponent(
         this.responseData?.fullyQualifiedName ?? this.data.name
       )}?recursive=true&hardDelete=true`
@@ -93,13 +90,14 @@ export class SubDomain {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await withNotFoundRetry(() =>
-      apiContext.patch(`/api/v1/domains/${this.responseData?.id}`, {
+    const response = await apiContext.patch(
+      `/api/v1/domains/${this.responseData?.id}`,
+      {
         data: patchData,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      })
+      }
     );
 
     this.responseData = await okJson(response, 'SubDomain.patch');
@@ -109,3 +107,5 @@ export class SubDomain {
     };
   }
 }
+
+import { deleteFixtureEntity } from '../../utils/apiResponse';
