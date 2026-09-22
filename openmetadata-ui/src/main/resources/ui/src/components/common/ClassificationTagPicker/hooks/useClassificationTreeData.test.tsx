@@ -13,18 +13,18 @@
 
 import { act, renderHook } from '@testing-library/react';
 import axios from 'axios';
-import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
-import tagClassBase from '../../../utils/TagClassBase';
-import { showErrorToast } from '../../../utils/ToastUtils';
-import { RawTagResult } from '../../Tag/TagSelector/TagSelector.utils';
+import { LabelType, State, TagSource } from '../../../../generated/type/tagLabel';
+import tagClassBase from '../../../../utils/TagClassBase';
+import { showErrorToast } from '../../../../utils/ToastUtils';
+import { RawTagResult } from '../../../Tag/TagSelector/TagSelector.utils';
 import { useClassificationTreeData } from './useClassificationTreeData';
 
-jest.mock('../../../utils/TagClassBase', () => ({
+jest.mock('../../../../utils/TagClassBase', () => ({
   __esModule: true,
   default: { getTags: jest.fn() },
 }));
 
-jest.mock('../../../utils/ToastUtils', () => ({
+jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 

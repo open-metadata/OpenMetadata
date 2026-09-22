@@ -19,7 +19,7 @@ import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { useClassificationTreeData } from './useClassificationTreeData';
+import { useClassificationTreeData } from './hooks/useClassificationTreeData';
 
 // Straight from the core component so they never drift; the rest is fixed here.
 type InheritedTreeSelectProps = Pick<

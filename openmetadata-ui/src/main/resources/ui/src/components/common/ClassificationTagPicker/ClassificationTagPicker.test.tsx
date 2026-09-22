@@ -24,7 +24,7 @@ import ClassificationTagPicker from './ClassificationTagPicker';
 const mockFetchData = jest.fn();
 let capturedTreeSelectProps: Record<string, unknown> = {};
 
-jest.mock('./useClassificationTreeData', () => ({
+jest.mock('./hooks/useClassificationTreeData', () => ({
   useClassificationTreeData: jest.fn(() => mockFetchData),
 }));
 
