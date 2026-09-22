@@ -94,13 +94,16 @@ const noRawTitleAttribute = {
  *   - a token already on the `utility-*` scale — allowed.
  *   - `white` / `black` — handled separately (intentional on-fill colors).
  *
- * Autofix inserts `utility-` before the color for every family that has a
- * `utility-*` equivalent, so `yarn lint:fix` clears the backlog mechanically.
- * Families without a utility equivalent are reported without a fix.
+ * REPORT-ONLY (no autofix) on purpose: the `ui-checkstyle` gate runs
+ * `eslint --fix` and then fails on any resulting diff, so a fixable rule at
+ * `warn` would silently rewrite pre-existing violations in files an unrelated
+ * PR merely touches and fail its gate. A future promotion to `error` (after the
+ * backlog is cleared) can re-add a shade-restricted fixer.
  */
 
-// Families that have a `--color-utility-<family>-*` ramp (autofixable).
-// Longest-first so the alternation matches `gray-blue` before `gray`, etc.
+// Families that have a `--color-utility-<family>-*` ramp — used to build the
+// migration hint in the message. Longest-first so the alternation matches
+// `gray-blue` before `gray`, etc.
 const UTILITY_FAMILIES = [
   'blue-light',
   'blue-dark',
@@ -131,7 +134,6 @@ const PALETTE_CORE = new RegExp(
 
 const noNonAdaptivePalette = {
   meta: {
-    fixable: 'code',
     messages: {
       rawPalette:
         'Raw palette class "{{cls}}" is static — it does not flip in dark mode. Use the theme-adapting "utility-" variant (tw:{{prop}}-utility-{{family}}-{{shade}}) or a semantic token (bg-surface, text-tertiary, …). See docs/colors.md.',
@@ -140,8 +142,9 @@ const noNonAdaptivePalette = {
     type: 'problem',
   },
   create(context) {
-    // Rewrite one whitespace-delimited class token, or null if it is fine.
-    const fixToken = (token) => {
+    // Classify one whitespace-delimited class token: return its parts if it is
+    // a raw non-adaptive palette class, else null.
+    const classify = (token) => {
       if (!token.startsWith('tw:')) {
         return null;
       }
@@ -157,53 +160,37 @@ const noNonAdaptivePalette = {
         return null;
       }
       const [, prop, family, shade] = m;
-      const fixedUtility = `${prop}-utility-${family}-${shade}`;
-      const fixedToken = `tw:${[...variants, fixedUtility].join(':')}`;
-      return { prop, family, shade, fixedToken };
+      return { token, prop, family, shade };
     };
 
-    // `canFix` is true only for plain string literals — re-quoting a template
-    // chunk would corrupt its `${…}` delimiters, so those are report-only.
-    const checkString = (node, raw, canFix) => {
-      const tokens = raw.split(/(\s+)/); // keep whitespace runs to preserve spacing
-      const offenders = [];
-      const rebuilt = tokens.map((tok) => {
-        const res = fixToken(tok);
-        if (!res) {
-          return tok;
-        }
-        offenders.push(tok);
-        return res.fixedToken;
-      });
+    const checkString = (node, raw) => {
+      const offenders = raw.split(/\s+/).map(classify).filter(Boolean);
       if (offenders.length === 0) {
         return;
       }
-      const [{ prop, family, shade }] = offenders.map((tok) => fixToken(tok));
+      const { prop, family, shade } = offenders[0];
       context.report({
         node,
         messageId: 'rawPalette',
-        data: { cls: offenders.join(', '), prop, family, shade },
-        fix: canFix
-          ? (fixer) => {
-              const text = context.sourceCode.getText(node);
-              const quote = text[0];
-
-              return fixer.replaceText(node, `${quote}${rebuilt.join('')}${quote}`);
-            }
-          : undefined,
+        data: {
+          cls: offenders.map((o) => o.token).join(', '),
+          prop,
+          family,
+          shade,
+        },
       });
     };
 
     return {
       Literal(node) {
         if (typeof node.value === 'string' && node.value.includes('tw:')) {
-          checkString(node, node.value, true);
+          checkString(node, node.value);
         }
       },
       TemplateElement(node) {
         const raw = node.value.cooked ?? node.value.raw;
         if (typeof raw === 'string' && raw.includes('tw:')) {
-          checkString(node, raw, false);
+          checkString(node, raw);
         }
       },
     };
