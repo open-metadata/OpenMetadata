@@ -12,8 +12,8 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { DqFilterBar } from './DqFilterBar';
 import { DQ_FILTER_TYPES } from '../../../../constants/DataQuality.constants';
+import { DqFilterBar } from './DqFilterBar';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 

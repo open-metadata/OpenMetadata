@@ -12,8 +12,8 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import DqFilterChip from './DqFilterChip';
 import { DQ_FILTER_TYPES } from '../../../../constants/DataQuality.constants';
+import DqFilterChip from './DqFilterChip';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
