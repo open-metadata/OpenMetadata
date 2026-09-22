@@ -278,6 +278,11 @@ const TestDefinitionTable = ({
               testDefinitionPermissions,
               permissionLoading,
               testDefinitions,
+              // A refetch changes no row data, so without this the collection
+              // serves the cached nodes and the controls keep the disabled
+              // state they were built with - staying live for the whole
+              // refetch they are supposed to sit out.
+              isRefetching,
             ]}
             items={isInitialLoading ? [] : testDefinitions}
             renderEmptyState={() =>

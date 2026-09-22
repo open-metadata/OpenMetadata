@@ -51,6 +51,12 @@ const RULES = [
   },
 ];
 
+// The only rule of the three that runs on the OpenMetadata platform, so the
+// only one whose Enabled toggle is ever live. Asserting the refetch holds the
+// controls shut has to happen on this row - on an external rule the toggle is
+// disabled either way and the assertion would pass without the refetch.
+const TOGGLEABLE_RULE = `${MARKER}_aaa`;
+
 const BY_DISPLAY_NAME_ASC = [
   `Alpha rule ${MARKER}`,
   `Mike rule ${MARKER}`,
@@ -326,13 +332,13 @@ test.describe(
 
       await test.step('Their controls are held shut', async () => {
         await expect(
-          page.getByTestId(`enable-switch-${MARKER}_zzz`)
+          page.getByTestId(`enable-switch-${TOGGLEABLE_RULE}`)
         ).toBeDisabled();
         await expect(
-          page.getByTestId(`edit-test-definition-${MARKER}_zzz`)
+          page.getByTestId(`edit-test-definition-${TOGGLEABLE_RULE}`)
         ).toBeDisabled();
         await expect(
-          page.getByTestId(`delete-test-definition-${MARKER}_zzz`)
+          page.getByTestId(`delete-test-definition-${TOGGLEABLE_RULE}`)
         ).toBeDisabled();
       });
 
@@ -347,7 +353,7 @@ test.describe(
           page.getByTestId('test-definition-table-container')
         ).toHaveAttribute('aria-busy', 'false');
         await expect(
-          page.getByTestId(`enable-switch-${MARKER}_zzz`)
+          page.getByTestId(`enable-switch-${TOGGLEABLE_RULE}`)
         ).toBeEnabled();
       });
     });

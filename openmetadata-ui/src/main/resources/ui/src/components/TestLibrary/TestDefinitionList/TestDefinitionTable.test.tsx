@@ -144,6 +144,69 @@ describe('TestDefinitionTable loading', () => {
     ).toBeDisabled();
   });
 
+  // Mounting straight into the refetching state proves nothing: the rows are
+  // built once, already disabled. The bug is in the TRANSITION - the row cells
+  // live in a react-aria collection that reuses its cached nodes unless a
+  // dependency changes, and a refetch changes no row data.
+  it('should hold the row controls shut when a refetch starts on rendered rows', () => {
+    const props = makeProps({
+      testDefinitionPermissions: FULL_PERMISSIONS,
+    });
+
+    const { rerender } = render(<TestDefinitionTable {...props} />);
+
+    expect(
+      screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
+    ).not.toBeDisabled();
+
+    rerender(
+      <TestDefinitionTable
+        {...props}
+        isLoading
+        isInitialLoading={false}
+        // The same array instance the previous render used. A refetch replaces
+        // the rows only once the response lands.
+        testDefinitions={props.testDefinitions}
+      />
+    );
+
+    expect(
+      screen.getByTestId('enable-switch-columnValuesToBeNotNull')
+    ).toBeDisabled();
+    expect(
+      screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
+    ).toBeDisabled();
+    expect(
+      screen.getByTestId('delete-test-definition-columnValuesToBeNotNull')
+    ).toBeDisabled();
+  });
+
+  it('should hand the row controls back when the refetch lands', () => {
+    const props = makeProps({
+      isLoading: true,
+      isInitialLoading: false,
+      testDefinitionPermissions: FULL_PERMISSIONS,
+    });
+
+    const { rerender } = render(<TestDefinitionTable {...props} />);
+
+    expect(
+      screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
+    ).toBeDisabled();
+
+    rerender(<TestDefinitionTable {...props} isLoading={false} />);
+
+    expect(
+      screen.getByTestId('enable-switch-columnValuesToBeNotNull')
+    ).not.toBeDisabled();
+    expect(
+      screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
+    ).not.toBeDisabled();
+    expect(
+      screen.getByTestId('delete-test-definition-columnValuesToBeNotNull')
+    ).not.toBeDisabled();
+  });
+
   it('should leave the row controls usable once the refetch lands', () => {
     render(
       <TestDefinitionTable
