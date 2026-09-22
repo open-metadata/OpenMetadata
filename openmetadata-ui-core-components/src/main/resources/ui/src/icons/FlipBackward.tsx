@@ -35,7 +35,7 @@ export const FlipBackward: FC<Props> = ({
     <path
       d="M3 9h13.5a4.5 4.5 0 1 1 0 9H12M3 9l4-4M3 9l4 4"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.3}
     />
   </svg>
 );

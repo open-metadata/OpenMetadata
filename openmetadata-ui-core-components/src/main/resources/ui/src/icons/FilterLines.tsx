@@ -32,7 +32,7 @@ export const FilterLines: FC<Props> = ({
     viewBox="0 0 24 24"
     width={size}
     {...props}>
-    <path d="M6 12h12M3 6h18M9 18h6" stroke="currentColor" strokeWidth={2} />
+    <path d="M6 12h12M3 6h18M9 18h6" stroke="currentColor" strokeWidth={1.3} />
   </svg>
 );
 FilterLines.displayName = 'FilterLines';

@@ -35,7 +35,7 @@ export const Code01: FC<Props> = ({
     <path
       d="m16 18 6-6-6-6M8 6l-6 6 6 6"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.3}
     />
   </svg>
 );

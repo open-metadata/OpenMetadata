@@ -32,7 +32,11 @@ export const Italic01: FC<Props> = ({
     viewBox="0 0 24 24"
     width={size}
     {...props}>
-    <path d="M19 4h-9m4 16H5M15 4 9 20" stroke="currentColor" strokeWidth={2} />
+    <path
+      d="M19 4h-9m4 16H5M15 4 9 20"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
   </svg>
 );
 Italic01.displayName = 'Italic01';

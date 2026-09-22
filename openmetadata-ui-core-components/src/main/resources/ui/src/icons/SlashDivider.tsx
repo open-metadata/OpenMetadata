@@ -32,7 +32,7 @@ export const SlashDivider: FC<Props> = ({
     viewBox="0 0 24 24"
     width={size}
     {...props}>
-    <path d="M7 22 17 2" stroke="currentColor" strokeWidth={2} />
+    <path d="M7 22 17 2" stroke="currentColor" strokeWidth={1.3} />
   </svg>
 );
 SlashDivider.displayName = 'SlashDivider';

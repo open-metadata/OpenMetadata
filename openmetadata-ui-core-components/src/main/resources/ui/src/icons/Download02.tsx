@@ -35,7 +35,7 @@ export const Download02: FC<Props> = ({
     <path
       d="M21 21H3m15-10-6 6m0 0-6-6m6 6V3"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.3}
     />
   </svg>
 );

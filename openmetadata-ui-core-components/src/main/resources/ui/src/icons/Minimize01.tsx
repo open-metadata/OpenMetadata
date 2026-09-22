@@ -35,7 +35,7 @@ export const Minimize01: FC<Props> = ({
     <path
       d="M4 14h6m0 0v6m0-6-7 7m17-11h-6m0 0V4m0 6 7-7"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.3}
     />
   </svg>
 );

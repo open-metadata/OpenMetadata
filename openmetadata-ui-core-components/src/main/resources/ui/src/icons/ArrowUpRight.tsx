@@ -32,7 +32,11 @@ export const ArrowUpRight: FC<Props> = ({
     viewBox="0 0 24 24"
     width={size}
     {...props}>
-    <path d="M7 17 17 7m0 0H7m10 0v10" stroke="currentColor" strokeWidth={2} />
+    <path
+      d="M7 17 17 7m0 0H7m10 0v10"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
   </svg>
 );
 ArrowUpRight.displayName = 'ArrowUpRight';

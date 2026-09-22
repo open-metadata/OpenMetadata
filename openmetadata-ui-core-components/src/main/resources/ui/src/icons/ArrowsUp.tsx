@@ -35,7 +35,7 @@ export const ArrowsUp: FC<Props> = ({
     <path
       d="M7 20V4m0 0L3 8m4-4 4 4m6 12V9m0 0-4 4m4-4 4 4"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.3}
     />
   </svg>
 );

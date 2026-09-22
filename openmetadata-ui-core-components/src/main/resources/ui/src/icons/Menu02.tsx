@@ -32,7 +32,7 @@ export const Menu02: FC<Props> = ({
     viewBox="0 0 24 24"
     width={size}
     {...props}>
-    <path d="M3 12h12M3 6h18M3 18h18" stroke="currentColor" strokeWidth={2} />
+    <path d="M3 12h12M3 6h18M3 18h18" stroke="currentColor" strokeWidth={1.3} />
   </svg>
 );
 Menu02.displayName = 'Menu02';
