@@ -51,7 +51,7 @@ import {
   Tag01,
   Trash01,
   Upload01,
-  UserEdit,
+  Owners,
   Users01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
@@ -113,7 +113,7 @@ export const ICON_MAP: Record<
   NavigationPointer01: NavigationPointer01,
   BarChart01: BarChart01,
   File01: File01,
-  UserEdit: UserEdit,
+  Owners: Owners,
   Rss01: Rss01,
   Browser: Browser,
   Calendar: Calendar,

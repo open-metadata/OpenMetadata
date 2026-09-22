@@ -17,7 +17,7 @@ interface Props extends SVGProps<SVGSVGElement> {
   size?: number;
 }
 
-export const Duplicate: FC<Props> = ({
+export const Owners: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
@@ -29,29 +29,14 @@ export const Duplicate: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 20 20"
+    viewBox="0 0 24 24"
     width={size}
     {...props}>
-    <rect
-      height={11.608}
-      rx={2.5}
-      stroke="currentColor"
-      strokeDasharray="2.6 2.6"
-      strokeWidth={1.3}
-      width={11.608}
-      x={2.004}
-      y={6.391}
-    />
     <path
-      d="M4.668 5.991V4.5a2.5 2.5 0 0 1 2.5-2.5h8.333A2.5 2.5 0 0 1 18 4.5v8.333a2.5 2.5 0 0 1-2.5 2.5h-1.497"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
-    <path
-      d="M7.336 2.001h7.666a3 3 0 0 1 3 3v7.667"
+      d="M9 15.5H7.5c-1.396 0-2.093 0-2.661.172a4 4 0 0 0-2.667 2.667C2 18.907 2 19.604 2 21M14.5 7.5a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0M11 21l3.101-.886c.149-.043.223-.064.292-.096a1 1 0 0 0 .175-.102c.061-.045.116-.1.225-.21l6.457-6.456a1.768 1.768 0 1 0-2.5-2.5l-6.457 6.457a2 2 0 0 0-.209.225 1 1 0 0 0-.102.175 2 2 0 0 0-.096.292z"
       stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>
 );
-Duplicate.displayName = 'Duplicate';
+Owners.displayName = 'Owners';
