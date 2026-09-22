@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { lazy, useEffect, useMemo } from 'react';
+import { lazy, useEffect, useState } from 'react';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { FilePreviewerProps, PreviewRendererId } from './FilePreviewer.types';
 import { resolveRenderer } from './FilePreviewer.utils';
@@ -34,22 +34,39 @@ const RENDERERS = {
 
 const FilePreviewer = ({
   content,
+  compact,
   fileExtension,
   fileName,
   fileType,
   mimeType,
 }: FilePreviewerProps) => {
-  const objectUrl = useMemo(() => URL.createObjectURL(content), [content]);
+  // Create and revoke the object URL in one effect so each mount owns the URL
+  // it revokes. A useMemo + separate-cleanup split breaks under React
+  // StrictMode's mount→cleanup→remount (the cleanup revokes the URL the
+  // remount still points at, leaving a broken blob src).
+  const [objectUrl, setObjectUrl] = useState('');
 
   useEffect(() => {
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [objectUrl]);
+    const url = URL.createObjectURL(content);
+    setObjectUrl(url);
+
+    return () => URL.revokeObjectURL(url);
+  }, [content]);
 
   const Renderer =
     RENDERERS[resolveRenderer({ fileExtension, fileType, mimeType })];
 
+  if (!objectUrl) {
+    return null;
+  }
+
   return (
-    <Renderer content={content} fileName={fileName} objectUrl={objectUrl} />
+    <Renderer
+      compact={compact}
+      content={content}
+      fileName={fileName}
+      objectUrl={objectUrl}
+    />
   );
 };
 

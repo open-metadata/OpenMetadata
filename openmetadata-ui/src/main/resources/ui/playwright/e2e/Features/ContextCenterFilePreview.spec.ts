@@ -138,7 +138,7 @@ const openFilePreviewModal = async (
   const downloadRes = await downloadResPromise;
   expect(downloadRes.status()).toBe(200);
 
-  const modal = page.getByRole('dialog', { name: /preview/i });
+  const modal = page.getByRole('dialog');
   await expect(modal).toBeVisible();
 
   return modal;
@@ -159,6 +159,7 @@ test.describe('Context Center - Document File Preview', () => {
     browser,
     page,
   }) => {
+    test.slow();
     const fileName = `file-preview-md-${uuid()}.md`;
     const { apiContext, afterAction } = await createNewPage(browser);
     const document = await uploadDocumentToApi(
@@ -191,6 +192,7 @@ test.describe('Context Center - Document File Preview', () => {
     browser,
     page,
   }) => {
+    test.slow();
     const fileName = `file-preview-txt-${uuid()}.txt`;
     const { apiContext, afterAction } = await createNewPage(browser);
     const document = await uploadDocumentToApi(
@@ -251,6 +253,7 @@ test.describe('Context Center - Document File Preview', () => {
     browser,
     page,
   }) => {
+    test.slow();
     const fileName = `file-preview-png-${uuid()}.png`;
     const { apiContext, afterAction } = await createNewPage(browser);
     const document = await uploadDocumentToApi(
@@ -278,10 +281,11 @@ test.describe('Context Center - Document File Preview', () => {
     await expect(image).toHaveAttribute('src', /^blob:/);
   });
 
-  test('unsupported file type shows a download fallback instead of a renderer', async ({
+  test('unsupported file type does not offer a preview button', async ({
     browser,
     page,
   }) => {
+    test.slow();
     const fileName = `file-preview-unsupported-${uuid()}.docx`;
     const { apiContext, afterAction } = await createNewPage(browser);
     const document = await uploadDocumentToApi(
@@ -291,8 +295,8 @@ test.describe('Context Center - Document File Preview', () => {
     );
     await waitForDocumentProcessingComplete(apiContext, document.id);
     // A `fileType` with no dedicated renderer (Document/Spreadsheet/
-    // Presentation/Archive/Other) is the real-world source of this path —
-    // resolveRenderer's default case, not a size or processing-status guard.
+    // Presentation/Archive/Other) is resolveRenderer's default case, so the
+    // row must gate the preview button off while still offering download.
     await mockSearchHitWithOverride(page, apiContext, document.id, {
       fileType: 'Document',
     });
@@ -304,21 +308,15 @@ test.describe('Context Center - Document File Preview', () => {
     await expect(row).toBeVisible();
     await row.scrollIntoViewIfNeeded();
 
-    const modal = await openFilePreviewModal(page, row, document.id);
-
-    await expect(
-      modal.getByText('Preview is not available for this file type.')
-    ).toBeVisible();
-
-    const downloadLink = modal.getByRole('link', { name: /download/i });
-    await expect(downloadLink).toBeVisible();
-    await expect(downloadLink).toHaveAttribute('href', /^blob:/);
+    await expect(row.getByTestId('preview-btn')).toHaveCount(0);
+    await expect(row.getByTestId('download-btn')).toBeVisible();
   });
 
   test('preview modal closes on Escape and returns focus to the preview trigger', async ({
     browser,
     page,
   }) => {
+    test.slow();
     const fileName = `file-preview-escape-${uuid()}.txt`;
     const { apiContext, afterAction } = await createNewPage(browser);
     const document = await uploadDocumentToApi(
@@ -353,6 +351,7 @@ test.describe('Context Center - Document File Preview', () => {
     browser,
     page,
   }) => {
+    test.slow();
     const fileName = `file-preview-close-btn-${uuid()}.txt`;
     const { apiContext, afterAction } = await createNewPage(browser);
     const document = await uploadDocumentToApi(

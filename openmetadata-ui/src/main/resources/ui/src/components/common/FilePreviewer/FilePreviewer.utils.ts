@@ -14,9 +14,6 @@
 import { FileType } from '../../../generated/entity/data/contextFile';
 import { PreviewRendererId, ResolveRendererArgs } from './FilePreviewer.types';
 
-const isSvg = (ext?: string, mime?: string): boolean =>
-  ext === 'svg' || mime === 'image/svg+xml';
-
 const isMarkdown = (ext?: string, mime?: string): boolean =>
   ext === 'md' || ext === 'markdown' || mime === 'text/markdown';
 
@@ -68,9 +65,7 @@ export const resolveRenderer = ({
     case FileType.PDF:
       return PreviewRendererId.Pdf;
     case FileType.Image:
-      return isSvg(ext, mime)
-        ? PreviewRendererId.Unsupported
-        : PreviewRendererId.Image;
+      return PreviewRendererId.Image;
     case FileType.Text:
       return isMarkdown(ext, mime)
         ? PreviewRendererId.Markdown

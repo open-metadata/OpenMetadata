@@ -106,7 +106,8 @@ describe('FilePreviewModal', () => {
     expect(screen.queryByText('previewer')).not.toBeInTheDocument();
   });
 
-  it('does not fetch when processing failed', async () => {
+  it('previews a file whose text extraction failed (content is independent of extraction)', async () => {
+    downloadDriveFile.mockResolvedValue(new Blob(['hi']));
     render(
       <FilePreviewModal
         isOpen
@@ -117,14 +118,13 @@ describe('FilePreviewModal', () => {
       />
     );
 
-    expect(
-      await screen.findByTestId('file-preview-not-supported')
-    ).toBeInTheDocument();
+    await waitFor(() => expect(downloadDriveFile).toHaveBeenCalled());
 
-    await waitFor(() => expect(downloadDriveFile).not.toHaveBeenCalled());
+    expect(await screen.findByText('previewer')).toBeInTheDocument();
   });
 
-  it('does not fetch when processing is unsupported', async () => {
+  it('previews a file whose extraction is unsupported (e.g. image with no OCR)', async () => {
+    downloadDriveFile.mockResolvedValue(new Blob(['hi']));
     render(
       <FilePreviewModal
         isOpen
@@ -138,11 +138,9 @@ describe('FilePreviewModal', () => {
       />
     );
 
-    expect(
-      await screen.findByTestId('file-preview-not-supported')
-    ).toBeInTheDocument();
+    await waitFor(() => expect(downloadDriveFile).toHaveBeenCalled());
 
-    await waitFor(() => expect(downloadDriveFile).not.toHaveBeenCalled());
+    expect(await screen.findByText('previewer')).toBeInTheDocument();
   });
 
   it('does not refetch when the parent re-renders with a stable onClose', async () => {
@@ -203,18 +201,6 @@ describe('FilePreviewModal', () => {
 
   it('offers a download action from the too-large branch', async () => {
     const file = { ...baseFile, fileSize: 26 * 1024 * 1024 };
-    render(
-      <FilePreviewModal isOpen file={file as never} onClose={jest.fn()} />
-    );
-
-    const downloadButton = await screen.findByText('label.download');
-    fireEvent.click(downloadButton);
-
-    expect(mockHandleAssetDownload).toHaveBeenCalledWith(file);
-  });
-
-  it('offers a download action from the blocked (unsupported/failed) branch', async () => {
-    const file = { ...baseFile, processingStatus: ProcessingStatus.Failed };
     render(
       <FilePreviewModal isOpen file={file as never} onClose={jest.fn()} />
     );

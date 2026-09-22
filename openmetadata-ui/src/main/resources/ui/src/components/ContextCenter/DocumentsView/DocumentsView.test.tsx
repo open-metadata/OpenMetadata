@@ -12,7 +12,10 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { ContextFile } from '../../../generated/entity/data/contextFile';
+import {
+  ContextFile,
+  FileType,
+} from '../../../generated/entity/data/contextFile';
 import DocumentsView from './DocumentsView.component';
 
 jest.mock('react-aria-components', () => ({
@@ -168,6 +171,7 @@ const mockFiles: ContextFile[] = [
     id: 'file-1',
     name: 'report.pdf',
     fileExtension: 'pdf',
+    fileType: FileType.PDF,
     fileSize: 2097152,
     updatedBy: 'alice',
     updatedAt: 1778756959299,
@@ -176,6 +180,7 @@ const mockFiles: ContextFile[] = [
     id: 'file-2',
     name: 'data.csv',
     fileExtension: 'csv',
+    fileType: FileType.CSV,
     fileSize: 512000,
   },
 ];

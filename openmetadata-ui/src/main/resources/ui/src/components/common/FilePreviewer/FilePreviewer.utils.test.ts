@@ -28,13 +28,13 @@ describe('resolveRenderer', () => {
     );
   });
 
-  it('never renders svg inline when fileType is Image', () => {
+  it('maps svg to the image renderer (safe via <img> src, scripts inert)', () => {
     expect(resolve({ fileType: FileType.Image, fileExtension: 'svg' })).toBe(
-      PreviewRendererId.Unsupported
+      PreviewRendererId.Image
     );
     expect(
       resolve({ fileType: FileType.Image, mimeType: 'image/svg+xml' })
-    ).toBe(PreviewRendererId.Unsupported);
+    ).toBe(PreviewRendererId.Image);
   });
 
   it('maps plain text by fileType', () => {
@@ -65,7 +65,7 @@ describe('resolveRenderer', () => {
       PreviewRendererId.Pdf
     );
     expect(resolve({ mimeType: 'image/svg+xml' })).toBe(
-      PreviewRendererId.Unsupported
+      PreviewRendererId.Image
     );
   });
 

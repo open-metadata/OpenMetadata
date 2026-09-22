@@ -41,7 +41,7 @@ describe('FilePreviewer', () => {
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:x');
   });
 
-  it('renders unsupported for svg', async () => {
+  it('renders svg through the image renderer (safe via <img> src)', async () => {
     render(
       <FilePreviewer
         content={new Blob()}
@@ -50,6 +50,6 @@ describe('FilePreviewer', () => {
       />
     );
 
-    expect(await screen.findByText(/download/i)).toBeInTheDocument();
+    expect(await screen.findByRole('img')).toBeInTheDocument();
   });
 });

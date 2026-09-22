@@ -18,118 +18,45 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import axios, { AxiosError } from 'axios';
-import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ProcessingStatus } from '../../../../generated/entity/data/contextFile';
-import { downloadDriveFile } from '../../../../rest/assetAPI';
+import { useFilePreviewContent } from '../../../../hooks/useFilePreviewContent';
 import { handleAssetDownload } from '../../../../utils/ContextCenterPureUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
 import FilePreviewer from '../../../common/FilePreviewer/FilePreviewer';
 import Loader from '../../../common/Loader/Loader';
-import { MAX_PREVIEW_SIZE } from './FilePreviewModal.constants';
 import { FilePreviewModalProps } from './FilePreviewModal.types';
-
-const BLOCKED_STATUSES = [
-  ProcessingStatus.Failed,
-  ProcessingStatus.Unsupported,
-];
 
 const FilePreviewModal = ({ file, isOpen, onClose }: FilePreviewModalProps) => {
   const { t } = useTranslation();
-  const [blob, setBlob] = useState<Blob>();
-  const [isLoading, setIsLoading] = useState(false);
-  const [isBlobOversized, setIsBlobOversized] = useState(false);
+  const { status, blob } = useFilePreviewContent(file, {
+    enabled: isOpen,
+    onError: onClose,
+  });
 
-  const isMetadataTooLarge = useMemo(
-    () => (file?.fileSize ?? 0) > MAX_PREVIEW_SIZE,
-    [file?.fileSize]
-  );
-
-  const isTooLarge = isMetadataTooLarge || isBlobOversized;
-
-  const isBlocked = useMemo(
-    () =>
-      !!file?.processingStatus &&
-      BLOCKED_STATUSES.includes(file.processingStatus),
-    [file?.processingStatus]
-  );
-
-  useEffect(() => {
-    if (!isOpen || !file || isMetadataTooLarge || isBlocked) {
-      return;
-    }
-
-    const controller = new AbortController();
-
-    const fetchFile = async () => {
-      setIsLoading(true);
-      setIsBlobOversized(false);
-      try {
-        const data = await downloadDriveFile(file.id, controller.signal);
-        if (controller.signal.aborted) {
-          return;
-        }
-        // Metadata `fileSize` can lie (stale, missing, or not yet reprocessed) —
-        // the resolved blob is the source of truth for the size guard.
-        if (data.size > MAX_PREVIEW_SIZE) {
-          setIsBlobOversized(true);
-        } else {
-          setBlob(data);
-        }
-      } catch (error) {
-        if (axios.isCancel(error) || controller.signal.aborted) {
-          return;
-        }
-        showErrorToast(error as AxiosError);
-        onClose();
-      } finally {
-        if (!controller.signal.aborted) {
-          setIsLoading(false);
-        }
-      }
-    };
-    fetchFile();
-
-    return () => {
-      controller.abort();
-      setBlob(undefined);
-      setIsBlobOversized(false);
-    };
-  }, [isOpen, file, isMetadataTooLarge, isBlocked, onClose]);
+  const dialogTitle = file?.displayName ?? file?.name ?? t('label.preview');
 
   const handleDownload = () => file && handleAssetDownload(file);
 
+  const renderDownloadFallback = (testId: string, message: string) => (
+    <div data-testid={testId}>
+      <Typography className="tw:p-8 tw:text-center" color="secondary">
+        {message}
+      </Typography>
+      <div className="tw:flex tw:justify-center tw:pb-8">
+        <Button size="sm" onPress={handleDownload}>
+          {t('label.download')}
+        </Button>
+      </div>
+    </div>
+  );
+
   const renderBody = () => {
-    if (isBlocked) {
-      return (
-        <div data-testid="file-preview-not-supported">
-          <Typography className="tw:p-8 tw:text-center" color="secondary">
-            {t('message.preview-not-supported')}
-          </Typography>
-          <div className="tw:flex tw:justify-center tw:pb-8">
-            <Button size="sm" onPress={handleDownload}>
-              {t('label.download')}
-            </Button>
-          </div>
-        </div>
+    if (status === 'too-large') {
+      return renderDownloadFallback(
+        'file-preview-too-large',
+        t('message.file-too-large-to-preview')
       );
     }
-    if (isTooLarge) {
-      return (
-        <div data-testid="file-preview-too-large">
-          <Typography className="tw:p-8 tw:text-center" color="secondary">
-            {t('message.file-too-large-to-preview')}
-          </Typography>
-          <div className="tw:flex tw:justify-center tw:pb-8">
-            <Button size="sm" onPress={handleDownload}>
-              {t('label.download')}
-            </Button>
-          </div>
-        </div>
-      );
-    }
-    if (isLoading || !blob) {
+    if (status !== 'ready' || !blob) {
       return <Loader />;
     }
 
@@ -147,11 +74,20 @@ const FilePreviewModal = ({ file, isOpen, onClose }: FilePreviewModalProps) => {
   return (
     <ModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && onClose()}>
       <Modal>
-        <Dialog
-          showCloseButton
-          title={t('label.preview')}
-          width={900}
-          onClose={onClose}>
+        <Dialog showCloseButton width={900} onClose={onClose}>
+          <Dialog.Header className="tw:border-b tw:border-subtle tw:pb-4 tw:pr-12">
+            <Typography
+              ellipsis
+              as="h2"
+              className="tw:text-primary"
+              data-testid="file-preview-title"
+              size="text-md"
+              slot="title"
+              title={dialogTitle}
+              weight="semibold">
+              {dialogTitle}
+            </Typography>
+          </Dialog.Header>
           <Dialog.Content className="tw:min-h-[60vh] tw:max-h-[85vh] tw:overflow-auto">
             {renderBody()}
           </Dialog.Content>

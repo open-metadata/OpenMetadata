@@ -13,14 +13,25 @@
 
 import { PreviewRendererProps } from './FilePreviewer.types';
 
-const ImageRenderer = ({ fileName, objectUrl }: PreviewRendererProps) => (
-  <div className="tw:flex tw:justify-center tw:p-4">
+const ImageRenderer = ({
+  compact,
+  fileName,
+  objectUrl,
+}: PreviewRendererProps) =>
+  compact ? (
     <img
       alt={fileName ?? ''}
-      className="tw:max-w-full tw:max-h-[75vh] tw:object-contain"
+      className="tw:max-w-full tw:max-h-full tw:object-contain"
       src={objectUrl}
     />
-  </div>
-);
+  ) : (
+    <div className="tw:flex tw:justify-center tw:p-4">
+      <img
+        alt={fileName ?? ''}
+        className="tw:max-w-full tw:max-h-[75vh] tw:object-contain"
+        src={objectUrl}
+      />
+    </div>
+  );
 
 export default ImageRenderer;

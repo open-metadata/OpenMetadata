@@ -19,12 +19,16 @@ export interface FilePreviewerProps {
   fileExtension?: string;
   fileName?: string;
   fileType?: FileType;
+  // Miniature mode for the detail-panel thumbnail: renderers show a compact,
+  // fit-to-container view (e.g. PDF renders only its first page).
+  compact?: boolean;
 }
 
 export interface PreviewRendererProps {
   content: Blob;
   objectUrl: string;
   fileName?: string;
+  compact?: boolean;
 }
 
 export enum PreviewRendererId {

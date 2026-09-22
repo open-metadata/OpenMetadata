@@ -15,7 +15,7 @@ import { Typography } from '@openmetadata/ui-core-components';
 import * as pdfjsLib from 'pdfjs-dist';
 import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { TFunction, useTranslation } from 'react-i18next';
 import { PreviewRendererProps } from './FilePreviewer.types';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = PdfWorker;
@@ -25,7 +25,47 @@ const MAX_PDF_PREVIEW_PAGES = 50;
 const isRenderingCancelledError = (error: unknown): boolean =>
   error instanceof pdfjsLib.RenderingCancelledException;
 
-const PdfRenderer = ({ content }: PreviewRendererProps) => {
+// Render one page onto a fresh canvas appended to the container.
+const renderPageToCanvas = async (
+  page: pdfjsLib.PDFPageProxy,
+  container: HTMLDivElement,
+  compact?: boolean
+): Promise<void> => {
+  const viewport = page.getViewport({ scale: 1.3 });
+  const canvas = document.createElement('canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  canvas.className = compact
+    ? 'tw:mx-auto tw:max-w-full tw:h-auto'
+    : 'tw:mx-auto tw:mb-4 tw:shadow-xs';
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    return;
+  }
+  container.appendChild(canvas);
+  await page.render({ canvasContext: ctx, viewport }).promise;
+};
+
+// Full view caps the render at MAX pages and notes the truncation; the compact
+// miniature only ever shows the first page, so it needs no notice.
+const maybeAppendPageLimitNotice = (
+  doc: pdfjsLib.PDFDocumentProxy,
+  container: HTMLDivElement,
+  compact: boolean | undefined,
+  t: TFunction
+): void => {
+  if (compact || doc.numPages <= MAX_PDF_PREVIEW_PAGES) {
+    return;
+  }
+  const notice = document.createElement('div');
+  notice.className = 'tw:text-center tw:text-sm tw:text-secondary tw:p-4';
+  notice.textContent = t('message.file-preview-pdf-page-limit', {
+    count: MAX_PDF_PREVIEW_PAGES,
+  });
+  container.appendChild(notice);
+};
+
+const PdfRenderer = ({ compact, content }: PreviewRendererProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
   const [hasError, setHasError] = useState(false);
@@ -67,31 +107,17 @@ const PdfRenderer = ({ content }: PreviewRendererProps) => {
         return;
       }
       container.replaceChildren();
-      const pagesToRender = Math.min(doc.numPages, MAX_PDF_PREVIEW_PAGES);
+      const pagesToRender = compact
+        ? 1
+        : Math.min(doc.numPages, MAX_PDF_PREVIEW_PAGES);
       for (let pageNo = 1; pageNo <= pagesToRender; pageNo++) {
         const page = await doc.getPage(pageNo);
         if (cancelled || !container) {
           return;
         }
-        const viewport = page.getViewport({ scale: 1.3 });
-        const canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        canvas.className = 'tw:mx-auto tw:mb-4 tw:shadow-xs';
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          container.appendChild(canvas);
-          await page.render({ canvasContext: ctx, viewport }).promise;
-        }
+        await renderPageToCanvas(page, container, compact);
       }
-      if (!cancelled && container && doc.numPages > MAX_PDF_PREVIEW_PAGES) {
-        const notice = document.createElement('div');
-        notice.className = 'tw:text-center tw:text-sm tw:text-secondary tw:p-4';
-        notice.textContent = t('message.file-preview-pdf-page-limit', {
-          count: MAX_PDF_PREVIEW_PAGES,
-        });
-        container.appendChild(notice);
-      }
+      maybeAppendPageLimitNotice(doc, container, compact, t);
     };
 
     renderPdf().catch((error) => {
@@ -108,7 +134,7 @@ const PdfRenderer = ({ content }: PreviewRendererProps) => {
       cancelled = true;
       destroyDoc();
     };
-  }, [content, t]);
+  }, [compact, content, t]);
 
   if (hasError) {
     return (
@@ -120,7 +146,7 @@ const PdfRenderer = ({ content }: PreviewRendererProps) => {
     );
   }
 
-  return <div className="tw:p-4" ref={containerRef} />;
+  return <div className={compact ? '' : 'tw:p-4'} ref={containerRef} />;
 };
 
 export default PdfRenderer;
