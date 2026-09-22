@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.onboarding.OnboardingTasks;
 import org.openmetadata.service.jdbi3.TaskFormSchemaRepository;
 
 /** Resolves workflow lifecycle bindings for configurable task forms. */
@@ -124,6 +125,8 @@ public final class TaskWorkflowLifecycleResolver {
   }
 
   public static Optional<TaskWorkflowBinding> resolveBinding(Task task) {
+    if (task != null && OnboardingTasks.isManaged(task.getId()))
+      return Optional.ofNullable(OnboardingTasks.workflowBinding(task));
     if (task == null || task.getType() == null) {
       return Optional.empty();
     }
@@ -523,7 +526,9 @@ public final class TaskWorkflowLifecycleResolver {
   }
 
   public static Map<String, Object> buildWorkflowStartVariables(Task draftTask) {
-    return WorkflowStartVariables.of(draftTask).toVariables();
+    var variables = WorkflowStartVariables.of(draftTask).toVariables();
+    variables.putAll(OnboardingTasks.correlation(draftTask.getId()));
+    return variables;
   }
 
   /**

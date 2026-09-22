@@ -435,6 +435,10 @@ const getTaskActionButtonColor = (
   return 'secondary';
 };
 
+const needsResolutionPermission = (task?: Task) =>
+  task?.type === TaskType.DataAccessRequest ||
+  task?.category === TaskCategory.Approval;
+
 const getTaskActionTestId = (
   approve: boolean,
   reject: boolean,
@@ -527,10 +531,9 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   const { getEntityPermission } = usePermissionProvider();
   const [task, setTask] = useState<Task | undefined>(fallbackTask);
   const [isLoading, setIsLoading] = useState(true);
-  // Gates DAR approve/reject/resolve so a self-approval deny (isTaskFiler) hides
-  // the buttons. Fail closed: false until the permission resolves so a self-filed
-  // DAR never flashes the buttons. Non-DAR tasks are never gated below.
+  // Approval actions stay hidden until the task's resolution permission is known.
   const [canResolveTask, setCanResolveTask] = useState(false);
+  const requiresResolvePermission = needsResolutionPermission(task);
   const [loadingTransitionId, setLoadingTransitionId] = useState<string>();
   // Actions stay hidden while re-reading, so a consumed transition can't be
   // re-submitted — that hits a workflow with no active task (500).
@@ -574,13 +577,13 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // a requester who is also an assignee resolves false on their own request.
   useEffect(() => {
     let active = true;
-    if (!task?.id || task.type !== TaskType.DataAccessRequest) {
+    if (!task?.id || !requiresResolvePermission) {
       setCanResolveTask(true);
 
       return undefined;
     }
 
-    // Fail closed while (re)resolving so switching to a self-filed DAR can't
+    // Fail closed while (re)resolving so switching to another approval can't
     // briefly show the buttons with a stale allow from the previous task.
     setCanResolveTask(false);
     getEntityPermission(ResourceEntity.TASK, task.id)
@@ -593,7 +596,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     return () => {
       active = false;
     };
-  }, [getEntityPermission, task?.id, task?.type]);
+  }, [getEntityPermission, task, requiresResolvePermission]);
 
   // A task the workflow engine never touched resolves through the legacy path,
   // whose newValue comes from the type's form schema (resolution is cached per
@@ -632,7 +635,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
 
     // Drop resolve actions when ResolveTask is denied (self-approval); keep
     // assignee transitions — those are permissioned by EditTask, not ResolveTask.
-    if (task.type === TaskType.DataAccessRequest && !canResolveTask) {
+    if (requiresResolvePermission && !canResolveTask) {
       return effective.filter(
         (action) =>
           action.kind !== 'approve' &&
@@ -642,7 +645,14 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     }
 
     return effective;
-  }, [task, isSyncingTransitions, canResolveTask, formSchema, t]);
+  }, [
+    task,
+    isSyncingTransitions,
+    canResolveTask,
+    requiresResolvePermission,
+    formSchema,
+    t,
+  ]);
 
   // Stop an in-flight sync on unmount: no state set, no timer left behind.
   useEffect(

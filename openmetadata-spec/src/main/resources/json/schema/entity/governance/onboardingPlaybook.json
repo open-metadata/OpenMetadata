@@ -1,0 +1,98 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/governance/onboardingPlaybook.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OnboardingPlaybook",
+  "description": "One playbook per asset type - the same rule intake forms already follow, so creation-time enforcement has exactly one answer. Variation inside an asset type is handled by conditions on individual checks, not by competing playbooks.",
+  "javaType": "org.openmetadata.schema.entity.governance.OnboardingPlaybook",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
+  "type": "object",
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this playbook.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this playbook.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName of the playbook.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this playbook.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the playbook.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "entityType": {
+      "description": "The asset type this playbook governs. Only one playbook may exist per asset type.",
+      "$ref": "#/definitions/targetEntityType"
+    },
+    "onboarding": {
+      "description": "The lifecycle and gates this playbook enforces.",
+      "$ref": "../../governance/onboarding/onboardingConfiguration.json"
+    },
+    "intakeForm": {
+      "description": "Intake form migrated into this playbook's Creation gate. Retained so the legacy read path keeps resolving.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "owners": {
+      "description": "Owners of this playbook - shown as `maintained by`.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "changeDescription": {
+      "description": "Change that led to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Change that led to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "definitions": {
+    "targetEntityType": {
+      "description": "Asset types that support an onboarding playbook today.",
+      "javaType": "org.openmetadata.schema.entity.governance.PlaybookEntityType",
+      "type": "string",
+      "enum": [
+        "dataProduct",
+        "domain",
+        "glossaryTerm",
+        "metric"
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "entityType"
+  ],
+  "additionalProperties": false
+}

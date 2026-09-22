@@ -67,6 +67,7 @@ import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.onboarding.OnboardingTasks;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
@@ -777,6 +778,7 @@ public class CreateTask implements TaskListener {
   static boolean isSupersedablePriorApprovalTask(
       Task prior, UUID currentWorkflowDefinitionId, UUID currentWorkflowInstanceId) {
     return prior != null
+        && !OnboardingTasks.isManaged(prior.getId())
         && currentWorkflowInstanceId != null
         && currentWorkflowDefinitionId != null
         && prior.getWorkflowInstanceId() != null

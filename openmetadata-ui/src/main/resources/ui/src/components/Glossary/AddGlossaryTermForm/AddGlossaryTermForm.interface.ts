@@ -47,6 +47,7 @@ export interface IntakeFieldsSectionProps {
   extensionFormFields: IntakeFormField[];
   customProperties: CustomProperty[];
   intakeFieldsRef: RefObject<GlossaryTermIntakeFieldsHandle>;
+  onValuesChange?: (values: Record<string, unknown>) => void;
 }
 
 // Live form values; related terms become ids (edit) or FQNs (create) on submit.
@@ -55,6 +56,7 @@ export type GlossaryTermFormState = Omit<CreateGlossaryTerm, 'relatedTerms'> & {
 };
 
 export interface GlossaryTermForm {
+  domains?: string[];
   name: string;
   displayName: string;
   description: string;

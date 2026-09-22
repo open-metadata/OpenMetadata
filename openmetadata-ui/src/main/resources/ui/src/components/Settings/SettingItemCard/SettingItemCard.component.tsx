@@ -47,12 +47,24 @@ const SettingItemCard = ({
         )}
       </div>
       <div className="setting-card-content">
-        <Typography.Text className="font-semibold">
-          {data.category ?? data.label}
-        </Typography.Text>
+        <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2">
+          <Typography.Text className="font-semibold">
+            {data.category ?? data.label}
+          </Typography.Text>
+          {data.inlineBadgeKey && (
+            <span className="tw:rounded-full tw:bg-brand-solid tw:px-2 tw:py-0.5 tw:text-xs tw:font-semibold tw:text-primary_on-brand">
+              {t(data.inlineBadgeKey)}
+            </span>
+          )}
+        </div>
+        {data.noticeBadgeKey && (
+          <span className="tw:mt-1 tw:w-max tw:rounded-full tw:border tw:border-warning tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium tw:text-warning-primary">
+            {t(data.noticeBadgeKey)}
+          </span>
+        )}
         <Typography.Paragraph
           className="font-normal text-sm"
-          ellipsis={{ rows: 2 }}>
+          ellipsis={{ rows: 3 }}>
           {data.description}
         </Typography.Paragraph>
       </div>

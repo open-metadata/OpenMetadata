@@ -57,6 +57,7 @@ export enum TargetEntityType {
     DataProduct = "dataProduct",
     Domain = "domain",
     GlossaryTerm = "glossaryTerm",
+    Metric = "metric",
 }
 
 /**
@@ -81,6 +82,10 @@ export interface IntakeFormField {
      * 'dataProductType'). Custom property paths look like 'extension.<propertyName>'.
      */
     fieldPath: string;
+    /**
+     * An optional field recommended for onboarding.
+     */
+    recommended?: boolean;
     /**
      * Whether this field must have a value before the entity can be created or updated.
      */

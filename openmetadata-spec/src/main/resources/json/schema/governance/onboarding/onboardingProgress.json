@@ -1,0 +1,87 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/onboarding/onboardingProgress.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OnboardingProgress",
+  "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingProgress",
+  "type": "object",
+  "properties": {
+    "entity": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "entityVersion": {
+      "type": "number"
+    },
+    "configurationId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "configurationVersion": {
+      "type": "number"
+    },
+    "stage": {
+      "$ref": "./onboardingStage.json"
+    },
+    "enteredAt": {
+      "type": "integer",
+      "existingJavaType": "java.lang.Long"
+    },
+    "createdAt": {
+      "description": "When the asset was created - the start of its onboarding clock.",
+      "type": "integer",
+      "existingJavaType": "java.lang.Long"
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "$ref": "./onboardingStepResult.json"
+      },
+      "default": []
+    },
+    "blockingSteps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "nextStage": {
+      "description": "Stage the asset moves to once this gate's workflow completes. Onboarding does not perform the move.",
+      "$ref": "./onboardingStage.json"
+    },
+    "canAdvance": {
+      "type": "boolean"
+    },
+    "completed": {
+      "type": "boolean"
+    },
+    "paused": {
+      "type": "boolean"
+    },
+    "domains": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "default": []
+    },
+    "gateBlocking": {
+      "description": "False when the gate lets an asset move with checks open and notifies the playbook owners instead.",
+      "type": "boolean",
+      "default": true
+    },
+    "warnings": {
+      "description": "Required checks still open at a non-blocking gate.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    }
+  },
+  "required": [
+    "stage",
+    "steps",
+    "blockingSteps",
+    "canAdvance"
+  ],
+  "additionalProperties": false
+}

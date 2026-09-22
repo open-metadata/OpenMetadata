@@ -71,6 +71,7 @@ import { SettingMenuItem } from './GlobalSettingsUtils';
 
 import { ReactComponent as GovernanceIcon } from '../assets/svg/governance.svg';
 import { ReactComponent as WorkflowsSettingsIcon } from '../assets/svg/ic-workflow-settings.svg';
+import { ReactComponent as OnboardingPlaybookIcon } from '../assets/svg/onboarding-playbook.svg';
 import { ReactComponent as PreferencesSearchIcon } from '../assets/svg/preferences-search.svg';
 import {
   GlobalSettingOptions,
@@ -968,11 +969,13 @@ class GlobalSettingsClassBase {
             icon: WorkflowsSettingsIcon,
           },
           {
-            label: t('label.intake-form-plural'),
-            description: t('message.intake-form-plural-description'),
+            label: t('label.onboarding-playbook-plural-title'),
+            description: t('message.onboarding-playbooks-card-description'),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.GOVERNANCE}.${GlobalSettingOptions.INTAKE_FORMS}`,
-            icon: GovernanceIcon,
+            key: `${GlobalSettingsMenuCategory.GOVERNANCE}.${GlobalSettingOptions.ONBOARDING_PLAYBOOKS}`,
+            icon: OnboardingPlaybookIcon,
+            inlineBadgeKey: 'label.new',
+            noticeBadgeKey: 'label.includes-intake-forms',
           },
           // TODO: Re-enable Task Forms once the feature is ready
           // {

@@ -66,6 +66,16 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   @Override
   protected void setFields(
       WorkflowDefinition entity, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
+    setDeploymentStatus(entity);
+  }
+
+  @Override
+  protected void fetchAndSetFields(List<WorkflowDefinition> entities, EntityUtil.Fields fields) {
+    super.fetchAndSetFields(entities, fields);
+    entities.forEach(this::setDeploymentStatus);
+  }
+
+  private void setDeploymentStatus(WorkflowDefinition entity) {
     if (WorkflowHandler.isInitialized()) {
       entity.withDeployed(WorkflowHandler.getInstance().isDeployed(entity));
     } else {

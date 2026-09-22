@@ -1,0 +1,49 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/onboarding/onboardingCondition.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OnboardingCondition",
+  "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingCondition",
+  "type": "object",
+  "properties": {
+    "fieldPath": {
+      "type": "string",
+      "description": "Native or extension field to test."
+    },
+    "operator": {
+      "type": "string",
+      "enum": [
+        "present",
+        "equals",
+        "contains",
+        "startsWith"
+      ],
+      "javaEnums": [
+        {
+          "name": "PRESENT",
+          "description": "The field holds any value."
+        },
+        {
+          "name": "EQUALS",
+          "description": "The field equals the value exactly."
+        },
+        {
+          "name": "CONTAINS",
+          "description": "A text field contains the value, or a list holds a matching member."
+        },
+        {
+          "name": "STARTS_WITH",
+          "description": "A text field, tag or reference starts with the value - `PII.` matches every tag in the PII classification."
+        }
+      ]
+    },
+    "value": {
+      "description": "Value compared using the selected operator.",
+      "existingJavaType": "java.lang.Object"
+    }
+  },
+  "required": [
+    "fieldPath",
+    "operator"
+  ],
+  "additionalProperties": false
+}

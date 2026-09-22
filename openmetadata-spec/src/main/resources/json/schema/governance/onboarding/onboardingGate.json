@@ -1,0 +1,87 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/onboarding/onboardingGate.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OnboardingGate",
+  "description": "What it takes to leave a stage. Nothing moves on until every blocking check passes; recommended checks stay open as tasks. The gate decides when a workflow may start - it never changes the asset's status itself.",
+  "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingGate",
+  "type": "object",
+  "properties": {
+    "stage": {
+      "description": "Stage this gate governs the exit from.",
+      "$ref": "./onboardingStage.json"
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "$ref": "./onboardingStep.json"
+      },
+      "default": [],
+      "maxItems": 100
+    },
+    "handoffWorkflow": {
+      "description": "Workflow started once every blocking check passes. The workflow owns the approval and the resulting status change; the playbook only decides when it is allowed to start.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "blockTransition": {
+      "type": "boolean",
+      "description": "Hard stop. When false, a failing gate raises a warning and a notification instead of blocking.",
+      "default": true
+    },
+    "notifyOnStall": {
+      "$ref": "#/definitions/stallPolicy"
+    },
+    "reassignOnStall": {
+      "$ref": "#/definitions/reassignPolicy"
+    }
+  },
+  "definitions": {
+    "stallPolicy": {
+      "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingStallPolicy",
+      "type": "object",
+      "description": "Tell the playbook maintainer when an asset stops moving.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "afterDays": {
+          "type": "integer",
+          "description": "Days with no activity on an open task before notifying.",
+          "minimum": 1,
+          "maximum": 365,
+          "default": 5
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "reassignPolicy": {
+      "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingReassignPolicy",
+      "type": "object",
+      "description": "Keep onboarding moving when the assignee goes quiet.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "afterDays": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365,
+          "default": 10
+        },
+        "role": {
+          "description": "Role the open tasks are reassigned to.",
+          "$ref": "./onboardingAssignment.json"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "stage",
+    "steps"
+  ],
+  "additionalProperties": false
+}

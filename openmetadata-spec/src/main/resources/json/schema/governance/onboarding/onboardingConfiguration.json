@@ -1,0 +1,33 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/onboarding/onboardingConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OnboardingConfiguration",
+  "description": "The body of a playbook: the lifecycle it declares and what it takes to pass each gate.",
+  "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingConfiguration",
+  "type": "object",
+  "properties": {
+    "enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "stages": {
+      "description": "Lifecycle declared by this playbook, in order. Empty means the default lifecycle.",
+      "type": "array",
+      "items": {
+        "$ref": "./onboardingStageDefinition.json"
+      },
+      "default": [],
+      "maxItems": 20
+    },
+    "gates": {
+      "type": "array",
+      "items": {
+        "$ref": "./onboardingGate.json"
+      },
+      "default": [],
+      "maxItems": 20
+    }
+  },
+  "required": [],
+  "additionalProperties": false
+}

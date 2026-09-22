@@ -1,0 +1,21 @@
+{
+  "$id": "https://open-metadata.org/schema/api/governance/nudgeOnboarding.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "nudgeOnboarding",
+  "description": "Ask the people a check is assigned to to get on with it.",
+  "javaType": "org.openmetadata.schema.api.governance.NudgeOnboarding",
+  "type": "object",
+  "properties": {
+    "stepId": {
+      "description": "Check to nudge. Defaults to the first open blocking check with assigned work.",
+      "type": "string"
+    },
+    "message": {
+      "description": "Optional note added to the reminder.",
+      "type": "string",
+      "maxLength": 1000
+    }
+  },
+  "required": [],
+  "additionalProperties": false
+}

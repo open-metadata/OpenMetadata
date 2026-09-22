@@ -19,15 +19,19 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import {
+  CheckType,
+  OnboardingPlaybook,
+  Requirement,
+} from '../../../generated/entity/governance/onboardingPlaybook';
 import { Config, CustomProperty } from '../../../generated/entity/type';
 import {
   FieldKind,
-  IntakeForm,
   IntakeFormField,
   RequiredField,
   TargetEntityType,
 } from '../../../generated/governance/intakeForm';
-import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
+import { getOnboardingPlaybookForEntityType } from '../../../rest/governance/onboarding/OnboardingPlaybook.api';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import AddGlossaryTermForm from './AddGlossaryTermForm.component';
 import {
@@ -68,8 +72,8 @@ jest.mock('../../../hooks/useEntityRules', () => ({
   }),
 }));
 
-jest.mock('../../../rest/intakeFormsAPI', () => ({
-  getIntakeFormByEntityType: jest.fn(),
+jest.mock('../../../rest/governance/onboarding/OnboardingPlaybook.api', () => ({
+  getOnboardingPlaybookForEntityType: jest.fn(),
 }));
 
 jest.mock('../../../rest/metadataTypeAPI', () => ({
@@ -172,9 +176,10 @@ jest.mock(
   () => jest.fn().mockReturnValue(<div data-testid="table-editor" />)
 );
 
-const mockedGetIntakeForm = getIntakeFormByEntityType as jest.MockedFunction<
-  typeof getIntakeFormByEntityType
->;
+const mockedGetIntakeForm =
+  getOnboardingPlaybookForEntityType as jest.MockedFunction<
+    typeof getOnboardingPlaybookForEntityType
+  >;
 const mockedGetCustomProperties =
   getCustomPropertiesByEntityType as jest.MockedFunction<
     typeof getCustomPropertiesByEntityType
@@ -210,21 +215,38 @@ const createRequiredField = (
     fieldKind === FieldKind.CustomProperty ? `extension.${name}` : name,
 });
 
-const createIntakeForm = (requiredFields: RequiredField[]): IntakeForm => ({
-  entityType: TargetEntityType.GlossaryTerm,
-  id: 'intake-form-id',
-  name: 'glossaryTermIntakeForm',
-  requiredFields,
-});
-
 const createIntakeFormWithFields = (
   formFields: IntakeFormField[]
-): IntakeForm => ({
+): OnboardingPlaybook => ({
   entityType: TargetEntityType.GlossaryTerm,
-  formFields,
-  id: 'intake-form-id',
-  name: 'glossaryTermIntakeForm',
+  id: 'playbook-id',
+  name: 'glossaryTermPlaybook',
+  onboarding: {
+    enabled: true,
+    gates: [
+      {
+        stage: 'creation',
+        steps: formFields.map((field, index) => ({
+          fieldPath: field.fieldPath,
+          id: `creation_${index}`,
+          requirement: field.required
+            ? Requirement.Blocking
+            : Requirement.Recommended,
+          title: field.fieldLabel,
+          type: CheckType.Attribute,
+        })),
+      },
+    ],
+  },
 });
+
+/** A playbook whose Creation gate asks for exactly these fields. */
+const createIntakeForm = (
+  requiredFields: RequiredField[]
+): OnboardingPlaybook =>
+  createIntakeFormWithFields(
+    requiredFields.map((field) => ({ ...field, required: true }))
+  );
 
 interface FormHarnessProps {
   editMode?: boolean;
@@ -278,7 +300,7 @@ describe('AddGlossaryTermForm intake fields', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockDataAssetSelectProps.length = 0;
-    mockedGetIntakeForm.mockResolvedValue(null);
+    mockedGetIntakeForm.mockResolvedValue(undefined);
     mockedGetCustomProperties.mockResolvedValue([]);
   });
 
@@ -481,19 +503,18 @@ describe('AddGlossaryTermForm intake fields', () => {
   });
 
   it.each(['displayName', 'synonyms', 'tags', 'reviewers'])(
-    'applies the intake required rule to the native %s field',
+    'blocks submit while the native %s field the playbook blocks on is empty',
     async (fieldPath) => {
-      const errorMessage = `${fieldPath} intake required`;
       mockedGetIntakeForm.mockResolvedValue(
         createIntakeForm([
           {
-            errorMessage,
             fieldKind: FieldKind.Native,
             fieldLabel: fieldPath,
             fieldPath,
           },
         ])
       );
+      const onSave = jest.fn();
 
       render(
         <FormHarness
@@ -501,7 +522,7 @@ describe('AddGlossaryTermForm intake fields', () => {
             description: 'Description',
             name: 'term-name',
           }}
-          onSave={jest.fn()}
+          onSave={onSave}
         />
       );
 
@@ -511,7 +532,10 @@ describe('AddGlossaryTermForm intake fields', () => {
         fireEvent.click(screen.getByTestId('submit-values'));
       });
 
-      expect(await screen.findByText(errorMessage)).toBeInTheDocument();
+      expect(
+        await screen.findByText('label.field-required')
+      ).toBeInTheDocument();
+      expect(onSave).not.toHaveBeenCalled();
     }
   );
 });
@@ -519,7 +543,9 @@ describe('AddGlossaryTermForm intake fields', () => {
 describe('AddGlossaryTermForm style fields', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (getIntakeFormByEntityType as jest.Mock).mockResolvedValue(undefined);
+    (getOnboardingPlaybookForEntityType as jest.Mock).mockResolvedValue(
+      undefined
+    );
     (getCustomPropertiesByEntityType as jest.Mock).mockResolvedValue([]);
   });
 

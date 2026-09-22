@@ -235,6 +235,9 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.EntityRelationshipNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.governance.onboarding.OnboardingEvaluator;
+import org.openmetadata.service.governance.onboarding.OnboardingService;
+import org.openmetadata.service.governance.onboarding.OnboardingStore;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
@@ -3025,7 +3028,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     prepare(entity, update);
     setFullyQualifiedName(entity);
     validateExtension(entity, update);
-    setDefaultStatus(entity, update);
+    if (!update || !OnboardingService.preserveStatusDefault(entity, entityType)) {
+      setDefaultStatus(entity, update);
+    }
     if (!update) {
       // Only on create: on PATCH the incoming entity carries the *stored* certification even when
       // the patch never touched it, so validating there would start rejecting unrelated edits to
@@ -3929,6 +3934,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // 2. Set impersonatedBy for each entity
     for (T entity : entities) {
       entity.setImpersonatedBy(impersonatedBy);
+      OnboardingService.validateWrite(entity, entityType, false);
     }
 
     // 3. Store entities and relationships in one atomic transaction. Cache invalidations issued by
@@ -3978,6 +3984,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       updated.setUpdatedAt(System.currentTimeMillis());
       // 2. Set impersonatedBy
       updated.setImpersonatedBy(impersonatedBy);
+      OnboardingService.validateUpdate(original, updated, entityType, true);
       updatedEntities.add(updated);
     }
 
@@ -4007,6 +4014,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
+    if (OnboardingEvaluator.ENTITY_TYPES.contains(entityType)) {
+      OnboardingService.enroll(entity, entityType);
+    }
     try (var ignored = phase("lifecycleDispatch")) {
       EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
     }
@@ -5299,6 +5309,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected T createNewEntity(T entity) {
+    OnboardingService.validateWrite(entity, entityType, false);
     try {
       createNewEntityFlush(entity);
       try (var ignored = phase("createPostCreate")) {
@@ -5609,6 +5620,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private List<T> createManyEntities(List<T> entities) {
+    entities.forEach(entity -> OnboardingService.validateWrite(entity, entityType, false));
     createManyEntitiesFlush(entities);
     try (var ignored = phase("postCreate")) {
       postCreate(entities);
@@ -9286,6 +9298,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void flushUpdateBody(boolean useOptimisticStore, boolean importMode) {
+      validateOnboardingUpdate();
       boolean consolidateChanges;
       try (var ignored = phase("entityUpdateConsolidate")) {
         consolidateChanges = consolidateChanges(original, updated, operation);
@@ -9392,6 +9405,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
      */
     @Transaction
     public final void updateWithDeferredStore() {
+      validateOnboardingUpdate();
       changeDescription = new ChangeDescription();
       try (var ignored = phase("entityUpdateDiffDeferred")) {
         updateInternal();
@@ -9680,6 +9694,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
+    private void validateOnboardingUpdate() {
+      if (!operation.isDelete()) {
+        OnboardingService.validateUpdate(original, updated, entityType, operation.isPut());
+      }
+    }
+
     private void updateEntityStatus(boolean consolidatingChanges) {
       if (supportsEntityStatus) {
         if (original.getEntityStatus() == updated.getEntityStatus()) {
@@ -9690,7 +9710,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
             && original.getEntityStatus() == EntityStatus.IN_REVIEW
             && (updated.getEntityStatus() == EntityStatus.APPROVED
                 || updated.getEntityStatus() == EntityStatus.REJECTED)) {
-          checkUpdatedByReviewer(original, updated.getUpdatedBy());
+          if (OnboardingStore.find(original.getId()) == null) {
+            checkUpdatedByReviewer(original, updated.getUpdatedBy());
+          }
         }
         recordChange("entityStatus", original.getEntityStatus(), updated.getEntityStatus());
       }

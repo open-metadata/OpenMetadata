@@ -10,6 +10,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_IN
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
+import com.google.common.collect.Lists;
 import com.zaxxer.hikari.HikariDataSource;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -793,6 +794,31 @@ public class WorkflowHandler {
     }
   }
 
+  /**
+   * Start one named workflow for one entity.
+   *
+   * <p>{@link #triggerWithSignal} broadcasts to every workflow listening for an entity event, which
+   * is right for event-driven triggers but wrong for a handoff: an onboarding gate names the single
+   * workflow it hands to, so it has to start that one and no other. The main workflow's Flowable
+   * process key is the WorkflowDefinition's fully qualified name (see MainWorkflow), so starting it
+   * by key targets exactly the chosen definition.
+   *
+   * @return the new process instance id, or null when no such workflow is deployed.
+   */
+  public String startWorkflowForEntity(String workflowFqn, Map<String, Object> variables) {
+    RuntimeService runtimeService = processEngine.getRuntimeService();
+    try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
+      ProcessInstance instance = runtimeService.startProcessInstanceByKey(workflowFqn, variables);
+      return instance == null ? null : instance.getId();
+    } catch (FlowableObjectNotFoundException e) {
+      LOG.warn(
+          "Onboarding handoff skipped: workflow '{}' is not deployed. {}",
+          workflowFqn,
+          e.getMessage());
+      return null;
+    }
+  }
+
   private void unlockJobsOnStartup() {
     RuntimeService runtimeService = processEngine.getRuntimeService();
     ManagementService managementService = processEngine.getManagementService();
@@ -1368,6 +1394,22 @@ public class WorkflowHandler {
    */
   public boolean hasActiveRuntimeTask(UUID customTaskId) {
     return isTaskStillOpen(customTaskId);
+  }
+
+  /** Returns the custom task IDs with active runtime work, in bounded database batches. */
+  public Set<UUID> activeRuntimeTasks(List<UUID> customTaskIds) {
+    Set<UUID> active = new HashSet<>();
+    for (var batch : Lists.partition(customTaskIds, 100)) {
+      var query = processEngine.getTaskService().createTaskQuery().active().or();
+      batch.forEach(id -> query.processVariableValueEquals("customTaskId", id.toString()));
+      for (Task task : query.endOr().includeProcessVariables().list()) {
+        Object id = task.getProcessVariables().get("customTaskId");
+        if (id != null) {
+          active.add(UUID.fromString(id.toString()));
+        }
+      }
+    }
+    return active;
   }
 
   public boolean isAwaitingAdditionalVotes(UUID customTaskId) {

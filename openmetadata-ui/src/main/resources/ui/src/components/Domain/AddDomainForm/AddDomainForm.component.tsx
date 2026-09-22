@@ -28,7 +28,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Users01 } from '@untitledui/icons';
 import { debounce, omit } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
@@ -53,6 +53,7 @@ import {
   DomainType,
 } from '../../../generated/api/domains/createDomain';
 import { Domain } from '../../../generated/entity/domains/domain';
+import { OnboardingPlaybook } from '../../../generated/entity/governance/onboardingPlaybook';
 import { Operation } from '../../../generated/entity/policies/policy';
 import {
   CustomProperty,
@@ -60,7 +61,6 @@ import {
 } from '../../../generated/entity/type';
 import {
   FieldKind,
-  IntakeForm,
   IntakeFormField,
   TargetEntityType,
 } from '../../../generated/governance/intakeForm';
@@ -71,7 +71,7 @@ import {
   TagSource,
 } from '../../../generated/type/tagLabel';
 import { searchDomains } from '../../../rest/domainAPI';
-import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
+import { getOnboardingPlaybookForEntityType } from '../../../rest/governance/onboarding/OnboardingPlaybook.api';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { formatTeamsResponse } from '../../../utils/APIUtils';
@@ -80,7 +80,7 @@ import { serializeExtensionValue } from '../../../utils/CustomProperty.utils';
 import domainClassBase from '../../../utils/Domain/DomainClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
-import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
+import { getCreationIntakeFields } from '../../../utils/governance/onboarding/Onboarding.utils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -93,6 +93,7 @@ import {
   DEFAULT_DOMAIN_ICON,
 } from '../../common/IconPicker/IconPicker.constants';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
+import { OnboardingCreationChecklist } from '../../governance/onboarding/OnboardingCreationChecklist';
 import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
 import {
@@ -102,6 +103,7 @@ import {
 } from './AddDomainForm.interface';
 import AddDomainFormExtensionFields from './AddDomainFormExtensionFields';
 import { getExtensionPropertyNameFromFormKey } from './AddDomainFormExtensionFields.utils';
+import { AddDomainFormPlaybookLayout } from './AddDomainFormPlaybookLayout';
 
 export const DOMAIN_FORM_DEFAULTS: DomainFormValues = {
   name: '',
@@ -189,8 +191,7 @@ const applyDataProductFields = (
     dataProduct.portfolioPriority = formData.portfolioPriority
       .value as PortfolioPriority;
   }
-  // Collate-only: no field means the property is never sent.
-  if (domainClassBase.getReviewersField()) {
+  if (domainClassBase.getReviewersField() || formData.reviewers.length > 0) {
     dataProduct.reviewers = formData.reviewers.map(
       (item) => item.value as EntityReference
     );
@@ -329,6 +330,9 @@ const AddDomainForm = ({
   onSubmit,
   type,
   parentDomain,
+  playbook,
+  customProperties: providedCustomProperties,
+  variant = 'default',
 }: AddDomainFormProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -343,11 +347,19 @@ const AddDomainForm = ({
     DomainFormSelectItem[]
   >([]);
   const [descriptionEditorKey, setDescriptionEditorKey] = useState(0);
-  const [intakeForm, setIntakeForm] = useState<IntakeForm | null>(null);
-  const [customProperties, setCustomProperties] = useState<CustomProperty[]>(
-    []
+  const [loadedPlaybook, setLoadedPlaybook] =
+    useState<OnboardingPlaybook | null>(null);
+  const onboardingWatchedValues = useWatch({ control: form.control });
+  const onboardingValues = useMemo(
+    () => transformDomainFormData(form.getValues(), type, parentDomain),
+    [form, type, parentDomain, onboardingWatchedValues]
   );
+  const [fetchedCustomProperties, setFetchedCustomProperties] = useState<
+    CustomProperty[]
+  >([]);
   const [customPropertiesLoaded, setCustomPropertiesLoaded] = useState(false);
+  const intakeForm = playbook ?? loadedPlaybook;
+  const customProperties = providedCustomProperties ?? fetchedCustomProperties;
 
   const targetEntityType = useMemo<TargetEntityType | null>(() => {
     if (type === DomainFormType.DATA_PRODUCT) {
@@ -362,22 +374,22 @@ const AddDomainForm = ({
 
   useEffect(() => {
     let cancelled = false;
-    if (!targetEntityType) {
-      setIntakeForm(null);
+    if (!targetEntityType || playbook !== undefined) {
+      setLoadedPlaybook(null);
 
       return;
     }
-    getIntakeFormByEntityType(targetEntityType)
+    getOnboardingPlaybookForEntityType(targetEntityType)
       .then((result) => {
         if (!cancelled) {
-          setIntakeForm(result);
+          setLoadedPlaybook(result ?? null);
         }
       })
       .catch((err) => {
         if (!cancelled) {
-          setIntakeForm(null);
-          // getIntakeFormByEntityType returns null for 404 (no form configured);
-          // anything reaching this catch is an unexpected failure (auth, 5xx,
+          setLoadedPlaybook(null);
+          // getOnboardingPlaybookForEntityType returns undefined for 404 (no playbook
+          // configured); anything reaching this catch is an unexpected failure (auth, 5xx,
           // network). Surface it so admins aren't silently shown an unrestricted
           // form when server-side validation will still reject their submission.
           showErrorToast(err);
@@ -387,12 +399,12 @@ const AddDomainForm = ({
     return () => {
       cancelled = true;
     };
-  }, [targetEntityType]);
+  }, [targetEntityType, playbook]);
 
   useEffect(() => {
     let cancelled = false;
-    if (!targetEntityType) {
-      setCustomProperties([]);
+    if (!targetEntityType || providedCustomProperties) {
+      setFetchedCustomProperties([]);
       setCustomPropertiesLoaded(true);
 
       return;
@@ -407,13 +419,13 @@ const AddDomainForm = ({
     getCustomPropertiesByEntityType(entityTypeApiName)
       .then((props) => {
         if (!cancelled) {
-          setCustomProperties(props ?? []);
+          setFetchedCustomProperties(props ?? []);
           setCustomPropertiesLoaded(true);
         }
       })
       .catch((err) => {
         if (!cancelled) {
-          setCustomProperties([]);
+          setFetchedCustomProperties([]);
           setCustomPropertiesLoaded(true);
           // Silently empty custom properties would let the designer render
           // without required extension fields — surface the failure instead.
@@ -424,7 +436,7 @@ const AddDomainForm = ({
     return () => {
       cancelled = true;
     };
-  }, [targetEntityType]);
+  }, [targetEntityType, providedCustomProperties]);
 
   useEffect(() => {
     form.setValue(
@@ -446,7 +458,7 @@ const AddDomainForm = ({
   // message needs the per-field metadata from the intake form.
   const nativeRequiredFieldsByPath = useMemo(() => {
     const map = new Map<string, IntakeFormField>();
-    getIntakeFormFields(intakeForm).forEach((field) => {
+    getCreationIntakeFields(intakeForm, onboardingValues).forEach((field) => {
       const isCustom =
         field.fieldKind === FieldKind.CustomProperty ||
         field.fieldPath.startsWith('extension.');
@@ -456,15 +468,15 @@ const AddDomainForm = ({
     });
 
     return map;
-  }, [intakeForm]);
+  }, [intakeForm, onboardingValues]);
 
   const extensionFormFields = useMemo<IntakeFormField[]>(() => {
-    return getIntakeFormFields(intakeForm).filter(
+    return getCreationIntakeFields(intakeForm, onboardingValues).filter(
       (field) =>
         field.fieldKind === FieldKind.CustomProperty ||
         field.fieldPath.startsWith('extension.')
     );
-  }, [intakeForm]);
+  }, [intakeForm, onboardingValues]);
 
   const dataProductTypeOptions = useMemo<DomainFormSelectItem[]>(
     () =>
@@ -976,7 +988,18 @@ const AddDomainForm = ({
     type: FieldTypes.USER_TEAM_SELECT,
   });
 
-  const baseReviewersField = domainClassBase.getReviewersField();
+  const baseReviewersField: FieldProp | null =
+    domainClassBase.getReviewersField() ??
+    (getCreationIntakeFields(intakeForm, onboardingValues).some(
+      (field) => field.fieldPath === 'reviewers'
+    )
+      ? {
+          id: 'root/reviewers',
+          name: 'reviewers',
+          label: t('label.reviewer-plural'),
+          type: FieldTypes.USER_TEAM_SELECT_INPUT,
+        }
+      : null);
   const reviewersField: FieldProp | null = baseReviewersField
     ? applyIntakeFormRequired({
         ...baseReviewersField,
@@ -1072,6 +1095,50 @@ const AddDomainForm = ({
     [onSubmit]
   );
 
+  const descriptionNode = (
+    <FormField
+      control={form.control}
+      name="description"
+      rules={descriptionRequiredRule}>
+      {({ field, fieldState }) => (
+        <Box
+          aria-invalid={fieldState.invalid || undefined}
+          className="tw:gap-1.5"
+          direction="col">
+          <FormItemLabel required label={t('label.description')} />
+          <RichTextEditor
+            className="add-domain-form-description new-form-style"
+            initialValue=""
+            key={descriptionEditorKey}
+            onTextChange={field.onChange}
+          />
+          {fieldState.error?.message && (
+            <HintText isInvalid>{fieldState.error.message}</HintText>
+          )}
+        </Box>
+      )}
+    </FormField>
+  );
+
+  const glossaryTermsNode = (
+    <FormField
+      control={form.control}
+      name="glossaryTerms"
+      rules={glossaryTermsRequiredRule}>
+      {({ field }) => (
+        <GlossaryTermPicker
+          data-testid="glossary-terms"
+          label={t('label.glossary-term-plural')}
+          placeholder={t('label.select-field', {
+            field: t('label.glossary-term-plural'),
+          })}
+          value={field.value}
+          onChange={field.onChange}
+        />
+      )}
+    </FormField>
+  );
+
   const renderConditionalSections = () => (
     <>
       {isDomain && (
@@ -1104,73 +1171,88 @@ const AddDomainForm = ({
     </>
   );
 
+  // Every field the playbook layout may need, handed over unbranched: which of them a given
+  // asset type actually shows is the layout's decision, not this component's.
+  const playbookFields: Record<string, FieldProp | null> = {
+    color: colorField,
+    coverImage: coverImageField,
+    dataProductType: dataProductTypeField,
+    displayName: displayNameField,
+    domainType: domainTypeField,
+    domains: domainField,
+    experts: expertsField,
+    icon: iconField,
+    name: nameField,
+    owners: ownersField,
+    portfolioPriority: portfolioPriorityField,
+    reviewers: reviewersField,
+    tags: tagsField,
+    visibility: visibilityField,
+  };
+
+  // One body per variant, picked by key rather than by a branch: the playbook layout reorders the
+  // same fields around the Creation gate, it does not add or remove any.
+  const bodies: Record<string, ReactNode> = {
+    default: (
+      <>
+        <>
+          <OnboardingCreationChecklist
+            form={intakeForm}
+            values={onboardingValues}
+          />
+          {coverImageField && <div>{getField(coverImageField)}</div>}
+
+          <Box align="start" gap={4}>
+            <div className="tw:min-w-[40px] tw:basis-[10%] tw:flex-[0_0_10%]">
+              {getField(iconField)}
+            </div>
+            <div className="tw:min-w-0 tw:basis-[90%] tw:flex-[0_0_90%]">
+              {getField(colorField)}
+            </div>
+          </Box>
+
+          <Box gap={4}>
+            <div className="tw:min-w-0 tw:flex-1 tw:basis-0">
+              {getField(nameField)}
+            </div>
+            <div className="tw:min-w-0 tw:flex-1 tw:basis-0">
+              {getField(displayNameField)}
+            </div>
+          </Box>
+
+          {descriptionNode}
+          <div>{getField(tagsField)}</div>
+          {glossaryTermsNode}
+
+          {renderConditionalSections()}
+        </>
+      </>
+    ),
+    playbook: (
+      <AddDomainFormPlaybookLayout
+        control={form.control}
+        customProperties={customProperties}
+        customPropertiesLoaded={customPropertiesLoaded}
+        descriptionNode={descriptionNode}
+        entityType={targetEntityType}
+        extensionFields={extensionFormFields}
+        fields={playbookFields}
+        formType={type}
+        glossaryTermsNode={glossaryTermsNode}
+        hasParentDomain={Boolean(parentDomain)}
+        playbook={intakeForm}
+        values={onboardingValues}
+      />
+    ),
+  };
+
   return (
     <HookForm
       className="tw:flex tw:flex-col tw:gap-6 tw:**:data-[testid=form-item-label]:font-medium"
       data-testid="add-domain-form"
       form={form}
       onSubmit={form.handleSubmit(handleSubmit)}>
-      {coverImageField && <div>{getField(coverImageField)}</div>}
-
-      <Box align="start" gap={4}>
-        <div className="tw:min-w-[40px] tw:basis-[10%] tw:flex-[0_0_10%]">
-          {getField(iconField)}
-        </div>
-        <div className="tw:min-w-0 tw:basis-[90%] tw:flex-[0_0_90%]">
-          {getField(colorField)}
-        </div>
-      </Box>
-
-      <Box gap={4}>
-        <div className="tw:min-w-0 tw:flex-1 tw:basis-0">
-          {getField(nameField)}
-        </div>
-        <div className="tw:min-w-0 tw:flex-1 tw:basis-0">
-          {getField(displayNameField)}
-        </div>
-      </Box>
-
-      <FormField
-        control={form.control}
-        name="description"
-        rules={descriptionRequiredRule}>
-        {({ field, fieldState }) => (
-          <Box
-            aria-invalid={fieldState.invalid || undefined}
-            className="tw:gap-1.5"
-            direction="col">
-            <FormItemLabel required label={t('label.description')} />
-            <RichTextEditor
-              className="add-domain-form-description new-form-style"
-              initialValue=""
-              key={descriptionEditorKey}
-              onTextChange={field.onChange}
-            />
-            {fieldState.error?.message && (
-              <HintText isInvalid>{fieldState.error.message}</HintText>
-            )}
-          </Box>
-        )}
-      </FormField>
-      <div>{getField(tagsField)}</div>
-      <FormField
-        control={form.control}
-        name="glossaryTerms"
-        rules={glossaryTermsRequiredRule}>
-        {({ field }) => (
-          <GlossaryTermPicker
-            data-testid="glossary-terms"
-            label={t('label.glossary-term-plural')}
-            placeholder={t('label.select-field', {
-              field: t('label.glossary-term-plural'),
-            })}
-            value={field.value}
-            onChange={field.onChange}
-          />
-        )}
-      </FormField>
-
-      {renderConditionalSections()}
+      {bodies[variant]}
 
       {!isFormInDialog && (
         <Box data-testid="cta-buttons" gap={4} justify="end">

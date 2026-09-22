@@ -14,14 +14,20 @@
 import {
   Avatar,
   Box,
+  Button,
   Card,
   EmptyPlaceholder,
   Input,
   PaginationCardDefault,
+  Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Globe01, Package, Plus } from '@untitledui/icons';
+import {
+  Globe01,
+  NoSearch,
+  Package,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import {
@@ -33,14 +39,23 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { NO_DATA, ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
+import { TargetEntityType } from '../../generated/governance/intakeForm';
+import { useOnboardingRows } from '../../hooks/governance/onboarding/useOnboardingRows';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import {
+  firstOpenBlocking,
+  openBlockingMine,
+} from '../../utils/governance/onboarding/OnboardingJourney.utils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
+import { getDataProductDetailsPath } from '../../utils/RouterUtils';
 import { renderBreakableTooltip } from '../../utils/TooltipUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import {
@@ -64,10 +79,49 @@ import EntityListingTable from '../common/EntityListingTable/EntityListingTable.
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
+import {
+  OnboardingAgeCell,
+  OnboardingNextStepCell,
+  OnboardingStageBadge,
+} from '../governance/onboarding/OnboardingRowCells';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import { DataProductListPageProps } from './DataProductListPage.interface';
-import { useDataProductCreateDrawer } from './hooks/useDataProductCreateDrawer';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
+
+/** Where Data Management watches every product still moving through the playbook. */
+const ONBOARDING_BOARD_PATH = '/onboarding?entityType=dataProduct';
+
+/** The design's two header actions: watch the queue, or add to it through the Creation gate. */
+const DataProductHeaderActions = ({
+  canCreate,
+  onCreate,
+}: {
+  canCreate: boolean;
+  onCreate: () => void;
+}) => {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+
+  return (
+    <Box direction="row" gap={2}>
+      <Button
+        color="secondary"
+        data-testid="onboarding-board"
+        onClick={() => navigate(ONBOARDING_BOARD_PATH)}>
+        {t('label.onboarding-board')}
+      </Button>
+      {canCreate && (
+        <Button
+          color="primary"
+          data-testid="add-data-product"
+          iconLeading={Plus}
+          onClick={onCreate}>
+          {t('label.new-data-product')}
+        </Button>
+      )}
+    </Box>
+  );
+};
 
 const renderDataProductNameCell = (
   entity: DataProduct,
@@ -111,6 +165,31 @@ const renderDataProductNameCell = (
     </Box>
   );
 };
+
+/**
+ * A playbook replaces the list's editorial columns with where each product is in its lifecycle: the
+ * detail page still carries owners, terms, tags and experts.
+ */
+const columnsFor = (
+  hasPlaybook: boolean,
+  t: (key: string) => string
+): ColumnDef[] =>
+  hasPlaybook
+    ? [
+        { id: 'name', label: t('label.name') },
+        { id: 'domains', label: t('label.domain') },
+        { id: 'stage', label: t('label.stage') },
+        { id: 'nextStep', label: t('label.next-step') },
+        { id: 'age', label: t('label.age') },
+      ]
+    : [
+        { id: 'name', label: t('label.data-product') },
+        { id: 'owners', label: t('label.owner') },
+        { id: 'glossaryTerms', label: t('label.glossary-term-plural') },
+        { id: 'domains', label: t('label.domain-plural') },
+        { id: 'tags', label: t('label.tag-plural') },
+        { id: 'experts', label: t('label.expert-plural') },
+      ];
 
 const renderDataProductDomainCell = (entity: DataProduct): ReactNode => {
   const domains = entity.domains;
@@ -159,12 +238,38 @@ const DataProductListPage = ({
     onFilterChange: dataProductListing.handleFilterChange,
   });
 
-  const refreshDataProducts = useCallback(() => {
-    dataProductListing.refetch();
-  }, [dataProductListing]);
+  const currentUser = useApplicationStore((state) => state.currentUser);
 
-  const { formDrawer, openDrawer } =
-    useDataProductCreateDrawer(refreshDataProducts);
+  const pageIds = useMemo(
+    () => dataProductListing.entities.map((entity) => entity.id),
+    [dataProductListing.entities]
+  );
+  const onboarding = useOnboardingRows(TargetEntityType.DataProduct, pageIds);
+  /** Without a playbook there is no stage, next step or age to show, so the list stays as it was. */
+  const hasPlaybook = Boolean(onboarding.playbook);
+  /*
+   * react-aria caches a table row per entity object, so cells rendered before onboarding arrived
+   * are never re-rendered for assets the search result did not replace. Keying the table on the
+   * hydrated ids rebuilds the collection once, the moment there is something new to show.
+   */
+  const onboardingKey = useMemo(
+    () => Object.keys(onboarding.rows).sort().join(','),
+    [onboarding.rows]
+  );
+
+  const viewer = useMemo(
+    () =>
+      currentUser
+        ? { id: currentUser.id, teams: currentUser.teams }
+        : undefined,
+    [currentUser]
+  );
+
+  const navigateTo = useNavigate();
+  const openCreatePage = useCallback(
+    () => navigateTo(ROUTES.ADD_DATA_PRODUCT),
+    [navigateTo]
+  );
 
   const breadcrumbItems = useMemo(
     () => [
@@ -199,12 +304,22 @@ const DataProductListPage = ({
     <Input className="tw:w-72" {...searchInputProps} />
   ) : undefined;
 
+  const headerActions = hasPlaybook ? (
+    <DataProductHeaderActions
+      canCreate={Boolean(permissions.dataProduct?.Create)}
+      onCreate={openCreatePage}
+    />
+  ) : undefined;
+
   const { pageHeader } = usePageHeader({
     titleKey: 'label.data-product-plural',
-    descriptionMessageKey: 'message.data-product-description',
+    descriptionMessageKey: hasPlaybook
+      ? 'message.every-product-follows-the-playbook'
+      : 'message.data-product-description',
     createPermission: permissions.dataProduct?.Create || false,
-    addButtonLabelKey: 'label.add-data-product',
-    onAddClick: openDrawer,
+    addButtonLabelKey: 'label.new-data-product',
+    actions: headerActions,
+    onAddClick: openCreatePage,
     learningPageId: LEARNING_PAGE_IDS.DATA_PRODUCT,
     variant: isAiMode ? 'search' : undefined,
     search: headerSearch,
@@ -221,15 +336,44 @@ const DataProductListPage = ({
   const { renderDataProductCard } = useDomainCardTemplates();
 
   const dataProductColumns: ColumnDef[] = useMemo(
-    () => [
-      { id: 'name', label: t('label.data-product') },
-      { id: 'owners', label: t('label.owner') },
-      { id: 'glossaryTerms', label: t('label.glossary-term-plural') },
-      { id: 'domains', label: t('label.domain-plural') },
-      { id: 'tags', label: t('label.tag-plural') },
-      { id: 'experts', label: t('label.expert-plural') },
-    ],
-    [t]
+    () => columnsFor(hasPlaybook, t),
+    [hasPlaybook, t]
+  );
+
+  /** The three playbook columns, all reading the one board response the page already fetched. */
+  const renderOnboardingCell = useCallback(
+    (entity: DataProduct, columnId: string): ReactNode => {
+      const progress = onboarding.rows[entity.id];
+      if (!progress) {
+        return onboarding.isLoading ? (
+          <Skeleton width={80} />
+        ) : (
+          <Typography size="text-sm">{NO_DATA}</Typography>
+        );
+      }
+      if (columnId === 'stage') {
+        return (
+          <OnboardingStageBadge
+            stage={progress.stage}
+            stages={onboarding.playbook?.onboarding?.stages}
+          />
+        );
+      }
+      if (columnId === 'age') {
+        return <OnboardingAgeCell timestamp={progress.createdAt} />;
+      }
+
+      return (
+        <OnboardingNextStepCell
+          mine={openBlockingMine(progress.steps, viewer)[0]}
+          to={getDataProductDetailsPath(
+            entity.fullyQualifiedName ?? entity.name
+          )}
+          waiting={firstOpenBlocking(progress.steps)}
+        />
+      );
+    },
+    [onboarding.rows, onboarding.isLoading, onboarding.playbook, viewer]
   );
 
   const renderDataProductCell = useCallback(
@@ -254,11 +398,15 @@ const DataProductListPage = ({
           return renderDomainExpertsCell(entity, {
             showDashPlaceholder: true,
           });
+        case 'stage':
+        case 'nextStep':
+        case 'age':
+          return renderOnboardingCell(entity, columnId);
         default:
           return null;
       }
     },
-    [dataProductListing.actionHandlers.onEntityClick]
+    [dataProductListing.actionHandlers.onEntityClick, renderOnboardingCell]
   );
 
   const selectedDataProductEntities = useMemo(
@@ -285,7 +433,15 @@ const DataProductListPage = ({
   );
 
   const content = useMemo(() => {
-    if (!dataProductListing.loading && isEmpty(dataProductListing.entities)) {
+    /*
+     * The table is not rendered until it is known which set of columns it has. Swapping the columns
+     * under a mounted react-aria table throws - its row collection is cached per entity and keeps
+     * the cell count it was first built with.
+     */
+    const isHydrating =
+      dataProductListing.loading || onboarding.isPlaybookLoading;
+
+    if (!isHydrating && isEmpty(dataProductListing.entities)) {
       if (isSearchOrFilterActive()) {
         return (
           <div className="tw:relative tw:min-h-70 tw:h-full">
@@ -321,7 +477,7 @@ const DataProductListPage = ({
                       label: t('label.add-entity', {
                         entity: t('label.data-product'),
                       }),
-                      onPress: openDrawer,
+                      onPress: openCreatePage,
                     },
                   ]
                 : undefined
@@ -343,7 +499,8 @@ const DataProductListPage = ({
             columns={dataProductColumns}
             containerClassName="tw:min-h-0 tw:flex-1 tw:overflow-y-auto"
             entities={dataProductListing.entities}
-            loading={dataProductListing.loading}
+            key={onboardingKey}
+            loading={isHydrating}
             renderCell={renderDataProductCell}
             selectedEntities={dataProductListing.selectedEntities}
             onEntityClick={dataProductListing.actionHandlers.onEntityClick}
@@ -376,6 +533,8 @@ const DataProductListPage = ({
       </>
     );
   }, [
+    onboarding.isPlaybookLoading,
+    onboardingKey,
     dataProductListing.loading,
     dataProductListing.entities,
     dataProductListing.selectedEntities,
@@ -388,7 +547,7 @@ const DataProductListPage = ({
     view,
     renderDataProductCell,
     renderDataProductCard,
-    openDrawer,
+    openCreatePage,
     t,
     permissions.dataProduct?.Create,
   ]);
@@ -400,7 +559,7 @@ const DataProductListPage = ({
       )}
       {renderPageHeader
         ? renderPageHeader({
-            onAddClick: openDrawer,
+            onAddClick: openCreatePage,
             createPermission: permissions.dataProduct?.Create || false,
             count: dataProductListing.totalEntities,
             breadcrumb: headerBreadcrumb,
@@ -438,7 +597,6 @@ const DataProductListPage = ({
         {content}
       </Card>
       {deleteModal}
-      {formDrawer}
     </>
   );
 };

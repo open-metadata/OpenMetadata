@@ -23,6 +23,10 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.governance.IntakeForm;
 import org.openmetadata.schema.entity.governance.IntakeFormField;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.onboarding.OnboardingEvaluator;
+import org.openmetadata.service.governance.onboarding.OnboardingService;
+import org.openmetadata.service.governance.onboarding.OnboardingStore;
 import org.openmetadata.service.jdbi3.IntakeFormRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,13 +54,29 @@ public final class IntakeFormValidator {
   private IntakeFormValidator() {}
 
   /**
+   * True when an onboarding playbook governs this asset type, in which case its Creation gate is the
+   * enforcement and the intake form is not consulted a second time.
+   *
+   * <p>The repository registry is not initialized in unit tests or during early bootstrap. Treating
+   * that as "no playbook" keeps intake-form enforcement intact rather than failing the write.
+   */
+  private static boolean playbookGoverns(String entityType) {
+    try {
+      return OnboardingService.configured(entityType) != null;
+    } catch (EntityNotFoundException e) {
+      return false;
+    }
+  }
+
+  /**
    * Validate the entity against org-configured intake-form required fields, if any.
    *
    * @throws IllegalArgumentException if any intake-form required field is unset.
    */
   public static void validate(EntityInterface entity, String entityType) {
     IntakeForm form = loadIntakeForm(entityType);
-    if (form == null) return;
+    if (form == null || playbookGoverns(entityType) || OnboardingStore.find(entity.getId()) != null)
+      return;
 
     List<String> intakeMissing = checkIntakeFormRequiredFields(entity, form);
     if (!intakeMissing.isEmpty()) {
@@ -109,7 +129,7 @@ public final class IntakeFormValidator {
   private static boolean isNativeFieldSet(EntityInterface entity, String fieldName) {
     try {
       JsonNode node = MAPPER.valueToTree(entity);
-      return hasMeaningfulValue(node.get(fieldName));
+      return hasMeaningfulValue(OnboardingEvaluator.valueAt(node, fieldName));
     } catch (Exception e) {
       LOG.debug("Could not resolve native field '{}' on entity: {}", fieldName, e.getMessage());
       return false;

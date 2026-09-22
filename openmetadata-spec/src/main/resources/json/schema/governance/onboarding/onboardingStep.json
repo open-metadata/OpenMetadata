@@ -1,0 +1,151 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/onboarding/onboardingStep.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OnboardingStep",
+  "description": "A single check inside a gate. A field is only ever asked for once per playbook; the gate it sits in decides when it is due and who is asked.",
+  "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingStep",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-zA-Z0-9_-]+$"
+    },
+    "title": {
+      "type": "string",
+      "description": "Step display name."
+    },
+    "type": {
+      "description": "What kind of check this is.",
+      "$ref": "#/definitions/checkType"
+    },
+    "requirement": {
+      "description": "Whether the check holds the gate. Only blocking checks stop a transition; recommended and optional checks stay open as tasks.",
+      "$ref": "#/definitions/requirement",
+      "default": "blocking"
+    },
+    "assistance": {
+      "description": "Help offered to the person completing the check.",
+      "$ref": "#/definitions/assistance",
+      "default": "none"
+    },
+    "fieldPath": {
+      "type": "string",
+      "description": "Field this check captures, e.g. `description` or `extension.accessRequestInfo`."
+    },
+    "workflow": {
+      "description": "For `approval` checks, the workflow that records the decision.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "assignment": {
+      "$ref": "./onboardingAssignment.json"
+    },
+    "conditions": {
+      "description": "Conditions are how one playbook covers a whole asset type, rather than competing playbooks.",
+      "type": "array",
+      "items": {
+        "$ref": "./onboardingCondition.json"
+      },
+      "default": []
+    },
+    "guidance": {
+      "type": "string",
+      "description": "Instructions for the person completing this step."
+    },
+    "rules": {
+      "$ref": "./onboardingRules.json"
+    }
+  },
+  "definitions": {
+    "checkType": {
+      "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingCheckType",
+      "type": "string",
+      "enum": [
+        "attribute",
+        "relationship",
+        "responsibility",
+        "assessment",
+        "approval"
+      ],
+      "javaEnums": [
+        {
+          "name": "ATTRIBUTE",
+          "description": "A field on the asset must be filled and pass a rule."
+        },
+        {
+          "name": "RELATIONSHIP",
+          "description": "The asset must be linked to another asset - term, domain, contract."
+        },
+        {
+          "name": "RESPONSIBILITY",
+          "description": "A role must be filled by a named person or group."
+        },
+        {
+          "name": "ASSESSMENT",
+          "description": "An automated check or questionnaire must pass."
+        },
+        {
+          "name": "APPROVAL",
+          "description": "A named role must sign off, using an existing workflow."
+        }
+      ],
+      "default": "attribute"
+    },
+    "requirement": {
+      "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingRequirement",
+      "type": "string",
+      "enum": [
+        "blocking",
+        "recommended",
+        "optional"
+      ],
+      "javaEnums": [
+        {
+          "name": "BLOCKING"
+        },
+        {
+          "name": "RECOMMENDED"
+        },
+        {
+          "name": "OPTIONAL"
+        }
+      ],
+      "default": "blocking"
+    },
+    "assistance": {
+      "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingAssistance",
+      "type": "string",
+      "enum": [
+        "ai",
+        "autofill",
+        "example",
+        "none"
+      ],
+      "javaEnums": [
+        {
+          "name": "AI",
+          "description": "Propose a value from lineage, usage and similar assets."
+        },
+        {
+          "name": "AUTOFILL",
+          "description": "Prefill from other assets in the same domain."
+        },
+        {
+          "name": "EXAMPLE",
+          "description": "Show a good example; the user still writes it."
+        },
+        {
+          "name": "NONE",
+          "description": "Plain form field."
+        }
+      ],
+      "default": "none"
+    }
+  },
+  "required": [
+    "id",
+    "type"
+  ],
+  "additionalProperties": false
+}

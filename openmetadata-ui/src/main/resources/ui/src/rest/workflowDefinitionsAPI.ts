@@ -23,6 +23,7 @@ const WORKFLOW_DEFINITIONS_BASE_URL = '/governance/workflowDefinitions';
 const WORKFLOW_INSTANCES_BASE_URL = '/governance/workflowInstances';
 
 export interface WorkflowDefinitionsParams {
+  fields?: string;
   limit?: number;
   offset?: number;
   before?: string;

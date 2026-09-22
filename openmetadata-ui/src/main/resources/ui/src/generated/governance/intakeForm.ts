@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 /**
- * An IntakeForm declares the fields shown when creating or updating a governance entity
- * (Data Product, Domain, Glossary Term) and which of those fields are required. Required
- * fields are enforced identically at the API and UI layers so both contracts match.
+ * One intake and onboarding configuration per governance entity type. Field requirements
+ * are shared by creation forms and lifecycle gates.
  */
 export interface IntakeForm {
     /**
@@ -166,6 +165,7 @@ export enum TargetEntityType {
     DataProduct = "dataProduct",
     Domain = "domain",
     GlossaryTerm = "glossaryTerm",
+    Metric = "metric",
 }
 
 /**
@@ -190,6 +190,10 @@ export interface IntakeFormField {
      * 'dataProductType'). Custom property paths look like 'extension.<propertyName>'.
      */
     fieldPath: string;
+    /**
+     * An optional field recommended for onboarding.
+     */
+    recommended?: boolean;
     /**
      * Whether this field must have a value before the entity can be created or updated.
      */

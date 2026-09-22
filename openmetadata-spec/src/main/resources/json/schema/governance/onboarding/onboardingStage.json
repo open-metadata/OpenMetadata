@@ -1,0 +1,10 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/onboarding/onboardingStage.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OnboardingStage",
+  "description": "Key of a stage declared by the playbook. Stages are playbook-defined rather than a fixed list, so an asset type can add its own (for example `published`) without a schema change.",
+  "type": "string",
+  "minLength": 1,
+  "maxLength": 64,
+  "pattern": "^[a-zA-Z0-9_-]+$"
+}

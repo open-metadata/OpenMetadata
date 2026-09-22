@@ -1,0 +1,19 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/onboarding/onboardingRules.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OnboardingRules",
+  "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingRules",
+  "type": "object",
+  "properties": {
+    "minLength": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "minItems": {
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  "required": [],
+  "additionalProperties": false
+}

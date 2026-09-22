@@ -277,8 +277,17 @@ const TaskFormSettingsPage = withPageSuspenseFallback(
   )
 );
 
-const IntakeFormsPage = withPageSuspenseFallback(
-  React.lazy(() => import('../../pages/IntakeForms/IntakeFormsPage'))
+const OnboardingPlaybooksPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/governance/playbooks/OnboardingPlaybooksPage')
+  )
+);
+
+const OnboardingPlaybookEditorPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../pages/governance/playbooks/OnboardingPlaybookEditorPage')
+  )
 );
 
 const ImportTeamsPage = withPageSuspenseFallback(
@@ -1021,13 +1030,35 @@ const SettingsRouter = () => {
       <Route
         element={
           <AdminProtectedRoute>
-            <IntakeFormsPage />
+            <OnboardingPlaybooksPage />
           </AdminProtectedRoute>
         }
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.GOVERNANCE,
-          GlobalSettingOptions.INTAKE_FORMS
+          GlobalSettingOptions.ONBOARDING_PLAYBOOKS
         )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <OnboardingPlaybookEditorPage />
+          </AdminProtectedRoute>
+        }
+        path={`${getSettingPathRelative(
+          GlobalSettingsMenuCategory.GOVERNANCE,
+          GlobalSettingOptions.ONBOARDING_PLAYBOOKS
+        )}/new/:entityType`}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <OnboardingPlaybookEditorPage />
+          </AdminProtectedRoute>
+        }
+        path={`${getSettingPathRelative(
+          GlobalSettingsMenuCategory.GOVERNANCE,
+          GlobalSettingOptions.ONBOARDING_PLAYBOOKS
+        )}/:playbookId`}
       />
       <Route
         element={

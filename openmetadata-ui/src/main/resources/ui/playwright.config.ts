@@ -302,6 +302,7 @@ export default defineConfig({
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
         '**/IntakeForm.spec.ts',
+        '**/Onboarding*.spec.ts',
         '**/AdvancedSearch.spec.ts',
         ...dedicatedStateTestIgnore,
         '**/DomainIsolation/**',
@@ -532,7 +533,8 @@ export default defineConfig({
     },
     {
       name: 'IntakeForm',
-      testMatch: '**/IntakeForm.spec.ts',
+      testMatch: ['**/IntakeForm.spec.ts', '**/Onboarding*.spec.ts'],
+      workers: 1,
       use: { ...devices['Desktop Chrome'] },
       dependencies: isPlannedShard ? authDependencies : ['setup', 'chromium'],
       grep: shardGrep,

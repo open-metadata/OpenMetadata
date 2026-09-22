@@ -394,6 +394,9 @@ public interface EntityTimeSeriesDAO {
     return getById(getTimeSeriesTableName(), id.toString());
   }
 
+  @SqlQuery("SELECT json FROM <table> WHERE id IN (<ids>)")
+  List<String> getByIds(@Define("table") String table, @BindList("ids") List<String> ids);
+
   @SqlQuery("SELECT EXISTS (SELECT 1 FROM <table> WHERE id = :id)")
   boolean exists(@Define("table") String table, @Bind("id") String id);
 

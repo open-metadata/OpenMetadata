@@ -1,0 +1,44 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/onboarding/onboardingStageDefinition.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OnboardingStageDefinition",
+  "description": "A stage in a playbook's lifecycle. The playbook declares the order; `entityStatus` is the status the handoff workflow is expected to set when the asset arrives here, so the playbook and the workflow agree on one vocabulary.",
+  "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingStageDefinition",
+  "type": "object",
+  "properties": {
+    "key": {
+      "$ref": "./onboardingStage.json"
+    },
+    "displayName": {
+      "type": "string",
+      "description": "Label shown on the lifecycle rail, e.g. `In Review`."
+    },
+    "description": {
+      "type": "string"
+    },
+    "order": {
+      "type": "integer",
+      "description": "Position in the lifecycle, ascending.",
+      "minimum": 0
+    },
+    "entityStatus": {
+      "description": "Status the asset carries while in this stage. Set by the handoff workflow, never by onboarding.",
+      "$ref": "../../type/status.json"
+    },
+    "entryStage": {
+      "type": "boolean",
+      "description": "The stage an asset is created into. Exactly one stage per playbook is the entry stage.",
+      "default": false
+    },
+    "terminal": {
+      "type": "boolean",
+      "description": "No further gates after this stage.",
+      "default": false
+    }
+  },
+  "required": [
+    "key",
+    "order"
+  ],
+  "additionalProperties": false
+}

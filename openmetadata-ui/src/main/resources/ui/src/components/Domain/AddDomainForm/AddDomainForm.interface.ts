@@ -19,6 +19,7 @@ import {
 } from '../../../generated/api/domains/createDataProduct';
 import { DomainType } from '../../../generated/api/domains/createDomain';
 import { Domain } from '../../../generated/entity/domains/domain';
+import { OnboardingPlaybook } from '../../../generated/entity/governance/onboardingPlaybook';
 import {
   CustomProperty,
   EntityReference,
@@ -68,4 +69,13 @@ export interface AddDomainFormProps {
   loading: boolean;
   type: DomainFormType;
   parentDomain?: Domain;
+  /** Already-loaded playbook; supplied by a host that has fetched it, fetched here otherwise. */
+  playbook?: OnboardingPlaybook | null;
+  /** Already-loaded custom properties, for the same reason. */
+  customProperties?: CustomProperty[];
+  /**
+   * `playbook` lays the form out as the Creation gate - one block per check, everything else folded
+   * into Optional details - for the dedicated create page. `default` is the flat form.
+   */
+  variant?: 'default' | 'playbook';
 }
