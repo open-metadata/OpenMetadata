@@ -271,6 +271,47 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
     assertEquals("noOwner() || isOwner", updated.getRules().get(0).getCondition());
   }
 
+  /**
+   * SpEL short-circuits {@code &&} and {@code ||}, and every function returns false while a policy
+   * is being validated, so a reference on the right-hand side used to go unchecked. The rule then
+   * saved clean and never fired, which on a deny rule looks enforced but is not.
+   */
+  @Test
+  void test_referencesBehindAShortCircuitAreValidated(TestNamespace ns) {
+    assertThrows(
+        Exception.class,
+        () -> createEntity(conditionPolicy(ns, "badTag", "matchAnyTag('NoSuch.Tag')")),
+        "a condition naming a tag that does not exist must be rejected");
+
+    assertThrows(
+        Exception.class,
+        () ->
+            createEntity(
+                conditionPolicy(ns, "guardedBadTag", "noOwner() && matchAnyTag('NoSuch.Tag')")),
+        "the tag must still be checked when a guard short-circuits it away");
+
+    assertThrows(
+        Exception.class,
+        () ->
+            createEntity(
+                conditionPolicy(ns, "guardedBadTeam", "isOwner() || inAnyTeam('no-such-team')")),
+        "|| short-circuits the same way as &&");
+  }
+
+  private CreatePolicy conditionPolicy(TestNamespace ns, String name, String condition) {
+    return new CreatePolicy()
+        .withName(ns.prefix(name + "Policy"))
+        .withRules(
+            List.of(
+                new Rule()
+                    .withName(name + "Rule")
+                    .withResources(List.of(ALL_RESOURCES))
+                    .withOperations(List.of(MetadataOperation.VIEW_ALL))
+                    .withEffect(Effect.DENY)
+                    .withCondition(condition)))
+        .withDescription("Policy whose condition references a missing entity");
+  }
+
   @Test
   void test_createPolicyWithDenyEffect(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
