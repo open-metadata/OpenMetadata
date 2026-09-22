@@ -380,5 +380,6 @@ def test_create_rejects_a_non_databend_connection():
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
+    metadata = MagicMock()
     with pytest.raises(InvalidSourceException, match="Expected DatabendConnection"):
-        DatabendSource.create(config, MagicMock())
+        DatabendSource.create(config, metadata)

@@ -22,6 +22,7 @@ from metadata.generated.schema.entity.services.connections.database.databendConn
     DatabendConnection as DatabendConnectionConfig,
 )
 from metadata.ingestion.connections.connection import BaseConnection
+from metadata.ingestion.source.database.databend import connection as databend_connection
 from metadata.ingestion.source.database.databend.connection import (
     DatabendConnection,
     check_connection_access,
@@ -186,20 +187,16 @@ def test_connection_arguments_are_forwarded_to_engine_builder():
     connection.close()
 
 
-def test_connection_access_explains_http_tls_mismatch():
+def test_connection_access_explains_http_tls_mismatch(monkeypatch):
     driver_error = RuntimeError(
         "APIError: [request_kind=login retry_times=2]: reqwest::Error: error sending request, "
         "source_chain=client error (Connect) -> received corrupt message of type InvalidContentType [v0.33.7]"
     )
 
-    with (
-        patch(
-            "metadata.ingestion.source.database.databend.connection.test_connection_engine_step",
-            side_effect=driver_error,
-        ),
-        pytest.raises(RuntimeError, match="sslmode=disable") as exc_info,
-    ):
-        check_connection_access(MagicMock())
+    engine = MagicMock()
+    monkeypatch.setattr(databend_connection, "test_connection_engine_step", MagicMock(side_effect=driver_error))
+    with pytest.raises(RuntimeError, match="sslmode=disable") as exc_info:
+        check_connection_access(engine)
 
     assert "HTTP/TLS mode" in str(exc_info.value)
     assert "sslmode=enable" in str(exc_info.value)
@@ -214,15 +211,11 @@ def test_connection_access_explains_http_tls_mismatch():
         RuntimeError("error sending request: connection refused"),
     ],
 )
-def test_connection_access_preserves_unrelated_errors(driver_error):
-    with (
-        patch(
-            "metadata.ingestion.source.database.databend.connection.test_connection_engine_step",
-            side_effect=driver_error,
-        ),
-        pytest.raises(RuntimeError) as exc_info,
-    ):
-        check_connection_access(MagicMock())
+def test_connection_access_preserves_unrelated_errors(driver_error, monkeypatch):
+    engine = MagicMock()
+    monkeypatch.setattr(databend_connection, "test_connection_engine_step", MagicMock(side_effect=driver_error))
+    with pytest.raises(RuntimeError) as exc_info:
+        check_connection_access(engine)
 
     assert exc_info.value is driver_error
 
@@ -444,7 +437,7 @@ def test_connection_test_skips_filtered_catalog():
     "catalogs,database_filter_pattern",
     [([], None), ([("system",)], {"excludes": ["^system$"]})],
 )
-def test_connection_test_fails_when_no_catalog_can_be_selected(catalogs, database_filter_pattern):
+def test_connection_test_fails_when_no_catalog_can_be_selected(catalogs, database_filter_pattern, monkeypatch):
     config_dict = {
         "username": "openmetadata",
         "password": "secret",
@@ -461,14 +454,10 @@ def test_connection_test_fails_when_no_catalog_can_be_selected(catalogs, databas
     def run_steps(**kwargs):
         kwargs["test_fn"]["GetDatabases"]()
 
-    with (
-        patch(
-            "metadata.ingestion.source.database.databend.connection.test_connection_steps",
-            side_effect=run_steps,
-        ),
-        pytest.raises(RuntimeError, match="No accessible Databend catalogs found"),
-    ):
-        connection.test_connection(MagicMock())
+    metadata = MagicMock()
+    monkeypatch.setattr(databend_connection, "test_connection_steps", run_steps)
+    with pytest.raises(RuntimeError, match="No accessible Databend catalogs found"):
+        connection.test_connection(metadata)
 
 
 def test_connection_test_applies_schema_filter_before_table_probe():
@@ -553,6 +542,7 @@ def test_connection_test_skips_system_history_before_table_probe():
 def test_connection_test_fails_table_probe_when_no_schema_is_available(
     schema_names,
     schema_filter_pattern,
+    monkeypatch,
 ):
     config_dict = {
         "username": "openmetadata",
@@ -572,17 +562,10 @@ def test_connection_test_fails_table_probe_when_no_schema_is_available(
     def run_steps(**kwargs):
         kwargs["test_fn"]["GetTables"]()
 
-    with (
-        patch(
-            "metadata.ingestion.source.database.databend.connection.test_connection_steps",
-            side_effect=run_steps,
-        ),
-        patch(
-            "metadata.ingestion.source.database.databend.connection.inspect",
-            return_value=inspector,
-        ),
-        pytest.raises(RuntimeError, match="No accessible Databend database"),
-    ):
-        connection.test_connection(MagicMock())
+    metadata = MagicMock()
+    monkeypatch.setattr(databend_connection, "test_connection_steps", run_steps)
+    monkeypatch.setattr(databend_connection, "inspect", MagicMock(return_value=inspector))
+    with pytest.raises(RuntimeError, match="No accessible Databend database"):
+        connection.test_connection(metadata)
 
     inspector.get_table_names.assert_not_called()
