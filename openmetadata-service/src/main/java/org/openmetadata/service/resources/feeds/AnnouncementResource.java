@@ -309,6 +309,8 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
         .withDisplayName(create.getDisplayName())
         .withDescription(create.getDescription())
         .withEntityLink(create.getEntityLink())
+        .withAnnouncementType(create.getAnnouncementType())
+        .withColor(create.getColor())
         .withStartTime(create.getStartTime())
         .withEndTime(create.getEndTime())
         .withOwners(resolveOwners(create.getOwners()))

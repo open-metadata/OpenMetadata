@@ -30,6 +30,12 @@
       "description": "End time when the announcement expires.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
+    "announcementType": {
+      "$ref": "../../entity/feed/announcement.json#/definitions/announcementType"
+    },
+    "color": {
+      "$ref": "../../entity/feed/announcement.json#/definitions/announcementColor"
+    },
     "owners": {
       "description": "Owners of this announcement.",
       "type": "array",

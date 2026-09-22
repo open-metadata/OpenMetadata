@@ -7,6 +7,55 @@
   "javaType": "org.openmetadata.schema.entity.feed.Announcement",
   "type": "object",
   "definitions": {
+    "announcementType": {
+      "javaType": "org.openmetadata.schema.type.AnnouncementType",
+      "description": "Severity/category of the announcement. Drives the colour and icon it is rendered with.",
+      "type": "string",
+      "enum": ["Critical", "Notice", "Warning", "Deprecation", "Custom"],
+      "javaEnums": [
+        {"name": "Critical"},
+        {"name": "Notice"},
+        {"name": "Warning"},
+        {"name": "Deprecation"},
+        {"name": "Custom"}
+      ],
+      "default": "Notice"
+    },
+    "announcementColor": {
+      "javaType": "org.openmetadata.schema.type.AnnouncementColor",
+      "description": "Palette family the announcement is rendered with. Only meaningful when announcementType is `Custom`; for every other type the colour is derived from the type.",
+      "type": "string",
+      "enum": [
+        "gray",
+        "brand",
+        "error",
+        "warning",
+        "success",
+        "gray-blue",
+        "blue-light",
+        "blue",
+        "blue-dark",
+        "indigo",
+        "purple",
+        "pink",
+        "orange"
+      ],
+      "javaEnums": [
+        {"name": "Gray"},
+        {"name": "Brand"},
+        {"name": "Error"},
+        {"name": "Warning"},
+        {"name": "Success"},
+        {"name": "GrayBlue"},
+        {"name": "BlueLight"},
+        {"name": "Blue"},
+        {"name": "BlueDark"},
+        {"name": "Indigo"},
+        {"name": "Purple"},
+        {"name": "Pink"},
+        {"name": "Orange"}
+      ]
+    },
     "announcementStatus": {
       "javaType": "org.openmetadata.schema.type.AnnouncementStatus",
       "description": "Status of the announcement based on its time window.",
@@ -49,6 +98,12 @@
     "endTime": {
       "description": "End time when the announcement expires.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "announcementType": {
+      "$ref": "#/definitions/announcementType"
+    },
+    "color": {
+      "$ref": "#/definitions/announcementColor"
     },
     "status": {
       "$ref": "#/definitions/announcementStatus"

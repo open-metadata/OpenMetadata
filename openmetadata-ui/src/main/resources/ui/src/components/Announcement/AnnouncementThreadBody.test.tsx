@@ -25,6 +25,7 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react-test-renderer';
+import { AnnouncementStatus } from '../../generated/entity/feed/announcement';
 import { MOCK_ANNOUNCEMENT_DATA } from '../../mocks/Announcement.mock';
 import { listAnnouncements } from '../../rest/announcementsAPI';
 import AnnouncementThreadBody from './AnnouncementThreadBody.component';
@@ -36,25 +37,30 @@ jest.mock('../../rest/announcementsAPI', () => ({
 jest.mock('./AnnouncementThreads', () =>
   jest
     .fn()
-    .mockImplementation(({ updateAnnouncementHandler, onConfirmation }) => (
-      <>
-        <p>AnnouncementThreads</p>
-        <button
-          onClick={() =>
-            onConfirmation({
-              state: true,
-              threadId: 'threadId',
-              postId: 'threadId',
-              isThread: true,
-            })
-          }>
-          ConfirmationButton
-        </button>
-        <button onClick={() => updateAnnouncementHandler('threadId', [])}>
-          UpdateAnnouncementButton
-        </button>
-      </>
-    ))
+    .mockImplementation(
+      ({ announcements, updateAnnouncementHandler, onConfirmation }) => (
+        <>
+          <p>AnnouncementThreads</p>
+          <p data-testid="rendered-ids">
+            {announcements.map((a: { id: string }) => a.id).join(',')}
+          </p>
+          <button
+            onClick={() =>
+              onConfirmation({
+                state: true,
+                threadId: 'threadId',
+                postId: 'threadId',
+                isThread: true,
+              })
+            }>
+            ConfirmationButton
+          </button>
+          <button onClick={() => updateAnnouncementHandler('threadId', [])}>
+            UpdateAnnouncementButton
+          </button>
+        </>
+      )
+    )
 );
 
 jest.mock('../Modals/ConfirmationModal/ConfirmationModal', () =>
@@ -74,6 +80,12 @@ jest.mock('../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
+
+const baseAnnouncement = {
+  name: 'announcement',
+  displayName: 'Announcement',
+  description: 'Description',
+};
 
 const mockProps = {
   threadLink: 'threadLink',
@@ -148,5 +160,42 @@ describe('AnnouncementThreadBody', () => {
       'threadId',
       []
     );
+  });
+
+  it('should only render the announcements matching the status filter', async () => {
+    const now = Date.now();
+    (listAnnouncements as jest.Mock).mockResolvedValueOnce({
+      data: [
+        {
+          ...baseAnnouncement,
+          id: 'active',
+          startTime: now - 1000,
+          endTime: now + 1000,
+        },
+        {
+          ...baseAnnouncement,
+          id: 'scheduled',
+          startTime: now + 1000,
+          endTime: now + 2000,
+        },
+        {
+          ...baseAnnouncement,
+          id: 'expired',
+          startTime: now - 2000,
+          endTime: now - 1000,
+        },
+      ],
+    });
+
+    await act(async () => {
+      render(
+        <AnnouncementThreadBody
+          {...mockProps}
+          statusFilter={AnnouncementStatus.Scheduled}
+        />
+      );
+    });
+
+    expect(screen.getByTestId('rendered-ids')).toHaveTextContent('scheduled');
   });
 });

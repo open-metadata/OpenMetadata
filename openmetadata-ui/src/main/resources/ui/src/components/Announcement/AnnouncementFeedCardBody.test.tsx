@@ -29,8 +29,13 @@ import { MOCK_ANNOUNCEMENT_DATA } from '../../mocks/Announcement.mock';
 import AnnouncementFeedCardBody from './AnnouncementFeedCardBody.component';
 
 jest.mock('../../utils/date-time/DateTimeUtils', () => ({
+  formatDate: jest.fn(() => 'formatted-date'),
   formatDateTime: jest.fn(() => 'formatted-time'),
 }));
+
+jest.mock('../common/ProfilePicture/ProfilePicture', () =>
+  jest.fn().mockReturnValue(<p>ProfilePicture</p>)
+);
 
 jest.mock('../../utils/EntityUtilClassBase', () => ({
   __esModule: true,

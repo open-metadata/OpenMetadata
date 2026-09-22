@@ -11,49 +11,27 @@
  *  limitations under the License.
  */
 import { MoreOutlined } from '@ant-design/icons';
-import { Button, Dropdown, Space, Typography } from 'antd';
+import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+import { Calendar } from '@untitledui/icons';
+import { Button, Dropdown } from 'antd';
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { AnnouncementEntity } from '../../rest/announcementsAPI';
-import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
-import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityFQN, getEntityType } from '../../utils/FeedUtilsPure';
+import {
+  ANNOUNCEMENT_STATUS_CLASSES,
+  ANNOUNCEMENT_STATUS_LABEL_KEYS,
+  ANNOUNCEMENT_SURFACE_CLASSES,
+  getAnnouncementStatus,
+  getAnnouncementTypeConfig,
+} from '../../utils/AnnouncementsUtils';
+import { formatDate } from '../../utils/date-time/DateTimeUtils';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../common/RichTextEditor/RichTextEditorPreviewerV1';
+import { EditableAnnouncement } from '../Modals/AnnouncementModal/AnnouncementModal.interface';
 import EditAnnouncementModal from '../Modals/AnnouncementModal/EditAnnouncementModal';
 import { AnnouncementFeedCardBodyProp } from './Announcement.interface';
-
-const getAnnouncementDisplayFields = (announcement: AnnouncementEntity) => ({
-  entityType: getEntityType(announcement.entityLink ?? ''),
-  entityFQN: getEntityFQN(announcement.entityLink ?? ''),
-  announcementTitle: announcement.displayName ?? announcement.name,
-});
-
-const AnnouncementEntityLinkLabel = ({
-  entityType,
-  entityFQN,
-  entityLink,
-}: {
-  entityType?: string;
-  entityFQN?: string;
-  entityLink: string;
-}) => {
-  if (!entityType || !entityFQN) {
-    return null;
-  }
-
-  return (
-    <Typography.Text className="text-grey-muted text-xs">
-      {entityLink ? (
-        <Link to={entityLink}>{entityFQN.split('.').pop()}</Link>
-      ) : (
-        entityFQN.split('.').pop()
-      )}
-    </Typography.Text>
-  );
-};
 
 const AnnouncementFeedCardBody = ({
   announcement,
@@ -63,21 +41,22 @@ const AnnouncementFeedCardBody = ({
 }: AnnouncementFeedCardBodyProp) => {
   const { t } = useTranslation();
   const [isEditAnnouncement, setIsEditAnnouncement] = useState(false);
-  const { entityType, entityFQN, announcementTitle } =
-    getAnnouncementDisplayFields(announcement);
-  const details = {
+
+  const announcementTitle = announcement.displayName ?? announcement.name;
+  const {
+    color,
+    icon: TypeIcon,
+    labelKey,
+  } = getAnnouncementTypeConfig(announcement);
+  const status = getAnnouncementStatus(announcement);
+
+  const details: EditableAnnouncement = {
     description: announcement.description,
     startTime: announcement.startTime,
     endTime: announcement.endTime,
+    announcementType: announcement.announcementType,
+    color: announcement.color,
   };
-
-  const entityLink = useMemo(() => {
-    if (!entityType || !entityFQN) {
-      return '';
-    }
-
-    return entityUtilClassBase.getEntityLink(entityType, entityFQN);
-  }, [entityFQN, entityType]);
 
   const dropdownItems = useMemo(
     () =>
@@ -115,10 +94,7 @@ const AnnouncementFeedCardBody = ({
 
   const handleAnnouncementUpdate = async (
     title: string,
-    updatedDetails: Pick<
-      AnnouncementEntity,
-      'description' | 'startTime' | 'endTime'
-    >
+    updatedDetails: EditableAnnouncement
   ) => {
     const normalizedDisplayName =
       title === announcement.name ? undefined : title.trim();
@@ -128,12 +104,16 @@ const AnnouncementFeedCardBody = ({
         description: announcement.description,
         startTime: announcement.startTime,
         endTime: announcement.endTime,
+        announcementType: announcement.announcementType,
+        color: announcement.color,
       },
       {
         displayName: normalizedDisplayName,
         description: updatedDetails.description,
         startTime: updatedDetails.startTime,
         endTime: updatedDetails.endTime,
+        announcementType: updatedDetails.announcementType,
+        color: updatedDetails.color,
       }
     );
 
@@ -144,57 +124,82 @@ const AnnouncementFeedCardBody = ({
   };
 
   return (
-    <div
-      className="bg-grey-1-hover m--x-sm w-full p-x-sm m--t-xss py-2 m-b-xss rounded-4"
-      data-testid="main-message">
-      <div className="d-flex justify-between gap-4">
-        <div className="d-flex flex-column gap-2 flex-1">
-          <Typography.Text className="text-base font-medium">
-            {announcementTitle}
-          </Typography.Text>
-          <Space wrap size={8}>
-            {announcement.createdBy && (
-              <Typography.Text className="text-grey-muted text-xs">
-                {t('label.by-entity', { entity: announcement.createdBy })}
-              </Typography.Text>
+    <Box className="tw:gap-3" data-testid="main-message" direction="col">
+      <Box align="center" className="tw:gap-2" justify="between">
+        <Box align="center" className="tw:min-w-0 tw:gap-2">
+          <TypeIcon
+            className={classNames(
+              'tw:size-4 tw:shrink-0',
+              ANNOUNCEMENT_SURFACE_CLASSES[color].icon
             )}
-            <Typography.Text className="text-grey-muted text-xs">
-              {formatDateTime(announcement.updatedAt ?? announcement.createdAt)}
-            </Typography.Text>
-            <AnnouncementEntityLinkLabel
-              entityFQN={entityFQN}
-              entityLink={entityLink}
-              entityType={entityType}
-            />
-          </Space>
-        </div>
-        {dropdownItems.length > 0 && (
-          <Dropdown menu={{ items: dropdownItems }} trigger={['click']}>
-            <Button
-              data-testid="announcement-actions"
-              icon={<MoreOutlined />}
-              type="text"
-            />
-          </Dropdown>
-        )}
-      </div>
+          />
+          <Badge color={color} data-testid="announcement-type-badge" size="sm">
+            {t(labelKey)}
+          </Badge>
+        </Box>
+
+        <Box align="center" className="tw:shrink-0 tw:gap-1">
+          <Typography
+            as="span"
+            className={ANNOUNCEMENT_STATUS_CLASSES[status]}
+            data-testid="announcement-status"
+            size="text-xs"
+            weight="medium">
+            {t(ANNOUNCEMENT_STATUS_LABEL_KEYS[status])}
+          </Typography>
+          {dropdownItems.length > 0 && (
+            <Dropdown menu={{ items: dropdownItems }} trigger={['click']}>
+              <Button
+                data-testid="announcement-actions"
+                icon={<MoreOutlined />}
+                type="text"
+              />
+            </Dropdown>
+          )}
+        </Box>
+      </Box>
+
+      <Typography
+        as="span"
+        className="tw:text-text-primary"
+        size="text-sm"
+        weight="semibold">
+        {announcementTitle}
+      </Typography>
 
       {details.description && (
         <RichTextEditorPreviewerV1
-          className="m-t-sm"
+          className="tw:[&_p]:text-text-secondary tw:[&_p]:text-xs"
           data-testid="announcement-description"
+          enableSeeMoreVariant={false}
           markdown={details.description}
+          reducePreviewLineClass="max-two-lines"
+          showReadMoreBtn={false}
         />
       )}
 
-      <Space wrap className="m-t-sm" size={16}>
-        <Typography.Text className="text-grey-muted text-xs">
-          {`${t('label.start-date')}: ${formatDateTime(details.startTime)}`}
-        </Typography.Text>
-        <Typography.Text className="text-grey-muted text-xs">
-          {`${t('label.end-date')}: ${formatDateTime(details.endTime)}`}
-        </Typography.Text>
-      </Space>
+      <Box align="center" className="tw:gap-2">
+        {announcement.createdBy && (
+          <>
+            <ProfilePicture name={announcement.createdBy} width="16" />
+            <Typography
+              as="span"
+              className="tw:text-text-secondary"
+              size="text-xs">
+              {announcement.createdBy}
+            </Typography>
+            <span className="tw:text-border-secondary">|</span>
+          </>
+        )}
+        <Calendar className="tw:size-3.5 tw:shrink-0 tw:text-text-tertiary" />
+        <Typography
+          as="span"
+          className="tw:text-text-secondary"
+          data-testid="announcement-date-range"
+          size="text-xs">
+          {`${formatDate(details.startTime)} - ${formatDate(details.endTime)}`}
+        </Typography>
+      </Box>
 
       {isEditAnnouncement && (
         <EditAnnouncementModal
@@ -205,7 +210,7 @@ const AnnouncementFeedCardBody = ({
           onConfirm={handleAnnouncementUpdate}
         />
       )}
-    </div>
+    </Box>
   );
 };
 

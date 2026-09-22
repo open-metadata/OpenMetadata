@@ -10,7 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  BadgeColors,
+  IconComponentType,
+} from '@openmetadata/ui-core-components';
+import {
+  AlertCircle,
+  AlertTriangle,
+  Announcement02,
+  InfoCircle,
+  SlashCircle01,
+} from '@untitledui/icons';
 import { EntityType } from '../enums/entity.enum';
+import {
+  AnnouncementColor,
+  AnnouncementStatus,
+  AnnouncementType,
+} from '../generated/entity/feed/announcement';
+import { AnnouncementEntity } from '../rest/announcementsAPI';
 
 export const ANNOUNCEMENT_ENTITIES = [
   EntityType.TABLE,
@@ -56,4 +73,201 @@ export const isActiveAnnouncement = (startTime: number, endTime: number) => {
   const currentTime = Date.now();
 
   return currentTime > startTime && currentTime < endTime;
+};
+
+/*
+    @param startTime: number -> Milliseconds
+    @returns boolean
+*/
+export const isScheduledAnnouncement = (startTime: number) =>
+  Date.now() < startTime;
+
+/**
+ * `AnnouncementColor` (schema) and `BadgeColors` (ui-core-components) are the same
+ * palette families. Mapping them explicitly keeps that pinned at compile time — if
+ * either list drifts, this record stops type-checking.
+ */
+export const ANNOUNCEMENT_COLORS: Record<AnnouncementColor, BadgeColors> = {
+  [AnnouncementColor.Gray]: 'gray',
+  [AnnouncementColor.Brand]: 'brand',
+  [AnnouncementColor.Error]: 'error',
+  [AnnouncementColor.Warning]: 'warning',
+  [AnnouncementColor.Success]: 'success',
+  [AnnouncementColor.GrayBlue]: 'gray-blue',
+  [AnnouncementColor.BlueLight]: 'blue-light',
+  [AnnouncementColor.Blue]: 'blue',
+  [AnnouncementColor.BlueDark]: 'blue-dark',
+  [AnnouncementColor.Indigo]: 'indigo',
+  [AnnouncementColor.Purple]: 'purple',
+  [AnnouncementColor.Pink]: 'pink',
+  [AnnouncementColor.Orange]: 'orange',
+};
+
+export interface AnnouncementTypeConfig {
+  color: BadgeColors;
+  icon: IconComponentType;
+  labelKey: string;
+}
+
+export const ANNOUNCEMENT_TYPE_CONFIG: Record<
+  AnnouncementType,
+  AnnouncementTypeConfig
+> = {
+  [AnnouncementType.Critical]: {
+    color: 'error',
+    icon: AlertCircle,
+    labelKey: 'label.critical',
+  },
+  [AnnouncementType.Notice]: {
+    color: 'blue',
+    icon: InfoCircle,
+    labelKey: 'label.notice',
+  },
+  [AnnouncementType.Warning]: {
+    color: 'warning',
+    icon: AlertTriangle,
+    labelKey: 'label.warning',
+  },
+  [AnnouncementType.Deprecation]: {
+    color: 'gray',
+    icon: SlashCircle01,
+    labelKey: 'label.deprecation',
+  },
+  [AnnouncementType.Custom]: {
+    color: 'pink',
+    icon: Announcement02,
+    labelKey: 'label.custom',
+  },
+};
+
+export const DEFAULT_ANNOUNCEMENT_TYPE = AnnouncementType.Notice;
+
+/**
+ * Resolves the icon, badge label and palette family an announcement renders with.
+ * Only `Custom` honours the stored `color`; every other type derives it from the type
+ * so the severity stays readable at a glance.
+ */
+export const getAnnouncementTypeConfig = (
+  announcement: Pick<AnnouncementEntity, 'announcementType' | 'color'>
+): AnnouncementTypeConfig => {
+  const type = announcement.announcementType ?? DEFAULT_ANNOUNCEMENT_TYPE;
+  const config =
+    ANNOUNCEMENT_TYPE_CONFIG[type] ??
+    ANNOUNCEMENT_TYPE_CONFIG[DEFAULT_ANNOUNCEMENT_TYPE];
+
+  if (type !== AnnouncementType.Custom || !announcement.color) {
+    return config;
+  }
+
+  return { ...config, color: ANNOUNCEMENT_COLORS[announcement.color] };
+};
+
+/**
+ * Banner surface classes per palette family. Written out in full because Tailwind
+ * only emits classes it can see as literals — `tw:bg-utility-${color}-50` would
+ * compile to nothing. `Badge` keeps its own table for the pill itself; this one is
+ * the banner behind it, where background, border and title colour are needed apart.
+ */
+export const ANNOUNCEMENT_SURFACE_CLASSES: Record<
+  BadgeColors,
+  { surface: string; icon: string; title: string }
+> = {
+  gray: {
+    surface: 'tw:bg-utility-gray-50 tw:outline-utility-gray-200',
+    icon: 'tw:text-utility-gray-500',
+    title: 'tw:text-utility-gray-700',
+  },
+  brand: {
+    surface: 'tw:bg-utility-brand-50 tw:outline-utility-brand-200',
+    icon: 'tw:text-utility-brand-500',
+    title: 'tw:text-utility-brand-700',
+  },
+  error: {
+    surface: 'tw:bg-utility-error-50 tw:outline-utility-error-200',
+    icon: 'tw:text-utility-error-500',
+    title: 'tw:text-utility-error-700',
+  },
+  warning: {
+    surface: 'tw:bg-utility-warning-50 tw:outline-utility-warning-200',
+    icon: 'tw:text-utility-warning-500',
+    title: 'tw:text-utility-warning-700',
+  },
+  success: {
+    surface: 'tw:bg-utility-success-50 tw:outline-utility-success-200',
+    icon: 'tw:text-utility-success-500',
+    title: 'tw:text-utility-success-700',
+  },
+  'gray-blue': {
+    surface: 'tw:bg-utility-gray-blue-50 tw:outline-utility-gray-blue-200',
+    icon: 'tw:text-utility-gray-blue-500',
+    title: 'tw:text-utility-gray-blue-700',
+  },
+  'blue-light': {
+    surface: 'tw:bg-utility-blue-light-50 tw:outline-utility-blue-light-200',
+    icon: 'tw:text-utility-blue-light-500',
+    title: 'tw:text-utility-blue-light-700',
+  },
+  blue: {
+    surface: 'tw:bg-utility-blue-50 tw:outline-utility-blue-200',
+    icon: 'tw:text-utility-blue-500',
+    title: 'tw:text-utility-blue-700',
+  },
+  'blue-dark': {
+    surface: 'tw:bg-utility-blue-dark-50 tw:outline-utility-blue-dark-200',
+    icon: 'tw:text-utility-blue-dark-500',
+    title: 'tw:text-utility-blue-dark-700',
+  },
+  indigo: {
+    surface: 'tw:bg-utility-indigo-50 tw:outline-utility-indigo-200',
+    icon: 'tw:text-utility-indigo-500',
+    title: 'tw:text-utility-indigo-700',
+  },
+  purple: {
+    surface: 'tw:bg-utility-purple-50 tw:outline-utility-purple-200',
+    icon: 'tw:text-utility-purple-500',
+    title: 'tw:text-utility-purple-700',
+  },
+  pink: {
+    surface: 'tw:bg-utility-pink-50 tw:outline-utility-pink-200',
+    icon: 'tw:text-utility-pink-500',
+    title: 'tw:text-utility-pink-700',
+  },
+  orange: {
+    surface: 'tw:bg-utility-orange-50 tw:outline-utility-orange-200',
+    icon: 'tw:text-utility-orange-500',
+    title: 'tw:text-utility-orange-700',
+  },
+};
+
+/**
+ * The server stamps `status` on write, but it is a snapshot — an announcement that
+ * was Active when stored is Expired once its window closes. Recomputing from the
+ * window keeps the drawer's filters honest between writes.
+ */
+export const getAnnouncementStatus = (
+  announcement: Pick<AnnouncementEntity, 'startTime' | 'endTime'>
+): AnnouncementStatus => {
+  if (isScheduledAnnouncement(announcement.startTime)) {
+    return AnnouncementStatus.Scheduled;
+  }
+
+  return isActiveAnnouncement(announcement.startTime, announcement.endTime)
+    ? AnnouncementStatus.Active
+    : AnnouncementStatus.Expired;
+};
+
+/** Text colour for the status label on an announcement card. */
+export const ANNOUNCEMENT_STATUS_CLASSES: Record<AnnouncementStatus, string> = {
+  [AnnouncementStatus.Active]: 'tw:text-utility-success-700',
+  [AnnouncementStatus.Scheduled]: 'tw:text-utility-blue-700',
+  [AnnouncementStatus.Expired]: 'tw:text-utility-gray-700',
+};
+
+export const ANNOUNCEMENT_STATUS_LABEL_KEYS: Record<
+  AnnouncementStatus,
+  string
+> = {
+  [AnnouncementStatus.Active]: 'label.active',
+  [AnnouncementStatus.Scheduled]: 'label.scheduled',
+  [AnnouncementStatus.Expired]: 'label.in-active',
 };

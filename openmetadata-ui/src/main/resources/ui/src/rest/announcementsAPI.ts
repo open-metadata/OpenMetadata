@@ -12,6 +12,11 @@
  */
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import {
+  AnnouncementColor,
+  AnnouncementStatus,
+  AnnouncementType,
+} from '../generated/entity/feed/announcement';
 import APIClient from './axiosClient';
 
 const BASE_URL = '/announcements';
@@ -24,7 +29,9 @@ export interface AnnouncementEntity {
   entityLink?: string;
   startTime: number;
   endTime: number;
-  status?: 'Active' | 'Expired' | 'Scheduled';
+  announcementType?: AnnouncementType;
+  color?: AnnouncementColor;
+  status?: AnnouncementStatus;
   createdBy?: string;
   updatedBy?: string;
   createdAt?: number;
@@ -40,6 +47,8 @@ export interface CreateAnnouncementRequest {
   entityLink?: string;
   startTime: number;
   endTime: number;
+  announcementType?: AnnouncementType;
+  color?: AnnouncementColor;
 }
 
 export interface ListAnnouncementsParams {

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row } from 'antd';
-import AnnouncementBadge from '../ActivityFeed/Shared/AnnouncementBadge';
+import classNames from 'classnames';
+import {
+  ANNOUNCEMENT_SURFACE_CLASSES,
+  getAnnouncementTypeConfig,
+} from '../../utils/AnnouncementsUtils';
 import { AnnouncementFeedCardProp } from './Announcement.interface';
-import './announcement.less';
 import AnnouncementFeedCardBody from './AnnouncementFeedCardBody.component';
 
 const AnnouncementFeedCard = ({
@@ -22,22 +24,22 @@ const AnnouncementFeedCard = ({
   onConfirmation,
   updateAnnouncementHandler,
 }: AnnouncementFeedCardProp) => {
+  const { color } = getAnnouncementTypeConfig(announcement);
+
   return (
-    <Row>
-      <Col span={24}>
-        <Card
-          className="ant-card-feed announcement-thread-card"
-          data-testid="announcement-card">
-          <AnnouncementBadge />
-          <AnnouncementFeedCardBody
-            announcement={announcement}
-            editPermission={editPermission}
-            updateAnnouncementHandler={updateAnnouncementHandler}
-            onConfirmation={onConfirmation}
-          />
-        </Card>
-      </Col>
-    </Row>
+    <div
+      className={classNames(
+        'tw:rounded-xl tw:outline-1 tw:-outline-offset-1 tw:p-4',
+        ANNOUNCEMENT_SURFACE_CLASSES[color].surface
+      )}
+      data-testid="announcement-card">
+      <AnnouncementFeedCardBody
+        announcement={announcement}
+        editPermission={editPermission}
+        updateAnnouncementHandler={updateAnnouncementHandler}
+        onConfirmation={onConfirmation}
+      />
+    </div>
   );
 };
 

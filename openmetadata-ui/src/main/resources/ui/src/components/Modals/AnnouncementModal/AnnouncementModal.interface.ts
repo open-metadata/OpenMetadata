@@ -11,12 +11,25 @@
  *  limitations under the License.
  */
 
+import { DateTime } from 'luxon';
+import {
+  AnnouncementColor,
+  AnnouncementType,
+} from '../../../generated/entity/feed/announcement';
 import { AnnouncementEntity } from '../../../rest/announcementsAPI';
 
-export interface AnnouncementsWidgetV3BodyProps {
-  announcements: AnnouncementEntity[];
-  onItemClick: (announcement: AnnouncementEntity) => void;
-  loading?: boolean;
-  testId?: string;
-  className?: string;
+/** The fields the add/edit announcement form owns. */
+export interface AnnouncementFormValues {
+  title: string;
+  description: string;
+  startTime: DateTime;
+  endTime: DateTime;
+  announcementType: AnnouncementType;
+  color?: AnnouncementColor;
 }
+
+/** The subset of an announcement the edit modal round-trips. */
+export type EditableAnnouncement = Pick<
+  AnnouncementEntity,
+  'description' | 'startTime' | 'endTime' | 'announcementType' | 'color'
+>;

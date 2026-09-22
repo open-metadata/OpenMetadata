@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,11 +11,8 @@
  *  limitations under the License.
  */
 
-import { Divider, Typography } from 'antd';
-import { FC, useCallback, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { AnnouncementEntity } from '../../rest/announcementsAPI';
-import { isActiveAnnouncement } from '../../utils/AnnouncementsUtils';
+import { Box } from '@openmetadata/ui-core-components';
+import { FC } from 'react';
 import { AnnouncementThreadListProp } from './Announcement.interface';
 import './announcement.less';
 import AnnouncementFeedCard from './AnnouncementFeedCard.component';
@@ -25,68 +22,18 @@ const AnnouncementThreads: FC<AnnouncementThreadListProp> = ({
   editPermission,
   onConfirmation,
   updateAnnouncementHandler,
-}) => {
-  const { t } = useTranslation();
-
-  const { activeAnnouncements, inActiveAnnouncements } = useMemo(() => {
-    return announcements.reduce(
-      (
-        acc: {
-          activeAnnouncements: AnnouncementEntity[];
-          inActiveAnnouncements: AnnouncementEntity[];
-        },
-        cv: AnnouncementEntity
-      ) => {
-        if (isActiveAnnouncement(cv.startTime, cv.endTime)) {
-          acc.activeAnnouncements.push(cv);
-        } else {
-          acc.inActiveAnnouncements.push(cv);
-        }
-
-        return acc;
-      },
-      {
-        activeAnnouncements: [],
-        inActiveAnnouncements: [],
-      }
-    );
-  }, [announcements]);
-
-  const getAnnouncements = useCallback(
-    (announcementList: AnnouncementEntity[]) => {
-      return announcementList.map((announcement) => {
-        return (
-          <AnnouncementFeedCard
-            announcement={announcement}
-            editPermission={editPermission}
-            key={announcement.id}
-            updateAnnouncementHandler={updateAnnouncementHandler}
-            onConfirmation={onConfirmation}
-          />
-        );
-      });
-    },
-    [editPermission, updateAnnouncementHandler, onConfirmation]
-  );
-
-  return (
-    <>
-      {getAnnouncements(activeAnnouncements)}
-      {Boolean(inActiveAnnouncements.length) && (
-        <div className="d-flex flex-column items-end m-y-xlg">
-          <Typography.Text
-            className="text-announcement"
-            data-testid="inActive-announcements">
-            <strong>{inActiveAnnouncements.length}</strong>{' '}
-            {t('label.inactive-announcement-plural')}
-          </Typography.Text>
-          <Divider className="m-t-xs m-b-0" />
-        </div>
-      )}
-
-      {getAnnouncements(inActiveAnnouncements)}
-    </>
-  );
-};
+}) => (
+  <Box className="tw:gap-3" direction="col">
+    {announcements.map((announcement) => (
+      <AnnouncementFeedCard
+        announcement={announcement}
+        editPermission={editPermission}
+        key={announcement.id}
+        updateAnnouncementHandler={updateAnnouncementHandler}
+        onConfirmation={onConfirmation}
+      />
+    ))}
+  </Box>
+);
 
 export default AnnouncementThreads;

@@ -183,7 +183,7 @@ jest.mock(
 );
 
 jest.mock(
-  '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard',
+  '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component',
   () => jest.fn().mockReturnValue(null)
 );
 

@@ -111,7 +111,7 @@ import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
-import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
+import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
@@ -243,8 +243,9 @@ const DomainDetails = ({
   );
   const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
     useState<boolean>(false);
-  const [activeAnnouncement, setActiveAnnouncement] =
-    useState<AnnouncementEntity>();
+  const [activeAnnouncements, setActiveAnnouncements] = useState<
+    AnnouncementEntity[]
+  >([]);
   const encodedFqn = getEncodedFqn(
     escapeESReservedCharacters(domain.fullyQualifiedName)
   );
@@ -542,11 +543,7 @@ const DomainDetails = ({
       const announcements = await getActiveAnnouncements(
         getEntityFeedLink(EntityType.DOMAIN, domain.fullyQualifiedName ?? '')
       );
-      if (isEmpty(announcements.data)) {
-        setActiveAnnouncement(undefined);
-      } else {
-        setActiveAnnouncement(announcements.data[0]);
-      }
+      setActiveAnnouncements(announcements.data ?? []);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -1125,16 +1122,17 @@ const DomainDetails = ({
                     </Dropdown>
                   )}
                 </ButtonGroup>
-                {activeAnnouncement && (
-                  <AnnouncementCard
-                    announcement={activeAnnouncement}
-                    onClick={handleOpenAnnouncementDrawer}
-                  />
-                )}
               </Box>
             ))()
           }
         </Box>
+
+        <AnnouncementsWidgetV3Body
+          announcements={activeAnnouncements}
+          className="tw:mx-5 tw:mt-3"
+          testId="entity-header-announcements"
+          onItemClick={handleOpenAnnouncementDrawer}
+        />
 
         <GenericProvider<Domain>
           newTagsUI

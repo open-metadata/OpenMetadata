@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,16 +11,27 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
-import { Button, Drawer, Space, Tooltip, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  ButtonGroup,
+  ButtonGroupItem,
+  ButtonUtility,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Announcement02, XClose } from '@untitledui/icons';
+import { Drawer } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { FC, useCallback, useState } from 'react';
+import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AnnouncementStatus } from '../../../../generated/entity/feed/announcement';
 import {
   deleteAnnouncement,
   patchAnnouncement,
 } from '../../../../rest/announcementsAPI';
+import { ANNOUNCEMENT_STATUS_LABEL_KEYS } from '../../../../utils/AnnouncementsUtils';
 import { getEntityFeedLink } from '../../../../utils/EntityPureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import AnnouncementThreadBody from '../../../Announcement/AnnouncementThreadBody.component';
@@ -34,6 +45,14 @@ interface Props {
   onClose: () => void;
 }
 
+const ALL_TAB = 'all';
+
+const STATUS_TABS = [
+  AnnouncementStatus.Active,
+  AnnouncementStatus.Expired,
+  AnnouncementStatus.Scheduled,
+];
+
 const AnnouncementDrawer: FC<Props> = ({
   open,
   onClose,
@@ -45,18 +64,12 @@ const AnnouncementDrawer: FC<Props> = ({
   const [isAddAnnouncementOpen, setIsAddAnnouncementOpen] =
     useState<boolean>(false);
   const [refetchThread, setRefetchThread] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<string>(ALL_TAB);
 
-  const title = (
-    <Space
-      align="start"
-      className="justify-between"
-      data-testid="title"
-      style={{ width: '100%' }}>
-      <Typography.Text className="font-medium break-all">
-        {t('label.announcement-plural')}
-      </Typography.Text>
-      <CloseOutlined data-testid="announcement-close" onClick={onClose} />
-    </Space>
+  const statusFilter = useMemo(
+    () =>
+      activeTab === ALL_TAB ? undefined : (activeTab as AnnouncementStatus),
+    [activeTab]
   );
 
   const deletePostHandler = async (announcementId: string): Promise<void> => {
@@ -94,7 +107,45 @@ const AnnouncementDrawer: FC<Props> = ({
   const handleSaveAnnouncement = useCallback(() => {
     handleCloseAnnouncementModal();
     setRefetchThread((prev) => !prev);
-  }, []);
+  }, [handleCloseAnnouncementModal]);
+
+  const title = (
+    <Box align="start" className="tw:w-full tw:gap-3" data-testid="title">
+      <Announcement02 className="tw:mt-0.5 tw:size-5 tw:shrink-0 tw:text-fg-brand-primary" />
+      <Box className="tw:min-w-0 tw:flex-1 tw:gap-0.5" direction="col">
+        <Typography
+          as="span"
+          className="tw:text-text-primary"
+          size="text-md"
+          weight="semibold">
+          {t('label.announcement-plural')}
+        </Typography>
+        <Typography as="span" className="tw:text-text-secondary" size="text-xs">
+          {t('message.view-edit-and-schedule-announcements')}
+        </Typography>
+      </Box>
+
+      <Tooltip
+        title={!createPermission ? t('message.no-permission-to-view') : ''}>
+        <Button
+          data-testid="add-announcement"
+          isDisabled={!createPermission}
+          size="sm"
+          onClick={handleOpenAnnouncementModal}>
+          {t('label.add-entity', { entity: t('label.announcement') })}
+        </Button>
+      </Tooltip>
+
+      <ButtonUtility
+        aria-label={t('label.close')}
+        color="tertiary"
+        data-testid="announcement-close"
+        icon={XClose}
+        size="sm"
+        onClick={onClose}
+      />
+    </Box>
+  );
 
   return (
     <Drawer
@@ -105,23 +156,30 @@ const AnnouncementDrawer: FC<Props> = ({
       title={title}
       width={576}
       onClose={onClose}>
-      <div className="d-flex justify-end">
-        <Tooltip
-          title={!createPermission && t('message.no-permission-to-view')}>
-          <Button
-            data-testid="add-announcement"
-            disabled={!createPermission}
-            type="primary"
-            onClick={handleOpenAnnouncementModal}>
-            {t('label.add-entity', { entity: t('label.announcement') })}
-          </Button>
-        </Tooltip>
-      </div>
+      <ButtonGroup
+        className="tw:mb-4"
+        data-testid="announcement-status-tabs"
+        selectedKeys={[activeTab]}
+        size="sm"
+        onSelectionChange={(keys) => {
+          const [selected] = Array.from(keys);
+          // react-aria clears the selection when the active item is clicked
+          // again; keeping the current tab avoids an unfiltered flash.
+          setActiveTab((prev) => (selected as string) ?? prev);
+        }}>
+        <ButtonGroupItem id={ALL_TAB}>{t('label.all')}</ButtonGroupItem>
+        {STATUS_TABS.map((status) => (
+          <ButtonGroupItem id={status} key={status}>
+            {t(ANNOUNCEMENT_STATUS_LABEL_KEYS[status])}
+          </ButtonGroupItem>
+        ))}
+      </ButtonGroup>
 
       <AnnouncementThreadBody
         deleteAnnouncementHandler={deletePostHandler}
         editPermission={createPermission}
         refetchThread={refetchThread}
+        statusFilter={statusFilter}
         threadLink={getEntityFeedLink(entityType, entityFQN)}
         updateAnnouncementHandler={updateThreadHandler}
       />

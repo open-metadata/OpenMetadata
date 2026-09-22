@@ -13,7 +13,23 @@
 
 import { AnnouncementEntity } from '../../../rest/announcementsAPI';
 
-export interface AnnouncementItemV3Props {
+/**
+ * `compact` is the single-line strip an entity page shows above its tabs.
+ * `full` is the taller landing-page banner, with the title in the type colour.
+ */
+export type AnnouncementBannerVariant = 'compact' | 'full';
+
+export interface AnnouncementBannerProps {
   announcement: AnnouncementEntity;
-  onClick: () => void;
+  variant?: AnnouncementBannerVariant;
+  /** `compact` only — collapses to one line when false. */
+  expanded?: boolean;
+  /** Renders the View/Hide toggle when provided. */
+  onToggleExpand?: () => void;
+  /** Renders the dismiss button when provided. */
+  onDismiss?: () => void;
+  /** Whole-banner click target, e.g. opening the announcement drawer. */
+  onClick?: () => void;
+  className?: string;
+  testId?: string;
 }

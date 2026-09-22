@@ -33,22 +33,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </div>
   ),
-  Typography: ({ children }: { children: React.ReactNode }) => (
-    <span>{children}</span>
-  ),
-  Button: ({
-    children,
-    onClick,
-    'data-testid': dataTestId,
-  }: {
-    children?: React.ReactNode;
-    onClick?: () => void;
-    'data-testid'?: string;
-  }) => (
-    <button data-testid={dataTestId} onClick={onClick}>
-      {children}
-    </button>
-  ),
   ButtonUtility: ({
     isDisabled,
     onClick,
@@ -67,23 +51,37 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onClick={onClick}
     />
   ),
-  Skeleton: () => <span data-testid="skeleton" />,
+  Skeleton: ({ 'data-testid': dataTestId }: { 'data-testid'?: string }) => (
+    <span data-testid={dataTestId} />
+  ),
 }));
 
-jest.mock('./AnnouncementItemV3.component', () => ({
+jest.mock('./AnnouncementBanner.component', () => ({
   __esModule: true,
   default: ({
     announcement,
+    expanded,
     onClick,
+    onDismiss,
+    onToggleExpand,
   }: {
     announcement: AnnouncementEntity;
-    onClick: () => void;
+    expanded?: boolean;
+    onClick?: () => void;
+    onDismiss?: () => void;
+    onToggleExpand?: () => void;
   }) => (
-    <div
-      data-testid="mock-announcement-item"
-      role="presentation"
-      onClick={onClick}>
-      {announcement.displayName}
+    <div data-testid="mock-announcement-banner">
+      <span data-testid="banner-title" role="presentation" onClick={onClick}>
+        {announcement.displayName}
+      </span>
+      <span data-testid="banner-expanded">{String(expanded)}</span>
+      <button data-testid="banner-toggle" onClick={onToggleExpand}>
+        toggle
+      </button>
+      <button data-testid="banner-dismiss" onClick={onDismiss}>
+        dismiss
+      </button>
     </div>
   ),
 }));
@@ -105,18 +103,6 @@ const mockAnnouncements: AnnouncementEntity[] = Array.from(
 );
 
 describe('AnnouncementsWidgetV3Body', () => {
-  it('renders the header label and the current/total counter', () => {
-    render(
-      <AnnouncementsWidgetV3Body
-        announcements={mockAnnouncements}
-        onItemClick={jest.fn()}
-      />
-    );
-
-    expect(screen.getByText('label.announcement-plural')).toBeInTheDocument();
-    expect(screen.getByText('1/3')).toBeInTheDocument();
-  });
-
   it('renders only the current announcement, not the whole list', () => {
     render(
       <AnnouncementsWidgetV3Body
@@ -125,7 +111,7 @@ describe('AnnouncementsWidgetV3Body', () => {
       />
     );
 
-    expect(screen.getAllByTestId('mock-announcement-item')).toHaveLength(1);
+    expect(screen.getAllByTestId('mock-announcement-banner')).toHaveLength(1);
     expect(screen.getByText('Announcement 0')).toBeInTheDocument();
   });
 
@@ -152,22 +138,35 @@ describe('AnnouncementsWidgetV3Body', () => {
     fireEvent.click(screen.getByTestId('announcement-next-btn'));
 
     expect(screen.getByText('Announcement 1')).toBeInTheDocument();
-    expect(screen.getByText('2/3')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('announcement-next-btn'));
 
     expect(screen.getByText('Announcement 2')).toBeInTheDocument();
-    expect(screen.getByText('3/3')).toBeInTheDocument();
     expect(screen.getByTestId('announcement-next-btn')).toBeDisabled();
-    expect(screen.getByTestId('announcement-prev-btn')).not.toBeDisabled();
 
     fireEvent.click(screen.getByTestId('announcement-prev-btn'));
 
     expect(screen.getByText('Announcement 1')).toBeInTheDocument();
-    expect(screen.getByText('2/3')).toBeInTheDocument();
   });
 
-  it('hides the counter when there is only one announcement', () => {
+  it('collapses an expanded banner when paging to the next one', () => {
+    render(
+      <AnnouncementsWidgetV3Body
+        announcements={mockAnnouncements}
+        onItemClick={jest.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('banner-toggle'));
+
+    expect(screen.getByTestId('banner-expanded')).toHaveTextContent('true');
+
+    fireEvent.click(screen.getByTestId('announcement-next-btn'));
+
+    expect(screen.getByTestId('banner-expanded')).toHaveTextContent('false');
+  });
+
+  it('hides the chevrons when there is only one announcement', () => {
     render(
       <AnnouncementsWidgetV3Body
         announcements={mockAnnouncements.slice(0, 1)}
@@ -181,7 +180,6 @@ describe('AnnouncementsWidgetV3Body', () => {
     expect(
       screen.queryByTestId('announcement-next-btn')
     ).not.toBeInTheDocument();
-    expect(screen.queryByText('1/1')).not.toBeInTheDocument();
     expect(screen.getByText('Announcement 0')).toBeInTheDocument();
   });
 
@@ -194,27 +192,12 @@ describe('AnnouncementsWidgetV3Body', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('mock-announcement-item'));
+    fireEvent.click(screen.getByTestId('banner-title'));
 
     expect(onItemClick).toHaveBeenCalledWith(mockAnnouncements[0]);
   });
 
-  it('renders View All and calls onViewAll when clicked', () => {
-    const onViewAll = jest.fn();
-    render(
-      <AnnouncementsWidgetV3Body
-        announcements={mockAnnouncements}
-        onItemClick={jest.fn()}
-        onViewAll={onViewAll}
-      />
-    );
-
-    fireEvent.click(screen.getByTestId('view-all-btn'));
-
-    expect(onViewAll).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not render View All when onViewAll is not provided', () => {
+  it('drops a dismissed announcement and keeps paging over the rest', () => {
     render(
       <AnnouncementsWidgetV3Body
         announcements={mockAnnouncements}
@@ -222,28 +205,39 @@ describe('AnnouncementsWidgetV3Body', () => {
       />
     );
 
-    expect(screen.queryByTestId('view-all-btn')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('banner-dismiss'));
+
+    expect(screen.getByText('Announcement 1')).toBeInTheDocument();
+    expect(screen.queryByText('Announcement 0')).not.toBeInTheDocument();
   });
 
-  it('renders only the skeleton while loading, suppressing the header and item', () => {
+  it('renders nothing once every announcement is dismissed', () => {
+    render(
+      <AnnouncementsWidgetV3Body
+        announcements={mockAnnouncements.slice(0, 1)}
+        onItemClick={jest.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('banner-dismiss'));
+
+    expect(
+      screen.queryByTestId('announcements-widget-v3')
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders only the skeleton while loading', () => {
     render(
       <AnnouncementsWidgetV3Body
         loading
         announcements={mockAnnouncements}
         testId="custom-widget"
         onItemClick={jest.fn()}
-        onViewAll={jest.fn()}
       />
     );
 
     expect(screen.getByTestId('custom-widget-loading')).toBeInTheDocument();
-    expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
-    expect(screen.getByTestId('custom-widget')).toBeInTheDocument();
-    expect(screen.queryAllByTestId('mock-announcement-item')).toHaveLength(0);
-    expect(
-      screen.queryByText('label.announcement-plural')
-    ).not.toBeInTheDocument();
-    expect(screen.queryByTestId('view-all-btn')).not.toBeInTheDocument();
+    expect(screen.queryAllByTestId('mock-announcement-banner')).toHaveLength(0);
   });
 
   it('renders nothing when there are no announcements', () => {
@@ -267,41 +261,18 @@ describe('AnnouncementsWidgetV3Body', () => {
     fireEvent.click(screen.getByTestId('announcement-next-btn'));
     fireEvent.click(screen.getByTestId('announcement-next-btn'));
 
-    expect(screen.getByText('3/3')).toBeInTheDocument();
-
-    const nextEntityAnnouncements: AnnouncementEntity[] = [
-      { ...mockAnnouncements[0], displayName: 'Next 0', id: 'b-0' },
-      { ...mockAnnouncements[1], displayName: 'Next 1', id: 'b-1' },
-    ];
+    expect(screen.getByText('Announcement 2')).toBeInTheDocument();
 
     rerender(
       <AnnouncementsWidgetV3Body
-        announcements={nextEntityAnnouncements}
+        announcements={[
+          { ...mockAnnouncements[0], displayName: 'Next 0', id: 'b-0' },
+          { ...mockAnnouncements[1], displayName: 'Next 1', id: 'b-1' },
+        ]}
         onItemClick={jest.fn()}
       />
     );
 
-    expect(screen.getByText('1/2')).toBeInTheDocument();
     expect(screen.getByText('Next 0')).toBeInTheDocument();
-  });
-
-  it('renders nothing after the announcements prop becomes empty', () => {
-    const { rerender } = render(
-      <AnnouncementsWidgetV3Body
-        announcements={mockAnnouncements}
-        onItemClick={jest.fn()}
-      />
-    );
-
-    expect(screen.getByTestId('announcements-widget-v3')).toBeInTheDocument();
-
-    rerender(
-      <AnnouncementsWidgetV3Body announcements={[]} onItemClick={jest.fn()} />
-    );
-
-    expect(
-      screen.queryByTestId('announcements-widget-v3')
-    ).not.toBeInTheDocument();
-    expect(screen.queryAllByTestId('mock-announcement-item')).toHaveLength(0);
   });
 });

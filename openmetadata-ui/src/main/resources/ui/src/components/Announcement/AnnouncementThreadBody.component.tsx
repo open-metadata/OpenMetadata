@@ -14,7 +14,7 @@ import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { confirmStateInitialValue } from '../../constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -22,6 +22,7 @@ import {
   AnnouncementEntity,
   listAnnouncements,
 } from '../../rest/announcementsAPI';
+import { getAnnouncementStatus } from '../../utils/AnnouncementsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
@@ -35,6 +36,7 @@ const AnnouncementThreadBody = ({
   threadLink,
   refetchThread,
   editPermission,
+  statusFilter,
   deleteAnnouncementHandler,
   updateAnnouncementHandler,
 }: AnnouncementThreadBodyProp) => {
@@ -44,6 +46,17 @@ const AnnouncementThreadBody = ({
     confirmStateInitialValue
   );
   const [isThreadLoading, setIsThreadLoading] = useState(true);
+
+  const visibleAnnouncements = useMemo(
+    () =>
+      statusFilter
+        ? announcements.filter(
+            (announcement) =>
+              getAnnouncementStatus(announcement) === statusFilter
+          )
+        : announcements,
+    [announcements, statusFilter]
+  );
 
   const getThreads = async (after?: string) => {
     setIsThreadLoading(true);
@@ -102,7 +115,7 @@ const AnnouncementThreadBody = ({
     getThreads();
   }, [threadLink, refetchThread]);
 
-  if (isEmpty(announcements) && !isThreadLoading) {
+  if (isEmpty(visibleAnnouncements) && !isThreadLoading) {
     return (
       <ErrorPlaceHolder
         className="h-auto mt-24"
@@ -119,7 +132,7 @@ const AnnouncementThreadBody = ({
       className="announcement-thread-body"
       data-testid="announcement-thread-body">
       <AnnouncementThreads
-        announcements={announcements}
+        announcements={visibleAnnouncements}
         editPermission={editPermission}
         updateAnnouncementHandler={onUpdateAnnouncement}
         onConfirmation={onConfirmation}

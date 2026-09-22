@@ -1603,8 +1603,7 @@ export const createAnnouncement = async (
 export const replyAnnouncement = async (page: Page) => {
   await page
     .locator('[data-testid="entity-header-announcements"]')
-    .locator('[data-testid^="announcement-item-"]')
-    .first()
+    .getByTestId('announcement-title-btn')
     .click();
 
   await page.hover(
@@ -1826,14 +1825,17 @@ export const createInactiveAnnouncement = async (
   await page.getByTestId('announcement-button').click();
 
   const announcementDrawer = page.getByTestId('announcement-drawer');
-  const inactiveAnnouncement = announcementDrawer
-    .getByTestId('announcement-card')
-    .filter({ hasText: data.title });
+
+  await announcementDrawer
+    .getByTestId('announcement-status-tabs')
+    .getByRole('button', { name: 'In-Active' })
+    .click();
 
   await expect(
-    announcementDrawer.getByTestId('inActive-announcements')
+    announcementDrawer
+      .getByTestId('announcement-card')
+      .filter({ hasText: data.title })
   ).toBeVisible();
-  await expect(inactiveAnnouncement).toBeVisible();
   await page.getByTestId('announcement-close').click();
 
   return announcementId;

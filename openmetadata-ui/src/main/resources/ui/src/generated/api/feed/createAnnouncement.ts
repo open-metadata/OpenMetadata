@@ -15,6 +15,15 @@
  */
 export interface CreateAnnouncement {
     /**
+     * Severity/category of the announcement. Drives the colour and icon it is rendered with.
+     */
+    announcementType?: AnnouncementType;
+    /**
+     * Palette family the announcement is rendered with. Only meaningful when announcementType
+     * is `Custom`; for every other type the colour is derived from the type.
+     */
+    color?: AnnouncementColor;
+    /**
      * Announcement content in Markdown format.
      */
     description: string;
@@ -42,4 +51,35 @@ export interface CreateAnnouncement {
      * Start time from when the announcement should be shown.
      */
     startTime: number;
+}
+
+/**
+ * Palette family the announcement is rendered with. Only meaningful when announcementType
+ * is `Custom`; for every other type the colour is derived from the type.
+ */
+export enum AnnouncementColor {
+    Blue = "blue",
+    BlueDark = "blue-dark",
+    BlueLight = "blue-light",
+    Brand = "brand",
+    Error = "error",
+    Gray = "gray",
+    GrayBlue = "gray-blue",
+    Indigo = "indigo",
+    Orange = "orange",
+    Pink = "pink",
+    Purple = "purple",
+    Success = "success",
+    Warning = "warning",
+}
+
+/**
+ * Severity/category of the announcement. Drives the colour and icon it is rendered with.
+ */
+export enum AnnouncementType {
+    Critical = "Critical",
+    Custom = "Custom",
+    Deprecation = "Deprecation",
+    Notice = "Notice",
+    Warning = "Warning",
 }

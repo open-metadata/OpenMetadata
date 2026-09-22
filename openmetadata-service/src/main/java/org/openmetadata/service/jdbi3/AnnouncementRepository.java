@@ -27,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.type.AnnouncementStatus;
+import org.openmetadata.schema.type.AnnouncementType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -73,6 +74,9 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
       announcement.setName("announcement-" + announcement.getId());
     }
     inheritOwnersAndDomainsFromTargetEntity(announcement);
+    if (announcement.getAnnouncementType() == null) {
+      announcement.setAnnouncementType(AnnouncementType.Notice);
+    }
     if (announcement.getStatus() == null) {
       long now = System.currentTimeMillis();
       if (announcement.getEndTime() < now) {
@@ -208,6 +212,9 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
       recordChange("startTime", original.getStartTime(), updated.getStartTime());
       recordChange("endTime", original.getEndTime(), updated.getEndTime());
       recordChange("status", original.getStatus(), updated.getStatus());
+      recordChange(
+          "announcementType", original.getAnnouncementType(), updated.getAnnouncementType());
+      recordChange("color", original.getColor(), updated.getColor());
     }
   }
 

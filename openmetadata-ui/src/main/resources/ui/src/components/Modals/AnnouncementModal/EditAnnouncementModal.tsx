@@ -16,30 +16,28 @@ import { DateTime } from 'luxon';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
+import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
-import { AnnouncementEntity } from '../../../rest/announcementsAPI';
 import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
 import { getField } from '../../../utils/formUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DatePicker from '../../common/DatePicker/DatePicker';
-import { CreateAnnouncement } from './AddAnnouncementModal';
 import './announcement-modal.less';
+import {
+  AnnouncementFormValues,
+  EditableAnnouncement,
+} from './AnnouncementModal.interface';
+import {
+  AnnouncementColorSelect,
+  AnnouncementTypeSelect,
+} from './AnnouncementTypeField.component';
 
 interface Props {
-  announcement: Pick<
-    AnnouncementEntity,
-    'description' | 'startTime' | 'endTime'
-  >;
+  announcement: EditableAnnouncement;
   announcementTitle: string;
   open: boolean;
   onCancel: () => void;
-  onConfirm: (
-    title: string,
-    announcement: Pick<
-      AnnouncementEntity,
-      'description' | 'startTime' | 'endTime'
-    >
-  ) => void;
+  onConfirm: (title: string, announcement: EditableAnnouncement) => void;
 }
 
 const EditAnnouncementModal: FC<Props> = ({
@@ -56,18 +54,22 @@ const EditAnnouncementModal: FC<Props> = ({
     description,
     startTime,
     endTime,
-  }: CreateAnnouncement) => {
+    announcementType,
+    color,
+  }: AnnouncementFormValues) => {
     const startTimeMs = startTime.toMillis();
     const endTimeMs = endTime.toMillis();
 
     if (startTimeMs >= endTimeMs) {
       showErrorToast(t('message.announcement-invalid-start-time'));
     } else {
-      const updatedAnnouncement = {
+      const updatedAnnouncement: EditableAnnouncement = {
         ...announcement,
         description,
         startTime: startTimeMs,
         endTime: endTimeMs,
+        announcementType,
+        color: announcementType === AnnouncementType.Custom ? color : undefined,
       };
 
       onConfirm(title, updatedAnnouncement);
@@ -107,7 +109,7 @@ const EditAnnouncementModal: FC<Props> = ({
       title={t('label.edit-an-announcement')}
       width={720}
       onCancel={onCancel}>
-      <Form
+      <Form<AnnouncementFormValues>
         data-testid="announcement-form"
         id="announcement-form"
         initialValues={{
@@ -115,6 +117,9 @@ const EditAnnouncementModal: FC<Props> = ({
           description: announcement.description,
           startTime: DateTime.fromMillis(announcement.startTime),
           endTime: DateTime.fromMillis(announcement.endTime),
+          announcementType:
+            announcement.announcementType ?? AnnouncementType.Notice,
+          color: announcement.color,
         }}
         layout="vertical"
         validateMessages={VALIDATION_MESSAGES}
@@ -131,6 +136,28 @@ const EditAnnouncementModal: FC<Props> = ({
             },
           ]}>
           <Input placeholder={t('label.announcement-title')} type="text" />
+        </Form.Item>
+        <Form.Item
+          label={`${t('label.announcement-type')}:`}
+          name="announcementType"
+          rules={[{ required: true }]}>
+          <AnnouncementTypeSelect />
+        </Form.Item>
+        <Form.Item
+          noStyle
+          shouldUpdate={(prev, next) =>
+            prev.announcementType !== next.announcementType
+          }>
+          {({ getFieldValue }) =>
+            getFieldValue('announcementType') === AnnouncementType.Custom && (
+              <Form.Item
+                label={`${t('label.color')}:`}
+                name="color"
+                rules={[{ required: true }]}>
+                <AnnouncementColorSelect />
+              </Form.Item>
+            )
+          }
         </Form.Item>
         <Space className="announcement-date-space" size={16}>
           <Form.Item

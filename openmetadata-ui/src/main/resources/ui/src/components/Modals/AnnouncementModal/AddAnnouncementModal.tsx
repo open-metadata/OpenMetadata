@@ -13,10 +13,10 @@
 
 import { Form, Input, Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { DateTime } from 'luxon';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
+import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import { createAnnouncement } from '../../../rest/announcementsAPI';
 import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
@@ -26,6 +26,11 @@ import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { getField } from '../../../utils/formUtils';
 import DatePicker from '../../common/DatePicker/DatePicker';
 import './announcement-modal.less';
+import { AnnouncementFormValues } from './AnnouncementModal.interface';
+import {
+  AnnouncementColorSelect,
+  AnnouncementTypeSelect,
+} from './AnnouncementTypeField.component';
 
 interface Props {
   open: boolean;
@@ -33,13 +38,6 @@ interface Props {
   entityFQN: string;
   onCancel: () => void;
   onSave: () => void;
-}
-
-export interface CreateAnnouncement {
-  title: string;
-  description: string;
-  startTime: DateTime;
-  endTime: DateTime;
 }
 
 const AddAnnouncementModal: FC<Props> = ({
@@ -57,7 +55,9 @@ const AddAnnouncementModal: FC<Props> = ({
     startTime,
     endTime,
     description,
-  }: CreateAnnouncement) => {
+    announcementType,
+    color,
+  }: AnnouncementFormValues) => {
     const startTimeMs = startTime.toMillis();
     const endTimeMs = endTime.toMillis();
 
@@ -72,6 +72,9 @@ const AddAnnouncementModal: FC<Props> = ({
           entityLink: getEntityFeedLink(entityType, entityFQN),
           startTime: startTimeMs,
           endTime: endTimeMs,
+          announcementType,
+          color:
+            announcementType === AnnouncementType.Custom ? color : undefined,
         });
         if (data) {
           showSuccessToast(t('message.announcement-created-successfully'));
@@ -120,9 +123,10 @@ const AddAnnouncementModal: FC<Props> = ({
       title={t('message.make-an-announcement')}
       width={720}
       onCancel={onCancel}>
-      <Form<CreateAnnouncement>
+      <Form<AnnouncementFormValues>
         data-testid="announcement-form"
         id="announcement-form"
+        initialValues={{ announcementType: AnnouncementType.Notice }}
         layout="vertical"
         validateMessages={VALIDATION_MESSAGES}
         onFinish={handleCreateAnnouncement}>
@@ -138,6 +142,28 @@ const AddAnnouncementModal: FC<Props> = ({
             },
           ]}>
           <Input placeholder={t('label.announcement-title')} type="text" />
+        </Form.Item>
+        <Form.Item
+          label={`${t('label.announcement-type')}:`}
+          name="announcementType"
+          rules={[{ required: true }]}>
+          <AnnouncementTypeSelect />
+        </Form.Item>
+        <Form.Item
+          noStyle
+          shouldUpdate={(prev, next) =>
+            prev.announcementType !== next.announcementType
+          }>
+          {({ getFieldValue }) =>
+            getFieldValue('announcementType') === AnnouncementType.Custom && (
+              <Form.Item
+                label={`${t('label.color')}:`}
+                name="color"
+                rules={[{ required: true }]}>
+                <AnnouncementColorSelect />
+              </Form.Item>
+            )
+          }
         </Form.Item>
         <Space className="announcement-date-space" size={16}>
           <Form.Item
