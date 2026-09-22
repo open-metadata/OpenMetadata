@@ -327,12 +327,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Card,
     Checkbox: ({
       'aria-label': ariaLabel,
+      'data-testid': dataTestId,
       isSelected,
       onChange,
     }: Record<string, unknown>) => (
       <button
         aria-checked={Boolean(isSelected)}
         aria-label={ariaLabel as string}
+        data-testid={dataTestId as string}
         role="checkbox"
         onClick={() =>
           (onChange as ((selected: boolean) => void) | undefined)?.(!isSelected)
@@ -740,6 +742,27 @@ describe('MetricListPage', () => {
     });
 
     expect(childLink.closest('[data-metric-fqn]')).toHaveClass('tw:pl-4');
+  });
+
+  it('selects metrics from card view so bulk actions stay reachable on narrow screens', async () => {
+    renderPage();
+
+    await screen.findByRole('table');
+    fireEvent.click(screen.getByTestId('metric-card-view-button'));
+    await screen.findByTestId('metric-card-view');
+
+    const checkbox = screen.getByTestId('select-metric-card-metric-1');
+
+    expect(checkbox).toHaveAttribute('aria-checked', 'false');
+
+    fireEvent.click(checkbox);
+
+    expect(await screen.findByTestId('bulk-edit-metric')).toBeInTheDocument();
+    expect(screen.getByTestId('clear-metric-selection')).toBeInTheDocument();
+    expect(screen.getByTestId('select-metric-card-metric-1')).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
   });
 
   it('keeps group context when hierarchy search matches a group or descendant', async () => {

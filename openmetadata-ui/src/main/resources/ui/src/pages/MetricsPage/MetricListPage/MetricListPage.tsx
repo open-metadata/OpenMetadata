@@ -18,6 +18,7 @@ import {
   ButtonGroup,
   ButtonGroupItem,
   Card,
+  Checkbox,
   Dialog,
   Dropdown,
   EmptyPlaceholder,
@@ -352,6 +353,18 @@ const MetricListPage = () => {
   const selectedMetrics = useMemo(
     () => realMetrics.filter(({ id }) => selectedMetricIds.includes(id)),
     [realMetrics, selectedMetricIds]
+  );
+
+  const toggleMetricSelection = useCallback(
+    (metricId: string, isSelected: boolean) =>
+      setSelectedMetricIds((current) => {
+        if (!isSelected) {
+          return current.filter((selectedId) => selectedId !== metricId);
+        }
+
+        return current.includes(metricId) ? current : [...current, metricId];
+      }),
+    []
   );
 
   useEffect(() => {
@@ -979,6 +992,9 @@ const MetricListPage = () => {
     </>
   );
 
+  // Card view carries its own checkbox because selection lives on the Table in the other view, and
+  // card is the default below 768px — without this the bulk-edit and bulk-delete controls, which
+  // only appear once something is selected, were unreachable on a phone.
   const renderMetricCard = (metric: MetricTreeNode, depth: number) => (
     <Card
       className={depth > 0 ? 'tw:border-l-4 tw:border-l-brand' : ''}
@@ -988,7 +1004,22 @@ const MetricListPage = () => {
       size="sm">
       <Card.Content>
         <Box direction="col" gap={4}>
-          {renderMetricName(metric, depth)}
+          <Box align="center" gap={2}>
+            {selectableMetricIds.includes(metric.id) && (
+              <Checkbox
+                aria-label={t('label.select-entity', {
+                  entity: getEntityName(metric),
+                })}
+                className="tw:shrink-0"
+                data-testid={`select-metric-card-${metric.id}`}
+                isSelected={selectedMetricIds.includes(metric.id)}
+                onChange={(isSelected) =>
+                  toggleMetricSelection(metric.id, isSelected)
+                }
+              />
+            )}
+            {renderMetricName(metric, depth)}
+          </Box>
           {renderMetricCardMetadata(metric)}
         </Box>
       </Card.Content>
