@@ -29,14 +29,11 @@ export const ChevronRight: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 20 20"
+    strokeWidth={2}
+    viewBox="0 0 24 24"
     width={size}
     {...props}>
-    <path
-      d="m6.309 2 6.941 6.942a1.497 1.497 0 0 1 0 2.116L6.31 18"
-      stroke="currentColor"
-      strokeWidth={1.8}
-    />
+    <path d="m9 18 6-6-6-6" />
   </svg>
 );
 ChevronRight.displayName = 'ChevronRight';

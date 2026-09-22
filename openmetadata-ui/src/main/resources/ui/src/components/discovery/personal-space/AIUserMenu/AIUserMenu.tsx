@@ -21,7 +21,7 @@ import {
   HelpCircle,
   Settings01,
   User01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { upperCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo } from 'react';

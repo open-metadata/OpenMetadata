@@ -56,7 +56,7 @@ interface MockFileTriggerProps {
   'data-testid'?: string;
 }
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Download01: () => null,
   UploadCloud01: () => null,
 }));

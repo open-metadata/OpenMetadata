@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Check } from '@untitledui/icons';
+import { Check } from '../../../icons';
 import type { FC, HTMLAttributes, ReactNode } from 'react';
 import { FeaturedIcon } from '@/components/foundations/featured-icon/featured-icon';
 import { cx, sortCx } from '@/utils/cx';

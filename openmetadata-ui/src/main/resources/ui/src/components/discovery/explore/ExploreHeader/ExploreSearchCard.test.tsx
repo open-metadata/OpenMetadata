@@ -230,7 +230,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Plus: (props: React.SVGProps<SVGSVGElement>) => (
     <svg data-testid="icon-plus" {...props} />
   ),

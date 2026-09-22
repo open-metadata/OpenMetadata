@@ -43,7 +43,7 @@ jest.mock('utils/RouterUtils', () => ({
   getTeamsWithFqnPath: () => '/team',
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   UserCheck01: () => <span />,
   Lock01: () => <span />,
   ShieldTick: () => <span />,

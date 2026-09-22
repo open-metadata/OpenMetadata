@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Box, EmptyPlaceholder, Owner } from '@openmetadata/ui-core-components';
-import { Plus, Tag01 } from '@untitledui/icons';
+import { Plus, Tag01 } from '@openmetadata/ui-core-components/icons';
 import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';

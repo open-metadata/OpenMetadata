@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
-import { DotsVertical } from '@untitledui/icons';
+import { DotsVertical } from '@openmetadata/ui-core-components/icons';
 import { Form, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, last, omit, toPairs } from 'lodash';

@@ -17,7 +17,7 @@ import {
   ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ArrowLeft as ArrowBackIcon } from '@untitledui/icons';
+import { ArrowLeft as ArrowBackIcon } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { BlackCloseIcon, WhiteCheckIcon } from './IncidentStatusIcons';
 

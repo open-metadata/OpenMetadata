@@ -12,7 +12,7 @@
  */
 
 import { Button, Input } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import RichTextEditor from '../../../../common/RichTextEditor/RichTextEditor';

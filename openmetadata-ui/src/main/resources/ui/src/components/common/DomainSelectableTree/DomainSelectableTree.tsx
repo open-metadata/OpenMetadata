@@ -17,7 +17,7 @@ import {
   Input,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus, SearchLg } from '@untitledui/icons';
+import { Plus, SearchLg } from '@openmetadata/ui-core-components/icons';
 import { Tree } from 'antd';
 import { AntTreeNodeProps } from 'antd/lib/tree';
 import { AxiosError } from 'axios';

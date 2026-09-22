@@ -21,7 +21,7 @@ import React from 'react';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import InlineSeverity from './InlineSeverity.component';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronDown: () => <svg data-testid="icon-chevron-down" />,
   ChevronUp: () => <svg data-testid="icon-chevron-up" />,
 }));

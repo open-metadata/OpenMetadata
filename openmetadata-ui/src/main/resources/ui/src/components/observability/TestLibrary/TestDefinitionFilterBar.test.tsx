@@ -17,7 +17,7 @@ import TestDefinitionFilterBar from './TestDefinitionFilterBar';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   XCircle: () => <span data-testid="icon-x-circle" />,
 }));
 

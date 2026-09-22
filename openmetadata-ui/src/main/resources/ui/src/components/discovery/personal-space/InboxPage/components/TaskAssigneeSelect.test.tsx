@@ -112,7 +112,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
 }));
 
-jest.mock('@untitledui/icons', () => ({ User03: () => null }), {
+jest.mock('@openmetadata/ui-core-components/icons', () => ({ User03: () => null }), {
   virtual: true,
 });
 

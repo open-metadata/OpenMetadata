@@ -13,7 +13,7 @@
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import { PermissionDebugger as AccessControlIcon } from '@openmetadata/ui-core-components/icons';
-import { Key01, Settings02, ShieldTick, User01 } from '@untitledui/icons';
+import { Key01, Settings02, ShieldTick, User01 } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import React, { FC } from 'react';
 import {

@@ -15,7 +15,7 @@ import { FieldProps } from '@rjsf/utils';
 import { fireEvent, render, screen } from '@testing-library/react';
 import CoreArrayField from './CoreArrayField';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Copy01: () => <span>copy-icon</span>,
   XClose: () => <span>x-icon</span>,
 }));

@@ -24,7 +24,7 @@ import {
   Settings01,
   Tag01,
   Users01,
-} from '@untitledui/icons';
+} from '../icons';
 import { NavAccountCard } from '../components/application/app-navigation/base-components/nav-account-card';
 import { NavItemButton } from '../components/application/app-navigation/base-components/nav-item-button';
 import { NavList } from '../components/application/app-navigation/base-components/nav-list';

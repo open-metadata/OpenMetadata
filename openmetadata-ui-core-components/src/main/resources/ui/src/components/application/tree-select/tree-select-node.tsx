@@ -13,7 +13,7 @@
 import { CheckboxBase } from '@/components/base/checkbox/checkbox';
 import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
 import { cx } from '@/utils/cx';
-import { RefreshCw01 } from '@untitledui/icons';
+import { RefreshCw01 } from '../../../icons';
 import { Tree } from '../tree/tree';
 import type { TreeSelectNode } from './tree-select.types';
 

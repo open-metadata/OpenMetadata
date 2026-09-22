@@ -12,7 +12,7 @@
  */
 
 import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Stars01 } from '@untitledui/icons';
+import { Stars01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { TFunction } from 'i18next';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';

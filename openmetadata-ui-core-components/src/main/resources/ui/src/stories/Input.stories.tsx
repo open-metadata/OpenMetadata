@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { HelpCircle, SearchLg } from '@untitledui/icons';
+import { HelpCircle, SearchLg } from '../icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Input } from '../components/base/input/input';
 import { TextArea } from '../components/base/textarea/textarea';

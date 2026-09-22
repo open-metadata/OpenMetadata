@@ -18,7 +18,7 @@ import {
   PageLayout,
   Tabs,
 } from '@openmetadata/ui-core-components';
-import { Edit03, RefreshCw04, Trash01 } from '@untitledui/icons';
+import { Edit03, RefreshCw04, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { Key, ReactNode, useCallback, useMemo, useState } from 'react';

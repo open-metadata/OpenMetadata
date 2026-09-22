@@ -25,7 +25,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { AlertCircle, InfoCircle, LinkExternal01 } from '@untitledui/icons';
+import { AlertCircle, InfoCircle, LinkExternal01 } from '@openmetadata/ui-core-components/icons';
 import {
   FC,
   ReactNode,

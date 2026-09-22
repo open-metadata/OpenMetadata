@@ -12,7 +12,7 @@
  */
 
 import { CloseButton } from '@openmetadata/ui-core-components';
-import { SearchLg } from '@untitledui/icons';
+import { SearchLg } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

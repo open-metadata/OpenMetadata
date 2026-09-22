@@ -14,7 +14,7 @@ import { render, screen } from '@testing-library/react';
 import { createRef } from 'react';
 import { ChipTrigger } from './ChipTrigger.component';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronDown: () => <svg data-testid="icon-chevron-down" />,
   ChevronUp: () => <svg data-testid="icon-chevron-up" />,
 }));

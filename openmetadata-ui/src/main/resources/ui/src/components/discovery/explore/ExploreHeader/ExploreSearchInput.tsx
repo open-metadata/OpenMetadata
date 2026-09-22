@@ -20,7 +20,7 @@ import {
   Tooltip,
 } from '@openmetadata/ui-core-components';
 import { isAppleDevice } from '@react-aria/utils';
-import { SearchMd } from '@untitledui/icons';
+import { SearchMd } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import type { FormEvent, RefObject } from 'react';
 import { lazy, Suspense } from 'react';

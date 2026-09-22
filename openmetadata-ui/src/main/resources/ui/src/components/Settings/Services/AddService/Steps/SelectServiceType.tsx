@@ -21,7 +21,7 @@ import {
   Typography,
   type SelectItemType,
 } from '@openmetadata/ui-core-components';
-import { SearchLg } from '@untitledui/icons';
+import { SearchLg } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';

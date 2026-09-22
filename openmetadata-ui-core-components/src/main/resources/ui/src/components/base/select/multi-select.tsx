@@ -7,7 +7,7 @@ import { type SelectItemType, sizes } from '@/components/base/select/select';
 import { TagCloseX } from '@/components/base/tags/base-components/tag-close-x';
 import { useResizeObserver } from '@/hooks/use-resize-observer';
 import { cx } from '@/utils/cx';
-import { SearchLg } from '@untitledui/icons';
+import { SearchLg } from '../../../icons';
 import type {
   FocusEventHandler,
   KeyboardEvent,

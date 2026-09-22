@@ -19,7 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle, Inbox01 } from '@untitledui/icons';
+import { CheckCircle, Inbox01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { DateRangeObject } from 'Models';
 import React, {

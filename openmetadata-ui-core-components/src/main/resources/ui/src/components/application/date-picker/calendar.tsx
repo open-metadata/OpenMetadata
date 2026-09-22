@@ -5,7 +5,7 @@ import {
   getLocalTimeZone,
   today,
 } from '@internationalized/date';
-import { ChevronLeft, ChevronRight } from '@untitledui/icons';
+import { ChevronLeft, ChevronRight } from '../../../icons';
 import type {
   CalendarProps as AriaCalendarProps,
   DateValue,

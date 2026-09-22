@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ChevronDown, RefreshCw01, SearchLg, XClose } from '@untitledui/icons';
+import { ChevronDown, RefreshCw01, SearchLg, XClose } from '../../../icons';
 import {
   SearchInputIcon,
   TriggerCountBadge,

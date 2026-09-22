@@ -17,7 +17,7 @@ import {
   getDiscriminatorFieldFromSchema,
   RJSFSchema,
 } from '@rjsf/utils';
-import { InfoCircle } from '@untitledui/icons';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';

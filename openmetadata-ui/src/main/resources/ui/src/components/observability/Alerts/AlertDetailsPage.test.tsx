@@ -177,7 +177,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Edit03: () => null,
   RefreshCw04: () => null,
   Trash01: () => null,

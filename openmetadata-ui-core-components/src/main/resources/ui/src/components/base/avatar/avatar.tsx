@@ -1,5 +1,5 @@
 import { cx } from '@/utils/cx';
-import { User01 } from '@untitledui/icons';
+import { User01 } from '../../../icons';
 import { type CSSProperties, type FC, type ReactNode, useState } from 'react';
 import { AvatarOnlineIndicator, VerifiedTick } from './base-components';
 import { getAvatarColorClasses } from './utils';

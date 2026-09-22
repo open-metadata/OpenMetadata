@@ -12,7 +12,7 @@
  */
 
 import { Button, Card } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@untitledui/icons';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import {
   MouseEvent,

@@ -23,7 +23,7 @@ import {
   SearchMd,
   Server01,
   Shield01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { ServiceCategory } from '../enums/service.enum';
 

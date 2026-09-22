@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { GridDotsOuter } from '@untitledui/icons';
+import { GridDotsOuter } from '@openmetadata/ui-core-components/icons';
 import { Col, Divider, Row, Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';

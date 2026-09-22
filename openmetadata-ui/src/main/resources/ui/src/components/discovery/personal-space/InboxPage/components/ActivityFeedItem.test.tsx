@@ -127,7 +127,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
 }));
 
-jest.mock('@untitledui/icons', () => ({ MessageDotsCircle: () => <span /> }));
+jest.mock('@openmetadata/ui-core-components/icons', () => ({ MessageDotsCircle: () => <span /> }));
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),

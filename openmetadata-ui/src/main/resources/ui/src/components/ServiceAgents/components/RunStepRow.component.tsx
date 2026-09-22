@@ -17,7 +17,7 @@ import {
   ChevronRight,
   Copy01,
   Lightbulb03,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClipboard } from '../../../hooks/useClipBoard';

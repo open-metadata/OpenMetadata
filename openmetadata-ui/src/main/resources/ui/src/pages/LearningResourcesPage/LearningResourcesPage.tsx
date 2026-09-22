@@ -21,7 +21,7 @@ import {
   TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus, SearchLg, Trash01 } from '@untitledui/icons';
+import { Plus, SearchLg, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import { DateTime } from 'luxon';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';

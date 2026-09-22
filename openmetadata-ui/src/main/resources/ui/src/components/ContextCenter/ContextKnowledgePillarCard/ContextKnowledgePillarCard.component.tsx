@@ -20,7 +20,7 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ArrowNarrowRight } from '@untitledui/icons';
+import { ArrowNarrowRight } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC, Fragment, KeyboardEvent, MouseEvent } from 'react';
 import {

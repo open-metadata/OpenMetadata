@@ -16,7 +16,7 @@ import {
   HookForm,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Lightbulb05 } from '@untitledui/icons';
+import { Lightbulb05 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';

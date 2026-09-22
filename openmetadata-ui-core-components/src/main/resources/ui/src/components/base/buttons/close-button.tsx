@@ -1,4 +1,4 @@
-import { X as CloseIcon } from '@untitledui/icons';
+import { X as CloseIcon } from '../../../icons';
 import {
   Button as AriaButton,
   type ButtonProps as AriaButtonProps,

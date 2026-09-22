@@ -12,7 +12,7 @@ import { Typography } from '@/components/foundations/typography';
 import { useResizeObserver } from '@/hooks/use-resize-observer';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
-import { SearchLg } from '@untitledui/icons';
+import { SearchLg } from '../../../icons';
 import type {
   FocusEventHandler,
   KeyboardEvent,

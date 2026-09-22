@@ -34,7 +34,7 @@ import {
   SearchLg,
   Table as TableIcon,
   XClose,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined, some } from 'lodash';
 import React, {

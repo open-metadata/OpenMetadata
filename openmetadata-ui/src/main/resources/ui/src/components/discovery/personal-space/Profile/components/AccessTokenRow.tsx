@@ -28,7 +28,7 @@ import {
   Plus,
   RefreshCcw02,
   Trash02,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, {
   Dispatch,

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Button, Select } from '@openmetadata/ui-core-components';
-import { XCircle } from '@untitledui/icons';
+import { XCircle } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { TEST_DEFINITION_FILTERS } from '../../../constants/TestDefinition.constants';
 

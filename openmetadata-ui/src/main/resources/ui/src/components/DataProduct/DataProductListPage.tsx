@@ -21,7 +21,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Globe01, Package, Plus } from '@untitledui/icons';
+import { Globe01, Package as PackageIcon, Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import {
@@ -327,7 +327,7 @@ const DataProductListPage = ({
                 : undefined
             }
             description={t('label.no-data-products-yet-description')}
-            icon={<Package className="tw:text-fg-brand-primary" />}
+            icon={<PackageIcon className="tw:text-fg-brand-primary" />}
             title={t('label.no-data-products-yet')}
             variant="blank"
           />

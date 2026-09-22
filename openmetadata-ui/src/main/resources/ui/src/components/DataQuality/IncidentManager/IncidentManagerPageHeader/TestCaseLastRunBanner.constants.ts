@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Check, Clock, Minus, SlashCircle01, XClose } from '@untitledui/icons';
+import { Check, Clock, Minus, SlashCircle01, XClose } from '@openmetadata/ui-core-components/icons';
 import {
   TestCaseResolutionStatusTypes,
   TestCaseStatus,

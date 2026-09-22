@@ -20,7 +20,7 @@ import {
   Input,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ArrowLeft, ArrowRight, ArrowUpRight } from '@untitledui/icons';
+import { ArrowLeft, ArrowRight, ArrowUpRight } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { OntologyPackInstallResult } from '../../generated/api/data/ontologyPackInstallResult';
 import { OntologyPackManifest } from '../../generated/api/data/ontologyPackManifest';

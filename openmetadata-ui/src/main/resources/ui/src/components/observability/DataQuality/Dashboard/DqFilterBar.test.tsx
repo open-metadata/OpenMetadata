@@ -86,7 +86,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   },
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronDown: () => <span data-testid="icon-chevron" />,
   SearchLg: () => <span data-testid="icon-search" />,
   XCircle: () => <span data-testid="icon-x-circle" />,

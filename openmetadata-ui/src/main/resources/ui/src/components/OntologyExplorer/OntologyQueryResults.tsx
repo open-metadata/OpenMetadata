@@ -12,7 +12,7 @@
  */
 
 import { Tabs } from '@openmetadata/ui-core-components';
-import { Check } from '@untitledui/icons';
+import { Check } from '@openmetadata/ui-core-components/icons';
 import { Key, ReactElement, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Binding } from '../../generated/api/rdf/sparqlResponse';

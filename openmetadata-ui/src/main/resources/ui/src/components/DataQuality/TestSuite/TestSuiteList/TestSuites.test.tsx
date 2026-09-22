@@ -386,7 +386,7 @@ jest.mock(
   })
 );
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   SearchLg: () => <span data-testid="search-icon" />,
 }));
 

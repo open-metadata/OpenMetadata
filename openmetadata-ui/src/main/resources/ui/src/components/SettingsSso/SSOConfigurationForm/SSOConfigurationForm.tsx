@@ -21,7 +21,7 @@ import {
   RJSFSchema,
 } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
-import { Check, UploadCloud02, X } from '@untitledui/icons';
+import { Check, UploadCloud02, X } from '@openmetadata/ui-core-components/icons';
 import { Button, Card, Typography, Upload } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

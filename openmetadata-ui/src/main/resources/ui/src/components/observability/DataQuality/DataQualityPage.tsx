@@ -17,7 +17,7 @@ import {
   PageLayout,
   Tabs,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, Plus, Upload01 } from '@untitledui/icons';
+import { ChevronDown, Plus, Upload01 } from '@openmetadata/ui-core-components/icons';
 import { ComponentType, lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';

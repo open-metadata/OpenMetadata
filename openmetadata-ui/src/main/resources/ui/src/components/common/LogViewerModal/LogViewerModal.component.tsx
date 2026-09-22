@@ -28,7 +28,7 @@ import {
   Maximize01,
   Minimize01,
   SearchMd,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import {
   ChangeEvent,

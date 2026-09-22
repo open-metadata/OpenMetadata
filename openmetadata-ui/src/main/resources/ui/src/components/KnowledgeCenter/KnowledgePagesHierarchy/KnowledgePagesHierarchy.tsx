@@ -23,9 +23,9 @@ import {
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Articles } from '@openmetadata/ui-core-components/icons';
+import { File06 as Articles } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Trash01 } from '@untitledui/icons';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniq } from 'lodash';

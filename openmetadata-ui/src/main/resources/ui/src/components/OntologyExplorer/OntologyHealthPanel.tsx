@@ -12,7 +12,7 @@
  */
 
 import { Button } from '@openmetadata/ui-core-components';
-import { ArrowRight, Check } from '@untitledui/icons';
+import { ArrowRight, Check } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { OntologyNode } from './OntologyExplorer.interface';
 import { OntologyHealthSummary } from './OntologyStudio.utils';

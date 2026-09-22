@@ -26,7 +26,7 @@ import {
   HintText,
   HookForm,
 } from '@openmetadata/ui-core-components';
-import { Users01 } from '@untitledui/icons';
+import { Users01 } from '@openmetadata/ui-core-components/icons';
 import { debounce, omit } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useWatch } from 'react-hook-form';

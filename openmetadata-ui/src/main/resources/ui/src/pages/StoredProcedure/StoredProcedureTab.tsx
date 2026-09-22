@@ -46,7 +46,7 @@ import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
-const StoredProcedureTab = () => {
+const BracketsTab = () => {
   const { t } = useTranslation();
   const {
     currentPage,
@@ -59,7 +59,7 @@ const StoredProcedureTab = () => {
     pagingCursor,
   } = usePaging();
 
-  const [storedProcedure, setStoredProcedure] = useState<ServicePageData[]>([]);
+  const [storedProcedure, setBrackets] = useState<ServicePageData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
 
@@ -73,7 +73,7 @@ const StoredProcedureTab = () => {
   const { filters: tableFilters, setFilters } = useTableFilters(
     INITIAL_TABLE_FILTERS
   );
-  const { showDeletedTables: showDeletedStoredProcedures } = tableFilters;
+  const { showDeletedTables: showDeletedBracketss } = tableFilters;
 
   const searchValue = useMemo(() => {
     const param = location.search;
@@ -84,7 +84,7 @@ const StoredProcedureTab = () => {
     return searchData.schema as string | undefined;
   }, [location.search]);
 
-  const searchStoredProcedure = useCallback(
+  const searchBrackets = useCallback(
     async (searchValue: string, pageNumber = INITIAL_PAGING_VALUE) => {
       setIsLoading(true);
       try {
@@ -98,12 +98,12 @@ const StoredProcedureTab = () => {
             searchValue
           ),
           searchIndex: SearchIndex.STORED_PROCEDURE,
-          includeDeleted: showDeletedStoredProcedures,
+          includeDeleted: showDeletedBracketss,
           trackTotalHits: true,
         });
         const data = response.hits.hits.map((schema) => schema._source);
         const total = response.hits.total.value;
-        setStoredProcedure(data);
+        setBrackets(data);
         handlePagingChange({ total });
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -111,7 +111,7 @@ const StoredProcedureTab = () => {
         setIsLoading(false);
       }
     },
-    [decodedDatabaseSchemaFQN, showDeletedStoredProcedures, handlePagingChange]
+    [decodedDatabaseSchemaFQN, showDeletedBracketss, handlePagingChange]
   );
 
   const fetchStoreProcedureDetails = useCallback(
@@ -120,13 +120,13 @@ const StoredProcedureTab = () => {
         setIsLoading(true);
         const { data, paging } = await getStoredProceduresList({
           databaseSchema: decodedDatabaseSchemaFQN,
-          include: showDeletedStoredProcedures
+          include: showDeletedBracketss
             ? Include.Deleted
             : Include.NonDeleted,
           ...params,
           limit: pageSize,
         });
-        setStoredProcedure(data);
+        setBrackets(data);
         handlePagingChange(paging);
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -137,7 +137,7 @@ const StoredProcedureTab = () => {
     [
       decodedDatabaseSchemaFQN,
       pageSize,
-      showDeletedStoredProcedures,
+      showDeletedBracketss,
       handlePagingChange,
     ]
   );
@@ -157,7 +157,7 @@ const StoredProcedureTab = () => {
     [paging, handlePageChange, searchValue]
   );
 
-  const handleShowDeletedStoredProcedures = (value: boolean) => {
+  const handleShowDeletedBracketss = (value: boolean) => {
     setFilters({ showDeletedTables: value });
     handlePageChange(INITIAL_PAGING_VALUE, {
       cursorType: null,
@@ -195,7 +195,7 @@ const StoredProcedureTab = () => {
     [searchValue]
   );
 
-  const onStoredProcedureSearch = useCallback(
+  const onBracketsSearch = useCallback(
     (value: string) => {
       setFilters({ schema: isEmpty(value) ? undefined : value });
       handlePageChange(INITIAL_PAGING_VALUE, {
@@ -208,9 +208,9 @@ const StoredProcedureTab = () => {
 
   useEffect(() => {
     if (searchValue) {
-      searchStoredProcedure(searchValue, currentPage);
+      searchBrackets(searchValue, currentPage);
     }
-  }, [searchValue, currentPage, showDeletedStoredProcedures]);
+  }, [searchValue, currentPage, showDeletedBracketss]);
 
   useEffect(() => {
     if (searchValue) {
@@ -223,7 +223,7 @@ const StoredProcedureTab = () => {
     } else {
       fetchStoreProcedureDetails();
     }
-  }, [showDeletedStoredProcedures, pageSize, pagingCursor, searchValue]);
+  }, [showDeletedBracketss, pageSize, pagingCursor, searchValue]);
 
   const paginationProps = useMemo(
     () => ({
@@ -255,9 +255,9 @@ const StoredProcedureTab = () => {
       }),
       typingInterval: 500,
       searchValue: searchValue,
-      onSearch: onStoredProcedureSearch,
+      onSearch: onBracketsSearch,
     }),
-    [onStoredProcedureSearch]
+    [onBracketsSearch]
   );
 
   return (
@@ -270,9 +270,9 @@ const StoredProcedureTab = () => {
       extraTableFilters={
         <span>
           <Switch
-            checked={showDeletedStoredProcedures}
+            checked={showDeletedBracketss}
             data-testid="show-deleted-stored-procedure"
-            onClick={handleShowDeletedStoredProcedures}
+            onClick={handleShowDeletedBracketss}
           />
           <Typography.Text className="m-l-xs">
             {t('label.deleted')}
@@ -310,4 +310,4 @@ const StoredProcedureTab = () => {
   );
 };
 
-export default StoredProcedureTab;
+export default BracketsTab;

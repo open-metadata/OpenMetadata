@@ -19,7 +19,7 @@ import {
   Input,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { SearchLg, XClose } from '@untitledui/icons';
+import { SearchLg, XClose } from '@openmetadata/ui-core-components/icons';
 import { Modal, Progress } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isString } from 'lodash';

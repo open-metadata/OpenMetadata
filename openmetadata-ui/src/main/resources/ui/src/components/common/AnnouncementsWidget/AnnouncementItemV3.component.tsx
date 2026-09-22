@@ -12,7 +12,7 @@
  */
 
 import { Box, Typography } from '@openmetadata/ui-core-components';
-import { ArrowRight } from '@untitledui/icons';
+import { ArrowRight } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';

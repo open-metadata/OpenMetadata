@@ -15,7 +15,7 @@ import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 // LayersTwo01 has no counterpart in the core-components icon barrel, which only
 // re-exports the design team's own SVG set.
-import { LayersTwo01 } from '@untitledui/icons';
+import { LayersTwo01 } from '@openmetadata/ui-core-components/icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { INCIDENT_GROUP_BY_OPTIONS } from './IncidentGroups.constants';

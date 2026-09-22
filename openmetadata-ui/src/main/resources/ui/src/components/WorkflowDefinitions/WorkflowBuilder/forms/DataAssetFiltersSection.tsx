@@ -12,7 +12,7 @@
  */
 
 import { Button, Card, Typography } from '@openmetadata/ui-core-components';
-import { ChevronDown, Plus, XClose } from '@untitledui/icons';
+import { ChevronDown, Plus, XClose } from '@openmetadata/ui-core-components/icons';
 import { upperFirst } from 'lodash';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Plus } from '@untitledui/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { ReactComponent as AlertsActiveIcon } from '../../../assets/svg/alerts-active.svg';

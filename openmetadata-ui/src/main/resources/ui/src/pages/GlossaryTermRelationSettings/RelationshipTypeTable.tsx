@@ -18,7 +18,7 @@ import {
   TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Check, Edit05, Lock01, Trash01, XClose } from '@untitledui/icons';
+import { Check, Edit05, Lock01, Trash01, XClose } from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import {

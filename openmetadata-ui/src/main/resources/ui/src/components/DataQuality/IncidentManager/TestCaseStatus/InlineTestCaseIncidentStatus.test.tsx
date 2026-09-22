@@ -31,7 +31,7 @@ import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
 import { createTask } from '../../../../rest/tasksAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ArrowLeft: () => <svg data-testid="icon-arrow-left" />,
   Check: () => <svg data-testid="icon-check" />,
   ChevronDown: () => <svg data-testid="icon-chevron-down" />,

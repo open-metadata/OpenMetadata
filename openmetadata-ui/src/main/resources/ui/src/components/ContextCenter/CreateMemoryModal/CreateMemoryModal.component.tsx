@@ -43,7 +43,7 @@ import {
   Plus,
   Share07,
   X,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { ConfigProvider } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';

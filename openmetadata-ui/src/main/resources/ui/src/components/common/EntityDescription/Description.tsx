@@ -18,7 +18,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { MessageChatSquare, MessagePlusSquare } from '@untitledui/icons';
+import { MessageChatSquare, MessagePlusSquare } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { lazy, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';

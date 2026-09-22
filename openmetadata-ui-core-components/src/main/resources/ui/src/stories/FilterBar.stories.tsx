@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Calendar, FilterLines, SearchLg } from '@untitledui/icons';
+import { Calendar, FilterLines, SearchLg } from '../icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Button } from '../components/base/buttons/button';
 import { Input } from '../components/base/input/input';

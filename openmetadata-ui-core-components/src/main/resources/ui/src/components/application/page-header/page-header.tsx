@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SearchLg } from '@untitledui/icons';
+import { SearchLg } from '../../../icons';
 import { isValidElement } from 'react';
 import { cx } from '@/utils/cx';
 import { Box } from '../../base/box/box';

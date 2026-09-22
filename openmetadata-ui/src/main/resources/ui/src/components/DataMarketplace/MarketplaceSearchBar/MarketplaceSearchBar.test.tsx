@@ -118,7 +118,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   return { Input, SelectPopover, Tooltip, Typography };
 });
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   SearchLg: () => <span data-testid="search-icon">search</span>,
 }));
 

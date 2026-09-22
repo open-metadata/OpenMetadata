@@ -18,7 +18,7 @@ import {
   EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Grid01, Plus, Star01, Tag01 } from '@untitledui/icons';
+import { Grid01, Plus, Star01, Tag01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';

@@ -21,10 +21,10 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Delete as DeleteIcon,
-  Edit as EditIcon,
+  Edit01 as EditIcon,
+  Trash01 as DeleteIcon,
 } from '@openmetadata/ui-core-components/icons';
-import { CheckCircle, XCircle } from '@untitledui/icons';
+import { CheckCircle, XCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, {
   ComponentProps,

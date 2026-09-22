@@ -19,7 +19,7 @@ import {
   PageLayout,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { startCase } from 'lodash';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';

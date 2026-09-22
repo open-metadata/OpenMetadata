@@ -19,7 +19,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Settings01, X } from '@untitledui/icons';
+import { Settings01, X } from '@openmetadata/ui-core-components/icons';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LayoutType } from './OntologyExplorer.constants';

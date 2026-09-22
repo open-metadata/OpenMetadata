@@ -12,7 +12,7 @@
  */
 
 import { Button, Tooltip, Typography } from '@openmetadata/ui-core-components';
-import { File06, Link03, Plus } from '@untitledui/icons';
+import { File06, Link03, Plus } from '@openmetadata/ui-core-components/icons';
 import { groupBy, isEmpty, startCase } from 'lodash';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';

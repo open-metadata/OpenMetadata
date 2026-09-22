@@ -16,7 +16,7 @@ import {
   Divider,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { AlertCircle, CheckCircle } from '@untitledui/icons';
+import { AlertCircle, CheckCircle } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 
 export interface AssetSelectionFooterProps {

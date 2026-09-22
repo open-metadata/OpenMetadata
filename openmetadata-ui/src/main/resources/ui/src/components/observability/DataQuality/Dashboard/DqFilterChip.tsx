@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ChevronDown } from '@untitledui/icons';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { DQ_FILTER_TYPES } from '../../../../constants/DataQuality.constants';
 import {

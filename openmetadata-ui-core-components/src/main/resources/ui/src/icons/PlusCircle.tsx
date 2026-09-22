@@ -29,18 +29,11 @@ export const PlusCircle: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 20 20"
+    strokeWidth={2}
+    viewBox="0 0 24 24"
     width={size}
     {...props}>
-    <g clipPath="url(#a)" stroke="currentColor" strokeWidth={1.8}>
-      <circle cx={10.441} cy={9.613} r={8} />
-      <path d="M10.441 5.613v8m4-4h-8" />
-    </g>
-    <defs>
-      <clipPath id="a">
-        <path d="M0 0h20v20H0z" fill="currentColor" />
-      </clipPath>
-    </defs>
+    <path d="M12 8v8m-4-4h8m6 0c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10" />
   </svg>
 );
 PlusCircle.displayName = 'PlusCircle';

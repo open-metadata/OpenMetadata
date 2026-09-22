@@ -17,7 +17,7 @@ import {
   SlideoutMenu,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Link01, XClose } from '@untitledui/icons';
+import { Link01, XClose } from '@openmetadata/ui-core-components/icons';
 import { lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../enums/entity.enum';

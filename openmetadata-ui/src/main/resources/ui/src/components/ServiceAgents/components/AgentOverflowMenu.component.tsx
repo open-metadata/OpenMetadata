@@ -12,7 +12,7 @@
  */
 
 import { Dropdown } from '@openmetadata/ui-core-components';
-import { DotsVertical } from '@untitledui/icons';
+import { DotsVertical } from '@openmetadata/ui-core-components/icons';
 import { FC, Key, useCallback, useRef, useState } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';

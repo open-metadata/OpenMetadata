@@ -3,7 +3,7 @@ import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
 import { TextAreaBase } from '@/components/base/textarea/textarea';
 import { cx } from '@/utils/cx';
-import { Eye, EyeOff, UploadCloud01 } from '@untitledui/icons';
+import { Eye, EyeOff, UploadCloud01 } from '../../../icons';
 import { useState } from 'react';
 import { FileTrigger } from 'react-aria-components';
 import { InputBase, TextField, type InputBaseProps } from './input';

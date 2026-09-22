@@ -12,7 +12,7 @@
  */
 
 import { Box } from '@openmetadata/ui-core-components';
-import { Link01 } from '@untitledui/icons';
+import { Link01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';

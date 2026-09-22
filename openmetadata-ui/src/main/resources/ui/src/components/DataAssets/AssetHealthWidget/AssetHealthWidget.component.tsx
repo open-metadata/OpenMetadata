@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Badge, Skeleton } from '@openmetadata/ui-core-components';
-import { Shield01 } from '@untitledui/icons';
+import { Shield01 } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';

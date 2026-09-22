@@ -19,7 +19,7 @@ import {
   SearchLg,
   Trash01,
   XCircle,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty, startCase } from 'lodash';
 import {
   Fragment,

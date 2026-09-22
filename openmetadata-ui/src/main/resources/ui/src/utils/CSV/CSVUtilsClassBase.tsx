@@ -27,7 +27,7 @@ import {
   Sliders02,
   Tag01,
   Type01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import Select from 'antd/lib/select';
 import { isEmpty, startCase, toString } from 'lodash';
 import {

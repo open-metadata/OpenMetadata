@@ -203,10 +203,6 @@ export default defineConfig(async ({ mode }) => {
     ) {
       return 'vendor-untitled';
     }
-    if (normalizedId.includes('/node_modules/@untitledui/icons/')) {
-      return 'vendor-untitled-icons';
-    }
-
     // NOTE: earlier revisions grouped viz (@antv, three, reactflow, recharts,
     // elkjs, dagre), editors (@tiptap, prosemirror, codemirror, quill), and
     // forms (@rjsf, react-hook-form, query-builder) into three named vendor
@@ -229,37 +225,6 @@ export default defineConfig(async ({ mode }) => {
       cspNonce: '${cspNonce}', // Placeholder replaced by Java backend at runtime
     },
     plugins: [
-      // Rewrites `import { Home02, User01 } from '@untitledui/icons'` (a barrel
-      // import that forces Rollup to visit ~1,200 icon files during transform)
-      // into per-icon deep imports. sideEffects: false in the package, so this
-      // is behaviour-preserving; the icons library ships one .mjs per icon.
-      // Measured: ~1,000 fewer transforms → ~35 s off vite build on M-series,
-      // more on 2-core Actions runners. Kept minimal on purpose; other barrel
-      // packages (@ant-design/icons, lodash, react-aria) did not move the
-      // needle in the same experiment because their code paths default-import
-      // or transitively re-import the barrel from antd internals.
-      {
-        name: 'barrel-optimize-untitled-icons',
-        enforce: 'pre' as const,
-        transform(code: string, id: string) {
-          if (!/\.(tsx?|jsx?)$/.test(id.split('?')[0])) return null;
-          if (!code.includes('@untitledui/icons')) return null;
-          const out = code.replace(
-            /import\s*\{([^}]+)\}\s*from\s*['"]@untitledui\/icons['"];?/g,
-            (_m, names: string) =>
-              names
-                .split(',')
-                .map((n) => n.trim())
-                .filter(Boolean)
-                .map((spec) => {
-                  const [orig] = spec.split(/\s+as\s+/);
-                  return `import { ${spec} } from '@untitledui/icons/${orig.trim()}';`;
-                })
-                .join('\n')
-          );
-          return out === code ? null : { code: out, map: null };
-        },
-      },
       {
         name: 'html-transform',
         transformIndexHtml(html: string) {
@@ -358,7 +323,6 @@ export default defineConfig(async ({ mode }) => {
         'react-aria',
         'react-aria-components',
         'react-stately',
-        '@untitledui/icons',
         '@internationalized/date',
         '@react-aria/utils',
         '@react-stately/utils',

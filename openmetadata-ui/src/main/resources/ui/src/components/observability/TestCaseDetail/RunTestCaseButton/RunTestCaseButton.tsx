@@ -12,7 +12,7 @@
  */
 import { Button, Tooltip } from '@openmetadata/ui-core-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Play } from '@untitledui/icons';
+import { Play } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { useEffect, useRef, useState } from 'react';

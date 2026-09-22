@@ -12,7 +12,7 @@
  */
 
 import { BadgeWithIcon, Typography } from '@openmetadata/ui-core-components';
-import { Cube01, Database01, Users01 } from '@untitledui/icons';
+import { Cube01, Database01, Users01 } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 
 const EMPTY_VALUE_INDICATOR = '-';

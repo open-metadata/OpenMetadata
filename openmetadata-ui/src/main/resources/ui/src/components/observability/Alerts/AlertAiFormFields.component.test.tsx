@@ -501,7 +501,7 @@ jest.mock('../../../utils/DataQuality/FormFieldDocs', () => ({
   }),
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   AlertCircle: () => null,
   Lightbulb05: () => null,
   Settings01: () => null,

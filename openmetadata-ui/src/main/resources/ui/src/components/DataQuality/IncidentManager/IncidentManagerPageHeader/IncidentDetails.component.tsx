@@ -12,7 +12,7 @@
  */
 
 import { BadgeWithDot, Button } from '@openmetadata/ui-core-components';
-import { AlertTriangle, ArrowUpRight } from '@untitledui/icons';
+import { AlertTriangle, ArrowUpRight } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ExpandableBannerText from './ExpandableBannerText';

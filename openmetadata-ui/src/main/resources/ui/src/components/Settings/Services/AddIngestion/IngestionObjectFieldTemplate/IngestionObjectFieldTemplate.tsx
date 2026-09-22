@@ -21,7 +21,7 @@ import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
-import { ChevronDown, Plus } from '@untitledui/icons';
+import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FocusEvent, FunctionComponent, useState } from 'react';
 import { useTranslation } from 'react-i18next';

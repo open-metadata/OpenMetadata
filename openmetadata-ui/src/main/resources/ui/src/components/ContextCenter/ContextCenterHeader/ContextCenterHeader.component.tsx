@@ -12,7 +12,7 @@
  */
 
 import { Button, Input, PageLayout } from '@openmetadata/ui-core-components';
-import { Plus, SearchMd } from '@untitledui/icons';
+import { Plus, SearchMd } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';

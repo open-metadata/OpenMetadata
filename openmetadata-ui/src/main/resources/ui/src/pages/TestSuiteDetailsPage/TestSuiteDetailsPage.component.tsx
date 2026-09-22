@@ -23,7 +23,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01 } from '@untitledui/icons';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import { Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';

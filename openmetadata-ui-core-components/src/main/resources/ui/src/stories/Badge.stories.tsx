@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { HelpCircle } from '@untitledui/icons';
+import { HelpCircle } from '../icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import {
   Badge,

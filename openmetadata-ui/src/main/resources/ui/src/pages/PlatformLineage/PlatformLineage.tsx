@@ -16,7 +16,7 @@ import {
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
-import { Expand05, Home02, Minimize02 } from '@untitledui/icons';
+import { Expand05, Home02, Minimize02 } from '@openmetadata/ui-core-components/icons';
 import { Card, Select } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';

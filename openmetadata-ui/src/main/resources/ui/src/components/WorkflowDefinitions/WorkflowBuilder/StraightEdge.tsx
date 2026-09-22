@@ -12,7 +12,7 @@
  */
 
 import { Button, Typography } from '@openmetadata/ui-core-components';
-import { XClose } from '@untitledui/icons';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { capitalize, startCase } from 'lodash';
 import React, { useState } from 'react';

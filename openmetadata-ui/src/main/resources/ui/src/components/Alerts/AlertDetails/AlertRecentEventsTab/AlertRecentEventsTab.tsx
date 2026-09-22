@@ -12,7 +12,7 @@
  */
 
 import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Bell01 } from '@untitledui/icons';
+import { Bell01 } from '@openmetadata/ui-core-components/icons';
 import {
   Button,
   Col,

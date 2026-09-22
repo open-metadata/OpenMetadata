@@ -25,7 +25,7 @@ import {
   SearchMd,
   Server01,
   Shield01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';

@@ -53,7 +53,7 @@ import {
   UserEdit,
   Users01,
   XClose,
-} from '@untitledui/icons';
+} from '../../../icons';
 import { ComponentType } from 'react';
 
 // Map of icon names to their components

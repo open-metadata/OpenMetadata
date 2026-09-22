@@ -20,7 +20,7 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Maximize01, Minimize01, XClose } from '@untitledui/icons';
+import { Maximize01, Minimize01, XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { DateTime } from 'luxon';

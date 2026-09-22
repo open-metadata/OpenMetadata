@@ -12,7 +12,7 @@
  */
 
 import { ButtonGroup, ButtonGroupItem } from '@openmetadata/ui-core-components';
-import { Grid01, Menu01 } from '@untitledui/icons';
+import { Grid01, Menu01 } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { ReactComponent as WorkflowIcon } from '../../../assets/svg/data-flow.svg';
 

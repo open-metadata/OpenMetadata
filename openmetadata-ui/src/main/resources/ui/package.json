@@ -123,7 +123,6 @@
     "@tiptap/starter-kit": "^2.27.3",
     "@tiptap/suggestion": "^2.27.3",
     "@uiw/react-codemirror": "^4.25.11",
-    "@untitledui/icons": "^0.0.21",
     "@windmillcode/quill-emoji": "2.0.3000",
     "analytics": "^0.8.1",
     "antd": "4.24.16",

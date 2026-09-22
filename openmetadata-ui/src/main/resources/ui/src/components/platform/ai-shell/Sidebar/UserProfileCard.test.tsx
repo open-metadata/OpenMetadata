@@ -51,7 +51,7 @@ jest.mock('hooks/useApplicationStore', () => ({
   }),
 }));
 
-jest.mock('@untitledui/icons', () => {
+jest.mock('@openmetadata/ui-core-components/icons', () => {
   const Icon = (props: SVGProps<SVGSVGElement>) => <svg {...props} />;
 
   return new Proxy({}, { get: () => Icon });

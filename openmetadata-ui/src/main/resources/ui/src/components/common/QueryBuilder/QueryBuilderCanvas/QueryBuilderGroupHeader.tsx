@@ -18,7 +18,7 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Delete } from '@openmetadata/ui-core-components/icons';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { QueryBuilderGroupHeaderProps } from './QueryBuilderCanvas.types';
@@ -100,7 +100,7 @@ const QueryBuilderGroupHeader: FC<QueryBuilderGroupHeaderProps> = ({
           className="tw:ml-auto"
           color="link-destructive"
           data-testid={preset.testIds.delGroup}
-          iconLeading={Delete}
+          iconLeading={Trash01}
           size="sm"
           onClick={() => actions.removeGroup(path)}
         />

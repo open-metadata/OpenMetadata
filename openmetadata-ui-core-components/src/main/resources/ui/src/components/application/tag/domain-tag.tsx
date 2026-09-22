@@ -12,7 +12,7 @@
  */
 import { cx } from '@/utils/cx';
 import { CSSProperties, FC, MouseEvent } from 'react';
-import { Domain } from '../../../icons/Domain';
+import { Globe01 as Domain } from '../../../icons/Globe01';
 import { Badge, BadgeWithButton } from '../../base/badges/badges';
 import { TagChipContent } from './tag-chip-content';
 import {

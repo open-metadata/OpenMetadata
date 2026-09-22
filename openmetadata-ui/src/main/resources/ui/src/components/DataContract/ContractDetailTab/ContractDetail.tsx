@@ -31,7 +31,7 @@ import {
   Plus,
   Trash01,
   Upload01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import type { RadioChangeEvent } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';

@@ -4807,11 +4807,6 @@
   resolved "https://registry.yarnpkg.com/@untitledui/file-icons/-/file-icons-0.0.9.tgz#5f2d25bde9bcdecb4efff00a775009caf14a4ce5"
   integrity sha512-wz3btNnSSv2hTujgyxEFL21oyjPtGTj3osU8ZEMe8nwdlmLQEILLe96NMg9b1ciiOC5UOWNDeYIt7IfxEM6qtg==
 
-"@untitledui/icons@^0.0.21":
-  version "0.0.21"
-  resolved "https://registry.yarnpkg.com/@untitledui/icons/-/icons-0.0.21.tgz#ad4e4c001e4f9506649f1a003d0d6fa96765d88b"
-  integrity sha512-+aVWUw/1se9PIJgwMD3qp5ohynGlVNu2oHSLzMwYpiSFp6bFcxv4kUGy685hQXB/hE4WAqnp7dIEVVMD0tfL7w==
-
 "@vitejs/plugin-react-swc@^4.1.0":
   version "4.3.3"
   resolved "https://registry.yarnpkg.com/@vitejs/plugin-react-swc/-/plugin-react-swc-4.3.3.tgz#babf99c9a3d49ae4fffbb2d64f4f2c8f54abc9d1"

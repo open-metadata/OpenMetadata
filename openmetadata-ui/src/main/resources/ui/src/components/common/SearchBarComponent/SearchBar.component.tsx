@@ -12,7 +12,7 @@
  */
 
 import { Input } from '@openmetadata/ui-core-components';
-import { SearchMd } from '@untitledui/icons';
+import { SearchMd } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import { LoadingState } from 'Models';

@@ -12,7 +12,7 @@
  */
 
 import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { OpenIncidents } from '@openmetadata/ui-core-components/icons';
+import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { ServicesUpdateRequest } from 'Models';
@@ -357,7 +357,7 @@ const EditIngestionPage = () => {
       <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
         <EmptyPlaceholder
           description={errorMsg}
-          icon={<OpenIncidents className="tw:text-secondary" />}
+          icon={<AlertTriangle className="tw:text-secondary" />}
           title={t('message.something-went-wrong')}
         />
       </div>

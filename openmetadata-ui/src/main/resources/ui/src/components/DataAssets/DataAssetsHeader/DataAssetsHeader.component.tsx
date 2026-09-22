@@ -24,7 +24,7 @@ import {
   RefreshCcw01,
   ThumbsDown,
   ThumbsUp,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, toLower } from 'lodash';

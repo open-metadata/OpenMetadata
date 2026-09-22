@@ -39,7 +39,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children }) => <>{children}</>),
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Check: jest.fn().mockImplementation(() => <svg data-testid="check-icon" />),
 }));
 

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Input, Tabs } from '@openmetadata/ui-core-components';
-import { SearchLg } from '@untitledui/icons';
+import { SearchLg } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Alert, Button, Skeleton } from '@openmetadata/ui-core-components';
-import { InfoCircle } from '@untitledui/icons';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
 import { useTranslation } from 'react-i18next';

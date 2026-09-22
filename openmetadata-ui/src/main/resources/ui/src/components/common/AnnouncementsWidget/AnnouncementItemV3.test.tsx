@@ -60,7 +60,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ArrowRight: () => <span data-testid="arrow-right" />,
 }));
 

@@ -54,7 +54,7 @@ import {
   UserEdit,
   Users01,
   XClose,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { IconDefinition } from './IconPicker.interface';
 
 export const DEFAULT_ICON_NAME = 'Cube01';

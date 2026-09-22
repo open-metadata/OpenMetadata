@@ -26,7 +26,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   }) => <Tag>{children}</Tag>,
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   InfoCircle: () => <span data-testid="info-icon" />,
   Key01: () => <span data-testid="key-icon" />,
   Lock01: () => <span data-testid="lock-icon" />,

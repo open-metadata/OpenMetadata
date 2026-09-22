@@ -48,7 +48,7 @@ import {
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
-import { DataProduct } from '../../generated/entity/domains/dataProduct';
+import { Package } from '../../generated/entity/domains/dataProduct';
 import { Paging } from '../../generated/type/paging';
 import { UsePagingInterface } from '../../hooks/paging/usePaging';
 import { ServicesType } from '../../interface/service.interface';
@@ -89,7 +89,7 @@ interface ServiceMainTabContentProps {
   pagingInfo: UsePagingInterface;
   isVersionPage?: boolean;
   setIsServiceLoading: Dispatch<SetStateAction<boolean>>;
-  onDataProductUpdate: (dataProducts: DataProduct[]) => Promise<void>;
+  onPackageUpdate: (dataProducts: Package[]) => Promise<void>;
 }
 
 function ServiceMainTabContent({
@@ -106,7 +106,7 @@ function ServiceMainTabContent({
   saveUpdatedServiceData,
   pagingInfo,
   isVersionPage = false,
-  onDataProductUpdate,
+  onPackageUpdate,
   setFilters,
   setIsServiceLoading,
 }: Readonly<ServiceMainTabContentProps>) {
@@ -352,13 +352,13 @@ function ServiceMainTabContent({
     viewCustomPropertiesPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
-    editDataProductPermission,
+    editPackagePermission,
   } = useMemo(
     () => ({
       editTagsPermission: flags.canEditTags,
       editGlossaryTermsPermission: flags.canEditGlossaryTerms,
       editDescriptionPermission: flags.canEditDescription,
-      editDataProductPermission: flags.canEditAll,
+      editPackagePermission: flags.canEditAll,
       viewCustomPropertiesPermission: flags.canViewCustomFields,
     }),
     [flags]
@@ -488,19 +488,19 @@ function ServiceMainTabContent({
                 onUpdate={saveUpdatedServiceData}>
                 <div data-testid="entity-right-panel">
                   <EntityRightPanel
-                    editDataProductPermission={editDataProductPermission}
+                    editPackagePermission={editPackagePermission}
                     editGlossaryTermsPermission={editGlossaryTermsPermission}
                     editTagPermission={editTagsPermission}
                     entityType={entityType}
                     selectedTags={tags}
-                    showDataProductContainer={
+                    showPackageContainer={
                       entityType !== EntityType.METADATA_SERVICE
                     }
                     showTaskHandler={false}
                     viewCustomPropertiesPermission={
                       viewCustomPropertiesPermission
                     }
-                    onDataProductUpdate={onDataProductUpdate}
+                    onPackageUpdate={onPackageUpdate}
                     onTagSelectionChange={handleTagSelection}
                   />
                 </div>

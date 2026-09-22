@@ -16,7 +16,7 @@ import {
   ADDITIONAL_PROPERTY_FLAG,
   WrapIfAdditionalTemplateProps,
 } from '@rjsf/utils';
-import { Trash01 } from '@untitledui/icons';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { FunctionComponent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 

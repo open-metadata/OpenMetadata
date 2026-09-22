@@ -20,7 +20,7 @@ import {
   SelectItemType,
   Toggle,
 } from '@openmetadata/ui-core-components';
-import { Trash01 } from '@untitledui/icons';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { debounce, isEmpty, uniqBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';

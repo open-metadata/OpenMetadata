@@ -17,7 +17,7 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Minus, Plus } from '@untitledui/icons';
+import { Minus, Plus } from '@openmetadata/ui-core-components/icons';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FitScreenIcon } from '../../assets/svg/ic-fit-screen.svg';

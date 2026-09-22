@@ -17,7 +17,7 @@ import {
   ModalOverlay,
   SlideoutMenu,
 } from '@openmetadata/ui-core-components';
-import { Home02 } from '@untitledui/icons';
+import { Home02 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual, isUndefined, uniqueId, uniqWith } from 'lodash';

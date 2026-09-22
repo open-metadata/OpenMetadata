@@ -331,7 +331,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   CheckCircle: () => <span>check</span>,
   XCircle: () => <span>x</span>,
   Edit01: (props: ComponentProps<'span'>) => <span {...props} />,

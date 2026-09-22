@@ -12,7 +12,7 @@
  */
 import { cx } from '@/utils/cx';
 import { CSSProperties, FC, MouseEvent } from 'react';
-import { DataProduct } from '../../../icons/DataProduct';
+import { Package as DataProduct } from '../../../icons/Package';
 import { Badge, BadgeWithButton } from '../../base/badges/badges';
 import { TagChipContent } from './tag-chip-content';
 import {

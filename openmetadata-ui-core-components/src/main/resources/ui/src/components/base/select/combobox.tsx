@@ -1,6 +1,6 @@
 import type { ReactNode, RefObject, RefAttributes } from 'react';
 import { isValidElement, useContext, useMemo, useRef } from 'react';
-import { ChevronDown, SearchLg as SearchIcon } from '@untitledui/icons';
+import { ChevronDown, SearchLg as SearchIcon } from '../../../icons';
 import type {
   ComboBoxProps as AriaComboBoxProps,
   GroupProps as AriaGroupProps,

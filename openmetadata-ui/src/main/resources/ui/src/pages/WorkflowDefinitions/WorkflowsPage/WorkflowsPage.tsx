@@ -21,7 +21,7 @@ import {
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { CursorClick01, Plus, Settings01, ZapFast } from '@untitledui/icons';
+import { CursorClick01, Plus, Settings01, ZapFast } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useCallback, useEffect, useMemo, useState } from 'react';

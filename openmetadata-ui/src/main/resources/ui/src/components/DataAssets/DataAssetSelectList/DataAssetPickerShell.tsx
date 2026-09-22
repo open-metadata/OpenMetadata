@@ -23,7 +23,7 @@ import {
   CornerDownLeft,
   SearchLg,
   SlashDivider,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ListBox as AriaListBox, Selection } from 'react-aria-components';

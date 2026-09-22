@@ -20,7 +20,7 @@ import {
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
-import { Dataflow03, HelpCircle, Plus } from '@untitledui/icons';
+import { Dataflow03, HelpCircle, Plus } from '@openmetadata/ui-core-components/icons';
 import { Button, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { sortBy } from 'lodash';

@@ -12,7 +12,7 @@
  */
 import { Box } from '@openmetadata/ui-core-components';
 import { useQuery } from '@tanstack/react-query';
-import { RefreshCcw01 } from '@untitledui/icons';
+import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
 import { Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';

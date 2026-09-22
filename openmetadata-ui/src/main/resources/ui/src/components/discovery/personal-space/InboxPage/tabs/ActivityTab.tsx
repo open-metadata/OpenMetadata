@@ -12,7 +12,7 @@
  */
 
 import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { FilterFunnel01, Hourglass01 } from '@untitledui/icons';
+import { FilterFunnel01, Hourglass01 } from '@openmetadata/ui-core-components/icons';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePersonalSpaceStore } from '../../../../../hooks/usePersonalSpaceStore';

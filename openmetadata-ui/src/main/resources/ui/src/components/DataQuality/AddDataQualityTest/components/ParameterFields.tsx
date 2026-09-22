@@ -23,7 +23,7 @@ import {
   HintText,
   useFieldDoc,
 } from '@openmetadata/ui-core-components';
-import { Plus, Trash01 } from '@untitledui/icons';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { lazy, useEffect, useRef } from 'react';
 import { RegisterOptions, useFieldArray, UseFormReturn } from 'react-hook-form';

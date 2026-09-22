@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SearchLg } from '@untitledui/icons';
+import { SearchLg } from '@openmetadata/ui-core-components/icons';
 import {
   ServiceEmptyStateConfig,
   SERVICE_EMPTY_STATE,

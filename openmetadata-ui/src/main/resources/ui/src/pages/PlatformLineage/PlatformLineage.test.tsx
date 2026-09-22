@@ -311,7 +311,7 @@ jest.mock('../../assets/svg/ic-settings-gear.svg', () => ({
   ReactComponent: () => <div>SettingsIcon</div>,
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Expand05: () => <div>Expand05</div>,
   Home02: () => <div>Home02</div>,
   Minimize02: () => <div>Minimize02</div>,

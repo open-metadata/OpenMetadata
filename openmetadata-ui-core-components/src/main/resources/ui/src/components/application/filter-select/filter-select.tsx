@@ -21,7 +21,7 @@ import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { borderAfter } from '@/utils/tailwindClasses';
-import { ChevronDown, ChevronUp, XClose } from '@untitledui/icons';
+import { ChevronDown, ChevronUp, XClose } from '../../../icons';
 import {
   useEffect,
   useMemo,
