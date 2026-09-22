@@ -50,9 +50,12 @@ const test = base.extend<{ adminPage: Page; restrictedUserPage: Page }>({
 
 const openDomainDropdown = async (page: Page) => {
   await redirectToHomePage(page);
-  await page.getByTestId('domain-dropdown').click();
+  // The home page exposes the domain scope switcher via the landing-page
+  // selector (the navbar one is hidden on home); it renders DomainSelectableList
+  // whose picker uses the `domain-selectable-tree` base test id.
+  await page.getByTestId('domain-selector').click();
   await page
-    .getByTestId('domain-dropdown-search')
+    .getByTestId('domain-selectable-tree-search')
     .waitFor({ state: 'visible' });
 };
 
