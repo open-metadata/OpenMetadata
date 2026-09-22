@@ -95,6 +95,7 @@ const TagSelector: FC<TagSelectorProps> = ({
 
   const cacheTag = useCallback((tag: TagLabel) => {
     const cache = tagCacheRef.current;
+    cache.delete(tag.tagFQN);
     if (cache.size >= TAG_CACHE_MAX) {
       const oldestKey = cache.keys().next().value;
       if (oldestKey !== undefined) {
@@ -165,11 +166,18 @@ const TagSelector: FC<TagSelectorProps> = ({
     [onChange, value]
   );
 
-  const handleResolveMissingLabel = useCallback((fqn: string) => {
-    const cached = tagCacheRef.current.get(fqn);
+  const handleResolveMissingLabel = useCallback(
+    (fqn: string) => {
+      const fromValue = value.find((tag) => tag.tagFQN === fqn);
+      if (fromValue) {
+        return fromValue.displayName ?? fromValue.name ?? fqn;
+      }
+      const cached = tagCacheRef.current.get(fqn);
 
-    return cached?.displayName ?? cached?.name ?? fqn;
-  }, []);
+      return cached?.displayName ?? cached?.name ?? fqn;
+    },
+    [value]
+  );
 
   const resolvedLabel = label ?? t('label.tag-plural');
 

@@ -30,7 +30,8 @@ interface RawTagData {
   style?: { color?: string; iconURL?: string };
 }
 
-const getRawTagData = (data: unknown): RawTagData => (data as RawTagData) ?? {};
+const getRawTagData = (data: unknown): RawTagData =>
+  typeof data === 'object' && data !== null ? (data as RawTagData) : {};
 
 export const getTagDisplayLabel = (result: RawTagResult): string => {
   const data = getRawTagData(result.data);

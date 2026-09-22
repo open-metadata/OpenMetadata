@@ -41,7 +41,6 @@ export interface ClassificationTagPickerProps extends InheritedTreeSelectProps {
   onChange?: (tags: TagLabel[]) => void;
 }
 
-// The one classification-tag surface: core `TreeSelect` plus a flat `TagLabel` contract.
 const ClassificationTagPicker: FC<ClassificationTagPickerProps> = ({
   value = [],
   onChange,

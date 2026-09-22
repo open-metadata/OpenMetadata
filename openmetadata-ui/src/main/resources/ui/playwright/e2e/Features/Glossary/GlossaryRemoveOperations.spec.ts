@@ -280,7 +280,6 @@ test.describe('Glossary Remove Operations', () => {
           .getByTestId(`tag-${tagFqn}`)
       ).toBeVisible();
 
-      // Remove the tag
       await removeTag(page, [tagFqn]);
 
       // Verify tag is removed
@@ -350,7 +349,6 @@ test.describe('Glossary Remove Operations', () => {
         page.getByTestId('tags-container').getByTestId(`tag-${tagFqn}`)
       ).toBeVisible();
 
-      // Remove the tag
       await openClassificationTagPicker(
         page,
         page.getByTestId('tags-container').getByTestId('edit-button')

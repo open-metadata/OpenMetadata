@@ -11,24 +11,24 @@
  *  limitations under the License.
  */
 import {
-  Input as UTInput,
-  Select as UTSelect,
-  SelectItemType,
-  Toggle,
-  ToggleProps,
+    Input as UTInput,
+    Select as UTSelect,
+    SelectItemType,
+    Toggle,
+    ToggleProps
 } from '@openmetadata/ui-core-components';
 import {
-  Alert,
-  Checkbox,
-  Divider,
-  Form,
-  FormItemProps,
-  Input,
-  InputNumber,
-  Select,
-  Switch,
-  TooltipProps,
-  Typography,
+    Alert,
+    Checkbox,
+    Divider,
+    Form,
+    FormItemProps,
+    Input,
+    InputNumber,
+    Select,
+    Switch,
+    TooltipProps,
+    Typography
 } from 'antd';
 import { RuleObject } from 'antd/lib/form';
 import { TooltipPlacement } from 'antd/lib/tooltip';
@@ -57,13 +57,13 @@ import { UserSelectDropdownProps } from '../components/common/UserTeamSelectable
 import UserTeamSelectableListSearchInput from '../components/common/UserTeamSelectableListSearchInput/UserTeamSelectableListSearchInput.component';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
 import {
-  FieldProp,
-  FieldTypes,
-  FormItemLayout,
-  HelperTextType,
+    FieldProp,
+    FieldTypes,
+    FormItemLayout,
+    HelperTextType
 } from '../interface/FormUtils.interface';
 import AntDTagSuggestion, {
-  TagSuggestionProps as AntDTagSuggestionProps,
+    TagSuggestionProps as AntDTagSuggestionProps
 } from '../pages/TasksPage/shared/TagSuggestion';
 import { t } from './i18next/LocalUtil';
 import { getErrorText } from './StringUtils';

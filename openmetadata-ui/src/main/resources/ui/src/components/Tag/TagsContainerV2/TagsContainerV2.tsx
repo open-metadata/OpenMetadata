@@ -94,7 +94,6 @@ const TagsContainerV2 = ({
     entityFqn,
     columnData?.fqn,
     activeTagDropdownKey,
-    updateActiveTagDropdownKey,
     internalIsEditTags,
     useGenericControls,
   ]);
