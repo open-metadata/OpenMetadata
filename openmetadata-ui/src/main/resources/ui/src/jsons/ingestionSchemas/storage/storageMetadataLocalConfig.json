@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Storage Metadata Local Config",
   "description": "Storage Metadata Manifest file path config.",
   "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataLocalConfig",

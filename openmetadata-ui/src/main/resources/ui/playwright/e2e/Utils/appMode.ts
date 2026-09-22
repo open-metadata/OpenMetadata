@@ -294,3 +294,39 @@ export const goToAppModeRoute = async (
   await page.locator(`a[href="${path}"]`).click();
   await waitForAllLoadersToDisappear(page);
 };
+
+/**
+ * Seed AI mode and land on the AI home. The AI shell owns `/`, so the home
+ * route is the entry point most AI-mode feature tests start from before
+ * navigating into a module.
+ */
+export const redirectToAiModeHomePage = async (
+  page: Page,
+  waitForLoaders = true
+): Promise<void> => {
+  await enableAiAppMode(page);
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+  if (waitForLoaders) {
+    await waitForAllLoadersToDisappear(page);
+  }
+};
+
+/**
+ * Ensure the AI shell's sub panel is open. The rail collapses to icons at
+ * narrow widths and between runs, so a test that clicks a sub-nav entry has to
+ * expand it first rather than assume the last run's state.
+ */
+export const expandAiSubPanel = async (page: Page): Promise<void> => {
+  const subPanel = page.getByTestId('ask-sub-panel');
+  const expandButton = page.getByTestId('ask-sub-rail-expand-btn');
+
+  await expect(subPanel.or(expandButton)).toBeVisible();
+
+  if (await subPanel.isVisible()) {
+    return;
+  }
+
+  await expandButton.click();
+  await expect(subPanel).toBeVisible();
+};
