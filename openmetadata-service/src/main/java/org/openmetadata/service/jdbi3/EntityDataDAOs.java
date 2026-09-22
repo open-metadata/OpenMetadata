@@ -378,6 +378,64 @@ public interface EntityDataDAOs {
         @Bind("termName") String termName,
         @Bind("excludeId") String excludeId);
 
+    // Duplicate-name check scoped to direct children of a single parent term (or glossary root),
+    // so that two terms with the same name under different parents are not flagged as duplicates.
+    // The NOT LIKE clause excludes grandchildren and deeper descendants, matching only the
+    // immediate next fqnHash segment.
+    @SqlQuery(
+        "SELECT COUNT(*) FROM glossary_term_entity WHERE fqnHash LIKE :parentHash "
+            + "AND fqnHash NOT LIKE :parentHashNested AND LOWER(name) = LOWER(:termName)")
+    int getGlossaryTermCountIgnoreCaseUnderParent(
+        @BindConcat(
+                value = "parentHash",
+                parts = {":fqnhash", ".%"},
+                hash = true)
+            String fqnhash,
+        @BindConcat(
+                value = "parentHashNested",
+                parts = {":fqnhash", ".%.%"},
+                hash = true)
+            String fqnhashRepeat,
+        @Bind("termName") String termName);
+
+    // Same as above but excludes the term being renamed from the count, so a term can keep its own
+    // name while we still catch collisions with other siblings.
+    @SqlQuery(
+        "SELECT COUNT(*) FROM glossary_term_entity WHERE fqnHash LIKE :parentHash "
+            + "AND fqnHash NOT LIKE :parentHashNested AND LOWER(name) = LOWER(:termName)"
+            + " AND id != :excludeId")
+    int getGlossaryTermCountIgnoreCaseExcludingIdUnderParent(
+        @BindConcat(
+                value = "parentHash",
+                parts = {":fqnhash", ".%"},
+                hash = true)
+            String fqnhash,
+        @BindConcat(
+                value = "parentHashNested",
+                parts = {":fqnhash", ".%.%"},
+                hash = true)
+            String fqnhashRepeat,
+        @Bind("termName") String termName,
+        @Bind("excludeId") String excludeId);
+
+    // Name-and-parent scoped lookup used by CSV import to avoid picking the wrong term when
+    // multiple terms share the same bare name under different parents.
+    @SqlQuery(
+        "SELECT json FROM glossary_term_entity WHERE fqnHash LIKE :parentHash "
+            + "AND fqnHash NOT LIKE :parentHashNested AND LOWER(name) = LOWER(:termName) LIMIT 1")
+    String getGlossaryTermByNameAndParentIgnoreCase(
+        @BindConcat(
+                value = "parentHash",
+                parts = {":fqnhash", ".%"},
+                hash = true)
+            String fqnhash,
+        @BindConcat(
+                value = "parentHashNested",
+                parts = {":fqnhash", ".%.%"},
+                hash = true)
+            String fqnhashRepeat,
+        @Bind("termName") String termName);
+
     @SqlQuery(
         "SELECT json FROM glossary_term_entity WHERE fqnHash LIKE :glossaryHash AND LOWER(name) = LOWER(:termName)")
     String getGlossaryTermByNameAndGlossaryIgnoreCase(

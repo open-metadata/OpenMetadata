@@ -2712,11 +2712,17 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private void checkDuplicateTerms(GlossaryTerm entity) {
+    // Term names only need to be unique among siblings sharing the same parent (or, for
+    // top-level terms, among the glossary's direct children) since the FQN already
+    // disambiguates terms with the same name under different parents.
+    String parentFqn =
+        entity.getParent() != null
+            ? entity.getParent().getFullyQualifiedName()
+            : entity.getGlossary().getFullyQualifiedName();
     int count =
         daoCollection
             .glossaryTermDAO()
-            .getGlossaryTermCountIgnoreCase(
-                entity.getGlossary().getFullyQualifiedName(), entity.getName());
+            .getGlossaryTermCountIgnoreCaseUnderParent(parentFqn, parentFqn, entity.getName());
     if (count > 0) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.duplicateGlossaryTerm(
@@ -2726,11 +2732,19 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   private void checkDuplicateTermsForUpdate(GlossaryTerm original, GlossaryTerm updated) {
     if (!original.getName().equals(updated.getName())) {
+      // Scope the uniqueness check to direct siblings of the term's parent (consistent with
+      // checkDuplicateTerms on create) so that renaming is blocked only by a sibling, not by a
+      // homonym under a different parent.
+      String parentFqn =
+          updated.getParent() != null
+              ? updated.getParent().getFullyQualifiedName()
+              : updated.getGlossary().getFullyQualifiedName();
       int count =
           daoCollection
               .glossaryTermDAO()
-              .getGlossaryTermCountIgnoreCaseExcludingId(
-                  updated.getGlossary().getFullyQualifiedName(),
+              .getGlossaryTermCountIgnoreCaseExcludingIdUnderParent(
+                  parentFqn,
+                  parentFqn,
                   updated.getName(),
                   original.getId().toString());
       if (count > 0) {
@@ -3501,15 +3515,19 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     GlossaryTerm original = findByNameOrNull(updated.getFullyQualifiedName(), Include.ALL);
 
-    // Glossary term's parent can change which alters its FQN. If the FQN lookup fails, try
-    // locating the term by (glossary, name) combination.
+    // Glossary term's parent can change which alters its FQN. If the FQN lookup fails, scope the
+    // fallback to the target parent so that a homonym under a different parent is not confused with
+    // the intended term and silently moved or overwritten.
     if (original == null) {
       try {
+        String parentFqn =
+            updated.getParent() != null
+                ? updated.getParent().getFullyQualifiedName()
+                : updated.getGlossary().getFullyQualifiedName();
         String existingTermString =
             Entity.getCollectionDAO()
                 .glossaryTermDAO()
-                .getGlossaryTermByNameAndGlossaryIgnoreCase(
-                    updated.getGlossary().getFullyQualifiedName(), updated.getName());
+                .getGlossaryTermByNameAndParentIgnoreCase(parentFqn, parentFqn, updated.getName());
         if (existingTermString != null && !existingTermString.isEmpty()) {
           original = JsonUtils.readValue(existingTermString, GlossaryTerm.class);
         }
@@ -3532,13 +3550,17 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       return original;
     }
 
-    // A glossary term may have been moved to a different parent causing its FQN to change. So check
-    // with name field
+    // A glossary term may have been moved to a different parent causing its FQN to change. Scope
+    // the fallback lookup to the target parent when the CSV row supplies one; this prevents
+    // picking the wrong term when multiple terms share the same bare name under different parents.
+    String parentFqn =
+        entity.getParent() != null
+            ? entity.getParent().getFullyQualifiedName()
+            : entity.getGlossary().getFullyQualifiedName();
     String existingTermJson =
         daoCollection
             .glossaryTermDAO()
-            .getGlossaryTermByNameAndGlossaryIgnoreCase(
-                entity.getGlossary().getFullyQualifiedName(), entity.getName());
+            .getGlossaryTermByNameAndParentIgnoreCase(parentFqn, parentFqn, entity.getName());
     if (existingTermJson != null && !existingTermJson.isEmpty()) {
       return JsonUtils.readValue(existingTermJson, GlossaryTerm.class);
     }
