@@ -18,7 +18,10 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  openClassificationTagPicker,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 
 const table = new TableClass();
 
@@ -50,13 +53,10 @@ test(
 
     // Add PII.Sensitive tag to the first column
     await page.waitForLoadState('domcontentloaded');
-    await page.click(
+    const addTagTrigger = page.locator(
       `${columnRowSelector} [data-testid*="classification-tags"] [data-testid="add-tag"]`
     );
-
-    await expect(
-      page.getByTestId('classification-tag-picker-search')
-    ).toBeVisible();
+    await openClassificationTagPicker(page, addTagTrigger);
 
     const tagSearchResponse = page.waitForResponse(
       '/api/v1/search/query?q=*Sensitive*'
@@ -84,14 +84,10 @@ test(
     ).toContainText('Sensitive');
 
     // Now try to add a mutually exclusive tag (PII.NonSensitive) to the same column
-    // The edit button is inside tags-container
-    await page.click(
+    const editTagTrigger = page.locator(
       `${columnRowSelector} [data-testid*="classification-tags"] [data-testid="tags-container"] [data-testid="edit-button"]`
     );
-
-    await expect(
-      page.getByTestId('classification-tag-picker-search')
-    ).toBeVisible();
+    await openClassificationTagPicker(page, editTagTrigger);
 
     const tagSearchResponse2 = page.waitForResponse(
       '/api/v1/search/query?q=*NonSensitive*'
