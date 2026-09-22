@@ -13,6 +13,7 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import DqFilterChip from './DqFilterChip';
+import { DQ_FILTER_TYPES } from '../../../../constants/DataQuality.constants';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -59,7 +60,7 @@ jest.mock('./DqSearchFilterChip', () => ({
 }));
 
 const buildOwnerFilter = (overrides: Record<string, any> = {}) => ({
-  type: 'owner' as const,
+  type: DQ_FILTER_TYPES.OWNER,
   key: 'owner',
   label: 'Owner',
   selectedOwners: [],
@@ -69,7 +70,7 @@ const buildOwnerFilter = (overrides: Record<string, any> = {}) => ({
 });
 
 const buildSearchFilter = (overrides: Record<string, any> = {}) => ({
-  type: 'search' as const,
+  type: DQ_FILTER_TYPES.SEARCH,
   key: 'tags',
   label: 'Tags',
   searchKey: 'tags',

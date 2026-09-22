@@ -41,7 +41,7 @@ const findSearch = (filters: DqFilterDescriptor[], searchKey: string) => {
     (filter) =>
       filter.type === DQ_FILTER_TYPES.SEARCH && filter.searchKey === searchKey
   );
-  if (descriptor?.type !== 'search') {
+  if (descriptor?.type !== DQ_FILTER_TYPES.SEARCH) {
     throw new Error(`No search filter for ${searchKey}`);
   }
 
@@ -52,7 +52,7 @@ const findGlossaryTerm = (filters: DqFilterDescriptor[]) => {
   const descriptor = filters.find(
     (filter) => filter.type === DQ_FILTER_TYPES.GLOSSARY_TERM
   );
-  if (descriptor?.type !== 'glossaryTerm') {
+  if (descriptor?.type !== DQ_FILTER_TYPES.GLOSSARY_TERM) {
     throw new Error('No glossary-term filter');
   }
 
@@ -63,7 +63,7 @@ const findOwner = (filters: DqFilterDescriptor[]) => {
   const descriptor = filters.find(
     (filter) => filter.type === DQ_FILTER_TYPES.OWNER
   );
-  if (descriptor?.type !== 'owner') {
+  if (descriptor?.type !== DQ_FILTER_TYPES.OWNER) {
     throw new Error('No owner filter');
   }
 
