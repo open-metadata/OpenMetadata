@@ -88,7 +88,12 @@ export const TriggerButton = ({
           !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
           hasSelection &&
             'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary tw:*:data-icon:text-fg-brand-primary',
-          hasSelection && bordered && 'tw:after:outline-brand',
+          // Active-filter border is brand blue in light, but neutral (gray-700)
+          // in dark per the palette guideline — dark:*_alt flips only the dark
+          // value and leaves light frozen.
+          hasSelection &&
+            bordered &&
+            'tw:after:outline-brand tw:dark:after:outline-brand_alt',
           className
         )}
         color={bordered ? 'secondary' : 'tertiary'}
