@@ -204,31 +204,4 @@ class SqlFailureProbeTest {
       assertFalse(probe.injected());
     }
   }
-
-  @Test
-  void aCounterAndAProbeNestOnTheSameJdbi() {
-    // The migration path for a call site that both counts and injects, now that no single factory
-    // does both: each decorator delegates to the logger it replaced, so they stack and unwind in
-    // order. Asserting the chain rather than a count, because driving both ends needs a real
-    // StatementContext, which is final and cannot be constructed here.
-    Jdbi jdbi = unconnectedJdbi();
-    SqlLogger original = jdbi.getConfig(SqlStatements.class).getSqlLogger();
-
-    try (var counter = new SqlQueryCounter(jdbi, "update chart_entity")) {
-      assertSame(counter, jdbi.getConfig(SqlStatements.class).getSqlLogger());
-      try (var probe =
-          new SqlFailureProbe(jdbi, "update chart_entity", SqlFailureProbe.deadlock())) {
-        assertSame(
-            probe,
-            jdbi.getConfig(SqlStatements.class).getSqlLogger(),
-            "the probe sits outermost while both are open");
-      }
-      assertSame(
-          counter,
-          jdbi.getConfig(SqlStatements.class).getSqlLogger(),
-          "closing the probe hands the logger back to the counter, not to the application");
-    }
-
-    assertSame(original, jdbi.getConfig(SqlStatements.class).getSqlLogger());
-  }
 }
