@@ -19,11 +19,13 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { User } from '../../../generated/entity/teams/user';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../hooks/useFqn';
 import { restoreUser } from '../../../rest/userAPI';
 import {
@@ -147,6 +149,12 @@ const Users = ({
     handleTabRedirection();
     initLimits();
   }, []);
+
+  const { canViewCustomFields, canEditCustomFields } = useEntityPermissions(
+    ResourceEntity.USER,
+    decodedUsername,
+    { deleted: userData.deleted }
+  );
 
   const onUserExtensionUpdate = useCallback(
     async (updatedUser: User) => {
@@ -311,10 +319,10 @@ const Users = ({
         key: UserPageTabs.CUSTOM_PROPERTIES,
         children: (
           <CustomPropertyTable<EntityType.USER>
-            hasPermission
             entityDetails={userData}
             entityType={EntityType.USER}
-            hasEditAccess={Boolean(isAdminUser) && !userData.deleted}
+            hasEditAccess={canEditCustomFields}
+            hasPermission={canViewCustomFields}
             onEntityUpdate={onUserExtensionUpdate}
           />
         ),
@@ -348,7 +356,8 @@ const Users = ({
       disableFields,
       subTab,
       isLoggedInUser,
-      isAdminUser,
+      canViewCustomFields,
+      canEditCustomFields,
       onUserExtensionUpdate,
     ]
   );

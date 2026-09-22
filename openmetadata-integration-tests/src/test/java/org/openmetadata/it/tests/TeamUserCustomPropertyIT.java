@@ -5,8 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -35,12 +39,47 @@ import org.openmetadata.sdk.network.HttpMethod;
  * <p>Each test registers its own namespace-prefixed property on the shared built-in type, so
  * concurrent runs add disjoint properties rather than racing over one name.
  */
+@Slf4j
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 class TeamUserCustomPropertyIT {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final String EXTENSION_FIELD = "extension";
+
+  /**
+   * Properties are registered on the shared built-in types, which TestNamespaceExtension does not
+   * clean up — it only reaps tracked entity roots. Left behind, every run would add another field
+   * relationship to `team` and `user` and show up on their custom-property settings pages.
+   */
+  private record RegisteredProperty(String entityType, String propertyName) {}
+
+  private static final List<RegisteredProperty> REGISTERED_PROPERTIES =
+      new CopyOnWriteArrayList<>();
+
+  @AfterAll
+  static void removeRegisteredProperties() {
+    OpenMetadataClient client = SdkClients.adminClient();
+    for (RegisteredProperty property : REGISTERED_PROPERTIES) {
+      try {
+        Type owningType = getTypeByName(client, property.entityType());
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.DELETE,
+                "/v1/metadata/types/" + owningType.getId() + "/" + property.propertyName(),
+                null,
+                Void.class);
+      } catch (Exception cleanupFailure) {
+        log.warn(
+            "Failed to remove custom property '{}' from type '{}'",
+            property.propertyName(),
+            property.entityType(),
+            cleanupFailure);
+      }
+    }
+    REGISTERED_PROPERTIES.clear();
+  }
 
   @Test
   void teamCarriesACustomPropertyValueThroughCreatePatchAndRead(TestNamespace ns) throws Exception {
@@ -134,6 +173,7 @@ class TeamUserCustomPropertyIT {
                     .withId(stringType.getId())
                     .withType("type")
                     .withName("string")));
+    REGISTERED_PROPERTIES.add(new RegisteredProperty(entityType, propertyName));
     return propertyName;
   }
 

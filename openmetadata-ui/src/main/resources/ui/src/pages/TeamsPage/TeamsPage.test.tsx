@@ -197,6 +197,9 @@ describe('Test Teams Page', () => {
         include: 'all',
       },
     ]);
+    // `extension` is load-bearing, not cosmetic: the Custom Properties tab rebuilds the
+    // whole extension object from what it was handed, so fetching without it makes editing
+    // one property wipe every other stored value.
     expect(mockGetTeamByName.mock.calls[1]).toEqual([
       'test',
       {
@@ -209,6 +212,7 @@ describe('Test Teams Page', () => {
           'childrenCount',
           'descendantTeams',
           'domains',
+          'extension',
         ],
         include: 'all',
       },

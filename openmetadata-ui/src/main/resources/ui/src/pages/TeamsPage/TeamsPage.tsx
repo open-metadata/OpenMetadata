@@ -277,6 +277,7 @@ const TeamsPage = () => {
             TabSpecificField.CHILDREN_COUNT,
             TabSpecificField.DESCENDANT_TEAMS,
             TabSpecificField.DOMAINS,
+            TabSpecificField.EXTENSION,
           ],
           include: Include.All,
         });

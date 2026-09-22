@@ -34,6 +34,25 @@ jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ fqn: 'test' }),
 }));
 
+// Per frontend-permissions.md: mock the hook, run the real derivation over a minimal
+// permission object so the component sees genuine flags rather than hand-written booleans.
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => {
+  const { getDerivedPermissionFlags } = jest.requireActual(
+    '../../../utils/PermissionDerivation'
+  );
+  const permissions = { ViewCustomFields: true, EditCustomFields: true };
+
+  return {
+    useEntityPermissions: jest.fn().mockReturnValue({
+      permissions,
+      isLoading: false,
+      error: null,
+      refresh: jest.fn(),
+      ...getDerivedPermissionFlags(permissions, false),
+    }),
+  };
+});
+
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockImplementation(() => mockParams),

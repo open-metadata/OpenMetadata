@@ -55,6 +55,7 @@ const UserPage = () => {
           TabSpecificField.LAST_LOGIN_TIME,
           TabSpecificField.DEFAULT_PERSONA,
           TabSpecificField.DOMAINS,
+          TabSpecificField.EXTENSION,
         ],
         include: Include.All,
       });
