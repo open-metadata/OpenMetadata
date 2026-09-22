@@ -314,8 +314,16 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         else:
             # we can't directly use columns as it is bound to self.raw_dataset and not the rnd table.
             # If we use it, it will result in a cross join between self.raw_dataset and rnd table
-            names = {col.key for col in columns}
-            sqa_columns = [col for col in inspect(ds).c if col.name != RANDOM_LABEL and col.key in names]
+            target_identifiers = {getattr(col, "key", None) for col in columns} | {
+                getattr(col, "name", None) for col in columns
+            }
+            target_identifiers.discard(None)
+            sqa_columns = [
+                col
+                for col in inspect(ds).c
+                if col.name != RANDOM_LABEL
+                and (col.key in target_identifiers or col.name in target_identifiers)
+            ]
 
         with self.session_factory() as client:
             # Handle array columns with special query modification
