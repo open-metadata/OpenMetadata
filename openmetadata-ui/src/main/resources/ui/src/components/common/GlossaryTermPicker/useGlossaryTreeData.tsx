@@ -131,7 +131,6 @@ export const useGlossaryTreeData = (): GlossaryTreeFetcher => {
               isLeaf: false,
               // Checkable to tick its terms; the payload marks it a root.
               allowSelection: true,
-              // Trailing badge: how many terms the glossary holds.
               count: glossary.termCount,
               data: glossaryRootValue(glossary),
               hasExclusiveChildren: isExclusive,

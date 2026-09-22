@@ -90,6 +90,28 @@ describe('useTreeSelectSelection', () => {
       });
     });
 
+    it('defers to the badge count when the loaded children are a truncated page', () => {
+      // Loaded < count here means the page was cut short, not that terms were
+      // pruned, so completing the page must not complete the branch.
+      const children = [term('t1', 'g'), term('t2', 'g')];
+      const node = { ...glossary(200, children), hasMoreChildren: true };
+      const { result } = renderSelection([node]);
+
+      act(() => result.current.toggleNodeSelection(children[0]));
+      act(() => result.current.toggleNodeSelection(children[1]));
+
+      expect(result.current.getDescendantSelection(node)).toMatchObject({
+        selected: 2,
+        total: 200,
+      });
+      expect(
+        getNodeSelectionState(
+          result.current.getDescendantSelection(node),
+          false
+        )
+      ).toEqual({ isFullySelected: false, isPartiallySelected: true });
+    });
+
     it('falls back to the badge count while the branch is unexpanded', () => {
       const node = glossary(2, []);
       const { result } = renderSelection([node]);

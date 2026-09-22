@@ -230,8 +230,11 @@ export const useTreeSelectSelection = <T = unknown>({
 
       return {
         selected: selectedIds.size,
-        // Loaded children reflect pruning; the badge count only judges an unexpanded branch.
-        total: loadedTotal > 0 ? loadedTotal : node.count ?? 0,
+        // Loaded children reflect pruning, but a truncated page must defer to the badge.
+        total:
+          loadedTotal > 0 && !node.hasMoreChildren
+            ? loadedTotal
+            : node.count ?? loadedTotal,
         hasLoadedChildren: loadedTotal > 0,
       };
     },
