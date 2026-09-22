@@ -4232,8 +4232,6 @@
     "metric-description": "Define and catalog standardized metrics across your organization.",
     "metric-empty-state-description": "Metrics gives your organization a single source of truth for how things are measured. Define a metric once, and everyone — from analysts to leadership — works from the same math.",
     "metric-empty-state-title": "One definition, zero debates",
-    "metric-group-optional": "Optional. Group related metrics together, or type a new group name to create one.",
-    "metric-group-will-be-created": "This group will be created",
     "metric-health-unavailable": "Health could not be computed for this metric.",
     "metric-not-in-hierarchy": "This metric is standalone — it belongs to no group and has no variants.",
     "metric-observability-reason-no-terminal-results": "No terminal test results are available yet; queued and missing results do not affect the score.",

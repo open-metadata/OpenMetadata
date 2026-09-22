@@ -4232,8 +4232,6 @@
     "metric-description": "Kuruluşunuz genelinde standartlaştırılmış metrikleri tanımlayın ve kataloglayın.",
     "metric-empty-state-description": "Metrikler, kuruluşunuza her şeyin nasıl ölçüldüğü konusunda tek bir doğruluk kaynağı sağlar. Bir metriği bir kez tanımlayın; analistlerden yönetime kadar herkes aynı hesaptan çalışsın.",
     "metric-empty-state-title": "Tek tanım, sıfır tartışma",
-    "metric-group-optional": "İsteğe bağlı. İlgili metrikleri gruplayın veya yeni bir grup adı yazarak oluşturun.",
-    "metric-group-will-be-created": "Bu grup oluşturulacak",
     "metric-health-unavailable": "Bu metrik için sağlık hesaplanamadı.",
     "metric-not-in-hierarchy": "Bu metrik bağımsızdır — hiçbir gruba ait değildir ve varyantı yoktur.",
     "metric-observability-reason-no-terminal-results": "Henüz nihai test sonucu yok; kuyruktaki ve eksik sonuçlar puanı etkilemez.",

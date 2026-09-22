@@ -4232,8 +4232,6 @@
     "metric-description": "在整个组织中定义和编目标准化指标。",
     "metric-empty-state-description": "指标为您的组织提供衡量标准的唯一可信来源。只需定义一次指标，从分析师到管理层 — 每个人都能基于相同的计算逻辑开展工作。",
     "metric-empty-state-title": "一次定义，不再争论",
-    "metric-group-optional": "可选。将相关指标分组，或输入新的组名以创建一个。",
-    "metric-group-will-be-created": "将创建此组",
     "metric-health-unavailable": "无法计算该指标的健康状况。",
     "metric-not-in-hierarchy": "此指标是独立的 — 它不属于任何组，也没有变体。",
     "metric-observability-reason-no-terminal-results": "尚无最终测试结果；排队中和缺失的结果不会影响评分。",

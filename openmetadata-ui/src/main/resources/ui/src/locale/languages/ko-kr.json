@@ -4232,8 +4232,6 @@
     "metric-description": "조직 전반에 걸쳐 표준화된 지표를 정의하고 카탈로그화하세요.",
     "metric-empty-state-description": "지표는 측정 방식에 대한 단일 정보 출처를 조직에 제공합니다. 지표를 한 번 정의하면 분석가부터 경영진까지 — 모두가 동일한 계산식을 기준으로 업무를 수행합니다.",
     "metric-empty-state-title": "정의는 하나, 논쟁은 제로",
-    "metric-group-optional": "선택 사항입니다. 관련 메트릭을 그룹화하거나 새 그룹 이름을 입력하여 만드세요.",
-    "metric-group-will-be-created": "이 그룹이 생성됩니다",
     "metric-health-unavailable": "이 지표의 건강 상태를 계산할 수 없습니다.",
     "metric-not-in-hierarchy": "이 메트릭은 독립적입니다. 어떤 그룹에도 속하지 않으며 변형이 없습니다.",
     "metric-observability-reason-no-terminal-results": "아직 최종 테스트 결과가 없습니다. 대기 중이거나 누락된 결과는 점수에 영향을 주지 않습니다.",

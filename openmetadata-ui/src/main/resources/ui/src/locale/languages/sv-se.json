@@ -4232,8 +4232,6 @@
     "metric-description": "Definiera och katalogisera standardiserade mätvärden i hela din organisation.",
     "metric-empty-state-description": "Mått ger din organisation en enda sanningskälla för hur saker mäts. Definiera ett mått en gång, så räknar alla — från analytiker till ledning — med samma matematik.",
     "metric-empty-state-title": "En definition, inga debatter",
-    "metric-group-optional": "Valfritt. Gruppera relaterade mätvärden, eller skriv ett nytt gruppnamn för att skapa en.",
-    "metric-group-will-be-created": "Den här gruppen kommer att skapas",
     "metric-health-unavailable": "Hälsan kunde inte beräknas för det här måttet.",
     "metric-not-in-hierarchy": "Detta mätvärde är fristående — det tillhör ingen grupp och har inga varianter.",
     "metric-observability-reason-no-terminal-results": "Det finns ännu inga slutliga testresultat; köade och saknade resultat påverkar inte poängen.",

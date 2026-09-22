@@ -48,7 +48,7 @@ const baseValues = (
   customUnitOfMeasurement: '',
   language: item(Language.SQL),
   code: 'SELECT 1',
-  metricGroup: null,
+  parentMetric: null,
   owners: [],
   reviewers: [],
   domains: [],
@@ -127,10 +127,10 @@ describe('transformMetricFormData', () => {
     expect(withDollars.customUnitOfMeasurement).toBeUndefined();
   });
 
-  it('should prefer the explicit parent FQN over the selected metric group', () => {
+  it('should prefer the explicit parent FQN over the selected parent metric', () => {
     const payload = transformMetricFormData(
       baseValues({
-        metricGroup: {
+        parentMetric: {
           id: 'ignored',
           label: 'ignored',
           value: {
@@ -151,7 +151,7 @@ describe('transformMetricFormData', () => {
   it('should set parent from the selected metric when there is no parent FQN', () => {
     const payload = transformMetricFormData(
       baseValues({
-        metricGroup: {
+        parentMetric: {
           id: 'growth',
           label: 'Growth',
           value: {

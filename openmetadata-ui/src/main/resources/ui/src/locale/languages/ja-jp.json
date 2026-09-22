@@ -4232,8 +4232,6 @@
     "metric-description": "組織全体で標準化された指標を定義し、カタログ化します。",
     "metric-empty-state-description": "メトリクスは、測定方法に関する単一の信頼できる情報源を組織にもたらします。一度メトリクスを定義すれば、アナリストから経営層まで — 誰もが同じ計算式に基づいて業務を進められます。",
     "metric-empty-state-title": "定義は一つ、議論はゼロ",
-    "metric-group-optional": "任意。関連するメトリクスをグループ化するか、新しいグループ名を入力して作成します。",
-    "metric-group-will-be-created": "このグループが作成されます",
     "metric-health-unavailable": "このメトリクスの健康状態は計算できませんでした。",
     "metric-not-in-hierarchy": "このメトリクスは単独です。どのグループにも属しておらず、バリアントもありません。",
     "metric-observability-reason-no-terminal-results": "確定したテスト結果はまだありません。キュー内および欠損している結果はスコアに影響しません。",

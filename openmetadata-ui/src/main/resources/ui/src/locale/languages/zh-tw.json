@@ -4232,8 +4232,6 @@
     "metric-description": "在整個組織中定義並編目標準化指標。",
     "metric-empty-state-description": "指標為您的組織提供衡量標準的唯一可信來源。只需定義一次指標，從分析師到管理層 — 每個人都能依據相同的計算邏輯開展工作。",
     "metric-empty-state-title": "一次定義，不再爭論",
-    "metric-group-optional": "選填。將相關指標分組，或輸入新的群組名稱以建立一個。",
-    "metric-group-will-be-created": "將建立此群組",
     "metric-health-unavailable": "無法計算此指標的健康狀況。",
     "metric-not-in-hierarchy": "此指標是獨立的 — 它不屬於任何群組，也沒有變體。",
     "metric-observability-reason-no-terminal-results": "尚無最終測試結果；佇列中和缺少的結果不會影響分數。",

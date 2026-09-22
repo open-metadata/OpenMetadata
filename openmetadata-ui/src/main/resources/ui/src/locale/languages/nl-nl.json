@@ -4232,8 +4232,6 @@
     "metric-description": "Definieer en catalogiseer gestandaardiseerde metrieken binnen uw organisatie.",
     "metric-empty-state-description": "Metrieken geven uw organisatie één bron van waarheid voor hoe dingen worden gemeten. Definieer een metriek één keer, en iedereen — van analisten tot directie — rekent met dezelfde formules.",
     "metric-empty-state-title": "Eén definitie, geen discussies",
-    "metric-group-optional": "Optioneel. Groepeer gerelateerde metrieken, of typ een nieuwe groepsnaam om er een aan te maken.",
-    "metric-group-will-be-created": "Deze groep wordt aangemaakt",
     "metric-health-unavailable": "De gezondheid kon niet worden berekend voor deze metriek.",
     "metric-not-in-hierarchy": "Deze metriek staat op zichzelf — hij hoort bij geen enkele groep en heeft geen varianten.",
     "metric-observability-reason-no-terminal-results": "Er zijn nog geen definitieve testresultaten; resultaten in de wachtrij en ontbrekende resultaten hebben geen invloed op de score.",

@@ -59,7 +59,7 @@ export const METRIC_FORM_DEFAULTS: MetricFormValues = {
   customUnitOfMeasurement: '',
   language: { id: Language.SQL, label: Language.SQL, value: Language.SQL },
   code: '',
-  metricGroup: null,
+  parentMetric: null,
   owners: [],
   reviewers: [],
   domains: [],
@@ -90,7 +90,7 @@ const AddMetricForm = ({
   const [relatedMetricOptions, setRelatedMetricOptions] = useState<
     MetricFormSelectItem[]
   >([]);
-  const [metricGroupOptions, setMetricGroupOptions] = useState<
+  const [parentMetricOptions, setParentMetricOptions] = useState<
     MetricFormSelectItem[]
   >([]);
 
@@ -269,7 +269,7 @@ const AddMetricForm = ({
     }
   }, []);
 
-  const fetchMetricGroupOptions = useCallback(async (searchText = '') => {
+  const fetchParentMetricOptions = useCallback(async (searchText = '') => {
     try {
       const response = await searchQuery({
         pageNumber: 1,
@@ -278,7 +278,7 @@ const AddMetricForm = ({
         searchIndex: SearchIndex.METRIC,
       });
 
-      setMetricGroupOptions(
+      setParentMetricOptions(
         response.hits.hits.flatMap((hit) => {
           const source = hit._source;
           const fullyQualifiedName = source.fullyQualifiedName ?? source.name;
@@ -304,7 +304,7 @@ const AddMetricForm = ({
         })
       );
     } catch {
-      setMetricGroupOptions([]);
+      setParentMetricOptions([]);
     }
   }, []);
 
@@ -316,9 +316,9 @@ const AddMetricForm = ({
     () => void fetchDomainOptions(),
     [fetchDomainOptions]
   );
-  const handleMetricGroupFocus = useCallback(
-    () => void fetchMetricGroupOptions(),
-    [fetchMetricGroupOptions]
+  const handleParentMetricFocus = useCallback(
+    () => void fetchParentMetricOptions(),
+    [fetchParentMetricOptions]
   );
   const handleRelatedMetricFocus = useCallback(
     () => void fetchRelatedMetricOptions(),
@@ -349,13 +349,13 @@ const AddMetricForm = ({
       ),
     [fetchRelatedMetricOptions]
   );
-  const debouncedMetricGroupSearch = useMemo(
+  const debouncedParentMetricSearch = useMemo(
     () =>
       debounce(
-        (searchText: string) => void fetchMetricGroupOptions(searchText),
+        (searchText: string) => void fetchParentMetricOptions(searchText),
         250
       ),
-    [fetchMetricGroupOptions]
+    [fetchParentMetricOptions]
   );
 
   useEffect(
@@ -363,13 +363,13 @@ const AddMetricForm = ({
       debouncedUserTeamSearch.cancel();
       debouncedDomainSearch.cancel();
       debouncedRelatedMetricSearch.cancel();
-      debouncedMetricGroupSearch.cancel();
+      debouncedParentMetricSearch.cancel();
     },
     [
       debouncedUserTeamSearch,
       debouncedDomainSearch,
       debouncedRelatedMetricSearch,
-      debouncedMetricGroupSearch,
+      debouncedParentMetricSearch,
     ]
   );
 
@@ -561,17 +561,17 @@ const AddMetricForm = ({
     type: FieldTypes.ASYNC_SELECT,
   };
 
-  const metricGroupField: FieldProp = {
-    id: 'root/metricGroup',
-    label: t('label.metric-group'),
-    name: 'metricGroup',
-    placeholder: t('label.select-field', { field: t('label.metric-group') }),
+  const parentMetricField: FieldProp = {
+    id: 'root/parentMetric',
+    label: t('label.parent-metric'),
+    name: 'parentMetric',
+    placeholder: t('label.select-field', { field: t('label.parent-metric') }),
     props: {
       filterOption: () => true,
-      onFocus: handleMetricGroupFocus,
+      onFocus: handleParentMetricFocus,
       onSearchChange: (searchText: string) =>
-        debouncedMetricGroupSearch(searchText),
-      options: metricGroupOptions,
+        debouncedParentMetricSearch(searchText),
+      options: parentMetricOptions,
     },
     type: FieldTypes.ASYNC_SELECT,
   };
@@ -611,13 +611,15 @@ const AddMetricForm = ({
       </Box>
       {parentMetricFqn ? (
         <Alert
-          data-testid="metric-group-inherited"
+          data-testid="parent-metric-inherited"
           title={t('label.parent-metric')}
           variant="brand">
           {parentMetricFqn}
         </Alert>
       ) : (
-        <div data-testid="metric-group-field">{getField(metricGroupField)}</div>
+        <div data-testid="parent-metric-field">
+          {getField(parentMetricField)}
+        </div>
       )}
       <div>{getField(ownersField)}</div>
       <div>{getField(reviewersField)}</div>

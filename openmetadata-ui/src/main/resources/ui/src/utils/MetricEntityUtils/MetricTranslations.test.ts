@@ -66,8 +66,6 @@ const METRIC_TRANSLATION_KEYS = {
     'metric-approval-automatic-workflow',
     'metric-approval-not-required',
     'metric-asset-not-health-relevant',
-    'metric-group-optional',
-    'metric-group-will-be-created',
     'metric-health-unavailable',
     'metric-not-in-hierarchy',
     'metric-observability-reason-no-terminal-results',

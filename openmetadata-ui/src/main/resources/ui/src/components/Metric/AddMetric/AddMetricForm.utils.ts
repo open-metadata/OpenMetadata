@@ -44,10 +44,12 @@ const entityReferences = (
  * Pure form-values → CreateMetric payload transform. Mirrors the legacy
  * AddMetricPage `buildCreateMetricPayload` exactly: owners/reviewers as
  * `EntityReference[]`; domains/relatedMetrics as name arrays;
- * `customUnitOfMeasurement` only when the unit is `Other`; and, when creating
- * a child metric, `metricGroup` is forced undefined and `parent` is set to the
- * parent FQN. Group creation/repointing lives in the caller — pass the already
- * resolved `metricGroup` on `values`.
+ * `customUnitOfMeasurement` only when the unit is `Other`; and `parent` taken
+ * from `parentMetricFqn` when creating a child from its parent's page,
+ * otherwise from the metric picked in the form.
+ *
+ * `metricGroup` is a separate API field and is never set here — the create
+ * form has no group picker.
  */
 export const transformMetricFormData = (
   values: MetricFormValues,
@@ -67,7 +69,7 @@ export const transformMetricFormData = (
     unitOfMeasurement === UnitOfMeasurement.Other
       ? nonEmptyString(values.customUnitOfMeasurement)
       : undefined;
-  const selectedParent = values.metricGroup?.value as
+  const selectedParent = values.parentMetric?.value as
     | EntityReference
     | undefined;
   const parent =

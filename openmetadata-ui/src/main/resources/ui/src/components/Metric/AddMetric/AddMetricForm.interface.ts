@@ -35,7 +35,7 @@ export interface MetricFormValues {
   customUnitOfMeasurement: string;
   language: MetricFormSelectItem | null;
   code: string;
-  metricGroup: MetricFormSelectItem | null;
+  parentMetric: MetricFormSelectItem | null;
   owners: MetricFormSelectItem[];
   reviewers: MetricFormSelectItem[];
   domains: MetricFormSelectItem[];

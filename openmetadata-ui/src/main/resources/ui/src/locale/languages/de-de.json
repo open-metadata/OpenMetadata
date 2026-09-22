@@ -4232,8 +4232,6 @@
     "metric-description": "Definieren und katalogisieren Sie standardisierte Metriken in Ihrer Organisation.",
     "metric-empty-state-description": "Metriken bieten Ihrer Organisation eine zentrale Wahrheitsquelle dafür, wie Dinge gemessen werden. Definieren Sie eine Metrik einmal, und alle — von Analysten bis zur Führungsebene — rechnen mit denselben Formeln.",
     "metric-empty-state-title": "Eine Definition, keine Diskussionen",
-    "metric-group-optional": "Optional. Fassen Sie verwandte Metriken zusammen oder geben Sie einen neuen Gruppennamen ein, um eine zu erstellen.",
-    "metric-group-will-be-created": "Diese Gruppe wird erstellt",
     "metric-health-unavailable": "Die Gesundheit konnte für diese Metrik nicht berechnet werden.",
     "metric-not-in-hierarchy": "Diese Metrik ist eigenständig — sie gehört zu keiner Gruppe und hat keine Varianten.",
     "metric-observability-reason-no-terminal-results": "Es liegen noch keine endgültigen Testergebnisse vor; Ergebnisse in der Warteschlange und fehlende Ergebnisse wirken sich nicht auf die Bewertung aus.",

@@ -686,7 +686,7 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await page.getByTestId('add-child-metric').click();
       await expect(page.getByTestId('add-metric-container')).toBeVisible();
-      await expect(page.getByTestId('metric-group-inherited')).toContainText(
+      await expect(page.getByTestId('parent-metric-inherited')).toContainText(
         rootName
       );
       await fillRequiredMetricFields(page, childName);

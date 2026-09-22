@@ -4232,8 +4232,6 @@
     "metric-description": "Defina e catalogue métricas padronizadas em toda a sua organização.",
     "metric-empty-state-description": "As métricas oferecem à sua organização uma única fonte de verdade sobre como as coisas são medidas. Defina uma métrica uma vez e todos — dos analistas à liderança — trabalham com os mesmos cálculos.",
     "metric-empty-state-title": "Uma definição, zero discussões",
-    "metric-group-optional": "Opcional. Agrupe métricas relacionadas ou digite o nome de um novo grupo para criá-lo.",
-    "metric-group-will-be-created": "Este grupo será criado",
     "metric-health-unavailable": "Não foi possível calcular a saúde desta métrica.",
     "metric-not-in-hierarchy": "Esta métrica é independente: não pertence a nenhum grupo e não possui variantes.",
     "metric-observability-reason-no-terminal-results": "Ainda não há resultados finais de testes; resultados na fila e ausentes não afetam a pontuação.",
