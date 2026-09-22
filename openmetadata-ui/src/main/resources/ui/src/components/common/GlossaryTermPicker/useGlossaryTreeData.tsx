@@ -112,7 +112,8 @@ export const useGlossaryTreeData = (): GlossaryTreeFetcher => {
 
         const { data: glossaries } = await getGlossariesList(
           {
-            fields: 'name,displayName,fullyQualifiedName,mutuallyExclusive',
+            fields:
+              'name,displayName,fullyQualifiedName,mutuallyExclusive,termCount',
             limit: PAGE_SIZE_LARGE,
           },
           signal
@@ -130,6 +131,7 @@ export const useGlossaryTreeData = (): GlossaryTreeFetcher => {
               isLeaf: false,
               // Checkable to tick its terms; the payload marks it a root.
               allowSelection: true,
+              count: glossary.termCount,
               data: glossaryRootValue(glossary),
               hasExclusiveChildren: isExclusive,
               lazyLoad: true,
