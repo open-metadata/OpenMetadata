@@ -279,10 +279,10 @@ describe('AuthCoordinator', () => {
     const { axios, triggerError } = createMockAxios();
     coordinator.install(axios, () => true);
 
-    // Distinct config per error to avoid the per-request cap tripping
-    // first. Bearer=`fresh` matches what the renewer above mints so
-    // every failure looks like "the just-minted token is still being
-    // rejected" — the exact refresh-loop signal cycles should count.
+    // shouldCountNewCycle compares the failing request's Bearer to
+    // `lastMintedToken`. Bearer=`fresh` matches what the renewer
+    // above mints, so once the first cycle completes every subsequent
+    // 401 looks like "the just-minted token is still being rejected".
     const mkError = (path: string) => ({
       response: { status: 401, data: {} },
       config: {
@@ -305,10 +305,11 @@ describe('AuthCoordinator', () => {
   });
 
   // Greptile P1 r4070169658: N requests sent with the SAME stale token
-  // return 401 sequentially — each after the previous refresh has
-  // completed. Without the stale-vs-minted check, each 401 would see
-  // no in-flight refresh, start a new cycle, and the 4th one would
-  // wrongly trip the breaker even though every refresh succeeded.
+  // return 401 sequentially — each after a refresh has completed and
+  // updated storage. Without the stale-vs-stored comparison, each 401
+  // would see no in-flight refresh, start a new cycle, and the 4th
+  // one would wrongly trip the breaker even though every refresh
+  // succeeded.
   it('does not count stragglers carrying pre-refresh tokens as cycles', async () => {
     const renewer = jest.fn(async () => ({
       expiresAt: Date.now() + 300_000,
@@ -320,11 +321,9 @@ describe('AuthCoordinator', () => {
     const { axios, triggerError } = createMockAxios();
     coordinator.install(axios, () => true);
 
-    // Straggler pump takes the fast-path (force:false) and reads the
-    // stored token — seed one fast-path pair per straggler so it
-    // short-circuits with the already-minted 'fresh' token without
-    // calling the renewer. Scoped with `Once` so the file-level mock
-    // defaults are restored for later tests.
+    // Straggler pump takes the fast-path (force:false). Seed one
+    // fast-path pair per straggler so it short-circuits with the
+    // already-minted 'fresh' token without calling the renewer.
     for (let i = 0; i < 6; i++) {
       mockedGetOidcToken.mockResolvedValueOnce('fresh');
       mockedExtractDetailsFromToken.mockReturnValueOnce({
@@ -335,17 +334,17 @@ describe('AuthCoordinator', () => {
     }
 
     // First 401 seeds lastMintedToken via its refresh. It has no
-    // Authorization yet (nothing to compare against), so it counts as
-    // the first cycle.
+    // Authorization yet (nothing to compare against), so it counts
+    // as the first cycle.
     await triggerError({
       config: { url: '/api/v1/first' },
       response: { status: 401, data: {} },
     });
 
-    // Every subsequent request was sent with the OLD stale token before
-    // the first refresh finished. Their 401s arrive AFTER the refresh —
-    // Bearer !== the freshly-minted `fresh` — so they must retry
-    // silently and not be counted as new cycles.
+    // Every subsequent request was sent with the OLD stale token
+    // before the refresh finished. Their 401s arrive AFTER the
+    // refresh — Bearer=`stale` !== lastMintedToken=`fresh` — so
+    // they must retry silently and not be counted as new cycles.
     for (let i = 0; i < 6; i++) {
       await triggerError({
         config: {
@@ -362,6 +361,60 @@ describe('AuthCoordinator', () => {
     // with the already-minted fresh token. Only the first legitimate
     // 401 should have hit the renewer.
     expect(renewer).toHaveBeenCalledTimes(1);
+  });
+
+  // Code-review follow-up: when a sibling tab refreshes, its
+  // CrossTabLock `done` broadcast must update THIS tab's
+  // `lastMintedToken` — otherwise a persistent 401 storm against a
+  // sibling-minted token would look like an endless straggler stream
+  // and never trip the breaker.
+  it('picks up sibling-tab mints via the CrossTabLock done broadcast', async () => {
+    // Renewer mints the same token the sibling broadcast — so each
+    // cycle keeps `lastMintedToken` on `sibling-minted` and the
+    // matching Bearer keeps counting cycles until the breaker trips.
+    const renewer = jest.fn(async () => ({
+      expiresAt: Date.now() + 300_000,
+      idToken: 'sibling-minted',
+    }));
+    coordinator.registerRenewer(renewer);
+    const failures: unknown[] = [];
+    coordinator.on('refresh-failed', (p) => failures.push(p));
+    const { axios, triggerError } = createMockAxios();
+    coordinator.install(axios, () => true);
+
+    // Simulate a sibling tab broadcasting its refresh completion.
+    // AuthCoordinator subscribes to the same CrossTabLock channel in
+    // install(), so this posts through the shared BroadcastChannel
+    // and updates lastMintedToken here.
+    const siblingLock = new (
+      jest.requireActual('../CrossTabLock') as typeof import('../CrossTabLock')
+    ).CrossTabLock('om-refresh', 'om-auth');
+    siblingLock.notifyDone({
+      expiresAt: Date.now() + 300_000,
+      idToken: 'sibling-minted',
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const mkError = (path: string) => ({
+      response: { status: 401, data: {} },
+      config: {
+        headers: { Authorization: 'Bearer sibling-minted' },
+        url: `/api/v1/${path}`,
+      },
+    });
+
+    for (let i = 0; i < 3; i++) {
+      await triggerError(mkError(`endpoint-${i}`));
+    }
+
+    expect(failures).toEqual([]);
+
+    await expect(triggerError(mkError('endpoint-4'))).rejects.toBeDefined();
+    expect(failures).toHaveLength(1);
+    expect(failures[0]).toEqual({
+      reason: expect.stringMatching(/circuit-breaker tripped/),
+    });
   });
 
   // Regression for the code-review finding on the straggler fix: a
@@ -448,8 +501,8 @@ describe('AuthCoordinator', () => {
     const { axios, triggerError, triggerSuccess } = createMockAxios();
     coordinator.install(axios, () => true);
 
-    // Bearer=`fresh` matches the renewer's mint so each 401 is a
-    // "just-minted token still rejected" signal that must count.
+    // Bearer=`fresh` matches the renewer's mint so each 401 counts
+    // as "the just-minted token is still being rejected".
     for (let i = 0; i < 3; i++) {
       await triggerError({
         response: { status: 401, data: {} },

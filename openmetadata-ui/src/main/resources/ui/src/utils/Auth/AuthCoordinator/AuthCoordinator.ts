@@ -55,12 +55,14 @@ export class AuthCoordinator {
   private renewer: Renewer | null = null;
   private inflight: Promise<string> | null = null;
   private refreshCycleTimestamps: number[] = [];
-  // Last token minted by a successful refresh. Used by the interceptor
-  // to distinguish "the freshly-minted token is being rejected" (a real
-  // refresh-loop signal — count a cycle) from "an in-flight request
-  // predating the refresh returned 401 with its stale token" (routine
-  // straggler — retry silently, don't inflate the cycle counter).
+  // The most recently minted access token — updated on every
+  // successful refresh HERE (via applyRefreshed) AND from sibling
+  // tabs (via CrossTabLock's channel — see the onDoneBroadcast
+  // subscription in install). Used synchronously by the interceptor
+  // to distinguish a "current token is being rejected" real refresh
+  // loop from an in-flight straggler carrying a pre-refresh token.
   private lastMintedToken: string | null = null;
+  private disposeCrossTabDone: (() => void) | null = null;
   private readonly bus = new TypedEventBus();
   private readonly queue = new RefreshQueue();
   private readonly timer = new ProactiveTimer();
@@ -151,9 +153,23 @@ export class AuthCoordinator {
       () => this.timer.cancel()
     );
 
+    // Keep `lastMintedToken` in sync with sibling tabs so the cycle
+    // circuit-breaker recognises a cross-tab-minted token as
+    // "current" and can still trip on a persistent 401 storm even
+    // when this tab wasn't the one that refreshed.
+    this.disposeCrossTabDone?.();
+    this.disposeCrossTabDone = this.lock.onDoneBroadcast((payload) => {
+      const token = this.extractIdToken(payload);
+      if (token) {
+        this.lastMintedToken = token;
+      }
+    });
+
     return () => {
       axios.interceptors.response.eject(id);
       this.visibility.stop();
+      this.disposeCrossTabDone?.();
+      this.disposeCrossTabDone = null;
     };
   }
 
@@ -426,12 +442,12 @@ export class AuthCoordinator {
   }
 
   // Only count a cycle when the failing request carried the
-  // most-recently minted token — that is a genuine "refresh didn't
-  // help" signal. A 401 with a token older than the last mint is an
-  // in-flight straggler that predates the refresh: retrying it with
-  // the current token clears it silently without inflating the counter
-  // (Greptile P1 r4070169658). Also skip on concurrent 401s during one
-  // in-flight refresh so they share the entry.
+  // most-recently minted token — a genuine "the refresh didn't help"
+  // signal. A 401 with an older token is an in-flight straggler that
+  // predates a refresh (this tab's OR a sibling tab's — the
+  // cross-tab BroadcastChannel keeps `lastMintedToken` in sync so a
+  // sibling-minted token still counts here). Also skip on concurrent
+  // 401s during one in-flight refresh so they share the entry.
   private shouldCountNewCycle(config: unknown): boolean {
     if (this.inflight) {
       return false;
@@ -459,6 +475,15 @@ export class AuthCoordinator {
     }
 
     return false;
+  }
+
+  private extractIdToken(payload: unknown): string | null {
+    if (!payload || typeof payload !== 'object') {
+      return null;
+    }
+    const token = (payload as { idToken?: unknown }).idToken;
+
+    return typeof token === 'string' && token.length > 0 ? token : null;
   }
 
   private extractBearer(config: unknown): string | null {
