@@ -154,6 +154,7 @@ export { Schedule } from './Schedule';
 export { Schema } from './Schema';
 export { SearchIndex } from './SearchIndex';
 export { SearchService } from './SearchService';
+export { Search } from './Search';
 export { SecurityService } from './SecurityService';
 export { Settings } from './Settings';
 export { Share1 } from './Share1';
