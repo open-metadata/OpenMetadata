@@ -2255,6 +2255,13 @@ export const openDataProductDrawer = async (page: Page, domain: Domain) => {
   const domainOption = page.getByText(domain.data.displayName);
   await domainOption.waitFor({ state: 'visible', timeout: 5000 });
   await domainOption.click();
+
+  // Wait for the Ant Design Select dropdown to close before returning.
+  // Without this, the dropdown's overlay intercepts the next click (e.g.
+  // on the Glossary Terms TreeSelect trigger) and the popover never opens.
+  await expect(domainContainer.getByTitle(domain.data.displayName)).toBeVisible(
+    { timeout: 5000 }
+  );
 };
 
 const parseRequestBody = (postData: string | null | undefined) => {
