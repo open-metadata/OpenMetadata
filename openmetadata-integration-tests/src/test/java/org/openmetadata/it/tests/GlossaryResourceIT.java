@@ -1880,9 +1880,10 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
             createRequest(ns.prefix("glossary-b"), ns)
                 .withDomains(List.of(domainB.getFullyQualifiedName())));
 
-    // Scoped to domain A: only glossary A is returned, glossary B is filtered out.
+    // High limit so a busy shared test instance cannot page a target glossary out of the results.
     List<Glossary> inDomainA =
-        listEntities(new ListParams().setDomain(domainA.getFullyQualifiedName())).getData();
+        listEntities(new ListParams().setDomain(domainA.getFullyQualifiedName()).setLimit(1000000))
+            .getData();
     assertTrue(
         inDomainA.stream().anyMatch(g -> g.getId().equals(glossaryA.getId())),
         "Glossary in domain A must be listed when filtering by domain A");
@@ -1890,9 +1891,9 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
         inDomainA.stream().anyMatch(g -> g.getId().equals(glossaryB.getId())),
         "Glossary in domain B must not be listed when filtering by domain A");
 
-    // Scoped to domain B: only glossary B is returned.
     List<Glossary> inDomainB =
-        listEntities(new ListParams().setDomain(domainB.getFullyQualifiedName())).getData();
+        listEntities(new ListParams().setDomain(domainB.getFullyQualifiedName()).setLimit(1000000))
+            .getData();
     assertTrue(
         inDomainB.stream().anyMatch(g -> g.getId().equals(glossaryB.getId())),
         "Glossary in domain B must be listed when filtering by domain B");
@@ -1900,8 +1901,9 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
         inDomainB.stream().anyMatch(g -> g.getId().equals(glossaryA.getId())),
         "Glossary in domain A must not be listed when filtering by domain B");
 
-    // Empty domain param must behave like no filter (regression: must not 404).
-    List<Glossary> emptyFilter = listEntities(new ListParams().setDomain("")).getData();
+    // Empty domain must be treated as no filter, not resolved as an FQN (which would 404).
+    List<Glossary> emptyFilter =
+        listEntities(new ListParams().setDomain("").setLimit(1000000)).getData();
     assertTrue(
         emptyFilter.stream().anyMatch(g -> g.getId().equals(glossaryA.getId()))
             && emptyFilter.stream().anyMatch(g -> g.getId().equals(glossaryB.getId())),
