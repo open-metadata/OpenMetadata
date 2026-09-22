@@ -15,7 +15,8 @@ Trino source implementation.
 import re  # noqa: I001
 import traceback
 from copy import deepcopy
-from typing import Any, Dict, Iterable, List, Optional, Tuple  # noqa: UP035
+from typing import Any
+from collections.abc import Iterable
 
 from sqlalchemy import exc, sql, util
 from sqlalchemy.engine.base import Connection
@@ -74,7 +75,7 @@ def _starts_with_type(type_str: str, type_name: str) -> bool:
     return type_str.lower().startswith(type_name)
 
 
-def split_row_field(field_str: str) -> Tuple[Optional[str], str]:  # noqa: UP006, UP045
+def split_row_field(field_str: str) -> tuple[str | None, str]:
     """
     Split a single Trino ROW field into its (name, type) pair.
 
@@ -99,7 +100,7 @@ def split_row_field(field_str: str) -> Tuple[Optional[str], str]:  # noqa: UP006
     return parts[0], parts[1].strip()
 
 
-def resolve_field_names(fields: List[Tuple[Optional[str], str]]) -> List[Tuple[str, str]]:  # noqa: UP006, UP045
+def resolve_field_names(fields: list[tuple[str | None, str]]) -> list[tuple[str, str]]:
     """
     Give every field of one ROW a unique name.
 
@@ -123,7 +124,7 @@ def resolve_field_names(fields: List[Tuple[Optional[str], str]]) -> List[Tuple[s
     return resolved
 
 
-def get_type_name_and_opts(type_str: str) -> Tuple[str, Optional[str]]:  # noqa: UP006, UP045
+def get_type_name_and_opts(type_str: str) -> tuple[str, str | None]:
     match = re.match(r"^(?P<type>\w+)\s*(?:\((?P<options>.*)\))?", type_str)
     if not match:
         util.warn(f"Could not parse type name '{type_str}'")
@@ -194,7 +195,7 @@ def _parse_sqltype(type_str: str, table_name: str, column_name: str):
         return sqltypes.NULLTYPE
 
 
-def _get_columns(self, connection: Connection, table_name: str, schema: str = None, **__) -> List[Dict[str, Any]]:  # noqa: RUF013, UP006
+def _get_columns(self, connection: Connection, table_name: str, schema: str = None, **__) -> list[dict[str, Any]]:  # noqa: RUF013
     # pylint: disable=protected-access
     schema = schema or self._get_default_schema_name(connection)
     preparer = connection.dialect.identifier_preparer
@@ -235,7 +236,7 @@ def get_table_comment(  # pylint: disable=unused-argument
     table_name: str,
     schema: str = None,  # noqa: RUF013
     **kw,
-) -> Dict[str, Any]:  # noqa: UP006
+) -> dict[str, Any]:
     """
     Override get table comment method to batch process comments
     """
@@ -269,7 +270,7 @@ def get_table_comment(  # pylint: disable=unused-argument
         raise
 
 
-def get_view_definition(self, connection: Connection, view_name: str, schema: str = None, **kw) -> Optional[str]:  # noqa: RUF013, UP045
+def get_view_definition(self, connection: Connection, view_name: str, schema: str = None, **kw) -> str | None:  # noqa: RUF013
     """
     Get the view definition for Trino views.
 
@@ -337,7 +338,7 @@ class TrinoSource(CommonDbSourceService):
     ColumnTypeParser._COLUMN_TYPE_MAPPING[JSON] = "JSON"
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: TrinoConnection = config.serviceConnection.root.config
         if not isinstance(connection, TrinoConnection):

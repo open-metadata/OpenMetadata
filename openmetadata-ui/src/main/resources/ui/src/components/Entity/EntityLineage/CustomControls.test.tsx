@@ -10,14 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
+import { LineagePlatformView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
+import { LineageBand } from '../../../generated/api/lineage/lineageScene';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useLineageStore } from '../../../hooks/useLineageStore';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
+import { EImpactLevel } from '../../LineageTable/LineageTable.interface';
 import CustomControlsComponent from './CustomControls.component';
 
 const mockOnExportClick = jest.fn();
@@ -43,25 +54,7 @@ const defaultProps = {
 };
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Button: jest
-    .fn()
-    .mockImplementation(
-      ({
-        children,
-        onClick,
-        isDisabled,
-        'aria-label': ariaLabel,
-        'data-testid': testId,
-      }) => (
-        <button
-          aria-label={ariaLabel}
-          data-testid={testId}
-          disabled={isDisabled}
-          onClick={onClick}>
-          {children}
-        </button>
-      )
-    ),
+  Button: jest.requireActual('@openmetadata/ui-core-components').Button,
   Dropdown: {
     Root: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
     Popover: jest
@@ -82,11 +75,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         <li data-key={key}>{children}</li>
       )),
   },
-  Tooltip: jest
-    .fn()
-    .mockImplementation(({ children, title }) => (
-      <div title={title as string}>{children}</div>
-    )),
+  Tooltip: jest.requireActual('@openmetadata/ui-core-components').Tooltip,
   TooltipTrigger: jest
     .fn()
     .mockImplementation(({ children }) => <>{children}</>),
@@ -225,7 +214,7 @@ jest.mock('../../../hooks/useLineageStore', () => ({
     lineageConfig: {},
     toggleEditMode: jest.fn(),
     isEditMode: false,
-    platformView: false,
+    platformView: LineagePlatformView.None,
   })),
 }));
 
@@ -242,6 +231,20 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 );
 
 describe('CustomControls', () => {
+  beforeEach(() => {
+    (useLineageStore as unknown as jest.Mock).mockReturnValue({
+      isDQEnabled: false,
+      setLineageConfig: mockOnLineageConfigUpdate,
+      lineageConfig: {},
+      toggleEditMode: jest.fn(),
+      isEditMode: false,
+      platformView: LineagePlatformView.None,
+    });
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
+      search: '?mode=lineage&depth=3&dir=downstream',
+    }));
+  });
+
   it('renders all main control buttons', () => {
     render(<CustomControlsComponent {...defaultProps} />, {
       wrapper: Wrapper,
@@ -255,12 +258,77 @@ describe('CustomControls', () => {
     expect(screen.getByLabelText('label.full-screen-view')).toBeInTheDocument();
   });
 
+  it('opens and dismisses the edit tooltip with the real core trigger', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<CustomControlsComponent {...defaultProps} hasEditAccess />, {
+      wrapper: Wrapper,
+    });
+
+    const button = screen.getByRole('button', { name: 'label.edit-entity' });
+
+    expect(button.parentElement?.closest('button')).toBeNull();
+
+    fireEvent.mouseMove(document);
+    await user.hover(button);
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'label.edit-entity'
+    );
+
+    await user.unhover(button);
+    await waitFor(() =>
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    );
+  });
+
+  it('shows the zoom-in hint when hovering the disabled Layer edit button', async () => {
+    const store = useLineageStore as unknown as jest.Mock;
+    store.mockReturnValue({ ...store(), sceneBand: LineageBand.Layer });
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<CustomControlsComponent {...defaultProps} hasEditAccess />, {
+      wrapper: Wrapper,
+    });
+    const button = screen.getByRole('button', { name: 'label.edit-entity' });
+
+    expect(button).toBeDisabled();
+    expect(button.parentElement?.closest('button')).toBeNull();
+
+    fireEvent.mouseMove(document);
+    await user.hover(button);
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'label.zoom-in'
+    );
+
+    await user.unhover(button);
+    await waitFor(() =>
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    );
+
+    const trigger = screen.getByRole('group', { name: 'label.edit-entity' });
+
+    expect(trigger).toHaveAttribute('tabindex', '0');
+
+    fireEvent.keyDown(document, { key: 'Tab' });
+    act(() => trigger.focus());
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'label.zoom-in'
+    );
+
+    act(() => trigger.blur());
+    await waitFor(() =>
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    );
+  });
+
   it('shows LineageSearchSelect by default in lineage mode', () => {
     render(<CustomControlsComponent {...defaultProps} />, {
       wrapper: Wrapper,
     });
 
     expect(screen.getByTestId('lineage-search-select')).toBeInTheDocument();
+    expect(screen.queryByTestId('lineage-time-filter')).not.toBeInTheDocument();
   });
 
   it('shows SearchBar when in impact analysis mode', () => {
@@ -273,6 +341,7 @@ describe('CustomControls', () => {
     });
 
     expect(screen.getByTestId('search-bar')).toBeInTheDocument();
+    expect(screen.getByTestId('lineage-time-filter')).toBeInTheDocument();
   });
 
   it('Not shows SearchBar when in impact analysis mode & onSearchValueChange is not provided', () => {
@@ -331,7 +400,7 @@ describe('CustomControls', () => {
       wrapper: Wrapper,
     });
 
-    const exportButton = screen.getByLabelText('label.export-as-type');
+    const exportButton = screen.getByLabelText('label.export');
     fireEvent.click(exportButton);
 
     expect(mockOnExportClick).toHaveBeenCalled();
@@ -554,7 +623,27 @@ describe('CustomControls', () => {
     expect(screen.getByTestId('explore-quick-filters')).toBeInTheDocument();
   });
 
-  it('should pass nodeIds to ExploreQuickFilters from provider when ids not passed through props', () => {
+  it('should not constrain quick-filter options when provider nodes are unavailable', () => {
+    (useLineageProvider as jest.Mock).mockImplementation(() => ({
+      onExportClick: mockOnExportClick,
+      selectedQuickFilters: [],
+      setSelectedQuickFilters: mockSetSelectedQuickFilters,
+      nodes: [],
+    }));
+
+    render(<CustomControlsComponent {...defaultProps} />, {
+      wrapper: Wrapper,
+    });
+
+    fireEvent.click(screen.getByLabelText('label.filter-plural'));
+
+    expect(ExploreQuickFilters).toHaveBeenCalledWith(
+      expect.objectContaining({ defaultQueryFilter: undefined }),
+      expect.anything()
+    );
+  });
+
+  it('should pass entity ids to ExploreQuickFilters from provider when ids not passed through props', () => {
     (useLineageProvider as jest.Mock).mockImplementation(() => ({
       onExportClick: mockOnExportClick,
       onLineageConfigUpdate: mockOnLineageConfigUpdate,
@@ -562,7 +651,12 @@ describe('CustomControls', () => {
       setSelectedQuickFilters: mockSetSelectedQuickFilters,
       lineageConfig: mockLineageConfig,
       nodes: [
-        { data: { node: { id: 'node1', name: 'Node 1' } } },
+        {
+          data: {
+            node: { id: 'table:node1', name: 'Node 1' },
+            sceneNode: { sourceEntity: { id: 'node1' } },
+          },
+        },
         { data: { node: { id: 'node2', name: 'Node 2' } } },
       ],
     }));
@@ -588,5 +682,81 @@ describe('CustomControls', () => {
     );
 
     expect(screen.getByTestId('explore-quick-filters')).toBeInTheDocument();
+  });
+
+  describe('onPageReset - quick filter pagination reset', () => {
+    const mockOnPageReset = jest.fn();
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      (useLineageProvider as jest.Mock).mockImplementation(() => ({
+        onExportClick: mockOnExportClick,
+        // A non-empty value keeps the "Clear all" button enabled
+        // (filterApplied === true).
+        selectedQuickFilters: [{ key: 'service', value: ['test-service'] }],
+        setSelectedQuickFilters: mockSetSelectedQuickFilters,
+        lineageConfig: mockLineageConfig,
+        nodes: [],
+      }));
+    });
+
+    it('calls onPageReset when a quick filter value is selected', () => {
+      render(
+        <CustomControlsComponent
+          {...defaultProps}
+          impactLevel={EImpactLevel.TableLevel}
+          onPageReset={mockOnPageReset}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      // Open the filter panel so ExploreQuickFilters renders.
+      fireEvent.click(screen.getByLabelText('label.filter-plural'));
+
+      const exploreCalls = (ExploreQuickFilters as jest.Mock).mock.calls;
+      const onFieldValueSelect = exploreCalls[exploreCalls.length - 1][0]
+        .onFieldValueSelect as (field: unknown) => void;
+
+      onFieldValueSelect({ key: 'service', value: [] });
+
+      expect(mockOnPageReset).toHaveBeenCalledTimes(1);
+    });
+
+    it('calls onPageReset when Clear all is clicked', () => {
+      render(
+        <CustomControlsComponent
+          {...defaultProps}
+          impactLevel={EImpactLevel.TableLevel}
+          onPageReset={mockOnPageReset}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      fireEvent.click(screen.getByLabelText('label.filter-plural'));
+      fireEvent.click(screen.getByText('label.clear-entity'));
+
+      // Clearing the narrowing must also reset the page so the un-narrowed
+      // set is fetched from page 1.
+      expect(mockOnPageReset).toHaveBeenCalledTimes(1);
+      expect(mockSetSelectedQuickFilters).toHaveBeenCalled();
+    });
+
+    it('does not call onPageReset on tab change', () => {
+      render(
+        <CustomControlsComponent
+          {...defaultProps}
+          impactLevel={EImpactLevel.TableLevel}
+          onPageReset={mockOnPageReset}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      // Tab change reuses handleClearAllFilters (no reset); only the Clear-all
+      // button uses handleClearAllClick (with reset). Guard the decoupling so a
+      // future change can't accidentally trigger a page reset on tab switch.
+      fireEvent.click(screen.getByText('label.lineage'));
+
+      expect(mockOnPageReset).not.toHaveBeenCalled();
+    });
   });
 });

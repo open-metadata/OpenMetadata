@@ -14,7 +14,6 @@
 import logging
 import time
 from datetime import datetime
-from typing import List, Tuple, Type  # noqa: UP035
 
 from pandas import DataFrame
 
@@ -35,8 +34,8 @@ logger = logging.getLogger(__name__)
 class DataFrameValidationEngine:
     """Orchestrates execution of multiple validators on a DataFrame."""
 
-    def __init__(self, test_cases: List[TestCase]):  # noqa: UP006
-        self.test_cases: List[TestCase] = test_cases  # noqa: UP006
+    def __init__(self, test_cases: list[TestCase]):
+        self.test_cases: list[TestCase] = test_cases
 
     def execute(
         self,
@@ -52,7 +51,7 @@ class DataFrameValidationEngine:
         Returns:
             ValidationResult with outcomes for all tests
         """
-        results: List[Tuple[TestCase, TestCaseResult]] = []  # noqa: UP006
+        results: list[tuple[TestCase, TestCaseResult]] = []
         start_time = time.time()
 
         for test_case in self.test_cases:
@@ -123,7 +122,7 @@ class DataFrameValidationEngine:
         )
 
     @staticmethod
-    def _get_validator_class(test_case: TestCase) -> Type[BaseTestValidator]:  # noqa: UP006
+    def _get_validator_class(test_case: TestCase) -> type[BaseTestValidator]:
         """Resolve validator class from test definition name.
 
         Returns:

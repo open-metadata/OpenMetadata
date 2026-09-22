@@ -14,9 +14,9 @@ Metadata DAG common functions
 
 import json
 import uuid
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from functools import partial
-from typing import Callable, Optional, Union  # noqa: UP035
 
 from airflow import DAG
 from airflow.utils import timezone
@@ -48,13 +48,7 @@ try:
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
-from croniter import croniter  # noqa: I001
-from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
-from openmetadata_managed_apis.utils.logger import set_operator_logger, workflow_logger
-from openmetadata_managed_apis.utils.parser import (
-    parse_service_connection,
-    parse_validation_err,
-)
+from croniter import croniter
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -63,17 +57,23 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.metadataIngestion.workflow import (
     LogLevels,
     OpenMetadataWorkflowConfig,
+    WorkflowConfig,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.parser import (
     InvalidWorkflowException,
     ParsingConfigurationError,
 )
 from metadata.ingestion.ometa.utils import model_str
 from metadata.workflow.metadata import MetadataWorkflow
+from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
+from openmetadata_managed_apis.utils.logger import set_operator_logger, workflow_logger
+from openmetadata_managed_apis.utils.parser import (
+    parse_service_connection,
+    parse_validation_err,
+)
 
 logger = workflow_logger()
 
@@ -236,7 +236,7 @@ def build_workflow_config_property(
     )
 
 
-def clean_name_tag(tag: str) -> Optional[str]:  # noqa: UP045
+def clean_name_tag(tag: str) -> str | None:
     """
     Clean the tag to be used in Airflow.
     Airflow supports 100 characters. We'll keep just 90
@@ -260,10 +260,22 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     # Determine start_date based on schedule_interval using croniter
     schedule_interval = ingestion_pipeline.airflowConfig.scheduleInterval
     if is_airflow_3_or_higher():
-        # Use timezone-aware `now` to avoid Airflow auto-scheduling an immediate first run.
-        # Setting the start_date in the past (previous cron) causes Airflow 3 to fire a run
-        # right after deployment even with catchup disabled.
-        start_date = timezone.utcnow()
+        # We want start_date to be close to "now" (not in the past) so Airflow 3
+        # doesn't immediately fire a catch-up run on creation even with catchup
+        # disabled. But `build_dag_configs` runs on every DAG-processor reparse,
+        # and `timezone.utcnow()` recomputes to a new "now" each time — so the
+        # cron interval measured from start_date never elapses and the DAG never
+        # fires on its own schedule (#32505). Anchor on the pipeline's own
+        # `updatedAt` instead: it only changes when the pipeline is actually
+        # (re)configured (a no-op redeploy leaves version/updatedAt untouched),
+        # so start_date stays stable across routine reparses/redeploys while
+        # still resetting close to "now" whenever the schedule is genuinely
+        # edited — preserving the original intent without the instability.
+        start_date = (
+            timezone.from_timestamp(ingestion_pipeline.updatedAt.root / 1000)
+            if ingestion_pipeline.updatedAt
+            else timezone.utcnow()
+        )
     else:
         now = datetime.now()
 
@@ -386,9 +398,9 @@ class CustomPythonOperator(PythonOperator):
 def build_dag(
     task_name: str,
     ingestion_pipeline: IngestionPipeline,
-    workflow_config: Union[OpenMetadataWorkflowConfig, OpenMetadataApplicationConfig],  # noqa: UP007
+    workflow_config: OpenMetadataWorkflowConfig | OpenMetadataApplicationConfig,
     workflow_fn: Callable,
-    params: Optional[dict] = None,  # noqa: UP045
+    params: dict | None = None,
 ) -> DAG:
     """
     Build a simple metadata workflow DAG

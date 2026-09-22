@@ -21,6 +21,7 @@ import {
 import { FC } from 'react';
 import { useForm, UseFormReturn } from 'react-hook-form';
 import { TestPlatform } from '../../../generated/tests/testDefinition';
+import { getDataQualityDimensions } from '../../../rest/dataQualityDimensionAPI';
 import { TestDefinitionFormValues } from './TestDefinitionForm.interface';
 import TestDefinitionFormBody from './TestDefinitionFormBody';
 
@@ -31,6 +32,16 @@ jest.mock('../../Database/SchemaEditor/CodeEditor', () => ({
 
 jest.mock('../../../utils/DataQuality/FormFieldDocs', () => ({
   loadFormFieldDocs: jest.fn().mockResolvedValue({}),
+}));
+
+jest.mock('../../../rest/dataQualityDimensionAPI', () => ({
+  getDataQualityDimensions: jest.fn().mockResolvedValue({
+    data: [
+      { id: 'dim-1', name: 'Accuracy' },
+      { id: 'dim-2', name: 'Timeliness', displayName: 'Timeliness' },
+    ],
+    paging: { total: 2 },
+  }),
 }));
 
 let formRef: UseFormReturn<TestDefinitionFormValues> | undefined;
@@ -157,6 +168,17 @@ describe('TestDefinitionFormBody', () => {
     expect(screen.getByTestId('remove-parameter-0')).toBeInTheDocument();
   });
 
+  it('sources the data quality dimension options from the dimension entities', async () => {
+    await act(async () => {
+      render(<Harness />);
+    });
+
+    // Custom dimensions live in Settings > Preferences > Data Quality, so the picker has to
+    // list what exists there rather than the dimensions OpenMetadata ships with.
+    expect(getDataQualityDimensions).toHaveBeenCalledWith({ limit: 1000 });
+    expect(screen.getByTestId('data-quality-dimension')).toBeInTheDocument();
+  });
+
   it('renders the inline error alert when an error message is provided', () => {
     render(<Harness errorMessage="Something went wrong" />);
 
@@ -166,16 +188,18 @@ describe('TestDefinitionFormBody', () => {
   it('allows selecting multiple supported data types without an initial value', async () => {
     render(<Harness />);
 
-    const input = document.querySelector('input[id="root/supportedDataTypes"]');
+    const input = document.querySelector(
+      'input[id="root/supportedDataTypes"]'
+    ) as HTMLElement;
 
     expect(input).toBeInTheDocument();
 
-    fireEvent.mouseDown(input!);
-    fireEvent.focus(input!);
-    fireEvent.change(input!, { target: { value: 'NUMBER' } });
+    fireEvent.mouseDown(input);
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'NUMBER' } });
     fireEvent.click(await screen.findByRole('option', { name: 'NUMBER' }));
 
-    fireEvent.change(input!, { target: { value: 'VARCHAR' } });
+    fireEvent.change(input, { target: { value: 'VARCHAR' } });
     fireEvent.click(await screen.findByRole('option', { name: 'VARCHAR' }));
 
     await waitFor(() => {
@@ -186,50 +210,26 @@ describe('TestDefinitionFormBody', () => {
     });
   });
 
-  describe('supportedDataTypes conditional required', () => {
-    it('flags supportedDataTypes required when testPlatforms includes OpenMetadata and it is empty', async () => {
-      render(<Harness />);
+  // An empty supportedDataTypes means "all data types", so it must stay valid on every
+  // platform — including OpenMetadata, where it used to be flagged as required. See #27718.
+  it('accepts empty supportedDataTypes when testPlatforms includes OpenMetadata', async () => {
+    render(<Harness />);
 
-      await act(async () => {
-        formRef?.setValue('testPlatforms', [
-          { id: TestPlatform.OpenMetadata, label: TestPlatform.OpenMetadata },
-        ]);
-        formRef?.setValue('supportedDataTypes', []);
-      });
-
-      let isValid = true;
-      await act(async () => {
-        isValid = await formRef!.trigger('supportedDataTypes');
-      });
-
-      expect(isValid).toBe(false);
-
-      await waitFor(() => {
-        expect(
-          formRef?.getFieldState('supportedDataTypes').error?.message
-        ).toBeDefined();
-      });
+    await act(async () => {
+      formRef?.setValue('testPlatforms', [
+        { id: TestPlatform.OpenMetadata, label: TestPlatform.OpenMetadata },
+      ]);
+      formRef?.setValue('supportedDataTypes', []);
     });
 
-    it('does not flag supportedDataTypes when testPlatforms excludes OpenMetadata', async () => {
-      render(<Harness />);
-
-      await act(async () => {
-        formRef?.setValue('testPlatforms', [
-          { id: TestPlatform.Soda, label: TestPlatform.Soda },
-        ]);
-        formRef?.setValue('supportedDataTypes', []);
-      });
-
-      let isValid = false;
-      await act(async () => {
-        isValid = await formRef!.trigger('supportedDataTypes');
-      });
-
-      expect(isValid).toBe(true);
-      expect(
-        formRef?.getFieldState('supportedDataTypes').error
-      ).toBeUndefined();
+    let isValid = false;
+    await act(async () => {
+      isValid = await (
+        formRef as UseFormReturn<TestDefinitionFormValues>
+      ).trigger('supportedDataTypes');
     });
+
+    expect(isValid).toBe(true);
+    expect(formRef?.getFieldState('supportedDataTypes').error).toBeUndefined();
   });
 });

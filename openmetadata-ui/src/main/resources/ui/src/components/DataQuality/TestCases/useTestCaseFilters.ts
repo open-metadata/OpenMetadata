@@ -14,12 +14,12 @@ import { FormProps } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { DefaultOptionType } from 'antd/lib/select';
-import { entries, isEmpty, isUndefined, uniq, values } from 'lodash';
+import { entries, isEmpty, isEqual, isUndefined, uniq, values } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import {
-  TEST_CASE_DIMENSIONS_OPTION,
   TEST_CASE_FILTERS,
   TEST_CASE_FILTERS_LABELS,
   TEST_CASE_PLATFORM_OPTION,
@@ -43,11 +43,12 @@ const DEFAULT_SELECTED_FILTERS = [
   TEST_CASE_FILTERS.tags,
 ];
 
+// The dimension filter is deliberately absent: dimensions are entities, so its options are
+// fetched alongside the other async ones in useTestCaseFilterOptions rather than hard-coded.
 const STATIC_OPTIONS: Record<string, DefaultOptionType[]> = {
   [TEST_CASE_FILTERS.platform]: TEST_CASE_PLATFORM_OPTION,
   [TEST_CASE_FILTERS.type]: TEST_CASE_TYPE_OPTION,
   [TEST_CASE_FILTERS.status]: TEST_CASE_STATUS_FILTER_OPTIONS,
-  [TEST_CASE_FILTERS.dimension]: TEST_CASE_DIMENSIONS_OPTION,
 };
 
 const MULTI_SELECT_FILTERS = new Set<string>([
@@ -129,7 +130,17 @@ export const useTestCaseFilters = ({
     ) => {
       navigate({
         search: QueryString.stringify(
-          { ...params, [key]: value ?? undefined },
+          {
+            // `params` is the whole query string, so it also carries usePaging's
+            // `currentPage`. A changed value yields a different result set, and
+            // keeping the old page would request an offset past its end. An
+            // unchanged one (e.g. adding an empty filter chip) keeps the page.
+            ...params,
+            [key]: value ?? undefined,
+            ...(isEqual(params[key], value)
+              ? {}
+              : { currentPage: INITIAL_PAGING_VALUE }),
+          },
           { arrayFormat: 'brackets' }
         ),
       });

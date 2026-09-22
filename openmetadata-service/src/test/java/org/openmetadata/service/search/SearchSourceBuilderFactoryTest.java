@@ -41,6 +41,7 @@ import org.openmetadata.schema.api.search.RankingStage;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchRequestBuilder;
@@ -78,6 +79,9 @@ public class SearchSourceBuilderFactoryTest {
 
   @BeforeAll
   public static void loadShippedSearchSettings() throws IOException {
+    // HighlightFieldClassifier reads the index mappings; without this the flat_object guard is a
+    // no-op and the highlight assertions only pass when another test class initialized the loader.
+    IndexMappingLoader.init();
     List<String> jsonDataFiles =
         EntityUtil.getJsonDataResources(".*json/data/settings/searchSettings.json$");
     String json =
@@ -1033,6 +1037,37 @@ public class SearchSourceBuilderFactoryTest {
     assertTrue(esEntitySpecific.query().isFunctionScore());
     assertEquals(Set.of("entityType"), osEntitySpecific.aggregations().keySet());
     assertEquals(Set.of("entityType"), esEntitySpecific.aggregations().keySet());
+  }
+
+  @Test
+  public void testShippedRankingAllowsUiTermBoostFields() {
+    SearchSettings settings = JsonUtils.deepCopy(shippedSearchSettings, SearchSettings.class);
+    AssetTypeConfiguration table =
+        settings.getAssetTypeConfigurations().stream()
+            .filter(config -> Entity.TABLE.equals(config.getAssetType()))
+            .findFirst()
+            .orElseThrow();
+    table.setTermBoosts(
+        List.of(
+            createTermBoost("certification.tagLabel.tagFQN", "Certification.Repro26414", 100.0),
+            createTermBoost("tags.tagFQN", "PII.Sensitive", 50.0)));
+
+    String osQuery =
+        new OpenSearchSourceBuilderFactory(settings)
+            .getSearchSourceBuilderV2(Entity.TABLE, "accounts", 0, 15)
+            .query()
+            .toJsonString();
+    String esQuery =
+        new ElasticSearchSourceBuilderFactory(settings)
+            .getSearchSourceBuilderV2(Entity.TABLE, "accounts", 0, 15)
+            .query()
+            .toString();
+
+    for (String value : List.of("Certification.Repro26414", "PII.Sensitive")) {
+      assertAll(
+          () -> assertTrue(osQuery.contains(value), osQuery),
+          () -> assertTrue(esQuery.contains(value), esQuery));
+    }
   }
 
   @Test

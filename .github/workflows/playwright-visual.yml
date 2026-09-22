@@ -26,10 +26,14 @@
 # bootstrap/build/seed steps still run directly on the runner exactly as in the e2e workflow.
 name: playwright-visual-regression
 
+# A required status check has to be able to report on every PR and in the merge
+# queue, so this triggers unconditionally and gates the expensive job on a
+# `paths` filter inside it instead. A job skipped that way still satisfies
+# branch protection, whereas a workflow that never starts leaves the check
+# pending forever.
 on:
+  merge_group:
   pull_request:
-    paths:
-      - "openmetadata-ui/**"
   workflow_dispatch:
 
 concurrency:
@@ -37,10 +41,79 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Decides whether UI code was touched. `pull_request` needs no checkout —
+  # paths-filter enumerates changed files through the API — but `merge_group`
+  # has no PR context, so it needs the repo and an explicit base, and
+  # `workflow_dispatch` has no diff at all and forces the job to run. Mirrors
+  # the same job in playwright-knowledge-graph-postgresql-e2e.yml.
+  check-changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      ui: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.ui }}
+    steps:
+      - name: Checkout
+        # Pinned for the same reason as the filter below.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        if: ${{ github.event_name == 'merge_group' }}
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+        # Pinned rather than floating on the tag: this job gates a required
+        # check, so a moved tag would run unreviewed code on every PR and
+        # merge-queue entry. Same SHA the Python workflows already pin.
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
+        id: filter
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
+        with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
+          filters: |
+            # What this suite can actually see. `openmetadata-ui/**` also covers
+            # `playwright/e2e/**`, so changing any feature spec booked a ~25
+            # minute screenshot run that could not observe the change — and made
+            # test-only PRs the only ones exposed to unrelated snapshot drift,
+            # because nothing else triggers this workflow often enough to catch
+            # it first.
+            #
+            # An allowlist rather than `openmetadata-ui/**` plus negations:
+            # dorny/paths-filter matches a file if *any* pattern matches, so a
+            # trailing `!...` line cannot subtract from a broad one above it.
+            #
+            # The Playwright entries are the suite's own inputs, not an
+            # exception to the rule: `visual-regression` declares
+            # `dependencies: ['setup', 'entity-data-setup']`, and its specs
+            # import from support/, utils/, constant/, fixtures/ and test-data/.
+            ui:
+              - 'openmetadata-ui/pom.xml'
+              - 'openmetadata-ui/src/main/resources/ui/src/**'
+              - 'openmetadata-ui/src/main/resources/ui/public/**'
+              - 'openmetadata-ui/src/main/resources/ui/index.html'
+              - 'openmetadata-ui/src/main/resources/ui/package.json'
+              - 'openmetadata-ui/src/main/resources/ui/yarn.lock'
+              - 'openmetadata-ui/src/main/resources/ui/vite.config.ts'
+              - 'openmetadata-ui/src/main/resources/ui/postcss.config.js'
+              - 'openmetadata-ui/src/main/resources/ui/babel.config.json'
+              - 'openmetadata-ui/src/main/resources/ui/tsconfig.json'
+              - 'openmetadata-ui/src/main/resources/ui/.npmrc'
+              - 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+              - 'openmetadata-ui/src/main/resources/ui/playwright.config.ts'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/VisualRegression/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/auth.setup.ts'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/entity-data.setup.ts'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/support/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/utils/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/constant/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/fixtures/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/test-data/**'
+              - '.github/workflows/playwright-visual.yml'
+              - '.github/actions/setup-openmetadata-test-environment/action.yml'
+
   playwright-visual-regression:
     name: playwright-visual-regression
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
+    needs: check-changes
+    if: ${{ !github.event.pull_request.draft && needs.check-changes.outputs.ui == 'true' }}
     permissions:
       contents: read
     steps:
@@ -61,7 +134,7 @@ jobs:
 
       - name: Cache Maven Dependencies
         id: cache-output
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}

@@ -208,7 +208,7 @@ jobs:
           errors: true
           payload: |
             {
-              "channel": "C03EYBDDX17",
+              "channel": "C0AC5T013V1",
               "text": ":rotating_light: *Auto-revert on `${{ steps.ev.outputs.branch }}`*\n*Reason:* `${{ steps.ev.outputs.name }}` failed — <${{ steps.ev.outputs.url }}|failing run>\n*Reverted commit:* `${{ steps.ev.outputs.sha }}` — ${{ steps.meta.outputs.subject }}\n*Original author:* ${{ steps.meta.outputs.author_name }} <${{ steps.meta.outputs.author_email }}>\n*Revert commit:* `${{ steps.revert.outputs.revert_sha }}`"
             }
 
@@ -226,7 +226,7 @@ jobs:
           errors: true
           payload: |
             {
-              "channel": "C03EYBDDX17",
+              "channel": "C0AC5T013V1",
               "text": ":x: *Auto-revert FAILED on `${{ steps.ev.outputs.branch }}`*\n`${{ steps.ev.outputs.name }}` failed on `${{ steps.ev.outputs.sha }}`, but the automatic revert did not succeed (likely a conflict or push rejection). Manual intervention required.\n*Failing run:* <${{ steps.ev.outputs.url }}|link>\n*Auto-revert run:* ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }
 

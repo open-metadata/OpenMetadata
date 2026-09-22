@@ -42,11 +42,47 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { validateWorkflowConfig } from '../../../utils/WorkflowConfigUtils';
 import {
+  reconcileDataAssetFilters,
   serializeDataAssetFilters,
   serializeEventBasedFilters,
   serializePeriodicBatchFilters,
 } from '../../../utils/WorkflowSerializationUtils';
-import { FormActionButtons, WorkflowConfigFormV1 } from './forms';
+import { FormActionButtons } from './forms/FormActionButtons';
+import { WorkflowConfigFormV1 } from './forms/WorkflowConfigFormV1';
+
+const computeStartNodeConfig = (
+  node: Node,
+  workflowDefinition: NodeConfigSidebarProps['workflowDefinition'],
+  workflowMetadata: NodeConfigSidebarProps['workflowMetadata'],
+  localName: string | null,
+  localDescription: string | null
+): NodeConfig => {
+  const baseConfig = getInitialNodeConfig(node, workflowDefinition, null);
+
+  if (workflowMetadata) {
+    const configWithMetadata = {
+      ...baseConfig,
+      name: workflowMetadata.displayName || baseConfig.name,
+      description: workflowMetadata.description || baseConfig.description,
+    };
+
+    return {
+      ...configWithMetadata,
+      name: localName !== null ? localName : configWithMetadata.name,
+      description:
+        localDescription !== null
+          ? localDescription
+          : configWithMetadata.description,
+    };
+  }
+
+  return {
+    ...baseConfig,
+    name: localName !== null ? localName : baseConfig.name,
+    description:
+      localDescription !== null ? localDescription : baseConfig.description,
+  };
+};
 
 const getBackendConfig = (node: Node | null): BackendNodeConfig => {
   const nodeConfig = node?.data?.config || {};
@@ -88,31 +124,13 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
 
   const config = useMemo(() => {
     if (isStartNode(node) && node) {
-      const baseConfig = getInitialNodeConfig(node, workflowDefinition, null);
-
-      if (workflowMetadata) {
-        const configWithMetadata = {
-          ...baseConfig,
-          name: workflowMetadata.displayName || baseConfig.name,
-          description: workflowMetadata.description || baseConfig.description,
-        };
-
-        return {
-          ...configWithMetadata,
-          name: localName !== null ? localName : configWithMetadata.name,
-          description:
-            localDescription !== null
-              ? localDescription
-              : configWithMetadata.description,
-        };
-      }
-
-      return {
-        ...baseConfig,
-        name: localName !== null ? localName : baseConfig.name,
-        description:
-          localDescription !== null ? localDescription : baseConfig.description,
-      };
+      return computeStartNodeConfig(
+        node,
+        workflowDefinition,
+        workflowMetadata,
+        localName,
+        localDescription
+      );
     }
 
     return node
@@ -162,10 +180,25 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
 
   const updateConfig = useCallback(
     <K extends keyof NodeConfig>(key: K, value: NodeConfig[K]) => {
-      setLocalConfig((prevConfig) => ({
-        ...(prevConfig || effectiveConfig),
-        [key]: value,
-      }));
+      setLocalConfig((prevConfig) => {
+        const base = prevConfig || effectiveConfig;
+
+        if (key !== 'dataAssets') {
+          return { ...base, [key]: value };
+        }
+
+        // Each filter is bound to the asset type it was created for.
+        const assets = (value as string[]) ?? [];
+
+        return {
+          ...base,
+          dataAssets: assets,
+          dataAssetFilters: reconcileDataAssetFilters(
+            base.dataAssetFilters,
+            assets
+          ),
+        };
+      });
 
       if (key === 'name') {
         setLocalName(value as string);

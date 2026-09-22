@@ -78,6 +78,7 @@ import {
   DomainFormValues,
 } from './AddDomainForm.interface';
 import {
+  ExtensionFieldKind,
   getExtensionFieldKind,
   getExtensionFormKey,
   getExtensionPropertyName,
@@ -242,37 +243,40 @@ const NumberExtensionField = ({
 
   return (
     <FormField control={control} name={name} rules={rules}>
-      {({ field, fieldState }) => (
-        <ExtensionFieldContainer
-          error={fieldState.error?.message}
-          isRequired={isRequired}
-          label={labelNode}>
-          <Input
-            aria-label={label}
-            inputDataTestId={dataTestId}
-            isInvalid={fieldState.invalid}
+      {({ field, fieldState }) => {
+        let inputValue = '';
+        if (typeof field.value === 'number') {
+          inputValue = String(field.value);
+        } else if (typeof field.value === 'string') {
+          inputValue = field.value;
+        }
+
+        return (
+          <ExtensionFieldContainer
+            error={fieldState.error?.message}
             isRequired={isRequired}
-            name={field.name}
-            step={
-              !timestamp && definition.propertyType.name === 'number'
-                ? 'any'
-                : 1
-            }
-            type="number"
-            value={
-              typeof field.value === 'number'
-                ? String(field.value)
-                : typeof field.value === 'string'
-                ? field.value
-                : ''
-            }
-            onBlur={field.onBlur}
-            onChange={(value) =>
-              field.onChange(value === '' ? undefined : value)
-            }
-          />
-        </ExtensionFieldContainer>
-      )}
+            label={labelNode}>
+            <Input
+              aria-label={label}
+              inputDataTestId={dataTestId}
+              isInvalid={fieldState.invalid}
+              isRequired={isRequired}
+              name={field.name}
+              step={
+                !timestamp && definition.propertyType.name === 'number'
+                  ? 'any'
+                  : 1
+              }
+              type="number"
+              value={inputValue}
+              onBlur={field.onBlur}
+              onChange={(value) =>
+                field.onChange(value === '' ? undefined : value)
+              }
+            />
+          </ExtensionFieldContainer>
+        );
+      }}
     </FormField>
   );
 };
@@ -587,35 +591,44 @@ const TimeIntervalExtensionField = ({
           name={fieldName}
           rules={{
             required: isRequired ? requiredMessage : false,
-            validate: (value) =>
-              value === undefined ||
-              value === '' ||
-              (Number.isFinite(Number(value)) &&
-                Number.isInteger(Number(value))) ||
-              t('label.field-invalid', { field: inputLabel }),
+            validate: (value) => {
+              const isEmptyValue = value === undefined || value === '';
+              const isValidInteger =
+                Number.isFinite(Number(value)) &&
+                Number.isInteger(Number(value));
+
+              return (
+                isEmptyValue ||
+                isValidInteger ||
+                t('label.field-invalid', { field: inputLabel })
+              );
+            },
           }}>
-          {({ field, fieldState }) => (
-            <Input
-              hint={fieldState.error?.message}
-              inputDataTestId={`${dataTestId}-${suffix}`}
-              isInvalid={fieldState.invalid}
-              isRequired={isRequired}
-              label={inputLabel}
-              step={1}
-              type="number"
-              value={
-                typeof field.value === 'number'
-                  ? String(field.value)
-                  : typeof field.value === 'string'
-                  ? field.value
-                  : ''
-              }
-              onBlur={field.onBlur}
-              onChange={(nextValue) =>
-                field.onChange(nextValue === '' ? undefined : nextValue)
-              }
-            />
-          )}
+          {({ field, fieldState }) => {
+            let inputValue = '';
+            if (typeof field.value === 'number') {
+              inputValue = String(field.value);
+            } else if (typeof field.value === 'string') {
+              inputValue = field.value;
+            }
+
+            return (
+              <Input
+                hint={fieldState.error?.message}
+                inputDataTestId={`${dataTestId}-${suffix}`}
+                isInvalid={fieldState.invalid}
+                isRequired={isRequired}
+                label={inputLabel}
+                step={1}
+                type="number"
+                value={inputValue}
+                onBlur={field.onBlur}
+                onChange={(nextValue) =>
+                  field.onChange(nextValue === '' ? undefined : nextValue)
+                }
+              />
+            );
+          }}
         </FormField>
       ))}
     </Box>
@@ -688,13 +701,14 @@ const TableExtensionInput = ({
   value: unknown;
 }) => {
   const { t } = useTranslation();
-  const initialRows =
+  const isRowsObject =
     typeof value === 'object' &&
     value !== null &&
     'rows' in value &&
-    Array.isArray(value.rows)
-      ? (value.rows as Record<string, string>[])
-      : [];
+    Array.isArray(value.rows);
+  const initialRows = isRowsObject
+    ? (value as { rows: Record<string, string>[] }).rows
+    : [];
   const [dataSource, setDataSource] = useState<Record<string, string>[]>(() =>
     initialRows.map((row) => ({ ...row }))
   );
@@ -860,6 +874,57 @@ const ReferenceExtensionField = ({
   return <Box direction="col">{getField(field)}</Box>;
 };
 
+type SimpleExtensionFieldKind = 'duration' | 'email' | 'enum' | 'text';
+
+const getSimpleFieldRules = (
+  kind: SimpleExtensionFieldKind,
+  isRequired: boolean,
+  requiredMessage: string,
+  invalidEmailMessage: string
+): RegisterOptions => {
+  const rules: RegisterOptions = {
+    required: isRequired ? requiredMessage : false,
+  };
+  if (kind === 'email') {
+    rules.pattern = {
+      message: invalidEmailMessage,
+      value: EMAIL_REG_EX,
+    };
+  }
+
+  return rules;
+};
+
+const getSimpleFieldType = (
+  kind: SimpleExtensionFieldKind,
+  isEnumMultiSelect: boolean | undefined
+): FieldTypes => {
+  if (kind !== 'enum') {
+    return FieldTypes.TEXT;
+  }
+
+  return isEnumMultiSelect ? FieldTypes.MULTI_SELECT : FieldTypes.SELECT;
+};
+
+const getSimpleFieldProps = (
+  kind: SimpleExtensionFieldKind,
+  dataTestId: string,
+  enumValues: string[],
+  isEnumMultiSelect: boolean | undefined
+): FieldProp['props'] => ({
+  'data-testid': dataTestId,
+  ...(kind === 'enum'
+    ? {
+        multiple: isEnumMultiSelect,
+        options: enumValues.map((value) => ({
+          id: value,
+          label: value,
+          value,
+        })),
+      }
+    : {}),
+});
+
 const SimpleExtensionField = ({
   dataTestId,
   definition,
@@ -870,21 +935,18 @@ const SimpleExtensionField = ({
   name,
   requiredMessage,
 }: ExtensionFieldProps & {
-  kind: 'duration' | 'email' | 'enum' | 'text';
+  kind: SimpleExtensionFieldKind;
 }) => {
   const { t } = useTranslation();
   const config = definition.customPropertyConfig?.config;
   const enumConfig =
     typeof config === 'object' && !Array.isArray(config) ? config : undefined;
-  const rules: RegisterOptions = {
-    required: isRequired ? requiredMessage : false,
-  };
-  if (kind === 'email') {
-    rules.pattern = {
-      message: t('message.email-is-invalid'),
-      value: EMAIL_REG_EX,
-    };
-  }
+  const rules = getSimpleFieldRules(
+    kind,
+    isRequired,
+    requiredMessage,
+    t('message.email-is-invalid')
+  );
   const durationHint =
     kind === 'duration' ? t('message.duration-in-iso-format') : undefined;
   const field: FieldProp = {
@@ -893,27 +955,15 @@ const SimpleExtensionField = ({
     name,
     placeholder:
       kind === 'duration' ? t('message.duration-in-iso-format') : label,
-    props: {
-      'data-testid': dataTestId,
-      ...(kind === 'enum'
-        ? {
-            multiple: enumConfig?.multiSelect,
-            options: (enumConfig?.values ?? []).map((value) => ({
-              id: value,
-              label: value,
-              value,
-            })),
-          }
-        : {}),
-    },
+    props: getSimpleFieldProps(
+      kind,
+      dataTestId,
+      enumConfig?.values ?? [],
+      enumConfig?.multiSelect
+    ),
     required: isRequired,
     rules,
-    type:
-      kind === 'enum'
-        ? enumConfig?.multiSelect
-          ? FieldTypes.MULTI_SELECT
-          : FieldTypes.SELECT
-        : FieldTypes.TEXT,
+    type: getSimpleFieldType(kind, enumConfig?.multiSelect),
   };
 
   return (
@@ -968,6 +1018,27 @@ const MissingDefinitionField = ({
   );
 };
 
+const EXTENSION_FIELD_RENDERERS: Record<
+  ExtensionFieldKind,
+  (props: ExtensionFieldProps) => ReactNode
+> = {
+  date: (props) => <DateTimeExtensionField {...props} type="date" />,
+  dateTime: (props) => <DateTimeExtensionField {...props} type="dateTime" />,
+  time: (props) => <DateTimeExtensionField {...props} type="time" />,
+  hyperlink: (props) => <HyperlinkExtensionField {...props} />,
+  markdown: (props) => <MarkdownExtensionField {...props} />,
+  number: (props) => <NumberExtensionField {...props} />,
+  reference: (props) => <ReferenceExtensionField {...props} />,
+  sqlQuery: (props) => <SqlQueryExtensionField {...props} />,
+  table: (props) => <TableExtensionField {...props} />,
+  timeInterval: (props) => <TimeIntervalExtensionField {...props} />,
+  timestamp: (props) => <NumberExtensionField {...props} timestamp />,
+  duration: (props) => <SimpleExtensionField {...props} kind="duration" />,
+  email: (props) => <SimpleExtensionField {...props} kind="email" />,
+  enum: (props) => <SimpleExtensionField {...props} kind="enum" />,
+  text: (props) => <SimpleExtensionField {...props} kind="text" />,
+};
+
 const ExtensionField = ({
   control,
   definition,
@@ -983,11 +1054,14 @@ const ExtensionField = ({
     propertyName
   )}` as const;
   const dataTestId = `extension-${propertyName}`;
-  const label = formField.fieldLabel;
+  // Prefer the custom property's current displayName so the field shows the
+  // human-friendly name (e.g. "Owner Team") rather than the raw property name
+  // captured in fieldLabel at design time; fall back to fieldLabel when the
+  // definition is missing or has no displayName.
+  const label = definition?.displayName || formField.fieldLabel;
   const isRequired = Boolean(formField.required);
   const requiredMessage =
-    formField.errorMessage ||
-    t('label.field-required', { field: formField.fieldLabel });
+    formField.errorMessage || t('label.field-required', { field: label });
   // Without the definition we cannot pick the right widget or serialize the
   // value, so a text input here would submit an untyped string and the backend
   // would reject it. Surface the failure instead of collecting a bad value.
@@ -1026,33 +1100,7 @@ const ExtensionField = ({
   };
   const kind = getExtensionFieldKind(definition?.propertyType.name);
 
-  switch (kind) {
-    case 'date':
-    case 'dateTime':
-    case 'time':
-      return <DateTimeExtensionField {...commonProps} type={kind} />;
-    case 'hyperlink':
-      return <HyperlinkExtensionField {...commonProps} />;
-    case 'markdown':
-      return <MarkdownExtensionField {...commonProps} />;
-    case 'number':
-      return <NumberExtensionField {...commonProps} />;
-    case 'reference':
-      return <ReferenceExtensionField {...commonProps} />;
-    case 'sqlQuery':
-      return <SqlQueryExtensionField {...commonProps} />;
-    case 'table':
-      return <TableExtensionField {...commonProps} />;
-    case 'timeInterval':
-      return <TimeIntervalExtensionField {...commonProps} />;
-    case 'timestamp':
-      return <NumberExtensionField {...commonProps} timestamp />;
-    case 'duration':
-    case 'email':
-    case 'enum':
-    case 'text':
-      return <SimpleExtensionField {...commonProps} kind={kind} />;
-  }
+  return EXTENSION_FIELD_RENDERERS[kind](commonProps);
 };
 
 const AddDomainFormExtensionFields = ({

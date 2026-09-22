@@ -30,6 +30,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.events.lifecycle.OrderedLaneExecutor.OrderedTask;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.PostCommitActionQueue;
 
 /**
  * Dispatcher for entity lifecycle events.
@@ -40,11 +41,21 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 public class EntityLifecycleEventDispatcher {
 
   private static volatile EntityLifecycleEventDispatcher instance;
-  private final List<EntityLifecycleEventHandler> handlers;
+
+  /**
+   * Immutable, priority-sorted snapshot replaced wholesale by the synchronized mutators below.
+   * Dispatch reads it unsynchronized on the request thread, so it must never be mutated in place:
+   * {@code ArrayList#removeIf} shrinks {@code size} and then nulls the vacated tail slot, which a
+   * concurrent dispatch — whose stream fence is already bound to the pre-removal size — reads back
+   * as a null handler and NPEs on. Registration is not startup-only (a {@code SearchRepository}
+   * rebuild and vector-service (re)init both re-register handlers while requests are in flight),
+   * so that race is reachable in production, not just under parallel CI.
+   */
+  private volatile List<EntityLifecycleEventHandler> handlers = List.of();
+
   private final OrderedLaneExecutor orderedLaneExecutor;
 
   private EntityLifecycleEventDispatcher() {
-    this.handlers = new ArrayList<>();
     this.orderedLaneExecutor = new OrderedLaneExecutor(this::enqueueLaneFailureRetry);
   }
 
@@ -78,9 +89,9 @@ public class EntityLifecycleEventDispatcher {
       return;
     }
 
-    handlers.add(handler);
-    // Sort handlers by priority (lower priority values first)
-    handlers.sort(Comparator.comparingInt(EntityLifecycleEventHandler::getPriority));
+    List<EntityLifecycleEventHandler> updated = new ArrayList<>(handlers);
+    updated.add(handler);
+    publishSorted(updated);
 
     LOG.info(
         "Registered entity lifecycle handler: {} with priority {}",
@@ -89,14 +100,54 @@ public class EntityLifecycleEventDispatcher {
   }
 
   /**
+   * Swap a handler in under its own name as a single snapshot publish. A {@code SearchRepository}
+   * rebuild and a vector-service re-init both need the fresh instance to take over from the stale
+   * one; expressing that as unregister-then-register leaves a window with no handler of that name
+   * registered, so an entity write landing in it is silently never indexed.
+   */
+  public synchronized void replaceHandler(EntityLifecycleEventHandler handler) {
+    if (handler == null) {
+      LOG.warn("Attempted to replace an entity lifecycle handler with null");
+      return;
+    }
+
+    List<EntityLifecycleEventHandler> updated = new ArrayList<>(handlers);
+    boolean replaced = updated.removeIf(h -> h.getHandlerName().equals(handler.getHandlerName()));
+    updated.add(handler);
+    publishSorted(updated);
+
+    LOG.info(
+        "{} entity lifecycle handler: {} with priority {}",
+        replaced ? "Replaced" : "Registered",
+        handler.getHandlerName(),
+        handler.getPriority());
+  }
+
+  /**
+   * Publish add/remove plus the priority sort as one snapshot, so a concurrent dispatch never walks
+   * a list that is momentarily out of priority order.
+   */
+  private void publishSorted(List<EntityLifecycleEventHandler> updated) {
+    updated.sort(Comparator.comparingInt(EntityLifecycleEventHandler::getPriority));
+    handlers = List.copyOf(updated);
+  }
+
+  /**
    * Unregister a lifecycle event handler by name.
    */
   public synchronized boolean unregisterHandler(String handlerName) {
-    boolean removed = handlers.removeIf(h -> h.getHandlerName().equals(handlerName));
+    List<EntityLifecycleEventHandler> updated = new ArrayList<>(handlers);
+    boolean removed = updated.removeIf(h -> h.getHandlerName().equals(handlerName));
     if (removed) {
+      publishSorted(updated);
       LOG.info("Unregistered entity lifecycle handler: {}", handlerName);
     }
     return removed;
+  }
+
+  /** Drop every registered handler. Visible for testing. */
+  synchronized void clearHandlers() {
+    handlers = List.of();
   }
 
   /**
@@ -105,7 +156,7 @@ public class EntityLifecycleEventDispatcher {
    * @return Unmodifiable list of handlers
    */
   public List<EntityLifecycleEventHandler> getHandlers() {
-    return List.copyOf(handlers);
+    return handlers;
   }
 
   /**
@@ -175,7 +226,8 @@ public class EntityLifecycleEventDispatcher {
             handler);
       }
     } else if (shouldProcess(handler, EventType.ENTITY_CREATED, null)) {
-      runInline(() -> handler.onEntitiesCreated(entities, subjectContext), handler);
+      PostCommitActionQueue.runOrDefer(
+          () -> runInline(() -> handler.onEntitiesCreated(entities, subjectContext), handler));
     }
   }
 
@@ -270,10 +322,13 @@ public class EntityLifecycleEventDispatcher {
             handler);
       }
     } else if (shouldProcess(handler, EventType.ENTITY_UPDATED, changeDescription)) {
-      runInline(
+      PostCommitActionQueue.runOrDefer(
           () ->
-              handler.onEntitiesUpdated(entities, changeDescription, subjectContext, updateContext),
-          handler);
+              runInline(
+                  () ->
+                      handler.onEntitiesUpdated(
+                          entities, changeDescription, subjectContext, updateContext),
+                  handler));
     }
   }
 
@@ -366,6 +421,16 @@ public class EntityLifecycleEventDispatcher {
     if (!shouldProcess(handler, eventType, changeDescription)) {
       return;
     }
+    PostCommitActionQueue.runOrDefer(
+        () -> executeHandlerAfterCommit(entity, snapshotSupplier, eventType, handlerCall, handler));
+  }
+
+  private void executeHandlerAfterCommit(
+      EntityInterface entity,
+      Supplier<EntityInterface> snapshotSupplier,
+      EventType eventType,
+      Consumer<EntityInterface> handlerCall,
+      EntityLifecycleEventHandler handler) {
     if (handler.isAsync()) {
       EntityInterface snapshot = snapshotSupplier.get();
       if (snapshot != null) {
@@ -456,6 +521,15 @@ public class EntityLifecycleEventDispatcher {
   }
 
   private void executeHandler(
+      EntityReference reference,
+      EventType eventType,
+      Runnable handlerExecution,
+      EntityLifecycleEventHandler handler) {
+    PostCommitActionQueue.runOrDefer(
+        () -> executeHandlerAfterCommit(reference, eventType, handlerExecution, handler));
+  }
+
+  private void executeHandlerAfterCommit(
       EntityReference reference,
       EventType eventType,
       Runnable handlerExecution,

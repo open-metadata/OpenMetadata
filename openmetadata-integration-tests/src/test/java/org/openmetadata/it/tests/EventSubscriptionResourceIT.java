@@ -2,11 +2,14 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
@@ -22,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -43,6 +47,7 @@ import org.openmetadata.schema.type.NotificationFilterOperation;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -59,6 +64,9 @@ import org.openmetadata.service.resources.events.subscription.EventSubscriptionR
 @Execution(ExecutionMode.CONCURRENT)
 public class EventSubscriptionResourceIT
     extends BaseEntityIT<EventSubscription, CreateEventSubscription> {
+
+  private static final URI LOOPBACK_ENDPOINT =
+      URI.create("http://127.0.0.1:8585/api/v1/test/webhook/blocked");
 
   // EventSubscription has special requirements
   {
@@ -103,6 +111,52 @@ public class EventSubscriptionResourceIT
         .withResources(List.of("all"))
         .withEnabled(false)
         .withDestinations(getWebhookDestination(ns));
+  }
+
+  @Test
+  void test_webhookEndpointAsLoopbackAddress_400(TestNamespace ns) {
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_loopback"))
+            .withDescription("Endpoint written as a loopback address")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(
+                List.of(
+                    new SubscriptionDestination()
+                        .withId(UUID.randomUUID())
+                        .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
+                        .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+                        .withConfig(new Webhook().withEndpoint(LOOPBACK_ENDPOINT))));
+
+    InvalidRequestException rejected =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> createEntity(request),
+            "A webhook endpoint written as a loopback address should be rejected");
+    assertEquals(400, rejected.getStatusCode());
+  }
+
+  @Test
+  void test_patchWebhookEndpointToLoopbackAddress_400(TestNamespace ns) {
+    // PATCH never reaches the resource's own checks, so this is what proves the policy also runs
+    // on the persistence path.
+    EventSubscription subscription =
+        createEntity(createRequest(ns.prefix("sub_patch_loopback"), ns));
+    SubscriptionDestination destination = subscription.getDestinations().get(0);
+    Webhook webhook = JsonUtils.convertValue(destination.getConfig(), Webhook.class);
+    destination.withConfig(webhook.withEndpoint(LOOPBACK_ENDPOINT));
+
+    // The SDK wraps a patch failure, so the server's status is on the cause.
+    OpenMetadataException rejected =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> patchEntity(subscription.getId().toString(), subscription),
+            "Patching an endpoint to a loopback address should be rejected");
+    InvalidRequestException cause =
+        assertInstanceOf(InvalidRequestException.class, rejected.getCause());
+    assertEquals(400, cause.getStatusCode());
   }
 
   private List<SubscriptionDestination> getWebhookDestination(TestNamespace ns) {
@@ -295,6 +349,38 @@ public class EventSubscriptionResourceIT
     EventSubscription subscription = createEntity(request);
     assertNotNull(subscription);
     assertNotNull(subscription.getFilteringRules());
+  }
+
+  @Test
+  void test_notificationResourcesServeSupportedEventTypes() throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    SdkClients.getServerUrl() + "/v1/events/subscriptions/notification/resources"))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .GET()
+            .build();
+    HttpResponse<String> response =
+        HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, response.statusCode());
+
+    JsonNode glossaryTerm =
+        StreamSupport.stream(
+                new ObjectMapper().readTree(response.body()).get("data").spliterator(), false)
+            .filter(descriptor -> "glossaryTerm".equals(descriptor.get("name").asText()))
+            .findFirst()
+            .orElseThrow();
+    List<String> eventTypes =
+        StreamSupport.stream(glossaryTerm.get("supportedEventTypes").spliterator(), false)
+            .map(JsonNode::asText)
+            .toList();
+    assertTrue(eventTypes.contains("entityCreated"));
+    assertTrue(eventTypes.contains("threadCreated"));
+    // never reaches change_event, so no resource may advertise it
+    assertFalse(eventTypes.contains("entityFieldsChanged"));
+    // reachable only through the "all" resource
+    assertFalse(eventTypes.contains("entityLineageAdded"));
   }
 
   @Test

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import test, { expect, type Page } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
@@ -24,6 +24,13 @@ import { sidebarClick } from '../../../utils/sidebar';
 test.use({
   storageState: 'playwright/.auth/admin.json',
 });
+
+const waitForEntityActivity = (page: Page) =>
+  page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname.startsWith('/api/v1/activity/entity/') &&
+      response.request().method() === 'GET'
+  );
 
 test.describe('Glossary Navigation', () => {
   test.beforeEach(async ({ page }) => {
@@ -56,7 +63,7 @@ test.describe('Glossary Navigation', () => {
       // Click on Activity Feeds & Tasks tab
       const activityTab = page.getByTestId('activity_feed');
 
-      const activityLoadResponse = page.waitForResponse('/api/v1/feed*');
+      const activityLoadResponse = waitForEntityActivity(page);
       await activityTab.click();
       await activityLoadResponse;
 
@@ -269,7 +276,7 @@ test.describe('Glossary Navigation', () => {
 
       // Click on Activity Feeds & Tasks tab
       const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-      const feedResponse = page.waitForResponse('/api/v1/feed*');
+      const feedResponse = waitForEntityActivity(page);
       await activityTab.click();
       await feedResponse;
 
@@ -298,69 +305,11 @@ test.describe('Glossary Navigation', () => {
 
       // Click on Activity Feeds & Tasks tab
       const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-      const feedResponse = page.waitForResponse('/api/v1/feed*');
+      const feedResponse = waitForEntityActivity(page);
       await activityTab.click();
       await feedResponse;
 
       // Verify we're on the activity feed tab by checking the tab is active
-      await expect(activityTab).toHaveAttribute('aria-selected', 'true');
-    } finally {
-      await glossaryTerm.delete(apiContext);
-      await glossary.delete(apiContext);
-      await afterAction();
-    }
-  });
-
-  // AF-03: Post comment on glossary
-  test('should post comment on glossary activity feed', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-
-    try {
-      await glossary.create(apiContext);
-
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
-
-      // Click on Activity Feeds & Tasks tab
-      const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-      const feedResponse = page.waitForResponse('/api/v1/feed*');
-      await activityTab.click();
-      await feedResponse;
-
-      // Verify the activity tab loads correctly
-      await expect(activityTab).toHaveAttribute('aria-selected', 'true');
-    } finally {
-      await glossary.delete(apiContext);
-      await afterAction();
-    }
-  });
-
-  // AF-04: Post comment on term
-  test('should post comment on glossary term activity feed', async ({
-    page,
-  }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-    const glossaryTerm = new GlossaryTerm(glossary);
-
-    try {
-      await glossary.create(apiContext);
-      await glossaryTerm.create(apiContext);
-
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
-      await selectActiveGlossaryTerm(page, glossaryTerm.data.displayName);
-
-      // Click on Activity Feeds & Tasks tab
-      const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-      const feedResponse = page.waitForResponse('/api/v1/feed*');
-      await activityTab.click();
-      await feedResponse;
-
-      // Verify the activity tab loads correctly
       await expect(activityTab).toHaveAttribute('aria-selected', 'true');
     } finally {
       await glossaryTerm.delete(apiContext);

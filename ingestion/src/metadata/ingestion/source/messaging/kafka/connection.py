@@ -14,7 +14,6 @@ Source connection handler
 """
 
 from copy import deepcopy
-from typing import Optional, Union
 
 from confluent_kafka import Consumer
 from confluent_kafka.admin import AdminClient, KafkaException
@@ -81,7 +80,7 @@ class KafkaClient:
             self._consumer_client = None
 
 
-def get_connection(connection: Union[KafkaConnectionConfig, RedpandaConnection]) -> KafkaClient:  # noqa: UP007
+def get_connection(connection: KafkaConnectionConfig | RedpandaConnection) -> KafkaClient:
     """
     Create connection
     """
@@ -128,9 +127,9 @@ def get_connection(connection: Union[KafkaConnectionConfig, RedpandaConnection])
 def test_connection(
     metadata: OpenMetadata,
     client: KafkaClient,
-    service_connection: Union[KafkaConnectionConfig, RedpandaConnection],  # noqa: UP007
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    service_connection: KafkaConnectionConfig | RedpandaConnection,
+    automation_workflow: AutomationWorkflow | None = None,
+    timeout_seconds: int | None = THREE_MIN,
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -178,8 +177,8 @@ class KafkaConnection(BaseConnection[KafkaConnectionConfig, KafkaClient]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         return test_connection(
             metadata,

@@ -57,7 +57,6 @@ public class OpenSearchVectorService implements VectorIndexService {
   public static synchronized void init(OpenSearchClient client, EmbeddingClient embeddingClient) {
     if (instance != null) {
       LOG.warn("OpenSearchVectorService already initialized, reinitializing");
-      EntityLifecycleEventDispatcher.getInstance().unregisterHandler("VectorEmbeddingHandler");
     }
     OpenSearchVectorService svc = new OpenSearchVectorService(client, embeddingClient);
     svc.registerVectorEmbeddingHandler();
@@ -75,7 +74,9 @@ public class OpenSearchVectorService implements VectorIndexService {
   private void registerVectorEmbeddingHandler() {
     try {
       VectorEmbeddingHandler handler = new VectorEmbeddingHandler(this);
-      EntityLifecycleEventDispatcher.getInstance().registerHandler(handler);
+      // Replace, so a re-init hands over to the new service without a window in which entity
+      // writes see no vector handler at all.
+      EntityLifecycleEventDispatcher.getInstance().replaceHandler(handler);
       LOG.info("Registered VectorEmbeddingHandler for entity lifecycle events");
     } catch (Exception e) {
       LOG.error("Failed to register VectorEmbeddingHandler", e);
@@ -1159,7 +1160,11 @@ public class OpenSearchVectorService implements VectorIndexService {
         }
       }
     } catch (Exception e) {
-      LOG.debug("Failed to fetch existing chunk vectors for {}: {}", parentId, e.getMessage());
+      LOG.warn(
+          "Failed to fetch existing chunk vectors for {}; will re-embed: {}",
+          parentId,
+          e.getMessage(),
+          e);
     }
     return vectors;
   }
@@ -1385,6 +1390,19 @@ public class OpenSearchVectorService implements VectorIndexService {
       double threshold,
       String preference,
       SubjectContext subjectContext) {
+    return search(
+        new VectorSearchParameters(
+            query, filters, size, from, k, threshold, preference, subjectContext, null));
+  }
+
+  @Override
+  @SuppressWarnings("unchecked")
+  public VectorSearchResponse search(VectorSearchParameters parameters) {
+    String query = parameters.query();
+    int size = parameters.size();
+    int from = parameters.from();
+    int k = parameters.k();
+    double threshold = parameters.threshold();
     long start = System.currentTimeMillis();
     try {
       float[] queryVector = embeddingClient.embedQuery(query);
@@ -1402,9 +1420,10 @@ public class OpenSearchVectorService implements VectorIndexService {
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
             VectorSearchQueryBuilder.build(
-                queryVector, overFetchSize, rawOffset, k, filters, threshold, subjectContext);
+                queryVector, parameters.withPagination(overFetchSize, rawOffset));
         String endpoint =
-            SearchUtils.appendPreferenceParam("/" + aliasName + "/_search", preference);
+            SearchUtils.appendPreferenceParam(
+                "/" + aliasName + "/_search", parameters.preference());
         String responseBody = executeGenericRequest("POST", endpoint, queryJson);
 
         JsonNode root = MAPPER.readTree(responseBody);

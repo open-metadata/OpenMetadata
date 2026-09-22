@@ -12,6 +12,7 @@
  */
 
 import { isUndefined } from 'lodash';
+import type { To } from 'react-router-dom';
 import type { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import type { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../enums/entity.enum';
@@ -75,7 +76,15 @@ import {
   getBreadcrumbForDatabaseService,
   getServiceCategoryBreadcrumb,
 } from './EntityServiceBreadcrumbUtils';
+import { getOwnHandler } from './RecordUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
+
+type BreadcrumbLink = {
+  name: string;
+  url: To;
+  iconType?: EntityType | string;
+  isServiceBreadcrumb?: boolean;
+};
 
 export const getEntityBreadcrumbs = (
   entity:
@@ -90,72 +99,146 @@ export const getEntityBreadcrumbs = (
     | APIEndpoint,
   entityType?: EntityType,
   includeCurrent = false
-) => {
-  switch (entityType) {
-    case EntityType.CHART:
-      return getBreadcrumbForChart(entity as Chart);
-    case EntityType.TABLE:
-    case EntityType.STORED_PROCEDURE:
-      return getBreadcrumbForTable(entity as Table, includeCurrent);
-    case EntityType.GLOSSARY:
-    case EntityType.GLOSSARY_TERM:
-      return getBreadcrumbForGlossaryOrTerm(entity as GlossaryTerm);
-    case EntityType.TAG: {
-      const tag = entity as unknown as {
-        classification?: {
-          fullyQualifiedName?: string;
-          displayName?: string;
-          name?: string;
-        };
-        name: string;
-        fullyQualifiedName?: string;
-      };
+): BreadcrumbLink[] => {
+  const getSimpleName = () =>
+    getEntityName(entity as { name?: string; displayName?: string });
 
-      return getBreadcrumbForTag(
-        getEntityName(tag.classification),
-        tag.classification?.fullyQualifiedName ?? '',
-        tag.name,
-        tag.fullyQualifiedName ?? ''
-      );
-    }
-    case EntityType.CLASSIFICATION:
-      return getBreadcrumbForClassification(
-        getEntityName(entity as { name?: string; displayName?: string })
-      );
-    case EntityType.DATABASE:
-      return getBreadcrumbForDatabase(entity as Database, includeCurrent);
-    case EntityType.DATABASE_SCHEMA:
-      return getBreadcrumbForDatabaseSchema(
-        entity as DatabaseSchema,
-        includeCurrent
-      );
-    case EntityType.DATABASE_SERVICE:
-      return getBreadcrumbForDatabaseService(
-        entity.name,
-        entity.name,
-        includeCurrent
-      );
-    case EntityType.DASHBOARD_SERVICE:
-      return getServiceCategoryBreadcrumb(ServiceCategory.DASHBOARD_SERVICES);
-    case EntityType.MESSAGING_SERVICE:
-      return getServiceCategoryBreadcrumb(ServiceCategory.MESSAGING_SERVICES);
-    case EntityType.PIPELINE_SERVICE:
-      return getServiceCategoryBreadcrumb(ServiceCategory.PIPELINE_SERVICES);
-    case EntityType.MLMODEL_SERVICE:
-      return getServiceCategoryBreadcrumb(ServiceCategory.ML_MODEL_SERVICES);
-    case EntityType.METADATA_SERVICE:
-      return getServiceCategoryBreadcrumb(ServiceCategory.METADATA_SERVICES);
-    case EntityType.STORAGE_SERVICE:
-      return getServiceCategoryBreadcrumb(ServiceCategory.STORAGE_SERVICES);
-    case EntityType.SEARCH_SERVICE:
-      return getServiceCategoryBreadcrumb(ServiceCategory.SEARCH_SERVICES);
-    case EntityType.API_SERVICE:
-      return getServiceCategoryBreadcrumb(ServiceCategory.API_SERVICES);
-    case EntityType.SECURITY_SERVICE:
-      return getServiceCategoryBreadcrumb(ServiceCategory.SECURITY_SERVICES);
-    case EntityType.DRIVE_SERVICE:
-      return getServiceCategoryBreadcrumb(ServiceCategory.DRIVE_SERVICES);
-    case EntityType.CONTAINER: {
+  const serviceCategoryBreadcrumbBuilders: Partial<
+    Record<EntityType, () => BreadcrumbLink[]>
+  > = {
+    [EntityType.DASHBOARD_SERVICE]: () =>
+      getServiceCategoryBreadcrumb(ServiceCategory.DASHBOARD_SERVICES),
+    [EntityType.MESSAGING_SERVICE]: () =>
+      getServiceCategoryBreadcrumb(ServiceCategory.MESSAGING_SERVICES),
+    [EntityType.PIPELINE_SERVICE]: () =>
+      getServiceCategoryBreadcrumb(ServiceCategory.PIPELINE_SERVICES),
+    [EntityType.MLMODEL_SERVICE]: () =>
+      getServiceCategoryBreadcrumb(ServiceCategory.ML_MODEL_SERVICES),
+    [EntityType.METADATA_SERVICE]: () =>
+      getServiceCategoryBreadcrumb(ServiceCategory.METADATA_SERVICES),
+    [EntityType.STORAGE_SERVICE]: () =>
+      getServiceCategoryBreadcrumb(ServiceCategory.STORAGE_SERVICES),
+    [EntityType.SEARCH_SERVICE]: () =>
+      getServiceCategoryBreadcrumb(ServiceCategory.SEARCH_SERVICES),
+    [EntityType.API_SERVICE]: () =>
+      getServiceCategoryBreadcrumb(ServiceCategory.API_SERVICES),
+    [EntityType.SECURITY_SERVICE]: () =>
+      getServiceCategoryBreadcrumb(ServiceCategory.SECURITY_SERVICES),
+    [EntityType.DRIVE_SERVICE]: () =>
+      getServiceCategoryBreadcrumb(ServiceCategory.DRIVE_SERVICES),
+  };
+
+  const getBreadcrumbForTagEntity = (): BreadcrumbLink[] => {
+    const tag = entity as unknown as {
+      classification?: {
+        fullyQualifiedName?: string;
+        displayName?: string;
+        name?: string;
+      };
+      name: string;
+      fullyQualifiedName?: string;
+    };
+
+    return getBreadcrumbForTag(
+      getEntityName(tag.classification),
+      tag.classification?.fullyQualifiedName ?? '',
+      tag.name,
+      tag.fullyQualifiedName ?? ''
+    );
+  };
+
+  const getBreadcrumbForTableColumn = (): BreadcrumbLink[] => {
+    const columnData = entity as TableColumnSearchSource;
+
+    return [
+      ...(columnData.service
+        ? [
+            {
+              name: getEntityName(columnData.service),
+              url: columnData.service?.name
+                ? getServiceDetailsPath(
+                    columnData.service?.name,
+                    ServiceCategoryPlural[
+                      columnData.service
+                        ?.type as keyof typeof ServiceCategoryPlural
+                    ]
+                  )
+                : '',
+              isServiceBreadcrumb: true,
+            },
+          ]
+        : []),
+      ...(columnData.database
+        ? [
+            {
+              name: getEntityName(columnData.database),
+              url: getEntityDetailsPath(
+                EntityType.DATABASE,
+                columnData.database?.fullyQualifiedName ?? ''
+              ),
+              iconType: EntityType.DATABASE,
+            },
+          ]
+        : []),
+      ...(columnData.databaseSchema
+        ? [
+            {
+              name: getEntityName(columnData.databaseSchema),
+              url: getEntityDetailsPath(
+                EntityType.DATABASE_SCHEMA,
+                columnData.databaseSchema?.fullyQualifiedName ?? ''
+              ),
+              iconType: EntityType.DATABASE_SCHEMA,
+            },
+          ]
+        : []),
+      ...(columnData.table
+        ? [
+            {
+              name: getEntityName(columnData.table),
+              url: getEntityDetailsPath(
+                EntityType.TABLE,
+                columnData.table?.fullyQualifiedName ?? ''
+              ),
+              iconType: EntityType.TABLE,
+            },
+          ]
+        : []),
+      ...(includeCurrent
+        ? [
+            {
+              name: entity.name,
+              url: '',
+              iconType: EntityType.TABLE_COLUMN,
+            },
+          ]
+        : []),
+    ];
+  };
+
+  const breadcrumbBuilders: Partial<
+    Record<EntityType, () => BreadcrumbLink[]>
+  > = {
+    ...serviceCategoryBreadcrumbBuilders,
+    [EntityType.CHART]: () => getBreadcrumbForChart(entity as Chart),
+    [EntityType.TABLE]: () =>
+      getBreadcrumbForTable(entity as Table, includeCurrent),
+    [EntityType.STORED_PROCEDURE]: () =>
+      getBreadcrumbForTable(entity as Table, includeCurrent),
+    [EntityType.GLOSSARY]: () =>
+      getBreadcrumbForGlossaryOrTerm(entity as GlossaryTerm),
+    [EntityType.GLOSSARY_TERM]: () =>
+      getBreadcrumbForGlossaryOrTerm(entity as GlossaryTerm),
+    [EntityType.TAG]: getBreadcrumbForTagEntity,
+    [EntityType.CLASSIFICATION]: () =>
+      getBreadcrumbForClassification(getSimpleName()),
+    [EntityType.DATABASE]: () =>
+      getBreadcrumbForDatabase(entity as Database, includeCurrent),
+    [EntityType.DATABASE_SCHEMA]: () =>
+      getBreadcrumbForDatabaseSchema(entity as DatabaseSchema, includeCurrent),
+    [EntityType.DATABASE_SERVICE]: () =>
+      getBreadcrumbForDatabaseService(entity.name, entity.name, includeCurrent),
+    [EntityType.CONTAINER]: () => {
       const data = entity as Container;
 
       return getBreadcrumbForEntityWithParent({
@@ -164,8 +247,8 @@ export const getEntityBreadcrumbs = (
         includeCurrent: true,
         parents: isUndefined(data.parent) ? [] : [data.parent],
       });
-    }
-    case EntityType.DIRECTORY: {
+    },
+    [EntityType.DIRECTORY]: () => {
       const data = entity as Directory;
 
       return getBreadcrumbForEntityWithParent({
@@ -174,8 +257,8 @@ export const getEntityBreadcrumbs = (
         includeCurrent,
         parents: isUndefined(data.parent) ? [] : [data.parent],
       });
-    }
-    case EntityType.FILE: {
+    },
+    [EntityType.FILE]: () => {
       const data = entity as File;
 
       return getBreadcrumbForEntityWithParent({
@@ -184,8 +267,8 @@ export const getEntityBreadcrumbs = (
         includeCurrent,
         parents: isUndefined(data.directory) ? [] : [data.directory],
       });
-    }
-    case EntityType.SPREADSHEET: {
+    },
+    [EntityType.SPREADSHEET]: () => {
       const data = entity as Spreadsheet;
 
       return getBreadcrumbForEntityWithParent({
@@ -194,8 +277,8 @@ export const getEntityBreadcrumbs = (
         includeCurrent,
         parents: isUndefined(data.directory) ? [] : [data.directory],
       });
-    }
-    case EntityType.WORKSHEET: {
+    },
+    [EntityType.WORKSHEET]: () => {
       const data = entity as Worksheet;
 
       return getBreadcrumbForEntityWithParent({
@@ -204,136 +287,50 @@ export const getEntityBreadcrumbs = (
         includeCurrent,
         parents: isUndefined(data.spreadsheet) ? [] : [data.spreadsheet],
       });
-    }
-    case EntityType.DOMAIN:
-      return getBreadcrumbForDomain();
-    case EntityType.DATA_PRODUCT:
-      return getBreadcrumbForDataProduct(entity as DataProduct);
-    case EntityType.TEST_CASE:
-      return getBreadcrumbForTestCase(entity as TestCase);
-    case EntityType.EVENT_SUBSCRIPTION:
-      return getBreadcrumbForEventSubscription(
+    },
+    [EntityType.DOMAIN]: () => getBreadcrumbForDomain(),
+    [EntityType.DATA_PRODUCT]: () =>
+      getBreadcrumbForDataProduct(entity as DataProduct),
+    [EntityType.TEST_CASE]: () => getBreadcrumbForTestCase(entity as TestCase),
+    [EntityType.EVENT_SUBSCRIPTION]: () =>
+      getBreadcrumbForEventSubscription(
         entity as EventSubscription,
         entity.fullyQualifiedName ?? '',
         entity as SearchSourceAlias
-      );
-    case EntityType.TEST_SUITE:
-      return getBreadcrumbForTestSuite(entity as TestSuite);
-    case EntityType.BOT:
-      return getBreadcrumbForBot(entity.name, entity.fullyQualifiedName ?? '');
-    case EntityType.TEAM:
-      return getBreadcrumbForTeam(entity as Team);
-    case EntityType.APPLICATION:
-      return getBreadcrumbForApplication(
-        getEntityName(entity as { name?: string; displayName?: string }),
+      ),
+    [EntityType.TEST_SUITE]: () =>
+      getBreadcrumbForTestSuite(entity as TestSuite),
+    [EntityType.BOT]: () =>
+      getBreadcrumbForBot(entity.name, entity.fullyQualifiedName ?? ''),
+    [EntityType.TEAM]: () => getBreadcrumbForTeam(entity as Team),
+    [EntityType.APPLICATION]: () =>
+      getBreadcrumbForApplication(
+        getSimpleName(),
         entity.fullyQualifiedName ?? ''
-      );
-    case EntityType.PERSONA:
-      return getBreadcrumbForPersona(
-        getEntityName(entity as { name?: string; displayName?: string }),
-        entity.fullyQualifiedName ?? ''
-      );
-    case EntityType.ROLE:
-      return getBreadcrumbForRole(
-        getEntityName(entity as { name?: string; displayName?: string }),
-        entity.fullyQualifiedName ?? ''
-      );
-    case EntityType.POLICY:
-      return getBreadcrumbForPolicy(
-        getEntityName(entity as { name?: string; displayName?: string }),
-        entity.fullyQualifiedName ?? ''
-      );
-    case EntityType.API_COLLECTION:
-      return getBreadCrumbForAPICollection(entity as APICollection);
-    case EntityType.API_ENDPOINT:
-      return getBreadCrumbForAPIEndpoint(entity as APIEndpoint);
-    case EntityType.METRIC:
-      return getBreadcrumbForMetric(entity.name, includeCurrent);
-    case EntityType.KPI:
-      return getBreadCrumbForKpi(entity as Kpi);
-    case EntityType.KNOWLEDGE_PAGE:
-      return getBreadcrumbForKnowledgePage(
-        getEntityName(entity as { name?: string; displayName?: string }),
-        includeCurrent
-      );
-    case EntityType.TABLE_COLUMN: {
-      const columnData = entity as TableColumnSearchSource;
+      ),
+    [EntityType.PERSONA]: () =>
+      getBreadcrumbForPersona(getSimpleName(), entity.fullyQualifiedName ?? ''),
+    [EntityType.ROLE]: () =>
+      getBreadcrumbForRole(getSimpleName(), entity.fullyQualifiedName ?? ''),
+    [EntityType.POLICY]: () =>
+      getBreadcrumbForPolicy(getSimpleName(), entity.fullyQualifiedName ?? ''),
+    [EntityType.API_COLLECTION]: () =>
+      getBreadCrumbForAPICollection(entity as APICollection),
+    [EntityType.API_ENDPOINT]: () =>
+      getBreadCrumbForAPIEndpoint(entity as APIEndpoint),
+    [EntityType.METRIC]: () =>
+      getBreadcrumbForMetric(entity.name, includeCurrent),
+    [EntityType.KPI]: () => getBreadCrumbForKpi(entity as Kpi),
+    [EntityType.KNOWLEDGE_PAGE]: () =>
+      getBreadcrumbForKnowledgePage(getSimpleName(), includeCurrent),
+    [EntityType.TABLE_COLUMN]: getBreadcrumbForTableColumn,
+  };
 
-      return [
-        ...(columnData.service
-          ? [
-              {
-                name: getEntityName(columnData.service),
-                url: columnData.service?.name
-                  ? getServiceDetailsPath(
-                      columnData.service?.name,
-                      ServiceCategoryPlural[
-                        columnData.service
-                          ?.type as keyof typeof ServiceCategoryPlural
-                      ]
-                    )
-                  : '',
-                isServiceBreadcrumb: true,
-              },
-            ]
-          : []),
-        ...(columnData.database
-          ? [
-              {
-                name: getEntityName(columnData.database),
-                url: getEntityDetailsPath(
-                  EntityType.DATABASE,
-                  columnData.database?.fullyQualifiedName ?? ''
-                ),
-                iconType: EntityType.DATABASE,
-              },
-            ]
-          : []),
-        ...(columnData.databaseSchema
-          ? [
-              {
-                name: getEntityName(columnData.databaseSchema),
-                url: getEntityDetailsPath(
-                  EntityType.DATABASE_SCHEMA,
-                  columnData.databaseSchema?.fullyQualifiedName ?? ''
-                ),
-                iconType: EntityType.DATABASE_SCHEMA,
-              },
-            ]
-          : []),
-        ...(columnData.table
-          ? [
-              {
-                name: getEntityName(columnData.table),
-                url: getEntityDetailsPath(
-                  EntityType.TABLE,
-                  columnData.table?.fullyQualifiedName ?? ''
-                ),
-                iconType: EntityType.TABLE,
-              },
-            ]
-          : []),
-        ...(includeCurrent
-          ? [
-              {
-                name: entity.name,
-                url: '',
-                iconType: EntityType.TABLE_COLUMN,
-              },
-            ]
-          : []),
-      ];
-    }
-    case EntityType.TOPIC:
-    case EntityType.DASHBOARD:
-    case EntityType.PIPELINE:
-    case EntityType.MLMODEL:
-    case EntityType.DASHBOARD_DATA_MODEL:
-    case EntityType.SEARCH_INDEX:
-    default:
-      return getBreadcrumbForEntitiesWithServiceOnly(
-        entity as Topic,
-        includeCurrent
-      );
-  }
+  const builder = getOwnHandler(breadcrumbBuilders, entityType);
+
+  return (
+    builder ??
+    (() =>
+      getBreadcrumbForEntitiesWithServiceOnly(entity as Topic, includeCurrent))
+  )();
 };

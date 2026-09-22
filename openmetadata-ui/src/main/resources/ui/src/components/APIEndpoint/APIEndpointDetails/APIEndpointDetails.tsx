@@ -16,11 +16,11 @@ import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -40,7 +40,8 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
-import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
@@ -128,6 +129,8 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
         })
       );
       onToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -135,6 +138,8 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
           entity: t('label.api-endpoint'),
         })
       );
+
+      return false;
     }
   };
 
@@ -198,34 +203,50 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     }
   }, [decodedApiEndpointFqn]);
 
+  // The endpoint FQN is service.collection.endpoint, so the positional
+  // Service+Database parts yield the collection FQN when the loaded entity
+  // doesn't carry its apiCollection reference.
+  const apiCollectionFqn =
+    apiEndpointDetails.apiCollection?.fullyQualifiedName ??
+    getPartialNameFromTableFQN(
+      decodedApiEndpointFqn,
+      [FqnPart.Service, FqnPart.Database],
+      FQN_SEPARATOR_CHAR
+    );
+
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    [navigate]
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        getEntityDetailsPath(EntityType.API_COLLECTION, apiCollectionFqn)
+      ),
+    [apiCollectionFqn, navigate]
   );
 
+  // Consumer via prop (`apiEndpointPermissions: OperationPermission`, raw contract kept — fed
+  // straight through to DataAssetsHeader/GenericProvider verbatim, GenericProvider
+  // precedent). Two derivations (TableDetailsPageV1.tsx precedent): the edit flags are
+  // gated on `deleted` (the old raw expressions explicitly ANDed `!deleted` themselves);
+  // view flags never are, so a second, ungated call supplies those.
   const {
     editCustomAttributePermission,
     editLineagePermission,
     viewAllPermission,
     viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editCustomAttributePermission:
-        (apiEndpointPermissions.EditAll ||
-          apiEndpointPermissions.EditCustomFields) &&
-        !deleted,
-      editLineagePermission:
-        (apiEndpointPermissions.EditAll ||
-          apiEndpointPermissions.EditLineage) &&
-        !deleted,
-      viewAllPermission: apiEndpointPermissions.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        apiEndpointPermissions,
-        Operation.ViewCustomFields
-      ),
-    }),
-    [apiEndpointPermissions, deleted]
-  );
+  } = useMemo(() => {
+    const gatedFlags = getDerivedPermissionFlags(
+      apiEndpointPermissions,
+      Boolean(deleted)
+    );
+    const ungatedFlags = getDerivedPermissionFlags(apiEndpointPermissions);
+
+    return {
+      editCustomAttributePermission: gatedFlags.canEditCustomFields,
+      editLineagePermission: gatedFlags.canEditLineage,
+      viewAllPermission: ungatedFlags.canViewAll,
+      viewCustomPropertiesPermission: ungatedFlags.canViewCustomFields,
+    };
+  }, [apiEndpointPermissions, deleted]);
 
   useEffect(() => {
     fetchTaskCounts();

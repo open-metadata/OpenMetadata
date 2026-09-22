@@ -55,6 +55,7 @@ public class ActivityStreamPublisher implements Destination<ChangeEvent> {
   private static final Set<String> SKIP_ENTITY_TYPES =
       Set.of(
           Entity.THREAD,
+          Entity.CONVERSATION,
           Entity.TASK,
           Entity.BOT,
           Entity.INGESTION_PIPELINE,

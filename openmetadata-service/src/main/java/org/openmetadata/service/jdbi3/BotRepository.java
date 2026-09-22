@@ -13,7 +13,10 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -46,6 +49,21 @@ public class BotRepository extends EntityRepository<Bot> {
   @Override
   public void setFields(Bot entity, Fields fields, RelationIncludes relationIncludes) {
     entity.withBotUser(getBotUser(entity));
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<Bot> entities) {
+    if (nullOrEmpty(entities)) {
+      return;
+    }
+
+    Map<UUID, List<EntityReference>> botUsers =
+        batchFetchFromIdsManyToOne(entities, Relationship.CONTAINS, Entity.USER);
+    for (Bot bot : entities) {
+      List<EntityReference> userReferences = botUsers.get(bot.getId());
+      bot.withBotUser(nullOrEmpty(userReferences) ? null : userReferences.getFirst());
+    }
+    super.setFieldsInBulk(fields, entities);
   }
 
   @Override

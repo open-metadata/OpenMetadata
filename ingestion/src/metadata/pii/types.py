@@ -26,10 +26,8 @@ Future expansion example:
     ClassifiableEntityType = Union[Table, Container, Topic, DashboardDataModel]
 """
 
-from typing import Union
-
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 
-ClassifiableEntityType = Union[Table, Container, Topic]  # noqa: UP007
+ClassifiableEntityType = Table | Container | Topic

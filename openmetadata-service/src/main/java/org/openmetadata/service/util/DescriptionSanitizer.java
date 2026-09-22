@@ -131,6 +131,19 @@ public final class DescriptionSanitizer {
           .allowElements("details", "summary")
           // Definition lists
           .allowElements("dl", "dt", "dd")
+          // Math equation node (BlockEditor MathEquation extension)
+          .allowElements("block-math-equation")
+          .allowAttributes("math_equation")
+          .onElements("block-math-equation")
+          .allowAttributes("isediting")
+          .matching(
+              (elementName, attributeName, value) -> {
+                if ("true".equals(value) || "false".equals(value)) {
+                  return value;
+                }
+                return null;
+              })
+          .onElements("block-math-equation")
           .toFactory();
 
   private static final Pattern ENTITY_LINK_PATTERN = Pattern.compile("<#E::[^<>]+>");

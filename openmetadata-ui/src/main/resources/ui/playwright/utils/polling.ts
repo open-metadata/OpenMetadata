@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
-import { waitForAllLoadersToDisappear } from './entity';
+import { getApiContext } from './common';
+import { waitForAllLoadersToDisappear, waitForWidgetsToRender } from './entity';
 
 /**
  * Polls the search API until the given entity appears in Elasticsearch.
@@ -21,7 +22,11 @@ export const waitForSearchIndexed = async (
   apiContext: APIRequestContext,
   entityFqn: string | undefined,
   index: string,
-  options?: { timeout?: number; intervals?: number[] }
+  options?: {
+    timeout?: number;
+    intervals?: number[];
+    queryFilter?: string;
+  }
 ) => {
   // An empty q= becomes a match-all query in the search API: hits.total>0
   // would resolve on the first poll against any non-empty index, silently
@@ -35,6 +40,9 @@ export const waitForSearchIndexed = async (
 
   const timeout = options?.timeout ?? 30_000;
   const intervals = options?.intervals ?? [500, 1_000, 2_000, 5_000];
+  const queryFilter = options?.queryFilter
+    ? `&query_filter=${encodeURIComponent(options.queryFilter)}`
+    : '';
   const start = Date.now();
   let intervalIdx = 0;
 
@@ -42,7 +50,7 @@ export const waitForSearchIndexed = async (
     const response = await apiContext.get(
       `/api/v1/search/query?q=${encodeURIComponent(
         entityFqn
-      )}&index=${index}&from=0&size=1`
+      )}&index=${index}&from=0&size=1${queryFilter}`
     );
 
     if (response.ok()) {
@@ -59,9 +67,47 @@ export const waitForSearchIndexed = async (
     await new Promise((resolve) => setTimeout(resolve, delay));
   }
 
+  const expectedMetadata = options?.queryFilter
+    ? ' with the expected search metadata'
+    : '';
   throw new Error(
-    `Entity "${entityFqn}" not found in index "${index}" after ${timeout}ms`
+    `Entity "${entityFqn}" not found${expectedMetadata} in index "${index}" after ${timeout}ms`
   );
+};
+
+/**
+ * Polls the search API until the entity's search document reflects the given
+ * owner state — the document refreshes asynchronously after an owner PATCH,
+ * so gate on this before any UI read. `owners` is a nested field, hence the
+ * `nested` query (a plain term query silently matches nothing).
+ */
+export const waitForOwnerIndexed = async (
+  page: Page,
+  entityFqn: string | undefined,
+  index: string,
+  ownerId: string,
+  present: boolean,
+  options?: { timeout?: number; intervals?: number[] }
+) => {
+  const ownerQuery = {
+    nested: {
+      path: 'owners',
+      query: { term: { 'owners.id': ownerId } },
+    },
+  };
+  const { apiContext, afterAction } = await getApiContext(page);
+
+  try {
+    await waitForSearchIndexed(apiContext, entityFqn, index, {
+      timeout: options?.timeout ?? 60_000,
+      intervals: options?.intervals,
+      queryFilter: JSON.stringify({
+        query: present ? ownerQuery : { bool: { must_not: [ownerQuery] } },
+      }),
+    });
+  } finally {
+    await afterAction();
+  }
 };
 
 /**
@@ -71,4 +117,5 @@ export const waitForSearchIndexed = async (
 export const waitForPageLoaded = async (page: Page) => {
   await page.waitForLoadState('domcontentloaded');
   await waitForAllLoadersToDisappear(page);
+  await waitForWidgetsToRender(page);
 };

@@ -53,6 +53,7 @@ else
     git -C "$REPO_ROOT" diff --name-only --diff-filter=ACM "$BASE" HEAD \
       | grep "^${UI_PREFIX}src/" \
       | grep -v 'src/generated/' \
+      | grep -v 'src/jsons/' \
       | grep -E '\.(ts|tsx|js|jsx|json)$' \
       | sed "s|^${UI_PREFIX}||"
   )

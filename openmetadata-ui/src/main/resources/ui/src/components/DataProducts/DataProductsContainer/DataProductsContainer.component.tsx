@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Col, Row, Space, Tag } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
@@ -18,7 +18,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
-import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { fetchDataProductsElasticSearch } from '../../../rest/dataProductAPI';
@@ -29,7 +28,6 @@ import {
   WidgetPlusButton,
 } from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
-import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import DataProductsSelectList from '../DataProductsSelectList/DataProductsSelectList';
 interface DataProductsContainerProps {
   showHeader?: boolean;
@@ -39,6 +37,7 @@ interface DataProductsContainerProps {
   onSave?: (dataProducts: DataProduct[]) => Promise<void>;
   newLook?: boolean;
   multiple?: boolean;
+  requireDomainForDataProduct?: boolean;
 }
 
 const DataProductsContainer = ({
@@ -49,10 +48,16 @@ const DataProductsContainer = ({
   onSave,
   newLook = false,
   multiple = true,
+  requireDomainForDataProduct = true,
 }: DataProductsContainerProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [isEditMode, setIsEditMode] = useState(false);
+
+  // When the "Data Product Domain Validation" rule is disabled a Data Product
+  // can be assigned regardless of the asset's domains, so the domain gate is
+  // lifted and the dropdown lists Data Products across all domains.
+  const domainMissing = requireDomainForDataProduct && isEmpty(activeDomains);
 
   const handleAddClick = () => {
     setIsEditMode(true);
@@ -61,12 +66,13 @@ const DataProductsContainer = ({
   const fetchAPI = useCallback(
     (searchValue: string, page = 1) => {
       const searchText = searchValue ?? '';
-      const domainFQNs =
-        activeDomains?.map((domain) => domain.fullyQualifiedName ?? '') ?? [];
+      const domainFQNs = requireDomainForDataProduct
+        ? activeDomains?.map((domain) => domain.fullyQualifiedName ?? '') ?? []
+        : [];
 
       return fetchDataProductsElasticSearch(searchText, domainFQNs, page);
     },
-    [activeDomains]
+    [activeDomains, requireDomainForDataProduct]
   );
 
   const redirectLink = useCallback(
@@ -114,11 +120,11 @@ const DataProductsContainer = ({
         onSubmit={handleSave}
       />
     );
-  }, [handleCancel, handleSave, dataProducts, fetchAPI]);
+  }, [handleCancel, handleSave, dataProducts, fetchAPI, multiple, t]);
 
   const showAddTagButton = useMemo(
-    () => hasPermission && !isEmpty(activeDomains) && isEmpty(dataProducts),
-    [hasPermission, dataProducts, activeDomains]
+    () => hasPermission && !domainMissing && isEmpty(dataProducts),
+    [hasPermission, dataProducts, domainMissing]
   );
 
   const renderDataProducts = useMemo(() => {
@@ -126,7 +132,7 @@ const DataProductsContainer = ({
       return NO_DATA_PLACEHOLDER;
     }
 
-    if (isEmpty(dataProducts) && hasPermission && isEmpty(activeDomains)) {
+    if (isEmpty(dataProducts) && hasPermission && domainMissing) {
       return (
         <Typography className="tw:text-quaternary" size="text-xs">
           {t('message.select-domain-to-add-data-product')}
@@ -160,7 +166,14 @@ const DataProductsContainer = ({
         </Tag>
       );
     });
-  }, [dataProducts, activeDomains]);
+  }, [
+    dataProducts,
+    activeDomains,
+    domainMissing,
+    hasPermission,
+    redirectLink,
+    t,
+  ]);
 
   const headerExtra = useMemo(() => {
     if (!showHeader) {
@@ -172,18 +185,18 @@ const DataProductsContainer = ({
         {hasPermission && isEmpty(dataProducts) && (
           <WidgetPlusButton
             data-testid="add-data-product"
-            disabled={isEmpty(activeDomains)}
+            disabled={domainMissing}
             title={
-              isEmpty(activeDomains)
+              domainMissing
                 ? t('message.select-domain-to-add-data-product')
                 : t('label.add-entity', {
                     entity: t('label.data-product-plural'),
                   })
             }
-            onClick={isEmpty(activeDomains) ? undefined : handleAddClick}
+            onClick={domainMissing ? undefined : handleAddClick}
           />
         )}
-        {hasPermission && !isEmpty(activeDomains) && !isEmpty(dataProducts) && (
+        {hasPermission && !domainMissing && !isEmpty(dataProducts) && (
           <WidgetEditButton
             data-testid="edit-button"
             title={t('label.edit-entity', {
@@ -194,19 +207,22 @@ const DataProductsContainer = ({
         )}
       </Space>
     );
-  }, [showHeader, dataProducts, hasPermission, activeDomains]);
+  }, [showHeader, dataProducts, hasPermission, domainMissing, t]);
 
   const addTagButton = useMemo(
     () =>
       showAddTagButton ? (
-        <Col
-          className="m-t-xss"
-          data-testid="add-data-product"
-          onClick={handleAddClick}>
-          <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
+        <Col className="m-t-xss">
+          <Button
+            color="link-color"
+            data-testid="add-data-product"
+            size="sm"
+            onClick={handleAddClick}>
+            {t('label.add-entity', { entity: t('label.data-product') })}
+          </Button>
         </Col>
       ) : null,
-    [showAddTagButton]
+    [showAddTagButton, t]
   );
 
   const renderer = useMemo(() => {
@@ -240,7 +256,9 @@ const DataProductsContainer = ({
         dataTestId="data-products-container"
         forceExpand={isEditMode}
         headerExtra={headerExtra}
-        isExpandDisabled={isEmpty(dataProducts) && !isEditMode}
+        isExpandDisabled={
+          isEmpty(dataProducts) && !isEditMode && !domainMissing
+        }
         title={t('label.data-product-plural')}>
         {renderer}
       </WidgetCard>

@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.events.lifecycle.handlers;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -32,22 +31,21 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
  * Handler that syncs domains for dependent entities when their target entity's domains change.
- * Ensures tasks, threads, announcements, etc. remain in the same domains as the entity
- * they're associated with, maintaining domain-based data isolation policies.
+ * Ensures tasks, announcements, and conversations remain in the same domains as the entity they're
+ * associated with, maintaining domain-based data isolation policies.
  */
 @Slf4j
 public class DomainSyncHandler implements EntityLifecycleEventHandler {
 
   private static final String DOMAINS_FIELD = "domains";
 
-  private static final Set<String> SKIP_ENTITY_TYPES =
-      Set.of(Entity.TASK, Entity.THREAD, Entity.DOMAIN);
+  private static final Set<String> SKIP_ENTITY_TYPES = Set.of(Entity.TASK, Entity.DOMAIN);
 
   @Override
   public boolean shouldProcess(EventType eventType, ChangeDescription changeDescription) {
     return eventType == EventType.ENTITY_UPDATED
         && changeDescription != null
-        && (findDomainsChange(changeDescription) != null || hasDomainsRemoved(changeDescription));
+        && hasDomainsChange(changeDescription);
   }
 
   @Override
@@ -57,10 +55,7 @@ public class DomainSyncHandler implements EntityLifecycleEventHandler {
       return;
     }
 
-    List<EntityReference> newDomains = findDomainsChange(changeDescription);
-    boolean domainsRemoved = hasDomainsRemoved(changeDescription);
-
-    if (newDomains == null && !domainsRemoved) {
+    if (!hasDomainsChange(changeDescription)) {
       return;
     }
 
@@ -72,7 +67,8 @@ public class DomainSyncHandler implements EntityLifecycleEventHandler {
     }
 
     UUID entityId = entity.getId();
-    List<EntityReference> effectiveDomains = domainsRemoved ? Collections.emptyList() : newDomains;
+    List<EntityReference> effectiveDomains =
+        entity.getDomains() == null ? Collections.emptyList() : List.copyOf(entity.getDomains());
 
     LOG.debug(
         "Domains change detected for {} {}, syncing related entities to domains {}",
@@ -84,6 +80,7 @@ public class DomainSyncHandler implements EntityLifecycleEventHandler {
 
     syncTaskDomains(entityId, entityType, effectiveDomains);
     syncAnnouncementDomains(entityId, entityType, effectiveDomains);
+    syncConversationDomains(entityId, entityType, effectiveDomains);
   }
 
   private void syncTaskDomains(UUID entityId, String entityType, List<EntityReference> newDomains) {
@@ -111,60 +108,28 @@ public class DomainSyncHandler implements EntityLifecycleEventHandler {
     }
   }
 
-  @SuppressWarnings("unchecked")
-  private List<EntityReference> findDomainsChange(ChangeDescription changeDescription) {
-    // Check fieldsAdded for new domains
-    List<EntityReference> domains = findDomainsInChanges(changeDescription.getFieldsAdded());
-    if (domains != null) {
-      return domains;
+  private void syncConversationDomains(
+      UUID entityId, String entityType, List<EntityReference> newDomains) {
+    try {
+      Entity.getConversationRepository().syncDomainsForEntity(entityId, entityType, newDomains);
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to sync conversation domains for entity {} {}: {}",
+          entityType,
+          entityId,
+          e.getMessage());
     }
-
-    // Check fieldsUpdated for domains change
-    domains = findDomainsInChanges(changeDescription.getFieldsUpdated());
-    if (domains != null) {
-      return domains;
-    }
-
-    return null;
   }
 
-  @SuppressWarnings("unchecked")
-  private List<EntityReference> findDomainsInChanges(List<FieldChange> changes) {
-    if (changes == null) {
-      return null;
-    }
-
-    for (FieldChange change : changes) {
-      if (DOMAINS_FIELD.equals(change.getName())) {
-        Object newValue = change.getNewValue();
-        if (newValue instanceof List<?> list) {
-          List<EntityReference> result = new ArrayList<>();
-          for (Object item : list) {
-            if (item instanceof EntityReference ref) {
-              result.add(ref);
-            }
-          }
-          if (!result.isEmpty()) {
-            return result;
-          }
-        }
-      }
-    }
-    return null;
+  private boolean hasDomainsChange(ChangeDescription changeDescription) {
+    return containsDomainsChange(changeDescription.getFieldsAdded())
+        || containsDomainsChange(changeDescription.getFieldsUpdated())
+        || containsDomainsChange(changeDescription.getFieldsDeleted());
   }
 
-  private boolean hasDomainsRemoved(ChangeDescription changeDescription) {
-    List<FieldChange> deletedFields = changeDescription.getFieldsDeleted();
-    if (deletedFields == null) {
-      return false;
-    }
-
-    for (FieldChange change : deletedFields) {
-      if (DOMAINS_FIELD.equals(change.getName())) {
-        return true;
-      }
-    }
-    return false;
+  private boolean containsDomainsChange(List<FieldChange> changes) {
+    return changes != null
+        && changes.stream().anyMatch(change -> DOMAINS_FIELD.equals(change.getName()));
   }
 
   @Override

@@ -48,13 +48,13 @@ import {
 } from '../../../../constants/Color.constants';
 import {
   DEFAULT_CHART_OPACITY,
-  GRAPH_BACKGROUND_COLOR,
   HOVER_CHART_OPACITY,
 } from '../../../../constants/constants';
 import {
   TABLE_DATA_TO_BE_FRESH,
   TABLE_FRESHNESS_KEY,
 } from '../../../../constants/TestSuite.constant';
+import { useChartColors } from '../../../../hooks/useChartColors';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { getTaskById } from '../../../../rest/tasksAPI';
 import { updateActiveChartFilter } from '../../../../utils/ChartUtils';
@@ -72,7 +72,6 @@ import {
   DATE_TIME_12_HOUR_FORMAT,
   formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
-import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import TestSummaryCustomTooltip from '../TestSummaryCustomTooltip/TestSummaryCustomTooltip.component';
 import {
   STATUS_DOT_RADIUS,
@@ -171,7 +170,7 @@ function TestSummaryGraph({
   testDefinitionName,
 }: Readonly<TestSummaryGraphProps>) {
   const { t } = useTranslation();
-  const { entityThread = [] } = useActivityFeedProvider();
+  const { axis, grid } = useChartColors();
   const { setShowAILearningBanner } = useTestCaseStore();
   const tooltipCloseTimer = useRef<ReturnType<typeof setTimeout>>();
   const [activeTooltip, setActiveTooltip] = useState<ActiveTooltip>();
@@ -272,7 +271,6 @@ function TestSummaryGraph({
     const data = prepareChartData({
       testCaseParameterValue: testCaseParameterValue ?? [],
       testCaseResults,
-      entityThread,
       tasks,
     });
     const isFreshnessTest = data.information.some(
@@ -280,7 +278,7 @@ function TestSummaryGraph({
     );
 
     return { chartData: data, isFreshnessTest };
-  }, [testCaseResults, entityThread, tasks, testCaseParameterValue]);
+  }, [testCaseResults, tasks, testCaseParameterValue]);
 
   // A store write during render (inside the memo above) triggers React
   // update-depth loops; it must stay in an effect.
@@ -394,11 +392,11 @@ function TestSummaryGraph({
 
   return (
     <ResponsiveContainer
-      className="bg-white custom-test-summary-graph"
+      className="tw:bg-primary custom-test-summary-graph"
       id={`${testCaseName}_graph`}
       minHeight={minHeight ?? 400}>
       <ComposedChart data={chartData.data} margin={TEST_SUMMARY_CHART_MARGIN}>
-        <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
+        <CartesianGrid stroke={grid} />
         <XAxis
           angle={-45}
           dataKey="name"
@@ -406,7 +404,7 @@ function TestSummaryGraph({
           padding={{ left: 8, right: 8 }}
           scale="time"
           textAnchor="end"
-          tick={{ fontSize: 12 }}
+          tick={{ fill: axis, fontSize: 12 }}
           tickFormatter={(date) =>
             formatDateTimeLong(date, DATE_TIME_12_HOUR_FORMAT)
           }
@@ -416,6 +414,7 @@ function TestSummaryGraph({
           allowDataOverflow
           domain={['min', 'max']}
           padding={{ top: 8, bottom: 8 }}
+          tick={{ fill: axis, fontSize: 12 }}
           tickFormatter={formatYAxis}
           width={80}
         />

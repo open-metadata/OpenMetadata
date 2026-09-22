@@ -24,7 +24,6 @@ import {
   AppMode,
   PersonaPreferences,
 } from '../../generated/type/personaPreferences';
-import { useAppRoutesRegistry } from '../../hooks/useAppRoutesRegistry';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 
@@ -47,9 +46,9 @@ const labelFor = (t: (key: string) => string, mode: AppMode): string => {
 export const SettingsAppModePage = ({ personaDetails, onSave }: Props) => {
   const { t } = useTranslation();
   const { document } = useCustomizeStore();
-  const hasNonDefaultMode = useAppRoutesRegistry(
-    (state) => Object.keys(state.routes).length > 0
-  );
+  // AI is always available in OSS — the shell ships in-tree, no
+  // install-gate.
+  const hasNonDefaultMode = true;
 
   const persistedAppMode = useMemo<AppMode>(() => {
     const preferences = (document?.data?.personaPreferences ??

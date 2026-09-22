@@ -287,86 +287,48 @@ class ServiceUtilClassBase {
   public getEntityTypeFromServiceType(serviceType: string): EntityType {
     const serviceTypes = this.getSupportedServiceFromList();
 
-    // Check which service category the serviceType belongs to
-    if (serviceTypes.databaseServices.includes(serviceType)) {
-      return EntityType.TABLE;
-    }
+    // Ordered category → entity-type mapping; first matching category wins.
+    const categoryEntityTypes: Array<[string[], EntityType]> = [
+      [serviceTypes.databaseServices, EntityType.TABLE],
+      [serviceTypes.messagingServices, EntityType.TOPIC],
+      [serviceTypes.dashboardServices, EntityType.DASHBOARD],
+      [serviceTypes.pipelineServices, EntityType.PIPELINE],
+      [serviceTypes.mlmodelServices, EntityType.MLMODEL],
+      [serviceTypes.storageServices, EntityType.CONTAINER],
+      [serviceTypes.searchServices, EntityType.SEARCH_INDEX],
+      [serviceTypes.apiServices, EntityType.API_ENDPOINT],
+      // Security services typically work with tables
+      [serviceTypes.securityServices, EntityType.TABLE],
+      [serviceTypes.driveServices, EntityType.DIRECTORY],
+    ];
 
-    if (serviceTypes.messagingServices.includes(serviceType)) {
-      return EntityType.TOPIC;
-    }
+    const match = categoryEntityTypes.find(([services]) =>
+      services.includes(serviceType)
+    );
 
-    if (serviceTypes.dashboardServices.includes(serviceType)) {
-      return EntityType.DASHBOARD;
-    }
-
-    if (serviceTypes.pipelineServices.includes(serviceType)) {
-      return EntityType.PIPELINE;
-    }
-
-    if (serviceTypes.mlmodelServices.includes(serviceType)) {
-      return EntityType.MLMODEL;
-    }
-
-    if (serviceTypes.storageServices.includes(serviceType)) {
-      return EntityType.CONTAINER;
-    }
-
-    if (serviceTypes.searchServices.includes(serviceType)) {
-      return EntityType.SEARCH_INDEX;
-    }
-
-    if (serviceTypes.apiServices.includes(serviceType)) {
-      return EntityType.API_ENDPOINT;
-    }
-
-    if (serviceTypes.securityServices.includes(serviceType)) {
-      return EntityType.TABLE; // Security services typically work with tables
-    }
-
-    if (serviceTypes.driveServices.includes(serviceType)) {
-      return EntityType.DIRECTORY;
-    }
-
-    // Default fallback
-    return EntityType.TABLE;
+    return match?.[1] ?? EntityType.TABLE;
   }
 
   private getDefaultLogoForServiceType(type: string): string {
     const serviceTypes = this.getSupportedServiceFromList();
 
-    if (serviceTypes.messagingServices.includes(type)) {
-      return getServiceIcon('topicdefault');
-    }
-    if (serviceTypes.dashboardServices.includes(type)) {
-      return getServiceIcon('dashboarddefault');
-    }
-    if (serviceTypes.pipelineServices.includes(type)) {
-      return getServiceIcon('pipelinedefault');
-    }
-    if (serviceTypes.databaseServices.includes(type)) {
-      return getServiceIcon('databasedefault');
-    }
-    if (serviceTypes.mlmodelServices.includes(type)) {
-      return getServiceIcon('mlmodeldefault');
-    }
-    if (serviceTypes.storageServices.includes(type)) {
-      return getServiceIcon('storagedefault');
-    }
-    if (serviceTypes.searchServices.includes(type)) {
-      return getServiceIcon('searchdefault');
-    }
-    if (serviceTypes.securityServices.includes(type)) {
-      return getServiceIcon('securitydefault');
-    }
-    if (serviceTypes.driveServices.includes(type)) {
-      return getServiceIcon('drivedefault');
-    }
-    if (serviceTypes.apiServices.includes(type)) {
-      return getServiceIcon('restservice');
-    }
+    // Ordered category → default icon-name mapping; first matching category wins.
+    const categoryIcons: Array<[string[], string]> = [
+      [serviceTypes.messagingServices, 'topicdefault'],
+      [serviceTypes.dashboardServices, 'dashboarddefault'],
+      [serviceTypes.pipelineServices, 'pipelinedefault'],
+      [serviceTypes.databaseServices, 'databasedefault'],
+      [serviceTypes.mlmodelServices, 'mlmodeldefault'],
+      [serviceTypes.storageServices, 'storagedefault'],
+      [serviceTypes.searchServices, 'searchdefault'],
+      [serviceTypes.securityServices, 'securitydefault'],
+      [serviceTypes.driveServices, 'drivedefault'],
+      [serviceTypes.apiServices, 'restservice'],
+    ];
 
-    return getServiceIcon('defaultservice');
+    const match = categoryIcons.find(([services]) => services.includes(type));
+
+    return getServiceIcon(match ? match[1] : 'defaultservice');
   }
 
   public getServiceLogo(type: string) {
@@ -397,22 +359,7 @@ class ServiceUtilClassBase {
 
     // Handle entities that don't have serviceType by using entity-specific icons
     if (isEmpty(type)) {
-      switch (entityType) {
-        case EntityType.TAG:
-          return TagIcon;
-        case EntityType.GLOSSARY_TERM:
-          return GlossaryIcon;
-        case EntityType.DATABASE:
-          return DatabaseIcon;
-        case EntityType.DATABASE_SCHEMA:
-          return DatabaseSchemaIcon;
-        case EntityType.METRIC:
-          return MetricIcon;
-        case EntityType.DATA_PRODUCT:
-          return DataProductIcon;
-        default:
-          return this.getServiceLogo('');
-      }
+      return this.getEntitySpecificLogo(entityType);
     }
 
     if (entityType === EntityType.CHART) {
@@ -420,6 +367,25 @@ class ServiceUtilClassBase {
     }
 
     return this.getServiceLogo(type);
+  }
+
+  private getEntitySpecificLogo(entityType: string): string {
+    switch (entityType) {
+      case EntityType.TAG:
+        return TagIcon;
+      case EntityType.GLOSSARY_TERM:
+        return GlossaryIcon;
+      case EntityType.DATABASE:
+        return DatabaseIcon;
+      case EntityType.DATABASE_SCHEMA:
+        return DatabaseSchemaIcon;
+      case EntityType.METRIC:
+        return MetricIcon;
+      case EntityType.DATA_PRODUCT:
+        return DataProductIcon;
+      default:
+        return this.getServiceLogo('');
+    }
   }
 
   public getDataAssetsService(serviceType: string): ExplorePageTabs {

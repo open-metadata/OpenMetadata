@@ -12,10 +12,10 @@
  */
 
 import { Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { Operation } from 'fast-json-patch';
 import { ServiceTypes } from 'Models';
 import DisplayName from '../components/common/DisplayName/DisplayName';
+import { ColumnsType } from '../components/common/Table/Table.interface';
 import { EntityName } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
@@ -34,11 +34,13 @@ import { patchPipelineDetails } from '../rest/pipelineAPI';
 import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
 import { patchContainerDetails } from '../rest/storageAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
-import { highlightSearchText } from './EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from './EntitySearchUtils';
 import { getColumnSorter } from './EntitySortUtils';
 import { t } from './i18next/LocalUtil';
 import { getLinkForFqn } from './ServiceUtils';
-import { stringToHTML } from './StringUtils';
 import {
   certificationTableObject,
   dataProductTableObject,
@@ -67,14 +69,16 @@ export const getServiceMainTabColumns = (
     sorter: getColumnSorter<ServicePageData, 'name'>('name'),
     render: (_, record: ServicePageData) => (
       <DisplayName
-        displayName={stringToHTML(
+        displayName={renderHighlightedText(
           highlightSearchText(record.displayName, searchValue)
         )}
         hasEditPermission={editDisplayNamePermission}
         id={record.id}
         key={record.id}
         link={getLinkForFqn(serviceCategory, record.fullyQualifiedName ?? '')}
-        name={stringToHTML(highlightSearchText(record.name, searchValue))}
+        name={renderHighlightedText(
+          highlightSearchText(record.name, searchValue)
+        )}
         onEditDisplayName={handleDisplayNameUpdate}
       />
     ),

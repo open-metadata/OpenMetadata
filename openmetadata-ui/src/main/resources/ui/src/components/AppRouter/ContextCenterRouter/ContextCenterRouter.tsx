@@ -61,6 +61,24 @@ const KnowledgeCenterFilterPage = withPageSuspenseFallback(
   )
 );
 
+const ContextCenterAIContextPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../../pages/ContextCenterPage/ContextCenterAIContextPage/ContextCenterAIContextPage'
+      )
+  )
+);
+
+const ContextCenterAIContextDetailPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../../pages/ContextCenterPage/ContextCenterAIContextPage/ContextCenterAIContextDetailPage'
+      )
+  )
+);
+
 const ContextCenterArchivePage = withPageSuspenseFallback(
   React.lazy(
     () =>
@@ -74,15 +92,12 @@ const ContextCenterRouter = () => {
   return (
     <Routes>
       <Route
-        element={<Navigate replace to={ROUTES.CONTEXT_CENTER_DASHBOARD} />}
+        element={<Navigate replace to={ROUTES.CONTEXT_CENTER_OVERVIEW} />}
         path="/"
       />
       <Route
         element={<ContextCenterDashboardPage />}
-        path={ROUTES.CONTEXT_CENTER_DASHBOARD.replace(
-          ROUTES.CONTEXT_CENTER,
-          ''
-        )}
+        path={ROUTES.CONTEXT_CENTER_OVERVIEW.replace(ROUTES.CONTEXT_CENTER, '')}
       />
       {[
         ROUTES.CONTEXT_CENTER_ARTICLES,
@@ -111,6 +126,20 @@ const ContextCenterRouter = () => {
       <Route
         element={<KnowledgeCenterFilterPage />}
         path={ROUTES.CONTEXT_CENTER_FILTER.replace(ROUTES.CONTEXT_CENTER, '')}
+      />
+      <Route
+        element={<ContextCenterAIContextPage />}
+        path={ROUTES.CONTEXT_CENTER_AI_CONTEXT.replace(
+          ROUTES.CONTEXT_CENTER,
+          ''
+        )}
+      />
+      <Route
+        element={<ContextCenterAIContextDetailPage />}
+        path={ROUTES.CONTEXT_CENTER_AI_CONTEXT_DETAIL.replace(
+          ROUTES.CONTEXT_CENTER,
+          ''
+        )}
       />
       <Route
         element={<ContextCenterArchivePage />}

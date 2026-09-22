@@ -14,7 +14,7 @@ import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Glossary } from '../../support/glossary/Glossary';
 import {
-  descriptionBox,
+  fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
 } from '../../utils/common';
@@ -40,7 +40,7 @@ test.describe('Glossary Form Validation', () => {
     await page.getByTestId('form-heading').waitFor();
 
     // Fill description but leave name empty
-    await page.locator(descriptionBox).fill('Test description');
+    await fillDescriptionBox(page, 'Test description');
 
     // Try to save
     await page.click('[data-testid="save-glossary"]');
@@ -85,7 +85,7 @@ test.describe('Glossary Form Validation', () => {
 
       // Use the same name as existing glossary
       await page.fill('[data-testid="name"]', glossary.data.name);
-      await page.locator(descriptionBox).fill('Test description');
+      await fillDescriptionBox(page, 'Test description');
 
       // Try to save
       await page.click('[data-testid="save-glossary"]');
@@ -113,7 +113,7 @@ test.describe('Glossary Form Validation', () => {
       await openAddGlossaryTermModal(page);
 
       // Fill description but leave name empty
-      await page.locator(descriptionBox).fill('Test term description');
+      await fillDescriptionBox(page, 'Test term description');
 
       // Try to save
       await page.click('[data-testid="save-glossary-term"]');

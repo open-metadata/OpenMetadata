@@ -27,7 +27,7 @@ export const loginViaSso = async (
 ): Promise<void> => {
   await page.goto('/signin');
 
-  const signInButton = page.locator('button.signin-button');
+  const signInButton = page.getByTestId('sso-login-button');
 
   await expect(signInButton).toBeVisible();
   await signInButton.click();
@@ -35,7 +35,9 @@ export const loginViaSso = async (
   await helper.performProviderLogin(page, credentials);
   await page.waitForURL(
     (url) =>
-      url.pathname.endsWith('/signup') || url.pathname.endsWith('/my-data'),
+      url.pathname.endsWith('/signup') ||
+      url.pathname.endsWith('/my-data') ||
+      url.pathname === '/',
     { timeout: 60_000 }
   );
 
@@ -44,7 +46,10 @@ export const loginViaSso = async (
 
     await expect(createButton).toBeEnabled();
     await createButton.click();
-    await page.waitForURL('**/my-data', { timeout: 60_000 });
+    await page.waitForURL(
+      (url) => url.pathname === '/' || url.pathname === '/my-data',
+      { timeout: 60_000 }
+    );
   }
 
   await expect(page.getByTestId('dropdown-profile')).toBeVisible({

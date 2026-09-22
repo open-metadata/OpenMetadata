@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { HintText, Label, Tooltip } from '@openmetadata/ui-core-components';
+import { Button, HintText, Label } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
 import { Copy01, XClose } from '@untitledui/icons';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useCallback, useState } from 'react';
 import { Input as AriaInput } from 'react-aria-components';
@@ -22,6 +23,90 @@ import { useClipboard } from '../../../../hooks/useClipBoard';
 import { getFormDisplayLabel } from '../formBuilderV1LabelUtils';
 
 import { splitCSV } from '../../../../utils/CSV/CSVPureUtils';
+// Clipboard text may be a JSON array (copied from this field) or a CSV-ish
+// string typed by hand; both shapes collapse to a list of strings here so the
+// key handler stays a plain dispatch.
+const parsePastedValues = (text: string): string[] => {
+  try {
+    const parsed = JSON.parse(text);
+
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return splitCSV(text);
+  }
+};
+
+const getArrayFieldContainerClass = (isInvalid: boolean, isDisabled: boolean) =>
+  classNames(
+    // Border drawn with outline, not a ring: WebKit does not pixel-snap box-shadow,
+    // so rings thin/vanish in Safari when zoomed out. `transition-shadow` animated
+    // only box-shadow, so it must name the outline properties now.
+    'tw:flex tw:flex-wrap tw:items-center tw:gap-1.5 tw:min-h-10 tw:rounded-lg tw:bg-primary tw:px-2 tw:py-1.5',
+    'tw:outline-1 tw:-outline-offset-1 tw:transition-[outline-color,outline-width] tw:duration-100 tw:ease-linear',
+    isInvalid ? 'tw:outline-error_subtle' : 'tw:outline-primary',
+    {
+      'tw:cursor-not-allowed tw:bg-disabled_subtle tw:outline-disabled':
+        isDisabled,
+    }
+  );
+
+// Plain derivations of the RJSF props; pulled out so the component body stays a
+// render function rather than a chain of defaulting expressions.
+const getCoreArrayFieldState = (
+  id: string,
+  formData: string[] | undefined,
+  disabled?: boolean,
+  readonly?: boolean
+) => ({
+  fieldName: id.split('/').pop() ?? '',
+  value: formData ?? [],
+  isDisabled: Boolean(disabled || readonly),
+});
+
+const ArrayFieldError = ({
+  isInvalid,
+  rawErrors,
+}: {
+  isInvalid: boolean;
+  rawErrors?: string[];
+}) => {
+  if (!isInvalid || !rawErrors) {
+    return null;
+  }
+
+  return <HintText isInvalid>{rawErrors[0]}</HintText>;
+};
+
+// Each chip owns its own remove affordance so the field body stays a flat list.
+const ArrayValueChip = ({
+  value,
+  isDisabled,
+  onRemove,
+}: {
+  value: string;
+  isDisabled: boolean;
+  onRemove: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <span
+      className="tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md
+          tw:bg-utility-brand-50 tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium tw:text-brand-700 tw:outline-1 tw:-outline-offset-1 tw:outline-brand-200">
+      {value}
+      {!isDisabled && (
+        <button
+          aria-label={t('label.remove-entity', { entity: value })}
+          className="tw:flex tw:cursor-pointer tw:items-center tw:text-brand-400 hover:tw:text-brand-700"
+          type="button"
+          onClick={onRemove}>
+          <XClose size={10} strokeWidth={2.5} />
+        </button>
+      )}
+    </span>
+  );
+};
+
 const CoreArrayField = (props: FieldProps) => {
   const {
     idSchema,
@@ -39,16 +124,19 @@ const CoreArrayField = (props: FieldProps) => {
 
   const { t } = useTranslation();
   const id = idSchema.$id;
-  const fieldName = id.split('/').pop() ?? '';
   const isFilterPattern = /FilterPattern/.test(id);
-  const value: string[] = formData ?? [];
+  const { fieldName, value, isDisabled } = getCoreArrayFieldState(
+    id,
+    formData,
+    disabled,
+    readonly
+  );
   const [inputValue, setInputValue] = useState('');
 
   const { onCopyToClipBoard, onPasteFromClipBoard, hasCopied } = useClipboard(
     JSON.stringify(value)
   );
 
-  const isDisabled = disabled || readonly;
   const isInvalid = !!rawErrors?.length;
 
   const handleFocus = useCallback(() => {
@@ -77,6 +165,17 @@ const CoreArrayField = (props: FieldProps) => {
     }
   }, [inputValue, addValues]);
 
+  const pasteFromClipboard = useCallback(async () => {
+    const text = await onPasteFromClipBoard();
+    if (!text) {
+      return;
+    }
+    const values = parsePastedValues(text);
+    if (!isEmpty(values)) {
+      addValues(values);
+    }
+  }, [onPasteFromClipBoard, addValues]);
+
   const handleKeyDown = useCallback(
     async (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Enter') {
@@ -85,25 +184,10 @@ const CoreArrayField = (props: FieldProps) => {
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
         e.preventDefault();
-        const text = await onPasteFromClipBoard();
-        if (!text) {
-          return;
-        }
-        let values: string[] = [];
-        try {
-          const parsed = JSON.parse(text);
-          if (Array.isArray(parsed)) {
-            values = parsed.map(String);
-          }
-        } catch {
-          values = splitCSV(text);
-        }
-        if (!isEmpty(values)) {
-          addValues(values);
-        }
+        await pasteFromClipboard();
       }
     },
-    [commitInput, onPasteFromClipBoard, addValues]
+    [commitInput, pasteFromClipboard]
   );
 
   const placeholder = isFilterPattern
@@ -115,36 +199,14 @@ const CoreArrayField = (props: FieldProps) => {
   return (
     <div className="tw:flex tw:flex-col tw:gap-1.5">
       {fieldLabel && <Label isRequired={required}>{fieldLabel}</Label>}
-      <div
-        className={[
-          // Border drawn with outline, not a ring: WebKit does not pixel-snap box-shadow,
-          // so rings thin/vanish in Safari when zoomed out. `transition-shadow` animated
-          // only box-shadow, so it must name the outline properties now.
-          'tw:flex tw:flex-wrap tw:items-center tw:gap-1.5 tw:min-h-10 tw:rounded-lg tw:bg-primary tw:px-2 tw:py-1.5',
-          'tw:outline-1 tw:-outline-offset-1 tw:transition-[outline-color,outline-width] tw:duration-100 tw:ease-linear',
-          isInvalid ? 'tw:outline-error_subtle' : 'tw:outline-primary',
-          isDisabled
-            ? 'tw:cursor-not-allowed tw:bg-disabled_subtle tw:outline-disabled'
-            : '',
-        ]
-          .filter(Boolean)
-          .join(' ')}>
-        {value.map((v, idx) => (
-          <span
-            className="tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md
-          tw:bg-utility-brand-50 tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium tw:text-brand-700 tw:outline-1 tw:-outline-offset-1 tw:outline-brand-200"
-            key={`${v}-${idx}`}>
-            {v}
-            {!isDisabled && (
-              <button
-                aria-label={t('label.remove-entity', { entity: v })}
-                className="tw:flex tw:cursor-pointer tw:items-center tw:text-brand-400 hover:tw:text-brand-700"
-                type="button"
-                onClick={() => onChange(value.filter((val) => val !== v))}>
-                <XClose size={10} strokeWidth={2.5} />
-              </button>
-            )}
-          </span>
+      <div className={getArrayFieldContainerClass(isInvalid, isDisabled)}>
+        {value.map((v) => (
+          <ArrayValueChip
+            isDisabled={isDisabled}
+            key={v}
+            value={v}
+            onRemove={() => onChange(value.filter((val) => val !== v))}
+          />
         ))}
         {!isDisabled && (
           <AriaInput
@@ -161,23 +223,20 @@ const CoreArrayField = (props: FieldProps) => {
             onKeyDown={handleKeyDown}
           />
         )}
-        <Tooltip
-          title={
+        <Button
+          className="tw:ml-auto tw:rounded tw:p-0 tw:hover:bg-transparent"
+          color="tertiary"
+          iconLeading={Copy01}
+          tooltip={
             hasCopied ? t('message.copied-to-clipboard') : t('label.copy')
-          }>
-          <button
-            className="tw:ml-auto tw:flex tw:cursor-pointer tw:items-center tw:p-1 tw:text-fg-quaternary tw:transition-colors tw:duration-200 hover:tw:text-fg-quaternary_hover"
-            tabIndex={-1}
-            type="button"
-            onClick={async (e) => {
-              e.stopPropagation();
-              await onCopyToClipBoard();
-            }}>
-            <Copy01 size={14} />
-          </button>
-        </Tooltip>
+          }
+          onPress={async (e) => {
+            e.stopPropagation();
+            await onCopyToClipBoard();
+          }}
+        />
       </div>
-      {isInvalid && rawErrors && <HintText isInvalid>{rawErrors[0]}</HintText>}
+      <ArrayFieldError isInvalid={isInvalid} rawErrors={rawErrors} />
     </div>
   );
 };

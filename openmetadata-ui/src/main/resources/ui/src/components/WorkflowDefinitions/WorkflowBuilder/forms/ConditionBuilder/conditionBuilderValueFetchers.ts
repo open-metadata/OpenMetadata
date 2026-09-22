@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { PAGE_SIZE_MEDIUM } from '../../../../../constants/constants';
+import {
+  CERTIFICATION_CATEGORY,
+  PAGE_SIZE_MEDIUM,
+} from '../../../../../constants/constants';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import { searchData } from '../../../../../rest/miscAPI';
 import { getTags } from '../../../../../rest/tagAPI';
@@ -31,7 +34,7 @@ export async function fetchCertificationOptions(
   try {
     const response = await getTags({
       limit: PAGE_SIZE_LARGE,
-      parent: 'Certification',
+      parent: CERTIFICATION_CATEGORY,
     });
     const data = response.data ?? [];
 

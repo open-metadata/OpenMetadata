@@ -20,11 +20,17 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
@@ -433,6 +439,243 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
         .pollInterval(Duration.ofSeconds(1))
         .ignoreExceptions()
         .untilAsserted(() -> assertQueryListedForTable(client, table, query.getId(), false));
+  }
+
+  @Test
+  void queryInheritsDomainsFromEveryTableUsedIn(TestNamespace ns) {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final Domain firstDomain = createDomain(ns, "first");
+    final Domain secondDomain = createDomain(ns, "second");
+    final Table firstTable = createTableWithInheritedDomain(ns, "first", firstDomain);
+    final Table secondTable = createTableWithInheritedDomain(ns, "second", secondDomain);
+    final Query query = createQueryUsedIn(ns, List.of(firstTable, secondTable));
+
+    assertInheritedQueryDomains(query.getId(), List.of(firstDomain, secondDomain));
+    assertQuerySearchableInDomain(client, query.getId(), firstDomain.getFullyQualifiedName());
+    assertQuerySearchableInDomain(client, query.getId(), secondDomain.getFullyQualifiedName());
+  }
+
+  @Test
+  void querySearchDomainsFollowTableDomainChanges(TestNamespace ns) throws Exception {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final Domain originalDomain = createDomain(ns, "original");
+    final Domain updatedDomain = createDomain(ns, "updated");
+    final Table table = createTableInDomain(ns, "mutable", originalDomain);
+    final Query query = createQueryUsedIn(ns, List.of(table));
+
+    replaceTableDomain(client, table, updatedDomain);
+
+    assertInheritedQueryDomains(query.getId(), List.of(updatedDomain));
+    assertQuerySearchableInDomain(client, query.getId(), updatedDomain.getFullyQualifiedName());
+    assertQueryNotSearchableInDomain(client, query.getId(), originalDomain.getFullyQualifiedName());
+  }
+
+  @Test
+  void querySearchDomainsFollowDatabaseDomainChanges(TestNamespace ns) throws Exception {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final Domain originalDomain = createDomain(ns, "database_original");
+    final Domain updatedDomain = createDomain(ns, "database_updated");
+    final Database database = createDatabaseInDomain(ns, "mutable", originalDomain);
+    final DatabaseSchema schema = createDatabaseSchema(ns, "mutable", database);
+    final CreateTable tableRequest =
+        new CreateTable()
+            .withName("t_q_database_domain_" + ns.shortPrefix())
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+    final Table table = client.tables().create(tableRequest);
+    final Query query = createQueryUsedIn(ns, List.of(table));
+
+    replaceDatabaseDomain(client, database, updatedDomain);
+
+    assertInheritedQueryDomains(query.getId(), List.of(updatedDomain));
+    assertQuerySearchableInDomain(client, query.getId(), updatedDomain.getFullyQualifiedName());
+    assertQueryNotSearchableInDomain(client, query.getId(), originalDomain.getFullyQualifiedName());
+  }
+
+  @Test
+  void querySearchDomainsFollowQueryUsageChanges(TestNamespace ns) {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final Domain originalDomain = createDomain(ns, "usage_original");
+    final Domain updatedDomain = createDomain(ns, "usage_updated");
+    final Table originalTable = createTableInDomain(ns, "usage_original", originalDomain);
+    final Table updatedTable = createTableInDomain(ns, "usage_updated", updatedDomain);
+    final Query query = createQueryUsedIn(ns, List.of(originalTable));
+
+    query.setQueryUsedIn(List.of(updatedTable.getEntityReference()));
+    patchEntity(query.getId().toString(), query);
+
+    assertInheritedQueryDomains(query.getId(), List.of(updatedDomain));
+    assertQuerySearchableInDomain(client, query.getId(), updatedDomain.getFullyQualifiedName());
+    assertQueryNotSearchableInDomain(client, query.getId(), originalDomain.getFullyQualifiedName());
+  }
+
+  @Test
+  void queryStopsInheritingDomainsFromSoftDeletedTables(TestNamespace ns) {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final Domain domain = createDomain(ns, "soft_deleted_table");
+    final Table table = createTableInDomain(ns, "soft_deleted", domain);
+    final Query query = createQueryUsedIn(ns, List.of(table));
+
+    assertInheritedQueryDomains(query.getId(), List.of(domain));
+
+    client.tables().delete(table.getId());
+
+    assertInheritedQueryDomains(query.getId(), List.of());
+    assertQueryNotSearchableInDomain(client, query.getId(), domain.getFullyQualifiedName());
+  }
+
+  @Test
+  void readModifyWriteMultiDomainQueryNotBlockedByRule(TestNamespace ns) {
+    // A query inheriting 2 domains (from 2 tables in different domains) must stay updatable.
+    // Fetching it WITH its inherited domains and writing the full body back previously tripped the
+    // "Multiple Domains are not allowed" rule with a 400. Regression guard for the query exemption.
+    final Domain a = createDomain(ns, "rmw_a");
+    final Domain b = createDomain(ns, "rmw_b");
+    final Table ta = createTableInDomain(ns, "rmw_a", a);
+    final Table tb = createTableInDomain(ns, "rmw_b", b);
+    final Query query = createQueryUsedIn(ns, List.of(ta, tb));
+    assertInheritedQueryDomains(query.getId(), List.of(a, b));
+
+    final Query fetched = getEntityWithFields(query.getId().toString(), "domains,queryUsedIn");
+    assertEquals(2, fetched.getDomains().size());
+    fetched.setDescription("read-modify-write under multi-domain rule");
+    // Must NOT throw a RuleValidationException (400) for the 2 inherited domains.
+    patchEntity(fetched.getId().toString(), fetched);
+
+    assertInheritedQueryDomains(query.getId(), List.of(a, b));
+  }
+
+  private Query createQueryUsedIn(TestNamespace ns, List<Table> tables) {
+    final List<EntityReference> tableReferences =
+        tables.stream().map(Table::getEntityReference).toList();
+    final String queryName = ns.prefix("multi_table_domain_query_" + UUID.randomUUID());
+    return createEntity(
+        new CreateQuery()
+            .withName(queryName)
+            .withQuery("SELECT * FROM " + queryName)
+            .withQueryUsedIn(tableReferences)
+            .withService(getOrCreateDatabaseService(ns).getFullyQualifiedName())
+            .withQueryDate(System.currentTimeMillis()));
+  }
+
+  private Domain createDomain(TestNamespace ns, String suffix) {
+    CreateDomain request =
+        new CreateDomain()
+            .withName(ns.prefix("query_domain_" + suffix))
+            .withDescription("Domain inherited by a query")
+            .withDomainType(DomainType.AGGREGATE);
+    return SdkClients.adminClient().domains().create(request);
+  }
+
+  private Table createTableInDomain(TestNamespace ns, String suffix, Domain domain) {
+    final Table parent = getOrCreateTable(ns);
+    final CreateTable request =
+        new CreateTable()
+            .withName("t_q_domain_" + suffix + "_" + ns.shortPrefix())
+            .withDatabaseSchema(parent.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)))
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    return SdkClients.adminClient().tables().create(request);
+  }
+
+  private Table createTableWithInheritedDomain(TestNamespace ns, String suffix, Domain domain) {
+    final Database database = createDatabaseInDomain(ns, suffix, domain);
+    final DatabaseSchema schema = createDatabaseSchema(ns, suffix, database);
+    final CreateTable request =
+        new CreateTable()
+            .withName("t_q_inherited_domain_" + suffix + "_" + ns.shortPrefix())
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+    return SdkClients.adminClient().tables().create(request);
+  }
+
+  private Database createDatabaseInDomain(TestNamespace ns, String suffix, Domain domain) {
+    final CreateDatabase request =
+        new CreateDatabase()
+            .withName("db_q_domain_" + suffix + "_" + ns.shortPrefix())
+            .withService(getOrCreateDatabaseService(ns).getFullyQualifiedName())
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    return SdkClients.adminClient().databases().create(request);
+  }
+
+  private DatabaseSchema createDatabaseSchema(TestNamespace ns, String suffix, Database database) {
+    final CreateDatabaseSchema request =
+        new CreateDatabaseSchema()
+            .withName("schema_q_domain_" + suffix + "_" + ns.shortPrefix())
+            .withDatabase(database.getFullyQualifiedName());
+    return SdkClients.adminClient().databaseSchemas().create(request);
+  }
+
+  private void replaceTableDomain(OpenMetadataClient client, Table table, Domain domain)
+      throws Exception {
+    final String patch =
+        """
+        [{"op":"replace","path":"/domains","value":[{"id":"%s","type":"domain"}]}]
+        """
+            .formatted(domain.getId());
+    client.tables().patch(table.getId(), OBJECT_MAPPER.readTree(patch));
+  }
+
+  private void replaceDatabaseDomain(OpenMetadataClient client, Database database, Domain domain)
+      throws Exception {
+    final String patch =
+        """
+        [{"op":"replace","path":"/domains","value":[{"id":"%s","type":"domain"}]}]
+        """
+            .formatted(domain.getId());
+    client.databases().patch(database.getId(), OBJECT_MAPPER.readTree(patch));
+  }
+
+  private void assertInheritedQueryDomains(UUID queryId, List<Domain> expectedDomains) {
+    final List<UUID> expectedIds = expectedDomains.stream().map(Domain::getId).sorted().toList();
+    Awaitility.await("Query should inherit all associated table domains")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(() -> assertInheritedQueryDomainIds(queryId, expectedIds));
+  }
+
+  private void assertInheritedQueryDomainIds(UUID queryId, List<UUID> expectedIds) {
+    final Query fetched = getEntityWithFields(queryId.toString(), "domains");
+    final List<UUID> actualIds =
+        fetched.getDomains().stream().map(EntityReference::getId).sorted().toList();
+    assertEquals(expectedIds, actualIds);
+    assertTrue(fetched.getDomains().stream().allMatch(EntityReference::getInherited));
+  }
+
+  private void assertQuerySearchableInDomain(
+      OpenMetadataClient client, UUID queryId, String domainFqn) {
+    assertQuerySearchHitCount(client, queryId, domainFqn, 1);
+  }
+
+  private void assertQueryNotSearchableInDomain(
+      OpenMetadataClient client, UUID queryId, String domainFqn) {
+    assertQuerySearchHitCount(client, queryId, domainFqn, 0);
+  }
+
+  private void assertQuerySearchHitCount(
+      OpenMetadataClient client, UUID queryId, String domainFqn, int expectedHits) {
+    Awaitility.await("Query should be searchable in domain " + domainFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertEquals(expectedHits, searchQueryInDomain(client, queryId, domainFqn).size()));
+  }
+
+  private JsonNode searchQueryInDomain(OpenMetadataClient client, UUID queryId, String domainFqn)
+      throws Exception {
+    final String filter =
+        "{\"query\":{\"term\":{\"domains.fullyQualifiedName\":\"" + domainFqn + "\"}}}";
+    final String response =
+        client
+            .search()
+            .query("id:" + queryId)
+            .index("query_search_index")
+            .queryFilter(filter)
+            .size(1)
+            .execute();
+    return OBJECT_MAPPER.readTree(response).path("hits").path("hits");
   }
 
   private void assertQueryListedForTable(

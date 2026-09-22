@@ -327,12 +327,14 @@ describe('KnowledgePagesHierarchy', () => {
     const row = screen
       .getByText('How to Discover Assets of Interest')
       .closest('[role="row"]');
-    const expandBtn = row?.querySelector('button[slot="chevron"]');
+    const expandBtn = row?.querySelector(
+      'button[slot="chevron"]'
+    ) as HTMLElement;
 
     expect(expandBtn).not.toBeNull();
 
     await act(async () => {
-      fireEvent.click(expandBtn!);
+      fireEvent.click(expandBtn);
     });
 
     expect(
@@ -358,12 +360,12 @@ describe('KnowledgePagesHierarchy', () => {
     const row = screen
       .getByText('How to Discover Assets of Interest')
       .closest('[role="row"]');
-    const chevron = row?.querySelector('button[slot="chevron"]');
+    const chevron = row?.querySelector('button[slot="chevron"]') as HTMLElement;
 
     expect(chevron).not.toBeNull();
 
     await act(async () => {
-      fireEvent.click(chevron!);
+      fireEvent.click(chevron);
     });
 
     expect(
@@ -371,7 +373,7 @@ describe('KnowledgePagesHierarchy', () => {
     ).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.click(chevron!);
+      fireEvent.click(chevron);
     });
 
     expect(
@@ -474,10 +476,12 @@ describe('KnowledgePagesHierarchy', () => {
       const row = screen
         .getByText('Mismatched Count Parent')
         .closest('[role="row"]');
-      const expandBtn = row?.querySelector('button[slot="chevron"]');
+      const expandBtn = row?.querySelector(
+        'button[slot="chevron"]'
+      ) as HTMLElement;
 
       await act(async () => {
-        fireEvent.click(expandBtn!);
+        fireEvent.click(expandBtn);
       });
 
       await waitFor(() => {
@@ -559,10 +563,12 @@ describe('KnowledgePagesHierarchy', () => {
       });
 
       const row = screen.getByText('Paged Parent').closest('[role="row"]');
-      const expandBtn = row?.querySelector('button[slot="chevron"]');
+      const expandBtn = row?.querySelector(
+        'button[slot="chevron"]'
+      ) as HTMLElement;
 
       await act(async () => {
-        fireEvent.click(expandBtn!);
+        fireEvent.click(expandBtn);
       });
 
       await waitFor(() => {
@@ -640,10 +646,12 @@ describe('KnowledgePagesHierarchy', () => {
       });
 
       const row = screen.getByText('Exhausted Parent').closest('[role="row"]');
-      const expandBtn = row?.querySelector('button[slot="chevron"]');
+      const expandBtn = row?.querySelector(
+        'button[slot="chevron"]'
+      ) as HTMLElement;
 
       await act(async () => {
-        fireEvent.click(expandBtn!);
+        fireEvent.click(expandBtn);
       });
 
       await waitFor(() => {
@@ -664,10 +672,10 @@ describe('KnowledgePagesHierarchy', () => {
         .closest('[role="row"]');
       const expandBtnAfterRefresh = rowAfterRefresh?.querySelector(
         'button[slot="chevron"]'
-      );
+      ) as HTMLElement;
 
       await act(async () => {
-        fireEvent.click(expandBtnAfterRefresh!);
+        fireEvent.click(expandBtnAfterRefresh);
       });
 
       await waitFor(() => {

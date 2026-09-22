@@ -46,6 +46,7 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -167,6 +168,32 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       Entity.withHref(uriInfo, entity.getDomains());
       Entity.withHref(uriInfo, entity.getDataProducts());
       return entity;
+    }
+  }
+
+  protected Response addFollowerInternal(
+      SecurityContext securityContext, UUID entityId, UUID userId) {
+    authorizeFollowerMutation(securityContext, userId);
+    return repository
+        .addFollower(securityContext.getUserPrincipal().getName(), entityId, userId)
+        .toResponse();
+  }
+
+  protected Response deleteFollowerInternal(
+      SecurityContext securityContext, UUID entityId, UUID userId) {
+    authorizeFollowerMutation(securityContext, userId);
+    return repository
+        .deleteFollower(securityContext.getUserPrincipal().getName(), entityId, userId)
+        .toResponse();
+  }
+
+  private void authorizeFollowerMutation(SecurityContext securityContext, UUID userId) {
+    if (userId == null) {
+      throw new BadRequestException("userId is required");
+    }
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (!Objects.equals(subjectContext.user().getId(), userId)) {
+      authorizer.authorizeAdmin(securityContext);
     }
   }
 
@@ -675,6 +702,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response.toResponse();
   }
 
+  /**
+   * Variant for resources that need a resource-specific authorization decision. It must plumb
+   * If-Match and the impersonation actor exactly as the standard overload does: dropping them
+   * silently disables optimistic locking (a stale ETag overwrites a concurrent update instead of
+   * failing the precondition) and loses impersonation attribution in the change record.
+   */
   public Response patchInternal(
       UriInfo uriInfo,
       SecurityContext securityContext,
@@ -683,8 +716,18 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       UUID id,
       JsonPatch patch) {
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+    String ifMatchHeader =
+        org.openmetadata.service.resources.filters.ETagRequestFilter.getIfMatchHeader();
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     PatchResponse<T> response =
-        repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
+        repository.patch(
+            uriInfo,
+            id,
+            securityContext.getUserPrincipal().getName(),
+            patch,
+            null,
+            ifMatchHeader,
+            impersonatedBy);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
@@ -1006,8 +1049,15 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
 
-  public Response bulkAddToAssetsAsync(
-      SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
+  /**
+   * Authorizes a bulk asset tag/glossary operation: the caller must hold {@code operation} on every
+   * target asset's entity type, otherwise the whole request is rejected. Admins and bots are
+   * exempt. This is the shared permission gate for the bulk asset endpoints (classification tags on
+   * {@link org.openmetadata.service.resources.tags.TagResource}, glossary terms on
+   * GlossaryTermResource); it only validates permissions and performs no business logic.
+   */
+  protected void authorizeBulkAssetsPermission(
+      SecurityContext securityContext, List<EntityReference> assets, MetadataOperation operation) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     String user = subjectContext.user().getName();
 
@@ -1018,14 +1068,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                     permission.getPermissions().stream()
                         .anyMatch(
                             perm ->
-                                MetadataOperation.EDIT_TAGS.equals(perm.getOperation())
+                                operation.equals(perm.getOperation())
                                     && Permission.Access.ALLOW.equals(perm.getAccess())))
             .map(ResourcePermission::getResource)
             .collect(Collectors.toSet());
 
     // Validate if all entity types in the request are in the permissible resources
     List<String> unauthorizedEntityTypes =
-        request.getAssets().stream()
+        assets.stream()
             .map(EntityReference::getType)
             .filter(entityType -> !editPermissibleResources.contains(entityType))
             .distinct()
@@ -1036,8 +1086,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         && !subjectContext.isBot()) {
       throw new AuthorizationException(
           CatalogExceptionMessage.resourcePermissionNotAllowed(
-              user, List.of(MetadataOperation.EDIT_TAGS), unauthorizedEntityTypes));
+              user, List.of(operation), unauthorizedEntityTypes));
     }
+  }
+
+  public Response bulkAddToAssetsAsync(
+      SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
+    authorizeBulkAssetsPermission(
+        securityContext, request.getAssets(), MetadataOperation.EDIT_TAGS);
 
     String jobId = UUID.randomUUID().toString();
     AsyncService.getInstance()
@@ -1066,34 +1122,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public Response bulkRemoveFromAssetsAsync(
       SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
-    SubjectContext subjectContext = getSubjectContext(securityContext);
-    String user = subjectContext.user().getName();
-    Set<String> editPermissibleResources =
-        authorizer.listPermissions(securityContext, user).stream()
-            .filter(
-                permission ->
-                    permission.getPermissions().stream()
-                        .anyMatch(
-                            perm ->
-                                MetadataOperation.EDIT_TAGS.equals(perm.getOperation())
-                                    && Permission.Access.ALLOW.equals(perm.getAccess())))
-            .map(ResourcePermission::getResource)
-            .collect(Collectors.toSet());
-
-    List<String> unauthorizedEntityTypes =
-        request.getAssets().stream()
-            .map(EntityReference::getType)
-            .filter(entityType -> !editPermissibleResources.contains(entityType))
-            .distinct()
-            .toList();
-
-    if (!unauthorizedEntityTypes.isEmpty()
-        && !subjectContext.isAdmin()
-        && !subjectContext.isBot()) {
-      throw new AuthorizationException(
-          CatalogExceptionMessage.resourcePermissionNotAllowed(
-              user, List.of(MetadataOperation.EDIT_TAGS), unauthorizedEntityTypes));
-    }
+    authorizeBulkAssetsPermission(
+        securityContext, request.getAssets(), MetadataOperation.EDIT_TAGS);
     String jobId = UUID.randomUUID().toString();
     AsyncService.getInstance()
         .executeDatabaseTask(

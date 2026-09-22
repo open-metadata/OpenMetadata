@@ -27,7 +27,8 @@ import { DateTime } from 'luxon';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ExportIcon } from '../../assets/svg/ic-download.svg';
-import { AuditLogFilters, AuditLogList } from '../../components/AuditLog';
+import AuditLogFilters from '../../components/AuditLog/AuditLogFilters.component';
+import AuditLogList from '../../components/AuditLog/AuditLogList.component';
 import '../../components/common/atoms/filters/FilterSelection.less';
 import Banner from '../../components/common/Banner/Banner';
 import DatePicker from '../../components/common/DatePicker/DatePicker';
@@ -336,6 +337,7 @@ const AuditLogsPage = () => {
       }
 
       if (!cancelled) {
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- mutually recursive with pollOnce
         scheduleNextPoll();
       }
     };
@@ -410,8 +412,37 @@ const AuditLogsPage = () => {
     }
   }, [isExporting]);
 
-  const hasActiveFilters =
-    activeFilters.length > 0 || Boolean(searchTerm.trim());
+  const hasActiveSearch = Boolean(searchTerm.trim());
+  const hasActiveFiltersOnly = activeFilters.length > 0;
+  const hasActiveFilters = hasActiveFiltersOnly || hasActiveSearch;
+
+  const renderExportProgress = () =>
+    exportJob?.status === 'IN_PROGRESS' ? (
+      <div className="export-progress-container">
+        <Progress
+          percent={
+            exportJob.total && exportJob.total > 0
+              ? Math.round(((exportJob.progress ?? 0) / exportJob.total) * 100)
+              : 0
+          }
+          size="small"
+          status="active"
+        />
+        <Typography as="p" className="tw:mt-2!" size="text-md">
+          {exportJob.message ?? t('message.exporting')}
+        </Typography>
+      </div>
+    ) : null;
+
+  const renderExportResult = () =>
+    exportJob && exportJob.status !== 'IN_PROGRESS' ? (
+      <Banner
+        className="border-radius"
+        isLoading={isExporting && !exportJob.error}
+        message={exportJob.error ?? exportJob.message ?? ''}
+        type={exportJob.error ? 'error' : 'success'}
+      />
+    ) : null;
 
   return (
     <PageLayoutV1
@@ -457,7 +488,7 @@ const AuditLogsPage = () => {
         {/* Content Paper */}
         <Card className="tw:flex-1 tw:min-h-0 tw:flex tw:flex-col tw:overflow-hidden">
           {/* Filters */}
-          <div className="tw:shrink-0 tw:p-3">
+          <div className="tw:shrink-0 tw:p-3 tw:border-b tw:border-secondary">
             <div className="tw:flex tw:items-center tw:gap-4">
               <div
                 className="tw:shrink-0"
@@ -537,8 +568,14 @@ const AuditLogsPage = () => {
           </div>
 
           {/* List */}
-          <div className="tw:flex-1 tw:min-h-0 tw:overflow-auto">
-            <AuditLogList isLoading={isLoading} logs={logs} />
+          <div className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:relative">
+            <AuditLogList
+              hasActiveFilters={hasActiveFiltersOnly}
+              hasActiveSearch={hasActiveSearch}
+              isLoading={isLoading}
+              logs={logs}
+              onClearFilters={handleClearFilters}
+            />
           </div>
 
           {/* Pagination */}
@@ -607,32 +644,8 @@ const AuditLogsPage = () => {
               }}
             />
           </div>
-          {exportJob?.status === 'IN_PROGRESS' && (
-            <div className="export-progress-container">
-              <Progress
-                percent={
-                  exportJob.total && exportJob.total > 0
-                    ? Math.round(
-                        ((exportJob.progress ?? 0) / exportJob.total) * 100
-                      )
-                    : 0
-                }
-                size="small"
-                status="active"
-              />
-              <Typography as="p" className="tw:mt-2!" size="text-md">
-                {exportJob.message ?? t('message.exporting')}
-              </Typography>
-            </div>
-          )}
-          {exportJob && exportJob.status !== 'IN_PROGRESS' && (
-            <Banner
-              className="border-radius"
-              isLoading={isExporting && !exportJob.error}
-              message={exportJob.error ?? exportJob.message ?? ''}
-              type={exportJob.error ? 'error' : 'success'}
-            />
-          )}
+          {renderExportProgress()}
+          {renderExportResult()}
         </div>
       </Modal>
     </PageLayoutV1>

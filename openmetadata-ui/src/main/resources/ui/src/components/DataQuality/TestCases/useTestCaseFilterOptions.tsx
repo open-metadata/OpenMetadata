@@ -16,12 +16,19 @@ import { debounce, isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
+  AGGREGATE_PAGE_SIZE_LARGE,
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   TIER_CATEGORY,
 } from '../../../constants/constants';
-import { TEST_CASE_FILTERS } from '../../../constants/profiler.constant';
+import {
+  TEST_CASE_DIMENSIONS_OPTION,
+  TEST_CASE_DIMENSION_LABELS,
+  TEST_CASE_FILTERS,
+} from '../../../constants/profiler.constant';
+import { DataQualityDimensions } from '../../../enums/DataQuality.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { getDataQualityDimensions } from '../../../rest/dataQualityDimensionAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTags } from '../../../rest/tagAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -32,6 +39,19 @@ export interface FetchedOption extends DefaultOptionType {
   name?: string;
   subLabel?: string;
 }
+
+/** The unset marker. It has no dimension entity of its own, so it is spelled out here. */
+const NO_DIMENSION_OPTION: FetchedOption = {
+  label: TEST_CASE_DIMENSION_LABELS[DataQualityDimensions.NoDimension],
+  name: TEST_CASE_DIMENSION_LABELS[DataQualityDimensions.NoDimension],
+  value: DataQualityDimensions.NoDimension,
+};
+
+/** Dimension options carry the plain name alongside the label; both paths must set it. */
+const withName = (option: { label: string; value: string }): FetchedOption => ({
+  ...option,
+  name: option.label,
+});
 
 const optionLabel = (name: string, fqn?: string, testId?: string) => (
   <Space data-testid={testId ?? fqn} direction="vertical" size={0}>
@@ -59,7 +79,35 @@ export const useTestCaseFilterOptions = () => {
   const [dataProductOptions, setDataProductOptions] = useState<FetchedOption[]>(
     []
   );
+  const [dimensionOptions, setDimensionOptions] = useState<FetchedOption[]>([]);
   const [isOptionsLoading, setIsOptionsLoading] = useState(false);
+
+  /**
+   * Dimensions are entities now, so the filter has to list whatever is in Settings >
+   * Preferences > Data Quality rather than the shipped eight — otherwise a custom dimension
+   * can be created and assigned to test cases but never filtered on. "No Dimension" stays a
+   * hand-written entry: it is the unset marker and has no dimension entity of its own. Same
+   * fetch the test case and test definition forms already do.
+   */
+  const fetchDimensionOptions = async () => {
+    setIsOptionsLoading(true);
+    try {
+      const { data } = await getDataQualityDimensions({
+        limit: AGGREGATE_PAGE_SIZE_LARGE,
+      });
+      setDimensionOptions([
+        NO_DIMENSION_OPTION,
+        ...data.map((dimension) =>
+          withName({ label: getEntityName(dimension), value: dimension.name })
+        ),
+      ]);
+    } catch {
+      // Degrade to the shipped dimensions rather than to an empty dropdown.
+      setDimensionOptions(TEST_CASE_DIMENSIONS_OPTION.map(withName));
+    } finally {
+      setIsOptionsLoading(false);
+    }
+  };
 
   const fetchTierOptions = async () => {
     try {
@@ -168,31 +216,31 @@ export const useTestCaseFilterOptions = () => {
       search === WILD_CARD_CHAR ? search : `*${search}*`
     );
 
+  const initialOptionsConfig: Record<
+    string,
+    { options: FetchedOption[]; fetch: () => void }
+  > = {
+    [TEST_CASE_FILTERS.tier]: { options: tierOptions, fetch: fetchTierOptions },
+    [TEST_CASE_FILTERS.table]: { options: tableOptions, fetch: fetchTableData },
+    [TEST_CASE_FILTERS.tags]: { options: tagOptions, fetch: fetchTagOptions },
+    [TEST_CASE_FILTERS.service]: {
+      options: serviceOptions,
+      fetch: fetchServiceOptions,
+    },
+    [TEST_CASE_FILTERS.dataProduct]: {
+      options: dataProductOptions,
+      fetch: fetchDataProductOptions,
+    },
+    [TEST_CASE_FILTERS.dimension]: {
+      options: dimensionOptions,
+      fetch: fetchDimensionOptions,
+    },
+  };
+
   const getInitialOptions = (key: string, isLengthCheck = false) => {
-    switch (key) {
-      case TEST_CASE_FILTERS.tier:
-        (isEmpty(tierOptions) || !isLengthCheck) && fetchTierOptions();
-
-        break;
-      case TEST_CASE_FILTERS.table:
-        (isEmpty(tableOptions) || !isLengthCheck) && fetchTableData();
-
-        break;
-      case TEST_CASE_FILTERS.tags:
-        (isEmpty(tagOptions) || !isLengthCheck) && fetchTagOptions();
-
-        break;
-      case TEST_CASE_FILTERS.service:
-        (isEmpty(serviceOptions) || !isLengthCheck) && fetchServiceOptions();
-
-        break;
-      case TEST_CASE_FILTERS.dataProduct:
-        (isEmpty(dataProductOptions) || !isLengthCheck) &&
-          fetchDataProductOptions();
-
-        break;
-      default:
-        break;
+    const entry = initialOptionsConfig[key];
+    if (entry && (isEmpty(entry.options) || !isLengthCheck)) {
+      entry.fetch();
     }
   };
 
@@ -220,8 +268,16 @@ export const useTestCaseFilterOptions = () => {
       [TEST_CASE_FILTERS.tier]: tierOptions,
       [TEST_CASE_FILTERS.service]: serviceOptions,
       [TEST_CASE_FILTERS.dataProduct]: dataProductOptions,
+      [TEST_CASE_FILTERS.dimension]: dimensionOptions,
     }),
-    [tableOptions, tagOptions, tierOptions, serviceOptions, dataProductOptions]
+    [
+      tableOptions,
+      tagOptions,
+      tierOptions,
+      serviceOptions,
+      dataProductOptions,
+      dimensionOptions,
+    ]
   );
 
   const onSearchByKey: Record<string, (search: string) => void> = {
@@ -237,7 +293,9 @@ export const useTestCaseFilterOptions = () => {
     tierOptions,
     serviceOptions,
     dataProductOptions,
+    dimensionOptions,
     isOptionsLoading,
+    fetchDimensionOptions,
     fetchTierOptions,
     fetchTagOptions,
     fetchSearchOptions,

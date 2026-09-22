@@ -10,8 +10,6 @@
 #  limitations under the License.
 """BigTable connection"""
 
-from typing import List, Optional  # noqa: UP035
-
 from google.cloud.bigtable import Client
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -41,7 +39,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-def get_nested_index(lst: list, index: List[int], default=None):  # noqa: UP006
+def get_nested_index(lst: list, index: list[int], default=None):
     try:
         for i in index:
             lst = lst[i]
@@ -98,8 +96,8 @@ class BigTableConnection(BaseConnection[BigTableConnectionConfig, MultiProjectCl
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

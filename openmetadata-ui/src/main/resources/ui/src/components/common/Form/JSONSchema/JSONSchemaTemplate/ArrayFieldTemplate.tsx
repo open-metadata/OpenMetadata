@@ -49,7 +49,7 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
           className={classNames('d-flex items-center w-full', {
             'm-t-sm': index > 0,
           })}
-          key={`${element.key}-${index}`}>
+          key={element.key}>
           <div className="flex-1 array-fields">{element.children}</div>
           {element.hasRemove && (
             <Icon

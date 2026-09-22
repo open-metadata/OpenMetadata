@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/database/mssqlConnection.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "MssqlConnection",
   "description": "Mssql Database Connection Config",
   "type": "object",
@@ -85,6 +85,12 @@
     "ingestAllDatabases": {
       "title": "Ingest All Databases",
       "description": "Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.",
+      "type": "boolean",
+      "default": false
+    },
+    "includeSynonyms": {
+      "title": "Include Synonyms",
+      "description": "Discover SQL Server synonyms and record them as alternate names (aliases) on the table they resolve to. Also enables alias resolution when building lineage.",
       "type": "boolean",
       "default": false
     },

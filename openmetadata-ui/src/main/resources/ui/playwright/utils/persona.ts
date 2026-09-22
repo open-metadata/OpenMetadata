@@ -16,6 +16,26 @@ import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick } from './sidebar';
 
+/**
+ * Opens the user-profile dropdown and clicks the persona with the given
+ * display name, then closes the menu. Suitable for tests that need to switch
+ * the active persona without navigating away from the current page.
+ */
+export const selectPersonaFromDropdown = async (
+  page: Page,
+  personaDisplayName: string
+) => {
+  await page.getByTestId('dropdown-profile').click();
+  await page.locator('[role="menu"].profile-dropdown').waitFor({
+    state: 'visible',
+  });
+  await page
+    .getByTestId('persona-label')
+    .filter({ hasText: personaDisplayName })
+    .click();
+  await page.keyboard.press('Escape');
+};
+
 export const updatePersonaDisplayName = async ({
   page,
   displayName,

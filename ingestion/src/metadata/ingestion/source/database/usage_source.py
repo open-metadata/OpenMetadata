@@ -16,8 +16,8 @@ import csv
 import os
 import traceback
 from abc import ABC
+from collections.abc import Iterable
 from datetime import datetime, timedelta, timezone
-from typing import Iterable  # noqa: UP035
 
 from sqlalchemy import text
 

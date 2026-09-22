@@ -49,6 +49,7 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
 )
 from metadata.ingestion.connections.connection import BaseConnection
+from metadata.ingestion.connections.strategies import ClientStrategy
 from metadata.utils.filters import filter_by_schema
 
 if TYPE_CHECKING:
@@ -56,6 +57,7 @@ if TYPE_CHECKING:
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.classifier import Matcher
     from metadata.generated.schema.type.filterPattern import FilterPattern
+    from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 
 # Cap how many schemas the test connection probes so a catalog with many
 # databases cannot exhaust the test-connection timeout.
@@ -232,47 +234,93 @@ class AthenaChecks:
         )
 
 
-class AthenaConnection(BaseConnection[AthenaConnectionConfig, Engine]):
-    @staticmethod
-    def get_connection_url(connection: AthenaConnectionConfig) -> str:
-        """
-        Method to get connection url
-        """
-        aws_access_key_id = connection.awsConfig.awsAccessKeyId
-        aws_secret_access_key = connection.awsConfig.awsSecretAccessKey
-        aws_session_token = connection.awsConfig.awsSessionToken
-        if connection.awsConfig.assumeRoleArn:
-            assume_configs = AWSClient.get_assume_role_config(connection.awsConfig)
-            if assume_configs:
-                aws_access_key_id = assume_configs.accessKeyId
-                aws_secret_access_key = assume_configs.secretAccessKey
-                aws_session_token = assume_configs.sessionToken
+def _get_connection_url(
+    connection: AthenaConnectionConfig,
+    aws_access_key_id: str | None = None,
+    aws_secret_access_key: CustomSecretStr | None = None,
+    aws_session_token: str | None = None,
+) -> str:
+    url = f"{connection.scheme.value}://"  # pyright: ignore[reportOptionalMemberAccess]
+    if aws_access_key_id:
+        url += aws_access_key_id
+        if aws_secret_access_key:
+            url += f":{aws_secret_access_key.get_secret_value()}"
+    else:
+        url += ":"
+    url += f"@athena.{connection.awsConfig.awsRegion}.amazonaws.com:443"
 
-        url = f"{connection.scheme.value}://"  # pyright: ignore[reportOptionalMemberAccess]
-        if aws_access_key_id:
-            url += aws_access_key_id
-            if aws_secret_access_key:
-                url += f":{aws_secret_access_key.get_secret_value()}"
-        else:
-            url += ":"
-        url += f"@athena.{connection.awsConfig.awsRegion}.amazonaws.com:443"
+    url += f"?s3_staging_dir={quote_plus(str(connection.s3StagingDir))}"
+    if connection.workgroup:
+        url += f"&work_group={connection.workgroup}"
+    if aws_session_token:
+        url += f"&aws_session_token={quote_plus(aws_session_token)}"
+    if connection.catalogId:
+        url += f"&catalog_name={quote_plus(connection.catalogId)}"
 
-        url += f"?s3_staging_dir={quote_plus(str(connection.s3StagingDir))}"
-        if connection.workgroup:
-            url += f"&work_group={connection.workgroup}"
-        if aws_session_token:
-            url += f"&aws_session_token={quote_plus(aws_session_token)}"
-        if connection.catalogId:
-            url += f"&catalog_name={quote_plus(connection.catalogId)}"
+    return url
 
-        return url
 
-    def _get_client(self) -> Engine:
-        engine = create_generic_db_connection(
-            connection=self.service_connection,
-            get_connection_url_fn=self.get_connection_url,
+def get_connection_url(connection: AthenaConnectionConfig) -> str:
+    """Build the existing Athena URL with static AWS credentials."""
+    aws_access_key_id = connection.awsConfig.awsAccessKeyId
+    aws_secret_access_key = connection.awsConfig.awsSecretAccessKey
+    aws_session_token = connection.awsConfig.awsSessionToken
+    if connection.awsConfig.assumeRoleArn:
+        assume_configs = AWSClient.get_assume_role_config(connection.awsConfig)
+        if assume_configs:
+            aws_access_key_id = assume_configs.accessKeyId
+            aws_secret_access_key = assume_configs.secretAccessKey
+            aws_session_token = assume_configs.sessionToken
+    return _get_connection_url(
+        connection,
+        aws_access_key_id,
+        aws_secret_access_key,
+        aws_session_token,
+    )
+
+
+def get_connection_url_without_credentials(connection: AthenaConnectionConfig) -> str:
+    """Build an Athena URL that delegates authentication to a Boto3 session."""
+    return _get_connection_url(connection)
+
+
+class AthenaStandardStrategy(ClientStrategy[AthenaConnectionConfig, Engine]):
+    """Build the standard Athena engine without altering its connection path."""
+
+    def build(self) -> Engine:
+        return create_generic_db_connection(
+            connection=self._connection,
+            get_connection_url_fn=get_connection_url,
             get_connection_args_fn=get_connection_args_common,
         )
+
+
+class AthenaAssumeRoleStrategy(ClientStrategy[AthenaConnectionConfig, Engine]):
+    """Build an Athena engine that refreshes assumed-role credentials."""
+
+    def build(self) -> Engine:
+        connection_args = get_connection_args_common(self._connection)
+        if "session" in connection_args:
+            raise ValueError("Athena connectionArguments must not define 'session' when assumeRoleArn is configured.")
+        session = AWSClient(self._connection.awsConfig).create_session()
+        return create_generic_db_connection(
+            connection=self._connection,
+            get_connection_url_fn=get_connection_url_without_credentials,
+            get_connection_args_fn=lambda _: {**connection_args, "session": session},
+        )
+
+
+class AthenaConnection(BaseConnection[AthenaConnectionConfig, Engine]):
+    get_connection_url = staticmethod(get_connection_url)
+    get_connection_url_without_credentials = staticmethod(get_connection_url_without_credentials)
+
+    def _get_client(self) -> Engine:
+        if self.service_connection.awsConfig.assumeRoleArn:
+            strategy: ClientStrategy[AthenaConnectionConfig, Engine] = AthenaAssumeRoleStrategy(self.service_connection)
+        else:
+            strategy = AthenaStandardStrategy(self.service_connection)
+
+        engine = strategy.build()
         self._on_close(engine.dispose)
         return engine
 

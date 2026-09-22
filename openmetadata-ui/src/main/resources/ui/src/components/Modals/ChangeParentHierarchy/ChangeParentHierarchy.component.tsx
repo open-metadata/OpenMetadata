@@ -12,17 +12,13 @@
  */
 
 import { Checkbox, Form, Modal } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
 import { SOCKET_EVENTS } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { EntityType } from '../../../enums/entity.enum';
-import { TagSource } from '../../../generated/entity/data/container';
-import { Glossary } from '../../../generated/entity/data/glossary';
 import {
   EntityStatus,
   GlossaryTerm,
@@ -34,11 +30,44 @@ import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Banner from '../../common/Banner/Banner';
+import { GlossaryPickerValue } from '../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import {
   ChangeParentHierarchyProps,
   MoveGlossaryTermWebsocketResponse,
 } from './ChangeParentHierarchy.interface';
+
+const MAX_BUFFERED_EVENTS = 100;
+
+// `Form.Item` injects a string value; the picker takes `TagLabel[]`.
+const ParentPicker = ({
+  excludeFqn,
+  placeholder,
+  selected,
+  onParentSelected,
+  onChange,
+}: {
+  excludeFqn: string;
+  placeholder: string;
+  selected: GlossaryPickerValue | null;
+  onParentSelected: (nodes: GlossaryPickerValue[]) => void;
+  onChange?: (value?: string) => void;
+}) => (
+  <GlossaryTermPicker
+    selectGlossaries
+    data-testid="change-parent-select"
+    // A term cannot be moved under itself.
+    excludeFqns={[excludeFqn]}
+    multiple={false}
+    placeholder={placeholder}
+    value={selected ? [selected] : []}
+    onChange={(terms, nodes) => {
+      onParentSelected(nodes);
+      onChange?.(terms[0]?.tagFQN);
+    }}
+  />
+);
 
 const ChangeParentHierarchy = ({
   selectedData,
@@ -53,33 +82,27 @@ const ChangeParentHierarchy = ({
   });
   const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
   const [selectedParent, setSelectedParent] =
-    useState<DefaultOptionType | null>(null);
+    useState<GlossaryPickerValue | null>(null);
   const [moveJob, setMoveJob] = useState<MoveGlossaryTermWebsocketResponse>();
+  const submittedJobId = useRef<string>();
+  const awaitingResponse = useRef(false);
+  const bufferedEvents = useRef(
+    new Map<string, MoveGlossaryTermWebsocketResponse>()
+  );
 
   const hasReviewers = Boolean(
     selectedData.reviewers && selectedData.reviewers.length > 0
   );
 
-  const handleTagSelection = (
-    option: DefaultOptionType | DefaultOptionType[]
-  ) => {
-    // Handle both single option and array of options
-    const tags = Array.isArray(option) ? option : [option];
-
-    if (tags.length > 0) {
-      const selectedOption = tags[0];
+  const handleParentSelection = (options: GlossaryPickerValue[]) => {
+    if (options.length > 0) {
+      const selectedOption = options[0];
       setSelectedParent(selectedOption);
-      form.setFieldsValue({ parent: selectedOption.value as string });
+      form.setFieldsValue({ parent: selectedOption.tagFQN });
     } else {
       setSelectedParent(null);
       form.setFieldsValue({ parent: undefined });
     }
-  };
-
-  const handleTreeAsyncSelectCancel = () => {
-    // Reset the selected parent when user cancels the tree selection
-    setSelectedParent(null);
-    form.setFieldsValue({ parent: undefined });
   };
 
   const handleMoveSuccess = useCallback(
@@ -113,13 +136,14 @@ const ChangeParentHierarchy = ({
   );
 
   const handleSubmit = async () => {
-    if (!selectedParent?.data) {
+    if (!selectedParent?.entity) {
       return;
     }
 
     try {
       setLoadingState((prev) => ({ ...prev, isSaving: true }));
-      const parent = selectedParent.data as Glossary | GlossaryTerm;
+      awaitingResponse.current = true;
+      const parent = selectedParent.entity;
       const response = await moveGlossaryTerm(selectedData.id, {
         id: parent.id,
         type: (parent as GlossaryTerm).glossary
@@ -127,6 +151,17 @@ const ChangeParentHierarchy = ({
           : EntityType.GLOSSARY,
         fullyQualifiedName: parent.fullyQualifiedName,
       });
+
+      submittedJobId.current = response.jobId;
+      awaitingResponse.current = false;
+
+      const early = bufferedEvents.current.get(response.jobId);
+      bufferedEvents.current.clear();
+      if (early) {
+        handleMoveJobUpdate(early);
+
+        return;
+      }
 
       const jobData: MoveGlossaryTermWebsocketResponse = {
         jobId: response.jobId,
@@ -136,18 +171,28 @@ const ChangeParentHierarchy = ({
 
       setMoveJob(jobData);
     } catch (error) {
+      awaitingResponse.current = false;
       showErrorToast(error as AxiosError);
       setLoadingState((prev) => ({ ...prev, isSaving: false }));
     }
   };
 
-  // WebSocket listener for move job updates
   useEffect(() => {
     if (socket) {
       socket.on(SOCKET_EVENTS.MOVE_GLOSSARY_TERM_CHANNEL, (moveResponse) => {
         if (moveResponse) {
-          const moveResponseData = JSON.parse(moveResponse);
-          handleMoveJobUpdate(moveResponseData);
+          const data: MoveGlossaryTermWebsocketResponse =
+            JSON.parse(moveResponse);
+
+          if (submittedJobId.current && data.jobId === submittedJobId.current) {
+            handleMoveJobUpdate(data);
+          } else if (
+            awaitingResponse.current &&
+            data.jobId &&
+            bufferedEvents.current.size < MAX_BUFFERED_EVENTS
+          ) {
+            bufferedEvents.current.set(data.jobId, data);
+          }
         }
       });
     }
@@ -203,19 +248,13 @@ const ChangeParentHierarchy = ({
               }),
             },
           ]}>
-          <TreeAsyncSelectList
-            hasNoActionButtons
-            isParentSelectable
-            data-testid="change-parent-select"
-            filterOptions={[selectedData.fullyQualifiedName ?? '']}
-            isMultiSelect={false}
-            open={false}
+          <ParentPicker
+            excludeFqn={selectedData.fullyQualifiedName ?? ''}
             placeholder={t('label.select-field', {
               field: t('label.parent'),
             })}
-            tagType={TagSource.Glossary}
-            onCancel={handleTreeAsyncSelectCancel}
-            onChange={handleTagSelection}
+            selected={selectedParent}
+            onParentSelected={handleParentSelection}
           />
         </Form.Item>
 

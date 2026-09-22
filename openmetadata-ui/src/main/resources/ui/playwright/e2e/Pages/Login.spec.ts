@@ -10,14 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { JWT_EXPIRY_TIME_MAP, LOGIN_ERROR_MESSAGE } from '../../constant/login';
+import { expect, test } from '../../support/fixtures/base';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   clickOutside,
+  generateRandomUsername,
   getDefaultAdminAPIContext,
   redirectToHomePage,
   toastNotification,
@@ -85,28 +86,34 @@ test.describe(
       await page.locator('[data-testid="signup"]').click();
 
       // Enter credentials
-      await page.locator('#firstName').fill(CREDENTIALS.firstName);
+      await page.locator('input[name="firstName"]').fill(CREDENTIALS.firstName);
 
-      await expect(page.locator('#firstName')).toHaveValue(
+      await expect(page.locator('input[name="firstName"]')).toHaveValue(
         CREDENTIALS.firstName
       );
 
-      await page.locator('#lastName').fill(CREDENTIALS.lastName);
+      await page.locator('input[name="lastName"]').fill(CREDENTIALS.lastName);
 
-      await expect(page.locator('#lastName')).toHaveValue(CREDENTIALS.lastName);
+      await expect(page.locator('input[name="lastName"]')).toHaveValue(
+        CREDENTIALS.lastName
+      );
 
-      await page.locator('#email').fill(CREDENTIALS.email);
+      await page.locator('input[name="email"]').fill(CREDENTIALS.email);
 
-      await expect(page.locator('#email')).toHaveValue(CREDENTIALS.email);
+      await expect(page.locator('input[name="email"]')).toHaveValue(
+        CREDENTIALS.email
+      );
 
-      await page.locator('#password').fill(CREDENTIALS.password);
+      await page.locator('input[name="password"]').fill(CREDENTIALS.password);
 
-      await expect(page.locator('#password')).toHaveAttribute(
+      await expect(page.locator('input[name="password"]')).toHaveAttribute(
         'type',
         'password'
       );
 
-      await page.locator('#confirmPassword').fill(CREDENTIALS.password);
+      await page
+        .locator('input[name="confirmPassword"]')
+        .fill(CREDENTIALS.password);
 
       const createUserResponse = page.waitForResponse(`/api/v1/users/signup`);
       // Click on create account button
@@ -116,13 +123,15 @@ test.describe(
       await expect(page).toHaveURL(`/signin`);
 
       // Login with the created user
-      await page.fill('#email', CREDENTIALS.email);
-      await page.fill('#password', CREDENTIALS.password);
+      await page.fill('input[name="email"]', CREDENTIALS.email);
+      await page.fill('input[name="password"]', CREDENTIALS.password);
       const loginResponse = page.waitForResponse(`/api/v1/auth/login`);
       await page.locator('[data-testid="login"]').click();
       await loginResponse;
 
-      await expect(page).toHaveURL(`/my-data`);
+      await expect(page).toHaveURL(
+        (url) => url.pathname === '/' || url.pathname === '/my-data'
+      );
 
       // Verify user profile
       await page.locator('[data-testid="dropdown-profile"]').click();
@@ -132,11 +141,47 @@ test.describe(
       );
     });
 
+    // The UI base64-encodes the password before POSTing it to
+    // /api/v1/auth/login and the server decodes those bytes as UTF-8. `btoa`
+    // maps every character to a single Latin-1 byte, so a non-ASCII password
+    // was reconstructed as a different string and the login was rejected —
+    // issue #28694.
+    test('Signin with a password containing non-ASCII characters', async ({
+      page,
+      browser,
+    }) => {
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
+      const nonAsciiUser = new UserClass({
+        ...generateRandomUsername(),
+        password: 'T\u00ebst\u00a7123\u00a3aA!',
+      });
+
+      try {
+        await nonAsciiUser.create(apiContext);
+        await nonAsciiUser.login(page);
+
+        await expect(page).toHaveURL(
+          (url) => !url.pathname.includes('/signin')
+        );
+
+        await page.getByTestId('dropdown-profile').click();
+
+        await expect(page.getByTestId('nav-user-name')).toContainText(
+          `${nonAsciiUser.data.firstName}${nonAsciiUser.data.lastName}`
+        );
+      } finally {
+        await nonAsciiUser.delete(apiContext);
+        await afterAction();
+      }
+    });
+
     test('Signin using invalid credentials', async ({ page }) => {
       await page.goto(`/signin`);
       // Login with invalid email
-      await page.fill('#email', invalidEmail);
-      await page.fill('#password', CREDENTIALS.password);
+      await page.fill('input[name="email"]', invalidEmail);
+      await page.fill('input[name="password"]', CREDENTIALS.password);
       const loginResponse = page.waitForResponse(`/api/v1/auth/login`);
       await page.locator('[data-testid="login"]').click();
       await loginResponse;
@@ -144,8 +189,8 @@ test.describe(
       await toastNotification(page, LOGIN_ERROR_MESSAGE);
 
       // Login with invalid password
-      await page.fill('#email', CREDENTIALS.email);
-      await page.fill('#password', invalidPassword);
+      await page.fill('input[name="email"]', CREDENTIALS.email);
+      await page.fill('input[name="password"]', invalidPassword);
       const loginResponse2 = page.waitForResponse(`/api/v1/auth/login`);
       await page.locator('[data-testid="login"]').click();
       await loginResponse2;
@@ -161,7 +206,7 @@ test.describe(
       await expect(page).toHaveURL(`/forgot-password`);
 
       // Enter email
-      await page.locator('#email').fill(CREDENTIALS.email);
+      await page.locator('input[name="email"]').fill(CREDENTIALS.email);
       // Click on Forgot button
       await page.getByRole('button', { name: 'Send Login Link' }).click();
       await page.locator('[data-testid="go-back-button"]').click();

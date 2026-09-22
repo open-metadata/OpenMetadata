@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -20,6 +20,7 @@ import {
 } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import {
   mockedGlossaryTerms,
@@ -152,6 +153,7 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockImplementation(() => <div>Owner</div>),
   EmptyPlaceholder: jest
     .fn()
     .mockImplementation(
@@ -172,13 +174,26 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     ),
 }));
 
+// The real wrapper div in GlossaryTermTab.component.tsx now carries these
+// same testids (for Playwright), so the mocks render plain content instead
+// of duplicating them — a duplicate testid makes screen.getByTestId ambiguous.
+jest.mock('../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(({ description }: { description?: ReactNode }) => (
+      <div>{description}</div>
+    )),
+}));
+
+jest.mock('../../common/EmptyPlaceholder/NoSearchResultsPlaceholder', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => <div />),
+}));
+
 jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
-
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
-}));
 
 jest.mock('../../../utils/TableColumn.util', () => ({
   ownerTableObject: jest.fn().mockReturnValue([
@@ -187,7 +202,7 @@ jest.mock('../../../utils/TableColumn.util', () => ({
       dataIndex: 'owners',
       key: 'owners',
       width: 180,
-      render: () => <div>OwnerLabel</div>,
+      render: () => <div>Owner</div>,
     },
   ]),
   descriptionTableObject: jest.fn().mockImplementation(() => []),
@@ -273,7 +288,9 @@ jest.mock('../../common/Table/TableV2', () =>
         {dataSource.length === 0
           ? !loading && locale?.emptyText
           : dataSource.map((record, index) => (
-              <div data-testid={`glossary-row-${index}`} key={index}>
+              <div
+                data-testid={`glossary-row-${index}`}
+                key={record.fullyQualifiedName as string}>
                 {expandable?.expandIcon?.({
                   expanded: false,
                   onExpand: (rec) => expandable?.onExpand?.(true, rec),
@@ -493,7 +510,7 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        const ownerLabels = screen.getAllByText('OwnerLabel');
+        const ownerLabels = screen.getAllByText('Owner');
 
         expect(ownerLabels.length).toBeGreaterThan(0);
       });
@@ -574,6 +591,78 @@ describe('Test GlossaryTermTab component', () => {
 
         expect(statusDropdown).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('Filter/Search Empty State', () => {
+    beforeEach(() => {
+      // Unlike the sibling blocks above, this one needs the table's own
+      // zero-rows branch (`glossaryTerms.length > 0` in renderTableSection),
+      // which reads the store's glossaryChildTerms directly — not the
+      // mocked API response, since setGlossaryChildTerms is a no-op mock
+      // here. A prior describe block's beforeEach leaves this non-empty, so
+      // it's reset here rather than copying the sibling pattern verbatim.
+      mockUseGlossaryStore.glossaryChildTerms = [];
+    });
+
+    it('should render NoSearchResultsPlaceholder for the empty-terms + active-search branch', async () => {
+      // The table's own zero-rows state comes from the store's
+      // glossaryChildTerms (reset to [] above), not this response — so this
+      // covers the isSearchActive placeholder-selection branch, not a real
+      // API-driven zero-result search flow.
+      mockSearchGlossaryTermsPaginated.mockResolvedValue({
+        data: [],
+        paging: { total: 0, after: null },
+      });
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      const searchInput = await screen.findByPlaceholderText(
+        'label.search-entity'
+      );
+      fireEvent.change(searchInput, { target: { value: 'doesnotexist' } });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('no-search-results-placeholder')
+        ).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByTestId('no-filtered-results-placeholder')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should render NoFilteredResultsPlaceholder with the translated description for the empty-terms + no-search branch', async () => {
+      // As above, the store's glossaryChildTerms (not this response's
+      // `data`) is what makes the table show zero rows; `paging.total: 5`
+      // only exists to keep totalTermsCount non-zero so the render reaches
+      // this branch instead of the "Add first term" onboarding placeholder.
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValue({
+        data: [],
+        paging: { total: 5, after: null },
+      });
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        const placeholder = screen.getByTestId(
+          'no-filtered-results-placeholder'
+        );
+
+        expect(placeholder).toBeInTheDocument();
+        expect(placeholder).toHaveTextContent(
+          'message.filter-no-matching-terms'
+        );
+      });
+
+      expect(
+        screen.queryByTestId('no-search-results-placeholder')
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -776,7 +865,8 @@ describe('Test GlossaryTermTab component', () => {
             status: 'Open',
             category: 'Approval',
             type: 'RequestApproval',
-            limit: 100000,
+            aboutEntity: mockedGlossaryTerms[0].fullyQualifiedName,
+            limit: PAGE_SIZE_LARGE,
             fields: 'about,assignees',
           })
         );
@@ -794,7 +884,8 @@ describe('Test GlossaryTermTab component', () => {
             status: 'Open',
             category: 'Approval',
             type: 'RequestApproval',
-            limit: 100000,
+            aboutEntity: mockedGlossaryTerms[0].fullyQualifiedName,
+            limit: PAGE_SIZE_LARGE,
             fields: 'about,assignees',
           })
         );
@@ -1052,9 +1143,10 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        const tagIcon = screen.getByTestId('tag-icon');
-
-        expect(tagIcon).toBeInTheDocument();
+        expect(screen.getByTestId('icon-image')).toHaveAttribute(
+          'src',
+          'https://example.com/icon.png'
+        );
       });
     });
 

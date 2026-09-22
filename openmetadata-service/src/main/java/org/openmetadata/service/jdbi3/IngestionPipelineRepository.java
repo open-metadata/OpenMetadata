@@ -85,6 +85,7 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 import org.openmetadata.service.resources.services.ingestionpipelines.ProgressSseManager;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -99,6 +100,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       "sourceConfig,airflowConfig,loggerLevel,enabled,deployed,processingEngine";
   private static final String PATCH_FIELDS =
       "sourceConfig,airflowConfig,loggerLevel,enabled,deployed,processingEngine";
+  private static final String SOURCE_CONFIG_TYPE = "type";
+  private static final String SOURCE_CONFIG_TYPE_REQUIRED = "sourceConfig.config.type is required";
+  private static final String SOURCE_CONFIG_OBJECT_REQUIRED =
+      "sourceConfig.config must be an object with type";
 
   private static final String PIPELINE_STATUS_JSON_SCHEMA = "ingestionPipelineStatus";
   public static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
@@ -510,6 +515,44 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public void prepare(IngestionPipeline ingestionPipeline, boolean update) {
     var service = getCachedParentOrLoad(ingestionPipeline.getService(), "", Include.NON_DELETED);
     ingestionPipeline.setService(service.getEntityReference());
+    validateSourceConfigHasType(ingestionPipeline);
+  }
+
+  static void validateSourceConfigHasType(IngestionPipeline ingestionPipeline) {
+    Object config = getRequiredSourceConfig(ingestionPipeline);
+    Map<?, ?> configMap = getSourceConfigMap(config);
+    if (!hasSourceConfigType(config, configMap)) {
+      throw new BadRequestException(SOURCE_CONFIG_TYPE_REQUIRED);
+    }
+  }
+
+  private static Object getRequiredSourceConfig(IngestionPipeline ingestionPipeline) {
+    if (ingestionPipeline.getSourceConfig() == null
+        || ingestionPipeline.getSourceConfig().getConfig() == null) {
+      throw new BadRequestException(SOURCE_CONFIG_TYPE_REQUIRED);
+    }
+    return ingestionPipeline.getSourceConfig().getConfig();
+  }
+
+  private static Map<?, ?> getSourceConfigMap(Object config) {
+    try {
+      return config instanceof Map<?, ?> map ? map : JsonUtils.getMap(config);
+    } catch (IllegalArgumentException e) {
+      throw new BadRequestException(SOURCE_CONFIG_OBJECT_REQUIRED);
+    }
+  }
+
+  private static boolean hasSourceConfigType(Object config, Map<?, ?> configMap) {
+    Object type = configMap.get(SOURCE_CONFIG_TYPE);
+    return type instanceof String typeValue && !typeValue.isBlank()
+        || !(config instanceof Map<?, ?>) && type instanceof Enum<?>;
+  }
+
+  @Override
+  protected IngestionPipeline restorePatchSecrets(
+      IngestionPipeline original, IngestionPipeline updated) {
+    EntityMaskerFactory.getEntityMasker().unmaskIngestionPipeline(updated, original);
+    return updated;
   }
 
   protected boolean requiresRedeployment(IngestionPipeline original, IngestionPipeline updated) {
@@ -743,7 +786,17 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
    */
   @Override
   protected void postDelete(IngestionPipeline entity, boolean hardDelete) {
-    postDelete(entity, hardDelete, false);
+    // Inside an ancestor's cascade the user asked to delete a service, not this DAG. Letting an
+    // unreachable Airflow propagate here aborted the entire subtree delete and rolled the rows
+    // back, so a service with any ingestion pipeline under it became undeletable whenever the
+    // scheduler was down. A direct delete of the pipeline itself still surfaces the failure.
+    boolean cascading = EntityRepository.isInHardDeleteCascade();
+    if (postDelete(entity, hardDelete, cascading) && cascading) {
+      LOG.warn(
+          "Ingestion runner unreachable during cascade delete; DAG left behind [pipelineFqn={}, pipelineId={}]",
+          entity.getFullyQualifiedName(),
+          entity.getId());
+    }
   }
 
   /**
@@ -1595,6 +1648,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public PipelineServiceClientResponse deployIngestionPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    validateSourceConfigHasType(ingestionPipeline);
     applyStreamableLogsConfig(ingestionPipeline);
     return pipelineServiceClient.deployPipeline(ingestionPipeline, service);
   }

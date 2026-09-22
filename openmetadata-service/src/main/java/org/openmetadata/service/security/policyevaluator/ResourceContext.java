@@ -282,6 +282,23 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
    * never sees less than it did before.
    */
   private Fields authorizationFields() {
+    Fields securityFields = authorizationFields(entityRepository);
+    Fields result = securityFields;
+    if (requestedFields != null) {
+      Set<String> merged = new HashSet<>(securityFields.getFieldList());
+      merged.addAll(requestedFields.getFieldList());
+      result = new Fields(merged);
+    }
+    return result;
+  }
+
+  /**
+   * The same bounded policy attributes as above, for a caller that loads the entity itself and then
+   * hands it to the pre-resolved constructor. That path never runs {@link #resolveEntity()}, so
+   * without this the entity arrives with whatever fields the caller happened to ask for and every
+   * unloaded attribute misfires its condition. Exposed so the two cannot drift.
+   */
+  public static Fields authorizationFields(EntityRepository<?> entityRepository) {
     String fields = "";
     if (entityRepository.isSupportsOwners()) {
       fields = EntityUtil.addField(fields, Entity.FIELD_OWNERS);
@@ -298,14 +315,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     if (entityRepository.isSupportsCertification()) {
       fields = EntityUtil.addField(fields, Entity.FIELD_CERTIFICATION);
     }
-    Fields securityFields = entityRepository.getFields(fields);
-    Fields result = securityFields;
-    if (requestedFields != null) {
-      Set<String> merged = new HashSet<>(securityFields.getFieldList());
-      merged.addAll(requestedFields.getFieldList());
-      result = new Fields(merged);
-    }
-    return result;
+    return entityRepository.getFields(fields);
   }
 
   private Include resolveInclude() {
