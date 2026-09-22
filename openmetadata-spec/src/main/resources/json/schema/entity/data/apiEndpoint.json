@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/data/apiEndpoint.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "APIEndpoint",
   "$comment": "@om-entity-type",
   "description": "This schema defines the APIEndpoint entity. An APIEndpoint is a specific endpoint of an API that is part of an API Collection.",

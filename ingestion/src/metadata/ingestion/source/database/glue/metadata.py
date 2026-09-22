@@ -49,6 +49,7 @@ from metadata.generated.schema.type.basic import (
     EntityName,
     FullyQualifiedEntityName,
     Markdown,
+    SqlQuery,
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -75,6 +76,7 @@ from metadata.ingestion.source.database.glue.models import (
     StorageDetails,
     TablePage,
 )
+from metadata.ingestion.source.database.glue.utils import get_schema_definition
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
@@ -289,6 +291,15 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
                 try:
                     table_name = table.Name
                     table_name = self.standardize_table_name(schema_name, table_name)
+                    # Glue types a view as VIRTUAL_VIEW whatever the table format underneath is,
+                    # so this stays the one answer to "is this a view" that the source works from.
+                    is_view = table.TableType == "VIRTUAL_VIEW"
+                    if is_view and not self.source_config.includeViews:
+                        logger.debug("Skipping view [%s]: includeViews is off", table_name)
+                        continue
+                    if not is_view and not self.source_config.includeTables:
+                        logger.debug("Skipping table [%s]: includeTables is off", table_name)
+                        continue
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
@@ -338,7 +349,9 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
         table_name, table_type = table_name_and_type
         table = self.context.get().table_data
         table_constraints = None
-        storage_descriptor = table.StorageDescriptor
+        # A view can come back with an explicit null storage descriptor, which the model default
+        # does not cover, and this runs before the try below that would report the failure.
+        storage_descriptor = table.StorageDescriptor or StorageDetails()
         database_name = self.context.get().database
         schema_name = self.context.get().database_schema
         if storage_descriptor.Location:
@@ -348,10 +361,15 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
             )
         try:
             columns = self.get_columns(storage_descriptor)
+            # An Iceberg view is typed Iceberg rather than View, so keying off the Glue type
+            # keeps it from being the one kind of view that loses its definition.
+            is_view = table.TableType == "VIRTUAL_VIEW"
+            schema_definition = get_schema_definition(table, schema_name, table_name) if is_view else None
             table_request = CreateTableRequest(
                 name=EntityName(table_name),
                 tableType=table_type,
                 description=table.Description,
+                schemaDefinition=SqlQuery(schema_definition) if schema_definition else None,
                 columns=list(columns),
                 tableConstraints=table_constraints,
                 databaseSchema=FullyQualifiedEntityName(
@@ -516,7 +534,7 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
 
     @classmethod
     def get_format(cls, storage: StorageDetails) -> FileFormat | None:
-        library = storage.SerdeInfo.SerializationLibrary
+        library = storage.SerdeInfo.SerializationLibrary if storage.SerdeInfo else None
         if library is None:
             return None
         if library.endswith(".LazySimpleSerDe"):
