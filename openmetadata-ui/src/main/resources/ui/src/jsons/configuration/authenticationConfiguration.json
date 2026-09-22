@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AuthenticationConfiguration",
   "description": "This schema defines the Authentication Configuration.",
   "type": "object",
@@ -114,7 +113,7 @@
     },
     "jwtPrincipalClaims": {
       "title": "Jwt Principal Claims",
-      "description": "Jwt Principal Claim",
+      "description": "[DEPRECATED: Use 'emailClaim' instead] Use this claim from the JWT to identify the principal/subject of the token. Defaults are sub, email, preferred_username, name, upn, email_verified",
       "type": "array",
       "items": {
         "type": "string"
@@ -122,12 +121,20 @@
     },
     "jwtPrincipalClaimsMapping": {
       "title": "Jwt Principal Claims Mapping",
-      "description": "Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or 'email'. Both username and email mappings are required.",
+      "description": "[DEPRECATED: Use 'emailClaim' and 'displayNameClaim' instead] Use these claims from the JWT to identify the principal/subject and extract email. Format: 'username:claim_name,email:claim_name'",
       "type": "array",
       "items": {
         "type": "string",
         "pattern": "^(username|email):[a-zA-Z0-9_-]+$"
       }
+    },
+    "emailClaim": {
+      "description": "JWT claim name containing the user's email address. When omitted, OpenMetadata continues using the legacy jwtPrincipalClaims flow for backward compatibility.",
+      "type": "string"
+    },
+    "displayNameClaim": {
+      "description": "JWT claim name containing the user's display name. Used only when emailClaim is configured.",
+      "type": "string"
     },
     "jwtTeamClaimMapping": {
       "title": "Jwt Team Claim Mapping",
@@ -143,7 +150,6 @@
     "ldapConfiguration": {
       "title": "LDAP Configuration",
       "description": "LDAP Configuration in case the Provider is LDAP",
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "type": "object",
       "javaType": "org.openmetadata.schema.auth.LdapConfiguration",
       "properties": {
@@ -247,14 +253,12 @@
         },
         "trustStoreConfig": {
           "description": "Truststore Configuration",
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "TruststoreConfig",
           "type": "object",
           "javaType": "org.openmetadata.schema.auth.ldapTrustStoreConfig.TruststoreConfig",
           "properties": {
             "customTrustManagerConfig": {
               "description": "CustomTrust Configuration",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "CustomTrustManagerConfig",
               "type": "object",
               "javaType": "org.openmetadata.schema.auth.ldapTrustStoreConfig.CustomTrustManagerConfig",
@@ -286,7 +290,6 @@
             },
             "hostNameConfig": {
               "description": "HostName Configuration",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "HostNameConfig",
               "type": "object",
               "javaType": "org.openmetadata.schema.auth.ldapTrustStoreConfig.HostNameConfig",
@@ -308,7 +311,6 @@
             },
             "jvmDefaultConfig": {
               "description": "JVMDefault Configuration",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "JVMDefaultConfig",
               "type": "object",
               "javaType": "org.openmetadata.schema.auth.ldapTrustStoreConfig.JVMDefaultConfig",
@@ -323,7 +325,6 @@
             },
             "trustAllConfig": {
               "description": "TrustAll Configuration",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "TrustAllConfig",
               "type": "object",
               "javaType": "org.openmetadata.schema.auth.ldapTrustStoreConfig.TrustAllConfig",
@@ -353,7 +354,6 @@
     "samlConfiguration": {
       "title": "Saml Configuration",
       "description": "Saml Configuration that is applicable only when the provider is Saml",
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "type": "object",
       "javaType": "org.openmetadata.catalog.security.client.SamlSSOClientConfig",
       "definitions": {
@@ -655,7 +655,6 @@
     "oidcConfiguration": {
       "title": "Oidc Configuration",
       "description": "Oidc Configuration for Confidential Client Type",
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "type": "object",
       "javaType": "org.openmetadata.schema.security.client.OidcClientConfig",
       "properties": {
@@ -788,8 +787,7 @@
   },
   "required": [
     "provider",
-    "providerName",
-    "jwtPrincipalClaims"
+    "providerName"
   ],
   "allOf": [
     {

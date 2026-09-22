@@ -12,6 +12,7 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { DQ_FILTER_TYPES } from '../../../../constants/DataQuality.constants';
 import DqFilterChip from './DqFilterChip';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -59,7 +60,7 @@ jest.mock('./DqSearchFilterChip', () => ({
 }));
 
 const buildOwnerFilter = (overrides: Record<string, any> = {}) => ({
-  type: 'owner' as const,
+  type: DQ_FILTER_TYPES.OWNER,
   key: 'owner',
   label: 'Owner',
   selectedOwners: [],
@@ -69,7 +70,7 @@ const buildOwnerFilter = (overrides: Record<string, any> = {}) => ({
 });
 
 const buildSearchFilter = (overrides: Record<string, any> = {}) => ({
-  type: 'search' as const,
+  type: DQ_FILTER_TYPES.SEARCH,
   key: 'tags',
   label: 'Tags',
   searchKey: 'tags',
@@ -93,8 +94,11 @@ describe('DqFilterChip', () => {
 
     expect(screen.getByTestId('user-team-selectable-list')).toBeInTheDocument();
     expect(screen.getByTestId('search-dropdown-owner')).toHaveTextContent(
-      'Owner · 1'
+      'Owner'
     );
+    // The count renders as the same badge FilterSelect puts on its trigger,
+    // not as a "Label · N" string, so the owner chip matches its siblings.
+    expect(screen.getByTestId('filter-count-badge')).toHaveTextContent('1');
     expect(
       screen.queryByTestId('dq-search-filter-chip')
     ).not.toBeInTheDocument();

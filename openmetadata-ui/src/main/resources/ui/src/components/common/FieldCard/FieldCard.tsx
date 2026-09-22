@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  ClassificationTag,
+  GlossaryTag,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -20,7 +25,6 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDataTypeString } from '../../../utils/TablePureUtils';
 import { prepareConstraintIcon } from '../../../utils/TableUtils';
-import { ClassificationTag, GlossaryTag } from '../atoms/Tag';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import { FieldCardProps } from './FieldCard.interface';
 

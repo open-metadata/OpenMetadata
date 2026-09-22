@@ -37,7 +37,6 @@ from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedureType,
 )
 from metadata.generated.schema.entity.data.table import (
-    Column,
     PartitionColumnDetails,
     PartitionIntervalTypes,
     Table,
@@ -663,21 +662,14 @@ class SnowflakeSource(
 
                 entity_fqn = fqn._build(self.context.get().database_service, *fqn_elements)  # pyright: ignore[reportAttributeAccessIssue]
                 try:
-                    classification = self.tag_canonicalizer.classification(
-                        row[0], default_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION
+                    tag = self.define_tag(
+                        classification_name=row[0],
+                        tag_name=row[1],
+                        classification_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
+                        tag_description=SNOWFLAKE_TAG_DESCRIPTION,
                     )
-                    tag = self.tag_canonicalizer.tag(
-                        classification.name, row[1], default_tag_description=SNOWFLAKE_TAG_DESCRIPTION
-                    )
-
-                    self.tags_registry.attach(
-                        scope_fqn=schema_fqn,
-                        entity_fqn=entity_fqn,
-                        classification_name=classification.name,
-                        tag_name=tag.name,
-                        classification_description=classification.description,
-                        tag_description=tag.description,
-                    )
+                    if tag is not None:
+                        self.attach_tag(entity_fqn=entity_fqn, tag=tag)
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     yield Either(
@@ -693,23 +685,14 @@ class SnowflakeSource(
             if schema_name in self.schema_tags_map:
                 for tag_info in self.schema_tags_map[schema_name]:
                     try:
-                        classification = self.tag_canonicalizer.classification(
-                            tag_info["tag_name"], default_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION
+                        tag = self.define_tag(
+                            classification_name=tag_info["tag_name"],
+                            tag_name=tag_info["tag_value"],
+                            classification_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
+                            tag_description=SNOWFLAKE_TAG_DESCRIPTION,
                         )
-                        tag = self.tag_canonicalizer.tag(
-                            classification.name,
-                            tag_info["tag_value"],
-                            default_tag_description=SNOWFLAKE_TAG_DESCRIPTION,
-                        )
-
-                        self.tags_registry.attach(
-                            scope_fqn=schema_fqn,
-                            entity_fqn=schema_fqn,
-                            classification_name=classification.name,
-                            tag_name=tag.name,
-                            classification_description=classification.description,
-                            tag_description=tag.description,
-                        )
+                        if tag is not None:
+                            self.attach_tag(entity_fqn=schema_fqn, tag=tag)
                     except Exception as exc:
                         logger.debug(traceback.format_exc())
                         yield Either(
@@ -720,7 +703,6 @@ class SnowflakeSource(
                             ),
                             right=None,
                         )
-            yield from (Either(left=None, right=record) for record in self.tags_registry.drain())
 
     def yield_database_tag(self, database_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """Yield database-level tags for the topology."""
@@ -741,21 +723,14 @@ class SnowflakeSource(
         )
         for tag_info in self.database_tags_map[database_name]:
             try:
-                classification = self.tag_canonicalizer.classification(
-                    tag_info["tag_name"], default_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION
+                tag = self.define_tag(
+                    classification_name=tag_info["tag_name"],
+                    tag_name=tag_info["tag_value"],
+                    classification_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
+                    tag_description=SNOWFLAKE_TAG_DESCRIPTION,
                 )
-                tag = self.tag_canonicalizer.tag(
-                    classification.name, tag_info["tag_value"], default_tag_description=SNOWFLAKE_TAG_DESCRIPTION
-                )
-
-                self.tags_registry.attach(
-                    scope_fqn=database_fqn,
-                    entity_fqn=database_fqn,
-                    classification_name=classification.name,
-                    tag_name=tag.name,
-                    classification_description=classification.description,
-                    tag_description=tag.description,
-                )
+                if tag is not None:
+                    self.attach_tag(entity_fqn=database_fqn, tag=tag)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 yield Either(
@@ -766,7 +741,6 @@ class SnowflakeSource(
                     ),
                     right=None,
                 )
-        yield from (Either(left=None, right=record) for record in self.tags_registry.drain())
 
     def _get_table_names_and_types(
         self, schema_name: str, table_type: TableType = TableType.Regular
@@ -1389,40 +1363,6 @@ class SnowflakeSource(
             if self._get_classification_name(tag) == classification_name:
                 return True
         return False
-
-    def get_database_tag_labels(self, database_name: str) -> list[TagLabel] | None:
-        """Return tags for the database entity from registry."""
-        database_fqn = cast(
-            "str",
-            fqn.build(
-                self.metadata,
-                entity_type=Database,
-                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
-                database_name=database_name,
-            ),
-        )
-        return self.tags_registry.labels_for(database_fqn) or None
-
-    def get_column_tag_labels(self, table_name: str, column: dict) -> list[TagLabel] | None:
-        """Return tags for a column entity from the registry.
-
-        Column tags don't inherit from parent entities (table/schema/database)
-        — those have separate semantic meaning at their own level. Direct
-        lookup is sufficient.
-        """
-        col_fqn = cast(
-            "str",
-            fqn.build(
-                self.metadata,
-                entity_type=Column,
-                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
-                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
-                schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
-                table_name=table_name,
-                column_name=column["name"],
-            ),
-        )
-        return self.tags_registry.labels_for(col_fqn) or None
 
     def get_schema_tag_labels(self, schema_name: str) -> list[TagLabel] | None:
         """

@@ -17,6 +17,7 @@ import {
   getRelationStyle,
   humanizeRelationLabel,
   normalizeRelationKey,
+  RelationCategory,
   RELATION_CATEGORIES,
   toSentenceCase,
 } from './KnowledgeGraph.relations';
@@ -247,5 +248,105 @@ describe('toSentenceCase', () => {
     ['', ''],
   ])('reads %s as the phrase %s', (label, phrase) => {
     expect(toSentenceCase(label)).toBe(phrase);
+  });
+});
+
+/**
+ * The complete set of entity-to-entity predicates the graph endpoint can
+ * return: the `relationshipType` enum of `entityRelationship.json`, the URI
+ * remaps in `RdfRepository.getRelationshipPredicateUri` (so `uses` arrives as
+ * `used`), `RdfPropertyMapper`'s translator-managed predicates and
+ * `RdfLineage`. Pinning the family of each one is what keeps a predicate from
+ * silently landing in a different colour and filter than its own inverse —
+ * `follows` and `hasFollower` drifted apart exactly that way.
+ */
+describe('the returned predicate vocabulary', () => {
+  const vocabulary: Array<[string, string, string, RelationCategory]> = [
+    // lineage
+    ['upstream', 'table', 'table', 'lineage'],
+    ['downstream', 'table', 'dashboardDataModel', 'lineage'],
+    ['wasDerivedFrom', 'table', 'table', 'lineage'],
+    ['wasGeneratedBy', 'table', 'pipeline', 'lineage'],
+    ['used', 'pipeline', 'table', 'lineage'],
+    ['hasColumnLineage', 'table', 'column', 'lineage'],
+    // structure
+    ['hasColumn', 'table', 'column', 'structure'],
+    ['belongsToSchema', 'table', 'databaseSchema', 'structure'],
+    ['belongsToDatabase', 'table', 'database', 'structure'],
+    ['belongsToService', 'table', 'databaseService', 'structure'],
+    ['hasChild', 'container', 'container', 'structure'],
+    ['hasParent', 'container', 'container', 'structure'],
+    ['contains', 'databaseSchema', 'table', 'structure'],
+    // ownership
+    ['hasOwner', 'table', 'user', 'ownership'],
+    ['owns', 'team', 'table', 'ownership'],
+    ['wasAttributedTo', 'table', 'user', 'ownership'],
+    ['createdBy', 'table', 'user', 'ownership'],
+    ['editedBy', 'page', 'user', 'ownership'],
+    ['expert', 'domain', 'user', 'ownership'],
+    ['hasExpert', 'domain', 'user', 'ownership'],
+    ['hasReviewer', 'glossaryTerm', 'user', 'ownership'],
+    ['reviews', 'user', 'glossaryTerm', 'ownership'],
+    ['assignedTo', 'task', 'user', 'ownership'],
+    ['memberOf', 'user', 'team', 'ownership'],
+    // governance
+    ['hasTag', 'table', 'tag', 'governance'],
+    ['hasTier', 'table', 'tag', 'governance'],
+    ['hasCertification', 'table', 'tag', 'governance'],
+    ['domains', 'table', 'domain', 'governance'],
+    ['belongsToDomain', 'table', 'domain', 'governance'],
+    ['hasDataProduct', 'table', 'dataProduct', 'governance'],
+    ['inputPort', 'dataProduct', 'table', 'governance'],
+    ['outputPort', 'dataProduct', 'table', 'governance'],
+    ['contains', 'table', 'dataContract', 'governance'],
+    ['has', 'domain', 'table', 'governance'],
+    // business meaning
+    ['hasGlossaryTerm', 'table', 'glossaryTerm', 'ontology'],
+    ['mappedTo', 'table', 'glossaryTerm', 'ontology'],
+    ['parentOf', 'glossaryTerm', 'glossaryTerm', 'ontology'],
+    ['childOf', 'glossaryTerm', 'glossaryTerm', 'ontology'],
+    ['relatedTo', 'glossaryTerm', 'glossaryTerm', 'ontology'],
+    ['relatesTo', 'glossaryTerm', 'glossaryTerm', 'ontology'],
+    ['mentionedIn', 'glossaryTerm', 'page', 'ontology'],
+    // quality
+    ['testedBy', 'table', 'testCase', 'quality'],
+    ['contains', 'table', 'testSuite', 'quality'],
+    // social and activity — their own family, never ownership
+    ['hasFollower', 'table', 'user', 'other'],
+    ['follows', 'user', 'table', 'other'],
+    ['isAbout', 'thread', 'table', 'other'],
+    ['addressedTo', 'thread', 'user', 'other'],
+    ['repliedTo', 'thread', 'user', 'other'],
+    ['reactedTo', 'user', 'thread', 'other'],
+    ['voted', 'user', 'thread', 'other'],
+    ['appliedTo', 'table', 'contextMemory', 'other'],
+    ['joinedWith', 'table', 'table', 'other'],
+    ['defaultsTo', 'team', 'role', 'other'],
+    ['mentionedIn', 'table', 'task', 'other'],
+    ['mentionedIn', 'table', 'query', 'other'],
+  ];
+
+  it.each(vocabulary)(
+    '%s between %s and %s is a %s relation',
+    (predicate, from, to, category) => {
+      expect(classifyRelation(predicate, from, to)).toBe(category);
+    }
+  );
+
+  it('keeps every follow relation in one family whichever end returns it', () => {
+    const families = ['hasFollower', 'followedBy', 'follows'].map((predicate) =>
+      classifyRelation(predicate, 'table', 'user')
+    );
+
+    expect(new Set(families).size).toBe(1);
+  });
+
+  it('reads a mention as business meaning only when a concept is involved', () => {
+    expect(classifyRelation('mentionedIn', 'table', 'glossaryTerm')).toBe(
+      'ontology'
+    );
+    expect(classifyRelation('mentionedIn', 'table', 'task')).not.toBe(
+      'ontology'
+    );
   });
 });

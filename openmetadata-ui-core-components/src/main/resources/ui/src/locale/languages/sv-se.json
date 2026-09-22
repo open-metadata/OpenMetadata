@@ -28,12 +28,14 @@
     "pagination-navigation": "Navigering för sidnumrering",
     "previous-page": "Gå till föregående sida",
     "records": "Poster",
+    "remove-entity": "Ta bort {{entity}}",
     "remove-filter": "Ta bort filter",
     "search": "Sök",
     "select-all": "Välj alla",
     "select-dates": "Välj datum",
     "select-only-one-row": "Välj en rad",
     "show-hidden-breadcrumbs": "Visa dold navigering",
-    "today": "Idag"
+    "today": "Idag",
+    "tree-select": "Trädval"
   }
 }

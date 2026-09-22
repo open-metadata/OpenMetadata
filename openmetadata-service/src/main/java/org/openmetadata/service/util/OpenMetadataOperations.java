@@ -46,6 +46,7 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -90,6 +91,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
+import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner;
 import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.apps.bundles.searchIndex.SlackWebApiClient;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
@@ -1184,6 +1186,102 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   @Command(
+      name = "change-email",
+      description =
+          "Change a user's email address. Email is the identity key for email-first SSO, so this "
+              + "is how an administrator repairs a synthesized address, follows a real-world "
+              + "address change, or releases an address that was reassigned to someone else.")
+  public Integer changeUserEmail(
+      @Option(
+              names = {"-e", "--email"},
+              description = "Current email address of the user.",
+              required = true)
+          String currentEmail,
+      @Option(
+              names = {"-n", "--new-email"},
+              description = "New email address to set.",
+              required = true)
+          String newEmail,
+      @Option(
+              names = {"--clear-identity-binding"},
+              description =
+                  "Also clear the recorded identity-provider subject, so the next login re-binds. "
+                      + "Needed when the address was reassigned or the provider reissued subjects.",
+              defaultValue = "false")
+          boolean clearIdentityBinding) {
+    try {
+      parseConfig();
+      CollectionRegistry.initialize();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
+      initOrganization();
+
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+      User updated = userRepository.changeEmail(currentEmail, newEmail, clearIdentityBinding);
+
+      LOG.info(
+          "Changed email for user {} from {} to {}{}",
+          updated.getName(),
+          currentEmail,
+          updated.getEmail(),
+          clearIdentityBinding ? " and cleared the identity-provider binding" : "");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to change the user email.", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "list-synthesized-emails",
+      description =
+          "List users whose email was synthesized as username@principalDomain by the legacy "
+              + "identity flow rather than supplied by the identity provider. These are the "
+              + "accounts that will not match a real address once email-first login is enabled.")
+  public Integer listSynthesizedEmails(
+      @Option(
+              names = {"-d", "--domain"},
+              description =
+                  "Domain to treat as synthesized. Defaults to the configured principalDomain.")
+          String domain) {
+    try {
+      parseConfig();
+      CollectionRegistry.initialize();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
+      initOrganization();
+
+      String syntheticDomain =
+          nullOrEmpty(domain)
+              ? SecurityConfigurationManager.getCurrentAuthzConfig().getPrincipalDomain()
+              : domain;
+      if (nullOrEmpty(syntheticDomain)) {
+        LOG.error("No domain supplied and no principalDomain is configured.");
+        return 1;
+      }
+
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+      AtomicInteger count = new AtomicInteger();
+      userRepository.forEachUserInEmailDomain(
+          syntheticDomain,
+          user -> {
+            LOG.info("  {}\t{}", user.name(), user.email());
+            count.incrementAndGet();
+          });
+
+      LOG.info(
+          "{} user(s) hold an email in the synthesized domain {}", count.get(), syntheticDomain);
+      if (count.get() > 0) {
+        LOG.info("Repair each with: change-email -e <current> -n <real address>");
+      }
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to list synthesized emails.", e);
+      return 1;
+    }
+  }
+
+  @Command(
       name = "migrate",
       description = "Migrates the OpenMetadata database schema and search index mappings.")
   public Integer migrate(
@@ -1202,6 +1300,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       searchRepository.updateIndexes();
       LOG.info("Update Index Templates.");
       searchRepository.createOrUpdateIndexTemplates();
+      detachOrphanedIndexes();
       printChangeLog();
       // update entities secrets if required
       new SecretsManagerUpdateService(secretsManager, config.getClusterName()).updateEntities();
@@ -1210,6 +1309,24 @@ public class OpenMetadataOperations implements Callable<Integer> {
     } catch (Exception e) {
       LOG.error("Failed to db migration due to ", e);
       return 1;
+    }
+  }
+
+  /**
+   * An upgrade that renames or drops an entity type leaves its index attached to the parent aliases
+   * the old release gave it, so {@code index=all} keeps querying it with this release's clauses.
+   * SearchIndexApp sweeps this on every reindex, but an upgrade is not obliged to reindex —
+   * {@code executeSearchReindexApp} returns before launching the app when no mapping changed — so
+   * migrate does it too. This is the ops CLI, not server start, so it costs no boot time.
+   */
+  private void detachOrphanedIndexes() {
+    try {
+      int detached = new OrphanedIndexCleaner().detachOrphanedIndexesFromAliases(searchRepository);
+      if (detached > 0) {
+        LOG.info("Detached {} orphaned index-to-alias links", detached);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to detach orphaned indexes from aliases: {}", e.getMessage());
     }
   }
 

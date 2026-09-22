@@ -29,6 +29,25 @@ export interface TreeSelectTreeItemContentProps<T> {
   onNodeClick: () => void;
 }
 
+export const TreeSelectEmptyItemContent = ({
+  message,
+  parentId,
+}: {
+  message: string;
+  parentId: string;
+}) => (
+  <Tree.ItemContent indentPerLevel={28} maxIndentLevel={2}>
+    {() => (
+      <div
+        className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:py-0.5 tw:text-xs tw:text-tertiary"
+        data-testid={`tree-node-empty-${parentId}`}
+        role="presentation">
+        {message}
+      </div>
+    )}
+  </Tree.ItemContent>
+);
+
 export const TreeSelectTreeItemContent = <T,>({
   node,
   isSelected,
@@ -44,11 +63,18 @@ export const TreeSelectTreeItemContent = <T,>({
   const isRowDisabled = disabled || node.disabled || !isSelectable;
 
   return (
-    <Tree.ItemContent hasChildItems={hasChildItems}>
+    <Tree.ItemContent
+      className={cx(
+        'tw:!text-xs tw:!font-normal',
+        isSelected ? 'tw:!text-primary' : 'tw:!text-secondary'
+      )}
+      hasChildItems={hasChildItems}
+      indentPerLevel={28}
+      maxIndentLevel={2}>
       {() => (
         <div
           className={cx(
-            'tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-2 tw:py-0.5',
+            'tw:relative tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-2 tw:py-0.5',
             isRowDisabled ? 'tw:cursor-not-allowed' : 'tw:cursor-pointer'
           )}
           data-testid={`tree-node-${node.id}`}
@@ -74,25 +100,37 @@ export const TreeSelectTreeItemContent = <T,>({
                 <CheckboxBase
                   isDisabled={isRowDisabled}
                   isSelected={isSelected}
+                  size="xs"
                 />
               )}
             </span>
           )}
 
           {showIcon && node.icon && (
-            <span className="tw:flex tw:shrink-0 tw:items-center">
+            <span
+              aria-hidden="true"
+              className={cx('tw:flex tw:shrink-0', node.iconClassName)}>
               {node.icon}
             </span>
           )}
 
           <span
             className={cx(
-              'tw:min-w-0 tw:truncate tw:text-sm tw:text-secondary',
-              isSelected && 'tw:font-medium tw:text-primary',
+              'tw:grow tw:truncate',
               node.disabled && 'tw:text-disabled'
             )}>
             {node.label}
           </span>
+
+          {node.count !== undefined && node.count > 0 && (
+            <span
+              className={cx(
+                'tw:shrink-0 tw:rounded-md tw:border tw:border-secondary tw:px-1.5 tw:text-xs tw:font-normal tw:tabular-nums',
+                isSelected ? 'tw:text-tertiary' : 'tw:text-placeholder'
+              )}>
+              {node.count.toLocaleString()}
+            </span>
+          )}
 
           {isLoading && (
             <RefreshCw01

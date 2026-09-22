@@ -441,21 +441,23 @@ test.describe('Impact Analysis', () => {
     await page.getByTestId('search-dropdown-Owners').click();
 
     await expect(
-      page
-        .getByTestId('drop-down-menu')
-        .getByLabel(EntityDataClass.user1.responseData.name)
+      page.getByTestId('drop-down-menu').getByRole('menuitemcheckbox', {
+        name: EntityDataClass.user1.responseData.name,
+      })
     ).toBeVisible();
 
     await page
       .getByTestId('drop-down-menu')
-      .getByLabel(EntityDataClass.user1.responseData.name)
+      .getByRole('menuitemcheckbox', {
+        name: EntityDataClass.user1.responseData.name,
+      })
       .click();
     const filterResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/lineage/getLineageByEntityCount') &&
         response.request().method() === 'GET'
     );
-    await page.getByRole('button', { name: 'Update' }).click();
+    await page.getByTestId('update-btn').click();
     await filterResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -473,21 +475,23 @@ test.describe('Impact Analysis', () => {
     await page.getByTestId('search-dropdown-Domains').click();
 
     await expect(
-      page
-        .getByTestId('drop-down-menu')
-        .getByLabel(EntityDataClass.domain1.responseData.displayName)
+      page.getByTestId('drop-down-menu').getByRole('menuitemcheckbox', {
+        name: EntityDataClass.domain1.responseData.displayName,
+      })
     ).toBeVisible();
 
     await page
       .getByTestId('drop-down-menu')
-      .getByLabel(EntityDataClass.domain1.responseData.displayName)
+      .getByRole('menuitemcheckbox', {
+        name: EntityDataClass.domain1.responseData.displayName,
+      })
       .click();
     const filterResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/lineage/getLineageByEntityCount') &&
         response.request().method() === 'GET'
     );
-    await page.getByRole('button', { name: 'Update' }).click();
+    await page.getByTestId('update-btn').click();
     await filterResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -525,7 +529,7 @@ test.describe('Impact Analysis', () => {
         response.url().includes('/api/v1/lineage/getLineageByEntityCount') &&
         response.request().method() === 'GET'
     );
-    await page.getByRole('button', { name: 'Update' }).click();
+    await page.getByTestId('update-btn').click();
     await filterResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -912,7 +916,7 @@ test.describe('Impact Analysis', () => {
         response.url().includes('/api/v1/lineage/getLineageByEntityCount') &&
         response.request().method() === 'GET'
     );
-    await page.getByRole('button', { name: 'Update' }).click();
+    await page.getByTestId('update-btn').click();
     await filterResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -957,7 +961,7 @@ test.describe('Impact Analysis', () => {
       direction: 'Downstream',
       columnFilterIncludes: 'tag:',
     });
-    await page.getByRole('button', { name: 'Update' }).click();
+    await page.getByTestId('update-btn').click();
     await filterResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -1014,7 +1018,7 @@ test.describe('Impact Analysis', () => {
       )
       .click();
 
-    await page.getByRole('button', { name: 'Update' }).click();
+    await page.getByTestId('update-btn').click();
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.locator('[data-row-key]')).toHaveCount(1);
@@ -1074,7 +1078,7 @@ test.describe('Impact Analysis', () => {
     await page.getByTestId('search-dropdown-Glossary Terms').click();
     const glossaryOptions = page
       .getByTestId('drop-down-menu')
-      .getByRole('menuitem');
+      .getByRole('menuitemcheckbox');
     await expect(glossaryOptions).toHaveCount(1);
     await glossaryOptions.first().click();
 
@@ -1089,7 +1093,7 @@ test.describe('Impact Analysis', () => {
         url.searchParams.get('column_filter')?.includes('glossary:') ?? false
       );
     });
-    await page.getByRole('button', { name: 'Update' }).click();
+    await page.getByTestId('update-btn').click();
     await filterResponse;
     await waitForAllLoadersToDisappear(page);
 

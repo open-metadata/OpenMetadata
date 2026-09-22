@@ -48,9 +48,9 @@ jest.mock('../TierCard/TierCard', () => ({
   )),
 }));
 
-jest.mock('../atoms/Tag/ClassificationTag', () => ({
-  __esModule: true,
-  default: jest
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  ClassificationTag: jest
     .fn()
     .mockReturnValue(<div data-testid="tier-tag">Tier Tag</div>),
 }));
