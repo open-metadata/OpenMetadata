@@ -466,6 +466,55 @@ public interface TimeSeriesDAOs {
       return new ListConditions(mysqlCondition.toString(), psqlCondition.toString());
     }
 
+    /**
+     * The keyset predicate that walks past a cursor, or nothing at all when there is no cursor to
+     * walk past.
+     *
+     * <p>An unanchored page cannot express itself as a comparison. {@code EntityRepository} seeds
+     * the first page with an empty cursor name, which only behaves as "before everything" while
+     * the order is ascending: {@code key > ''} admits every row, but the descending mirror
+     * {@code key < ''} admits none, so every descending listing came back empty. It also silently
+     * dropped ascending rows whose sort key really is the empty string — a definition declaring no
+     * test platforms — because those are not {@code > ''} either.
+     *
+     * <p>Built here rather than as a template hole because {@code @Define} substitution is not
+     * recursive: a fragment containing {@code <table>} would reach the database unexpanded.
+     *
+     * @param cursor the cursor's bind-parameter names, its id value and the id comparison that
+     *     breaks a sort-key tie in this direction
+     */
+    private String keysetCondition(String sortKey, String comparison, Cursor cursor) {
+      if (nullOrEmpty(cursor.id())) {
+        return "";
+      }
+
+      return String.format(
+          "AND (%s %s :%s OR (%s = :%s AND %s.id %s :%s)) ",
+          sortKey,
+          comparison,
+          cursor.nameParam(),
+          sortKey,
+          cursor.nameParam(),
+          getTableName(),
+          cursor.idComparison(),
+          cursor.idParam());
+    }
+
+    /**
+     * One end of the keyset walk. The id comparison is fixed per end rather than per sort
+     * direction: {@code listAfter} always takes the rows after the boundary id and
+     * {@code listBefore} the ones before it, whichever way the sort key runs.
+     */
+    record Cursor(String nameParam, String idParam, String id, String idComparison) {
+      static Cursor after(String id) {
+        return new Cursor("afterName", "afterId", id, ">");
+      }
+
+      static Cursor before(String id) {
+        return new Cursor("beforeName", "beforeId", id, "<");
+      }
+    }
+
     @Override
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
@@ -478,7 +527,7 @@ public interface TimeSeriesDAOs {
           conditions.mysql(),
           conditions.psql(),
           sort.sortKey(),
-          sort.beforeCmp(),
+          keysetCondition(sort.sortKey(), sort.beforeCmp(), Cursor.before(beforeId)),
           sort.pageOrder(),
           sort.scanOrder(),
           limit,
@@ -497,7 +546,7 @@ public interface TimeSeriesDAOs {
           conditions.mysql(),
           conditions.psql(),
           sort.sortKey(),
-          sort.afterCmp(),
+          keysetCondition(sort.sortKey(), sort.afterCmp(), Cursor.after(afterId)),
           sort.pageOrder(),
           limit,
           afterName,
@@ -525,9 +574,8 @@ public interface TimeSeriesDAOs {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM ("
-                + "SELECT <sortKey> AS sort_key, id, json FROM <table> <mysqlCond> AND "
-                + "(<sortKey> <keysetCmp> :beforeName OR "
-                + "(<sortKey> = :beforeName AND <table>.id < :beforeId))  "
+                + "SELECT <sortKey> AS sort_key, id, json FROM <table> <mysqlCond> "
+                + "<keysetCond> "
                 + "ORDER BY sort_key <scanOrder>,id DESC  "
                 + "LIMIT :limit"
                 + ") last_rows_subquery ORDER BY sort_key <pageOrder>,id",
@@ -535,9 +583,8 @@ public interface TimeSeriesDAOs {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM ("
-                + "SELECT <sortKey> AS sort_key, id, json FROM <table> <psqlCond> AND "
-                + "(<sortKey> <keysetCmp> :beforeName OR "
-                + "(<sortKey> = :beforeName AND <table>.id < :beforeId))  "
+                + "SELECT <sortKey> AS sort_key, id, json FROM <table> <psqlCond> "
+                + "<keysetCond> "
                 + "ORDER BY sort_key <scanOrder>,id DESC "
                 + "LIMIT :limit"
                 + ") last_rows_subquery ORDER BY sort_key <pageOrder>,id",
@@ -548,7 +595,7 @@ public interface TimeSeriesDAOs {
         @Define("mysqlCond") String mysqlCond,
         @Define("psqlCond") String psqlCond,
         @Define("sortKey") String sortKey,
-        @Define("keysetCmp") String keysetCmp,
+        @Define("keysetCond") String keysetCond,
         @Define("pageOrder") String pageOrder,
         @Define("scanOrder") String scanOrder,
         @Bind("limit") int limit,
@@ -557,16 +604,12 @@ public interface TimeSeriesDAOs {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM <table> <mysqlCond> AND "
-                + "(<sortKey> <keysetCmp> :afterName OR "
-                + "(<sortKey> = :afterName AND <table>.id > :afterId))  "
+            "SELECT json FROM <table> <mysqlCond> <keysetCond> "
                 + "ORDER BY <sortKey> <pageOrder>,id LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM <table> <psqlCond> AND "
-                + "(<sortKey> <keysetCmp> :afterName OR "
-                + "(<sortKey> = :afterName AND <table>.id > :afterId))  "
+            "SELECT json FROM <table> <psqlCond> <keysetCond> "
                 + "ORDER BY <sortKey> <pageOrder>,id LIMIT :limit",
         connectionType = POSTGRES)
     List<String> listAfter(
@@ -575,7 +618,7 @@ public interface TimeSeriesDAOs {
         @Define("mysqlCond") String mysqlCond,
         @Define("psqlCond") String psqlCond,
         @Define("sortKey") String sortKey,
-        @Define("keysetCmp") String keysetCmp,
+        @Define("keysetCond") String keysetCond,
         @Define("pageOrder") String pageOrder,
         @Bind("limit") int limit,
         @Bind("afterName") String afterName,

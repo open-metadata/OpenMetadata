@@ -44,6 +44,7 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
       List.of("COLUMN", "Column", "column", " Column ");
   private static final List<String> BLANK_ENTITY_TYPES = List.of("", " ");
   private static final int ENTITY_TYPE_FILTER_LIMIT = 1000000;
+  private static final int SORT_FIXTURE_COUNT = 3;
   private static final List<String> NUMERIC_AGGREGATE_DEFINITIONS =
       List.of(
           "columnValueMaxToBeBetween",
@@ -511,10 +512,14 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
     String marker = createSortFixtures(ns, "sortplatform");
 
     assertEquals(
-        List.of("Mike rule", "Alpha rule", "Zulu rule"),
+        List.of("Mike rule", "Zulu rule", "Alpha rule"),
         displayNamesOf(listSorted(marker, "testPlatforms", null)),
         "sortField=testPlatforms must order on the first platform each rule declares: "
-            + "dbt before the two OpenMetadata rules");
+            + "dbt, then OpenMetadata, then Soda");
+    assertEquals(
+        List.of("Alpha rule", "Zulu rule", "Mike rule"),
+        displayNamesOf(listSorted(marker, "testPlatforms", "desc")),
+        "sortField=testPlatforms with sortOrder=desc must reverse that order");
   }
 
   /**
@@ -528,18 +533,43 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
 
     for (String sortField : Arrays.asList(null, "displayName", "entityType", "testPlatforms")) {
       for (String sortOrder : Arrays.asList(null, "asc", "desc")) {
+        String ordering = "sortField=" + sortField + " sortOrder=" + sortOrder;
         List<String> singlePage =
             fullyQualifiedNamesInOrder(listSorted(marker, sortField, sortOrder));
         List<String> paged = pageThrough(marker, sortField, sortOrder);
 
+        // Without this the comparison below passes on two empty lists, which is
+        // exactly how a descending listing that returns nothing slips through.
+        assertEquals(
+            SORT_FIXTURE_COUNT,
+            singlePage.size(),
+            "Every ordering must return all the fixtures, missing for " + ordering);
         assertEquals(
             singlePage,
             paged,
-            "Paging one row at a time must reproduce the single-page order for sortField="
-                + sortField
-                + " sortOrder="
-                + sortOrder);
+            "Paging one row at a time must reproduce the single-page order for " + ordering);
       }
+    }
+  }
+
+  /**
+   * The first page has no cursor, and {@code EntityRepository} seeds it with an empty cursor name.
+   * That is an ascending-only sentinel — {@code key > ''} admits every row but {@code key < ''}
+   * admits none — so a descending listing that did not drop the keyset predicate for an
+   * unanchored page came back empty.
+   */
+  @Test
+  void list_returnsAFirstPageWithNoCursorInEitherDirection_200_OK(TestNamespace ns) {
+    String marker = createSortFixtures(ns, "sortfirstpage");
+
+    for (String sortOrder : Arrays.asList("asc", "desc")) {
+      ListParams params =
+          sortParams(marker, "displayName", sortOrder).setLimit(SORT_FIXTURE_COUNT - 1);
+
+      assertEquals(
+          SORT_FIXTURE_COUNT - 1,
+          SdkClients.adminClient().testDefinitions().list(params).getData().size(),
+          "An uncursored first page must be full for sortOrder=" + sortOrder);
     }
   }
 
@@ -569,7 +599,9 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
   /**
    * Three definitions whose display names sort differently from their internal names, so an
    * ordering that silently fell back to the {@code name} column would fail rather than pass by
-   * coincidence. Returns the marker every fixture name embeds, for the {@code q} search to
+   * coincidence. Every sortable column holds a distinct value per fixture: rows that
+   * tie on the sort key fall back to a random UUID, so an assertion over a tied pair passes or
+   * fails by chance. Returns the marker every fixture name embeds, for the {@code q} search to
    * isolate them.
    */
   private String createSortFixtures(TestNamespace ns, String marker) {
@@ -579,7 +611,7 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
         "zzz",
         "Alpha rule",
         TestDefinitionEntityType.COLUMN,
-        List.of(TestPlatform.OPEN_METADATA));
+        List.of(TestPlatform.SODA));
     createSortFixture(
         scopedMarker,
         "aaa",
