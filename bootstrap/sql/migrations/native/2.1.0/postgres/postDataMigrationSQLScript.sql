@@ -108,3 +108,191 @@ SET json = jsonb_set(
 WHERE extension LIKE 'app.version.%'
   AND json::jsonb ->> 'name' = 'DataRetentionApplication'
   AND NOT jsonb_exists(json::jsonb #> '{appConfiguration}', 'activityCommentsRetentionPeriod');
+
+-- Data quality dimensions became entities in 2.1.0 (issue #30362) and a test case now holds its
+-- dimension as a `relatedTo` relationship. Pre-existing test cases have no such row and need one
+-- backfilled from their test definition.
+--
+-- That backfill deliberately is NOT here. It has to join against data_quality_dimension, and the
+-- system dimensions do not exist yet at this point on an upgrading deployment -- they are seeded
+-- from JSON resources, which a SQL script cannot do. Joining anyway matches an empty table and
+-- inserts nothing, silently and permanently, since the statement is then checksummed as applied
+-- and never runs again. It is done in DataQualityDimensionMigration.backfillTestCaseDimensions(),
+-- which seeds the dimensions first.
+
+-- Data Quality failure thresholds: declare the `threshold` / `thresholdUnit` parameters on the
+-- in-scope system test definitions, plus `dimensionFailurePolicy` on the ones that support
+-- dimensional analysis. Seeding only covers fresh installs (initializeEntity returns early when the
+-- entity exists) and TestCaseRepository rejects parameters that the definition does not declare, so
+-- existing installs need this backfill. Every statement is guarded on the parameter being absent,
+-- which keeps re-runs a no-op.
+
+-- Definitions that ship without any parameter need the array before we can append to it.
+UPDATE test_definition
+SET json = jsonb_set(json::jsonb, '{parameterDefinition}', '[]'::jsonb)
+WHERE name IN (
+    'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
+    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
+    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
+    'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex',
+    'tableColumnCountToBeBetween', 'tableColumnCountToEqual', 'tableRowCountToBeBetween',
+    'tableRowCountToEqual', 'tableRowInsertedCountToBeBetween', 'tableCustomSQLQuery'
+  )
+  AND json->'parameterDefinition' IS NULL;
+
+-- `tableRowInsertedCountToBeBetween` cannot run without `columnName` / `rangeType` /
+-- `rangeInterval`, yet deployments still carry a definition that only declares `min` and `max`
+-- (issue #33617). The 1.12.0 script already adds them back, but only reaches deployments that
+-- upgraded through that release, so repeat it here as a plain guarded append. These run before the
+-- `threshold` / `thresholdUnit` statements below so the resulting parameter order matches the seeded
+-- definition. Guarded on each parameter being absent, which keeps re-runs -- and every deployment
+-- that already has them -- a no-op.
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_object(
+        'name', 'columnName',
+        'displayName', 'Column Name',
+        'description', 'Name of the Column. It should be a timestamp, date or datetime field.',
+        'dataType', 'STRING',
+        'required', true
+    )::jsonb
+)
+WHERE name = 'tableRowInsertedCountToBeBetween'
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "columnName"}]'::jsonb);
+
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_object(
+        'name', 'rangeType',
+        'displayName', 'Range Type',
+        'description', 'One of ''HOUR'', ''DAY'', ''MONTH'', ''YEAR''',
+        'dataType', 'STRING',
+        'required', true
+    )::jsonb
+)
+WHERE name = 'tableRowInsertedCountToBeBetween'
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "rangeType"}]'::jsonb);
+
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_object(
+        'name', 'rangeInterval',
+        'displayName', 'Interval',
+        'description', 'Interval Range. E.g. if rangeInterval=1 and rangeType=DAY, we''ll check the numbers of rows inserted where columnName=-1 DAY',
+        'dataType', 'INT',
+        'required', true
+    )::jsonb
+)
+WHERE name = 'tableRowInsertedCountToBeBetween'
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "rangeInterval"}]'::jsonb);
+
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_object(
+        'name', 'threshold',
+        'displayName', 'Failure Threshold',
+        'description', 'Number of failures tolerated before the test is marked as failed. Read as an absolute count or as a percentage depending on `thresholdUnit` (defaults to 0).',
+        'dataType', 'NUMBER',
+        'required', false
+    )::jsonb
+)
+WHERE name IN (
+    'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
+    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
+    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
+    'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex',
+    'tableColumnCountToBeBetween', 'tableColumnCountToEqual', 'tableRowCountToBeBetween',
+    'tableRowCountToEqual', 'tableRowInsertedCountToBeBetween'
+  )
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "threshold"}]'::jsonb);
+
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_object(
+        'name', 'thresholdUnit',
+        'displayName', 'Threshold Unit',
+        'description', 'How to read `threshold`: `ABSOLUTE` for a raw count of failures, `PERCENTAGE` for a share of the evaluated rows (defaults to ABSOLUTE).',
+        'dataType', 'STRING',
+        'required', false,
+        'optionValues', '["ABSOLUTE","PERCENTAGE"]'::jsonb
+    )::jsonb
+)
+WHERE name IN (
+    'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
+    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
+    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
+    'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex',
+    'tableColumnCountToBeBetween', 'tableColumnCountToEqual', 'tableRowCountToBeBetween',
+    'tableRowCountToEqual', 'tableRowInsertedCountToBeBetween', 'tableCustomSQLQuery'
+  )
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "thresholdUnit"}]'::jsonb);
+
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_object(
+        'name', 'dimensionFailurePolicy',
+        'displayName', 'Dimension Failure Policy',
+        'description', 'How dimensional results roll up into the overall test status: `OVERALL_ONLY` only looks at the overall result, `ANY_DIMENSION` fails the test as soon as one dimension fails (defaults to OVERALL_ONLY).',
+        'dataType', 'STRING',
+        'required', false,
+        'optionValues', '["OVERALL_ONLY","ANY_DIMENSION"]'::jsonb
+    )::jsonb
+)
+WHERE name IN (
+    'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
+    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
+    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
+    'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex'
+  )
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "dimensionFailurePolicy"}]'::jsonb);
+
+-- NUMERIC is a distinct member of the column dataType enum and is what BigQuery, Postgres,
+-- Snowflake and DB2 numeric columns are ingested as, but the numeric system test definitions were
+-- only ever seeded with NUMBER/DECIMAL. The "Add test case" dropdown filters on the column's exact
+-- dataType, so mean/min/max/median/stddev/sum were unreachable on any NUMERIC column. Seeding only
+-- covers fresh installs (initializeEntity returns early when the entity exists), hence this
+-- backfill. The guard on NUMERIC being absent keeps re-runs a no-op, and it also skips a definition
+-- with no supportedDataTypes at all -- that already means "every data type" (issue #27718), so
+-- appending to it would narrow it to exactly one.
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{supportedDataTypes}',
+    (json->'supportedDataTypes')::jsonb || '["NUMERIC"]'::jsonb
+)
+WHERE name IN (
+    'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
+    'columnValuesToBeAtExpectedLocation', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeInSet', 'columnValuesToBeNotInSet'
+  )
+  AND json->'supportedDataTypes' IS NOT NULL
+  AND NOT ((json->'supportedDataTypes')::jsonb @> '["NUMERIC"]'::jsonb);
+
+-- Normalize user emails to lowercase: email is the primary identity lookup key and the
+-- application always compares lowercased values. No collision guard is needed -- the 1.5.0
+-- migration already deleted rows duplicated by LOWER(email) and lowercased the survivors, and
+-- every write since normalizes, so at most one row can hold any given lowercased address.
+UPDATE user_entity
+SET json = jsonb_set(json, '{email}', to_jsonb(lower(json ->> 'email')))
+WHERE json ->> 'email' <> lower(json ->> 'email');

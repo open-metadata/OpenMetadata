@@ -17,6 +17,7 @@ import {
   DialogTrigger,
   Modal,
   ModalOverlay,
+  Owner,
   Tabs,
   Tooltip,
   Typography,
@@ -45,7 +46,7 @@ import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../common/Loader/Loader';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
+import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
 import { AddTestCaseList } from '../../DataQuality/AddTestCaseList/AddTestCaseList.component';
 import { AddTestCaseModalProps } from '../../DataQuality/AddTestCaseList/AddTestCaseList.interface';
@@ -240,6 +241,11 @@ const TestSuiteDetail = () => {
     await onCopyToClipBoard(globalThis.location.href);
   }, [onCopyToClipBoard]);
 
+  const getCopyTooltipTitle = () =>
+    hasCopied
+      ? t('message.link-copy-to-clipboard')
+      : t('label.copy-item', { item: t('label.url-uppercase') });
+
   const activeTabContent = useMemo(() => {
     const renderDescription = () => (
       <div className="tw:w-full">
@@ -335,7 +341,7 @@ const TestSuiteDetail = () => {
       data-testid="test-suite-detail-page"
       header={
         <Box
-          className="tw:relative tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:px-5 tw:py-4 data-assets-header-container"
+          className="tw:relative tw:mx-4 tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:px-5 tw:py-4 data-assets-header-container"
           data-testid="test-suite-header-container"
           direction="col"
           gap={4}>
@@ -375,15 +381,7 @@ const TestSuiteDetail = () => {
                     displayName={testSuite?.displayName}
                     name={testSuite?.name}
                   />
-                  <Tooltip
-                    placement="top"
-                    title={
-                      hasCopied
-                        ? t('message.link-copy-to-clipboard')
-                        : t('label.copy-item', {
-                            item: t('label.url-uppercase'),
-                          })
-                    }>
+                  <Tooltip placement="top" title={getCopyTooltipTitle()}>
                     <Button
                       aria-label={t('label.copy-item', {
                         item: t('label.url-uppercase'),
@@ -437,19 +435,25 @@ const TestSuiteDetail = () => {
                 onUpdate={handleDomainUpdate}
               />
               <HeaderDotSeparator />
-              <OwnerLabel
+              <Owner
                 showDashPlaceholder
                 avatarSize={24}
                 className="header-owner-heading"
                 hasPermission={Boolean(permissions.hasEditOwnerPermission)}
                 isCompactView={false}
                 maxVisibleOwners={3}
-                multiple={{
-                  user: canAddMultipleUserOwners,
-                  team: canAddMultipleTeamOwner,
-                }}
-                owners={testOwners}
-                onUpdate={onUpdateOwner}
+                owners={testOwners ?? []}
+                selectorContent={
+                  <UserTeamSelectableList
+                    hasPermission={Boolean(permissions.hasEditOwnerPermission)}
+                    multiple={{
+                      user: canAddMultipleUserOwners,
+                      team: canAddMultipleTeamOwner,
+                    }}
+                    owner={testOwners}
+                    onUpdate={onUpdateOwner}
+                  />
+                }
               />
             </div>
           </Box>

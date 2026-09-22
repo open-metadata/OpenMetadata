@@ -37,6 +37,11 @@
       "types": "./dist/types/src/icons/index.d.ts",
       "import": "./dist/icons/index.es.js",
       "require": "./dist/icons/index.cjs.js"
+    },
+    "./icon": {
+      "types": "./dist/types/src/icon/index.d.ts",
+      "import": "./dist/icon/index.es.js",
+      "require": "./dist/icon/index.cjs.js"
     }
   },
   "files": [
@@ -172,7 +177,7 @@
   "resolutions": {
     "brace-expansion": "5.0.9",
     "browserslist": "4.28.8",
-    "fast-uri": "3.1.7",
+    "fast-uri": "3.1.8",
     "lodash": "4.18.1",
     "minimatch": "10.2.3",
     "nanoid": "3.3.17",

@@ -271,13 +271,19 @@ jest.mock(
   })
 );
 
-jest.mock('../../Explore/EntitySummaryPanel/LineageTab', () => ({
-  LineageTabContent: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="lineage-tab">Lineage Tab</div>),
-}));
+jest.mock(
+  '../../Explore/EntitySummaryPanel/LineageTab/LineageTabContent',
+  () => ({
+    __esModule: true,
+    default: jest
+      .fn()
+      .mockImplementation(() => (
+        <div data-testid="lineage-tab">Lineage Tab</div>
+      )),
+  })
+);
 
-jest.mock('./KeyProfileMetrics', () => ({
+jest.mock('./KeyProfileMetrics/KeyProfileMetrics.component', () => ({
   KeyProfileMetrics: jest
     .fn()
     .mockImplementation(() => (

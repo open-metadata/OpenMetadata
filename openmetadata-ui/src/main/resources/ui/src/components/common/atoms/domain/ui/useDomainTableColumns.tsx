@@ -13,7 +13,6 @@
 
 import { ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { Domain } from '../../../../../generated/entity/domains/domain';
 import { ColumnDef } from '../../../EntityListingTable/EntityListingTable.interface';
 import {
@@ -26,13 +25,11 @@ import {
 
 interface UseDomainTableColumnsOptions {
   nameLabelKey?: string;
-  tagSize?: 'sm' | 'lg';
   onEntityClick?: (entity: Domain) => void;
 }
 
 export const useDomainTableColumns = ({
   nameLabelKey = 'label.domain',
-  tagSize = 'sm',
   onEntityClick,
 }: UseDomainTableColumnsOptions = {}) => {
   const { t } = useTranslation();
@@ -59,24 +56,18 @@ export const useDomainTableColumns = ({
         case 'domainType':
           return renderDomainTypeCell(entity);
         case 'owners':
-          return renderDomainOwnersCell(entity, true);
+          return renderDomainOwnersCell(entity, {
+            showDashPlaceholder: true,
+          });
         case 'glossaryTerms':
-          return renderDomainGlossaryTagsCell(
-            entity,
-            NO_DATA_PLACEHOLDER,
-            tagSize
-          );
+          return renderDomainGlossaryTagsCell(entity);
         case 'tags':
-          return renderDomainClassificationTagsCell(
-            entity,
-            NO_DATA_PLACEHOLDER,
-            tagSize
-          );
+          return renderDomainClassificationTagsCell(entity);
         default:
           return null;
       }
     },
-    [tagSize, onEntityClick]
+    [onEntityClick]
   );
 
   return { columns, renderCell };

@@ -15,6 +15,7 @@ import {
   Avatar,
   Box,
   Button,
+  ClassificationTag,
   Dot,
   FieldProp,
   FieldTypes,
@@ -85,12 +86,12 @@ import { getTermQuery } from '../../../utils/SearchPureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import GlossaryTermTreeSelect from '../../common/GlossaryTermTreeSelect/GlossaryTermTreeSelect';
+import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
 import {
   AVAILABLE_ICONS,
   DEFAULT_DATA_PRODUCT_ICON,
   DEFAULT_DOMAIN_ICON,
-} from '../../common/IconPicker';
+} from '../../common/IconPicker/IconPicker.constants';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
@@ -862,6 +863,25 @@ const AddDomainForm = ({
       onFocus: handleTagFocus,
       onSearchChange: (searchText: string) => debouncedTagSearch(searchText),
       options: tagOptions,
+      renderTag: (item: FormSelectItem, onRemove: () => void) => {
+        const tagValue = (item as DomainFormSelectItem).value;
+        const style =
+          tagValue && typeof tagValue === 'object' && 'style' in tagValue
+            ? tagValue.style
+            : undefined;
+
+        return (
+          <ClassificationTag
+            color={style?.color}
+            icon={style?.iconURL}
+            key={item.id}
+            label={item.label || ''}
+            maxWidth={150}
+            tooltip={item.label || ''}
+            onDelete={onRemove}
+          />
+        );
+      },
       renderItem: (item: FormSelectItem) => (
         <Autocomplete.Item
           avatarUrl={item.avatarUrl}
@@ -1138,7 +1158,7 @@ const AddDomainForm = ({
         name="glossaryTerms"
         rules={glossaryTermsRequiredRule}>
         {({ field }) => (
-          <GlossaryTermTreeSelect
+          <GlossaryTermPicker
             data-testid="glossary-terms"
             label={t('label.glossary-term-plural')}
             placeholder={t('label.select-field', {

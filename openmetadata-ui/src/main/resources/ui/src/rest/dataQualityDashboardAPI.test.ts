@@ -454,7 +454,7 @@ describe('dataQualityDashboardAPI', () => {
       func: fetchTestCaseSummaryByDimension,
       index: 'testCase',
       aggregationQuery:
-        'bucketName=dimension:aggType=terms:field=dataQualityDimension,bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
+        'bucketName=dimension:aggType=terms:field=dataQualityDimensionName,bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
     },
   ];
 
@@ -680,7 +680,7 @@ describe('dataQualityDashboardAPI', () => {
           query: {
             bool: {
               must: [],
-              must_not: [{ exists: { field: 'dataQualityDimension' } }],
+              must_not: [{ exists: { field: 'dataQualityDimensionName' } }],
             },
           },
         }),
@@ -711,7 +711,7 @@ describe('dataQualityDashboardAPI', () => {
           query: {
             bool: {
               must: [ownerFilter],
-              must_not: [{ exists: { field: 'dataQualityDimension' } }],
+              must_not: [{ exists: { field: 'dataQualityDimensionName' } }],
             },
           },
         }),
@@ -749,7 +749,7 @@ describe('dataQualityDashboardAPI', () => {
           query: {
             bool: {
               must: [tagsFilter],
-              must_not: [{ exists: { field: 'dataQualityDimension' } }],
+              must_not: [{ exists: { field: 'dataQualityDimensionName' } }],
             },
           },
         }),
@@ -780,7 +780,7 @@ describe('dataQualityDashboardAPI', () => {
           query: {
             bool: {
               must: [tierFilter],
-              must_not: [{ exists: { field: 'dataQualityDimension' } }],
+              must_not: [{ exists: { field: 'dataQualityDimensionName' } }],
             },
           },
         }),
@@ -825,7 +825,7 @@ describe('dataQualityDashboardAPI', () => {
           query: {
             bool: {
               must: [tagsFilter, tierFilter],
-              must_not: [{ exists: { field: 'dataQualityDimension' } }],
+              must_not: [{ exists: { field: 'dataQualityDimensionName' } }],
             },
           },
         }),
@@ -845,7 +845,7 @@ describe('dataQualityDashboardAPI', () => {
             query: {
               bool: {
                 must: [],
-                must_not: [{ exists: { field: 'dataQualityDimension' } }],
+                must_not: [{ exists: { field: 'dataQualityDimensionName' } }],
               },
             },
           }),
@@ -863,7 +863,7 @@ describe('dataQualityDashboardAPI', () => {
             query: {
               bool: {
                 must: [],
-                must_not: [{ exists: { field: 'dataQualityDimension' } }],
+                must_not: [{ exists: { field: 'dataQualityDimensionName' } }],
               },
             },
           }),
