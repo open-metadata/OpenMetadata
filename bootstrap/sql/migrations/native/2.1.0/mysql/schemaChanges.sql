@@ -399,5 +399,10 @@ ALTER TABLE storage_container_entity
 -- which leads with `deleted`: the container listing's `include` is tri-state, and on
 -- include=ALL there is no `deleted` predicate at all, which would strand a deleted-leading
 -- index. Leading with parentFqnHash keeps the equality usable in all three include modes.
+--
+-- No CONCURRENTLY equivalent is needed here (and MySQL has none): InnoDB builds a secondary
+-- index with ALGORITHM=INPLACE and permits concurrent DML, and the VIRTUAL column add above
+-- is metadata-only, so neither statement blocks traffic. The PostgreSQL companion has to
+-- build CONCURRENTLY and still pays an ACCESS EXCLUSIVE table rewrite for its STORED column.
 CREATE INDEX idx_storage_container_entity_parent_children
   ON storage_container_entity (parentFqnHash, deleted, name, id);

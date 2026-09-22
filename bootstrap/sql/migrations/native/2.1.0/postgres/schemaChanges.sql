@@ -359,5 +359,23 @@ ALTER TABLE storage_container_entity
 -- which leads with `deleted`: the container listing's `include` is tri-state, and on
 -- include=ALL there is no `deleted` predicate at all, which would strand a deleted-leading
 -- index. Leading with parentFqnHash keeps the equality usable in all three include modes.
-CREATE INDEX IF NOT EXISTS idx_storage_container_entity_parent_children
+--
+-- Built CONCURRENTLY so the index build takes no write lock, matching the 1.11.0
+-- idx_tag_usage_* and 1.13.0 *_fqnhash_pattern pattern. Each statement runs outside an
+-- implicit transaction, which the native migration runner supports.
+--
+-- This removes the smaller half of the blocking window: on a 580k-row / 674MB
+-- storage_container_entity the index build is ~1.8s under SHARE UPDATE EXCLUSIVE, while the
+-- ADD COLUMN above holds ACCESS EXCLUSIVE for ~10.5s to rewrite the table. 1.11.0 accepted
+-- that same trade-off when it added generated columns to tag_usage. An expression index over
+-- the same CASE would avoid the rewrite entirely (identical 110MB index, same build time),
+-- but every listing query would have to repeat the expression byte-for-byte -- including the
+-- root-listing SQL that is currently dialect-neutral -- so it is not worth the divergence
+-- unless the rewrite proves unacceptable in practice.
+--
+-- OPERATOR NOTE: an interrupted CONCURRENTLY build leaves an INVALID index behind, and the
+-- runner keys statements by SQL-text hash so it will not self-heal on retry. Detection and
+-- recovery are the same as the runbook in 1.13.0/postgres/schemaChanges.sql: DROP INDEX the
+-- invalid entry, then re-run the migration.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_storage_container_entity_parent_children
   ON storage_container_entity (parentFqnHash, deleted, name, id);
