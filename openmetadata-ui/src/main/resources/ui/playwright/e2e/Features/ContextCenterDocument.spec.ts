@@ -1272,11 +1272,24 @@ test.describe('Context Center - Documents Page', () => {
     expect(globalCount).toBeGreaterThanOrEqual(2);
 
     // The folder-view header should show the same global total.
-    const folderCount = parseInt(
-      (await folderViewCount.textContent())?.match(/\d+/)?.[0] ?? '0',
-      10
-    );
-    expect(folderCount).toBeGreaterThanOrEqual(globalCount);
+    // Re-read both counts each attempt rather than comparing one to a value
+    // captured earlier. Both headers show a system-wide total that every other
+    // worker in the run is adding to and deleting from, so two reads taken a
+    // moment apart are not two views of the same number.
+    await expect
+      .poll(async () => {
+        const global = parseInt(
+          (await documentsViewCount.textContent()) ?? '0',
+          10
+        );
+        const folder = parseInt(
+          (await folderViewCount.textContent())?.match(/\d+/)?.[0] ?? '0',
+          10
+        );
+
+        return folder >= global;
+      })
+      .toBe(true);
     const browseResPromise = page.waitForResponse(
       (res) =>
         res.url().includes('/api/v1/contextCenter/drive/files') &&
@@ -1296,12 +1309,17 @@ test.describe('Context Center - Documents Page', () => {
     // DocumentsView header count updates to reflect the folder-scoped total.
     await expect(documentsViewCount).toContainText('1');
 
-    // DocumentFolderView header still shows the global total (unchanged).
+    // DocumentFolderView header is not scoped by the sidebar selection, so it
+    // still counts the document outside the folder as well as the one inside
+    // it. That is the property under test, and unlike a comparison against the
+    // total captured before the click it does not depend on a number shared
+    // with every other worker: chromium-24 read 77 before selecting the folder
+    // and 52 afterwards, having lost 25 documents it never created.
     const folderCountAfter = parseInt(
       (await folderViewCount.textContent())?.match(/\d+/)?.[0] ?? '0',
       10
     );
-    expect(folderCountAfter).toBeGreaterThanOrEqual(globalCount);
+    expect(folderCountAfter).toBeGreaterThanOrEqual(2);
 
     const inFolderRow = await searchAndGetDocumentRow(page, docInFolderName);
     await inFolderRow.scrollIntoViewIfNeeded();

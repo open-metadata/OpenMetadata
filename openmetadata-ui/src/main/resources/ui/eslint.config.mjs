@@ -355,6 +355,15 @@ export default [
       // fail CI. Test/mock files are exempted below — their Tooltip mocks render
       // <div title={title}> on purpose so tests can read the tooltip text.
       'openmetadata-ui-patterns/no-raw-title-attribute': 'error',
+      // Raw palette classes (tw:bg-blue-50, tw:text-gray-500, …) are static in
+      // dark mode — use the utility-* variant or a semantic token. Report-only
+      // (no autofix) on purpose: `ui-checkstyle` runs `eslint --fix` then fails
+      // on the diff, so a fixable rule would rewrite pre-existing violations in
+      // files an unrelated PR merely touches and fail its gate. ~358 existing
+      // hits at promotion time; kept at 'warn' until the backlog is cleared
+      // per-area, then promote to 'error' (and re-add a shade-restricted
+      // fixer). See docs/colors.md + the dark-mode guidelines.
+      'openmetadata-ui-patterns/no-non-adaptive-palette': 'warn',
       'sonarjs/no-collapsible-if': 'error',
       'sonarjs/no-extra-arguments': 'error',
       'sonarjs/no-redundant-jump': 'error',
