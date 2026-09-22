@@ -332,3 +332,11 @@ CREATE INDEX IF NOT EXISTS idx_automations_workflow_updated_at
 -- constraints already bound each lowercased value to one row.
 CREATE INDEX IF NOT EXISTS idx_user_entity_email_lower ON user_entity (LOWER(email));
 CREATE INDEX IF NOT EXISTS idx_user_entity_name_lower ON user_entity (LOWER(name));
+
+-- Perf: the entity_usage unique key is (usageDate, id), so any lookup that filters on `id` alone
+-- (insertOrReplaceCount/insertOrUpdateCount recomputing count7/count30, getUsageById,
+-- getLatestUsage, getLatestUsageBatch, delete-by-id) cannot use it -- usageDate is the leading
+-- column and is not constrained. Those statements full-scan entity_usage once each, and the
+-- insert path fires two such subqueries per usage event, so the scans scale with both table size
+-- and write rate. A single-column index on id makes them all index seeks.
+CREATE INDEX IF NOT EXISTS idx_entity_usage_id ON entity_usage (id);
