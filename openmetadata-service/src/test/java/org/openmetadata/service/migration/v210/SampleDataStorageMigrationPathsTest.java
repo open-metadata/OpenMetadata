@@ -24,7 +24,6 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -82,11 +81,18 @@ class SampleDataStorageMigrationPathsTest {
           "entity/data/database.json", "database_entity",
           "entity/data/databaseSchema.json", "database_schema_entity");
 
+  private static final int MAX_CACHED_SCHEMAS = 512;
+
   private static final Path REPO_ROOT = repoRoot();
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
-  private final Map<Path, JsonNode> schemaCache = new HashMap<>();
-  private final Map<Path, Set<String>> chainCache = new HashMap<>();
+  /** Memo tables, bounded per CLAUDE.md; an eviction only costs a re-parse or a re-walk. */
+  private final Map<Path, JsonNode> schemaCache = new BoundedCache<>(MAX_CACHED_SCHEMAS);
+
+  private final Map<Path, Set<String>> chainCache = new BoundedCache<>(MAX_CACHED_SCHEMAS);
+
+  /** Files currently on the walk stack. Bounded by recursion depth, not by the schema count. */
+  private final Set<Path> walking = new HashSet<>();
 
   @Test
   void bothDialectsStripEveryPathTheSchemaGraphCanReach() {
@@ -163,11 +169,34 @@ class SampleDataStorageMigrationPathsTest {
     if (cached != null) {
       return cached;
     }
-    chainCache.put(key, Set.of()); // breaks $ref cycles while this file is being walked
-    ChainWalk walk = new ChainWalk();
-    walk.descend(schema(key), key, "");
-    chainCache.put(key, walk.found);
-    return walk.found;
+    if (!walking.add(key)) {
+      return Set.of(); // a $ref cycle: this file is already being walked further up the stack
+    }
+    try {
+      ChainWalk walk = new ChainWalk();
+      walk.descend(schema(key), key, "");
+      chainCache.put(key, walk.found);
+      return walk.found;
+    } finally {
+      walking.remove(key);
+    }
+  }
+
+  /** LRU memo table with an explicit cap, so neither table can grow with the schema tree. */
+  private static final class BoundedCache<V> extends LinkedHashMap<Path, V> {
+    private static final long serialVersionUID = 1L;
+
+    private final int maxEntries;
+
+    private BoundedCache(int maxEntries) {
+      super(maxEntries, 0.75f, true);
+      this.maxEntries = maxEntries;
+    }
+
+    @Override
+    protected boolean removeEldestEntry(Map.Entry<Path, V> eldest) {
+      return size() > maxEntries;
+    }
   }
 
   /** Collects holder chains across schema files, guarding against cyclic {@code $ref}s. */
