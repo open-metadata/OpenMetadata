@@ -47,7 +47,10 @@ import {
   TestCaseFormDrawerProps,
   TestLevel,
 } from './TestCaseFormV1.interface';
-import { buildEditDefaults } from './transformTestCaseFormData';
+import {
+  buildEditDefaults,
+  buildTestSuitePipelinePayload,
+} from './transformTestCaseFormData';
 
 const mockGetResourceLimit = jest.fn().mockResolvedValue(undefined);
 
@@ -133,6 +136,20 @@ const mockContextWithPipeline: TestCaseFormContext = {
     name: 'table',
     fullyQualifiedName: 'service.db.schema.table',
   } as Table,
+  selectedTableFqn: 'service.db.schema.table',
+  selectedColumn: undefined,
+  selectedTestLevel: TestLevel.TABLE,
+  generateName: () => 'generated-name',
+  canCreatePipeline: true,
+};
+
+// `canCreatePipeline` is gated on the raw form FQN, not on the asynchronously
+// fetched table, so the form can be submitted while `selectedTableData` is
+// still in flight (or after its fetch failed).
+const mockContextPipelineTableUnresolved: TestCaseFormContext = {
+  selectedDefinition: undefined,
+  selectedTableData: undefined,
+  selectedTableFqn: 'service.db.schema.table',
   selectedColumn: undefined,
   selectedTestLevel: TestLevel.TABLE,
   generateName: () => 'generated-name',
@@ -457,6 +474,35 @@ describe('TestCaseFormDrawer', () => {
 
     await waitFor(() => {
       expect(onClose).toHaveBeenCalled();
+    });
+  });
+
+  it('should pass the raw selected-table FQN to the pipeline payload when the table entity has not resolved', async () => {
+    mockCreateTestCase.mockResolvedValue({
+      name: 'transformed-test-case',
+      id: 'created-id',
+      testSuite: { id: 'suite-id', name: 'test-suite' },
+    });
+
+    renderDrawer({ onFormSubmit: jest.fn(), onClose: jest.fn() });
+
+    await screen.findByTestId('test-case-form-body');
+
+    await act(async () => {
+      emitContextFn?.(mockContextPipelineTableUnresolved);
+    });
+
+    const submitBtn = await screen.findByTestId('create-btn');
+
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    await waitFor(() => {
+      expect(buildTestSuitePipelinePayload).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ selectedTable: 'service.db.schema.table' })
+      );
     });
   });
 

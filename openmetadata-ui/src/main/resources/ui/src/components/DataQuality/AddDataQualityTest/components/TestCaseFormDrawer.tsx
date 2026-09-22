@@ -222,7 +222,11 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       const pipeline = buildTestSuitePipelinePayload(values, {
         testSuite: pipelineTestSuite,
         createdTestCaseName: created.name,
-        selectedTable: formContext?.selectedTableData?.fullyQualifiedName,
+        // Prefer the raw form FQN: `canCreatePipeline` is gated on it, so it can
+        // be submitted while `selectedTableData` is still being fetched.
+        selectedTable:
+          formContext?.selectedTableFqn ??
+          formContext?.selectedTableData?.fullyQualifiedName,
         table,
       });
 
@@ -298,7 +302,11 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
         selectedColumn: formContext?.selectedColumn,
         selectedTestLevel: formContext?.selectedTestLevel ?? TestLevel.TABLE,
         table,
-        selectedTable: formContext?.selectedTableData?.fullyQualifiedName,
+        // `resolveEntityLink` falls back to '' when every source is empty, so
+        // this must also prefer the raw form FQN over the fetched table.
+        selectedTable:
+          formContext?.selectedTableFqn ??
+          formContext?.selectedTableData?.fullyQualifiedName,
         generateName: formContext?.generateName ?? (() => ''),
       });
 
