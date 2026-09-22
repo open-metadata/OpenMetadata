@@ -322,8 +322,15 @@ export const updateQuickLink = async (
     '[data-testid="tags-container"] input[role="combobox"]'
   );
 
+  const searchTagResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.request().method() === 'GET'
+  );
   await tagInput.click();
   await tagInput.fill(knowledgePageQuickLink.tag);
+  const tagSearchRes = await searchTagResponse;
+  expect(tagSearchRes.status()).toBe(200);
 
   await expect(
     page.getByRole('option', { name: knowledgePageQuickLink.tag })

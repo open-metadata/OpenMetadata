@@ -31,6 +31,7 @@ import {
   RightPanelPageObject,
   RIGHT_PANEL_TAB,
 } from '../PageObject/Explore/RightPanelPageObject';
+import { waitForOwnerIndexed } from '../../utils/polling';
 import {
   addOwnerInKCPanel,
   navigateToKCEntity,
@@ -78,15 +79,20 @@ async function expectOwnerInPanel(
   entityName: string,
   owner: UserClass
 ) {
-  await expect(async () => {
-    await navigateToKCEntity(page, entityName);
+  await waitForOwnerIndexed(
+    page,
+    knowledgeCenter.responseData.fullyQualifiedName,
+    'page',
+    owner.responseData.id,
+    true,
+    { timeout: 90_000 }
+  );
+  await navigateToKCEntity(page, entityName);
 
-    const ownerChip = page
-      .locator('[data-testid="entity-summary-panel-container"]')
-      .getByTestId(owner.getUserDisplayName());
-
-    await expect(ownerChip).toBeVisible();
-  }).toPass({ timeout: 60_000, intervals: [2_000, 5_000] });
+  const ownerChip = page
+    .locator('[data-testid="entity-summary-panel-container"]')
+    .getByTestId(owner.getUserDisplayName());
+  await expect(ownerChip).toBeVisible();
 }
 
 test.describe('Knowledge Center Right Panel Test Suite', () => {
@@ -310,16 +316,22 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
         await overview.removeOwner([user1.getUserDisplayName()], 'Users');
         await waitForAllLoadersToDisappear(adminPage);
 
-        await expect(async () => {
-          await navigateToKCEntity(
-            adminPage,
-            getEntityDisplayName(knowledgeCenter.responseData)
-          );
-          const ownerElement = adminPage
-            .getByTestId('owners-section')
-            .getByText(user1.getUserDisplayName());
-          await expect(ownerElement).not.toBeVisible();
-        }).toPass({ timeout: 60_000, intervals: [2_000, 5_000] });
+        await waitForOwnerIndexed(
+          adminPage,
+          knowledgeCenter.responseData.fullyQualifiedName,
+          'page',
+          user1.responseData.id,
+          false,
+          { timeout: 90_000 }
+        );
+        await navigateToKCEntity(
+          adminPage,
+          getEntityDisplayName(knowledgeCenter.responseData)
+        );
+        const ownerElement = adminPage
+          .getByTestId('owners-section')
+          .getByText(user1.getUserDisplayName());
+        await expect(ownerElement).not.toBeVisible();
       });
     });
 
