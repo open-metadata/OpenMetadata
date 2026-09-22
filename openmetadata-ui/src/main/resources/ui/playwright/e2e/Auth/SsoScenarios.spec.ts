@@ -385,30 +385,33 @@ for (const fixture of FIXTURES) {
 
           await fixture.performLogin(page);
 
-          const loggedInUserCalls: string[] = [];
+          const apiCalls: string[] = [];
           const authRefreshCalls: string[] = [];
           page.on('request', (req) => {
             const u = req.url();
-            if (u.includes('/api/v1/users/loggedInUser')) {
-              loggedInUserCalls.push(u);
-            } else if (u.includes(AUTH_REFRESH_PATH)) {
+            if (u.includes(AUTH_REFRESH_PATH)) {
               authRefreshCalls.push(u);
+            } else if (/\/api\/v1\/(?!auth\/refresh)/.test(u)) {
+              apiCalls.push(u);
             }
           });
 
-          // Fault-inject the exact 401 body OM's JwtFilter emits after
-          // a signing-key rotation. Leave /auth/refresh alone so the
-          // coordinator's refresh path can actually run.
-          await page.route('**/api/v1/users/loggedInUser', (route) =>
-            route.fulfill({
-              status: 401,
-              contentType: 'application/json',
-              body: JSON.stringify({
-                code: 401,
-                message:
-                  'Not Authorized! Token signing key not found in configured public keys',
-              }),
-            })
+          // Fault-inject the exact 401 body OM's JwtFilter emits after a
+          // signing-key rotation. Regex match handles the `?fields=...`
+          // query string that glob patterns miss. Leave /auth/refresh
+          // alone so the coordinator's refresh path can actually run.
+          await page.route(
+            /\/api\/v1\/(?!auth\/refresh)/,
+            (route) =>
+              route.fulfill({
+                status: 401,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                  code: 401,
+                  message:
+                    'Not Authorized! Token signing key not found in configured public keys',
+                }),
+              })
           );
 
           await page.goto('/', { waitUntil: 'domcontentloaded' });
@@ -417,7 +420,7 @@ for (const fixture of FIXTURES) {
 
           // Loose ceilings — well under the ~150 in the runaway HAR;
           // what matters is that both counts are finite and small.
-          expect(loggedInUserCalls.length).toBeLessThan(20);
+          expect(apiCalls.length).toBeLessThan(50);
           expect(authRefreshCalls.length).toBeLessThan(10);
         });
       }
