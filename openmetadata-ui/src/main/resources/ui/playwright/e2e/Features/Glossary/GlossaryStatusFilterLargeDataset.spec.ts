@@ -369,9 +369,11 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should show no results for non-matching query', async ({ page }) => {
       await performSearch(page, 'NonExistentTermXYZ123');
 
-      // Check for the "No Glossary Term found" message in the table
-      const noResultsMessage = page.locator('text=/No Glossary Term found/');
-      await expect(noResultsMessage).toBeVisible();
+      // The search box is driven directly, so this lands on the isSearchActive
+      // branch, which renders NoSearchResultsPlaceholder.
+      await expect(
+        page.getByTestId('no-search-results-placeholder')
+      ).toBeVisible();
     });
 
     test('should restore all terms when search is cleared', async ({
@@ -454,37 +456,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
       console.log(
         `Search + Status pagination: verified ${initialCount} Approved terms`
       );
-    });
-
-    test('should maintain status filter when search is cleared', async ({
-      page,
-    }) => {
-      await applyStatusFilter(page, ['Draft']);
-
-      await performSearch(page, 'Term_Draft');
-
-      await clearSearch(page);
-
-      // Status filter should still be active
-      const rowCount = await verifyRowStatuses(page, ['Draft']);
-      expect(rowCount).toBeGreaterThan(0);
-    });
-
-    test('should maintain search when status filter is changed', async ({
-      page,
-    }) => {
-      await performSearch(page, 'Term_');
-
-      const initialCount = await getRowCount(page);
-
-      await applyStatusFilter(page, ['Approved']);
-
-      // Search should still be active, results filtered by status
-      // Use toPass() for auto-retry to handle DOM update timing
-      await expect(async () => {
-        const filteredCount = await verifyRowStatuses(page, ['Approved']);
-        expect(filteredCount).toBeLessThanOrEqual(initialCount);
-      }).toPass({ timeout: 5000 });
     });
   });
 

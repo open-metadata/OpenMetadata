@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SparkConnection",
   "description": "Spark Metadata Pipeline Connection Config",
   "type": "object",
@@ -49,9 +48,9 @@
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
-      "description": "Supports Metadata Extraction.",
+      "description": "Spark metadata is pushed by the Spark Agent; pull-based metadata extraction is not supported.",
       "type": "boolean",
-      "default": true
+      "default": false
     }
   },
   "additionalProperties": false

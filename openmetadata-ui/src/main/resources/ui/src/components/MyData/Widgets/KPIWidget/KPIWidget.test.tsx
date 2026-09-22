@@ -11,13 +11,49 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import { PropsWithChildren } from 'react';
 import { act } from 'react-test-renderer';
 import { MOCK_KPI_LIST_RESPONSE } from '../../../../pages/KPIPage/KPIMock.mock';
 import { getListKPIs } from '../../../../rest/KpiAPI';
 import KPIWidget from './KPIWidget.component';
 
-jest.mock('../../../../constants/DataInsight.constants', () => ({
-  DATA_INSIGHT_GRAPH_COLORS: ['#E7B85D'],
+jest.mock('../../../../hooks/insights/useDataInsightChartColors', () => ({
+  useDataInsightChartColors: jest.fn().mockReturnValue({
+    activeDotBorder: '#123456',
+    axis: '#234567',
+    grid: '#345678',
+    kpiSeries: ['#456789'],
+  }),
+}));
+
+jest.mock('recharts', () => ({
+  Area: ({
+    activeDot,
+    stroke,
+  }: {
+    activeDot: { stroke: string };
+    stroke: string;
+  }) => (
+    <div
+      data-active-dot-stroke={activeDot.stroke}
+      data-stroke={stroke}
+      data-testid="kpi-area"
+    />
+  ),
+  AreaChart: ({ children }: PropsWithChildren) => <svg>{children}</svg>,
+  CartesianGrid: ({ stroke }: { stroke: string }) => (
+    <div data-stroke={stroke} data-testid="kpi-grid" />
+  ),
+  ResponsiveContainer: ({ children }: PropsWithChildren) => (
+    <div>{children}</div>
+  ),
+  Tooltip: () => null,
+  XAxis: ({ tick }: { tick: { fill: string } }) => (
+    <div data-fill={tick.fill} data-testid="kpi-x-axis" />
+  ),
+  YAxis: ({ tick }: { tick: { fill: string } }) => (
+    <div data-fill={tick.fill} data-testid="kpi-y-axis" />
+  ),
 }));
 
 jest.mock('../../../../constants/constants', () => {
@@ -26,7 +62,6 @@ jest.mock('../../../../constants/constants', () => {
   return {
     ...actualConstants,
     CHART_WIDGET_DAYS_DURATION: 14,
-    GRAPH_BACKGROUND_COLOR: '#000000',
   };
 });
 
@@ -119,19 +154,25 @@ const widgetProps = {
 
 describe('KPIWidget', () => {
   it('renders widget with header', async () => {
-    render(<KPIWidget {...widgetProps} />);
+    await act(async () => {
+      render(<KPIWidget {...widgetProps} />);
+    });
 
     expect(await screen.findByTestId('widget-header')).toBeInTheDocument();
   });
 
   it('renders widget wrapper', async () => {
-    render(<KPIWidget {...widgetProps} />);
+    await act(async () => {
+      render(<KPIWidget {...widgetProps} />);
+    });
 
     expect(await screen.findByTestId('KnowledgePanel.KPI')).toBeInTheDocument();
   });
 
   it('should fetch kpi list api initially', async () => {
-    render(<KPIWidget {...widgetProps} />);
+    await act(async () => {
+      render(<KPIWidget {...widgetProps} />);
+    });
 
     expect(getListKPIs).toHaveBeenCalledWith({ fields: 'dataInsightChart' });
   });
@@ -147,25 +188,54 @@ describe('KPIWidget', () => {
     expect(await screen.findByTestId('kpi-widget')).toBeInTheDocument();
   });
 
+  it('uses active theme colors for the chart presentation', async () => {
+    await act(async () => {
+      render(<KPIWidget {...widgetProps} />);
+    });
+
+    expect(await screen.findByTestId('kpi-grid')).toHaveAttribute(
+      'data-stroke',
+      '#345678'
+    );
+    expect(screen.getByTestId('kpi-x-axis')).toHaveAttribute(
+      'data-fill',
+      '#234567'
+    );
+    expect(screen.getByTestId('kpi-y-axis')).toHaveAttribute(
+      'data-fill',
+      '#234567'
+    );
+    expect(screen.getAllByTestId('kpi-area')[0]).toHaveAttribute(
+      'data-active-dot-stroke',
+      '#123456'
+    );
+    expect(screen.getAllByTestId('kpi-area')[0]).toHaveAttribute(
+      'data-stroke',
+      '#456789'
+    );
+  });
+
   it('should render WidgetEmptyState if no data there', async () => {
     (getListKPIs as jest.Mock).mockImplementation(() =>
       Promise.resolve({ data: [] })
     );
 
-    render(
-      <KPIWidget
-        {...widgetProps}
-        currentLayout={[
-          {
-            i: 'testWidgetKey',
-            x: 0,
-            y: 0,
-            w: 1,
-            h: 1,
-          },
-        ]}
-      />
-    );
+    await act(async () => {
+      render(
+        <KPIWidget
+          {...widgetProps}
+          currentLayout={[
+            {
+              i: 'testWidgetKey',
+              x: 0,
+              y: 0,
+              w: 1,
+              h: 1,
+            },
+          ]}
+        />
+      );
+    });
 
     // Wait for loading to complete and empty state to render
     expect(

@@ -174,42 +174,45 @@ const IncidentManagerDetailPage = ({
     const fqnParts = tableFqn ? Fqn.split(tableFqn) : [];
     const [service, database, schema, table] = fqnParts;
 
-    const data: TitleBreadcrumbProps['titleLinks'] = originBreadcrumb?.length
-      ? originBreadcrumb
-      : fqnParts.length === 4
-      ? [
-          {
-            name: service,
-            url: getServiceDetailsPath(
-              service,
-              ServiceCategory.DATABASE_SERVICES
-            ),
-          },
-          {
-            name: database,
-            url: getEntityDetailsPath(
-              EntityType.DATABASE,
-              `${service}.${database}`
-            ),
-          },
-          {
-            name: schema,
-            url: getEntityDetailsPath(
-              EntityType.DATABASE_SCHEMA,
-              `${service}.${database}.${schema}`
-            ),
-          },
-          {
-            name: table,
-            url: getEntityDetailsPath(EntityType.TABLE, tableFqn),
-          },
-        ]
-      : [
-          {
-            name: t('label.incident-manager'),
-            url: observabilityRouterClassBase.getIncidentManagerPath(),
-          },
-        ];
+    let data: TitleBreadcrumbProps['titleLinks'];
+    if (originBreadcrumb?.length) {
+      data = originBreadcrumb;
+    } else if (fqnParts.length === 4) {
+      data = [
+        {
+          name: service,
+          url: getServiceDetailsPath(
+            service,
+            ServiceCategory.DATABASE_SERVICES
+          ),
+        },
+        {
+          name: database,
+          url: getEntityDetailsPath(
+            EntityType.DATABASE,
+            `${service}.${database}`
+          ),
+        },
+        {
+          name: schema,
+          url: getEntityDetailsPath(
+            EntityType.DATABASE_SCHEMA,
+            `${service}.${database}.${schema}`
+          ),
+        },
+        {
+          name: table,
+          url: getEntityDetailsPath(EntityType.TABLE, tableFqn),
+        },
+      ];
+    } else {
+      data = [
+        {
+          name: t('label.incident-manager'),
+          url: observabilityRouterClassBase.getIncidentManagerPath(),
+        },
+      ];
+    }
 
     if (isDimensionPage) {
       return [
@@ -294,7 +297,7 @@ const IncidentManagerDetailPage = ({
         direction="col"
         gap={5}>
         <Box
-          className="tw:relative tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:p-5 data-assets-header-container"
+          className="tw:relative tw:rounded-xl tw:border tw:border-border-secondary tw:bg-surface tw:p-5 data-assets-header-container"
           data-testid="test-case-header-container"
           direction="col"
           gap={5}>

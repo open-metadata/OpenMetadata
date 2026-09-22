@@ -15,15 +15,22 @@ Module containing the logic to delete a DAG
 import os
 from pathlib import Path
 
-from airflow import settings
-from airflow.models import DagModel, DagRun
+from airflow.exceptions import DagNotFound
 from flask import Response
+
+try:
+    from airflow.api.common.delete_dag import delete_dag
+except ImportError:
+    from airflow.api.common.experimental.delete_dag import delete_dag
 
 from openmetadata_managed_apis.api.config import (
     AIRFLOW_DAGS_FOLDER,
     DAG_GENERATED_CONFIGS,
 )
 from openmetadata_managed_apis.api.response import ApiResponse
+from openmetadata_managed_apis.utils.logger import operations_logger
+
+logger = operations_logger()
 
 
 def delete_dag_id(dag_id: str) -> Response:
@@ -50,16 +57,22 @@ def delete_dag_id(dag_id: str) -> Response:
         deleted_config = True
         os.remove(config_file.absolute())  # noqa: PTH107
 
-    with settings.Session() as session:
-        deleted_dags = session.query(DagModel).filter(DagModel.dag_id == dag_id).delete()
-        session.query(DagRun).filter(DagRun.dag_id == dag_id).delete()
-        session.commit()
+    # Airflow's own deletion walks every table keyed by the dag, in an order its foreign keys
+    # accept: a task instance pins the dag version it ran, so deleting the dag first is refused.
+    try:
+        delete_dag(dag_id)
+        deleted_dags = 1
+    except DagNotFound:
+        deleted_dags = 0
 
     if deleted_dags > 0 and deleted_file and deleted_config:
         return ApiResponse.success({"message": f"DAG [{dag_id}] has been deleted"})
 
-    return ApiResponse.error(
-        status=ApiResponse.STATUS_SERVER_ERROR,
-        error=f"Could not find and delete {dag_id}. Deleted dags: {deleted_dags}; "
-        + f"deleted {dag_py_file}: {deleted_file}",
+    logger.error(
+        "Could not fully delete DAG %s. Deleted database records: %s; DAG file: %s; config file: %s",
+        dag_id,
+        deleted_dags,
+        deleted_file,
+        deleted_config,
     )
+    return ApiResponse.server_error()

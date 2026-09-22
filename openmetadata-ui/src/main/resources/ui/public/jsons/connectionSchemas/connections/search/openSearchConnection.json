@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "OpenSearchConnection",
   "description": "OpenSearch Connection Config",
   "type": "object",
@@ -35,7 +34,6 @@
       "description": "Choose Auth Config Type.",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Basic Authentication",
           "description": "Basic Auth Configuration for ElasticSearch",
           "javaType": "org.openmetadata.schema.services.connections.search.elasticSearch.ESBasicAuth",
@@ -56,7 +54,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "AWSCredentials",
           "description": "AWS credentials configs.",
           "type": "object",
@@ -87,7 +84,8 @@
             "awsSessionToken": {
               "title": "AWS Session Token",
               "description": "AWS Session Token.",
-              "type": "string"
+              "type": "string",
+              "format": "password"
             },
             "endPointURL": {
               "title": "Endpoint URL",
@@ -138,7 +136,6 @@
     },
     "sslConfig": {
       "title": "SSL Config",
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "SSL Config",
       "javaType": "org.openmetadata.schema.services.common.SSLConfig",
       "type": "object",
@@ -149,7 +146,6 @@
           "description": "SSL Certificates",
           "oneOf": [
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "SSL Certificates By Path",
               "description": "SSL Certificates By Path",
               "javaType": "org.openmetadata.schema.services.common.SSLCertPaths",
@@ -174,7 +170,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "SSL Certificates By Values",
               "description": "SSL Certificates By Values",
               "javaType": "org.openmetadata.schema.services.common.SSLCertValues",
@@ -184,19 +179,36 @@
                   "title": "CA Certificate Value",
                   "description": "CA Certificate Value",
                   "type": "string",
-                  "format": "password"
+                  "format": "password",
+                  "accept": [
+                    ".pem",
+                    ".crt",
+                    ".cer"
+                  ],
+                  "uiFieldType": "fileOrInput"
                 },
                 "clientCertValue": {
                   "title": "Client Certificate Value",
                   "description": "Client Certificate Value",
                   "type": "string",
-                  "format": "password"
+                  "format": "password",
+                  "accept": [
+                    ".pem",
+                    ".crt",
+                    ".cer"
+                  ],
+                  "uiFieldType": "fileOrInput"
                 },
                 "privateKeyValue": {
                   "title": "Private Key Value",
                   "description": "Private Key Value",
                   "type": "string",
-                  "format": "password"
+                  "format": "password",
+                  "accept": [
+                    ".pem",
+                    ".key"
+                  ],
+                  "uiFieldType": "fileOrInput"
                 },
                 "stagingDir": {
                   "title": "Staging Directory Path",

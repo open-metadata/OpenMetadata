@@ -72,6 +72,10 @@ export const TestSuiteListPanel = ({
     []
   );
 
+  // Opening a suite unmounts this panel. A search still pending then would
+  // navigate({ search }) against the list route and pull the user back to it.
+  useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch]);
+
   useEffect(() => {
     setLocalSearch(searchValue ?? '');
   }, [searchValue]);
@@ -83,7 +87,7 @@ export const TestSuiteListPanel = ({
 
   return (
     <Box
-      className="tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:outline-secondary"
+      className="tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:outline-1 tw:outline-secondary"
       data-testid="test-suite-list-panel"
       direction="col">
       <Box align="center" className="tw:p-4" gap={4} justify="between">

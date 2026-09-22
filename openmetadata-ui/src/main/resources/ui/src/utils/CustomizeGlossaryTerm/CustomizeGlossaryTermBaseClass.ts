@@ -132,6 +132,39 @@ const GlossaryHeaderWidget = withSuspenseFallback(
   widgetKey?: string;
 }>;
 
+const WIDGET_NAME_TO_KEY: Record<string, GlossaryTermDetailPageWidgetKeys> = {
+  HEADER: GlossaryTermDetailPageWidgetKeys.HEADER,
+  DESCRIPTION: GlossaryTermDetailPageWidgetKeys.DESCRIPTION,
+  TAGS: GlossaryTermDetailPageWidgetKeys.TAGS,
+  DOMAIN: GlossaryTermDetailPageWidgetKeys.DOMAIN,
+  CUSTOM_PROPERTIES: GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES,
+  TABS: GlossaryTermDetailPageWidgetKeys.TABS,
+  SYNONYMS: GlossaryTermDetailPageWidgetKeys.SYNONYMS,
+  RELATED_TERMS: GlossaryTermDetailPageWidgetKeys.RELATED_TERMS,
+  REFERENCES: GlossaryTermDetailPageWidgetKeys.REFERENCES,
+  OWNER: GlossaryTermDetailPageWidgetKeys.OWNER,
+  REVIEWER: GlossaryTermDetailPageWidgetKeys.REVIEWER,
+  WORKFLOW_HISTORY: GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY,
+};
+
+const WIDGET_KEY_TO_HEIGHT_PROP: Record<
+  string,
+  keyof typeof GlossaryTermDetailPageWidgetKeys
+> = {
+  [GlossaryTermDetailPageWidgetKeys.HEADER]: 'HEADER',
+  [GlossaryTermDetailPageWidgetKeys.DESCRIPTION]: 'DESCRIPTION',
+  [GlossaryTermDetailPageWidgetKeys.TAGS]: 'TAGS',
+  [GlossaryTermDetailPageWidgetKeys.DOMAIN]: 'DOMAIN',
+  [GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES]: 'CUSTOM_PROPERTIES',
+  [GlossaryTermDetailPageWidgetKeys.TABS]: 'TABS',
+  [GlossaryTermDetailPageWidgetKeys.SYNONYMS]: 'SYNONYMS',
+  [GlossaryTermDetailPageWidgetKeys.RELATED_TERMS]: 'RELATED_TERMS',
+  [GlossaryTermDetailPageWidgetKeys.REFERENCES]: 'REFERENCES',
+  [GlossaryTermDetailPageWidgetKeys.OWNER]: 'OWNER',
+  [GlossaryTermDetailPageWidgetKeys.REVIEWER]: 'REVIEWER',
+  [GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY]: 'WORKFLOW_HISTORY',
+};
+
 class CustomizeGlossaryTermPageClassBase {
   defaultWidgetHeight = 2;
   detailPageWidgetMargin = 16;
@@ -254,34 +287,10 @@ class CustomizeGlossaryTermPageClassBase {
   public getKeyFromWidgetName(
     widgetName: string
   ): GlossaryTermDetailPageWidgetKeys {
-    switch (widgetName) {
-      case 'HEADER':
-        return GlossaryTermDetailPageWidgetKeys.HEADER;
-      case 'DESCRIPTION':
-        return GlossaryTermDetailPageWidgetKeys.DESCRIPTION;
-      case 'TAGS':
-        return GlossaryTermDetailPageWidgetKeys.TAGS;
-      case 'DOMAIN':
-        return GlossaryTermDetailPageWidgetKeys.DOMAIN;
-      case 'CUSTOM_PROPERTIES':
-        return GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES;
-      case 'TABS':
-        return GlossaryTermDetailPageWidgetKeys.TABS;
-      case 'SYNONYMS':
-        return GlossaryTermDetailPageWidgetKeys.SYNONYMS;
-      case 'RELATED_TERMS':
-        return GlossaryTermDetailPageWidgetKeys.RELATED_TERMS;
-      case 'REFERENCES':
-        return GlossaryTermDetailPageWidgetKeys.REFERENCES;
-      case 'OWNER':
-        return GlossaryTermDetailPageWidgetKeys.OWNER;
-      case 'REVIEWER':
-        return GlossaryTermDetailPageWidgetKeys.REVIEWER;
-      case 'WORKFLOW_HISTORY':
-        return GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY;
-      default:
-        return GlossaryTermDetailPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER;
-    }
+    return (
+      WIDGET_NAME_TO_KEY[widgetName] ??
+      GlossaryTermDetailPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+    );
   }
 
   /**
@@ -306,35 +315,11 @@ class CustomizeGlossaryTermPageClassBase {
   }
 
   public getWidgetHeight(widgetName: string) {
-    switch (widgetName) {
-      case GlossaryTermDetailPageWidgetKeys.HEADER:
-        return this.detailPageWidgetDefaultHeights.HEADER;
-      case GlossaryTermDetailPageWidgetKeys.DESCRIPTION:
-        return this.detailPageWidgetDefaultHeights.DESCRIPTION;
-      case GlossaryTermDetailPageWidgetKeys.TAGS:
-        return this.detailPageWidgetDefaultHeights.TAGS;
-      case GlossaryTermDetailPageWidgetKeys.DOMAIN:
-        return this.detailPageWidgetDefaultHeights.DOMAIN;
-      case GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES:
-        return this.detailPageWidgetDefaultHeights.CUSTOM_PROPERTIES;
-      case GlossaryTermDetailPageWidgetKeys.TABS:
-        return this.detailPageWidgetDefaultHeights.TABS;
-      case GlossaryTermDetailPageWidgetKeys.SYNONYMS:
-        return this.detailPageWidgetDefaultHeights.SYNONYMS;
-      case GlossaryTermDetailPageWidgetKeys.RELATED_TERMS:
-        return this.detailPageWidgetDefaultHeights.RELATED_TERMS;
-      case GlossaryTermDetailPageWidgetKeys.REFERENCES:
-        return this.detailPageWidgetDefaultHeights.REFERENCES;
-      case GlossaryTermDetailPageWidgetKeys.OWNER:
-        return this.detailPageWidgetDefaultHeights.OWNER;
-      case GlossaryTermDetailPageWidgetKeys.REVIEWER:
-        return this.detailPageWidgetDefaultHeights.REVIEWER;
-      case GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY:
-        return this.detailPageWidgetDefaultHeights.WORKFLOW_HISTORY;
+    const heightProp = WIDGET_KEY_TO_HEIGHT_PROP[widgetName];
 
-      default:
-        return this.defaultWidgetHeight;
-    }
+    return heightProp
+      ? this.detailPageWidgetDefaultHeights[heightProp]
+      : this.defaultWidgetHeight;
   }
 
   public getDefaultWidgetForTab(tab: EntityTabs) {

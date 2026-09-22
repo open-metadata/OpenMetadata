@@ -14,7 +14,7 @@ import { expect } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-  addTestCaseListFilterByFirstColumnInAddTestCasesDialog,
+  addTestCaseListFilterByColumnInAddTestCasesDialog,
   addTestCaseListFilterByStatusInAddTestCasesDialog,
   addTestCaseListFilterByTableInAddTestCasesDialog,
   addTestCaseListFilterByTestTypeInAddTestCasesDialog,
@@ -23,7 +23,7 @@ import {
 } from '../../utils/addTestCaseList';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  descriptionBox,
+  fillDescriptionBox,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -70,7 +70,7 @@ test(
       await page
         .locator('[data-testid="test-suite-name"] input')
         .fill(NEW_TEST_SUITE.name);
-      await page.locator(descriptionBox).fill(NEW_TEST_SUITE.description);
+      await fillDescriptionBox(page, NEW_TEST_SUITE.description);
       await page.waitForSelector(
         "[data-testid='test-case-selection-card'] [data-testid='loader']",
         { state: 'detached' }
@@ -174,13 +174,17 @@ test(
     });
 
     await test.step('Filter by Column and wait for API', async () => {
-      await addTestCaseListFilterByFirstColumnInAddTestCasesDialog(page);
+      await addTestCaseListFilterByColumnInAddTestCasesDialog(
+        page,
+        table.columnsName[0]
+      );
     });
 
     await test.step('Reset Test Type to All and clear filters, wait for API', async () => {
       await addTestCaseListResetFiltersInAddTestCasesDialog(
         page,
-        table.entityResponseData?.fullyQualifiedName ?? ''
+        table.entityResponseData?.fullyQualifiedName ?? '',
+        table.columnsName[0]
       );
     });
 

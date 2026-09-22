@@ -15,6 +15,7 @@ import { Autocomplete } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce, uniqBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { TERM_ADMIN } from '../../../../../constants/constants';
 import { Role } from '../../../../../generated/entity/teams/role';
@@ -86,6 +87,10 @@ const RolesRow: React.FC<RolesRowProps> = ({ userData, updateUserDetails }) => {
     [options, draftRoleIds]
   );
 
+  const handleRoleCleared = useCallback((key: Key) => {
+    setDraftRoleIds((prev) => prev.filter((id) => id !== key));
+  }, []);
+
   const handleSave = async () => {
     const isAdmin = draftRoleIds.includes(TERM_ADMIN);
     const currentRoles = userData.roles ?? [];
@@ -143,9 +148,7 @@ const RolesRow: React.FC<RolesRowProps> = ({ userData, updateUserDetails }) => {
             />
           )}
           selectedItems={selectedItems}
-          onItemCleared={(key) =>
-            setDraftRoleIds((prev) => prev.filter((id) => id !== key))
-          }
+          onItemCleared={handleRoleCleared}
           onItemInserted={(key) =>
             setDraftRoleIds((prev) =>
               prev.includes(key as string) ? prev : [...prev, key as string]

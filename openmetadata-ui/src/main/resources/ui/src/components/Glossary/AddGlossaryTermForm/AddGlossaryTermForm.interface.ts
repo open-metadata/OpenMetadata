@@ -12,21 +12,47 @@
  */
 
 import { FormInstance } from 'antd';
+import { RefObject } from 'react';
 import { CreateGlossaryTerm } from '../../../generated/api/data/createGlossaryTerm';
 import {
   GlossaryTerm,
   TagLabel,
   TermReference,
 } from '../../../generated/entity/data/glossaryTerm';
+import {
+  CustomProperty,
+  EntityReference as GlossaryTermEntityReference,
+} from '../../../generated/entity/type';
+import { IntakeFormField } from '../../../generated/governance/intakeForm';
 import { EntityReference } from '../../../generated/type/entityLineage';
+import { GlossaryPickerValue } from '../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import { GlossaryTermIntakeFieldsHandle } from './GlossaryTermIntakeFields.component';
 
 export interface AddGlossaryTermFormProps {
   editMode: boolean;
   onSave: (value: GlossaryTermForm) => void | Promise<void>;
   onCancel: () => void;
   glossaryTerm?: GlossaryTerm;
-  formRef: FormInstance<CreateGlossaryTerm>;
+  formRef: FormInstance<GlossaryTermFormState>;
 }
+
+export interface OwnersBadgeProps {
+  owners: GlossaryTermEntityReference[];
+  testId: string;
+}
+
+export interface IntakeFieldsSectionProps {
+  editMode: boolean;
+  customPropertiesLoaded: boolean;
+  extensionFormFields: IntakeFormField[];
+  customProperties: CustomProperty[];
+  intakeFieldsRef: RefObject<GlossaryTermIntakeFieldsHandle>;
+}
+
+// Live form values; related terms become ids (edit) or FQNs (create) on submit.
+export type GlossaryTermFormState = Omit<CreateGlossaryTerm, 'relatedTerms'> & {
+  relatedTerms?: GlossaryPickerValue[];
+};
 
 export interface GlossaryTermForm {
   name: string;

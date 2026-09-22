@@ -13,6 +13,23 @@
 
 'use strict';
 
+// Playwright appends the failing request's full call log — headers included —
+// to `error.message`, so a timed-out API call carries the ephemeral admin JWT
+// the E2E fixtures mint. Publishing that verbatim trips GitHub secret scanning
+// on every red run. `publish_playwright_pr_comment.cjs` keeps its own copy on
+// purpose: it is the trusted helper loaded from the default branch and must not
+// depend on files this workflow could supply.
+const SENSITIVE_HEADER_PATTERN =
+  /((?:proxy-authorization|authorization|set-cookie|cookie|x-auth-token|x-api-key|api-key)[ \t]*[:=][ \t]*)[^\r\n]*/gi;
+const JSON_WEB_TOKEN_PATTERN =
+  /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g;
+
+function redactSecrets(value) {
+  return String(value ?? '')
+    .replace(SENSITIVE_HEADER_PATTERN, '$1<redacted>')
+    .replace(JSON_WEB_TOKEN_PATTERN, '<redacted>');
+}
+
 async function renderPlaywrightSummary({ github, context, core }) {
   const fs = require('fs');
   const path = require('path');
@@ -29,7 +46,16 @@ async function renderPlaywrightSummary({ github, context, core }) {
   const labelName = context.payload.label?.name ?? '';
   const isDraft = context.payload.pull_request?.draft === true;
   const isNonTestLabelEvent = eventAction === 'labeled' && labelName !== 'safe to test';
+  // `pull_request_target` must be listed here. Fork PRs enter the pipeline
+  // under this event (same-repo PRs use `pull_request`), and their shard
+  // matrix runs the same reusable — so the summary has to gate on shard
+  // results the same way. Omitting it dropped the summary into the
+  // `!testsRequired` early-return below, printing "not required for this
+  // PR" and reporting green regardless of PLAYWRIGHT_RESULT (real failures
+  // observed on PR #32857, run 34121906853: chromium-01 shard hard-failed,
+  // playwright-summary reported success).
   const testsRequired = context.eventName === 'pull_request' ||
+    context.eventName === 'pull_request_target' ||
     context.eventName === 'merge_group' ||
     context.eventName === 'schedule' ||
     context.eventName === 'workflow_dispatch';
@@ -283,12 +309,62 @@ async function renderPlaywrightSummary({ github, context, core }) {
     }
   }
 
+  // Parse a shard-artifact directory name into { shardId, isRetry, runAttempt }.
+  // Directory names have the shape:
+  //   playwright-results-json-<shardId>[-a<runAttempt>][-retry]
+  // The `-a<runAttempt>` suffix (added after run 35650435023) scopes each
+  // upload to the workflow attempt that produced it. Legacy directories
+  // without the suffix (e.g. the single-artifact flat-file migration above,
+  // or artifacts from before this fix) parse with runAttempt = 0 so a
+  // current-attempt copy always outranks them.
+  const parseShardDirName = dir => {
+    if (!dir.startsWith('playwright-results-json-')) return null;
+    let suffix = dir.slice('playwright-results-json-'.length);
+    let isRetry = false;
+    if (suffix.endsWith('-retry')) {
+      isRetry = true;
+      suffix = suffix.slice(0, -'-retry'.length);
+    }
+    let runAttempt = 0;
+    const attemptMatch = suffix.match(/-a(\d+)$/);
+    if (attemptMatch) {
+      runAttempt = Number(attemptMatch[1]);
+      suffix = suffix.slice(0, -attemptMatch[0].length);
+    }
+    return { shardId: suffix, isRetry, runAttempt };
+  };
+
+  // The shard-side upload step has a fallback that re-uploads under
+  // `<baseName>-retry` so a first-attempt FinalizeArtifact 403 (leaving a
+  // ghost reservation that would 409 a same-name retry) can still land the
+  // results. Collapse each shardId's primary + retry back to a single
+  // shardId here — prefer the copy from the highest run attempt (a workflow
+  // re-run's uploads outrank a prior attempt's), then prefer the `-retry`
+  // copy within the same attempt (a successful retry means the primary was
+  // incomplete or its finalize failed).
   if (fs.existsSync(resultsDir)) {
+    const dirsByShard = new Map();
     for (const dir of fs.readdirSync(resultsDir).sort()) {
+      const parsed = parseShardDirName(dir);
+      if (!parsed) continue;
       const jsonPath = path.join(resultsDir, dir, 'results.json');
       if (!fs.existsSync(jsonPath)) continue;
-
-      const shardNum = dir.replace('playwright-results-json-', '');
+      const { shardId: shardNum, isRetry, runAttempt } = parsed;
+      const existing = dirsByShard.get(shardNum);
+      // Higher attempt wins; within the same attempt, retry beats primary;
+      // otherwise first-writer wins for stable ordering.
+      if (
+        !existing ||
+        runAttempt > existing.runAttempt ||
+        (runAttempt === existing.runAttempt && isRetry && !existing.isRetry)
+      ) {
+        dirsByShard.set(shardNum, { dir, isRetry, runAttempt });
+      }
+    }
+    for (const [shardNum, { dir }] of Array.from(dirsByShard.entries()).sort(
+      ([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)
+    )) {
+      const jsonPath = path.join(resultsDir, dir, 'results.json');
       let report;
       try {
         report = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
@@ -312,7 +388,9 @@ async function renderPlaywrightSummary({ github, context, core }) {
               file: specFile,
               status: test.status,
               retries: results.length - 1,
-              error: lastResult.error?.message || firstResult.error?.message || '',
+              error: redactSecrets(
+                lastResult.error?.message || firstResult.error?.message || ''
+              ),
             };
             if (specFile.endsWith('.setup.ts') || specFile.endsWith('.teardown.ts')) {
               lifecycleTests.push(testResult);
@@ -378,15 +456,35 @@ async function renderPlaywrightSummary({ github, context, core }) {
     }
   }
 
+  // ci-status.json is bundled into the same artifact as results.json, so the
+  // attempt + retry collapse rule above applies here too — prefer the copy
+  // from the highest run attempt, then the retry copy within that attempt.
   const statusByShard = new Map();
+  const statusIsRetryByShard = new Map();
+  const statusRunAttemptByShard = new Map();
   if (fs.existsSync(resultsDir)) {
     for (const dir of fs.readdirSync(resultsDir).sort()) {
+      const parsed = parseShardDirName(dir);
+      if (!parsed) continue;
       const statusPath = path.join(resultsDir, dir, 'ci-status.json');
       if (!fs.existsSync(statusPath)) continue;
-      const shardNum = dir.replace('playwright-results-json-', '');
+      const { shardId: shardNum, isRetry, runAttempt } = parsed;
+      const existingAttempt = statusRunAttemptByShard.get(shardNum);
+      if (statusByShard.has(shardNum)) {
+        if (runAttempt < existingAttempt) continue;
+        if (
+          runAttempt === existingAttempt &&
+          !isRetry &&
+          statusIsRetryByShard.get(shardNum)
+        ) {
+          continue;
+        }
+      }
       try {
         const status = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
         statusByShard.set(shardNum, status);
+        statusIsRetryByShard.set(shardNum, isRetry);
+        statusRunAttemptByShard.set(shardNum, runAttempt);
       } catch (error) {
         addInfrastructureIssue(`Shard ${shardNum} uploaded invalid execution status JSON: ${error.message}`);
       }
@@ -776,7 +874,7 @@ async function renderPlaywrightSummary({ github, context, core }) {
     infrastructureIssueCount: infrastructureIssues.length,
     infrastructureIssues: infrastructureIssues
       .slice(0, 100)
-      .map(issue => boundedString(issue, 500)),
+      .map(issue => boundedString(redactSecrets(issue), 500)),
     failures: allGenuine.slice(0, 30).map(test => ({
       shard: boundedString(test.shard, 64),
       file: boundedString(test.file, 300),
@@ -812,17 +910,54 @@ async function renderPlaywrightSummary({ github, context, core }) {
     core.warning(`Could not write the Playwright job summary: ${error.message}`);
   }
 
-  if (totalFailed > 0 || infrastructureIssues.length > 0) {
+  // Gate policy:
+  //   * PR / dispatch / schedule (STRICT): any test failure OR any
+  //     infrastructure issue fails the check. Authors have to fix drift,
+  //     invalid results JSON, missing artifacts, etc. before a PR can
+  //     enter the merge queue.
+  //   * merge_group (RELAXED): trust the shard matrix's own result. Fail
+  //     only on a real test failure, or when PLAYWRIGHT_RESULT itself is
+  //     not 'success' (matrix failure / skipped / cancelled). Every
+  //     strict validation already ran on the PR before it entered the
+  //     queue; infra flakes on the tentative merge (artifact-upload
+  //     403/409 races, summary-side download failures that lose ALL
+  //     per-shard results, coverage misses cascading from those, missing
+  //     ci-status.json, etc.) should not dequeue an otherwise-green PR
+  //     (with the repo's ALLGREEN grouping strategy, any failing check
+  //     dissolves the whole batch).
+  //
+  //   PLAYWRIGHT_RESULT === 'success' is authoritative: it means every
+  //   shard job succeeded, which means every shard's Playwright test
+  //   step passed. That signal is safe even when the summary job's
+  //   download-artifact step later flakes and leaves us with zero
+  //   per-shard results (see run 34312746335: 37/37 shards succeeded,
+  //   summary's Download-all-results-JSON returned failure, 75 infra
+  //   issues cascaded — the merge_group check must trust the matrix).
+  //
+  //   All infrastructure issues are still enumerated in the rendered
+  //   job summary above for debuggability — they just don't fail the
+  //   check on merge_group.
+  const isMergeGroup = context.eventName === 'merge_group';
+  const upstreamGreen = upstreamResult === 'success';
+  const shouldFail = isMergeGroup
+    ? (totalFailed > 0 || !upstreamGreen)
+    : (totalFailed > 0 || infrastructureIssues.length > 0);
+
+  if (shouldFail) {
     // Tell the author which kind of red this is: test failures need their
     // action; infrastructure-only failures explicitly do not.
-    const verdict =
-      totalFailed > 0
-        ? 'test failures — author action needed'
-        : 'no test failures — CI infrastructure/reporting problem, not this change';
+    let verdict;
+    if (totalFailed > 0) {
+      verdict = 'test failures — author action needed';
+    } else if (isMergeGroup && !upstreamGreen) {
+      verdict = `shard matrix not green on merge_group (PLAYWRIGHT_RESULT=${upstreamResult || 'unset'}) — refusing synthetic green`;
+    } else {
+      verdict = 'no test failures — CI infrastructure/reporting problem, not this change';
+    }
     core.setFailed(
       `${totalFailed} Playwright test failure(s); ${infrastructureIssues.length} CI/reporting failure(s) (${verdict}).`
     );
   }
 }
 
-module.exports = { renderPlaywrightSummary };
+module.exports = { renderPlaywrightSummary, redactSecrets };

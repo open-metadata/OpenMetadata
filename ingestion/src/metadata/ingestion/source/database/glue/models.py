@@ -12,7 +12,7 @@
 Glue source models.
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class GlueSchema(BaseModel):
@@ -26,6 +26,10 @@ class DatabasePage(BaseModel):
 
 
 class TableParameters(BaseModel):
+    # Glue table parameters are operator-authored key/values. A closed model drops every key but
+    # the one we branch on, which would leave nothing to ingest as custom properties.
+    model_config = ConfigDict(extra="allow")
+
     table_type: str | None = None
 
 
@@ -53,6 +57,8 @@ class GlueTable(BaseModel):
     Description: str | None = None
     StorageDescriptor: StorageDetails | None = StorageDetails()
     PartitionKeys: list[Column] | None = []
+    ViewOriginalText: str | None = None
+    ViewExpandedText: str | None = None
 
 
 class TablePage(BaseModel):

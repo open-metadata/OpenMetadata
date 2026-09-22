@@ -1,3 +1,4 @@
+import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx, sortCx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { borderAfter } from '@/utils/tailwindClasses';
@@ -13,6 +14,7 @@ import type {
   ButtonProps as AriaButtonProps,
   LinkProps as AriaLinkProps,
 } from 'react-aria-components';
+import type { Placement } from 'react-aria';
 import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
 
 export const styles = sortCx({
@@ -113,16 +115,22 @@ export const styles = sortCx({
     },
     'link-color': {
       root: [
-        'tw:justify-normal tw:rounded tw:p-0! tw:text-brand-secondary tw:hover:text-brand-secondary_hover',
+        // Dark keeps light frozen (brand-secondary) but flips to the blue link
+        // tone (blue-300) per the dark-mode palette guideline — links are blue,
+        // not the gray brand-secondary text step.
+        'tw:justify-normal tw:rounded tw:p-0! tw:text-brand-secondary tw:hover:text-brand-secondary_hover tw:dark:text-link tw:dark:hover:text-link-hover',
         // Inner text underline
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
-        'tw:*:data-icon:text-fg-brand-secondary_alt tw:hover:*:data-icon:text-fg-brand-secondary_hover',
+        'tw:*:data-icon:text-fg-brand-secondary_alt tw:hover:*:data-icon:text-fg-brand-secondary_hover tw:dark:*:data-icon:text-link tw:dark:hover:*:data-icon:text-link-hover',
       ].join(' '),
     },
     'primary-destructive': {
       root: [
-        'tw:bg-error-solid tw:text-white tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-solid_hover tw:data-loading:bg-error-solid_hover',
+        // Dark fill softened to 90% opacity per the palette guideline — scoped to
+        // this button so the shared `bg-error-solid` token stays opaque for
+        // badges, error FeaturedIcons, and other solid-error consumers.
+        'tw:bg-error-solid tw:text-white tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-solid_hover tw:data-loading:bg-error-solid_hover tw:dark:bg-error-solid/90 tw:dark:hover:bg-error-solid_hover/90 tw:dark:data-loading:bg-error-solid_hover/90',
         `${borderAfter} tw:after:outline-transparent`,
         // Inner border gradient
         'tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
@@ -212,6 +220,10 @@ export interface CommonProps {
   ellipsis?: boolean;
   /** Omits the default focus outline when the surrounding UI intentionally does not use one */
   hideFocusOutline?: boolean;
+  /** Tooltip text shown on hover/focus */
+  tooltip?: string;
+  /** Placement of the tooltip relative to the button */
+  tooltipPlacement?: Placement;
 }
 
 /**
@@ -270,6 +282,8 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
       isDisabled: disabled,
       isLoading: loading,
       showTextWhileLoading,
+      tooltip,
+      tooltipPlacement = 'top',
       ...otherProps
     }: Props,
     ref
@@ -300,7 +314,7 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
       };
     }
 
-    return (
+    const button = (
       <Component
         data-icon-only={isIcon ? true : undefined}
         data-loading={loading ? true : undefined}
@@ -390,5 +404,18 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
         )}
       </Component>
     );
+
+    if (tooltip) {
+      return (
+        <Tooltip
+          isDisabled={disabled}
+          placement={tooltipPlacement}
+          title={tooltip}>
+          {button}
+        </Tooltip>
+      );
+    }
+
+    return button;
   }
 );

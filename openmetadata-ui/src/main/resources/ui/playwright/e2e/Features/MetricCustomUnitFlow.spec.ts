@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Locator, Page, test } from '@playwright/test';
+import { Locator, Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
+import { expect, test } from '../../support/fixtures/base';
+import { typeInCodeEditor } from '../../utils/codeEditor';
 import {
   clickOutside,
   descriptionBox,
@@ -120,8 +122,7 @@ test.describe(
 
         await clickOutside(page);
 
-        await page.locator("pre[role='presentation']").last().click();
-        await page.keyboard.type('SELECT SUM(amount) FROM sales');
+        await typeInCodeEditor(page, page, 'SELECT SUM(amount) FROM sales');
 
         // Save the metric
         const postPromise = page.waitForResponse(

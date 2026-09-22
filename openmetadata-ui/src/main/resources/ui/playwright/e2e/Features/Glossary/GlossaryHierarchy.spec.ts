@@ -39,6 +39,7 @@ test.describe('Glossary Hierarchy', () => {
   test('should move nested term to root level of same glossary', async ({
     page,
   }) => {
+    test.slow(true);
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
     const parentTerm = new GlossaryTerm(glossary);
@@ -62,10 +63,25 @@ test.describe('Glossary Hierarchy', () => {
         glossary.responseData.fullyQualifiedName
       );
 
-      // Refresh responseData so cleanup uses the post-move FQN.
-      // Moving to root rewrites the term's fullyQualifiedName in the DB, and
-      // GlossaryTerm.delete() looks up by name — without this, the finally
-      // block tries to delete by the stale pre-move FQN and 404s.
+      // moveAsync is async — poll until the backend clears the term's parent.
+      await expect
+        .poll(
+          async () => {
+            const res = await apiContext.get(
+              `/api/v1/glossaryTerms/${childTerm.responseData.id}`
+            );
+            if (!res.ok()) {
+              return true; // keep retrying on transient errors
+            }
+            const term = await res.json();
+
+            return term.parent;
+          },
+          { timeout: 60_000, intervals: [1000, 2000, 5000] }
+        )
+        .toBeFalsy();
+
+      // Refresh so cleanup deletes by the post-move FQN, not the stale one.
       const refreshed = await apiContext.get(
         `/api/v1/glossaryTerms/${childTerm.responseData.id}`
       );
@@ -136,8 +152,8 @@ test.describe('Glossary Hierarchy', () => {
   });
 
   // H-M04: Move term to root of different glossary
-  // Skipped due to known issue: https://github.com/open-metadata/OpenMetadata/pull/24794
   test('should move term to root of different glossary', async ({ page }) => {
+    test.slow(true);
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary1 = new Glossary();
     const glossary2 = new Glossary();
@@ -159,6 +175,22 @@ test.describe('Glossary Hierarchy', () => {
         glossary2.responseData.fullyQualifiedName
       );
 
+      // moveAsync returns 200 immediately; the actual hierarchy change is
+      // processed asynchronously. Poll until the term's glossary updates.
+      await expect
+        .poll(
+          async () => {
+            const res = await apiContext.get(
+              `/api/v1/glossaryTerms/${term1.responseData.id}`
+            );
+            const term = await res.json();
+
+            return term.glossary?.fullyQualifiedName;
+          },
+          { timeout: 60_000, intervals: [1000, 2000, 5000] }
+        )
+        .toBe(glossary2.responseData.fullyQualifiedName);
+
       // Verify term is now in glossary2
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
@@ -175,7 +207,6 @@ test.describe('Glossary Hierarchy', () => {
   });
 
   // H-M05: Move term with children to different glossary
-  // Skipped due to known issue: https://github.com/open-metadata/OpenMetadata/pull/24794
   test('should move term with children to different glossary', async ({
     page,
   }) => {

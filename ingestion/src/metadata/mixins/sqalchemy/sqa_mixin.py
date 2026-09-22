@@ -26,18 +26,12 @@ from metadata.generated.schema.entity.services.connections.database.mariaDBConne
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
-from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
-    SnowflakeType,
-)
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
     UnityCatalogConnection,
 )
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.snowflake.queries import (
-    set_session_tag_query,
-)
 from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
 from metadata.utils.collaborative_super import Root
 from metadata.utils.constants import NON_SQA_DATABASE_CONNECTIONS
@@ -61,21 +55,6 @@ class SQAInterfaceMixin(Root):
     def get_columns(self) -> Column:
         """get columns from an orm object"""
         return inspect(super().table).c
-
-    def set_session_tag(self, session) -> None:
-        """
-        Set session query tag for snowflake
-
-        Args:
-            service_connection_config: connection details for the specific service
-        """
-        if (
-            self.service_connection_config.type.value == SnowflakeType.Snowflake.value
-            and hasattr(self.service_connection_config, "queryTag")
-            and self.service_connection_config.queryTag
-        ):
-            query_tag = self.service_connection_config.queryTag  # pyright: ignore[reportAttributeAccessIssue]
-            session.execute(text(set_session_tag_query(query_tag)))
 
     def set_catalog(self, session) -> None:
         """Set the catalog or database for the session.

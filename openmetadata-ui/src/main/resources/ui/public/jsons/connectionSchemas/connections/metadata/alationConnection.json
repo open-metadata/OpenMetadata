@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AlationConnection",
   "description": "Alation Connection Config",
   "type": "object",
@@ -36,7 +35,6 @@
       "description": "Types of methods used to authenticate to the alation instance",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "BasicAuth",
           "description": "Basic Auth Credentials",
           "type": "object",
@@ -61,7 +59,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "ApiAccessTokenAuth",
           "description": "API Access Token Auth Credentials",
           "type": "object",
@@ -86,7 +83,6 @@
       "description": "Choose between mysql and postgres connection for alation database",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "PostgresConnection",
           "description": "Postgres Database Connection Config",
           "type": "object",
@@ -141,7 +137,6 @@
               "mask": true,
               "oneOf": [
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Basic Auth",
                   "description": "Common Database Connection Config",
                   "javaType": "org.openmetadata.schema.services.connections.database.common.basicAuth",
@@ -157,7 +152,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "IAM Auth Configuration Source",
                   "description": "IAM Auth Database Connection Config",
                   "type": "object",
@@ -165,7 +159,6 @@
                   "properties": {
                     "awsConfig": {
                       "title": "AWS Credentials Configuration",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "description": "AWS credentials configs.",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -195,7 +188,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -234,7 +228,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Azure Configuration Source",
                   "description": "Azure Database Connection Config",
                   "type": "object",
@@ -242,7 +235,6 @@
                   "properties": {
                     "azureConfig": {
                       "title": "Azure Credentials Configuration",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "description": "Azure Cloud Credentials",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",
@@ -428,7 +420,6 @@
               "mask": true,
               "oneOf": [
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Validate SSL Client Config",
                   "description": "OpenMetadata Client configured to validate SSL certificates.",
                   "type": "object",
@@ -443,9 +434,7 @@
                       "accept": [
                         ".pem",
                         ".crt",
-                        ".cer",
-                        ".der",
-                        ".p12"
+                        ".cer"
                       ],
                       "uiFieldType": "fileOrInput"
                     },
@@ -457,9 +446,7 @@
                       "accept": [
                         ".pem",
                         ".crt",
-                        ".cer",
-                        ".der",
-                        ".p12"
+                        ".cer"
                       ],
                       "uiFieldType": "fileOrInput"
                     },
@@ -471,9 +458,7 @@
                       "accept": [
                         ".pem",
                         ".crt",
-                        ".cer",
-                        ".der",
-                        ".p12"
+                        ".cer"
                       ],
                       "uiFieldType": "fileOrInput"
                     }
@@ -598,7 +583,6 @@
                           "oneOf": [
                             {
                               "title": "AWS S3 Storage Config",
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "description": "AWS credentials configs.",
                               "type": "object",
                               "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -628,7 +612,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -692,7 +677,6 @@
           ]
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "MysqlConnection",
           "description": "Mysql Database Connection Config",
           "type": "object",
@@ -745,7 +729,6 @@
               "mask": true,
               "oneOf": [
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Basic Auth",
                   "description": "Common Database Connection Config",
                   "javaType": "org.openmetadata.schema.services.connections.database.common.basicAuth",
@@ -761,7 +744,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "IAM Auth Configuration Source",
                   "description": "IAM Auth Database Connection Config",
                   "type": "object",
@@ -769,7 +751,6 @@
                   "properties": {
                     "awsConfig": {
                       "title": "AWS Credentials Configuration",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "description": "AWS credentials configs.",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -799,7 +780,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -838,7 +820,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Azure Configuration Source",
                   "description": "Azure Database Connection Config",
                   "type": "object",
@@ -846,7 +827,6 @@
                   "properties": {
                     "azureConfig": {
                       "title": "Azure Credentials Configuration",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "description": "Azure Cloud Credentials",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",
@@ -889,7 +869,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "GCP CloudSQL Configuration Source",
                   "description": "GCP CloudSQL Database Connection Config. Uses the Google Cloud SQL Python Connector.",
                   "type": "object",
@@ -910,7 +889,6 @@
                     "gcpConfig": {
                       "title": "GCP Credentials Configuration",
                       "description": "GCP credentials to use. If not provided, Application Default Credentials will be used.",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.GCPCredentials",
                       "definitions": {
@@ -1008,7 +986,6 @@
                           "description": "We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP Credentials Path",
                           "oneOf": [
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "type": "object",
                               "javaType": "org.openmetadata.schema.security.credentials.GCPValues",
                               "title": "GCP Credentials Values",
@@ -1054,7 +1031,8 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -1141,7 +1119,6 @@
                               }
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "type": "object",
                               "javaType": "org.openmetadata.schema.security.credentials.GCPExternalAccount",
                               "title": "GCP External Account",
@@ -1273,7 +1250,6 @@
               "mask": true,
               "oneOf": [
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Validate SSL Client Config",
                   "description": "OpenMetadata Client configured to validate SSL certificates.",
                   "type": "object",
@@ -1288,9 +1264,7 @@
                       "accept": [
                         ".pem",
                         ".crt",
-                        ".cer",
-                        ".der",
-                        ".p12"
+                        ".cer"
                       ],
                       "uiFieldType": "fileOrInput"
                     },
@@ -1302,9 +1276,7 @@
                       "accept": [
                         ".pem",
                         ".crt",
-                        ".cer",
-                        ".der",
-                        ".p12"
+                        ".cer"
                       ],
                       "uiFieldType": "fileOrInput"
                     },
@@ -1316,9 +1288,7 @@
                       "accept": [
                         ".pem",
                         ".crt",
-                        ".cer",
-                        ".der",
-                        ".p12"
+                        ".cer"
                       ],
                       "uiFieldType": "fileOrInput"
                     }
@@ -1514,7 +1484,6 @@
                           "oneOf": [
                             {
                               "title": "AWS S3 Storage Config",
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "description": "AWS credentials configs.",
                               "type": "object",
                               "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -1544,7 +1513,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",

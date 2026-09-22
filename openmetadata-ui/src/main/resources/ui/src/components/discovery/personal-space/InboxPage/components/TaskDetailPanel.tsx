@@ -15,13 +15,20 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   EmptyPlaceholder,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { CheckCircle, Edit01, Trash01, XCircle } from '@untitledui/icons';
+import {
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+} from '@openmetadata/ui-core-components/icons';
+import { CheckCircle, XCircle } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import React, {
+  ComponentProps,
+  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -30,7 +37,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import ActivityFeedEditorNew from '../../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import DeleteModal from '../../../../../components/common/DeleteModal/DeleteModal';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -67,9 +73,11 @@ import {
 } from '../../../../../utils/FeedUtilsPure';
 import { getTestCaseDetailPagePath } from '../../../../../utils/RouterUtils';
 import { getPermissionErrorText } from '../../../../../utils/StringUtils';
+import { resolveCommentPermissions } from '../../../../../utils/TaskCommentUtils';
 import { getResolvedTaskFormSchema } from '../../../../../utils/TaskFormSchemaUtils';
 import { getTaskDetailPathFromTask } from '../../../../../utils/TaskNavigationUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import ActivityFeedEditorNew from '../../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import { getTaskStatusBadge } from '../taskResolution.utils';
 import {
   buildResolveBody,
@@ -139,6 +147,113 @@ const matchAssetToken = (
   return null;
 };
 
+// Incident tasks carry no `about`; the failing test case FQN only appears in
+// the description ("New incident for test case: <fqn>") as the trailing token.
+const resolveIncidentTestCaseFqn = (task: Task): string => {
+  const aboutRef = task.about;
+  if (aboutRef?.fullyQualifiedName || task.category !== TaskCategory.Incident) {
+    return '';
+  }
+
+  return (task.description ?? '').trim().split(/\s+/).pop() ?? '';
+};
+
+// getTaskDetailPathFromTask maps the about entity to its Activity Feed → Tasks
+// tab, honouring per-type routes (glossaryTerm → /glossary, testCase, user, …).
+// Incidents fall back to the derived test case's Issues tab.
+const resolveAboutPath = (task: Task, incidentTestCaseFqn: string): string => {
+  if (task.about?.fullyQualifiedName) {
+    return getTaskDetailPathFromTask(task);
+  }
+
+  return incidentTestCaseFqn.includes('.')
+    ? getTestCaseDetailPagePath(incidentTestCaseFqn, TestCasePageTabs.ISSUES)
+    : '';
+};
+
+interface AssetSpan {
+  index: number;
+  end: number;
+}
+
+// Locates the title token (display name, raw name, or last FQN segment) that
+// carries the asset, so both "…dim_address_clean" and
+// "…dim_address_clean_changed" colour the whole trailing identifier.
+const computeAssetSpan = (
+  task: Task,
+  titleText: string,
+  aboutPath: string,
+  incidentTestCaseFqn: string
+): AssetSpan => {
+  if (!aboutPath) {
+    return { index: -1, end: -1 };
+  }
+
+  const aboutRef = task.about;
+  const assetCandidates = aboutRef
+    ? [
+        getEntityName(aboutRef),
+        aboutRef.name,
+        aboutRef.fullyQualifiedName?.split('.').pop(),
+      ]
+    : [incidentTestCaseFqn.split('.').pop()];
+  const assetMatch = assetCandidates
+    .map((candidate) =>
+      candidate ? matchAssetToken(titleText, candidate) : null
+    )
+    .find((match) => match);
+
+  return assetMatch
+    ? { index: assetMatch.index, end: assetMatch.index + assetMatch.length }
+    : { index: -1, end: -1 };
+};
+
+/**
+ * The task title with its asset token (or the whole title, if no token is
+ * found) turned into a link to the about entity's Activity Feed → Tasks tab —
+ * or, for an incident with no `about`, the derived test case's Issues tab.
+ */
+const resolveTaskAboutTitle = (task: Task, titleText: string): ReactNode => {
+  const incidentTestCaseFqn = resolveIncidentTestCaseFqn(task);
+  const aboutPath = resolveAboutPath(task, incidentTestCaseFqn);
+  const { index: assetIndex, end: assetEnd } = computeAssetSpan(
+    task,
+    titleText,
+    aboutPath,
+    incidentTestCaseFqn
+  );
+
+  if (assetIndex >= 0) {
+    return (
+      <>
+        {titleText.slice(0, assetIndex)}
+        <Link
+          className="tw:text-utility-blue-dark-500 tw:no-underline! tw:font-medium! tw:hover:underline!"
+          data-testid="task-about-link"
+          to={aboutPath}>
+          {titleText.slice(assetIndex, assetEnd)}
+        </Link>
+        {titleText.slice(assetEnd)}
+      </>
+    );
+  }
+
+  if (aboutPath) {
+    // No asset token in the title — keep the whole title in normal colour
+    // (still clickable), so the header never turns fully blue.
+    return (
+      <Link
+        className="tw:text-inherit tw:no-underline! tw:hover:underline!"
+        data-testid="task-about-link"
+        to={aboutPath}>
+        {titleText}
+      </Link>
+    );
+  }
+
+  return titleText;
+};
+
 interface TaskCommentRowProps {
   comment: TaskComment;
   taskId: string;
@@ -160,12 +275,12 @@ const TaskCommentRow: React.FC<TaskCommentRowProps> = ({
   const { currentUser } = useApplicationStore();
   const authorName = getEntityName(comment.author);
 
-  const isAuthor =
-    Boolean(currentUser?.name) && comment.author?.name === currentUser?.name;
-  const canEdit = isAuthor;
-  const canDelete = isAuthor || Boolean(currentUser?.isAdmin);
+  const {
+    canEdit,
+    canDelete,
+    canModify: canModifyComment,
+  } = resolveCommentPermissions(currentUser, comment);
 
-  const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -200,77 +315,86 @@ const TaskCommentRow: React.FC<TaskCommentRowProps> = ({
   }, [taskId, comment.id, onChanged]);
 
   return (
+    // align="start" keeps the avatar pinned to the top of the row, and the
+    // content column holds everything else so the message and timestamp line
+    // up under the author name instead of under the avatar.
     <Box
-      className="tw:relative"
+      align="start"
+      className="tw:relative tw:group"
       data-testid="task-comment-card"
-      direction="col"
-      gap={2}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}>
-      <Box align="center" className="tw:justify-between" gap={2}>
-        <Box align="center" gap={2}>
-          <ProfilePicture
-            displayName={authorName}
-            name={comment.author?.name ?? ''}
-            width="28"
-          />
+      gap={2}>
+      <ProfilePicture
+        displayName={authorName}
+        name={comment.author?.name ?? ''}
+        width="28"
+      />
+      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={2}>
+        <Box align="center" className="tw:justify-between" gap={2}>
           <Typography size="text-sm" weight="semibold">
             {authorName}
           </Typography>
+          {!isEditing && canModifyComment && (
+            // Real buttons, kept mounted and revealed with opacity: unmounting
+            // them until hover puts them out of reach of the keyboard.
+            <div
+              aria-label={t('label.action-plural')}
+              className="tw:flex tw:items-center tw:gap-1 tw:opacity-0 tw:motion-safe:transition-opacity tw:group-hover:opacity-100 tw:focus-within:opacity-100"
+              data-testid="task-comment-actions"
+              role="group">
+              {canEdit && (
+                <ButtonUtility
+                  color="tertiary"
+                  data-testid="edit-task-comment"
+                  icon={EditIcon}
+                  size="xs"
+                  tooltip={t('label.edit')}
+                  onClick={() => setIsEditing(true)}
+                />
+              )}
+              {canDelete && (
+                <ButtonUtility
+                  color="tertiary"
+                  data-testid="delete-task-comment"
+                  icon={DeleteIcon}
+                  size="xs"
+                  tooltip={t('label.delete')}
+                  onClick={() => setShowDeleteDialog(true)}
+                />
+              )}
+            </div>
+          )}
         </Box>
-        {isHovered && !isEditing && (canEdit || canDelete) && (
-          <Box align="center" data-testid="task-comment-actions" gap={1}>
-            {canEdit && (
-              <Edit01
-                className="tw:cursor-pointer tw:text-secondary"
-                data-testid="edit-task-comment"
-                height={16}
-                width={16}
-                onClick={() => setIsEditing(true)}
-              />
-            )}
-            {canDelete && (
-              <Trash01
-                className="tw:cursor-pointer tw:text-error-primary"
-                data-testid="delete-task-comment"
-                height={16}
-                width={16}
-                onClick={() => setShowDeleteDialog(true)}
-              />
-            )}
+        {isEditing ? (
+          <Box data-testid="edit-task-comment-editor" direction="col" gap={2}>
+            <ActivityFeedEditorNew
+              focused
+              defaultValue={MarkdownToHTMLConverter.makeHtml(
+                getFrontEndFormat(comment.message)
+              )}
+              onSave={handleEditSave}
+            />
+            <Box align="center" className="tw:justify-end">
+              <Button
+                color="link-gray"
+                data-testid="cancel-edit-task-comment"
+                size="sm"
+                onPress={() => setIsEditing(false)}>
+                {t('label.cancel')}
+              </Button>
+            </Box>
+          </Box>
+        ) : (
+          <Box className="tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-utility-gray-blue-50 tw:px-4 tw:py-3">
+            <RichTextEditorPreviewerV1
+              className="inbox-feed-message tw:text-sm"
+              markdown={getFrontEndFormat(comment.message)}
+            />
           </Box>
         )}
+        <Typography className="tw:text-secondary" size="text-xs">
+          {getRelativeTime(comment.createdAt)}
+        </Typography>
       </Box>
-      {isEditing ? (
-        <Box data-testid="edit-task-comment-editor" direction="col" gap={2}>
-          <ActivityFeedEditorNew
-            focused
-            defaultValue={MarkdownToHTMLConverter.makeHtml(
-              getFrontEndFormat(comment.message)
-            )}
-            onSave={handleEditSave}
-          />
-          <Box align="center" className="tw:justify-end">
-            <Button
-              color="link-gray"
-              data-testid="cancel-edit-task-comment"
-              size="sm"
-              onPress={() => setIsEditing(false)}>
-              {t('label.cancel')}
-            </Button>
-          </Box>
-        </Box>
-      ) : (
-        <Box className="tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-utility-gray-blue-50 tw:px-4 tw:py-3">
-          <RichTextEditorPreviewerV1
-            className="inbox-feed-message tw:text-sm"
-            markdown={getFrontEndFormat(comment.message)}
-          />
-        </Box>
-      )}
-      <Typography className="tw:text-secondary" size="text-xs">
-        {getRelativeTime(comment.createdAt)}
-      </Typography>
 
       <DeleteModal
         entityTitle={t('label.comment')}
@@ -281,6 +405,114 @@ const TaskCommentRow: React.FC<TaskCommentRowProps> = ({
         onDelete={handleDelete}
       />
     </Box>
+  );
+};
+
+interface TaskActionButtonProps {
+  action: TaskResolveAction;
+  loadingTransitionId: string | undefined;
+  task: Task;
+  onAssigneeUpdate: (
+    action: TaskResolveAction
+  ) => (updated?: EntityReference[]) => void;
+  onTransition: (action: TaskResolveAction) => () => void;
+}
+
+type TaskActionButtonColor = ComponentProps<typeof Button>['color'];
+
+const getTaskActionButtonColor = (
+  reject: boolean,
+  approve: boolean,
+  actionId: string
+): TaskActionButtonColor => {
+  if (reject) {
+    return 'secondary-destructive';
+  }
+  if (approve || actionId === 'resolve') {
+    return 'primary';
+  }
+
+  return 'secondary';
+};
+
+const getTaskActionTestId = (
+  approve: boolean,
+  reject: boolean,
+  actionId: string
+): string => {
+  if (approve) {
+    return 'task-approve';
+  }
+  if (reject) {
+    return 'task-reject';
+  }
+
+  return `task-transition-${actionId}`;
+};
+
+const getTaskActionIcon = (approve: boolean, reject: boolean): ReactNode => {
+  if (approve) {
+    return <CheckCircle height={16} width={16} />;
+  }
+  if (reject) {
+    return <XCircle height={16} width={16} />;
+  }
+
+  return undefined;
+};
+
+/** One resolve/reject/approve/assignee-reassign control in the task header. */
+const TaskActionButton = ({
+  action,
+  loadingTransitionId,
+  task,
+  onAssigneeUpdate,
+  onTransition,
+}: TaskActionButtonProps) => {
+  const { t } = useTranslation();
+  const approve = action.kind === 'approve';
+  const reject = action.kind === 'reject';
+  const isBusy = loadingTransitionId === action.id;
+  const isDisabled =
+    loadingTransitionId !== undefined && loadingTransitionId !== action.id;
+
+  // Native button trigger: the AntD Popover injects onClick via
+  // cloneElement, which the react-aria Button would swallow.
+  if (action.kind === 'assignee') {
+    return (
+      <UserTeamSelectableList
+        hasPermission
+        label={t('label.assignee-plural')}
+        multiple={{ user: false, team: false }}
+        owner={task.assignees ?? []}
+        onUpdate={onAssigneeUpdate(action)}>
+        <button
+          className={
+            'tw:cursor-pointer tw:rounded-md tw:border tw:border-secondary ' +
+            'tw:bg-primary tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold ' +
+            'tw:text-secondary tw:shadow-xs tw:hover:bg-secondary ' +
+            'tw:disabled:cursor-not-allowed tw:disabled:opacity-50'
+          }
+          data-testid={`task-transition-${action.id}`}
+          disabled={isDisabled || isBusy}
+          type="button">
+          {action.label}
+        </button>
+      </UserTeamSelectableList>
+    );
+  }
+
+  return (
+    <Button
+      color={getTaskActionButtonColor(reject, approve, action.id)}
+      data-testid={getTaskActionTestId(approve, reject, action.id)}
+      iconLeading={getTaskActionIcon(approve, reject)}
+      isDisabled={isDisabled}
+      isLoading={isBusy}
+      size="sm"
+      onClick={onTransition(action)}>
+      {action.label}
+    </Button>
   );
 };
 
@@ -606,64 +838,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // getTaskTitle composes a title from the task type and the entity it is about
   // instead of repeating the id.
   const titleText = getTaskTitle(task, t);
-  const aboutRef = task.about;
-  // Incident tasks carry no `about`; the failing test case FQN only appears in
-  // the description ("New incident for test case: <fqn>") as the trailing token.
-  const incidentTestCaseFqn =
-    !aboutRef?.fullyQualifiedName && task.category === TaskCategory.Incident
-      ? (task.description ?? '').trim().split(/\s+/).pop() ?? ''
-      : '';
-  // getTaskDetailPathFromTask maps the about entity to its Activity Feed → Tasks
-  // tab, honouring per-type routes (glossaryTerm → /glossary, testCase, user, …).
-  // Incidents fall back to the derived test case's Issues tab.
-  const aboutPath = aboutRef?.fullyQualifiedName
-    ? getTaskDetailPathFromTask(task)
-    : incidentTestCaseFqn.includes('.')
-    ? getTestCaseDetailPagePath(incidentTestCaseFqn, TestCasePageTabs.ISSUES)
-    : '';
-  // Highlight the title token (display name, raw name, or last FQN segment)
-  // that carries the asset, so both "…dim_address_clean" and
-  // "…dim_address_clean_changed" colour the whole trailing identifier.
-  const assetCandidates = aboutRef
-    ? [
-        getEntityName(aboutRef),
-        aboutRef.name,
-        aboutRef.fullyQualifiedName?.split('.').pop(),
-      ]
-    : [incidentTestCaseFqn.split('.').pop()];
-  const assetMatch = aboutPath
-    ? assetCandidates
-        .map((candidate) =>
-          candidate ? matchAssetToken(titleText, candidate) : null
-        )
-        .find((match) => match)
-    : null;
-  const assetIndex = assetMatch?.index ?? -1;
-  const assetEnd = assetMatch ? assetMatch.index + assetMatch.length : -1;
-  const titleNode =
-    assetIndex >= 0 ? (
-      <>
-        {titleText.slice(0, assetIndex)}
-        <Link
-          className="tw:text-utility-blue-dark-500 tw:no-underline! tw:font-medium! tw:hover:underline!"
-          data-testid="task-about-link"
-          to={aboutPath}>
-          {titleText.slice(assetIndex, assetEnd)}
-        </Link>
-        {titleText.slice(assetEnd)}
-      </>
-    ) : aboutPath ? (
-      // No asset token in the title — keep the whole title in normal colour
-      // (still clickable), so the header never turns fully blue.
-      <Link
-        className="tw:text-inherit tw:no-underline! tw:hover:underline!"
-        data-testid="task-about-link"
-        to={aboutPath}>
-        {titleText}
-      </Link>
-    ) : (
-      titleText
-    );
+  const titleNode = resolveTaskAboutTitle(task, titleText);
   // Not using Typography's `ellipsis` here: it wraps content in a pressable and
   // stringifies children, which would drop the asset Link. A plain line-clamp
   // keeps the two-row clamp while preserving the inline link.
@@ -701,73 +876,16 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
           {title}
         </Box>
         <Box align="center" className="tw:shrink-0" gap={2}>
-          {actions.map((action) => {
-            const approve = action.kind === 'approve';
-            const reject = action.kind === 'reject';
-            const isBusy = loadingTransitionId === action.id;
-            const isDisabled =
-              loadingTransitionId !== undefined &&
-              loadingTransitionId !== action.id;
-
-            // Native button trigger: the AntD Popover injects onClick via
-            // cloneElement, which the react-aria Button would swallow.
-            if (action.kind === 'assignee') {
-              return (
-                <UserTeamSelectableList
-                  hasPermission
-                  key={action.id}
-                  label={t('label.assignee-plural')}
-                  multiple={{ user: false, team: false }}
-                  owner={task.assignees ?? []}
-                  onUpdate={handleAssigneeTransition(action)}>
-                  <button
-                    className={
-                      'tw:cursor-pointer tw:rounded-md tw:border tw:border-secondary ' +
-                      'tw:bg-primary tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold ' +
-                      'tw:text-secondary tw:shadow-xs tw:hover:bg-secondary ' +
-                      'tw:disabled:cursor-not-allowed tw:disabled:opacity-50'
-                    }
-                    data-testid={`task-transition-${action.id}`}
-                    disabled={isDisabled || isBusy}
-                    type="button">
-                    {action.label}
-                  </button>
-                </UserTeamSelectableList>
-              );
-            }
-
-            return (
-              <Button
-                color={
-                  reject
-                    ? 'secondary-destructive'
-                    : approve || action.id === 'resolve'
-                    ? 'primary'
-                    : 'secondary'
-                }
-                data-testid={
-                  approve
-                    ? 'task-approve'
-                    : reject
-                    ? 'task-reject'
-                    : `task-transition-${action.id}`
-                }
-                iconLeading={
-                  approve ? (
-                    <CheckCircle height={16} width={16} />
-                  ) : reject ? (
-                    <XCircle height={16} width={16} />
-                  ) : undefined
-                }
-                isDisabled={isDisabled}
-                isLoading={isBusy}
-                key={action.id}
-                size="sm"
-                onClick={handleTransition(action)}>
-                {action.label}
-              </Button>
-            );
-          })}
+          {actions.map((action) => (
+            <TaskActionButton
+              action={action}
+              key={action.id}
+              loadingTransitionId={loadingTransitionId}
+              task={task}
+              onAssigneeUpdate={handleAssigneeTransition}
+              onTransition={handleTransition}
+            />
+          ))}
         </Box>
       </Box>
 

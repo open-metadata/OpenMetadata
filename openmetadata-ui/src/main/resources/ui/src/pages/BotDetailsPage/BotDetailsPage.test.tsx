@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { getBotByName } from '../../rest/botsAPI';
 import { getUserByName } from '../../rest/userAPI';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import BotDetailsPage from './BotDetailsPage';
 
 const mockUserDetail = {
@@ -74,9 +80,31 @@ jest.mock('../../rest/userAPI', () => ({
   updateUserDetail: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermissionByFqn: jest.fn().mockReturnValue({
+// BotDetailsPage now fetches its own permissions via useEntityPermissions (Task 8
+// batch-final) rather than an imperative usePermissionProvider().getEntityPermissionByFqn
+// call — mock the hook directly, mirroring RolesDetailPage.test.tsx's setMockPermissions
+// helper.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (overrides: Partial<OperationPermission> = {}) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
+
+describe('Test BotsPage Component', () => {
+  beforeEach(() => {
+    setMockPermissions({
       Create: true,
       Delete: true,
       ViewAll: true,
@@ -84,11 +112,9 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
       EditDescription: true,
       EditDisplayName: true,
       EditCustomFields: true,
-    }),
-  }),
-}));
+    });
+  });
 
-describe('Test BotsPage Component', () => {
   it('Should render all child elements', async () => {
     (getUserByName as jest.Mock).mockImplementationOnce(() => {
       return Promise.resolve({ data: mockUserDetail });
@@ -113,5 +139,36 @@ describe('Test BotsPage Component', () => {
     const errorPlaceholder = await findByTestId('no-data-placeholder');
 
     expect(errorPlaceholder).toBeInTheDocument();
+  });
+
+  it('should call useEntityPermissions with the BOT resource', async () => {
+    render(<BotDetailsPage />, { wrapper: MemoryRouter });
+
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+      ResourceEntity.BOT,
+      expect.any(String),
+      expect.objectContaining({ enabled: expect.any(Boolean) })
+    );
+  });
+
+  it('should fetch bot data when view access is granted', async () => {
+    render(<BotDetailsPage />, { wrapper: MemoryRouter });
+
+    await waitFor(() => expect(getBotByName).toHaveBeenCalled());
+  });
+
+  it('should not fetch bot data when view access is denied', async () => {
+    setMockPermissions({});
+    (getBotByName as jest.Mock).mockClear();
+
+    const { findByTestId } = render(<BotDetailsPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    // No page-level permission placeholder gates this — old code left botData/botUserData
+    // empty and rendered BotDetails regardless; only the fetch itself is gated.
+    await findByTestId('bots-details');
+
+    expect(getBotByName).not.toHaveBeenCalled();
   });
 });

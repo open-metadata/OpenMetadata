@@ -188,7 +188,7 @@ SELECT
 FROM
     {prefix}_SOURCE
 WHERE
-    type = 'PROCEDURE' and owner = '{schema}'
+    type = 'PROCEDURE' and owner = :schema
 ORDER BY OWNER, NAME, LINE
 """
 )
@@ -204,7 +204,7 @@ SELECT
 
 FROM
     {prefix}_SOURCE
-WHERE TYPE IN ('PACKAGE', 'PACKAGE BODY') AND owner = '{schema}'
+WHERE TYPE IN ('PACKAGE', 'PACKAGE BODY') AND owner = :schema
 ORDER BY OWNER, NAME, CASE type
         WHEN 'PACKAGE' THEN 1
         WHEN 'PACKAGE BODY' THEN 2
@@ -331,6 +331,7 @@ ORACLE_GET_COLUMNS = textwrap.dedent(
             col.data_default,
             com.comments,
             col.virtual_column,
+            col.char_used,
             {identity_cols}
         FROM {prefix}_TAB_COLS{dblink} col
         LEFT JOIN {prefix}_COL_COMMENTS{dblink} com

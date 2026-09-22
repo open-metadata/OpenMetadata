@@ -41,16 +41,16 @@ import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
-import {
-  getClassificationTags,
-  getGlossaryTags,
-} from '../../utils/TagsPureUtils';
 import { renderBreakableTooltip } from '../../utils/TooltipUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import {
   CLIPPED_NAME_CLASS,
   COMPACT_CELL_CLIP_CLASS,
   NAME_CELL_CLIP_CLASS,
+  renderDomainClassificationTagsCell,
+  renderDomainExpertsCell,
+  renderDomainGlossaryTagsCell,
+  renderDomainOwnersCell,
 } from '../common/atoms/domain/ui/domainFieldRenderers';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
@@ -63,13 +63,80 @@ import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
-import TagBadgeList from '../common/TagBadgeList/TagBadgeList.component';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductCreateDrawer } from './hooks/useDataProductCreateDrawer';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
+
+const renderDataProductNameCell = (
+  entity: DataProduct,
+  onEntityClick?: (entity: DataProduct) => void
+): ReactNode => {
+  const entityName = getEntityName(entity);
+  const showName =
+    entity.displayName && entity.name && entity.displayName !== entity.name;
+
+  const handleNameClick = (event: MouseEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    onEntityClick?.(entity);
+  };
+
+  return (
+    <Box
+      align="center"
+      className={NAME_CELL_CLIP_CLASS}
+      data-testid="entity-name"
+      direction="row"
+      gap={3}
+      onClick={handleNameClick}>
+      <Avatar size="md" {...getEntityAvatarProps(entity)} />
+      <Box className="tw:min-w-0" direction="col">
+        <Typography
+          className={CLIPPED_NAME_CLASS}
+          ellipsis={{ tooltip: renderBreakableTooltip(entityName) }}
+          size="text-sm"
+          weight="medium">
+          {entityName}
+        </Typography>
+        {showName && (
+          <Typography
+            className={CLIPPED_NAME_CLASS}
+            ellipsis={{ tooltip: renderBreakableTooltip(entity.name) }}
+            size="text-xs">
+            {entity.name}
+          </Typography>
+        )}
+      </Box>
+    </Box>
+  );
+};
+
+const renderDataProductDomainCell = (entity: DataProduct): ReactNode => {
+  const domains = entity.domains;
+  if (!domains?.length) {
+    return <Typography size="text-sm">{NO_DATA}</Typography>;
+  }
+  const domain = domains[0];
+
+  return (
+    <Box
+      align="center"
+      className={COMPACT_CELL_CLIP_CLASS}
+      direction="row"
+      gap={1}>
+      <Globe01 size={16} style={{ flexShrink: 0 }} />
+      <Typography
+        className={CLIPPED_NAME_CLASS}
+        ellipsis={{
+          tooltip: renderBreakableTooltip(domain.displayName || domain.name),
+        }}
+        size="text-sm">
+        {domain.displayName || domain.name}
+      </Typography>
+    </Box>
+  );
+};
 
 const DataProductListPage = ({
   renderPageHeader,
@@ -168,97 +235,25 @@ const DataProductListPage = ({
   const renderDataProductCell = useCallback(
     (entity: DataProduct, columnId: string): ReactNode => {
       switch (columnId) {
-        case 'name': {
-          const entityName = getEntityName(entity);
-          const showName =
-            entity.displayName &&
-            entity.name &&
-            entity.displayName !== entity.name;
-
-          const handleNameClick = (event: MouseEvent<HTMLDivElement>) => {
-            event.stopPropagation();
-            dataProductListing.actionHandlers.onEntityClick?.(entity);
-          };
-
-          return (
-            <Box
-              align="center"
-              className={NAME_CELL_CLIP_CLASS}
-              direction="row"
-              gap={3}
-              onClick={handleNameClick}>
-              <Avatar size="md" {...getEntityAvatarProps(entity)} />
-              <Box className="tw:min-w-0" direction="col">
-                <Typography
-                  className={CLIPPED_NAME_CLASS}
-                  ellipsis={{ tooltip: renderBreakableTooltip(entityName) }}
-                  size="text-sm"
-                  weight="medium">
-                  {entityName}
-                </Typography>
-                {showName && (
-                  <Typography
-                    className={CLIPPED_NAME_CLASS}
-                    ellipsis={{ tooltip: renderBreakableTooltip(entity.name) }}
-                    size="text-xs">
-                    {entity.name}
-                  </Typography>
-                )}
-              </Box>
-            </Box>
+        case 'name':
+          return renderDataProductNameCell(
+            entity,
+            dataProductListing.actionHandlers.onEntityClick
           );
-        }
         case 'owners':
-          return (
-            <OwnerLabel
-              isCompactView={false}
-              maxVisibleOwners={4}
-              owners={entity.owners}
-              showLabel={false}
-            />
-          );
+          return renderDomainOwnersCell(entity, {
+            showDashPlaceholder: true,
+          });
         case 'glossaryTerms':
-          return <TagBadgeList size="lg" tags={getGlossaryTags(entity.tags)} />;
-        case 'domains': {
-          const domains = entity.domains;
-          if (!domains?.length) {
-            return <Typography size="text-sm">{NO_DATA}</Typography>;
-          }
-          const domain = domains[0];
-
-          return (
-            <Box
-              align="center"
-              className={COMPACT_CELL_CLIP_CLASS}
-              direction="row"
-              gap={1}>
-              <Globe01 size={16} style={{ flexShrink: 0 }} />
-              <Typography
-                className={CLIPPED_NAME_CLASS}
-                ellipsis={{
-                  tooltip: renderBreakableTooltip(
-                    domain.displayName || domain.name
-                  ),
-                }}
-                size="text-sm">
-                {domain.displayName || domain.name}
-              </Typography>
-            </Box>
-          );
-        }
+          return renderDomainGlossaryTagsCell(entity);
+        case 'domains':
+          return renderDataProductDomainCell(entity);
         case 'tags':
-          return (
-            <TagBadgeList size="sm" tags={getClassificationTags(entity.tags)} />
-          );
+          return renderDomainClassificationTagsCell(entity);
         case 'experts':
-          return (
-            <OwnerLabel
-              isCompactView={false}
-              maxVisibleOwners={4}
-              owners={entity.experts}
-              showLabel={false}
-            />
-          );
+          return renderDomainExpertsCell(entity, {
+            showDashPlaceholder: true,
+          });
         default:
           return null;
       }
@@ -398,7 +393,7 @@ const DataProductListPage = ({
     permissions.dataProduct?.Create,
   ]);
 
-  return (
+  const renderHeader = () => (
     <>
       {!renderPageHeader && !isAiMode && (
         <HeaderBreadcrumb items={breadcrumbItems} />
@@ -412,6 +407,12 @@ const DataProductListPage = ({
             search: headerSearch,
           })
         : pageHeader}
+    </>
+  );
+
+  return (
+    <>
+      {renderHeader()}
 
       <Card
         className={classNames('tw:flex tw:min-h-0 tw:flex-1 tw:flex-col', {

@@ -32,12 +32,83 @@ import {
 } from '../../hooks/useAppMode';
 
 const OPTION_ICON_BOX =
-  'tw:w-9 tw:h-9 tw:rounded-[10px] tw:bg-blue-50 tw:border tw:border-blue-100 tw:shrink-0';
+  'tw:w-9 tw:h-9 tw:rounded-[10px] tw:bg-utility-blue-50 tw:border tw:border-utility-blue-100 tw:shrink-0';
 
 const BADGE_CLASS =
   'tw:inline-flex tw:items-center tw:gap-1 tw:px-2 tw:py-0.5 tw:rounded-full ' +
-  'tw:bg-blue-50 tw:border tw:border-blue-200 tw:text-blue-700 tw:text-xs tw:font-semibold ' +
+  'tw:bg-utility-blue-50 tw:border tw:border-utility-blue-200 tw:text-utility-blue-700 tw:text-xs tw:font-semibold ' +
   'tw:whitespace-nowrap tw:shrink-0';
+
+const AppModeSwitcherTrigger: React.FC<{
+  compact?: boolean;
+  isOpen: boolean;
+  isAiMode: boolean;
+  aiLabel: string;
+  modeLabel: string;
+  modeLabelSentence: string;
+  triggerRef: React.RefObject<HTMLButtonElement>;
+  onClick: () => void;
+}> = ({
+  compact,
+  isOpen,
+  isAiMode,
+  aiLabel,
+  modeLabel,
+  modeLabelSentence,
+  triggerRef,
+  onClick,
+}) => {
+  const iconSize = compact ? 12 : 16;
+  const modeLabelText = compact ? modeLabel : modeLabelSentence;
+
+  return (
+    <button
+      aria-expanded={isOpen}
+      aria-haspopup="dialog"
+      className={
+        compact
+          ? 'tw:flex tw:items-center tw:gap-1 tw:px-2 tw:py-1 tw:bg-utility-blue-50 tw:border tw:border-utility-blue-200 tw:rounded-full tw:cursor-pointer tw:text-left'
+          : 'tw:flex tw:items-center tw:gap-1.5 tw:w-full tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:text-left'
+      }
+      data-testid="app-mode-switcher-trigger"
+      ref={triggerRef}
+      type="button"
+      onClick={onClick}>
+      {isAiMode ? (
+        <img
+          alt={aiLabel}
+          data-testid="app-mode-trigger-icon-ai"
+          height={iconSize}
+          src={appModeAIIcon}
+          width={iconSize}
+        />
+      ) : (
+        <AppModeClassicIcon
+          data-testid="app-mode-trigger-icon-classic"
+          height={iconSize}
+          width={iconSize}
+        />
+      )}
+      <span
+        className={
+          compact
+            ? 'tw:text-[10px] tw:text-utility-blue-700 tw:font-semibold'
+            : 'tw:flex-1 tw:text-xs tw:text-secondary tw:font-semibold'
+        }>
+        {modeLabelText}
+      </span>
+      <ChevronUp
+        className={classNames(
+          'tw:shrink-0 tw:transition-transform tw:duration-150',
+          compact ? 'tw:text-utility-blue-500' : undefined,
+          { 'tw:rotate-180': isOpen }
+        )}
+        height={compact ? 10 : 11}
+        width={compact ? 10 : 11}
+      />
+    </button>
+  );
+};
 
 const AppModeSwitcher: React.FC<{
   className?: string;
@@ -83,79 +154,16 @@ const AppModeSwitcher: React.FC<{
 
   return (
     <div className={classNames(className)}>
-      {compact ? (
-        <button
-          aria-expanded={isOpen}
-          aria-haspopup="dialog"
-          className="tw:flex tw:items-center tw:gap-1 tw:px-2 tw:py-1 tw:bg-utility-blue-50 tw:border tw:border-utility-blue-200 tw:rounded-full tw:cursor-pointer tw:text-left"
-          data-testid="app-mode-switcher-trigger"
-          ref={triggerRef}
-          type="button"
-          onClick={() => setIsOpen((prev) => !prev)}>
-          {isAiMode ? (
-            <img
-              alt={t('label.ai')}
-              data-testid="app-mode-trigger-icon-ai"
-              height={12}
-              src={appModeAIIcon}
-              width={12}
-            />
-          ) : (
-            <AppModeClassicIcon
-              data-testid="app-mode-trigger-icon-classic"
-              height={12}
-              width={12}
-            />
-          )}
-          <span className="tw:text-[10px] tw:text-utility-blue-700 tw:font-semibold">
-            {modeLabel}
-          </span>
-          <ChevronUp
-            className={classNames(
-              'tw:shrink-0 tw:text-utility-blue-500 tw:transition-transform tw:duration-150',
-              { 'tw:rotate-180': isOpen }
-            )}
-            height={10}
-            width={10}
-          />
-        </button>
-      ) : (
-        <button
-          aria-expanded={isOpen}
-          aria-haspopup="dialog"
-          className="tw:flex tw:items-center tw:gap-1.5 tw:w-full tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:text-left"
-          data-testid="app-mode-switcher-trigger"
-          ref={triggerRef}
-          type="button"
-          onClick={() => setIsOpen((prev) => !prev)}>
-          {isAiMode ? (
-            <img
-              alt={t('label.ai')}
-              data-testid="app-mode-trigger-icon-ai"
-              height={16}
-              src={appModeAIIcon}
-              width={16}
-            />
-          ) : (
-            <AppModeClassicIcon
-              data-testid="app-mode-trigger-icon-classic"
-              height={16}
-              width={16}
-            />
-          )}
-          <span className="tw:flex-1 tw:text-xs tw:text-secondary tw:font-semibold">
-            {t('label.mode-label', { mode: modeLabel })}
-          </span>
-          <ChevronUp
-            className={classNames(
-              'tw:shrink-0 tw:transition-transform tw:duration-150',
-              { 'tw:rotate-180': isOpen }
-            )}
-            height={11}
-            width={11}
-          />
-        </button>
-      )}
+      <AppModeSwitcherTrigger
+        aiLabel={t('label.ai')}
+        compact={compact}
+        isAiMode={isAiMode}
+        isOpen={isOpen}
+        modeLabel={modeLabel}
+        modeLabelSentence={t('label.mode-label', { mode: modeLabel })}
+        triggerRef={triggerRef}
+        onClick={() => setIsOpen((prev) => !prev)}
+      />
 
       <Popover
         containerClassName="tw:w-60"
@@ -177,10 +185,10 @@ const AppModeSwitcher: React.FC<{
 
           <button
             className={classNames(
-              'tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:p-2.5 tw:rounded-xl tw:cursor-pointer tw:transition tw:bg-white tw:border tw:text-left',
+              'tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:p-2.5 tw:rounded-xl tw:cursor-pointer tw:transition tw:bg-surface tw:border tw:text-left',
               {
-                'tw:bg-blue-50 tw:border-blue-200': !isAiMode,
-                'tw:border-transparent tw:hover:bg-blue-50': isAiMode,
+                'tw:bg-utility-blue-50 tw:border-utility-blue-200': !isAiMode,
+                'tw:border-transparent tw:hover:bg-utility-blue-50': isAiMode,
               }
             )}
             data-testid="app-mode-option-classic"
@@ -207,10 +215,10 @@ const AppModeSwitcher: React.FC<{
 
           <button
             className={classNames(
-              'tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:p-2.5 tw:mt-1.5 tw:rounded-xl tw:cursor-pointer tw:transition tw:bg-white tw:border tw:text-left',
+              'tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:p-2.5 tw:mt-1.5 tw:rounded-xl tw:cursor-pointer tw:transition tw:bg-surface tw:border tw:text-left',
               {
-                'tw:bg-blue-50 tw:border-blue-200': isAiMode,
-                'tw:border-transparent tw:hover:bg-blue-50': !isAiMode,
+                'tw:bg-utility-blue-50 tw:border-utility-blue-200': isAiMode,
+                'tw:border-transparent tw:hover:bg-utility-blue-50': !isAiMode,
               }
             )}
             data-testid="app-mode-option-ai"
@@ -235,7 +243,7 @@ const AppModeSwitcher: React.FC<{
             )}
           </button>
 
-          <hr className="tw:border-0 tw:border-t tw:border-gray-200 tw:my-2" />
+          <hr className="tw:border-0 tw:border-t tw:border-secondary tw:my-2" />
 
           <button
             className="tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:px-2 tw:py-2.5 tw:border-0 tw:bg-transparent tw:cursor-pointer tw:text-left"
@@ -249,7 +257,8 @@ const AppModeSwitcher: React.FC<{
                 'tw:w-5 tw:h-5 tw:rounded-md tw:shrink-0 tw:transition',
                 {
                   'tw:bg-blue-600 tw:border-0': isRemembered,
-                  'tw:bg-white tw:border tw:border-gray-400': !isRemembered,
+                  'tw:bg-surface tw:border tw:border-utility-gray-400':
+                    !isRemembered,
                 }
               )}
               justify="center"

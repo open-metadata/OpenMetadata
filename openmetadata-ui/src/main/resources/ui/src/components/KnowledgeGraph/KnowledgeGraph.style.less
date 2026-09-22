@@ -1,0 +1,376 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../styles/variables.less';
+
+.knowledge-graph-container {
+  height: @asset-details-tab-pane-height;
+  min-height: calc(var(--om-space-40) * 14);
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(min-content, 1fr);
+  min-width: 0;
+
+  .kg-content {
+    display: grid;
+    grid-template-rows: auto minmax(min-content, 1fr) auto;
+    min-height: 0;
+  }
+
+  .kg-stage {
+    display: grid;
+    grid-template-rows: minmax(calc(var(--om-space-40) * 8), 1fr) auto;
+    min-height: 0;
+    position: relative;
+  }
+
+  &.kg-details-open .kg-stage {
+    grid-template-rows: minmax(calc(var(--om-space-40) * 4), 1fr) auto;
+  }
+
+  .kg-toolbar-header > div {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .kg-find {
+    flex: 1 1 calc(var(--om-space-40) * 5);
+    min-width: ~'min(calc(var(--om-space-40) * 3.25), 100%)';
+    max-width: 100%;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    button {
+      transition: none;
+    }
+  }
+
+  .knowledge-graph-body {
+    flex: 1;
+    min-height: calc(var(--om-space-40) * 8);
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    background-color: var(--om-color-bg-primary);
+    background-image: radial-gradient(
+      circle,
+      var(--om-color-border-secondary) var(--om-space-1),
+      transparent var(--om-space-1)
+    );
+    background-size: var(--om-space-24) var(--om-space-24);
+  }
+
+  .knowledge-graph-canvas {
+    position: absolute;
+    inset: 0;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+  }
+
+  .kg-level-rings {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  // Design: the direct band is a tinted brand surface, the extended band a
+  // neutral dashed outline; labels sit in the band's top padding.
+  .kg-band {
+    stroke-width: var(--om-space-1);
+  }
+
+  .kg-band-direct {
+    fill: var(--om-color-brand-25);
+    stroke: var(--om-color-brand-200);
+    opacity: 0.9;
+  }
+
+  .kg-band-extended {
+    fill: none;
+    stroke: var(--om-color-gray-300);
+  }
+
+  // Font size is a scaled SVG attribute, so the label tracks the zoom.
+  .kg-band-label {
+    font-weight: var(--om-font-weight-semibold);
+    letter-spacing: var(--om-letter-spacing-wide);
+    text-transform: uppercase;
+  }
+
+  .kg-band-label-direct {
+    fill: var(--om-color-brand-600);
+  }
+
+  .kg-band-label-extended {
+    fill: var(--om-color-text-quaternary);
+  }
+
+  // Design: the list takes a little over a third of the pane, capped so the
+  // graph above keeps room for the subject and its direct neighbours.
+  .kg-details {
+    height: ~'clamp(calc(var(--om-space-40) * 5.5), 36vh, calc(var(--om-space-40) * 8.5))';
+    max-height: calc(var(--om-space-40) * 8.5);
+    min-height: calc(var(--om-space-40) * 5.5);
+    overflow: hidden;
+  }
+
+  .kg-details-tabs [role='tablist'] {
+    background: var(--om-color-bg-secondary);
+    border-radius: var(--om-radius-md);
+    padding: var(--om-space-2);
+    gap: var(--om-space-2);
+  }
+
+  .kg-details-table th span {
+    text-transform: uppercase;
+    letter-spacing: var(--om-letter-spacing-wide);
+  }
+
+  &.kg-details-open .knowledge-graph-body {
+    min-height: calc(var(--om-space-40) * 4);
+  }
+
+  .knowledge-graph-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .kg-empty-hint {
+    position: absolute;
+    top: var(--om-space-16);
+    left: var(--om-space-16);
+    right: var(--om-space-16);
+    display: flex;
+    align-items: center;
+    gap: var(--om-space-8);
+    flex-wrap: wrap;
+  }
+
+  // Design: a 352px side panel with a titled header, a scrolling body and a
+  // footer of actions that stays in reach.
+  .kg-inspector {
+    grid-column: 2;
+    grid-row-start: 1;
+    grid-row-end: 3;
+    position: relative;
+    min-height: 0;
+    min-width: 0;
+    height: 100%;
+    overflow: hidden;
+    background: var(--om-color-bg-primary);
+    border-left: var(--om-space-1) solid var(--om-color-border-secondary);
+    z-index: var(--om-z-10);
+  }
+
+  .kg-inspector-header {
+    flex-shrink: 0;
+    padding: var(--om-space-14) var(--om-space-14) var(--om-space-12);
+    border-bottom: var(--om-space-1) solid var(--om-color-border-secondary);
+  }
+
+  .kg-inspector-body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: var(--om-space-14);
+    gap: var(--om-space-14);
+  }
+
+  .kg-inspector-tile {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    border-radius: var(--om-radius-md);
+    border: var(--om-space-1) solid;
+  }
+
+  .kg-inspector-tile-md {
+    width: var(--om-space-32);
+    height: var(--om-space-32);
+  }
+
+  .kg-inspector-tile-sm {
+    width: var(--om-space-26);
+    height: var(--om-space-26);
+    border-radius: var(--om-radius-sm);
+  }
+
+  .kg-inspector-statement {
+    padding: var(--om-space-12);
+    background: var(--om-color-bg-secondary);
+    border: var(--om-space-1) solid var(--om-color-border-secondary);
+    border-radius: var(--om-radius-lg);
+  }
+
+  .kg-inspector-dot {
+    width: var(--om-space-7);
+    height: var(--om-space-7);
+    flex-shrink: 0;
+    border-radius: var(--om-radius-full);
+  }
+
+  .kg-inspector-section-title {
+    font-size: var(--om-font-size-11);
+    font-weight: var(--om-font-weight-semibold);
+    letter-spacing: var(--om-letter-spacing-wide);
+    text-transform: uppercase;
+    color: var(--om-color-text-quaternary);
+  }
+
+  .kg-inspector-row {
+    padding: var(--om-space-6) var(--om-space-8);
+  }
+
+  .kg-stage:has(.kg-inspector) {
+    grid-template-columns: ~'minmax(0, 1fr) min(calc(var(--om-space-44) * 8), 36%)';
+
+    .knowledge-graph-body {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .kg-details {
+      grid-column: 1;
+      grid-row: 2;
+    }
+  }
+
+  .kg-inspector-actions {
+    flex-shrink: 0;
+    padding: var(--om-space-12) var(--om-space-14);
+    background: var(--om-color-bg-primary);
+    border-top: var(--om-space-1) solid var(--om-color-border-secondary);
+
+    > * {
+      flex: 1;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .kg-stage:has(.kg-inspector) {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: minmax(calc(var(--om-space-40) * 4), 1fr) auto auto;
+    }
+
+    .kg-inspector {
+      grid-column: 1;
+      grid-row: 3;
+      max-height: 40vh;
+      border-left: 0;
+      border-top: var(--om-space-1) solid var(--om-color-border-secondary);
+    }
+  }
+
+  .knowledge-graph-action-buttons {
+    position: absolute;
+    bottom: var(--om-space-16);
+    right: var(--om-space-16);
+    z-index: var(--om-z-1001);
+    display: inline-flex;
+    background: var(--om-color-bg-primary);
+    border-radius: var(--om-radius-sm);
+    border: var(--om-space-1) solid var(--om-color-border-primary);
+    overflow: hidden;
+
+    .kg-control-btn {
+      width: var(--om-space-32);
+      height: var(--om-space-32);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      border-right: var(--om-space-1) solid var(--om-color-border-primary);
+      cursor: pointer;
+      padding: 0;
+      color: var(--om-color-text-tertiary);
+      transition: background-color var(--om-duration-150) ease;
+
+      &:last-child {
+        border-right: none;
+      }
+
+      &:hover {
+        background-color: var(--om-color-bg-secondary);
+      }
+
+      &:focus-visible {
+        outline: var(--om-space-2) solid var(--om-color-border-brand);
+        outline-offset: calc(-1 * var(--om-space-2));
+      }
+
+      svg {
+        width: var(--om-space-14);
+        height: var(--om-space-14);
+      }
+    }
+  }
+}
+
+.full-screen-knowledge-graph {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  inset: 0;
+  padding: var(--om-space-16);
+  background: var(--om-color-bg-primary);
+  overflow: auto;
+  z-index: var(--om-z-900);
+
+  .knowledge-graph-container {
+    flex: 1 0 auto;
+    height: 100%;
+    min-height: min-content;
+    width: 100%;
+  }
+
+  .knowledge-graph-canvas {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.kg-edge-tooltip {
+  z-index: var(--om-z-1500);
+  pointer-events: none;
+  background: var(--om-color-bg-primary);
+  border: var(--om-space-1) solid var(--om-color-border-primary);
+  border-radius: var(--om-radius-md);
+  padding: var(--om-space-6) var(--om-space-10);
+  box-shadow: var(--om-shadow-lg);
+  max-width: var(--om-space-290);
+  font-size: var(--om-font-size-xs);
+  line-height: var(--om-line-height-normal);
+
+  &__direction {
+    color: var(--om-color-text-tertiary);
+    margin-bottom: var(--om-space-4);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__label {
+    color: var(--om-color-text-primary);
+    font-weight: var(--om-font-weight-medium);
+    word-break: break-word;
+  }
+}

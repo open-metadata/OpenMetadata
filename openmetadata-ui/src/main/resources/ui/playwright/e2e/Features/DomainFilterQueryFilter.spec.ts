@@ -104,8 +104,6 @@ const expectQueryVisibleForDomain = async (
 };
 
 test.describe('Domain Filter - User Behavior Tests', () => {
-  test.slow(true);
-
   test('Assets from selected domain should be visible in explore page', async ({
     page,
   }) => {
@@ -572,6 +570,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
   test('Quick filters should persist when domain filter is applied and cleared', async ({
     page,
   }) => {
+    test.slow();
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const domainTable1 = new TableClass();
@@ -812,6 +811,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
   test('Multi-nested domain hierarchy: filters should scope correctly at every level', async ({
     page,
   }) => {
+    test.slow();
     /**
      * Domain Hierarchy:
      * RootDomain
@@ -858,7 +858,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await page.getByTestId('drop-down-menu').waitFor({
         state: 'visible',
       });
-      const checkbox = page.getByTestId(`${tier}-checkbox`);
+      const checkbox = page.getByTestId('drop-down-menu').getByTestId(tier);
       await checkbox.waitFor({ state: 'visible' });
       await checkbox.click();
       const filterRes = page.waitForResponse(
@@ -881,7 +881,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
         .getByTestId('drop-down-menu')
         .getByTestId('search-input')
         .fill(searchTerm);
-      await page.getByRole('menuitem', { name: tagPattern }).click();
+      await page.getByRole('menuitemcheckbox', { name: tagPattern }).click();
       const filterRes = page.waitForResponse(
         '/api/v1/search/query?*index=all*'
       );
@@ -898,7 +898,9 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await page.getByTestId('drop-down-menu').waitFor({
         state: 'visible',
       });
-      const checkbox = page.getByTestId(`${entityType}-checkbox`);
+      const checkbox = page
+        .getByTestId('drop-down-menu')
+        .getByTestId(entityType);
       await checkbox.waitFor({ state: 'visible' });
       await checkbox.click();
       const filterRes = page.waitForResponse(

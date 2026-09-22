@@ -1,5 +1,6 @@
 package org.openmetadata.mcp.tools;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
 
 import java.io.IOException;
@@ -19,6 +20,7 @@ import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.Authorizer;
@@ -56,12 +58,17 @@ public class CompanyContextTool implements McpTool {
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
       throws IOException {
+    String query = CommonUtils.optString(params, QUERY_PARAM);
+    String fqn = CommonUtils.optString(params, FQN_PARAM);
+    // Scoped to the pill when the caller named one, so entity-level tag/owner/domain policies are
+    // evaluated and not just the resource-type permission.
     authorizer.authorize(
         securityContext,
         new OperationContext(Entity.CONTEXT_MEMORY, VIEW_ALL),
-        new ResourceContext<>(Entity.CONTEXT_MEMORY));
-    String query = CommonUtils.optString(params, QUERY_PARAM);
-    String fqn = CommonUtils.optString(params, FQN_PARAM);
+        nullOrEmpty(fqn)
+            ? new ResourceContext<>(Entity.CONTEXT_MEMORY)
+            : new ResourceContext<>(
+                Entity.CONTEXT_MEMORY, null, FullyQualifiedName.quoteName(fqn)));
     return route(query, fqn, params, securityContext);
   }
 
@@ -80,7 +87,7 @@ public class CompanyContextTool implements McpTool {
               "Pass either 'query' to search knowledge pills or 'fqn' to read one by name, not"
                   + " both and not neither.");
     } else if (hasFqn) {
-      result = lookupPill(fqn);
+      result = lookupPill(fqn, securityContext);
     } else {
       result = runSearch(query, params, securityContext);
     }
@@ -89,12 +96,15 @@ public class CompanyContextTool implements McpTool {
 
   // --- by name ----------------------------------------------------------------------------------
 
-  private static Map<String, Object> lookupPill(String fqn) {
+  private static Map<String, Object> lookupPill(
+      String fqn, CatalogSecurityContext securityContext) {
     Map<String, Object> result;
     try {
       ContextMemory memory = fetchPill(fqn);
       result =
-          isExposablePill(memory) ? projectPill(memory) : errorResponse(NOT_A_SHARED_PILL_ERROR);
+          isExposablePill(memory, securityContext)
+              ? projectPill(memory)
+              : errorResponse(NOT_A_SHARED_PILL_ERROR);
     } catch (EntityNotFoundException e) {
       result = errorResponse("No Company Context knowledge pill found for '" + fqn + "'");
     }
@@ -115,11 +125,18 @@ public class CompanyContextTool implements McpTool {
         Entity.CONTEXT_MEMORY, normalizedFqn, "sourceFile,owners,tags,domains", null);
   }
 
-  /** The by-name scope, kept identical to {@link #searchFilters()} by construction now. */
-  private static boolean isExposablePill(ContextMemory memory) {
+  /**
+   * The by-name scope: a file-extracted pill, and one this caller may see - the same shareConfig
+   * question {@code ContextMemorySearchVisibility} asks of every hit on the search half. The two
+   * halves are not identical sets: {@link #searchFilters()} additionally pins {@code visibility} to
+   * {@code Shared}, so a pill this caller may see for another reason (an org-wide one, or their own)
+   * is readable by name but will not appear in a query. A pill outside the scope is reported as
+   * not-a-shared-pill rather than denied, which keeps the answer the same whether or not it exists.
+   */
+  private static boolean isExposablePill(
+      ContextMemory memory, CatalogSecurityContext securityContext) {
     return memory.getSourceType() == ContextMemorySourceType.FILE_EXTRACTION
-        && memory.getShareConfig() != null
-        && memory.getShareConfig().getVisibility() == MemoryVisibility.SHARED;
+        && !ContextMemoryVisibility.filterByVisibility(List.of(memory), securityContext).isEmpty();
   }
 
   static Map<String, Object> projectPill(ContextMemory memory) {

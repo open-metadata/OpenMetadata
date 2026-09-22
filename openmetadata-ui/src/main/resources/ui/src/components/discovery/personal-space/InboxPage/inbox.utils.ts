@@ -27,6 +27,7 @@ import {
   TaskType,
 } from '../../../../generated/entity/tasks/task';
 import { Reaction, ReactionType } from '../../../../generated/type/reaction';
+import { InboxDateRange } from '../../../../interface/inbox.interface';
 import {
   addActivityReaction,
   removeActivityReaction,
@@ -75,40 +76,57 @@ export const getActivityEventLabel = (
   const forPrep = t('label.for-lowercase');
   const onPrep = t('label.on-lowercase');
 
-  switch (activity.eventType) {
-    case ActivityEventType.EntityCreated:
-      return `${t('label.created-lowercase')} ${onPrep}`;
-    case ActivityEventType.EntityDeleted:
-    case ActivityEventType.EntitySoftDeleted:
-      return `${t('label.deleted-lowercase')} ${onPrep}`;
-    case ActivityEventType.EntityRestored:
-      return `${t('label.restored-lowercase')} ${onPrep}`;
-    case ActivityEventType.DescriptionUpdated:
-    case ActivityEventType.ColumnDescriptionUpdated:
-      return `${updated} ${t('label.description')} ${forPrep}`;
-    case ActivityEventType.TagsUpdated:
-    case ActivityEventType.ColumnTagsUpdated:
-      return `${t('label.added-lowercase')} ${t('label.tag-plural')} ${t(
-        'label.to-lowercase'
-      )}`;
-    case ActivityEventType.OwnerUpdated:
-      return `${updated} ${t('label.owner')} ${forPrep}`;
-    case ActivityEventType.DomainUpdated:
-      return `${updated} ${t('label.domain')} ${forPrep}`;
-    case ActivityEventType.TierUpdated:
-      return `${updated} ${t('label.tier')} ${forPrep}`;
-    case ActivityEventType.CustomPropertyUpdated:
-      return `${updated} ${t('label.custom-property')} ${forPrep}`;
-    case ActivityEventType.TestCaseStatusChanged:
-      return `${updated} ${t('label.status')} ${onPrep}`;
-    case ActivityEventType.PipelineStatusChanged:
-      return `${updated} ${t('label.pipeline')} ${t('label.status')} ${onPrep}`;
-    case ActivityEventType.EntityUpdated:
-    default:
-      return activity.fieldName
-        ? `${updated} ${activity.fieldName} ${forPrep}`
-        : `${updated} ${onPrep}`;
+  const labelMap: Partial<Record<ActivityEventType, string>> = {
+    [ActivityEventType.EntityCreated]: `${t(
+      'label.created-lowercase'
+    )} ${onPrep}`,
+    [ActivityEventType.EntityDeleted]: `${t(
+      'label.deleted-lowercase'
+    )} ${onPrep}`,
+    [ActivityEventType.EntitySoftDeleted]: `${t(
+      'label.deleted-lowercase'
+    )} ${onPrep}`,
+    [ActivityEventType.EntityRestored]: `${t(
+      'label.restored-lowercase'
+    )} ${onPrep}`,
+    [ActivityEventType.DescriptionUpdated]: `${updated} ${t(
+      'label.description'
+    )} ${forPrep}`,
+    [ActivityEventType.ColumnDescriptionUpdated]: `${updated} ${t(
+      'label.description'
+    )} ${forPrep}`,
+    [ActivityEventType.TagsUpdated]: `${t('label.added-lowercase')} ${t(
+      'label.tag-plural'
+    )} ${t('label.to-lowercase')}`,
+    [ActivityEventType.ColumnTagsUpdated]: `${t('label.added-lowercase')} ${t(
+      'label.tag-plural'
+    )} ${t('label.to-lowercase')}`,
+    [ActivityEventType.OwnerUpdated]: `${updated} ${t(
+      'label.owner'
+    )} ${forPrep}`,
+    [ActivityEventType.DomainUpdated]: `${updated} ${t(
+      'label.domain'
+    )} ${forPrep}`,
+    [ActivityEventType.TierUpdated]: `${updated} ${t('label.tier')} ${forPrep}`,
+    [ActivityEventType.CustomPropertyUpdated]: `${updated} ${t(
+      'label.custom-property'
+    )} ${forPrep}`,
+    [ActivityEventType.TestCaseStatusChanged]: `${updated} ${t(
+      'label.status'
+    )} ${onPrep}`,
+    [ActivityEventType.PipelineStatusChanged]: `${updated} ${t(
+      'label.pipeline'
+    )} ${t('label.status')} ${onPrep}`,
+  };
+
+  const mappedLabel = labelMap[activity.eventType];
+  if (mappedLabel) {
+    return mappedLabel;
   }
+
+  return activity.fieldName
+    ? `${updated} ${activity.fieldName} ${forPrep}`
+    : `${updated} ${onPrep}`;
 };
 
 // Activity feed scope: "all" shows every conversation; "me" restricts to
@@ -117,18 +135,7 @@ export type InboxScope = 'all' | 'me';
 
 // Selected date window for the Inbox (Activity + Tasks), passed to the feed/task
 // list APIs as startTs/endTs (server-side filtering).
-export interface InboxDateRange {
-  startTs?: number;
-  endTs?: number;
-  // Preset key of the selected range (e.g. 'last30days', 'customRange'). Kept so
-  // the persisted range can be compared to the default by key rather than by
-  // timestamps, which drift between mounts (now-based vs day-aligned millis).
-  key?: string;
-  // Label the picker shows for this range (e.g. "Custom Range"). Persisted so the
-  // dropdown button re-seeds to the selected range after a tab-switch remount
-  // instead of falling back to the default preset title.
-  title?: string;
-}
+export type { InboxDateRange } from '../../../../interface/inbox.interface';
 
 // Default Inbox window: the last 30 days (start-of-day to now), used by the page
 // on first render and by the sidebar inbox-icon count.
@@ -240,10 +247,22 @@ export interface ActivityBucket {
   items: Conversation[];
 }
 
-// Exported because useInboxActivity sorts the merged activity+conversation list
-// by it. createdAt is the Conversation V2 counterpart of the legacy threadTs.
+// Display timestamp for a conversation card/drawer ("Posted on …"). createdAt is
+// the Conversation V2 counterpart of the legacy threadTs, so the posted time is
+// shown createdAt-first (matches upstream's card display). Used by
+// ActivityDetailDrawer and by getActivityBuckets (display grouping), NOT by the
+// merged-list sort (use getFeedSortTimestamp for that).
 export const getFeedTimestamp = (feed: Conversation): number =>
   feed.createdAt ?? feed.updatedAt ?? 0;
+
+// Sort key for the merged inbox list. Mirrors upstream's getConversationTimestamp
+// (ActivityFeedListV1New.component.tsx): last-activity (updatedAt) first, falling
+// back to createdAt. Kept separate from getFeedTimestamp so the displayed
+// timestamp (createdAt-first) is unaffected — many products order threads by
+// last activity while showing the original post time, which is what upstream and
+// the inbox display both do (OpenMetadata#30879, #30909).
+export const getFeedSortTimestamp = (feed: Conversation): number =>
+  feed.updatedAt ?? feed.createdAt ?? 0;
 
 const SINGLE_DAY_FORMAT = 'cccc, LLLL d';
 const RANGE_DAY_FORMAT = 'LLLL d';

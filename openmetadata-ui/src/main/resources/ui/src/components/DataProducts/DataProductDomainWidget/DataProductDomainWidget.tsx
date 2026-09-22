@@ -66,11 +66,14 @@ export const DataProductDomainWidget = () => {
 
       setIsLoading(true);
       try {
-        const rawDomains = Array.isArray(selectedDomain)
-          ? selectedDomain
-          : isEmpty(selectedDomain)
-          ? []
-          : [selectedDomain];
+        let rawDomains: EntityReference[];
+        if (Array.isArray(selectedDomain)) {
+          rawDomains = selectedDomain;
+        } else if (isEmpty(selectedDomain)) {
+          rawDomains = [];
+        } else {
+          rawDomains = [selectedDomain];
+        }
 
         const domains: EntityReference[] = rawDomains.map((d) => ({
           id: d.id,

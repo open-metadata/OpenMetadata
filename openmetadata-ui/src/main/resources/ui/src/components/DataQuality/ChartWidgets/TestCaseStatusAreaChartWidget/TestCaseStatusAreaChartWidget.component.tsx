@@ -15,19 +15,20 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { isUndefined, last, toLower } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as SuccessIcon } from '../../../../assets/svg/ic-check.svg';
 import { ReactComponent as FailedIcon } from '../../../../assets/svg/ic-warning-2.svg';
 import { TestCaseStatus } from '../../../../generated/entity/feed/testCaseResult';
 import { fetchTestCaseStatusMetricsByDays } from '../../../../rest/dataQualityDashboardAPI';
-import { CustomAreaChartData } from '../../../Visualisations/Chart/Chart.interface';
 import CustomAreaChart from '../../../Visualisations/Chart/CustomAreaChart.component';
 import { TestCaseStatusAreaChartWidgetProps } from '../../DataQuality.interface';
 import '../chart-widgets.less';
+import { EMPTY_CHART_DATA } from '../ChartWidgets.constants';
 import './test-case-status-area-chart-widget.less';
 
 const TestCaseStatusAreaChartWidget = ({
@@ -43,8 +44,32 @@ const TestCaseStatusAreaChartWidget = ({
   footerWhenEmpty,
 }: TestCaseStatusAreaChartWidgetProps) => {
   const { t } = useTranslation();
-  const [chartData, setChartData] = useState<CustomAreaChartData[]>([]);
-  const [isChartLoading, setIsChartLoading] = useState(true);
+  const { data: chartData = EMPTY_CHART_DATA, isLoading: isChartLoading } =
+    useQuery({
+      queryKey: [
+        'dq-dashboard',
+        'test-case-status-metrics',
+        testCaseStatus,
+        chartFilter,
+      ],
+      queryFn: async () => {
+        const { data } = await fetchTestCaseStatusMetricsByDays(
+          testCaseStatus,
+          chartFilter
+        );
+        const updatedData = data.map((cur) => {
+          return {
+            timestamp: +cur.timestamp,
+            count: +cur['testCase.fullyQualifiedName'],
+          };
+        });
+        // Aggregation buckets are not guaranteed to arrive chronologically;
+        // Recharts expects an ascending x-axis for a stable trend line.
+        updatedData.sort((first, second) => first.timestamp - second.timestamp);
+
+        return updatedData;
+      },
+    });
 
   const bodyElement = useMemo(() => {
     const latestValue = last(chartData)?.count ?? 0;
@@ -119,35 +144,6 @@ const TestCaseStatusAreaChartWidget = ({
     testCaseStatus,
     showIcon,
   ]);
-
-  const getTestCaseStatusMetrics = async () => {
-    setIsChartLoading(true);
-    try {
-      const { data } = await fetchTestCaseStatusMetricsByDays(
-        testCaseStatus,
-        chartFilter
-      );
-      const updatedData = data.map((cur) => {
-        return {
-          timestamp: +cur.timestamp,
-          count: +cur['testCase.fullyQualifiedName'],
-        };
-      });
-      // Aggregation buckets are not guaranteed to arrive chronologically;
-      // Recharts expects an ascending x-axis for a stable trend line.
-      updatedData.sort((first, second) => first.timestamp - second.timestamp);
-
-      setChartData(updatedData);
-    } catch {
-      setChartData([]);
-    } finally {
-      setIsChartLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    getTestCaseStatusMetrics();
-  }, [chartFilter, testCaseStatus]);
 
   const containerClassName = classNames(
     'test-case-area-chart-widget-container tw:p-4',

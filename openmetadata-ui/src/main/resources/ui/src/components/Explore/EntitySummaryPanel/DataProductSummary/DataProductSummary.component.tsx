@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Space, Typography } from 'antd';
+import { Owner } from '@openmetadata/ui-core-components';
+import { Col, Row, Typography } from 'antd';
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -18,7 +19,6 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelPureUtils';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
@@ -78,7 +78,11 @@ const DataProductSummary = ({
             </Typography.Text>
           </Col>
           <Col span={24}>
-            <OwnerLabel owners={entityDetails.owners ?? []} />
+            <Owner
+              isCompactView={false}
+              owners={entityDetails.owners ?? []}
+              showLabel={false}
+            />
           </Col>
         </Row>
 
@@ -92,9 +96,7 @@ const DataProductSummary = ({
           </Col>
           <Col span={24}>
             {experts.length > 0 ? (
-              <Space wrap size={[8, 8]}>
-                <OwnerLabel owners={experts} />
-              </Space>
+              <Owner isCompactView={false} owners={experts} showLabel={false} />
             ) : (
               <Typography.Text
                 className="text-grey-body"

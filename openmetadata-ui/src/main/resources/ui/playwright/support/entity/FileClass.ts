@@ -19,7 +19,11 @@ import {
 } from '../../../src/generated/entity/data/file';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -117,44 +121,47 @@ export class FileClass extends EntityClass {
     };
   }
 
+  // createOrFetch, not a bare POST: these names are generated once, when the
+  // class is constructed. Specs that build their fixtures in the describe body
+  // (LineageFilters, for one) do not re-evaluate it on a retry, so beforeAll
+  // runs a second time with the same names and every create answers 409
+  // "Entity already exists" — the retry fails in the hook and takes the whole
+  // file with it. Treating the conflict as success and fetching the entity
+  // makes create idempotent, which is what a retry needs it to be.
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/driveServices',
-      {
-        data: this.service,
-      }
-    );
-    this.serviceResponseData = await okJson(
-      serviceResponse,
-      'FileClass.create'
-    );
+    this.serviceResponseData = await createOrFetch(apiContext, {
+      label: 'FileClass.create service',
+      createPath: '/api/v1/services/driveServices',
+      fqnSegments: [this.service.name],
+      data: this.service,
+    });
 
     // Create directory
-    const directoryResponse = await apiContext.post(
-      '/api/v1/drives/directories',
-      {
-        data: {
-          name: this.directoryName,
-          service: this.serviceResponseData.fullyQualifiedName,
-        },
-      }
-    );
-    this.directoryResponseData = await okJson(
-      directoryResponse,
-      'FileClass.create'
-    );
+    this.directoryResponseData = await createOrFetch(apiContext, {
+      label: 'FileClass.create directory',
+      createPath: '/api/v1/drives/directories',
+      fqnSegments: [this.service.name, this.directoryName],
+      data: {
+        name: this.directoryName,
+        service: this.serviceResponseData.fullyQualifiedName,
+      },
+    });
 
-    // Create file in directory
-    const entityResponse = await apiContext.post(
-      `/api/v1/${EntityTypeEndpoint.File}`,
-      {
-        data: {
-          ...this.entity,
-          directory: this.directoryResponseData.fullyQualifiedName,
-        },
-      }
-    );
-    this.entityResponseData = await okJson(entityResponse, 'FileClass.create');
+    // Create file in directory. `columns` has to be requested explicitly: it is
+    // in FileResource.FIELDS, so the POST returns it but a by-name lookup does
+    // not, and the conflict path below reads columns[0] for childrenSelectorId.
+    // Without it a retry would quietly leave that selector empty and fail later,
+    // in a column test, rather than here.
+    this.entityResponseData = await createOrFetch<File>(apiContext, {
+      label: 'FileClass.create file',
+      createPath: `/api/v1/${EntityTypeEndpoint.File}`,
+      fqnSegments: [this.service.name, this.directoryName, this.fileName],
+      fields: 'columns',
+      data: {
+        ...this.entity,
+        directory: this.directoryResponseData.fullyQualifiedName,
+      },
+    });
 
     this.childrenSelectorId =
       this.entityResponseData.columns?.[0]?.fullyQualifiedName ?? '';

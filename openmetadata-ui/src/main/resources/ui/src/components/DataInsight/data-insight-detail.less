@@ -13,8 +13,8 @@
 
 @import (reference) '../../styles/variables.less';
 
-@label-color: var(--om-legacy-color-6b7280);
-@summary-card-bg-hover: var(--om-legacy-color-f0f1f3);
+@label-color: var(--om-color-text-tertiary);
+@summary-card-bg-hover: var(--om-color-interactive-hover);
 
 .data-insight-card {
   border-radius: @border-rad-md;
@@ -25,7 +25,7 @@
   }
   .custom-data-insight-tooltip {
     .ant-card-head {
-      border-bottom: 1px solid @border-color;
+      border-bottom: 1px solid var(--om-color-border);
       .ant-card-head-title {
         padding: 0;
       }

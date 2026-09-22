@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
   getEncodedFqn,
@@ -109,7 +110,7 @@ const selectDataAssetType = async (page: Page, optionKey: string) => {
   const applyRes = page.waitForResponse(
     '/api/v1/search/query?*index=dataAsset*'
   );
-  await page.getByTestId(`${optionKey}-checkbox`).check();
+  await page.getByTestId('drop-down-menu').getByTestId(optionKey).click();
   await applyRes;
   await page.keyboard.press('Escape');
   await waitForAllLoadersToDisappear(page);

@@ -13,10 +13,12 @@
 import test, { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
+import { CODE_EDITOR_LINE } from '../../utils/codeEditor';
 import {
   clickOutside,
   createNewPage,
   descriptionBox,
+  fillDescriptionBox,
   redirectToHomePage,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -138,7 +140,10 @@ test('Query Entity', async ({ page }) => {
       queryData.owner
     );
     await searchOwnerResponse;
-    await page.click(`.ant-popover [title="${queryData.owner}"]`);
+    await page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: queryData.owner })
+      .click();
     const updateOwnerResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/queries/') &&
@@ -153,7 +158,7 @@ test('Query Entity', async ({ page }) => {
 
     // Update Description
     await page.click(`[data-testid="edit-description"]`);
-    await page.locator(descriptionBox).fill('updated description');
+    await fillDescriptionBox(page, 'updated description');
     const updateDescriptionResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/queries/') &&
@@ -182,7 +187,7 @@ test('Query Entity', async ({ page }) => {
   await test.step('Update query and QueryUsedIn', async () => {
     await page.click('[data-testid="query-btn"]');
     await page.click(`[data-menu-id*="edit-query"]`);
-    await page.click('.CodeMirror-line', { clickCount: 3 });
+    await page.click(CODE_EDITOR_LINE, { clickCount: 3 });
     await page.keyboard.press('Backspace');
     await page.keyboard.type(`${queryData.queryUsedIn.table1}`);
     await page.click('[data-testid="edit-query-used-in"]');

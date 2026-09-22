@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/data/table.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Table",
   "$comment": "@om-entity-type",
   "description": "A `Table` entity organizes data in rows and columns and is defined in a `Database Schema`.",
@@ -1110,6 +1110,14 @@
       "items": {
         "title": "TableConstraint",
         "$ref": "#/definitions/tableConstraint"
+      },
+      "default": null
+    },
+    "aliases": {
+      "description": "Alternate fully qualified SQL names that resolve to this table, such as SQL Server synonyms. Source-managed: the ingestion connector recomputes and overwrites this list on every run.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
       },
       "default": null
     },

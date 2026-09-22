@@ -21,8 +21,8 @@
     <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
     <integrationTests.skipParallel>false</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
-    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,AppsResourceIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT</integrationTests.globalStateTests>
-    <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
+    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,AppsResourceIT,TestSuiteReindexIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,EntityShapeIT</integrationTests.globalStateTests>
+    <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,TokenRevocationRedisMultiNodeIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
     <!-- Tags excluded from the ui-it profile. Override on the CLI to include them, e.g.
          -Dui.it.excludedGroups= to run every UIIT including @Tag("sso-bootstrap"). -->
@@ -415,12 +415,17 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
+                    <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -458,17 +463,29 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
+                  <!-- excludedGroups must be a direct <configuration> child: nested inside
+                       <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
+                       JUnit Platform tag filter). @Tag("multi-node") classes start extra servers in
+                       this JVM, so they must never share a fork with the concurrent suites; the file
+                       excludes above say the same thing, and this tag filter is what keeps a newly
+                       added one from silently landing here when someone forgets the file list. -->
+                  <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
                     <databaseImage>mysql:8.3.0</databaseImage>
@@ -480,7 +497,6 @@
                     <junit.jupiter.execution.parallel.config.strategy>${integrationTests.parallelStrategy}</junit.jupiter.execution.parallel.config.strategy>
                     <junit.jupiter.execution.parallel.config.fixed.parallelism>${integrationTests.parallelism}</junit.jupiter.execution.parallel.config.fixed.parallelism>
                     <junit.jupiter.execution.parallel.config.fixed.max-pool-size>${integrationTests.maxPoolSize}</junit.jupiter.execution.parallel.config.fixed.max-pool-size>
-                    <excludedGroups>scale</excludedGroups>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>
@@ -526,12 +542,17 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
+                    <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -569,17 +590,29 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
+                  <!-- excludedGroups must be a direct <configuration> child: nested inside
+                       <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
+                       JUnit Platform tag filter). @Tag("multi-node") classes start extra servers in
+                       this JVM, so they must never share a fork with the concurrent suites; the file
+                       excludes above say the same thing, and this tag filter is what keeps a newly
+                       added one from silently landing here when someone forgets the file list. -->
+                  <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
@@ -637,12 +670,17 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
+                    <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -681,17 +719,29 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
+                  <!-- excludedGroups must be a direct <configuration> child: nested inside
+                       <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
+                       JUnit Platform tag filter). @Tag("multi-node") classes start extra servers in
+                       this JVM, so they must never share a fork with the concurrent suites; the file
+                       excludes above say the same thing, and this tag filter is what keeps a newly
+                       added one from silently landing here when someone forgets the file list. -->
+                  <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
@@ -749,12 +799,17 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
+                    <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -792,17 +847,29 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
+                  <!-- excludedGroups must be a direct <configuration> child: nested inside
+                       <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
+                       JUnit Platform tag filter). @Tag("multi-node") classes start extra servers in
+                       this JVM, so they must never share a fork with the concurrent suites; the file
+                       excludes above say the same thing, and this tag filter is what keeps a newly
+                       added one from silently landing here when someone forgets the file list. -->
+                  <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
@@ -859,12 +926,17 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
+                    <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -902,17 +974,29 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
+                  <!-- excludedGroups must be a direct <configuration> child: nested inside
+                       <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
+                       JUnit Platform tag filter). @Tag("multi-node") classes start extra servers in
+                       this JVM, so they must never share a fork with the concurrent suites; the file
+                       excludes above say the same thing, and this tag filter is what keeps a newly
+                       added one from silently landing here when someone forgets the file list. -->
+                  <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
                     <databaseImage>mysql:8.3.0</databaseImage>
@@ -968,12 +1052,17 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
+                    <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -1012,17 +1101,29 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
+                  <!-- excludedGroups must be a direct <configuration> child: nested inside
+                       <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
+                       JUnit Platform tag filter). @Tag("multi-node") classes start extra servers in
+                       this JVM, so they must never share a fork with the concurrent suites; the file
+                       excludes above say the same thing, and this tag filter is what keeps a newly
+                       added one from silently landing here when someone forgets the file list. -->
+                  <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
                     <databaseImage>mysql:8.3.0</databaseImage>
@@ -1095,12 +1196,17 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
+                    <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -1140,17 +1246,29 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
+                  <!-- excludedGroups must be a direct <configuration> child: nested inside
+                       <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
+                       JUnit Platform tag filter). @Tag("multi-node") classes start extra servers in
+                       this JVM, so they must never share a fork with the concurrent suites; the file
+                       excludes above say the same thing, and this tag filter is what keeps a newly
+                       added one from silently landing here when someone forgets the file list. -->
+                  <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:16-alpine</databaseImage>
@@ -1182,7 +1300,11 @@
         </plugins>
       </build>
     </profile>
-    <!-- RDF integration tests profile -->
+    <!-- RDF integration tests profile.
+         No rdfContainerImage is set on purpose: TestSuiteBootstrap then builds the
+         supported image from docker/rdf-store (Fuseki 6.2.0 + unionDefaultGraph +
+         write extension). The previous secoresearch/fuseki:5.5.0 pin ran a bare
+         server with no update service, so every SPARQL update failed with 405. -->
     <profile>
       <id>postgres-rdf-tests</id>
       <build>
@@ -1209,17 +1331,21 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
+                    <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>
-                    <rdfContainerImage>secoresearch/fuseki:5.5.0</rdfContainerImage>
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>
@@ -1254,20 +1380,31 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
+                  <!-- excludedGroups must be a direct <configuration> child: nested inside
+                       <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
+                       JUnit Platform tag filter). @Tag("multi-node") classes start extra servers in
+                       this JVM, so they must never share a fork with the concurrent suites; the file
+                       excludes above say the same thing, and this tag filter is what keeps a newly
+                       added one from silently landing here when someone forgets the file list. -->
+                  <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>
-                    <rdfContainerImage>secoresearch/fuseki:5.5.0</rdfContainerImage>
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>
@@ -1379,6 +1516,11 @@
                   <systemPropertyVariables>
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                    <!-- Keeps the pre-2026-09 cascade cap: this suite really does hard-delete a
+                         100k-table service, whose cascade ran ~6 min on an unloaded cluster. The
+                         NamespaceCleanup default dropped to 2 min so a *failed* cascade stops
+                         billing 15 idle minutes to every ordinary test. -->
+                    <jpw.cleanup.cascadeTimeoutMin>15</jpw.cleanup.cascadeTimeoutMin>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>
@@ -1480,6 +1622,11 @@
                   <systemPropertyVariables>
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                    <!-- Keeps the pre-2026-09 cascade cap: this suite really does hard-delete a
+                         100k-table service, whose cascade ran ~6 min on an unloaded cluster. The
+                         NamespaceCleanup default dropped to 2 min so a *failed* cascade stops
+                         billing 15 idle minutes to every ordinary test. -->
+                    <jpw.cleanup.cascadeTimeoutMin>15</jpw.cleanup.cascadeTimeoutMin>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>

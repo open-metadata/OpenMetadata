@@ -23,11 +23,12 @@ import {
   SETTING_CUSTOM_PROPERTIES_PATH,
 } from '../constant/settings';
 import { SidebarItem } from '../constant/sidebar';
+import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { UserClass } from '../support/user/UserClass';
 import {
   clickOutside,
-  descriptionBox,
   descriptionBoxReadOnly,
+  fillDescriptionBox,
   getAuthContext,
   getToken,
   redirectToHomePage,
@@ -37,6 +38,7 @@ import {
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
 import { clickUpdateButtonIfVisible } from './explore';
+import { getCellByName } from './scopedLocators';
 import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
 
 export const visitUserListPage = async (page: Page) => {
@@ -69,6 +71,7 @@ export const performUserLogin = async (browser: Browser, user: UserClass) => {
       origins: [],
     },
   });
+  await installServerLoadReducers(context);
   const page = await context.newPage();
   await user.login(page);
   const token = await getToken(page);
@@ -115,25 +118,28 @@ export const deletedUserChecks = async (page: Page) => {
 };
 
 export const visitUserProfilePage = async (page: Page, userName: string) => {
-  await settingClick(page, GlobalSettingOptions.USERS);
-
-  const listLoader = page
-    .getByTestId('user-list-v1-component')
-    .getByTestId('loader');
-  const userRow = page.getByTestId(userName);
-
-  await listLoader.waitFor({ state: 'detached' });
-
-  const searchResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=user&from=0&size=*'
+  // Deliberately not routed through the user-list search box. That list is
+  // Elasticsearch-backed and a user created seconds earlier may not be indexed
+  // yet; once the empty result renders nothing re-issues the query, so waiting
+  // on the row cannot recover. The profile page reads the user from the API by
+  // name, which is immediately consistent.
+  const encodedUserName = encodeURIComponent(userName);
+  const userResponse = page.waitForResponse(
+    `/api/v1/users/name/${encodedUserName}?fields=*`
   );
-  await page.getByTestId('searchbar').fill(userName);
-  await searchResponse;
-  await listLoader.waitFor({ state: 'detached' });
+  await page.goto(`/users/${encodedUserName}`);
 
-  await expect(userRow).toBeVisible();
+  // A 404/5xx satisfies the wait just as a 200 does, and the page then drops
+  // its loader and renders an error state. Callers that guard their assertions
+  // on visibility would silently assert nothing, so fail here instead.
+  const response = await userResponse;
 
-  await userRow.click();
+  expect(
+    response.ok(),
+    `Profile for "${userName}" failed to load: HTTP ${response.status()}`
+  ).toBeTruthy();
+
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const softDeleteUserProfilePage = async (
@@ -269,7 +275,7 @@ export const editDescription = async (
   await page.click('[data-testid="edit-description"]');
 
   // Clear and type the new description
-  await page.locator(descriptionBox).fill(updatedDescription);
+  await fillDescriptionBox(page, updatedDescription);
 
   const updateDescription = page.waitForResponse('/api/v1/users/*');
   await page.click('[data-testid="save"]');
@@ -614,13 +620,14 @@ export const checkStewardServicesPermissions = async (page: Page) => {
     .fill('table');
   await dataAssetDropdownRequest;
 
-  await page.locator('[data-testid="table-checkbox"]').scrollIntoViewIfNeeded();
+  const tableRow = page.getByTestId('drop-down-menu').getByTestId('table');
+  await tableRow.scrollIntoViewIfNeeded();
 
   // Arm before the option click: immediate-apply fires the query on the click
   const getSearchResultResponse = page.waitForResponse(
     '/api/v1/search/query?q=*'
   );
-  await page.click('[data-testid="table-checkbox"]');
+  await tableRow.click();
   await clickUpdateButtonIfVisible(page);
 
   await getSearchResultResponse;
@@ -639,8 +646,7 @@ export const checkStewardPermissions = async (page: Page) => {
   // Check Add domain permission
   await expect(page.locator('[data-testid="add-domain"]')).not.toBeVisible();
 
-  await page
-    .getByRole('cell', { name: /user_id/i })
+  await getCellByName(page, /user_id/i)
     .getByTestId('edit-displayName-button')
     .waitFor({ state: 'attached' });
 
@@ -705,11 +711,11 @@ export const addUser = async (
 
   await page.fill('[data-testid="displayName"]', name);
 
-  await page.locator(descriptionBox).fill('Adding new user');
+  await fillDescriptionBox(page, 'Adding new user');
 
   await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
-  await page.fill('#password', password);
-  await page.fill('#confirmPassword', password);
+  await page.fill('input[name="password"]', password);
+  await page.fill('input[name="confirmPassword"]', password);
 
   const rolesCombobox = page
     .getByTestId('roles-dropdown')
@@ -773,11 +779,11 @@ export const checkForUserExistError = async (
 
   await page.fill('[data-testid="displayName"]', name);
 
-  await page.locator(descriptionBox).fill('Adding new user');
+  await fillDescriptionBox(page, 'Adding new user');
 
   await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
-  await page.fill('#password', password);
-  await page.fill('#confirmPassword', password);
+  await page.fill('input[name="password"]', password);
+  await page.fill('input[name="confirmPassword"]', password);
 
   const saveResponse = page.waitForResponse('/api/v1/users');
   await page.click('[data-testid="save-user"]');

@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/events/eventSubscriptionOffset.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "EventSubscriptionOffset",
   "description": "Represents the offsets for an event subscription, tracking the starting point and current position of events processed.",
   "type": "object",
@@ -18,6 +18,10 @@
     },
     "timestamp": {
       "description": "Update time of the job status.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "startingTimestamp": {
+      "description": "Point in time from which this subscription started alerting. Executions that finished before it are treated as historical and are not delivered.",
       "$ref": "../type/basic.json#/definitions/timestamp"
     }
   },
