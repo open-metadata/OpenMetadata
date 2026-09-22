@@ -12,9 +12,13 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../../constants/GlobalSettings.constants';
 import { ALL_SERVICES_CATEGORY } from '../../../constants/Services.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
+import { TeamType } from '../../../generated/entity/teams/team';
 import GlobalSettingCategoryPage from './GlobalSettingCategoryPage';
 
 const mockNavigate = jest.fn();
@@ -70,6 +74,8 @@ jest.mock('../../../utils/ServicePureUtils', () => ({
     ).some((category) => mockCheckPermission('Create', category, permissions)),
 }));
 
+// `teams` deliberately appears under two categories — that collision is what the
+// navigation tests below pin down.
 jest.mock('../../../utils/GlobalSettingsClassBase', () => ({
   __esModule: true,
   default: {
@@ -79,6 +85,20 @@ jest.mock('../../../utils/GlobalSettingsClassBase', () => ({
         key: 'services',
         description: 'message.service-description',
         items: [],
+      },
+      {
+        category: 'label.member-plural',
+        key: 'members',
+        description: 'message.member-description',
+        items: [{ key: 'members.teams', description: '', isProtected: true }],
+      },
+      {
+        category: 'label.custom-property-plural',
+        key: 'customProperties',
+        description: 'message.custom-property-description',
+        items: [
+          { key: 'customProperties.teams', description: '', isProtected: true },
+        ],
       },
     ],
   },
@@ -112,7 +132,22 @@ jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
 
 jest.mock(
   '../../../components/Settings/SettingItemCard/SettingItemCard.component',
-  () => jest.fn().mockImplementation(() => <div>SettingItemCard</div>)
+  () =>
+    jest
+      .fn()
+      .mockImplementation(
+        ({
+          data,
+          onClick,
+        }: {
+          data: { key: string };
+          onClick: (key: string) => void;
+        }) => (
+          <button data-testid={data.key} onClick={() => onClick(data.key)}>
+            SettingItemCard
+          </button>
+        )
+      )
 );
 
 jest.mock(
@@ -167,5 +202,45 @@ describe('GlobalSettingCategoryPage add-service action', () => {
 
     expect(screen.queryByTestId('add-service-button')).not.toBeInTheDocument();
     expect(mockCheckPermission).not.toHaveBeenCalled();
+  });
+});
+
+describe('GlobalSettingCategoryPage item navigation', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockCheckPermission.mockReturnValue(true);
+    mockPermissions = { databaseService: {} };
+  });
+
+  it('opens the team hierarchy on Organization from the Members category', () => {
+    mockSettingCategory = GlobalSettingsMenuCategory.MEMBERS;
+    render(<GlobalSettingCategoryPage />);
+
+    fireEvent.click(
+      screen.getByTestId(
+        `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.TEAMS}`
+      )
+    );
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      `/settings/${GlobalSettingsMenuCategory.MEMBERS}/${GlobalSettingOptions.TEAMS}/${TeamType.Organization}`
+    );
+  });
+
+  it('opens the property definitions page from the Custom Properties category', () => {
+    // `teams` exists as an option under both categories. The handler used to switch on the
+    // option alone, so this click landed on the Members team hierarchy instead.
+    mockSettingCategory = GlobalSettingsMenuCategory.CUSTOM_PROPERTIES;
+    render(<GlobalSettingCategoryPage />);
+
+    fireEvent.click(
+      screen.getByTestId(
+        `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.TEAMS}`
+      )
+    );
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      `/settings/${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}/${GlobalSettingOptions.TEAMS}`
+    );
   });
 });

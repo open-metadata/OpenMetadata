@@ -121,7 +121,14 @@ const GlobalSettingCategoryPage = () => {
 
     switch (option) {
       case GlobalSettingOptions.TEAMS:
-        navigate(getTeamsWithFqnPath(TeamType.Organization));
+        // `teams` is an option under both Members (the hierarchy, which opens on
+        // Organization) and Custom Properties (the property definitions page), so the
+        // category has to disambiguate — the option alone no longer identifies the target.
+        if (category === GlobalSettingsMenuCategory.MEMBERS) {
+          navigate(getTeamsWithFqnPath(TeamType.Organization));
+        } else {
+          navigate(getSettingPath(category, option));
+        }
 
         break;
       case GlobalSettingOptions.ONLINE_USERS:
