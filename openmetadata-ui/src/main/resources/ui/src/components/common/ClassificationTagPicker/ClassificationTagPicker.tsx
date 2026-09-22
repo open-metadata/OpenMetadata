@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import {
-  TreeSelect,
-  TreeSelectNode,
-  TreeSelectProps,
+    TreeSelect,
+    TreeSelectNode,
+    TreeSelectProps
 } from '@openmetadata/ui-core-components';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
