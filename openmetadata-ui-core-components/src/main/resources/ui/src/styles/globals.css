@@ -1098,14 +1098,16 @@
     --color-utility-warning-600: theme(--color-warning-400);
     --color-utility-warning-700: theme(--color-warning-400);
 
-    --color-utility-success-50: theme(--color-success-950);
-    --color-utility-success-100: theme(--color-success-900);
-    --color-utility-success-200: theme(--color-success-800);
+    /* Status chips: 16% tint bg + 35% border + 400-step text (never dark-on-dark)
+       per palette guideline + Collate #6491. */
+    --color-utility-success-50: --alpha(theme(--color-success-500) / 16%);
+    --color-utility-success-100: --alpha(theme(--color-success-500) / 16%);
+    --color-utility-success-200: --alpha(theme(--color-success-500) / 35%);
     --color-utility-success-300: theme(--color-success-700);
     --color-utility-success-400: theme(--color-success-600);
-    --color-utility-success-500: theme(--color-success-500);
+    --color-utility-success-500: theme(--color-success-400);
     --color-utility-success-600: theme(--color-success-400);
-    --color-utility-success-700: theme(--color-success-300);
+    --color-utility-success-700: theme(--color-success-400);
 
     --color-utility-orange-50: theme(--color-orange-950);
     --color-utility-orange-100: theme(--color-orange-900);
