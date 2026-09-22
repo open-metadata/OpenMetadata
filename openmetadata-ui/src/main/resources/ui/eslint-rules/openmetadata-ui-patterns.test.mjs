@@ -46,3 +46,40 @@ ruleTester.run(
     ],
   }
 );
+
+ruleTester.run(
+  'no-non-adaptive-palette',
+  uiPatternsPlugin.rules['no-non-adaptive-palette'],
+  {
+    valid: [
+      { code: "const a = 'tw:bg-surface tw:text-primary';" },
+      { code: "const a = 'tw:bg-utility-blue-50';" },
+      { code: "const a = 'tw:dark:bg-blue-500';" },
+      { code: "const a = 'tw:bg-primary';" },
+      { code: "const a = 'flex items-center';" },
+      { code: 'const a = `tw:bg-utility-blue-50`;' },
+    ],
+    invalid: [
+      {
+        code: "const a = 'tw:bg-blue-50';",
+        output: "const a = 'tw:bg-utility-blue-50';",
+        errors: [{ messageId: 'rawPalette' }],
+      },
+      {
+        code: "const a = 'tw:text-gray-500 tw:bg-yellow-50';",
+        output: "const a = 'tw:text-utility-gray-500 tw:bg-utility-yellow-50';",
+        errors: [{ messageId: 'rawPalette' }],
+      },
+      {
+        code: "const a = 'tw:hover:bg-brand-100';",
+        output: "const a = 'tw:hover:bg-utility-brand-100';",
+        errors: [{ messageId: 'rawPalette' }],
+      },
+      {
+        code: "const a = 'tw:border-gray-blue-200 tw:p-2';",
+        output: "const a = 'tw:border-utility-gray-blue-200 tw:p-2';",
+        errors: [{ messageId: 'rawPalette' }],
+      },
+    ],
+  }
+);

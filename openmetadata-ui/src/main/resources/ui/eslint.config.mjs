@@ -355,6 +355,13 @@ export default [
       // fail CI. Test/mock files are exempted below — their Tooltip mocks render
       // <div title={title}> on purpose so tests can read the tooltip text.
       'openmetadata-ui-patterns/no-raw-title-attribute': 'error',
+      // Raw palette classes (tw:bg-blue-50, tw:text-gray-500, …) are static in
+      // dark mode — use the utility-* variant or a semantic token. Autofix
+      // inserts `utility-`. Baseline at promotion time: 358 existing hits (134
+      // auto-fixable via `--fix`, 224 in template literals / no-utility-family
+      // that need manual review). Kept at 'warn' until the backlog is cleared
+      // per-area; promote to 'error' once it reaches zero. See docs/colors.md.
+      'openmetadata-ui-patterns/no-non-adaptive-palette': 'warn',
       'sonarjs/no-collapsible-if': 'error',
       'sonarjs/no-extra-arguments': 'error',
       'sonarjs/no-redundant-jump': 'error',
