@@ -14,37 +14,50 @@ For sizing, tuning and the `--loc` → `--config` data migration, see
 
 ## What the image adds over stock Fuseki
 
-Before indexing, `JenaFusekiStorage.verifyDataset` sends `OPTIONS <server>/<dataset>/data` and
-`FusekiWriteCapabilities.negotiate` reads the response. The OpenMetadata Graph Store extension in
-this image advertises five guarantees:
+Before indexing, `JenaFusekiStorage.ensureStorageReady` checks the dataset in two steps.
+
+**1. `OPTIONS <server>/<dataset>/data`**, read by `FusekiWriteCapabilities.negotiate`. The
+OpenMetadata Graph Store extension in this image adds five headers to the response:
 
 | Header | Guarantee met when | Set by |
 |---|---|---|
-| `X-OpenMetadata-Union-Default-Graph` | `true` | assembler `tdb2:unionDefaultGraph true` |
 | `X-OpenMetadata-Query-Timeout-Ms` | `> 0` | assembler `arq:queryTimeout` |
 | `X-OpenMetadata-Update-Timeout-Ms` | `> 0` | assembler `arq:updateTimeout` |
 | `X-OpenMetadata-Write-Timeout-Ms` | `> 0` | `openmetadata.fuseki.writeTimeoutMs` (default 50000) |
 | `X-OpenMetadata-Max-Upload-Bytes` | `> 0` | `openmetadata.fuseki.maxUploadBytes` (default 64 MiB) |
+| `X-OpenMetadata-Union-Default-Graph` | not judged from the header; see step 2 | assembler `tdb2:unionDefaultGraph true` |
 
 Only `BoundedGraphStore.doOptions` in the extension emits them, and the extension registers against
-`Operation.GSP_RW` only. The extension is optional. Without it, or when a guarantee is unmet,
-indexing continues with the client's own upload budget and deadline and logs
+`Operation.GSP_RW` only. The extension is optional. Without it, or when one of the first four
+guarantees is unmet, indexing continues with the client's own upload budget and deadline and logs
 `RDF dataset <endpoint> lacks guarantees OpenMetadata relies on at scale; indexing continues: ...`,
 naming each gap. What is lost is real: stock Fuseki holds TDB2's writer while a Graph Store upload
 transfers, so a small update issued during a 4.4 MB upload at 200 KB/s waited 20 s, against 0.23 s
 with the extension. `arq:updateTimeout` does not cover Graph Store uploads.
 
-The probe fails the run, before any data is cleared, only when the dataset cannot be used:
+**2. A union probe** (`UnionDefaultGraphProbe`), run on every Fuseki. Readiness writes one triple
+into a named graph with SPARQL Update, asks for it without a `GRAPH` clause, and deletes it
+whatever the answer. OpenMetadata writes every entity into a named graph, while the SPARQL
+playground, the MCP tools, SHACL validation and inference read without `GRAPH`, so they see indexed
+data only when `tdb2:unionDefaultGraph` is on. The write also proves the dataset accepts SPARQL
+updates. Each probe uses its own subject, so servers probing at the same time never see or delete
+each other's triple.
 
-| Probe response | Failure |
-|---|---|
-| `401` | `Fuseki rejected the RDF credentials for <endpoint> (HTTP 401) ...` |
-| `403` | `The RDF user is not authorized for <endpoint> (HTTP 403) ...` |
-| `404`, or `2xx` with neither extension headers nor `Fuseki-Request-Id` | `Fuseki dataset '<name>' does not exist at <server> (...)` |
-| any other error status | `Fuseki dataset endpoint <endpoint> is not usable (HTTP <status>)` |
+Readiness fails the run, before any data is cleared, only when the dataset cannot be used:
 
-The `2xx` row exists because Jetty answers `OPTIONS` with 200 on any path; only a Fuseki service
-handling the request adds `Fuseki-Request-Id`.
+| Check | Response | Failure |
+|---|---|---|
+| `OPTIONS` | `401` | `Fuseki rejected the RDF credentials for <endpoint> (HTTP 401) ...` |
+| `OPTIONS` | `403` | `The RDF user is not authorized for <endpoint> (HTTP 403) ...` |
+| `OPTIONS` | `404`, or `2xx` with neither extension headers nor `Fuseki-Request-Id` | `Fuseki dataset '<name>' does not exist at <server> (...)` |
+| `OPTIONS` | `2xx` with an `Allow` that omits `POST` | `Fuseki dataset '<name>' at <server> is read-only (its Graph Store allows GET,HEAD,OPTIONS) ...` |
+| `OPTIONS` | any other error status | `Fuseki dataset endpoint <endpoint> is not usable (HTTP <status>)` |
+| probe | the update is refused, e.g. `400 No operation for request` from a dataset without an update service | `Fuseki dataset '<name>' at <server> did not accept a SPARQL update (HTTP <status>) ...` |
+| probe | the triple is not visible without `GRAPH` | `Fuseki dataset '<name>' at <server> does not enable tdb2:unionDefaultGraph ...` |
+
+The `2xx` rows exist because Jetty answers `OPTIONS` with 200 on any path; only a Fuseki service
+handling the request adds `Fuseki-Request-Id`, and Fuseki's read-only Graph Store (`GSP_R`) answers
+`Allow: GET,HEAD,OPTIONS`.
 
 2.0.2 treated all five guarantees as mandatory. Every stock Fuseki failed with
 `RDF storage is not ready: Fuseki dataset requires the OpenMetadata Graph Store extension and
@@ -194,8 +207,8 @@ Allow: GET,HEAD,OPTIONS,PUT,POST
 `Fuseki-Request-Id` came from no Fuseki dataset: the dataset does not exist (Jetty answers `OPTIONS`
 with 200 and `Allow: GET, HEAD, OPTIONS` on any path) or something other than Fuseki is in front.
 
-Confirm the union default graph actually took effect by writing a probe triple to a named graph,
-asking for it without a `GRAPH` clause, and dropping the probe graph:
+Readiness repeats the union probe on every run. To check a dataset by hand, write a probe triple to
+a named graph, ask for it without a `GRAPH` clause, and drop the probe graph:
 
 ```bash
 curl -s -u "$U:$P" -X POST -H 'Content-Type: application/sparql-update' \
@@ -242,8 +255,11 @@ The container fails at startup with an explicit message rather than running unwr
   unless the launcher puts it on the classpath. The image handles this; a hand-rolled deployment
   must not use `-jar`.
 - **Upstream's `config-tdb2` template has `##tdb2:unionDefaultGraph true` commented out**, so every
-  dataset created through `POST /$/datasets` has union off. That is why OpenMetadata ships an
-  assembler instead of creating datasets through the admin API.
+  dataset created through `POST /$/datasets` has union off, and readiness rejects it. That is why
+  OpenMetadata ships an assembler instead of creating datasets through the admin API. To fix such a
+  dataset in place, add `tdb2:unionDefaultGraph true ;` to the `tdb2:DatasetTDB2` node in
+  `$FUSEKI_BASE/configuration/<name>.ttl` and restart Fuseki. Fuseki 6.2 writes that file without the
+  template's comments, so there is no line to uncomment. The extension is not needed for this.
 - **Jena 6.2.0 mishandles a second WHERE-bearing operation in one timed update** when
   `arq:updateTimeout` is set. OpenMetadata's generated mutations use `VALUES`/`UNION` to stay at one,
   and the admin SPARQL API rejects anything else. Direct Fuseki clients must follow the same rule.
