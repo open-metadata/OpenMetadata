@@ -29,12 +29,20 @@ import { brotliCompressSync, constants as zlibConstants } from 'node:zlib';
 // lazy routes ship without a churn PR; a big regression still fails the gate.
 const MAX_EMITTED_JS_FILES = 1400;
 const MAX_SMALL_JS_FILES = 1250;
-const MAX_HTML_BOOTSTRAP_JS_FILES = 8;
+// Bumped 8 → 9 because sharing `oidcTokenStorage` between `silentCallbackEntry.ts`
+// and the main app graph (see the silent-callback iframe fix on this PR) splits
+// its subtree — plus `swTokenStorage` and `SwTokenStorageUtils` — into a shared
+// chunk that both HTML entries reference via `<link modulepreload>`. That new
+// chunk is <1 KB and byte-neutral; only the count went up by one.
+const MAX_HTML_BOOTSTRAP_JS_FILES = 9;
 // Taking the owner hover card off the entry graph (see ownerRenderUtils) puts
-// this branch at 1045275 bootstrap bytes, against 1141354 on main before it.
-// 1150 KiB leaves room for the ~45 KiB still owed by `setOwnerHrefResolver`,
-// which reaches RouterUtils and drags `useMarketplaceStore`, `qs` and the
-// service constants onto the entry graph. Once that is unpicked this should
+// main at 1045275 bootstrap bytes, against 1141354 before it. This branch adds
+// the AuthCoordinator subgraph (CrossTabLock + RefreshQueue + ProactiveTimer +
+// VisibilityWatcher) statically imported from AuthProvider, so the current
+// build sits a few KB above main. 1150 KiB leaves room for that coordinator
+// footprint plus the ~45 KiB still owed by `setOwnerHrefResolver`, which
+// reaches RouterUtils and drags `useMarketplaceStore`, `qs` and the service
+// constants onto the entry graph. Once those two are unpicked this should
 // come down well below where it started.
 const MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES = 1150 * 1024;
 const MAX_SINGLE_JS_BYTES = 1.75 * 1024 * 1024;

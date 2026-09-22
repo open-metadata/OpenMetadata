@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { TreeSelectNode } from './tree-select.types';
 
 interface UseTreeSelectSelectionOptions<T> {
@@ -39,9 +39,22 @@ const getAllChildrenIds = <T>(node: TreeSelectNode<T>): string[] => {
   return ids;
 };
 
+// A node whose children are mutually exclusive: it renders no control of its own.
+export const hasExclusiveChildren = <T>(node: TreeSelectNode<T>): boolean =>
+  node.hasExclusiveChildren ??
+  node.children?.some((child) => child.isParentMutuallyExclusive) ??
+  false;
+
+// A cascade cannot choose between mutually exclusive siblings, so it stops at
+// them and at the group node above them, which is not selectable either.
 const collectNodes = <T>(node: TreeSelectNode<T>): TreeSelectNode<T>[] => {
   const nodes = [node];
-  node.children?.forEach((child) => nodes.push(...collectNodes(child)));
+  node.children
+    ?.filter(
+      (child) =>
+        !child.isParentMutuallyExclusive && !hasExclusiveChildren(child)
+    )
+    .forEach((child) => nodes.push(...collectNodes(child)));
 
   return nodes;
 };
@@ -74,6 +87,10 @@ export const useTreeSelectSelection = <T = unknown>({
   const [selectedNodes, setSelectedNodes] = useState<
     Map<string, TreeSelectNode<T>>
   >(new Map());
+  const parentOfSelected = useRef<Map<string, string>>(new Map());
+  // Read inside stable callbacks, so their identity never depends on the tree.
+  const treeDataRef = useRef(treeData);
+  treeDataRef.current = treeData;
 
   const notify = useCallback(
     (next: Map<string, TreeSelectNode<T>>) => {
@@ -103,6 +120,23 @@ export const useTreeSelectSelection = <T = unknown>({
             next.delete(sibling.id);
           }
         });
+        if (parent) {
+          // A search-filtered tree can drop a seeded sibling, so fall back to
+          // its own hint and then to whatever parent was discovered earlier.
+          next.forEach((selected, selectedId) => {
+            if (selectedId === node.id) {
+              return;
+            }
+            const selectedParent =
+              selected.parentId ??
+              parentOfSelected.current.get(selectedId) ??
+              findParentNode(selectedId, treeDataRef.current)?.id;
+            if (selectedParent === parent.id) {
+              next.delete(selectedId);
+            }
+          });
+          parentOfSelected.current.set(node.id, parent.id);
+        }
         if (isSelected) {
           next.delete(node.id);
         } else {
@@ -127,10 +161,28 @@ export const useTreeSelectSelection = <T = unknown>({
   );
 
   const setSelection = useCallback((nodes: TreeSelectNode<T>[]) => {
+    // Keep parents discovered earlier — a search-filtered tree cannot re-resolve
+    // them — and drop only the entries no longer selected.
+    const parents = new Map(parentOfSelected.current);
+    const ids = new Set(nodes.map((node) => node.id));
+    parents.forEach((_parentId, id) => {
+      if (!ids.has(id)) {
+        parents.delete(id);
+      }
+    });
+    nodes.forEach((node) => {
+      const parentId =
+        node.parentId ?? findParentNode(node.id, treeDataRef.current)?.id;
+      if (parentId) {
+        parents.set(node.id, parentId);
+      }
+    });
+    parentOfSelected.current = parents;
     setSelectedNodes(new Map(nodes.map((node) => [node.id, node])));
   }, []);
 
   const clearSelection = useCallback(() => {
+    parentOfSelected.current = new Map();
     setSelectedNodes(new Map());
     onChange?.(multiple ? [] : null);
   }, [multiple, onChange]);
