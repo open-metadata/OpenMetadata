@@ -314,8 +314,8 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         else:
             # we can't directly use columns as it is bound to self.raw_dataset and not the rnd table.
             # If we use it, it will result in a cross join between self.raw_dataset and rnd table
-            names = [col.name for col in columns]
-            sqa_columns = [col for col in inspect(ds).c if col.name != RANDOM_LABEL and col.name in names]
+            names = {col.key for col in columns}
+            sqa_columns = [col for col in inspect(ds).c if col.name != RANDOM_LABEL and col.key in names]
 
         with self.session_factory() as client:
             # Handle array columns with special query modification
@@ -347,7 +347,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 processed_row.append(self._truncate_cell(value))
             processed_rows.append(processed_row)
         return TableData(
-            columns=[column.name for column in sqa_columns],
+            columns=[column.key for column in sqa_columns],
             rows=processed_rows,
         )
 
@@ -398,9 +398,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         # names that actually exist in the CTE.
         dialect_name = getattr(getattr(self.connection, "dialect", None), "name", "")
         column_names = [column.name for column in raw_table.c]
-        safe_names = [
-            self._partition_cte_column_name(name, dialect_name) for name in column_names
-        ]
+        safe_names = self._partition_cte_column_names(column_names, dialect_name)
         if column_names == safe_names:
             stmt = select(self.raw_dataset).where(partition_filter)
             return stmt.cte(cte_name)
@@ -418,7 +416,26 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             safe_column.key = column.key
             inner_columns.append(safe_column)
 
-        return select(*inner_columns).where(partition_filter).cte(cte_name)
+        cte = select(*inner_columns).where(partition_filter).cte(cte_name)
+        for column, logical_name in zip(cte.c, column_names, strict=True):
+            column.key = logical_name
+        return cte
+
+    @classmethod
+    def _partition_cte_column_names(cls, column_names: list[str], dialect_name: str) -> list[str]:
+        """Return unique SQL-safe CTE labels while preserving column order."""
+        safe_names = []
+        used_names = set()
+        for column_name in column_names:
+            safe_name = cls._partition_cte_column_name(column_name, dialect_name)
+            base_name = safe_name
+            suffix = 1
+            while safe_name in used_names:
+                safe_name = f"{base_name}_{suffix}"
+                suffix += 1
+            used_names.add(safe_name)
+            safe_names.append(safe_name)
+        return safe_names
 
     @staticmethod
     def _partition_cte_column_name(column_name: str, dialect_name: str) -> str:
