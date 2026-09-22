@@ -205,9 +205,11 @@
           }
         },
         "customProperties": {
-          "description": "Non-standard attributes.",
-          "type": "object",
-          "additionalProperties": true
+          "description": "Non-standard attributes as key/value pairs.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odcsCustomProperty"
+          }
         },
         "dataGranularityDescription": {
           "description": "Aggregation level details (for objects).",
@@ -427,9 +429,11 @@
           "type": "string"
         },
         "customProperties": {
-          "description": "Additional execution properties.",
-          "type": "object",
-          "additionalProperties": true
+          "description": "Additional execution properties as key/value pairs.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odcsCustomProperty"
+          }
         },
         "authoritativeDefinitions": {
           "description": "External rule documentation.",
@@ -591,9 +595,11 @@
           }
         },
         "customProperties": {
-          "description": "Additional role attributes.",
-          "type": "object",
-          "additionalProperties": true
+          "description": "Additional role attributes as key/value pairs.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odcsCustomProperty"
+          }
         }
       },
       "required": ["role"],
@@ -723,9 +729,11 @@
           "type": "string"
         },
         "customProperties": {
-          "description": "Non-standard attributes.",
-          "type": "object",
-          "additionalProperties": true
+          "description": "Non-standard attributes as key/value pairs.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odcsCustomProperty"
+          }
         }
       },
       "required": ["server", "type"],
@@ -736,16 +744,24 @@
       "type": "object",
       "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSCustomProperty",
       "properties": {
+        "id": {
+          "description": "Stable identifier for the custom property.",
+          "type": "string"
+        },
         "property": {
           "description": "Property name (camelCase).",
           "type": "string"
         },
         "value": {
-          "description": "Property value.",
+          "description": "Property value."
+        },
+        "description": {
+          "description": "Description of the custom property.",
           "type": "string"
         }
       },
-      "additionalProperties": true
+      "required": ["property", "value"],
+      "additionalProperties": false
     }
   },
   "properties": {
