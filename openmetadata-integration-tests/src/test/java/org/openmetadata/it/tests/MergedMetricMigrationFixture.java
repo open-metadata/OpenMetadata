@@ -24,14 +24,36 @@ import static org.openmetadata.it.tests.MetricMigrationTestSupport.RELATIONSHIP_
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 record MergedMetricMigrationFixture(String suffix) {
   private static final String RESOLUTION_STATUS_TABLE = "test_case_resolution_status_time_series";
   private static final String TEST_CASE_TABLE = "test_case";
 
+  // Word boundaries because `_` is a word character: `test_case` must not claim
+  // `test_case_incident`, and an index name that embeds a table name does not name that table.
+  // Case-sensitive, like rewrite(), so nothing counts as a fixture table unless it gets redirected.
+  private static final Pattern FIXTURE_TABLES =
+      Pattern.compile(
+          "\\b("
+              + String.join(
+                  "|",
+                  RESOLUTION_STATUS_TABLE,
+                  INCIDENT_TABLE,
+                  METRIC_GROUP_TABLE,
+                  RELATIONSHIP_TABLE,
+                  METRIC_TABLE,
+                  TEST_CASE_TABLE)
+              + ")\\b");
+
   static MergedMetricMigrationFixture create() {
     String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
     return new MergedMetricMigrationFixture(suffix);
+  }
+
+  /** Whether {@code statement} names one of the real tables this fixture stands in for. */
+  boolean namesFixtureTable(String statement) {
+    return FIXTURE_TABLES.matcher(statement).find();
   }
 
   String rewrite(String statement) {

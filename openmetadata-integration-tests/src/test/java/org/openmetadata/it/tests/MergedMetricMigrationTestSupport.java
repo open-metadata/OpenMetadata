@@ -242,9 +242,9 @@ final class MergedMetricMigrationTestSupport {
       MergedMetricMigrationFixture fixture,
       MigrationScripts scripts,
       ConnectionType connectionType) {
-    executeStatements(handle, rewriteStatements(scripts.schemaStatements(), fixture));
+    executeStatements(handle, fixtureStatements(scripts.schemaStatements(), scripts, fixture));
     replaySupportedSchema(handle, fixture, scripts, connectionType);
-    List<String> postStatements = rewriteStatements(scripts.postStatements(), fixture);
+    List<String> postStatements = fixtureStatements(scripts.postStatements(), scripts, fixture);
     executeStatements(handle, postStatements);
     executeStatements(handle, postStatements);
   }
@@ -265,12 +265,29 @@ final class MergedMetricMigrationTestSupport {
                           || metricStatements.contains(statement))
               .toList();
     }
-    executeStatements(handle, rewriteStatements(replayStatements, fixture));
+    executeStatements(handle, fixtureStatements(replayStatements, scripts, fixture));
   }
 
-  private static List<String> rewriteStatements(
-      List<String> statements, MergedMetricMigrationFixture fixture) {
-    return statements.stream().map(fixture::rewrite).toList();
+  /**
+   * The statements that migrate this fixture's tables, rewritten onto them.
+   *
+   * <p>Everything else in the script names a real table, and the suite shares one database across
+   * every test class running in parallel. Replaying the script wholesale migrated the live schema
+   * underneath them: 2.1.0 drops and recreates {@code data_quality_dimension}, which wiped the
+   * seeded dimensions for every test that ran afterwards, and its post script rewrites seeded
+   * users, test definitions and apps. MySQL's generic {@code PREPARE stmt FROM @ddl} blocks name no
+   * table and all target real ones, so they drop out as well; the metric blocks that do target this
+   * fixture are kept by name.
+   */
+  private static List<String> fixtureStatements(
+      List<String> statements, MigrationScripts scripts, MergedMetricMigrationFixture fixture) {
+    Set<String> metricStatements = Set.copyOf(metricSchemaStatements(scripts));
+    return statements.stream()
+        .filter(
+            statement ->
+                fixture.namesFixtureTable(statement) || metricStatements.contains(statement))
+        .map(fixture::rewrite)
+        .toList();
   }
 
   private static void executeStatements(Handle handle, List<String> statements) {

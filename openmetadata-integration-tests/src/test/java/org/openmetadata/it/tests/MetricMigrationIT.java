@@ -49,6 +49,14 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 @Execution(ExecutionMode.CONCURRENT)
 class MetricMigrationIT {
 
+  /**
+   * Seeded system dimensions nothing may delete — the API refuses — so they must come through the
+   * replay untouched. Consistency is left out: DataQualityDimensionMigrationIT deletes and re-seeds
+   * it on purpose, and may be doing so while this runs.
+   */
+  private static final List<String> STABLE_SYSTEM_DIMENSIONS =
+      List.of("Accuracy", "Completeness", "Integrity", "SQL", "Uniqueness", "Validity");
+
   @Test
   void migrationFilesContainCompleteMetricAndIncidentManagerStatements() throws Exception {
     ConnectionType connectionType = currentConnectionType();
@@ -81,8 +89,28 @@ class MetricMigrationIT {
   void mergedMigrationUpgradesPopulatedPriorShapeFixture() throws Exception {
     ConnectionType connectionType = currentConnectionType();
     MigrationScripts scripts = readMigrationScripts(connectionType);
+    Jdbi jdbi = TestSuiteBootstrap.getJdbi();
+    List<String> dimensionsBefore = stableDimensionIds(jdbi);
+    assertEquals(STABLE_SYSTEM_DIMENSIONS.size(), dimensionsBefore.size(), "precondition");
 
-    runMergedUpgradeScenario(TestSuiteBootstrap.getJdbi(), scripts, connectionType);
+    runMergedUpgradeScenario(jdbi, scripts, connectionType);
+
+    // The scenario replays the real 2.1.0 script against the database every parallel test class
+    // shares. That script drops and recreates data_quality_dimension, so replaying it wholesale
+    // wiped the seeded dimensions out from under everything running alongside.
+    assertEquals(
+        dimensionsBefore, stableDimensionIds(jdbi), "the replay must leave live tables alone");
+  }
+
+  private static List<String> stableDimensionIds(Jdbi jdbi) {
+    return jdbi.withHandle(
+        handle ->
+            handle
+                .createQuery(
+                    "SELECT id FROM data_quality_dimension WHERE name IN (<names>) ORDER BY name")
+                .bindList("names", STABLE_SYSTEM_DIMENSIONS)
+                .mapTo(String.class)
+                .list());
   }
 
   private void assertMetricDdlMarkers(
