@@ -7,7 +7,7 @@ export METASTORE_DB_HOSTNAME=${METASTORE_DB_HOSTNAME:-localhost}
 export METASTORE_TYPE=${METASTORE_TYPE:-mysql}
 
 sed -i "s|%JDBC_CONNECTION_URL%|${JDBC_CONNECTION_URL}|g" /opt/apache-hive-metastore-3.0.0-bin/conf/metastore-site.xml
-sed -i "s|%MINIO_ENDPOINT%|${MINIO_ENDPOINT}|g" /opt/apache-hive-metastore-3.0.0-bin/conf/metastore-site.xml
+sed -i "s|%S3_ENDPOINT%|${S3_ENDPOINT}|g" /opt/apache-hive-metastore-3.0.0-bin/conf/metastore-site.xml
 
 MYSQL='mysql'
 POSTGRES='postgres'

@@ -26,8 +26,10 @@ import java.security.KeyStoreException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import javax.net.ssl.SSLContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.utils.URIBuilder;
@@ -42,6 +44,8 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServic
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.RunOptions;
+import org.openmetadata.sdk.exception.IngestionRunnerUnavailableException;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
@@ -67,6 +71,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
   private static final String DAG_ID = "dag_id";
   private static final String CONF = "conf";
   private static final String APP_CONFIG_OVERRIDE = "appConfigOverride";
+  private static final String SOURCE_CONFIG_OVERRIDE = "sourceConfigOverride";
+  private static final String PIPELINE_RUN_ID = "pipelineRunId";
   private String detectedAirflowVersion = null;
   private final Object detectionLock = new Object();
   private volatile String csrfToken = null;
@@ -387,7 +393,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   @Override
   public PipelineServiceClientResponse runPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
-    return runPipeline(ingestionPipeline, service, null);
+    return runPipelineWithOptions(ingestionPipeline, service, RunOptions.NONE);
   }
 
   @Override
@@ -395,18 +401,26 @@ public class AirflowRESTClient extends PipelineServiceClient {
       IngestionPipeline ingestionPipeline,
       ServiceEntityInterface service,
       Map<String, Object> config) {
+    return runPipelineWithOptions(
+        ingestionPipeline, service, RunOptions.withAppConfigOverride(config));
+  }
+
+  // Airflow bakes a DAG's config at deploy time, so a run's options reach it only through the
+  // trigger conf, never through the pipeline passed in.
+  @Override
+  public PipelineServiceClientResponse runPipelineWithOptions(
+      IngestionPipeline ingestionPipeline, ServiceEntityInterface service, RunOptions options) {
     String pipelineName = ingestionPipeline.getName();
     HttpResponse<String> response;
     try {
       String triggerUrl = buildURI("trigger").build().toString();
       JSONObject requestPayload = new JSONObject();
       requestPayload.put(DAG_ID, pipelineName);
-      if (config != null) {
-        requestPayload.put(CONF, Map.of(APP_CONFIG_OVERRIDE, config));
-      }
+      String runId = UUID.randomUUID().toString();
+      requestPayload.put(CONF, buildRunConf(options, runId));
       response = post(triggerUrl, requestPayload.toString());
       if (response.statusCode() == 200) {
-        return getResponse(200, response.body());
+        return getResponse(200, response.body()).withRunId(runId);
       }
     } catch (IOException | URISyntaxException e) {
       throw IngestionPipelineDeploymentException.byMessage(
@@ -422,6 +436,20 @@ public class AirflowRESTClient extends PipelineServiceClient {
         TRIGGER_ERROR,
         "Failed to trigger IngestionPipeline",
         Response.Status.fromStatusCode(response.statusCode()));
+  }
+
+  // The run id goes along too: the worker reports under it, so the queued status the server records
+  // for this id is the one that progresses.
+  private Map<String, Object> buildRunConf(RunOptions options, String runId) {
+    Map<String, Object> conf = new HashMap<>();
+    conf.put(PIPELINE_RUN_ID, runId);
+    if (options.appConfigOverride() != null) {
+      conf.put(APP_CONFIG_OVERRIDE, options.appConfigOverride());
+    }
+    if (!options.sourceConfigOverride().isEmpty()) {
+      conf.put(SOURCE_CONFIG_OVERRIDE, options.sourceConfigOverride());
+    }
+    return conf;
   }
 
   @Override
@@ -697,7 +725,10 @@ public class AirflowRESTClient extends PipelineServiceClient {
         if (apiEndpointSegments == null) {
           List<String> detected = detectAirflowApiVersion();
           if (detected == null) {
-            throw new PipelineServiceClientException(
+            // Typed subclass, not the generic parent: an unreachable scheduler is exactly the
+            // condition callers tolerate via allowUnavailableRunner. Thrown as the parent it was
+            // uncatchable there, so a cascade hard-delete aborted whenever Airflow was down.
+            throw new IngestionRunnerUnavailableException(
                 String.format(
                     "Unable to connect to Airflow APIs at [%s]. None of the API versions (v3 pluginsv2, v2, v1) responded successfully. "
                         + "Airflow may still be starting up or the OpenMetadata plugin may not be installed. "

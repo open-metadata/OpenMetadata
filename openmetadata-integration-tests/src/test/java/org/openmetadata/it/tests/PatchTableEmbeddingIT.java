@@ -33,7 +33,6 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.vector.VectorIndexService;
@@ -55,7 +54,6 @@ public class PatchTableEmbeddingIT {
 
     SearchRepository searchRepo = Entity.getSearchRepository();
     TestSuiteBootstrap.withNaturalLanguageSearch(searchRepo.getSearchConfiguration());
-    EntityLifecycleEventDispatcher.getInstance().unregisterHandler("VectorEmbeddingHandler");
     searchRepo.initializeVectorSearchService();
 
     Assumptions.assumeTrue(

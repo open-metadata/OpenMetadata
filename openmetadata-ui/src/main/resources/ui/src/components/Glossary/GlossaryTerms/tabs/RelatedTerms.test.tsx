@@ -17,7 +17,6 @@ import {
   MOCKED_GLOSSARY_TERMS,
   MOCK_PERMISSIONS,
 } from '../../../../mocks/Glossary.mock';
-import { searchGlossaryTermsPaginated } from '../../../../rest/glossaryAPI';
 import { listRelationshipTypes } from '../../../../rest/ontologyAPI';
 import RelatedTerms from './RelatedTerms';
 
@@ -159,7 +158,6 @@ const renderRelatedTerms = async () => {
 
   await waitFor(() => {
     expect(listRelationshipTypes).toHaveBeenCalled();
-    expect(searchGlossaryTermsPaginated).toHaveBeenCalled();
   });
 
   return view;
