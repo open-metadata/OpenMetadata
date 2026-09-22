@@ -1848,65 +1848,58 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     }
   }
 
-  // ===================================================================
-  // Domain filter (#31173) — GET /glossaries?domain=<fqn> must scope the list
-  // ===================================================================
+  // Domain filter (#31173): GET /glossaries?domain=<fqn> must scope the list by domain.
+
+  private record DomainGlossary(Domain domain, Glossary glossary) {}
+
+  private DomainGlossary seedGlossaryInDomain(TestNamespace ns, String suffix) {
+    final Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("domain-" + suffix))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Domain " + suffix));
+    final Glossary glossary =
+        createEntity(
+            createRequest(ns.prefix("glossary-" + suffix), ns)
+                .withDomains(List.of(domain.getFullyQualifiedName())));
+    return new DomainGlossary(domain, glossary);
+  }
+
+  // High limit so a busy shared test instance cannot page a target glossary out of the results.
+  private List<Glossary> listGlossariesByDomain(String domainFqn) {
+    return listEntities(new ListParams().setDomain(domainFqn).setLimit(1000000)).getData();
+  }
 
   @Test
-  void test_listGlossaries_domainFilter(TestNamespace ns) {
-    Domain domainA =
-        SdkClients.adminClient()
-            .domains()
-            .create(
-                new CreateDomain()
-                    .withName(ns.prefix("domain-a"))
-                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
-                    .withDescription("Domain A"));
-    Domain domainB =
-        SdkClients.adminClient()
-            .domains()
-            .create(
-                new CreateDomain()
-                    .withName(ns.prefix("domain-b"))
-                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
-                    .withDescription("Domain B"));
-
-    Glossary glossaryA =
-        createEntity(
-            createRequest(ns.prefix("glossary-a"), ns)
-                .withDomains(List.of(domainA.getFullyQualifiedName())));
-    Glossary glossaryB =
-        createEntity(
-            createRequest(ns.prefix("glossary-b"), ns)
-                .withDomains(List.of(domainB.getFullyQualifiedName())));
-
-    // High limit so a busy shared test instance cannot page a target glossary out of the results.
-    List<Glossary> inDomainA =
-        listEntities(new ListParams().setDomain(domainA.getFullyQualifiedName()).setLimit(1000000))
-            .getData();
+  void test_listGlossaries_domainFilterIncludesGlossaryInThatDomain(TestNamespace ns) {
+    final DomainGlossary seeded = seedGlossaryInDomain(ns, "a");
+    final List<Glossary> listed = listGlossariesByDomain(seeded.domain().getFullyQualifiedName());
     assertTrue(
-        inDomainA.stream().anyMatch(g -> g.getId().equals(glossaryA.getId())),
-        "Glossary in domain A must be listed when filtering by domain A");
-    assertFalse(
-        inDomainA.stream().anyMatch(g -> g.getId().equals(glossaryB.getId())),
-        "Glossary in domain B must not be listed when filtering by domain A");
+        listed.stream().anyMatch(g -> g.getId().equals(seeded.glossary().getId())),
+        "Glossary in the domain must be listed when filtering by that domain");
+  }
 
-    List<Glossary> inDomainB =
-        listEntities(new ListParams().setDomain(domainB.getFullyQualifiedName()).setLimit(1000000))
-            .getData();
-    assertTrue(
-        inDomainB.stream().anyMatch(g -> g.getId().equals(glossaryB.getId())),
-        "Glossary in domain B must be listed when filtering by domain B");
+  @Test
+  void test_listGlossaries_domainFilterExcludesGlossaryInOtherDomain(TestNamespace ns) {
+    final DomainGlossary target = seedGlossaryInDomain(ns, "a");
+    final DomainGlossary other = seedGlossaryInDomain(ns, "b");
+    final List<Glossary> listed = listGlossariesByDomain(target.domain().getFullyQualifiedName());
     assertFalse(
-        inDomainB.stream().anyMatch(g -> g.getId().equals(glossaryA.getId())),
-        "Glossary in domain A must not be listed when filtering by domain B");
+        listed.stream().anyMatch(g -> g.getId().equals(other.glossary().getId())),
+        "Glossary in another domain must not be listed when filtering by this domain");
+  }
 
+  @Test
+  void test_listGlossaries_emptyDomainReturnsUnfiltered(TestNamespace ns) {
+    final DomainGlossary seeded = seedGlossaryInDomain(ns, "a");
     // Empty domain must be treated as no filter, not resolved as an FQN (which would 404).
-    List<Glossary> emptyFilter =
+    final List<Glossary> listed =
         listEntities(new ListParams().setDomain("").setLimit(1000000)).getData();
     assertTrue(
-        emptyFilter.stream().anyMatch(g -> g.getId().equals(glossaryA.getId()))
-            && emptyFilter.stream().anyMatch(g -> g.getId().equals(glossaryB.getId())),
-        "Empty domain filter must return glossaries from all domains");
+        listed.stream().anyMatch(g -> g.getId().equals(seeded.glossary().getId())),
+        "Empty domain filter must not 404 and must return glossaries");
   }
 }
