@@ -21,6 +21,7 @@ import GlossaryTermPicker from '../../../common/GlossaryTermPicker/GlossaryTermP
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { DqFilterDescriptor } from '../../../DataQuality/DataQualityDashboard/useDataQualityDashboardFilters';
 import {
+  chipChevronClassName,
   chipCountBadgeClassName,
   chipTriggerClassName,
   chipTriggerSelectedClassName,
@@ -39,6 +40,7 @@ const DqFilterChip = ({
   if (filter.type === DQ_FILTER_TYPES.GLOSSARY_TERM) {
     return (
       <GlossaryTermPicker
+        bordered
         commitMode="staged"
         data-testid={`search-dropdown-${filter.label}`}
         // The bar owns which chip is open, so it can close this one.
@@ -83,8 +85,9 @@ const DqFilterChip = ({
             </span>
           )}
           <ChevronDown
-            className="tw:size-3.5 tw:shrink-0 tw:text-fg-quaternary"
-            data-icon="true"
+            className={chipChevronClassName(
+              filter.selectedOwnerKeys.length > 0
+            )}
           />
         </button>
       </UserTeamSelectableList>
