@@ -29,7 +29,6 @@ import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/data/dashboard';
 import { MlFeature } from '../../../generated/entity/data/mlmodel';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/tagLabel';
 import {
   getCommonExtraInfoForVersionDetails,
@@ -37,7 +36,7 @@ import {
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtilsPure';
 import { getMlFeatureVersionData } from '../../../utils/MlModelVersionUtils';
-import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -136,11 +135,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   }, [currentVersionData, changeDescription]);
 
   const viewCustomPropertiesPermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        entityPermissions,
-        Operation.ViewCustomFields
-      ),
+    () => getDerivedPermissionFlags(entityPermissions).canViewCustomFields,
     [entityPermissions]
   );
 

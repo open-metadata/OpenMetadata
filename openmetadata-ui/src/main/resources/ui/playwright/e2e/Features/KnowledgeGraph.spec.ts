@@ -310,7 +310,8 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await page.goto(
       `/table/${getEncodedFqn(
         table.entityResponseData.fullyQualifiedName!
-      )}/knowledge_graph?fullscreen=true`
+      )}/knowledge_graph?fullscreen=true`,
+      { waitUntil: 'domcontentloaded' }
     );
     await expect(page.getByTestId('knowledge-graph-canvas')).toHaveAttribute(
       'data-ready',
@@ -416,26 +417,33 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
   test('renders every returned node and predicate from the live RDF endpoint', async ({
     page,
   }) => {
-    // RDF projection is asynchronous, so the first explore response after the beforeAll fixture
-    // is created can legitimately carry the root table and none of its relationships yet. The
-    // node/edge equality assertions below are both satisfied by an empty graph, so without waiting
-    // for the projection to land this test reports "0 relationships" as a product failure. Re-open
-    // until the endpoint returns edges, then hold the canvas to exactly that response.
-    let graph: GraphData = { nodes: [], edges: [] };
+    // Match on the request alone and assert the status after: filtering on 200
+    // inside the predicate makes a failing explore call look like a call that
+    // never happened, and the wait then times out without naming the HTTP error.
+    //
+    // The project waits on ontology-rdf-setup, so the projection is known to be
+    // writing by the time beforeAll builds the fixture table — but that table's
+    // own write still has to drain, and it reaches the store as a bare node
+    // before its relationships follow. Reopen until the drain has caught up
+    // rather than asserting on whichever half of it exists on the first paint.
+    let graph!: GraphData;
     await expect
       .poll(
         async () => {
-          const pending = page.waitForResponse(
-            (r) => r.url().includes('/rdf/graph/explore?') && r.status() === 200
+          const response = page.waitForResponse((r) =>
+            r.url().includes('/rdf/graph/explore?')
           );
           await open(page);
-          graph = (await (await pending).json()) as GraphData;
+          const exploreResponse = await response;
+          expect(exploreResponse.status()).toBe(200);
+          graph = (await exploreResponse.json()) as GraphData;
 
           return graph.edges.length;
         },
-        { timeout: 60_000 }
+        { timeout: 40_000 }
       )
       .toBeGreaterThan(0);
+
     await chooseView(page, 'Every entity');
     await expect(page.locator('[data-node-id]')).toHaveCount(
       graph.nodes.length

@@ -85,7 +85,6 @@ import { Directory } from '../../generated/entity/data/directory';
 import { File } from '../../generated/entity/data/file';
 import { Spreadsheet } from '../../generated/entity/data/spreadsheet';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import {
   DashboardConnection,
   DashboardServiceType,
@@ -159,10 +158,7 @@ import {
   TabContribution,
 } from '../../utils/ExtensionPointTypes';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getEditConnectionPath,
   getServiceDetailsPath,
@@ -731,10 +727,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const fetchDatabases = useCallback(
     async (paging?: PagingWithoutTotal) => {
-      const databaseUsagePermission = getPrioritizedViewPermission(
-        permissions.database,
-        PermissionOperation.ViewUsage
-      );
+      const databaseUsagePermission = getDerivedPermissionFlags(
+        permissions.database
+      ).canViewUsage;
       const { data, paging: resPaging } = await getDatabases(
         decodedServiceFQN,
         databaseUsagePermission
@@ -766,10 +761,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const fetchDashboards = useCallback(
     async (paging?: PagingWithoutTotal) => {
-      const dashboardUsagePermission = getPrioritizedViewPermission(
-        permissions.dashboard,
-        PermissionOperation.ViewUsage
-      );
+      const dashboardUsagePermission = getDerivedPermissionFlags(
+        permissions.dashboard
+      ).canViewUsage;
       const { data, paging: resPaging } = await getDashboards(
         decodedServiceFQN,
         dashboardUsagePermission
@@ -808,10 +802,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const fetchPipeLines = useCallback(
     async (paging?: PagingWithoutTotal) => {
-      const pipelineUsagePermission = getPrioritizedViewPermission(
-        permissions.pipeline,
-        PermissionOperation.ViewUsage
-      );
+      const pipelineUsagePermission = getDerivedPermissionFlags(
+        permissions.pipeline
+      ).canViewUsage;
       const { data, paging: resPaging } = await getPipelines(
         decodedServiceFQN,
         pipelineUsagePermission

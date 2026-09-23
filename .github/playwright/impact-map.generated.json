@@ -96,6 +96,7 @@
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionPermissions.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestDefinitionSortAndSearch.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
         "playwright/e2e/Features/DescriptionSuggestion.spec.ts",
         "playwright/e2e/Features/EntityRenameConsolidation.spec.ts",
@@ -1994,6 +1995,7 @@
         "playwright/e2e/Features/DataQuality/TestCaseResultPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionPermissions.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestDefinitionSortAndSearch.spec.ts",
         "playwright/e2e/Features/DescriptionSuggestion.spec.ts",
         "playwright/e2e/Features/DomainIsolation/DomainDropdownIsolation.spec.ts",
         "playwright/e2e/Features/DomainIsolation/DomainIncidentIsolation.spec.ts",
@@ -2768,6 +2770,7 @@
         "playwright/e2e/Features/DataQuality/TestCaseResultPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionPermissions.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestDefinitionSortAndSearch.spec.ts",
         "playwright/e2e/Features/DescriptionSuggestion.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
         "playwright/e2e/Features/DomainIsolation/DomainDropdownIsolation.spec.ts",
@@ -3102,6 +3105,7 @@
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseStatusAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionPermissions.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestDefinitionSortAndSearch.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
         "playwright/e2e/Features/DataQuality/TestSuiteListAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/TestSuiteSummaryAfterReindex.spec.ts",
@@ -3632,6 +3636,7 @@
         "playwright/e2e/Features/DataQuality/TestCaseResultPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestDefinitionSortAndSearch.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
         "playwright/e2e/Features/DomainIsolation/DomainIncidentIsolation.spec.ts",
@@ -4553,7 +4558,8 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/testDefinitionFilter.ts"
       ],
       "specs": [
-        "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts"
+        "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestDefinitionSortAndSearch.spec.ts"
       ]
     },
     {
@@ -7404,6 +7410,7 @@
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestDefinitionSortAndSearch.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
         "playwright/e2e/Features/Glossary/LargeGlossaryPerformance.spec.ts",
         "playwright/e2e/Features/IncidentManagerPagination.spec.ts",
@@ -8086,6 +8093,7 @@
       "specs": [
         "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionPermissions.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestDefinitionSortAndSearch.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts"
       ]
     },
@@ -8272,24 +8280,6 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/AsyncSelectList/AsyncSelectList.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/ActivityStream.spec.ts",
-        "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts",
-        "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
-        "playwright/e2e/Features/MutuallyExclusiveColumnTags.spec.ts",
-        "playwright/e2e/Features/Table.spec.ts",
-        "playwright/e2e/Features/Tasks.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
-        "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
-        "playwright/e2e/Pages/Glossary.spec.ts",
-        "playwright/e2e/Pages/Tags.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/AsyncSelectList/TreeAsyncSelectList.tsx"
       ],
       "specs": [
         "playwright/e2e/Features/ActivityStream.spec.ts",
@@ -8897,6 +8887,7 @@
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestDefinitionSortAndSearch.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
         "playwright/e2e/Features/GlobalPageSize.spec.ts",
         "playwright/e2e/Features/Glossary/LargeGlossaryPerformance.spec.ts",
@@ -8923,6 +8914,7 @@
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestDefinitionSortAndSearch.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
         "playwright/e2e/Features/Glossary/LargeGlossaryPerformance.spec.ts",
         "playwright/e2e/Features/IncidentManagerPagination.spec.ts",
@@ -10219,6 +10211,7 @@
         "playwright/e2e/Features/DataQuality/TestCaseStatusAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionPermissions.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestDefinitionSortAndSearch.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
         "playwright/e2e/Features/DataQuality/TestSuiteListAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/TestSuiteSummaryAfterReindex.spec.ts",

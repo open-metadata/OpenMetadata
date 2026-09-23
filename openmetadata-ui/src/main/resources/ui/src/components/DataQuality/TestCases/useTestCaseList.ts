@@ -27,7 +27,6 @@ import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { ResourcePermission } from '../../../generated/entity/policies/accessControl/resourcePermission';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { TestCase } from '../../../generated/tests/testCase';
 import { Include } from '../../../generated/type/include';
 import { UsePagingInterface } from '../../../hooks/paging/usePaging';
@@ -37,7 +36,7 @@ import {
   ListTestCaseParamsBySearch,
 } from '../../../rest/testAPI';
 import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityPureUtils';
-import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { TestCaseSearchParams } from '../DataQuality.interface';
@@ -228,7 +227,7 @@ export const useTestCaseList = ({
 
   useEffect(() => {
     if (
-      getPrioritizedViewPermission(testCasePermission, Operation.ViewBasic) &&
+      getDerivedPermissionFlags(testCasePermission).canViewBasic &&
       tab === DataQualityPageTabs.TEST_CASES
     ) {
       getTestCases();

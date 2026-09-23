@@ -231,8 +231,10 @@ jobs:
           name: spacy-en-model
           path: /tmp/spacy-model
 
+      # pull_request_target runs main's workflow against release-branch heads (2.0, 1.13)
+      # that predate the cli_e2e_v2 framework, so skip when the suite isn't checked out.
       - name: Run offline E2E framework tests
-        if: ${{ matrix.py-version == '3.10' && needs.changes.outputs.e2e == 'true' }}
+        if: ${{ matrix.py-version == '3.10' && needs.changes.outputs.e2e == 'true' && hashFiles('ingestion/tests/cli_e2e_v2/meta/**') != '' }}
         run: |
           source env/bin/activate
           cd ingestion

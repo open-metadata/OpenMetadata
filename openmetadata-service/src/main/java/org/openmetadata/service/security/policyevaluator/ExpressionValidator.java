@@ -121,6 +121,8 @@ public final class ExpressionValidator {
           "hasAnyRole",
           "isAdminUser",
           "isBotUser",
+          "isImpersonated",
+          "impersonatedBy",
           "matchAnyServiceTag",
           "matchAnyServiceType",
           "matchAnyServiceName",
@@ -157,6 +159,7 @@ public final class ExpressionValidator {
           "matchTeam",
           "isAdminUser",
           "isBotUser",
+          "isImpersonated",
           "isBot");
 
   static {
