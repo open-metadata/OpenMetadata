@@ -15,7 +15,6 @@ import { compare } from 'fast-json-patch';
 import { first, isEmpty, isUndefined, last } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
-import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   ChangeDescription,
   EntityReference,
@@ -41,10 +40,7 @@ import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVer
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-} from '../../../../utils/PermissionsUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { getTaskDisplayId } from '../../../../utils/TaskNavigationUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
@@ -333,16 +329,10 @@ export const useTestCaseIncidentHeader = ({
       : {
           hasEditStatusPermission:
             testCasePermission &&
-            getPrioritizedEditPermission(
-              testCasePermission,
-              Operation.EditStatus
-            ),
+            getDerivedPermissionFlags(testCasePermission).canEditStatus,
           hasEditOwnerPermission:
             testCasePermission &&
-            getPrioritizedEditPermission(
-              testCasePermission,
-              Operation.EditOwners
-            ),
+            getDerivedPermissionFlags(testCasePermission).canEditOwners,
         };
   }, [testCasePermission, isVersionPage, isDeleted]);
 

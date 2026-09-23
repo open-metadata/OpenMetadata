@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  chipChevronClassName,
   chipCountBadgeClassName,
   chipTriggerClassName,
   chipTriggerSelectedClassName,
@@ -18,17 +19,19 @@ import {
 
 describe('dqFilterChip utils', () => {
   describe('chipTriggerClassName', () => {
-    it('should carry the borderless quick-filter treatment', () => {
-      expect(chipTriggerClassName).toContain('tw:text-tertiary');
-      expect(chipTriggerClassName).toContain('tw:p-1');
+    it('should carry the bordered pill treatment', () => {
+      // The owner trigger sits beside FilterSelect chips rendered with
+      // `bordered`; a borderless trigger here is the visual drift this guards
+      // against.
+      expect(chipTriggerClassName).toContain('tw:shadow-xs-skeuomorphic');
+      expect(chipTriggerClassName).toContain('tw:after:outline-primary');
+      expect(chipTriggerClassName).toContain('tw:bg-primary');
+      expect(chipTriggerClassName).toContain('tw:px-3.5');
     });
 
-    it('should not carry the bordered chip treatment', () => {
-      // The owner trigger sits beside FilterSelect chips rendered as borderless
-      // buttons; a border or skeuomorphic shadow here is the visual drift this
-      // guards against.
-      expect(chipTriggerClassName).not.toContain('shadow-xs-skeuomorphic');
-      expect(chipTriggerClassName).not.toContain('after:outline-primary');
+    it('should not carry the borderless quick-filter treatment', () => {
+      expect(chipTriggerClassName).not.toContain('tw:text-tertiary');
+      expect(chipTriggerClassName).not.toContain('tw:p-1 ');
     });
   });
 
@@ -37,6 +40,17 @@ describe('dqFilterChip utils', () => {
       expect(chipTriggerSelectedClassName).toContain(
         'tw:text-fg-brand-primary'
       );
+      expect(chipTriggerSelectedClassName).toContain('tw:after:outline-brand');
+    });
+  });
+
+  describe('chipChevronClassName', () => {
+    it('should brand the chevron once a value is picked, like FilterSelect does', () => {
+      // A chevron left grey beside a branded label is the drift this guards
+      // against; the two colours are one Tailwind group, so it is either/or.
+      expect(chipChevronClassName(true)).toContain('tw:text-fg-brand-primary');
+      expect(chipChevronClassName(true)).not.toContain('tw:text-fg-quaternary');
+      expect(chipChevronClassName(false)).toContain('tw:text-fg-quaternary');
     });
   });
 

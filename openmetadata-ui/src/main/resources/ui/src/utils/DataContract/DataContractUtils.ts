@@ -34,6 +34,7 @@ import { DataContractResult } from '../../generated/entity/datacontract/dataCont
 import { formatMonth } from '../date-time/DateTimeUtils';
 import i18n, { t } from '../i18next/LocalUtil';
 import jsonLogicSearchClassBase from '../JSONLogicSearchClassBase';
+import { withGlossaryTermField } from '../queryBuilderWidgets/glossaryTermQueryField';
 import { getTermQuery } from '../SearchPureUtils';
 
 export const semanticRuleValidator = (_: RuleObject, value: string) => {
@@ -256,14 +257,14 @@ export const getSematicRuleFields = () => {
         defaultOperator: 'array_contains',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
         operators: SEMANTIC_TAG_OPERATORS,
-        fieldSettings: {
+        fieldSettings: withGlossaryTermField({
           asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
             searchIndex: SearchIndex.GLOSSARY_TERM,
             fieldName: 'fullyQualifiedName',
             fieldLabel: 'name',
           }),
           useAsyncSearch: true,
-        },
+        }),
       },
     },
   };

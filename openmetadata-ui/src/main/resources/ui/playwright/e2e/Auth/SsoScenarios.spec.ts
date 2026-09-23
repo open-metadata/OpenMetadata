@@ -372,6 +372,78 @@ for (const fixture of FIXTURES) {
         });
       }
 
+      // Scenario 3b — persistent server-side 401 stops looping within a
+      // bounded request budget. Regression: the fast-path used to
+      // short-circuit refresh when the stored token's `exp` was still
+      // fresh, looping ~2 req/s on /loggedInUser without ever hitting
+      // /auth/refresh (147 calls in 45s per the HAR). The coordinator's
+      // per-request retry cap must now stop that loop. SDK-driven
+      // providers don't use /api/v1/auth/refresh, so opt out.
+      if (fixture.usesBackendRefresh) {
+        test('persistent server-side 401 stops looping within a bounded request budget', async ({
+          page,
+        }) => {
+          test.slow();
+
+          await fixture.performLogin(page);
+
+          const loggedInUserCalls: string[] = [];
+          const authRefreshCalls: string[] = [];
+          page.on('request', (req) => {
+            const u = req.url();
+            if (u.includes(AUTH_REFRESH_PATH)) {
+              authRefreshCalls.push(u);
+            } else if (/\/api\/v1\/users\/loggedInUser/.test(u)) {
+              loggedInUserCalls.push(u);
+            }
+          });
+
+          // Fault-inject the exact 401 body OM's JwtFilter emits after a
+          // signing-key rotation. Scoped to /loggedInUser (the endpoint
+          // the HAR looped on) so the app boots normally and only the
+          // session probe is broken.
+          await page.route(/\/api\/v1\/users\/loggedInUser/, (route) =>
+            route.fulfill({
+              status: 401,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                code: 401,
+                message:
+                  'Not Authorized! Token signing key not found in configured public keys',
+              }),
+            })
+          );
+
+          await page.goto('/', { waitUntil: 'load' });
+          // Wait for the /loggedInUser count to hold steady across 3
+          // consecutive 2s samples — proof the storm has stopped. A
+          // regressed fast-path would keep firing ~2 req/s and the
+          // count would never stabilise before the poll timeout.
+          let previousCount = -1;
+          let stableSamples = 0;
+          await expect
+            .poll(
+              () => {
+                if (loggedInUserCalls.length === previousCount) {
+                  stableSamples += 1;
+                } else {
+                  stableSamples = 0;
+                  previousCount = loggedInUserCalls.length;
+                }
+
+                return stableSamples;
+              },
+              { timeout: 30_000, intervals: [2_000] }
+            )
+            .toBeGreaterThanOrEqual(3);
+
+          // Loose ceilings — well under the ~150 /loggedInUser calls in
+          // the runaway HAR. Both counts must be finite and small.
+          expect(loggedInUserCalls.length).toBeLessThan(15);
+          expect(authRefreshCalls.length).toBeLessThan(10);
+        });
+      }
+
       // Scenario 4 — a second tab in the same browser context inherits the
       // authenticated session via shared localStorage without a second IdP
       // handshake. Fixtures whose auth is per-page (Basic, LDAP) opt out via
