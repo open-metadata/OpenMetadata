@@ -105,6 +105,7 @@ from metadata.ingestion.source.database.unitycatalog.queries import (
     UNITY_CATALOG_GET_CATALOGS_TAGS,
     UNITY_CATALOG_GET_TABLE_DDL,
     UNITY_CATALOG_TABLE_CONSTRAINTS,
+    escape_identifier,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
@@ -627,7 +628,9 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
         schema = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
         query = UNITY_CATALOG_DESCRIBE_TABLE_JSON.format(
-            database_name=database, schema_name=schema, table_name=table_name
+            database_name=escape_identifier(database),
+            schema_name=escape_identifier(schema),
+            table_name=escape_identifier(table_name),
         )
         try:
             row = self.sql_connection.execute(text(query)).fetchone()

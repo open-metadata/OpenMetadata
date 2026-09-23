@@ -228,6 +228,12 @@ UNITY_CATALOG_GET_ALL_SCHEMAS = """
 SELECT catalog_name, schema_name FROM system.information_schema.schemata
 """
 
+
+def escape_identifier(identifier: str) -> str:
+    """Make an identifier safe to interpolate between the backticks below."""
+    return identifier.replace("`", "``")
+
+
 UNITY_CATALOG_GET_VIEW_DEFINITIONS_IN_CATALOG = textwrap.dedent(
     """
     SELECT

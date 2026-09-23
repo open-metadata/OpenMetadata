@@ -562,6 +562,17 @@ def test_a_failed_describe_falls_back_to_the_reduced_copy():
     assert definition.measures[0].comment is None
 
 
+def test_a_backtick_in_a_name_is_escaped_rather_than_closing_the_quoting():
+    """A raw backtick would end the quoted identifier and leave a malformed DESCRIBE,
+    costing the full body of every metric view under such a name."""
+    source = StubbedUnityCatalogSource(REDUCED_YAML, json.dumps({"view_text": FULL_YAML}))
+    source.context.database = "odd`catalog"
+
+    source.get_metric_view_text(VIEW)
+
+    assert _describe_queries(source) == [f"DESCRIBE TABLE EXTENDED `odd``catalog`.`{SCHEMA}`.`{VIEW}` AS JSON"]
+
+
 def test_an_empty_describe_result_falls_back_to_the_reduced_copy():
     source = StubbedUnityCatalogSource(REDUCED_YAML, json.dumps({"view_text": None}))
 

@@ -59,6 +59,7 @@ from metadata.ingestion.source.database.unitycatalog.queries import (
     UNITY_CATALOG_DESCRIBE_TABLE_JSON,
     UNITY_CATALOG_GET_METRIC_VIEWS_IN_CATALOG,
     UNITY_CATALOG_GET_VIEW_DEFINITIONS_IN_CATALOG,
+    escape_identifier,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
@@ -198,7 +199,7 @@ class UnitycatalogMetricViewLineage:
         ``DESCRIBE`` is per metric view the first pass missed, so the cost scales with
         the number of metric views rather than the size of the catalog.
         """
-        query = UNITY_CATALOG_GET_VIEW_DEFINITIONS_IN_CATALOG.format(database_name=_escape(database))
+        query = UNITY_CATALOG_GET_VIEW_DEFINITIONS_IN_CATALOG.format(database_name=escape_identifier(database))
         rows = [(row[0], row[1], row[2]) for row in self.run_query(query)]
         rows.extend(self._described_metric_views(database, {(schema, view) for schema, view, _ in rows}))
         return rows
@@ -210,7 +211,7 @@ class UnitycatalogMetricViewLineage:
         known to be a metric view, so a view the run excludes can be dropped without
         paying for a round-trip to read a definition nothing will use.
         """
-        query = UNITY_CATALOG_GET_METRIC_VIEWS_IN_CATALOG.format(database_name=_escape(database))
+        query = UNITY_CATALOG_GET_METRIC_VIEWS_IN_CATALOG.format(database_name=escape_identifier(database))
         try:
             candidates = self.run_query(query)
         except Exception as exc:  # pylint: disable=broad-except
@@ -230,7 +231,9 @@ class UnitycatalogMetricViewLineage:
     def _describe_view_text(self, database: str, schema: str, view: str) -> str | None:
         """One metric view's YAML body, read from ``DESCRIBE ... AS JSON``."""
         query = UNITY_CATALOG_DESCRIBE_TABLE_JSON.format(
-            database_name=_escape(database), schema_name=_escape(schema), table_name=_escape(view)
+            database_name=escape_identifier(database),
+            schema_name=escape_identifier(schema),
+            table_name=escape_identifier(view),
         )
         try:
             rows = self.run_query(query)
@@ -388,11 +391,6 @@ class UnitycatalogMetricViewLineage:
         message = f"Metric view lineage [{schema}.{view}]: {reason}"
         logger.warning(message)
         self.status.warning(f"{schema}.{view}", message)
-
-
-def _escape(identifier: str) -> str:
-    """Make an identifier safe to interpolate between backticks."""
-    return identifier.replace("`", "``")
 
 
 def _qualify(segments: list[str], database: str, schema: str) -> list[SourceTable]:
