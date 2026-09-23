@@ -466,8 +466,19 @@ export default [
       'src/utils/ToastUtils.ts',
       'src/utils/MetricEntityUtils/**/*.{js,jsx,ts,tsx}',
     ],
+    // These two still render the antd Tabs/Row/Col entity-page scaffold that
+    // every other entity details and version page shares; migrate them with
+    // that scaffold rather than in isolation.
+    ignores: [
+      'src/components/Metric/MetricDetails/MetricDetails.tsx',
+      'src/components/Metric/MetricVersion/MetricVersion.tsx',
+    ],
     rules: {
-      'no-restricted-imports': [
+      // The typescript-eslint variant is used on purpose: flat config replaces
+      // a rule's options wholesale, so a core `no-restricted-imports` entry here
+      // would be discarded by the later permission block (and would itself
+      // discard the base design-system restrictions) for these files.
+      '@typescript-eslint/no-restricted-imports': [
         'error',
         {
           paths: [
@@ -480,7 +491,8 @@ export default [
             {
               name: '@ant-design/icons',
               allowTypeImports: true,
-              message: 'Metric workflows use icons from @untitledui/icons.',
+              message:
+                'Metric workflows use icons from @openmetadata/ui-core-components/icons.',
             },
           ],
           patterns: [
@@ -493,7 +505,8 @@ export default [
             {
               group: ['@ant-design/icons/*'],
               allowTypeImports: true,
-              message: 'Metric workflows use icons from @untitledui/icons.',
+              message:
+                'Metric workflows use icons from @openmetadata/ui-core-components/icons.',
             },
           ],
         },

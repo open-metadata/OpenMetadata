@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { MetricTag } from '@openmetadata/ui-core-components';
-import { Typography } from 'antd';
+import { Button, MetricTag } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
@@ -90,12 +89,13 @@ const RelatedMetrics: FC = () => {
 
   const showMoreLessElement = useMemo(() => {
     return (
-      <Typography.Text
-        className="cursor-pointer text-xs text-primary underline"
+      <Button
+        color="link-color"
         data-testid={`show-${isShowMore ? 'less' : 'more'}`}
-        onClick={() => setIsShowMore(!isShowMore)}>
+        size="sm"
+        onPress={() => setIsShowMore(!isShowMore)}>
         {isShowMore ? t('label.show-less') : t('label.show-more')}
-      </Typography.Text>
+      </Button>
     );
   }, [isShowMore, hiddenRelatedMetrics]);
 

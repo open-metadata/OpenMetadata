@@ -102,10 +102,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
   );
 
   const viewCustomPropertiesPermission = useMemo(
-    () =>
-      getDerivedPermissionFlags(entityPermissions).can(
-        Operation.ViewCustomFields
-      ),
+    () => getDerivedPermissionFlags(entityPermissions).canViewCustomFields,
     [entityPermissions]
   );
 
