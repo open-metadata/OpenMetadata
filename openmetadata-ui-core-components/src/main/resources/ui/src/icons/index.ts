@@ -85,6 +85,7 @@ export { Duration } from './Duration';
 export { EditSkills } from './EditSkills';
 export { Edit } from './Edit';
 export { Expand } from './Expand';
+export { Eye } from './Eye';
 export { FailedTests } from './FailedTests';
 export { Failed } from './Failed';
 export { Follow } from './Follow';
