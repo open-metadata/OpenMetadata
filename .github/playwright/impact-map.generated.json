@@ -4892,6 +4892,7 @@
         "playwright/e2e/Features/Pagination.spec.ts",
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
         "playwright/e2e/Pages/AuditLogs.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataProductCertificationFilter.spec.ts",
         "playwright/e2e/Pages/ExploreBrowse.spec.ts",
         "playwright/e2e/Pages/LearningResources.spec.ts",
@@ -4927,6 +4928,7 @@
         "playwright/e2e/Features/SearchExport.spec.ts",
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
         "playwright/e2e/Pages/AuditLogs.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataProductCertificationFilter.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts"
       ]
@@ -5135,6 +5137,7 @@
         "playwright/e2e/Features/SearchExport.spec.ts",
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
         "playwright/e2e/Pages/AuditLogs.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataProductCertificationFilter.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts"
       ]
@@ -6190,6 +6193,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataMarketplace.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/DataProducts.spec.ts",
@@ -11250,6 +11254,7 @@
         "playwright/e2e/Features/SearchExport.spec.ts",
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
         "playwright/e2e/Pages/AuditLogs.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataProductCertificationFilter.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts",
         "playwright/e2e/Pages/Roles.spec.ts",
