@@ -124,9 +124,9 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
 
       await waitForAllLoadersToDisappear(page);
 
-      // Parallel specs may create metrics that partially match, so >= 1 is
-      // correct. first().toBeVisible() retries and serves as the settling signal.
-      await expect(page.getByTestId('metric-name').first()).toBeVisible();
+      // Parallel specs may create metrics that partially match, so >= 1 is correct.
+      const count = await page.getByTestId('metric-name').count();
+      expect(count).toBeGreaterThanOrEqual(1);
       await expect(
         page.getByTestId('metric-name').filter({ hasText: matchName })
       ).toBeVisible();
