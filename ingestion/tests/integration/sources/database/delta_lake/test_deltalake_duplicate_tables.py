@@ -51,6 +51,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     WorkflowConfig,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
+from metadata.ingestion.api.step import WorkflowFatalError
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.workflow.metadata import MetadataWorkflow
 
@@ -114,7 +115,7 @@ def _create_service(metadata, deltalake_storage_environment, prefix: str):
     return service_entity
 
 
-def _run_ingestion(metadata, service) -> MetadataWorkflow:
+def _run_ingestion(metadata, service, expect_fatal: bool = False) -> MetadataWorkflow:
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type=service.connection.config.type.value.lower(),
@@ -127,7 +128,13 @@ def _run_ingestion(metadata, service) -> MetadataWorkflow:
     )
 
     ingestion = MetadataWorkflow.create(workflow_config)
-    ingestion.execute()
+    if expect_fatal:
+        # A name collision aborts the run outright, so the caller still gets the workflow back
+        # to inspect while the fatal itself is asserted here.
+        with pytest.raises(WorkflowFatalError):
+            ingestion.execute()
+    else:
+        ingestion.execute()
     return ingestion
 
 
@@ -149,10 +156,11 @@ def single_prefix_service(metadata, deltalake_storage_environment, create_duplic
 
 @pytest.fixture(scope="module")
 def duplicate_ingestion(metadata, duplicate_service):
-    return _run_ingestion(metadata, duplicate_service)
+    return _run_ingestion(metadata, duplicate_service, expect_fatal=True)
 
 
 def test_duplicate_delta_tables_fail_the_ingestion(duplicate_ingestion):
+    """The run aborts with a WorkflowFatalError - asserted while executing - and stays failed."""
     with pytest.raises(WorkflowExecutionError):
         duplicate_ingestion.raise_from_status()
 
@@ -237,7 +245,7 @@ def test_a_late_collision_does_not_soft_delete_the_ingested_table(metadata, delt
             storage_options=storage_options,
         )
 
-        second_run = _run_ingestion(metadata, service)
+        second_run = _run_ingestion(metadata, service, expect_fatal=True)
         with pytest.raises(WorkflowExecutionError):
             second_run.raise_from_status()
 
@@ -248,5 +256,51 @@ def test_a_late_collision_does_not_soft_delete_the_ingested_table(metadata, delt
         assert metadata.get_by_name(entity=Table, fqn=keep_fqn) is not None, (
             "The unrelated table vanished, so the deletion sweep never ran and the test proves nothing"
         )
+    finally:
+        metadata.delete(DatabaseService, service.id, recursive=True, hard_delete=True)
+
+
+LARGE_PREFIX = "largecatalog"
+UNIQUE_TABLE_COUNT = 12
+
+
+def test_a_collision_fails_a_catalog_that_stays_above_the_success_threshold(metadata, deltalake_storage_environment):
+    """`successThreshold` alone lets one collision pass once enough tables succeed around it."""
+    bucket = deltalake_storage_environment.bucket_name
+    storage_options = deltalake_storage_environment.storage_options
+
+    for index in range(UNIQUE_TABLE_COUNT):
+        deltalake.write_deltalake(
+            f"s3://{bucket}/{LARGE_PREFIX}/u{index:02d}/unique_{index:02d}/",
+            data=pd.DataFrame({"C": [index]}),
+            storage_options=storage_options,
+        )
+    for side in ("a", "b"):
+        deltalake.write_deltalake(
+            f"s3://{bucket}/{LARGE_PREFIX}/{side}/{DUPLICATE_TABLE_NAME}/",
+            data=pd.DataFrame({f"COL_FROM_{side.upper()}": [side]}),
+            storage_options=storage_options,
+        )
+
+    service = _create_service(metadata, deltalake_storage_environment, LARGE_PREFIX)
+    try:
+        ingestion = _run_ingestion(metadata, service, expect_fatal=True)
+
+        # Without the fatal this run would have been reported as a success: the single collision
+        # stays above the default threshold, so the status check alone does not fail it.
+        assert ingestion.calculate_success() >= ingestion.workflow_config.successThreshold
+        ingestion.raise_from_status()
+
+        assert len(ingestion.source.get_status().failures) == 1
+        assert (
+            metadata.get_by_name(
+                entity=Table,
+                fqn=f"{service.name.root}.default.{bucket}.{DUPLICATE_TABLE_NAME}",
+            )
+            is None
+        )
+        for index in range(UNIQUE_TABLE_COUNT):
+            fqn = f"{service.name.root}.default.{bucket}.unique_{index:02d}"
+            assert metadata.get_by_name(entity=Table, fqn=fqn) is not None, f"Missing {fqn}"
     finally:
         metadata.delete(DatabaseService, service.id, recursive=True, hard_delete=True)

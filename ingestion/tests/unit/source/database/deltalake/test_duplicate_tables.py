@@ -16,6 +16,8 @@ import pytest
 
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.api.step import WorkflowFatalError
+from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.source.database.deltalake.clients.base import TableInfo
 from metadata.ingestion.source.database.deltalake.metadata import DeltalakeSource
 
@@ -197,3 +199,35 @@ def test_a_listing_error_keeps_the_tables_already_discovered(source):
     assert names == ["table_a", "table_b"]
     assert len(source.status.failures) == 1
     assert "s3 pagination failed" in source.status.failures[0].error
+
+
+def test_a_collision_fails_the_whole_workflow(source):
+    """`successThreshold` would let a duplicate pass on a large catalog; losing a table must not."""
+    discover(
+        source,
+        [
+            table_info("deltatable-name", "prefix/a/deltatable-name/"),
+            table_info("deltatable-name", "prefix/b/deltatable-name/"),
+        ],
+    )
+
+    with (
+        patch.object(TopologyRunnerMixin, "_iter", return_value=iter([])),
+        pytest.raises(WorkflowFatalError) as raised,
+    ):
+        list(source._iter())
+
+    assert f"{SERVICE_NAME}.{DATABASE_NAME}.{SCHEMA_NAME}.deltatable-name" in str(raised.value)
+
+
+def test_without_collisions_the_workflow_is_not_failed(source):
+    discover(
+        source,
+        [
+            table_info("table_a", "prefix/a/table_a/"),
+            table_info("table_b", "prefix/b/table_b/"),
+        ],
+    )
+
+    with patch.object(TopologyRunnerMixin, "_iter", return_value=iter([])):
+        assert list(source._iter()) == []

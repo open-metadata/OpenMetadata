@@ -42,6 +42,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.step import WorkflowFatalError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -88,6 +89,7 @@ class DeltalakeSource(DatabaseServiceSource):
         # `DatabaseServiceSource` declares this set on the class, so without a per-instance copy
         # two services running in the same process would share - and under-delete from - it.
         self.database_source_state = set()
+        self._duplicate_table_fqns: list[str] = []
 
         self.service_connection = self.config.serviceConnection.root.config
         self._connection = create_connection(self.service_connection)
@@ -236,6 +238,7 @@ class DeltalakeSource(DatabaseServiceSource):
             self.database_source_state.add(self._build_table_fqn(table_name, schema_name, skip_es_search=True))
 
             table_fqn = self._build_table_fqn(table_name, schema_name)
+            self._duplicate_table_fqns.append(table_fqn)
             locations = ", ".join(sorted(info.location or "<unknown location>" for info in table_info_list))
             self.status.failed(
                 StackTraceError(
@@ -324,6 +327,26 @@ class DeltalakeSource(DatabaseServiceSource):
                     error=f"Unexpected exception to yield table [{table_name}]: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
+            )
+
+    def _iter(self) -> Iterable[Either]:
+        """Walk the topology, then fail the whole workflow if any table name collided.
+
+        A collision is reported as one more source failure, and whether failures fail the run is
+        decided by `successThreshold` - so on a large enough catalog a duplicate stays above the
+        threshold and the run still exits successfully. Losing a table is not a partial success,
+        so raise `WorkflowFatalError`, which the step machinery re-raises instead of recording.
+        Raising once the walk is over keeps every unaffected table ingested and lets the stale
+        deletion pass run; only the verdict changes.
+        """
+        yield from super()._iter()
+
+        if self._duplicate_table_fqns:
+            raise WorkflowFatalError(
+                f"Duplicate Delta table names in service '{self.config.serviceName}':"
+                f" {', '.join(sorted(self._duplicate_table_fqns))}."
+                " None of the conflicting tables were ingested; the failures above name the"
+                " storage location of each one."
             )
 
     def prepare(self):
