@@ -23,7 +23,7 @@ import { AnnouncementsWidgetV3BodyProps } from './AnnouncementsWidgetV3Body.inte
 // carries the white fill and the border, but that border is painted on ::after,
 // so the radius has to be set there too or the button rounds and its edge stays
 // square.
-const ARROW_CLASS = 'tw:size-7 tw:rounded-full tw:after:rounded-full';
+const ARROW_CLASS = 'tw:size-6 tw:rounded-full tw:after:rounded-full';
 
 const AnnouncementsWidgetV3Body = ({
   announcements,

@@ -59,9 +59,9 @@ const AnnouncementTitle = ({
 }) => {
   const text = (
     <Typography
-      ellipsis
       as="span"
       className={className}
+      ellipsis={{ rows: 1, tooltip: true }}
       size="text-sm"
       weight="medium">
       {title}
@@ -118,9 +118,9 @@ const AnnouncementFooter = ({
         <>
           <span className="tw:text-text-tertiary">&middot;</span>
           <Typography
-            ellipsis
             as="span"
             className="tw:text-text-secondary"
+            ellipsis={{ rows: 1, tooltip: true }}
             size="text-xs">
             {entityFQN}
           </Typography>
@@ -146,7 +146,7 @@ const AnnouncementActions = ({
   const { t } = useTranslation();
 
   return (
-    <Box align="center" className="tw:shrink-0 tw:gap-1">
+    <Box align="center" className="tw:ml-auto tw:shrink-0 tw:gap-1">
       {showToggle && (
         <Button
           className={actionClassName}
@@ -227,10 +227,10 @@ const CollapsedBody = ({
     />
     {hasDescription && (
       <Typography
-        ellipsis
         as="span"
         className="tw:min-w-0 tw:flex-1 tw:text-text-secondary"
         data-testid="announcement-description"
+        ellipsis={{ rows: 1, tooltip: true }}
         size="text-sm">
         {plainDescription}
       </Typography>
@@ -261,7 +261,6 @@ const ExpandedBody = ({
     <Box align="center" className="tw:min-w-0 tw:gap-2">
       {typeChip}
       <TypeBadge badgeColor={badgeColor} labelKey={labelKey} />
-      <span className="tw:flex-1" />
       {actions}
     </Box>
 
