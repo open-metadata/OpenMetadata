@@ -971,6 +971,26 @@ class TestPerServiceTableResolution:
 
         assert airbyte_source.resolve_table(self.DETAILS) is None
 
+    def test_a_named_schema_outranks_an_open_one_in_an_earlier_service(self, airbyte_source):
+        """
+        A connector that reports no schema leaves that level open, so the built FQN matches
+        any schema of the named database. Searching services in configured order let such a
+        shape win in the first service before the second was tried with a shape that names
+        the schema -- which is how a MySQL destination (database `dstdb`, no schema) resolved
+        onto an unrelated Postgres table in `dstdb.warehouse`.
+        """
+        airbyte_source.source_config.lineageInformation = LineageInformation(dbServiceNames=["multi", "single"])
+        self._route(airbyte_source, classes={"multi": True, "single": False}, tables={})
+
+        airbyte_source.resolve_table(TableDetails(name="users", schema=None, database="app_db"))
+
+        searched = [
+            call.kwargs.get("fqn_search_string")
+            for call in airbyte_source.metadata.es_search_from_fqn.call_args_list
+            if call.kwargs.get("entity_type") is Table
+        ]
+        assert searched.index("single.*.app_db.users") < searched.index("multi.app_db.*.users")
+
 
 class TestTruncatedSearchGuards:
     """

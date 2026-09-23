@@ -79,6 +79,23 @@ STATUS_MAP = {
 }
 
 
+def _shape_rank(candidate: TableDetails) -> int:
+    """
+    How specific an FQN shape is, lowest first.
+
+    A level the shape omits is a wildcard in the built FQN, so it can match any table at that
+    level. An omitted *schema* is the dangerous one: it matches every schema of the named
+    database, while an omitted database only spans the synthetic ``default`` of a
+    single-database service. Ranking keeps a wildcard-schema shape in one service from
+    winning over an exact-schema shape in another.
+    """
+    if candidate.database and candidate.schema:
+        return 0
+    if candidate.schema:
+        return 1
+    return 2
+
+
 class AirbytePipelineDetails(BaseModel):
     """
     Wrapper Class to combine the workspace with connection
@@ -298,13 +315,20 @@ class AirbyteSource(PipelineServiceSource):
 
     def resolve_table(self, table_details: TableDetails) -> Table | None:
         """
-        Find the Table a stream maps to: each configured service in turn, and within a service
-        each FQN shape that service's class allows.
+        Find the Table a stream maps to, trying the most specific FQN shape across *every*
+        configured service before falling back to a looser one.
 
-        The loop is per service because ``fqn.build`` returns a *constructed* FQN whenever
-        service, database and schema are all present, even when Elasticsearch matched nothing.
-        Accepting the first service's answer would therefore hide a table that lives in the
-        second, so the entity is fetched and verified before a service is accepted.
+        The shapes are ranked by specificity rather than walked service by service, because a
+        looser shape drops a level and ``fqn.build`` turns the missing level into a wildcard:
+        a single-database service drops the database, and a connector that reports no schema
+        leaves the schema open. Either can match a same-named table in an unrelated service,
+        so a per-service loop lets an earlier service win with a degraded shape before the
+        right service is tried with its exact one -- which is how a MySQL destination resolved
+        onto a Postgres table and a Postgres destination onto a MySQL one.
+
+        The entity is still fetched and verified rather than trusting ``fqn.build``, which
+        returns a *constructed* FQN whenever service, database and schema are all present,
+        even when Elasticsearch matched nothing.
         """
         # Without a database or a schema the search degrades to `*.*.*.<table>`, which
         # `fqn.build` resolves to an arbitrary same-named table in an unrelated service.
@@ -317,39 +341,32 @@ class AirbyteSource(PipelineServiceSource):
             )
             return None
 
-        service_names = self.get_db_service_names()
-        if not service_names:
-            # No list configured: search across services, undecided on the service class.
-            return self._lookup_table_in_service("*", table_details, None)
+        shapes = [
+            (_shape_rank(candidate), service_name, candidate)
+            for service_name in (self.get_db_service_names() or ["*"])
+            for candidate in table_fqn_candidates(table_details, self.db_service_classes.get(service_name))
+        ]
+        # Stable sort, so services keep their configured order inside a rank.
+        for _, service_name, candidate in sorted(shapes, key=lambda shape: shape[0]):
+            entity = self._fetch_table(service_name, candidate)
+            if entity:
+                return entity
+        return None
 
-        for service_name in service_names:
-            entity = self._lookup_table_in_service(
-                service_name, table_details, self.db_service_classes.get(service_name)
+    def _fetch_table(self, service_name: str, candidate: TableDetails) -> Table | None:
+        """Fetch the Table one FQN shape points at in one service, or None."""
+        try:
+            table_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Table,
+                service_name=service_name,
+                database_name=candidate.database,
+                schema_name=candidate.schema,
+                table_name=candidate.name,
             )
-            if entity:
-                return entity
-        return None
-
-    def _lookup_table_in_service(
-        self, service_name: str, table_details: TableDetails, supports_database: bool | None
-    ) -> Table | None:
-        """Resolve a table in one service, trying each FQN shape that service's class allows."""
-        for candidate in table_fqn_candidates(table_details, supports_database):
-            try:
-                table_fqn = fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Table,
-                    service_name=service_name,
-                    database_name=candidate.database,
-                    schema_name=candidate.schema,
-                    table_name=candidate.name,
-                )
-            except FQNBuildingException:
-                continue
-            entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn) if table_fqn else None
-            if entity:
-                return entity
-        return None
+        except FQNBuildingException:
+            return None
+        return self.metadata.get_by_name(entity=Table, fqn=table_fqn) if table_fqn else None
 
     # pylint: disable=too-many-locals
     def yield_pipeline_lineage_details(
