@@ -115,12 +115,29 @@ export const getQueryWithSlash = (query: string): string => {
   // Elasticsearch's query_string parser. A quote is only actually escaped
   // when it's preceded by an odd number of backslashes -- an even run
   // (including zero) resolves to literal backslashes, leaving the quote
-  // itself unescaped, so checking just one preceding character isn't enough.
-  return query
-    .replaceAll(/'/g, String.raw`\'`)
-    .replaceAll(/(\\*)"/g, (match, backslashes: string) =>
-      backslashes.length % 2 === 1 ? match : `${backslashes}\\"`
-    );
+  // itself unescaped. Walking the string once (instead of a `(\\*)"` regex)
+  // avoids the super-linear backtracking a quantified-group-then-literal
+  // pattern causes on long non-matching backslash runs.
+  let result = '';
+  let precedingBackslashes = 0;
+  for (const char of query) {
+    if (char === '\\') {
+      precedingBackslashes += 1;
+      result += char;
+
+      continue;
+    }
+    if (char === "'") {
+      result += String.raw`\'`;
+    } else if (char === '"') {
+      result += precedingBackslashes % 2 === 1 ? char : String.raw`\"`;
+    } else {
+      result += char;
+    }
+    precedingBackslashes = 0;
+  }
+
+  return result;
 };
 
 /**
