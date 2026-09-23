@@ -15,9 +15,8 @@ import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.FilteringRules;
 
 /**
- * The text stored for an alert is what decides it, and what a server of the previous release
- * evaluates after a rollback, so what the builder writes for one source must not drift, and what
- * it writes for several sources groups the triggers by source.
+ * The text stored for an alert is what decides it, so what the builder writes for one source must
+ * not drift, and what it writes for several sources groups the triggers by source.
  */
 class CompiledTextTest {
 
@@ -61,7 +60,6 @@ class CompiledTextTest {
   }
 
   // The worked example: tables and topics whose schema changed, and pipelines whose run failed.
-  // A server of the previous release evaluates this text as it stands.
   @Test
   void multiSourceTextGroupsTriggersBySource() {
     AlertFilteringInput input =

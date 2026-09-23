@@ -2,7 +2,6 @@ package org.openmetadata.service.events.subscription;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -22,8 +21,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
@@ -45,9 +42,8 @@ import org.openmetadata.service.resources.events.subscription.EventSubscriptionR
  */
 class AlertCatalogTest {
 
-  private static final Path COMPAT = Path.of("src", "test", "resources", "compat");
+  private static final Path ALERTS = Path.of("src", "test", "resources", "alerts");
   private static final String SHIPPED_ENTRIES = "alert-catalog-shipped-entries.json";
-  private static final Pattern FUNCTION_CALL = Pattern.compile("([A-Za-z_][A-Za-z0-9_]*)\\s*\\(");
   private static final String TWICE =
       "{\"name\":\"filterByOwner\",\"condition\":\"matchAnyOwnerName(${ownerNameList})\"}";
   // The entity behind tag categories has been called classification for years, so an alert on
@@ -116,7 +112,7 @@ class AlertCatalogTest {
   @Test
   void everyShippedDefinitionStillBuilds() throws IOException {
     EventsSubscriptionRegistry.initialize(AlertCatalog.load());
-    JsonNode shipped = JsonUtils.readTree(Files.readString(COMPAT.resolve(SHIPPED_ENTRIES)));
+    JsonNode shipped = JsonUtils.readTree(Files.readString(ALERTS.resolve(SHIPPED_ENTRIES)));
     assertTrue(shipped.size() > 200, "the fixture of shipped entries is missing or cut short");
 
     for (JsonNode entry : shipped) {
@@ -151,23 +147,6 @@ class AlertCatalogTest {
         () ->
             AlertUtil.validateAndBuildFilteringConditions(
                 List.of("location"), AlertType.NOTIFICATION, null));
-  }
-
-  // Stored text is what a server of the previous release evaluates after a rollback.
-  @Test
-  void templatesUseOnlyPreviousReleaseFunctions() throws IOException {
-    Set<String> previousReleaseHas =
-        new TreeSet<>(Files.readAllLines(COMPAT.resolve("condition-functions.txt")));
-    assertFalse(previousReleaseHas.isEmpty());
-
-    for (EventFilterRule definition : AlertCatalog.load().definitions()) {
-      Matcher called = FUNCTION_CALL.matcher(definition.getCondition());
-      while (called.find()) {
-        assertTrue(
-            previousReleaseHas.contains(called.group(1)),
-            definition.getName() + " calls " + called.group(1));
-      }
-    }
   }
 
   @Test

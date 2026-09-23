@@ -127,8 +127,7 @@ export const getFilterFunctions = async () => {
 };
 
 /**
- * What a selection of sources supports. A server of the previous release has no such path and
- * answers 404, which the form reads as "one source only".
+ * What a selection of sources supports.
  */
 export const getAlertCapabilities = async (
   request: AlertCapabilitiesRequest
