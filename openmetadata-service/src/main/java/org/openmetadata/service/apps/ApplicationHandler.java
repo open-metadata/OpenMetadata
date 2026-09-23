@@ -140,8 +140,22 @@ public class ApplicationHandler {
       CollectionDAO daoCollection,
       SearchRepository searchRepository,
       Map<String, Object> configPayload) {
+    triggerApplicationOnDemand(app, daoCollection, searchRepository, configPayload, null);
+  }
+
+  /**
+   * @param triggeredBy principal that requested this run, recorded on the run record.
+   */
+  public void triggerApplicationOnDemand(
+      App app,
+      CollectionDAO daoCollection,
+      SearchRepository searchRepository,
+      Map<String, Object> configPayload,
+      String triggeredBy) {
     try {
-      runAppInit(app, daoCollection, searchRepository).triggerOnDemand(configPayload);
+      AbstractNativeApplication application = runAppInit(app, daoCollection, searchRepository);
+      application.setTriggeredBy(triggeredBy);
+      application.triggerOnDemand(configPayload);
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InvocationTargetException

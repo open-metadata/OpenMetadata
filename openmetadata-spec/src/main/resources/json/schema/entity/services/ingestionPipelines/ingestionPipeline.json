@@ -51,6 +51,10 @@
         "metadata": {
           "description": "Metadata for the pipeline status.",
           "$ref": "../../../type/basic.json#/definitions/map"
+        },
+        "triggeredBy": {
+          "description": "User who triggered the run on demand, when known. Not set for scheduled runs.",
+          "type": "string"
         }
       },
       "additionalProperties": false

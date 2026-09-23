@@ -939,6 +939,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
                     ingestionPipeline.getFullyQualifiedName(),
                     PIPELINE_STATUS_EXTENSION),
             PipelineStatus.class);
+    carryForwardTriggeredBy(pipelineStatus, storedPipelineStatus);
     if (storedPipelineStatus != null) {
       daoCollection
           .entityExtensionTimeSeriesDao()
@@ -1048,7 +1049,27 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
    * history can show it without polling the orchestrator. Best effort: the run is already going, so
    * failing to record its queued state must not fail the trigger.
    */
+  /**
+   * Status updates for a run are reported by the worker executing it and carry no principal, so the
+   * queued status written at trigger time is the only one that knows who asked for the run. Both
+   * upsert paths replace the whole stored record, so every later write has to carry the value
+   * forward or it is lost as soon as the run starts.
+   */
+  static void carryForwardTriggeredBy(PipelineStatus incoming, PipelineStatus stored) {
+    if (stored != null && incoming.getTriggeredBy() == null) {
+      incoming.withTriggeredBy(stored.getTriggeredBy());
+    }
+  }
+
   public void recordQueuedPipelineStatus(UriInfo uriInfo, String pipelineFQN, String runId) {
+    recordQueuedPipelineStatus(uriInfo, pipelineFQN, runId, null);
+  }
+
+  /**
+   * @param triggeredBy principal that requested this run, or {@code null} if unknown.
+   */
+  public void recordQueuedPipelineStatus(
+      UriInfo uriInfo, String pipelineFQN, String runId, String triggeredBy) {
     if (nullOrEmpty(runId)) {
       return;
     }
@@ -1058,7 +1079,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
             .withRunId(runId)
             .withPipelineState(PipelineStatusType.QUEUED)
             .withStartDate(now)
-            .withTimestamp(now);
+            .withTimestamp(now)
+            .withTriggeredBy(triggeredBy);
     try {
       addPipelineStatus(uriInfo, pipelineFQN, queuedStatus);
     } catch (RuntimeException e) {
@@ -1173,7 +1195,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public void updatePipelineStatusByRunId(String fqn, PipelineStatus pipelineStatus) {
     IngestionPipeline ingestionPipeline = findByName(fqn, Include.NON_DELETED);
     String pipelineFqn = ingestionPipeline.getFullyQualifiedName();
-    String json = JsonUtils.pojoToJson(pipelineStatus);
     PipelineStatus storedPipelineStatus =
         JsonUtils.readValue(
             daoCollection
@@ -1184,6 +1205,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
                     pipelineFqn,
                     PIPELINE_STATUS_EXTENSION),
             PipelineStatus.class);
+    carryForwardTriggeredBy(pipelineStatus, storedPipelineStatus);
+    String json = JsonUtils.pojoToJson(pipelineStatus);
     if (storedPipelineStatus != null) {
       daoCollection
           .entityExtensionTimeSeriesDao()

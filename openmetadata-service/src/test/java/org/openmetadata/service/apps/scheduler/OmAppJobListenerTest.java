@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.scheduler;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
@@ -9,6 +10,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.TRIGGER_TYPE_KEY;
 import static org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS;
@@ -21,6 +23,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -221,6 +224,52 @@ class OmAppJobListenerTest {
                   eq("test-server-1"),
                   eq(new String[] {"reindex-", "om-field-fetch-", "search-index-retry-"})));
     }
+  }
+
+  @Test
+  void jobToBeExecuted_recordsWhoTriggeredAnOnDemandRun() {
+    AppRunRecord stored = runRecordFromJobToBeExecuted("alice");
+
+    assertEquals("alice", stored.getTriggeredBy());
+  }
+
+  @Test
+  void jobToBeExecuted_leavesTriggeredByUnsetForScheduledRuns() {
+    AppRunRecord stored = runRecordFromJobToBeExecuted(null);
+
+    assertNull(stored.getTriggeredBy());
+  }
+
+  private AppRunRecord runRecordFromJobToBeExecuted(String triggeredBy) {
+    App jobApp = new App().withId(UUID.randomUUID()).withName(APP_NAME);
+
+    JobDataMap dataMap = new JobDataMap();
+    dataMap.put(TRIGGER_TYPE_KEY, "OnDemandJob");
+    dataMap.put(AppScheduler.APP_NAME, APP_NAME);
+    if (triggeredBy != null) {
+      dataMap.put(AppScheduler.TRIGGERED_BY_KEY, triggeredBy);
+    }
+
+    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail);
+    when(jobDetail.getJobDataMap()).thenReturn(dataMap);
+    when(jobExecutionContext.getMergedJobDataMap()).thenReturn(new JobDataMap());
+    when(jobExecutionContext.isRecovering()).thenReturn(false);
+    when(repository.getByName(any(), eq(APP_NAME), any(), eq(Include.NON_DELETED), eq(true)))
+        .thenReturn(jobApp);
+
+    try (MockedStatic<ServerIdentityResolver> sirMock = mockStatic(ServerIdentityResolver.class);
+        MockedStatic<AppRunLogAppender> appenderMock = mockStatic(AppRunLogAppender.class);
+        MockedStatic<ApplicationHandler> ahMock = mockStatic(ApplicationHandler.class)) {
+      sirMock.when(ServerIdentityResolver::getInstance).thenReturn(serverIdentityResolver);
+      when(serverIdentityResolver.getServerId()).thenReturn("test-server-1");
+      ahMock.when(ApplicationHandler::getInstance).thenReturn(applicationHandler);
+
+      listener.jobToBeExecuted(jobExecutionContext);
+    }
+
+    ArgumentCaptor<AppRunRecord> captor = ArgumentCaptor.forClass(AppRunRecord.class);
+    verify(repository).addAppStatus(captor.capture());
+    return captor.getValue();
   }
 
   @Test

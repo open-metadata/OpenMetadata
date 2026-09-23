@@ -438,6 +438,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
               case STOPPED -> AppRunRecord.Status.STOPPED;
             })
         .withConfig(pipelineStatus.getConfig())
+        .withTriggeredBy(pipelineStatus.getTriggeredBy())
         .withProperties(
             pipelineStatus.getRunId() != null
                 ? Map.of("pipelineRunId", pipelineStatus.getRunId())
@@ -1363,10 +1364,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
       throw AppException.byMessage(
           name, "NotEnabled", "App is not enabled. Enable it from the server configuration.");
     }
+    String triggeredBy = securityContext.getUserPrincipal().getName();
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.getInstance()
           .triggerApplicationOnDemand(
-              app, Entity.getCollectionDAO(), searchRepository, configPayload);
+              app, Entity.getCollectionDAO(), searchRepository, configPayload, triggeredBy);
       return Response.status(Response.Status.OK).build();
     } else {
       if (!app.getPipelines().isEmpty()) {
@@ -1382,7 +1384,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
             pipelineServiceClient.runPipeline(ingestionPipeline, service, configPayload);
         ((IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE))
             .recordQueuedPipelineStatus(
-                uriInfo, ingestionPipeline.getFullyQualifiedName(), response.getRunId());
+                uriInfo,
+                ingestionPipeline.getFullyQualifiedName(),
+                response.getRunId(),
+                triggeredBy);
         return Response.status(response.getCode()).entity(response).build();
       }
     }

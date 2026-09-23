@@ -3,6 +3,7 @@ package org.openmetadata.service.apps.scheduler;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_CONFIG_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.TRIGGERED_BY_KEY;
 
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -140,6 +141,7 @@ public class OmAppJobListener implements JobListener {
               .withStartTime(jobStartTime)
               .withTimestamp(jobStartTime)
               .withRunType(runType)
+              .withTriggeredBy((String) dataMap.get(TRIGGERED_BY_KEY))
               .withStatus(AppRunRecord.Status.RUNNING)
               .withScheduleInfo(jobApp.getAppSchedule())
               .withConfig(JsonUtils.getMap(appConfig));
