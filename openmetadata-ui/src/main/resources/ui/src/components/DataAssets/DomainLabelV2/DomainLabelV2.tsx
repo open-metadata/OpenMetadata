@@ -210,23 +210,30 @@ export const DomainLabelV2 = <
     }
 
     const renderTrigger = ({ toggle }: { toggle: () => void }) => {
-      const handleTriggerClick = (e: MouseEvent<HTMLButtonElement>) => {
-        e.stopPropagation();
-        toggle();
-      };
-
-      return isEmpty(activeDomain) ? (
+      const trigger = isEmpty(activeDomain) ? (
         <WidgetPlusButton
           data-testid="add-domain"
           title={t('label.add-entity', { entity: domainLabel })}
-          onClick={handleTriggerClick}
         />
       ) : (
         <WidgetEditButton
           data-testid="edit-domain"
           title={t('label.edit-entity', { entity: domainLabel })}
-          onClick={handleTriggerClick}
         />
+      );
+
+      // Toggle on capture so the click drives the picker before the react-aria
+      // button's own press handling can swallow it or fire twice (which opened
+      // then immediately re-closed the popover). Mirrors DomainSelectableList.
+      return (
+        <span
+          role="presentation"
+          onClickCapture={(e: MouseEvent<HTMLSpanElement>) => {
+            e.stopPropagation();
+            toggle();
+          }}>
+          {trigger}
+        </span>
       );
     };
 
