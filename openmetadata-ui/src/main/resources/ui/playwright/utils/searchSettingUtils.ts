@@ -89,15 +89,13 @@ export async function setSliderValue(
   testId: string,
   value: number,
   min = 0,
-  max = 100
+  max = 100,
+  valueDisplayTestId?: string
 ) {
   const sliderHandle = page.getByTestId(testId).locator('.ant-slider-handle');
   const sliderTrack = page.getByTestId(testId).locator('.ant-slider-step');
-  const weightDisplay = page.getByTestId('field-weight-value');
 
-  const originalValue = await weightDisplay.textContent();
-
-  await expect(async () => {
+  const doSlide = async () => {
     const box = await sliderTrack.boundingBox();
     if (!box) {
       throw new Error('Slider track not found');
@@ -110,9 +108,19 @@ export async function setSliderValue(
     await page.mouse.down();
     await page.mouse.move(valuePosition, box.y);
     await page.mouse.up();
+  };
 
-    await expect(weightDisplay).not.toHaveText(originalValue ?? '');
-  }).toPass({ timeout: 15_000, intervals: [2_000] });
+  if (valueDisplayTestId) {
+    const weightDisplay = page.getByTestId(valueDisplayTestId);
+    const originalValue = await weightDisplay.textContent();
+
+    await expect(async () => {
+      await doSlide();
+      await expect(weightDisplay).not.toHaveText(originalValue ?? '');
+    }).toPass({ timeout: 15_000, intervals: [2_000] });
+  } else {
+    await doSlide();
+  }
 }
 
 // The entity search settings page opens with the "Ranking Details" accordion

@@ -223,7 +223,7 @@ test.describe('Search Settings', () => {
       await highlightFieldToggle.click();
 
       // Field Weight
-      await setSliderValue(page, 'field-weight-slider', 8);
+      await setSliderValue(page, 'field-weight-slider', 8, 0, 100, 'field-weight-value');
 
       // Match Type
       const matchTypeSelect = page.getByTestId('match-type-select');
@@ -296,7 +296,7 @@ test.describe('Search Settings', () => {
       // endpoint that serves searchSettings without deriving `highlight` greys out every toggle the
       // moment you hit Save, while the server goes on highlighting the field. Checking after a
       // reload would miss it entirely — a reload re-reads the GET, which was always annotated.
-      await setSliderValue(page, 'field-weight-slider', 7);
+      await setSliderValue(page, 'field-weight-slider', 7, 0, 100, 'field-weight-value');
 
       const saveSettings = page.waitForResponse(
         (response) =>
@@ -423,7 +423,7 @@ test.describe('Search Settings', () => {
         `field-configuration-panel-description`
       );
       await descriptionField.click();
-      await setSliderValue(page, 'field-weight-slider', 68);
+      await setSliderValue(page, 'field-weight-slider', 68, 0, 100, 'field-weight-value');
 
       const previewResponse = page.waitForResponse('/api/v1/search/preview');
       await page.getByTestId('highlight-field-switch').click();
@@ -530,7 +530,7 @@ test.describe('Search Settings', () => {
         await ngramPanel.click();
 
         // Change n-gram weight to 5 and save.
-        await setSliderValue(page, 'field-weight-slider', 5);
+        await setSliderValue(page, 'field-weight-slider', 5, 0, 100, 'field-weight-value');
 
         const saveResponse = page.waitForResponse(
           (r) =>
@@ -560,7 +560,7 @@ test.describe('Search Settings', () => {
           return boost === initialNgramBoost;
         });
 
-        await setSliderValue(page, 'field-weight-slider', initialNgramBoost);
+        await setSliderValue(page, 'field-weight-slider', initialNgramBoost, 0, 100, 'field-weight-value');
 
         const revertedPreviewResponse = await revertedPreviewPromise;
         expect(revertedPreviewResponse.status()).toBe(200);
@@ -725,7 +725,7 @@ test.describe('Search Settings', () => {
         (await highlightToggle.getAttribute('aria-checked')) === 'true';
       await highlightToggle.click();
 
-      await setSliderValue(page, 'field-weight-slider', 15);
+      await setSliderValue(page, 'field-weight-slider', 15, 0, 100, 'field-weight-value');
 
       const matchTypeSelect = page.getByTestId('match-type-select');
       await matchTypeSelect.click();
