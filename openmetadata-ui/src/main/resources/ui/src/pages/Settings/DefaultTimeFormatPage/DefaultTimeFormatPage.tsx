@@ -28,40 +28,33 @@ import {
 } from '../../../rest/settingConfigAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
-const NO_DEFAULT_VALUE = 'null';
-
 interface TimeFormatOption {
   value: string;
   labelKey: string;
 }
 
 const OPTIONS: TimeFormatOption[] = [
-  { value: NO_DEFAULT_VALUE, labelKey: 'label.no-default' },
   { value: '12h', labelKey: 'label.12-hour-format' },
   { value: '24h', labelKey: 'label.24-hour-format' },
 ];
 
 const DefaultTimeFormatPage: React.FC = () => {
   const { t } = useTranslation();
-  const { setTimeFormat } = useApplicationStore((state) => ({
-    setTimeFormat: state.setTimeFormat,
-  }));
-
+  const setTimeFormat = useApplicationStore((state) => state.setTimeFormat);
   const pageTitle = t('label.default-time-format');
-  const [initialValue, setInitialValue] = useState<string>(NO_DEFAULT_VALUE);
-  const [currentValue, setCurrentValue] = useState<string>(NO_DEFAULT_VALUE);
+  const [initialValue, setInitialValue] = useState<string>('12h');
+  const [currentValue, setCurrentValue] = useState<string>('12h');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
-
     getAppConfiguration()
       .then((config) => {
         if (!isMounted) {
           return;
         }
-        const initial = config?.defaultTimeFormat ?? NO_DEFAULT_VALUE;
+        const initial = (config?.defaultTimeFormat as '12h' | '24h') || '12h';
         setInitialValue(initial);
         setCurrentValue(initial);
       })
@@ -82,18 +75,9 @@ const DefaultTimeFormatPage: React.FC = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const defaultTimeFormat =
-        currentValue === NO_DEFAULT_VALUE
-          ? null
-          : (currentValue as '12h' | '24h');
-
-      await patchAppConfiguration({ defaultTimeFormat });
+      await patchAppConfiguration({ defaultTimeFormat: currentValue });
       setInitialValue(currentValue);
-
-      // Update the global store immediately so the UI reflects the change reactively.
-      // If the admin cleared the default (null), fall back to the hardcoded '12h' default.
-      setTimeFormat(defaultTimeFormat ?? '12h');
-
+      setTimeFormat(currentValue as '12h' | '24h');
       showSuccessToast(
         t('server.entity-updated-success', { entity: pageTitle })
       );
@@ -107,36 +91,54 @@ const DefaultTimeFormatPage: React.FC = () => {
   return (
     <Box className="tw:p-6" data-testid="default-time-format-page" direction="col">
       <DocumentTitle title={pageTitle} />
-      <Typography as="h1" className="tw:text-2xl tw:font-semibold tw:mb-2">
-        {pageTitle}
-      </Typography>
-      <Typography as="p" className="tw:text-secondary tw:mb-6">
-        {t('message.default-time-format-description')}
-      </Typography>
-      <RadioGroup
-        aria-label={pageTitle}
-        data-testid="time-format-radio-group"
-        value={currentValue}
-        onChange={setCurrentValue}>
-        {OPTIONS.map((option) => (
-          <RadioButton
-            data-testid={`time-format-option-${option.value}`}
-            key={option.value}
-            label={t(option.labelKey)}
-            value={option.value}
-          />
-        ))}
-      </RadioGroup>
-      <Box className="tw:mt-6">
+
+      {/* Wrapper for Title - forces spacing below */}
+      <div className="tw:mb-8">
+        <Typography as="h1" className="tw:text-2xl tw:font-semibold">
+          {pageTitle}
+        </Typography>
+      </div>
+
+      {/* Wrapper for Description - forces spacing below */}
+      <div className="tw:mb-10">
+        <Typography as="p" className="tw:text-secondary tw:max-w-2xl">
+          {t('message.default-time-format-description')}
+        </Typography>
+      </div>
+
+      {/* Wrapper for Radio Group - forces spacing below */}
+      <div className="tw:mb-8">
+        <RadioGroup
+          aria-label={pageTitle}
+          data-testid="time-format-radio-group"
+          value={currentValue}
+          onChange={setCurrentValue}
+        >
+          {OPTIONS.map((option) => (
+            // Wrapper for individual Radio Button - forces spacing between options
+            <div key={option.value} className="tw:mb-4">
+              <RadioButton
+                data-testid={`time-format-option-${option.value}`}
+                label={t(option.labelKey)}
+                value={option.value}
+              />
+            </div>
+          ))}
+        </RadioGroup>
+      </div>
+
+      {/* Wrapper for Save Button - forces spacing above */}
+      <div className="tw:mt-4">
         <Button
           color="primary"
           data-testid="save-time-format-settings"
           isDisabled={!isDirty || isLoading || isSaving}
           isLoading={isSaving}
-          onPress={handleSave}>
+          onPress={handleSave}
+        >
           {t('label.save')}
         </Button>
-      </Box>
+      </div>
     </Box>
   );
 };
