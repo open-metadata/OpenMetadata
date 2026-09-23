@@ -2,8 +2,53 @@
   "$id": "https://open-metadata.org/schema/api/rdf/sparqlResponse.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SparqlResponse",
-  "description": "SPARQL query response",
+  "description": "SPARQL 1.2 query response",
   "type": "object",
+  "definitions": {
+    "rdfDirection": {
+      "description": "Base direction of an RDF 1.2 directional language-tagged literal.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.api.rdf.SparqlRdfDirection",
+      "enum": ["ltr", "rtl"]
+    },
+    "rdfTerm": {
+      "description": "An RDF term bound to a result variable using the SPARQL 1.2 Query Results JSON representation. A variable that is unbound in a row is absent from that row.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.rdf.SparqlRdfTerm",
+      "properties": {
+        "type": {
+          "type": "string",
+          "javaType": "org.openmetadata.schema.api.rdf.SparqlRdfTermType",
+          "enum": ["uri", "literal", "bnode", "triple"]
+        },
+        "value": {
+          "description": "Lexical string for an IRI, literal, or blank node; recursive subject-predicate-object value for a triple term.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "sparqlTripleTerm.json"
+            }
+          ]
+        },
+        "datatype": {
+          "description": "Datatype IRI of a typed literal.",
+          "type": "string",
+          "format": "uri"
+        },
+        "xml:lang": {
+          "description": "Language tag of a language-tagged literal.",
+          "type": "string"
+        },
+        "its:dir": {
+          "description": "Base direction of an RDF 1.2 directional language-tagged literal.",
+          "$ref": "#/definitions/rdfDirection"
+        }
+      },
+      "required": ["type", "value"]
+    }
+  },
   "properties": {
     "head": {
       "description": "Header information about the query results",
@@ -35,24 +80,7 @@
           "items": {
             "type": "object",
             "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "type": {
-                  "type": "string",
-                  "enum": ["uri", "literal", "bnode"]
-                },
-                "value": {
-                  "type": "string"
-                },
-                "datatype": {
-                  "type": "string",
-                  "format": "uri"
-                },
-                "xml:lang": {
-                  "type": "string"
-                }
-              },
-              "required": ["type", "value"]
+              "$ref": "#/definitions/rdfTerm"
             }
           }
         }

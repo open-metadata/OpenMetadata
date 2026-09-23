@@ -28,7 +28,6 @@ import org.apache.jena.query.ResultSetFormatter;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.reasoner.ReasonerRegistry;
-import org.apache.jena.riot.RDFDataMgr;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 
@@ -170,7 +169,7 @@ public final class OntologySparqlQueryService {
   private static QueryResult serializeGraph(final Model model, final GraphFormat format) {
     final ByteArrayOutputStream output = new ByteArrayOutputStream();
     try {
-      RDFDataMgr.write(output, model, format.serialization().rdfFormat());
+      RdfGraphSerializer.write(output, model, format.serialization());
     } finally {
       model.close();
     }

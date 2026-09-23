@@ -19,6 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.UUID;
+import org.apache.jena.graph.NodeFactory;
+import org.apache.jena.graph.Triple;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Resource;
@@ -190,6 +192,46 @@ class OntologySparqlQueryServiceTest {
         () ->
             service(modelWithStatement())
                 .query(GLOSSARY_ID, request("SELECT * WHERE { ?s ?p ?o } LIMIT 10001")));
+  }
+
+  @Test
+  void rejectsJsonLdForAGraphResultCarryingTripleTerms() {
+    final SparqlQuery request =
+        request("CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }").withFormat(SparqlQuery.Format.JSONLD);
+
+    final UnsupportedRdfSerializationException failure =
+        assertThrows(
+            UnsupportedRdfSerializationException.class,
+            () -> service(modelWithTripleTerm()).query(GLOSSARY_ID, request));
+
+    assertTrue(failure.getMessage().contains("turtle"));
+  }
+
+  @Test
+  void serializesTripleTermsAsTurtle() {
+    final SparqlQuery request =
+        request("CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }").withFormat(SparqlQuery.Format.TURTLE);
+
+    final OntologySparqlQueryService.QueryResult result =
+        service(modelWithTripleTerm()).query(GLOSSARY_ID, request);
+
+    assertTrue(result.body().contains("<<("));
+    assertTrue(result.body().contains("@ar--rtl"));
+  }
+
+  private static Model modelWithTripleTerm() {
+    final Model model = ModelFactory.createDefaultModel();
+    model
+        .getGraph()
+        .add(
+            Triple.create(
+                NodeFactory.createURI("urn:reifier"),
+                NodeFactory.createURI("http://www.w3.org/1999/02/22-rdf-syntax-ns#reifies"),
+                NodeFactory.createTripleTerm(
+                    NodeFactory.createURI("urn:subject"),
+                    NodeFactory.createURI("urn:predicate"),
+                    NodeFactory.createLiteralDirLang("\u0642\u0637\u0629", "ar", "rtl"))));
+    return model;
   }
 
   private static OntologySparqlQueryService service(final Model model) {

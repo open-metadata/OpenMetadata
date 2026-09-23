@@ -13,10 +13,14 @@
 
 package org.openmetadata.service.rdf;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import org.apache.jena.datatypes.xsd.XSDDatatype;
+import org.apache.jena.graph.Graph;
+import org.apache.jena.graph.GraphMemFactory;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
@@ -29,6 +33,9 @@ import org.junit.jupiter.params.provider.EnumSource;
 
 class Rdf12CompatibilityTest {
   private static final String RDF_REIFIES = "http://www.w3.org/1999/02/22-rdf-syntax-ns#reifies";
+  private static final String RDF_TYPE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
+  private static final String OM = "https://open-metadata.org/ontology/";
+  private static final String ENTITY_URI = "https://open-metadata.org/entity/table/orders";
 
   @ParameterizedTest
   @EnumSource(
@@ -48,21 +55,62 @@ class Rdf12CompatibilityTest {
     assertTrue(source.isIsomorphicWith(roundTripped));
   }
 
+  /**
+   * The bundled shapes only target {@code om:} classes, so a graph of bare triple terms conforms for
+   * the uninteresting reason that no shape has a target - an empty graph passes that assertion just
+   * as well. The entity missing its identifier is the control that proves {@code om:EntityShape} is
+   * engaging on this data before the RDF 1.2 terms are judged.
+   */
   @Test
-  void validatesAnRdf12GraphWithBundledShaclShapes() {
-    final Model model = rdf12Model();
+  void bundledShaclShapesAcceptAnEntityCarryingRdf12Terms() {
+    assertFalse(RdfShaclValidator.validate(entity(directionalLiteral(), false)).conforms());
 
-    assertTrue(RdfShaclValidator.validate(model).conforms());
+    assertTrue(RdfShaclValidator.validate(entity(directionalLiteral(), true)).conforms());
+  }
+
+  @Test
+  void bundledShaclShapesStillRejectANonStringDescription() {
+    final Node number = NodeFactory.createLiteralDT("7", XSDDatatype.XSDinteger);
+
+    assertFalse(RdfShaclValidator.validate(entity(number, true)).conforms());
+  }
+
+  /** An {@code om:Entity} described with the given literal and annotated with a triple term. */
+  private static Model entity(final Node description, final boolean complete) {
+    final Graph graph = GraphMemFactory.createDefaultGraph();
+    final Node entity = NodeFactory.createURI(ENTITY_URI);
+    add(graph, entity, RDF_TYPE, NodeFactory.createURI(OM + "Entity"));
+    add(graph, entity, OM + "name", NodeFactory.createLiteralString("orders"));
+    add(graph, entity, OM + "fullyQualifiedName", NodeFactory.createLiteralString("shop.orders"));
+    add(graph, entity, OM + "description", description);
+    add(
+        graph,
+        NodeFactory.createURI(ENTITY_URI + "#annotation"),
+        RDF_REIFIES,
+        NodeFactory.createTripleTerm(
+            entity, NodeFactory.createURI(OM + "description"), description));
+    if (complete) {
+      add(graph, entity, OM + "id", NodeFactory.createLiteralString("1"));
+    }
+    return ModelFactory.createModelForGraph(graph);
+  }
+
+  private static void add(
+      final Graph graph, final Node subject, final String predicate, final Node object) {
+    graph.add(Triple.create(subject, NodeFactory.createURI(predicate), object));
+  }
+
+  private static Node directionalLiteral() {
+    return NodeFactory.createLiteralDirLang("قطة", "ar", "rtl");
   }
 
   private static Model rdf12Model() {
     final Model model = ModelFactory.createDefaultModel();
-    final Node directionalLiteral = NodeFactory.createLiteralDirLang("قطة", "ar", "rtl");
     final Node tripleTerm =
         NodeFactory.createTripleTerm(
             NodeFactory.createURI("https://example.com/subject"),
             NodeFactory.createURI("https://example.com/predicate"),
-            directionalLiteral);
+            directionalLiteral());
     model
         .getGraph()
         .add(

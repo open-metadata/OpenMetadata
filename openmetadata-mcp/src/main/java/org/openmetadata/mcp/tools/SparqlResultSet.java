@@ -16,11 +16,14 @@ package org.openmetadata.mcp.tools;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Optional;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.rdf.SparqlTermFormatter;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 record SparqlResultSet<T>(Bindings<T> results) {
@@ -45,15 +48,25 @@ record SparqlResultSet<T>(Bindings<T> results) {
   record Bindings<T>(List<T> bindings) {}
 
   /**
-   * One SPARQL JSON binding value.
+   * One SPARQL JSON binding value, flattened to the display string the tools return.
    *
    * <p>SPARQL 1.1 Results JSON always sends {@code "type"} beside {@code "value"}, and adds {@code
    * "datatype"} for typed literals and {@code "xml:lang"} for language-tagged ones. Without
    * {@code ignoreUnknown} Jackson rejected every real binding with {@code UnrecognizedPropertyException:
    * Unrecognized field "type"}, which surfaced to callers as a blanket 400 "JSON parsing failed" the
-   * moment a query matched anything. Only {@code value} is modelled because the tools return display
-   * strings; the remaining keys are deliberately discarded rather than rejected.
+   * moment a query matched anything.
    */
   @JsonIgnoreProperties(ignoreUnknown = true)
-  record Value(String value) {}
+  record Value(String value) {
+
+    /**
+     * Binds the whole term object, not its {@code "value"} field, so an RDF 1.2 triple term - whose
+     * {@code "value"} is a nested subject/predicate/object object rather than a string - renders
+     * instead of failing the entire result with a blanket 400 "JSON parsing failed".
+     */
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+    static Value fromTerm(final JsonNode term) {
+      return new Value(SparqlTermFormatter.displayText(term));
+    }
+  }
 }

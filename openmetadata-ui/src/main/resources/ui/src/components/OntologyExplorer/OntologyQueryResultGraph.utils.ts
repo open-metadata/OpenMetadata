@@ -11,20 +11,22 @@
  *  limitations under the License.
  */
 
-import { Binding, Type } from '../../generated/api/rdf/sparqlResponse';
+import { RDFTerm, Type } from '../../generated/api/rdf/sparqlResponse';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
+import { getTermLexicalValue } from '../../utils/Sparql/SparqlTerm.utils';
 import {
   OntologyEdge,
   OntologyGraphData,
   OntologyNode,
 } from './OntologyExplorer.interface';
 
-type QueryBindingRow = Record<string, Binding>;
+type QueryBindingRow = Record<string, RDFTerm>;
 
+/** IRIs, not terms: the graph only draws edges between URI-bound variables. */
 interface QueryTriple {
-  object: Binding;
-  predicate: Binding;
-  subject: Binding;
+  object: string;
+  predicate: string;
+  subject: string;
 }
 
 const SUBJECT_VARIABLES = ['source', 'subject', 's'];
@@ -34,7 +36,7 @@ const OBJECT_VARIABLES = ['target', 'object', 'o'];
 function findUriBinding(
   row: QueryBindingRow,
   variableNames: string[]
-): Binding | undefined {
+): RDFTerm | undefined {
   const variable = variableNames.find((name) => row[name]?.type === Type.URI);
 
   return variable ? row[variable] : undefined;
@@ -51,14 +53,18 @@ function toQueryTriple(
   };
   const uriBindings = variables
     .map((variable) => row[variable])
-    .filter((binding): binding is Binding => binding?.type === Type.URI);
+    .filter((binding): binding is RDFTerm => binding?.type === Type.URI);
   const subject = namedBindings.subject ?? uriBindings[0];
   const predicate = namedBindings.predicate ?? uriBindings[1];
   const object = namedBindings.object ?? uriBindings[2];
   let triple: QueryTriple | undefined;
 
   if (subject && predicate && object) {
-    triple = { object, predicate, subject };
+    triple = {
+      object: getTermLexicalValue(object),
+      predicate: getTermLexicalValue(predicate),
+      subject: getTermLexicalValue(subject),
+    };
   }
 
   return triple;
@@ -135,16 +141,16 @@ export function buildGraphFromSparqlBindings(
 
     if (triple) {
       const { object, predicate, subject } = triple;
-      const edgeKey = `${subject.value}\u0000${predicate.value}\u0000${object.value}`;
+      const edgeKey = `${subject}\u0000${predicate}\u0000${object}`;
       if (!edgeKeys.has(edgeKey)) {
         edgeKeys.add(edgeKey);
-        nodesByUri[subject.value] = toQueryNode(subject.value, knownGraph);
-        nodesByUri[object.value] = toQueryNode(object.value, knownGraph);
+        nodesByUri[subject] = toQueryNode(subject, knownGraph);
+        nodesByUri[object] = toQueryNode(object, knownGraph);
         rowEdges.push({
-          from: subject.value,
-          label: getRelationshipLabel(predicate.value, relationshipTypes),
-          relationType: predicate.value,
-          to: object.value,
+          from: subject,
+          label: getRelationshipLabel(predicate, relationshipTypes),
+          relationType: predicate,
+          to: object,
         });
       }
     }

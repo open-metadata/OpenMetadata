@@ -32,7 +32,7 @@ import 'codemirror/mode/sparql/sparql.js';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../enums/codemirror.enum';
-import { Binding } from '../../generated/api/rdf/sparqlResponse';
+import { RDFTerm } from '../../generated/api/rdf/sparqlResponse';
 import { useAuth } from '../../hooks/authHooks';
 import { useSparqlQueryLibrary } from '../../hooks/useSparqlQueryLibrary';
 import {
@@ -42,6 +42,7 @@ import {
   SparqlPlaygroundInference,
   SparqlPlaygroundResult,
 } from '../../rest/rdfAPI';
+import { getTermDisplayText } from '../../utils/Sparql/SparqlTerm.utils';
 import { generateUUID } from '../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import SchemaEditor from '../Database/SchemaEditor/SchemaEditor';
@@ -123,8 +124,8 @@ type SaveTarget = 'personal' | 'template';
 type TFunc = ReturnType<typeof useTranslation>['t'];
 
 interface TabularResult {
-  keyedRows: { key: string; row: { [key: string]: Binding } }[];
-  rows: { [key: string]: Binding }[];
+  keyedRows: { key: string; row: { [key: string]: RDFTerm } }[];
+  rows: { [key: string]: RDFTerm }[];
   vars: string[];
 }
 
@@ -324,17 +325,13 @@ const ResultTable = ({
       <tbody>
         {tabularResult.keyedRows.map(({ key, row }) => (
           <tr key={key}>
-            {tabularResult.vars.map((v) => {
-              const binding = row[v] as Binding | undefined;
-
-              return (
-                <td
-                  className="tw:border-b tw:border-utility-gray-100 tw:px-3 tw:py-2 tw:font-mono tw:text-xs"
-                  key={v}>
-                  {binding?.value ?? ''}
-                </td>
-              );
-            })}
+            {tabularResult.vars.map((v) => (
+              <td
+                className="tw:border-b tw:border-utility-gray-100 tw:px-3 tw:py-2 tw:font-mono tw:text-xs"
+                key={v}>
+                {getTermDisplayText(row[v])}
+              </td>
+            ))}
           </tr>
         ))}
       </tbody>
@@ -778,7 +775,7 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
 
     return tabularResult.keyedRows.map(({ key, row }) => ({
       key,
-      value: (row[variable] as Binding | undefined)?.value ?? '',
+      value: getTermDisplayText(row[variable]),
     }));
   }, [tabularResult]);
 
