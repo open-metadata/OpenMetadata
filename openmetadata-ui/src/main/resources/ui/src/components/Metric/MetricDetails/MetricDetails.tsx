@@ -323,15 +323,10 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
           onUpdate={onMetricUpdate}>
           <Col className="metric-page-tabs" span={24}>
             <Tabs
-              className="page-tabs"
               data-testid="tabs"
               selectedKey={activeTab}
               onSelectionChange={(key) => handleTabChange(String(key))}>
-              <Box
-                align="center"
-                className="page-tabs-bar"
-                gap={4}
-                justify="between">
+              <Box align="center" gap={4} justify="between">
                 <Tabs.List size="sm" type="underline">
                   {tabs.map(({ key, label }) => (
                     <Tabs.Item id={key} key={key}>

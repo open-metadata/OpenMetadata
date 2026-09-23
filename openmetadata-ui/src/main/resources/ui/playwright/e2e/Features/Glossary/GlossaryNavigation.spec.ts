@@ -80,9 +80,7 @@ test.describe('Glossary Navigation', () => {
 
       // Verify we're on the activity feed tab by checking the tab is active
       await expect(
-        page
-          .locator('[role="tab"][aria-selected="true"]')
-          .getByTestId('activity_feed')
+        page.getByRole('tab', { selected: true }).getByTestId('activity_feed')
       ).toBeVisible();
 
       const termsLoadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
@@ -150,7 +148,7 @@ test.describe('Glossary Navigation', () => {
 
       // Verify we're on the Assets tab by checking the tab is active
       await expect(
-        page.locator('[role="tab"][aria-selected="true"]').getByTestId('assets')
+        page.getByRole('tab', { selected: true }).getByTestId('assets')
       ).toBeVisible();
 
       // Navigate back to Overview

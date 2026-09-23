@@ -47,7 +47,6 @@ import {
   getServiceDetailsPath,
 } from '../../../utils/RouterUtils';
 import { TestCasePageTabs } from '../IncidentManager.interface';
-import './incident-manager-details.less';
 import { TEST_CASE_NEXT_RUN_QUERY_KEY } from './IncidentManagerDetailPage.constants';
 import {
   fetchNextTestCaseRunTimestamp,
@@ -379,15 +378,10 @@ const IncidentManagerDetailPage = ({
         </Box>
         <div className="incident-manager-details-tabs">
           <Tabs
-            className="page-tabs"
             data-testid="tabs"
             selectedKey={activeTab}
             onSelectionChange={(key) => handleTabChange(String(key))}>
-            <Box
-              align="center"
-              className="page-tabs-bar"
-              gap={4}
-              justify="between">
+            <Box align="center" gap={4} justify="between">
               <Tabs.List size="sm" type="underline">
                 {tabItems.map(({ key, label }) => (
                   <Tabs.Item id={key} key={key}>

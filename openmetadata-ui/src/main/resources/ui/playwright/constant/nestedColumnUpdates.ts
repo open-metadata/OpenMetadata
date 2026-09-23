@@ -31,7 +31,7 @@ export const nestedChildrenTestData: Record<
       | typeof TableClass
       | typeof TopicClass
       | typeof WorksheetClass;
-    tabSelector?: string;
+    tabName?: string;
     supportDisplayNameUpdate?: boolean;
   }
 > = {
@@ -40,7 +40,7 @@ export const nestedChildrenTestData: Record<
   },
   Container: {
     CreationClass: ContainerClass,
-    tabSelector: '[role="tab"]:has([data-testid="schema"])',
+    tabName: 'Schema',
   },
   'Data Model': {
     CreationClass: DashboardDataModelClass,
@@ -48,7 +48,7 @@ export const nestedChildrenTestData: Record<
   },
   File: {
     CreationClass: FileClass,
-    tabSelector: '[role="tab"]:has([data-testid="schema"])',
+    tabName: 'Schema',
   },
   'Search Index': {
     CreationClass: SearchIndexClass,

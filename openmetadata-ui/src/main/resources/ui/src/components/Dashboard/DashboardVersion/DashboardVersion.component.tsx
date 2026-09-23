@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Tabs } from '@openmetadata/ui-core-components';
 import { Col, Row, Space } from 'antd';
 import classNames from 'classnames';
 import { FC, useEffect, useMemo, useState } from 'react';
@@ -283,19 +283,16 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               onUpdate={() => Promise.resolve()}>
               <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
-                  className="page-tabs"
                   data-testid="tabs"
                   defaultSelectedKey={tab}
                   onSelectionChange={(key) => handleTabChange(String(key))}>
-                  <Box align="center" className="page-tabs-bar">
-                    <Tabs.List size="sm" type="underline">
-                      {tabItems.map(({ key, label }) => (
-                        <Tabs.Item id={key} key={key}>
-                          {label}
-                        </Tabs.Item>
-                      ))}
-                    </Tabs.List>
-                  </Box>
+                  <Tabs.List size="sm" type="underline">
+                    {tabItems.map(({ key, label }) => (
+                      <Tabs.Item id={key} key={key}>
+                        {label}
+                      </Tabs.Item>
+                    ))}
+                  </Tabs.List>
                   {tabItems.map(({ key, children }) => (
                     <Tabs.Panel id={key} key={key}>
                       {children}

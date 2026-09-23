@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Tabs } from '@openmetadata/ui-core-components';
 import { Card, Col, Divider, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -365,18 +365,15 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
               onUpdate={() => Promise.resolve()}>
               <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
-                  className="page-tabs"
                   defaultSelectedKey={tab}
                   onSelectionChange={(key) => handleTabChange(String(key))}>
-                  <Box align="center" className="page-tabs-bar">
-                    <Tabs.List size="sm" type="underline">
-                      {tabItems.map(({ key, label }) => (
-                        <Tabs.Item id={key} key={key}>
-                          {label}
-                        </Tabs.Item>
-                      ))}
-                    </Tabs.List>
-                  </Box>
+                  <Tabs.List size="sm" type="underline">
+                    {tabItems.map(({ key, label }) => (
+                      <Tabs.Item id={key} key={key}>
+                        {label}
+                      </Tabs.Item>
+                    ))}
+                  </Tabs.List>
                   {tabItems.map(({ key, children }) => (
                     <Tabs.Panel id={key} key={key}>
                       {children}

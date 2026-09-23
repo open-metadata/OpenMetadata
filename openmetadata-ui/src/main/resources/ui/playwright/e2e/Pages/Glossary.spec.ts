@@ -756,7 +756,7 @@ test.describe('Glossary tests', () => {
         await queryRes;
         await waitForAllLoadersToDisappear(page);
         await page
-          .locator('[role="tab"][aria-selected="true"]:has-text("Assets")')
+          .getByRole('tab', { name: 'Assets', selected: true })
           .waitFor();
 
         await expect(
@@ -824,7 +824,7 @@ test.describe('Glossary tests', () => {
         await page.getByTestId('assets').click();
         await queryRes;
         await page
-          .locator('[role="tab"][aria-selected="true"]:has-text("Assets")')
+          .getByRole('tab', { name: 'Assets', selected: true })
           .waitFor();
 
         await expect(
@@ -1149,9 +1149,7 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossary(page, glossary1.data.displayName);
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
       await page.getByTestId('assets').click();
-      await page
-        .locator('[role="tab"][aria-selected="true"]:has-text("Assets")')
-        .waitFor();
+      await page.getByRole('tab', { name: 'Assets', selected: true }).waitFor();
       await expect
         .poll(async () =>
           Number(

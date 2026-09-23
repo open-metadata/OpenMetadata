@@ -235,9 +235,7 @@ export const goToAssetsTab = async (
 ) => {
   await selectActiveGlossaryTerm(page, displayName);
   await page.getByTestId('assets').click();
-  await page
-    .locator('[role="tab"][aria-selected="true"]:has-text("Assets")')
-    .waitFor();
+  await page.getByRole('tab', { name: 'Assets', selected: true }).waitFor();
 
   await expect(
     page.getByTestId('assets').getByTestId('filter-count')

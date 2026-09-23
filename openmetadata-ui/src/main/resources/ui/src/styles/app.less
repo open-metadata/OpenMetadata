@@ -647,8 +647,7 @@ a[href].link-text-grey,
 
 // Entity Details Page css
 .entity-details-page-tabs {
-  .ant-tabs-tabpane,
-  .page-tabs > [role='tabpanel'] {
+  .ant-tabs-tabpane {
     height: @entity-details-tab-height;
     overflow-y: auto;
 
@@ -667,23 +666,10 @@ a[href].link-text-grey,
   [id*='rc-tabs-'][id*='-panel-lineage'],
   [id*='rc-tabs-'][id*='-panel-knowledge_graph'],
   [id*='rc-tabs-'][id*='-panel-erDiagram'],
-  [id*='rc-tabs-'][id*='-panel-custom_properties'],
-  .page-tabs > [role='tabpanel'][id$='-tabpanel-contract'],
-  .page-tabs > [role='tabpanel'][id$='-tabpanel-lineage'],
-  .page-tabs > [role='tabpanel'][id$='-tabpanel-knowledge_graph'],
-  .page-tabs > [role='tabpanel'][id$='-tabpanel-erDiagram'],
-  .page-tabs > [role='tabpanel'][id$='-tabpanel-custom_properties'] {
+  [id*='rc-tabs-'][id*='-panel-custom_properties'] {
     background-color: @grey-9;
     // This will remove extra space below the lineage graph
     height: initial;
-  }
-}
-
-.entity-version-page-tabs {
-  .ant-tabs-tabpane,
-  .page-tabs > [role='tabpanel'] {
-    height: @entity-version-page-tabs-height;
-    overflow-y: auto;
   }
 }
 

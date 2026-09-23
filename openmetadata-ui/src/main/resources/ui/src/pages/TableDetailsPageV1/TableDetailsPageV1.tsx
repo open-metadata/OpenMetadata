@@ -966,11 +966,10 @@ const TableDetailsPageV1: React.FC = () => {
 
   const renderTabs = () => (
     <Tabs
-      className="page-tabs"
       data-testid="tabs"
       selectedKey={isTourOpen ? activeTabForTourDatasetPage : activeTab}
       onSelectionChange={(key) => handleTabChange(String(key))}>
-      <Box align="center" className="page-tabs-bar" gap={4} justify="between">
+      <Box align="center" gap={4} justify="between">
         <Tabs.List size="sm" type="underline">
           {tabs.map(({ key, label }) => (
             <Tabs.Item id={key} key={key}>

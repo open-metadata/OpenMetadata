@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder, Tabs } from '@openmetadata/ui-core-components';
+import { EmptyPlaceholder, Tabs } from '@openmetadata/ui-core-components';
 import { Lock } from '@openmetadata/ui-core-components/icons';
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
@@ -560,16 +560,14 @@ function ServiceVersionPage() {
                 />
               </Col>
               <Col className="entity-version-page-tabs" span={24}>
-                <Tabs className="page-tabs" data-testid="tabs">
-                  <Box align="center" className="page-tabs-bar">
-                    <Tabs.List size="sm" type="underline">
-                      {tabs.map(({ key, label }) => (
-                        <Tabs.Item id={key} key={key}>
-                          {label}
-                        </Tabs.Item>
-                      ))}
-                    </Tabs.List>
-                  </Box>
+                <Tabs data-testid="tabs">
+                  <Tabs.List size="sm" type="underline">
+                    {tabs.map(({ key, label }) => (
+                      <Tabs.Item id={key} key={key}>
+                        {label}
+                      </Tabs.Item>
+                    ))}
+                  </Tabs.List>
                   {tabs.map(({ key, children }) => (
                     <Tabs.Panel id={key} key={key}>
                       {children}

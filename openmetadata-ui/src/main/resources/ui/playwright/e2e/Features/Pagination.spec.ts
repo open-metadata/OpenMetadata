@@ -287,7 +287,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       });
 
       const paginationText = page
-        .locator('[role="tabpanel"]:not([aria-hidden="true"])')
+        .getByRole('tabpanel')
         .getByTestId('pagination')
         .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
@@ -600,7 +600,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.getByTestId('stored_procedure').click();
       await page.waitForLoadState('domcontentloaded');
       const paginationText = page
-        .locator('[role="tabpanel"]:not([aria-hidden="true"])')
+        .getByRole('tabpanel')
         .getByTestId('pagination')
         .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
@@ -742,7 +742,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.getByTestId('data-model').click();
       await page.waitForLoadState('domcontentloaded');
       const paginationText = page
-        .locator('[role="tabpanel"]:not([aria-hidden="true"])')
+        .getByRole('tabpanel')
         .getByTestId('pagination')
         .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
@@ -892,7 +892,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.locator('table').first().waitFor({ state: 'visible' });
 
       let paginationText = page
-        .locator('[role="tabpanel"]:not([aria-hidden="true"])')
+        .getByRole('tabpanel')
         .getByTestId('pagination')
         .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
@@ -901,7 +901,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
 
       const nextButton = page
-        .locator('[role="tabpanel"]:not([aria-hidden="true"])')
+        .getByRole('tabpanel')
         .getByTestId('pagination')
         .getByTestId('next');
       await expect(nextButton).toBeEnabled();
@@ -938,7 +938,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.locator('table').first().waitFor({ state: 'visible' });
 
       paginationText = page
-        .locator('[role="tabpanel"]:not([aria-hidden="true"])')
+        .getByRole('tabpanel')
         .getByTestId('pagination')
         .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
@@ -983,7 +983,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.locator('table').first().waitFor({ state: 'visible' });
 
       paginationText = page
-        .locator('[role="tabpanel"]:not([aria-hidden="true"])')
+        .getByRole('tabpanel')
         .getByTestId('pagination')
         .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();

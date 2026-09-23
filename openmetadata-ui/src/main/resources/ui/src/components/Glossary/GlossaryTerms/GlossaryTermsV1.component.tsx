@@ -305,14 +305,9 @@ const GlossaryTermsV1 = ({
 
         <Col className="glossary-term-page-tabs" span={24}>
           <Tabs
-            className="page-tabs"
             selectedKey={getRenderedActiveTab(tabItems, activeTab)}
             onSelectionChange={(key) => activeTabHandler(String(key))}>
-            <Box
-              align="center"
-              className="page-tabs-bar"
-              gap={4}
-              justify="between">
+            <Box align="center" gap={4} justify="between">
               <Tabs.List size="sm" type="underline">
                 {tabItems.map(({ key, label }) => (
                   <Tabs.Item id={key} key={key}>
