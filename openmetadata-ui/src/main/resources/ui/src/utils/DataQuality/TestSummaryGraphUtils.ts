@@ -31,10 +31,7 @@ import {
 } from '../../generated/tests/testCase';
 import { axisTickFormatter } from '../ChartUtils';
 import { getRandomHexColor } from '../DataInsightPureUtils';
-import {
-  convertSecondsToHumanReadableFormat,
-  formatDateTimeLong,
-} from '../date-time/DateTimeUtils';
+import { convertSecondsToHumanReadableFormat } from '../date-time/DateTimeUtils';
 import {
   getTaskDetailPathFromTask,
   getTaskDisplayId,
@@ -264,13 +261,6 @@ export const getStatusDotColor = (status: TestCaseStatus): string => {
 
   return YELLOW_3;
 };
-
-/**
- * The axis carries a date only. Spelling out the time is what made the old
- * labels too wide to sit horizontally.
- */
-export const formatTestSummaryXAxis = (timestamp?: number): string =>
-  formatDateTimeLong(timestamp, 'MMM d');
 
 export const formatTestSummaryYAxis = (
   value: number,

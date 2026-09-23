@@ -11,11 +11,9 @@
  *  limitations under the License.
  */
 
-// The axis used to be angled, which needed room for the rotated labels. Flat
-// ticks need one line, and the legend sits below on its own.
 export const TEST_SUMMARY_CHART_MARGIN = {
   top: 16,
-  bottom: 32,
+  bottom: 100,
   right: 40,
   left: 16,
 } as const;

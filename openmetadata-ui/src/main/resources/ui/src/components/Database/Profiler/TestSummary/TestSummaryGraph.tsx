@@ -63,7 +63,6 @@ import { updateActiveChartFilter } from '../../../../utils/ChartUtils';
 import {
   ABORTED_PLACEMENT_KEY,
   applyStatusPlacements,
-  formatTestSummaryXAxis,
   formatTestSummaryYAxis,
   getStatusDotColor,
   getTestSummaryTooltipPosition,
@@ -463,12 +462,16 @@ function TestSummaryGraph({
         <ComposedChart data={plottedData} margin={TEST_SUMMARY_CHART_MARGIN}>
           <CartesianGrid stroke={grid} />
           <XAxis
+            angle={-45}
             dataKey="name"
             domain={['auto', 'auto']}
             padding={{ left: 8, right: 8 }}
             scale="time"
+            textAnchor="end"
             tick={{ fill: axis, fontSize: 12 }}
-            tickFormatter={formatTestSummaryXAxis}
+            tickFormatter={(date) =>
+              formatDateTimeLong(date, DATE_TIME_12_HOUR_FORMAT)
+            }
             type="number"
           />
           <YAxis

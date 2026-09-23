@@ -20,7 +20,6 @@ import { Task } from '../../generated/entity/tasks/task';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import {
   applyStatusPlacements,
-  formatTestSummaryXAxis,
   formatTestSummaryYAxis,
   getStatusDotColor,
   getTestSummaryTooltipPosition,
@@ -512,20 +511,6 @@ describe('getStatusDotColor', () => {
   // share a dot: one produced no result, the other has not run yet.
   it('should return BLUE_500 for Queued', () => {
     expect(getStatusDotColor(TestCaseStatus.Queued)).toBe(BLUE_500);
-  });
-});
-
-describe('formatTestSummaryXAxis', () => {
-  // The mock labels the axis with a bare month and day; the full datetime is
-  // what forced the old axis to be angled.
-  it('should format a timestamp as a short month and day', () => {
-    expect(formatTestSummaryXAxis(Date.UTC(2026, 5, 15, 12))).toMatch(
-      /^Jun 1[45]$/
-    );
-  });
-
-  it('should return an empty string for a missing timestamp', () => {
-    expect(formatTestSummaryXAxis(undefined)).toBe('');
   });
 });
 
