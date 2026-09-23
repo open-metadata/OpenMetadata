@@ -131,7 +131,9 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
       await expect(page.getByText(otherName)).not.toBeVisible();
       // Confirm at least one result row is rendered. Parallel specs may
       // create metrics that partially match, so >= 1 is correct here.
-      await expect(page.getByTestId('metric-name')).not.toHaveCount(0);
+      // List is already settled at this point so a direct count() is reliable.
+      const count = await page.getByTestId('metric-name').count();
+      expect(count).toBeGreaterThanOrEqual(1);
       await expect(
         page.getByTestId('metric-name').filter({ hasText: matchName })
       ).toBeVisible();
