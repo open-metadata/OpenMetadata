@@ -23,12 +23,12 @@ import java.util.Map;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.events.subscription.channels.ChannelResolution;
 
 /**
  * Checks a destination with the channel that serves it, when the destination is new or was
- * changed, on every path that saves an alert. A stored destination that a channel's newer rules
+ * changed, on every path that saves an alert. A destination may name its channel, and the name must
+ * be a channel registered on this server. A stored destination that a channel's newer rules
  * would reject is left alone, so an alert can still be renamed; it is sent as configured, and a
  * send that fails is recorded like any other.
  */
@@ -39,60 +39,32 @@ public final class DestinationValidation {
   private DestinationValidation() {}
 
   public static void ofANewAlert(EventSubscription alert) {
-    listOrEmpty(alert.getDestinations()).forEach(DestinationValidation::refuseAChannel);
-    Map<String, String> declared = AbstractEventConsumer.declaredChannelsOf(alert);
-    listOrEmpty(alert.getDestinations()).forEach(destination -> validate(destination, declared));
+    listOrEmpty(alert.getDestinations()).forEach(DestinationValidation::validate);
   }
 
   public static void ofWhatChanged(EventSubscription original, EventSubscription updated) {
-    Map<String, String> declared = AbstractEventConsumer.declaredChannelsOf(updated);
     List<JsonNode> stored =
         listOrEmpty(original.getDestinations()).stream()
             .map(DestinationValidation::whatAUserConfigures)
             .toList();
     listOrEmpty(updated.getDestinations()).stream()
-        .filter(destination -> !carriesItsStoredChannel(destination, original))
-        .forEach(DestinationValidation::refuseAChannel);
-    listOrEmpty(updated.getDestinations()).stream()
         .filter(destination -> !stored.contains(whatAUserConfigures(destination)))
-        .forEach(destination -> validate(destination, declared));
-  }
-
-  // The field is read only in this release. The next release writes it, and an alert it wrote
-  // must still be saveable here after a rollback, by a client that sends back what it read.
-  private static boolean carriesItsStoredChannel(
-      SubscriptionDestination destination, EventSubscription original) {
-    return destination.getChannel() == null
-        || listOrEmpty(original.getDestinations()).stream()
-            .anyMatch(stored -> isTheSameWithTheSameChannel(stored, destination));
-  }
-
-  private static boolean isTheSameWithTheSameChannel(
-      SubscriptionDestination stored, SubscriptionDestination sent) {
-    boolean sameDestination =
-        (sent.getId() != null && sent.getId().equals(stored.getId()))
-            || whatAUserConfigures(stored).equals(whatAUserConfigures(sent));
-    return sameDestination && sent.getChannel().equals(stored.getChannel());
-  }
-
-  private static void refuseAChannel(SubscriptionDestination destination) {
-    if (destination.getChannel() != null) {
-      throw new BadRequestException(
-          "The channel of a destination cannot be set or changed. Leave the field out, or send the"
-              + " value it is stored with.");
-    }
+        .forEach(DestinationValidation::validate);
   }
 
   /** Throws a 400 that says what is wrong with the destination. */
-  public static void validate(SubscriptionDestination destination, Map<String, String> declared) {
+  public static void validate(SubscriptionDestination destination) {
+    ChannelResolution served = ChannelResolution.of(destination);
+    if (served.channel().isEmpty()) {
+      throw new BadRequestException(
+          String.format("No channel %s is registered on this server", served.channelId()));
+    }
     boolean configuredByTheUser =
         destination.getCategory() == null
             || destination.getCategory() == SubscriptionDestination.SubscriptionCategory.EXTERNAL;
     if (configuredByTheUser) {
       requireAConfiguration(destination);
-      ChannelResolution.of(destination, declared)
-          .channel()
-          .ifPresent(channel -> channel.configRules().validate(destination));
+      served.channel().get().configRules().validate(destination);
     }
   }
 

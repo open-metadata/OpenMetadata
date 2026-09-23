@@ -189,8 +189,7 @@ class DispatchOrderTest {
         factory
             .when(
                 () ->
-                    AlertFactory.getAlert(
-                        any(), argThat(hasId(alert, channels.indexOf(channel))), any()))
+                    AlertFactory.getAlert(any(), argThat(hasId(alert, channels.indexOf(channel)))))
             .thenReturn(channel);
       }
       consumer.tick(alert, ledger, context);

@@ -95,41 +95,36 @@ class DestinationValidationTest {
     assertTrue(refused.getMessage().contains("configuration is required"));
   }
 
-  // Nothing in this release writes the field, so a new alert can never carry it.
   @Test
-  void channelCannotBeSetOnANewAlert() {
-    EventSubscription alert = alertWith(webhook(USABLE).withChannel("Webhook"));
-
-    assertThrows(BadRequestException.class, () -> DestinationValidation.ofANewAlert(alert));
-  }
-
-  @Test
-  void channelCannotBeSetOrChangedByAnUpdate() {
+  void registeredChannelIsAccepted() {
     EventSubscription without = alertWith(webhook(USABLE));
     EventSubscription with = copyOf(without);
     with.getDestinations().getFirst().withChannel("Webhook");
-    EventSubscription changed = copyOf(with);
-    changed.getDestinations().getFirst().withChannel("Slack");
 
-    assertThrows(
-        BadRequestException.class, () -> DestinationValidation.ofWhatChanged(without, with));
-    assertThrows(
-        BadRequestException.class, () -> DestinationValidation.ofWhatChanged(with, changed));
+    assertDoesNotThrow(() -> DestinationValidation.ofANewAlert(with));
+    assertDoesNotThrow(() -> DestinationValidation.ofWhatChanged(without, with));
   }
 
-  // What the next release wrote must still be saveable here after a rollback.
   @Test
-  void storedChannelMayBeSentBackOrLeftOut() {
-    EventSubscription stored = alertWith(webhook(USABLE).withChannel("Webhook"));
-    EventSubscription sentBack = copyOf(stored).withDisplayName("Renamed");
-    EventSubscription sentBackByPut = copyOf(stored);
-    sentBackByPut.getDestinations().getFirst().withId(UUID.randomUUID());
-    EventSubscription leftOut = copyOf(stored);
-    leftOut.getDestinations().getFirst().withChannel(null);
+  void unregisteredChannelIsRefusedNamingIt() {
+    EventSubscription without = alertWith(webhook(USABLE));
+    EventSubscription with = copyOf(without);
+    with.getDestinations().getFirst().withChannel("not.registered.here");
 
-    assertDoesNotThrow(() -> DestinationValidation.ofWhatChanged(stored, sentBack));
-    assertDoesNotThrow(() -> DestinationValidation.ofWhatChanged(stored, sentBackByPut));
-    assertDoesNotThrow(() -> DestinationValidation.ofWhatChanged(stored, leftOut));
+    BadRequestException refused =
+        assertThrows(BadRequestException.class, () -> DestinationValidation.ofANewAlert(with));
+    assertTrue(refused.getMessage().contains("not.registered.here"));
+    assertThrows(
+        BadRequestException.class, () -> DestinationValidation.ofWhatChanged(without, with));
+  }
+
+  // A channel may leave the server, for example with the plugin that registered it.
+  @Test
+  void alertWhoseChannelIsNoLongerRegisteredCanStillBeRenamed() {
+    EventSubscription stored = alertWith(webhook(USABLE).withChannel("not.registered.here"));
+    EventSubscription renamed = copyOf(stored).withDisplayName("Renamed");
+
+    assertDoesNotThrow(() -> DestinationValidation.ofWhatChanged(stored, renamed));
   }
 
   private static EventSubscription alertWith(SubscriptionDestination... destinations) {

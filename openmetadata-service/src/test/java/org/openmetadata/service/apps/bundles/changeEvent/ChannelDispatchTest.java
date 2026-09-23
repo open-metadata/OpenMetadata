@@ -92,14 +92,13 @@ class ChannelDispatchTest {
   }
 
   @Test
-  void unregisteredDeclaredChannelIsNotAttempted() throws Exception {
+  void unregisteredNamedChannelIsNotAttempted() throws Exception {
     SubscriptionDestination destination =
-        BuiltInChannels.previewDestination().withId(UUID.randomUUID()).withEnabled(true);
-    Destination<ChangeEvent> unserved =
-        AlertFactory.getAlert(
-            new EventSubscription(),
-            destination,
-            Map.of(destination.getType().value(), "not.registered.here"));
+        BuiltInChannels.previewDestination()
+            .withId(UUID.randomUUID())
+            .withEnabled(true)
+            .withChannel("not.registered.here");
+    Destination<ChangeEvent> unserved = AlertFactory.getAlert(new EventSubscription(), destination);
 
     Optional<EventPublisherException> failure = dispatch(Set.of(), unserved).send(EVENT, CONTENT);
 
@@ -137,7 +136,7 @@ class ChannelDispatchTest {
             .withConfig(new Webhook().withEndpoint(URI.create("ftp://saved-long-ago.example.com")));
 
     Destination<ChangeEvent> unusable =
-        AlertFactory.getAlert(new EventSubscription(), savedLongAgo, Map.of());
+        AlertFactory.getAlert(new EventSubscription(), savedLongAgo);
     Optional<EventPublisherException> failure = dispatch(Set.of(), unusable).send(EVENT, CONTENT);
 
     assertTrue(failure.isEmpty());

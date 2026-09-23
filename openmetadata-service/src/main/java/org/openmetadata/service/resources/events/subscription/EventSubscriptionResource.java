@@ -50,7 +50,6 @@ import jakarta.ws.rs.core.UriInfo;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
@@ -1498,7 +1497,7 @@ public class EventSubscriptionResource
 
   private SubscriptionDestination sendTestMessageToDestination(
       SubscriptionDestination destination) {
-    DestinationValidation.validate(destination, Map.of());
+    DestinationValidation.validate(destination);
     try {
       Destination<ChangeEvent> alert = AlertFactory.getAlert(new EventSubscription(), destination);
       alert.sendTestMessage();

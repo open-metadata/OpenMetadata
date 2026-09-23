@@ -27,8 +27,8 @@ export interface Destination {
     category: SubscriptionCategory;
     /**
      * Id of the registered channel that serves this destination, when it is not the one
-     * registered for its type. Read only in this release: a save may carry the stored value or
-     * leave the field out, and a save that gives it any other value is rejected.
+     * registered for its type. A save that names a channel not registered on the server is
+     * rejected.
      */
     channel?: string;
     config?:  Webhook;

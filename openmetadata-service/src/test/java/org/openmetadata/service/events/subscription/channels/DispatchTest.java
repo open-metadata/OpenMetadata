@@ -18,7 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,38 +42,24 @@ class DispatchTest {
   }
 
   @Test
-  void typeDecidesWhenNothingIsDeclared() {
-    ChannelResolution served = ChannelResolution.of(destination, Map.of());
+  void typeDecidesWhenNothingIsNamed() {
+    ChannelResolution served = ChannelResolution.of(destination);
 
     assertEquals(type, served.channelId());
     assertTrue(served.channel().isPresent());
   }
 
   @Test
-  void declaredChannelServesItsType() throws EventPublisherException {
+  void namedChannelServesTheDestination() throws EventPublisherException {
     ChangeEvent event = new ChangeEvent().withId(UUID.randomUUID());
-    Map<String, String> declared = Map.of(type, RecordingChannels.ID);
+    SubscriptionDestination named = destination.withChannel(RecordingChannels.ID);
 
-    Destination<ChangeEvent> publisher = AlertFactory.getAlert(alert, destination, declared);
+    Destination<ChangeEvent> publisher = AlertFactory.getAlert(alert, named);
     publisher.sendMessage(event, Set.of());
 
-    assertEquals(RecordingChannels.ID, ChannelResolution.of(destination, declared).channelId());
+    assertEquals(RecordingChannels.ID, ChannelResolution.of(named).channelId());
     assertEquals(1, RecordingChannels.SENT.size());
     assertEquals(event.getId(), RecordingChannels.SENT.getFirst().getId());
-  }
-
-  @Test
-  void destinationChannelWinsOverDeclarationAndType() {
-    SubscriptionDestination named =
-        BuiltInChannels.previewDestination()
-            .withId(UUID.randomUUID())
-            .withChannel(RecordingChannels.ID);
-    Map<String, String> declared = Map.of(type, "declared.by.the.consumer");
-
-    ChannelResolution served = ChannelResolution.of(named, declared);
-
-    assertEquals(RecordingChannels.ID, served.channelId());
-    assertTrue(served.channel().isPresent());
   }
 
   @Test
@@ -84,16 +69,16 @@ class DispatchTest {
             .withId(UUID.randomUUID())
             .withChannel("not.registered.here");
 
-    assertTrue(ChannelResolution.of(named, Map.of()).channel().isEmpty());
+    assertTrue(ChannelResolution.of(named).channel().isEmpty());
   }
 
   // A destination meant for one channel must never go out through the channel of its type.
   @Test
-  void declaredChannelThatIsNotRegisteredIsNotAttempted() throws EventPublisherException {
-    Map<String, String> declared = Map.of(type, "not.registered.here");
+  void namedChannelThatIsNotRegisteredIsNotAttempted() throws EventPublisherException {
+    SubscriptionDestination named = destination.withChannel("not.registered.here");
 
-    ChannelResolution served = ChannelResolution.of(destination, declared);
-    Destination<ChangeEvent> publisher = AlertFactory.getAlert(alert, destination, declared);
+    ChannelResolution served = ChannelResolution.of(named);
+    Destination<ChangeEvent> publisher = AlertFactory.getAlert(alert, named);
     publisher.sendMessage(new ChangeEvent().withId(UUID.randomUUID()), Set.of());
 
     assertTrue(served.channel().isEmpty());

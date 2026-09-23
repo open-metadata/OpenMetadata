@@ -79,41 +79,10 @@ public abstract class AbstractEventConsumer
     this.dependencies = dependencies;
   }
 
-  /** Which kind of consumer this is. The kind decides what a tick reads and guarantees. */
   private TickHealth healthOfThisTick = new TickHealth();
 
-  /**
-   * What the consumer an alert names declares, for code that must know before any tick runs. An
-   * alert whose consumer cannot be loaded declares nothing, and its first tick says why.
-   */
-  public static Map<String, String> declaredChannelsOf(EventSubscription alert) {
-    Map<String, String> declared = Map.of();
-    if (alert.getClassName() != null) {
-      try {
-        declared =
-            Class.forName(alert.getClassName())
-                .asSubclass(AbstractEventConsumer.class)
-                .getDeclaredConstructor(DIContainer.class)
-                .newInstance((DIContainer) null)
-                .declaredChannels();
-      } catch (ReflectiveOperationException | RuntimeException e) {
-        LOG.debug("The consumer {} declares no channels: {}", alert.getClassName(), e.toString());
-      }
-    }
-    return declared;
-  }
-
+  /** Which kind of consumer this is. The kind decides what a tick reads and guarantees. */
   protected abstract ConsumerKind kind();
-
-  /**
-   * The channel this consumer's alerts use for destinations of a type, by the type's value.
-   *
-   * @deprecated from the start: it exists only until a destination names its channel itself.
-   */
-  @Deprecated
-  protected Map<String, String> declaredChannels() {
-    return Map.of();
-  }
 
   protected void doInit(JobExecutionContext context) {
     // To be implemented by the Subclass if needed
@@ -164,8 +133,7 @@ public abstract class AbstractEventConsumer
     for (SubscriptionDestination subscriptionDest : eventSubscription.getDestinations()) {
       subscriptionDest.setStatusDetails(null);
       dMap.put(
-          subscriptionDest.getId(),
-          AlertFactory.getAlert(eventSubscription, subscriptionDest, declaredChannels()));
+          subscriptionDest.getId(), AlertFactory.getAlert(eventSubscription, subscriptionDest));
     }
     return dMap;
   }
@@ -291,9 +259,7 @@ public abstract class AbstractEventConsumer
         .filter(Destination::getEnabled)
         .collect(
             Collectors.groupingBy(
-                dest ->
-                    ChannelResolution.of(dest.getSubscriptionDestination(), declaredChannels())
-                        .channelId(),
+                dest -> ChannelResolution.of(dest.getSubscriptionDestination()).channelId(),
                 LinkedHashMap::new,
                 Collectors.toList()));
   }

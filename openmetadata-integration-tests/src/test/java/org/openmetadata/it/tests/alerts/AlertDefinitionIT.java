@@ -283,65 +283,46 @@ class AlertDefinitionIT {
                     + "\"value\":\"ftp://still-not-a-webhook.example.com\"}]"));
   }
 
-  // The channel field is read only in this release: nothing here writes it.
   @Test
-  void settingChannelFieldIsRejected(TestNamespace ns) {
-    CreateEventSubscription request = tableAlert(ns, "channel_set_on_create");
+  void registeredChannelIsAccepted(TestNamespace ns) {
+    CreateEventSubscription request = tableAlert(ns, "channel_registered");
     request.getDestinations().getFirst().withChannel("Webhook");
 
-    String message = messageOfTheRefusal(() -> create(request));
+    EventSubscription created = create(request);
 
-    assertTrue(message.contains("channel of a destination cannot be set or changed"), message);
+    EventSubscription stored = AlertFixtures.stored(created.getId());
+    assertEquals("Webhook", stored.getDestinations().getFirst().getChannel());
   }
 
   @Test
-  void patchChangingChannelIsRejected(TestNamespace ns) {
-    EventSubscription plain = create(tableAlert(ns, "channel_set_by_patch"));
-    EventSubscription written = withAChannelTheNextReleaseWrote(ns, "channel_changed_by_patch");
+  void unregisteredChannelIs400(TestNamespace ns) {
+    CreateEventSubscription request = tableAlert(ns, "channel_unregistered");
+    request.getDestinations().getFirst().withChannel("not.registered.here");
+    EventSubscription plain = create(tableAlert(ns, "channel_unregistered_by_patch"));
 
+    String message = messageOfTheRefusal(() -> create(request));
+
+    assertTrue(message.contains("No channel not.registered.here is registered"), message);
     assertRejected(
         () ->
             patch(
                 plain,
-                "[{\"op\":\"add\",\"path\":\"/destinations/0/channel\",\"value\":\"Webhook\"}]"));
-    assertRejected(
-        () ->
-            patch(
-                written,
-                "[{\"op\":\"replace\",\"path\":\"/destinations/0/channel\",\"value\":\"Slack\"}]"));
-  }
-
-  // After a rollback from the next release, a client sends back the row it read.
-  @Test
-  void putCarryingStoredChannelSucceeds(TestNamespace ns) {
-    EventSubscription written = withAChannelTheNextReleaseWrote(ns, "channel_sent_back");
-
-    put(
-        tableAlert(ns, "channel_sent_back")
-            .withDescription("sent back with its channel")
-            .withDestinations(written.getDestinations()));
-
-    EventSubscription stored = AlertFixtures.stored(written.getId());
-    assertEquals("sent back with its channel", stored.getDescription());
-    assertEquals("Webhook", stored.getDestinations().getFirst().getChannel());
+                "[{\"op\":\"add\",\"path\":\"/destinations/0/channel\","
+                    + "\"value\":\"not.registered.here\"}]"));
   }
 
   // A client that does not know the field leaves it out, and the alert is delivered by its type.
   @Test
   void saveLeavingChannelOutSucceeds(TestNamespace ns) {
-    EventSubscription written = withAChannelTheNextReleaseWrote(ns, "channel_left_out");
+    CreateEventSubscription request = tableAlert(ns, "channel_left_out");
+    request.getDestinations().getFirst().withChannel("Webhook");
+    EventSubscription created = create(request);
 
     put(tableAlert(ns, "channel_left_out").withDescription("saved without the field"));
 
-    EventSubscription stored = AlertFixtures.stored(written.getId());
+    EventSubscription stored = AlertFixtures.stored(created.getId());
     assertEquals("saved without the field", stored.getDescription());
     assertNull(stored.getDestinations().getFirst().getChannel());
-  }
-
-  private static EventSubscription withAChannelTheNextReleaseWrote(TestNamespace ns, String name) {
-    EventSubscription alert = create(tableAlert(ns, name));
-    alert.getDestinations().getFirst().withChannel("Webhook");
-    return AlertFixtures.writeBehindTheServer(alert);
   }
 
   private static EventSubscription withADestinationTodaysRulesReject(
