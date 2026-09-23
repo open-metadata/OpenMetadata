@@ -535,12 +535,36 @@ def test_the_configured_connection_is_left_untouched():
     assert config.connectionArguments is None
 
 
+def _real_engine_for(config: MssqlConnectionConfig) -> Engine:
+    """The engine a workflow would actually be handed.
+
+    SQLAlchemy resolves the dialect and builds the pool without opening a socket,
+    so the connector can be driven for real here and the assertions can read the
+    engine itself rather than a record of how it was constructed.
+    """
+    return MssqlConnection(config).client
+
+
+def _timeout_a_new_connection_would_get(engine: Engine) -> int | None:
+    """Fire the engine's own connect listener the way its pool does, and report
+    the bound a fresh DBAPI connection comes away with - None when the engine
+    carries no such listener at all."""
+    listeners = [fn for fn in engine.pool.dispatch.connect if fn.__name__ == "set_query_timeout"]
+    if not listeners:
+        return None
+    dbapi_connection = MagicMock()
+    listeners[0](dbapi_connection, MagicMock())
+    return dbapi_connection.timeout
+
+
 def test_the_engine_is_built_with_pre_ping():
     """A pooled connection the server has dropped must not fail the borrower."""
-    with patch(f"{CONNECTION_MODULE}.create_generic_db_connection") as mock_connection:
-        _ = MssqlConnection(_config()).client
-
-    assert mock_connection.call_args.kwargs["pool_pre_ping"] is True
+    engine = _real_engine_for(_config())
+    try:
+        # The pool is where SQLAlchemy keeps it; it exposes no public reader.
+        assert engine.pool._pre_ping is True
+    finally:
+        engine.dispose()
 
 
 def test_a_configured_timeout_is_the_bound_pyodbc_queries_get():
@@ -555,13 +579,11 @@ def test_a_configured_timeout_is_the_bound_pyodbc_queries_get():
         connectionArguments={"timeout": 30},
     )
 
-    with (
-        patch(f"{CONNECTION_MODULE}.create_generic_db_connection"),
-        patch(f"{CONNECTION_MODULE}.bound_pyodbc_query_timeout") as mock_bound,
-    ):
-        _ = MssqlConnection(config).client
-
-    assert mock_bound.call_args.args[1] == 30
+    engine = _real_engine_for(config)
+    try:
+        assert _timeout_a_new_connection_would_get(engine) == 30
+    finally:
+        engine.dispose()
 
 
 def test_the_default_bound_applies_when_nothing_is_configured():
@@ -587,13 +609,15 @@ def test_a_non_numeric_timeout_falls_back_to_the_default():
     [(MssqlScheme.mssql_pyodbc, True), (MssqlScheme.mssql_pytds, False)],
 )
 def test_only_pyodbc_bounds_the_query_timeout_on_the_engine(scheme, bounded):
-    with (
-        patch(f"{CONNECTION_MODULE}.create_generic_db_connection"),
-        patch(f"{CONNECTION_MODULE}.bound_pyodbc_query_timeout") as mock_bound,
-    ):
-        _ = MssqlConnection(_config(scheme=scheme)).client
+    """The other drivers take the bound as a connect argument, so an engine-level
+    listener would be a second, conflicting bound rather than a missing one."""
+    engine = _real_engine_for(_config(scheme=scheme))
+    try:
+        timeout = _timeout_a_new_connection_would_get(engine)
+    finally:
+        engine.dispose()
 
-    assert mock_bound.called is bounded
+    assert (timeout == DEFAULT_QUERY_TIMEOUT_SECONDS) is bounded
 
 
 def test_the_query_timeout_is_applied_to_every_new_connection():
