@@ -12,11 +12,18 @@
  */
 
 import { FC, ReactNode } from 'react';
-import { IncidentGroupBy } from '../../../../generated/tests/testCaseIncidentGroup';
+import {
+  IncidentGroupBy,
+  IncidentStatusCount,
+  IncidentTrendDirection,
+  Severities,
+  TestCaseIncidentGroup,
+  TestCaseResolutionStatusTypes,
+} from '../../../../generated/tests/testCaseIncidentGroup';
+import { IncidentSortType } from '../../../../rest/incidentManagerAPI';
 
 export interface IncidentGroupByOption {
   key: IncidentGroupBy;
-  /** i18n key of the dimension label. */
   labelKey: string;
   icon: FC<{ className?: string }>;
 }
@@ -28,8 +35,56 @@ export interface IncidentGroupByDropdownProps {
 
 export interface IncidentGroupsViewProps {
   /**
-   * Rendered once the groups are loaded. The group table lands here; until then
-   * the view carries the dimension picker and the loading/empty/error states.
+   * Bumped by the page when an incident it lists below changes status: the
+   * groups summarise those incidents, so their counts have to be re-read for
+   * the change to show. Every new value costs one fetch — nothing polls.
    */
-  children?: ReactNode;
+  refreshKey?: number;
+}
+
+export interface IncidentGroupsTableProps {
+  groups: TestCaseIncidentGroup[];
+  groupBy: IncidentGroupBy;
+  sortType: IncidentSortType;
+  onSortTypeChange: (sortType: IncidentSortType) => void;
+}
+
+/** One status' slice of the breakdown bar, already sized against the group. */
+export interface IncidentGroupStatusSegment {
+  status: TestCaseResolutionStatusTypes;
+  count: number;
+  /** Width of the slice, as a percentage of the bar. */
+  share: number;
+}
+
+export interface IncidentStatusBreakdownProps {
+  statusCounts?: IncidentStatusCount[];
+}
+
+export interface IncidentTrendSparklineProps {
+  trend?: number[];
+  trendDirection?: IncidentTrendDirection;
+  /** Grades a rising trend; a falling or steady one colours the same either way. */
+  severity?: Severities;
+}
+
+/** Hue a trend reads in, picked from its direction and the group's severity. */
+export type IncidentTrendTone = 'error' | 'warning' | 'success' | 'neutral';
+
+/** Assignees to draw for a group, and how many more it has. */
+export interface IncidentGroupAssignees {
+  visible: string[];
+  overflowCount: number;
+}
+
+/** A cell that stacks a value over a smaller caption, e.g. a name over its FQN. */
+export interface StackedCellProps {
+  value: ReactNode;
+  caption?: ReactNode;
+  valueTestId: string;
+  captionTestId?: string;
+}
+
+export interface IncidentGroupCellProps {
+  group: TestCaseIncidentGroup;
 }

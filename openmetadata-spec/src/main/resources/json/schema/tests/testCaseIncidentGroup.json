@@ -17,6 +17,23 @@
         {"name": "Owner"}
       ]
     },
+    "incidentStatusCount": {
+      "description": "Number of the group's open incidents currently sitting in one status.",
+      "javaType": "org.openmetadata.schema.tests.type.IncidentStatusCount",
+      "type": "object",
+      "properties": {
+        "status": {
+          "description": "Current status the incidents are in.",
+          "$ref": "./testCaseResolutionStatus.json#/definitions/testCaseResolutionStatusTypes"
+        },
+        "count": {
+          "description": "Number of the group's open incidents in that status.",
+          "type": "integer"
+        }
+      },
+      "required": ["status", "count"],
+      "additionalProperties": false
+    },
     "incidentTrendDirection": {
       "description": "Direction of the group's incident-creation trend, comparing the second half of the `trend` buckets against the first half.",
       "javaType": "org.openmetadata.schema.tests.type.IncidentTrendDirection",
@@ -61,6 +78,13 @@
     "status": {
       "description": "Most actionable current status across the group's open incidents, in the order Assigned > Ack > New.",
       "$ref": "./testCaseResolutionStatus.json#/definitions/testCaseResolutionStatusTypes"
+    },
+    "statusCounts": {
+      "description": "Number of the group's open incidents in each current status, most actionable first. A status no incident sits in is left out, and `Resolved` never appears — a resolved incident leaves the group.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/incidentStatusCount"
+      }
     },
     "assignees": {
       "description": "Distinct names of the current assignees of the group's open incidents.",

@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -2083,6 +2084,24 @@ public interface TimeSeriesDAOs {
         connectionType = POSTGRES)
     int deleteOrphanedRecords(@Bind("limit") int limit);
 
+    // Statuses an open incident can currently be in, from the most actionable to the least.
+    // Resolved is left out throughout: a resolved incident has left the group, so it neither
+    // counts toward the group nor appears in the per-status breakdown of it.
+    //
+    // This is the one place the triage order is written down: the statusRank expression below,
+    // the per-status count columns and the repository's breakdown ordering are all derived from
+    // it, so a new status value cannot drift between them.
+    List<TestCaseResolutionStatusTypes> OPEN_STATUSES =
+        List.of(
+            TestCaseResolutionStatusTypes.Assigned,
+            TestCaseResolutionStatusTypes.Ack,
+            TestCaseResolutionStatusTypes.New);
+
+    // Column a status' incident count is selected under, e.g. statusCountAssigned.
+    static String statusCountColumn(TestCaseResolutionStatusTypes status) {
+      return "statusCount" + status.value();
+    }
+
     String INCIDENT_GROUPS_FROM =
         """
         FROM test_case_incident i
@@ -2094,7 +2113,8 @@ public interface TimeSeriesDAOs {
     @SqlQuery(
         "SELECT <groupKey> AS groupKey, <groupType> AS groupType, COUNT(DISTINCT i.stateId) AS incidentCount, "
             + "MIN(i.severity) AS severity, "
-            + "MIN(CASE i.testCaseResolutionStatusType WHEN 'Assigned' THEN 1 WHEN 'Ack' THEN 2 ELSE 3 END) AS statusRank, "
+            + "<statusRank> AS statusRank, "
+            + "<statusCounts>, "
             + "<assigneesExpr> AS assignees, "
             + "COUNT(DISTINCT i.assignee) AS assigneeCount, "
             + "MIN(i.createdAt) AS firstSeen, "
@@ -2108,6 +2128,8 @@ public interface TimeSeriesDAOs {
     @RegisterRowMapper(TestCaseIncidentGroupCountMapper.class)
     List<TestCaseIncidentGroupCount> listIncidentGroups(
         @Define("openStatuses") String openStatuses,
+        @Define("statusRank") String statusRank,
+        @Define("statusCounts") String statusCounts,
         @Define("assigneesExpr") String assigneesExpr,
         @Define("createdAtAgg") String createdAtAgg,
         @Define("groupKey") String groupKey,
@@ -2149,18 +2171,34 @@ public interface TimeSeriesDAOs {
       String condition = filter.getCondition();
       Map<String, Object> params = new HashMap<>(filter.getQueryParams());
       List<String> openStatusBinds = new ArrayList<>();
+      List<String> statusCountExprs = new ArrayList<>();
+      List<String> statusRankWhens = new ArrayList<>();
       int openStatusIndex = 0;
-      for (TestCaseResolutionStatusTypes status : TestCaseResolutionStatusTypes.values()) {
-        if (status != TestCaseResolutionStatusTypes.Resolved) {
-          String bind = "openStatus" + openStatusIndex++;
-          params.put(bind, status.value());
-          openStatusBinds.add(":" + bind);
-        }
+      for (TestCaseResolutionStatusTypes status : OPEN_STATUSES) {
+        String bind = "openStatus" + openStatusIndex++;
+        params.put(bind, status.value());
+        openStatusBinds.add(":" + bind);
+        statusCountExprs.add(
+            String.format(
+                "COUNT(DISTINCT CASE WHEN i.testCaseResolutionStatusType = :%s THEN i.stateId END) AS %s",
+                bind, statusCountColumn(status)));
+        // 1-based so the rank reads as a position in OPEN_STATUSES; the repository turns it back
+        // into the status at that position. The value is inlined rather than bound: a simple CASE
+        // is a rendered expression here, and the strings come from the enum, never from input.
+        statusRankWhens.add(String.format("WHEN '%s' THEN %d", status.value(), openStatusIndex));
       }
       String openStatuses = String.join(", ", openStatusBinds);
+      // A status outside the open set cannot reach this query — the WHERE clause bars it — but
+      // SQL needs an ELSE, and ranking it past the last one keeps MIN() picking a real status.
+      String statusRank =
+          String.format(
+              "MIN(CASE i.testCaseResolutionStatusType %s ELSE %d END)",
+              String.join(" ", statusRankWhens), OPEN_STATUSES.size() + 1);
       List<TestCaseIncidentGroupCount> counts =
           listIncidentGroups(
               openStatuses,
+              statusRank,
+              String.join(", ", statusCountExprs),
               assigneesExpr(),
               createdAtAggExpr(),
               dimension.groupKey(),
@@ -2210,10 +2248,8 @@ public interface TimeSeriesDAOs {
       static IncidentGroupDimension from(IncidentGroupBy groupBy) {
         return switch (groupBy) {
           case Table -> forTable();
-          case TestDefinition -> forRelationship(
-              CONTAINS, String.format("er.fromEntity = '%s'", Entity.TEST_DEFINITION));
-          case Owner -> forRelationship(
-              OWNS, String.format("er.fromEntity IN ('%s', '%s')", Entity.USER, Entity.TEAM));
+          case TestDefinition -> forTestDefinition();
+          case Owner -> forOwner();
         };
       }
 
@@ -2229,15 +2265,32 @@ public interface TimeSeriesDAOs {
             tableFqn, String.format("'%s'", Entity.TABLE), tableFqn, "");
       }
 
-      private static IncidentGroupDimension forRelationship(
-          Relationship relation, String fromEntityCondition) {
-        String join =
-            String.format(
-                "INNER JOIN entity_relationship er ON er.toId = tc.id AND er.relation = %d "
-                    + "AND %s AND er.toEntity = '%s'",
-                relation.ordinal(), fromEntityCondition, Entity.TEST_CASE);
+      private static IncidentGroupDimension forTestDefinition() {
+        String definitions = String.format("er.fromEntity = '%s'", Entity.TEST_DEFINITION);
+        String join = relationshipJoin("INNER", CONTAINS, definitions);
         return new IncidentGroupDimension(
             "er.fromId", "er.fromEntity", "er.fromId, er.fromEntity", join);
+      }
+
+      // A test case always has a test definition, but it need not have an owner — and the
+      // incidents of an unowned test case are still incidents. The owner dimension therefore
+      // joins outwards and gathers the rows that match no owner under an empty group key, which
+      // the repository turns into the "no owner" group. An inner join would drop them from the
+      // dimension instead, reading as though those test cases had no incidents at all.
+      private static IncidentGroupDimension forOwner() {
+        String owners = String.format("er.fromEntity IN ('%s', '%s')", Entity.USER, Entity.TEAM);
+        String join = relationshipJoin("LEFT", OWNS, owners);
+        String groupByCols = "er.fromId, er.fromEntity";
+        return new IncidentGroupDimension(
+            "COALESCE(er.fromId, '')", "COALESCE(er.fromEntity, '')", groupByCols, join);
+      }
+
+      private static String relationshipJoin(
+          String joinType, Relationship relation, String fromEntityCondition) {
+        return String.format(
+            "%s JOIN entity_relationship er ON er.toId = tc.id AND er.relation = %d "
+                + "AND %s AND er.toEntity = '%s'",
+            joinType, relation.ordinal(), fromEntityCondition, Entity.TEST_CASE);
       }
     }
   }
@@ -2487,6 +2540,7 @@ public interface TimeSeriesDAOs {
       int incidentCount,
       String severity,
       int statusRank,
+      Map<String, Integer> statusCounts,
       String assignees,
       int assigneeCount,
       long firstSeen,
@@ -2497,12 +2551,20 @@ public interface TimeSeriesDAOs {
   class TestCaseIncidentGroupCountMapper implements RowMapper<TestCaseIncidentGroupCount> {
     @Override
     public TestCaseIncidentGroupCount map(ResultSet rs, StatementContext ctx) throws SQLException {
+      Map<String, Integer> statusCounts = new LinkedHashMap<>();
+      for (TestCaseResolutionStatusTypes status :
+          TestCaseResolutionStatusTimeSeriesDAO.OPEN_STATUSES) {
+        statusCounts.put(
+            status.value(),
+            rs.getInt(TestCaseResolutionStatusTimeSeriesDAO.statusCountColumn(status)));
+      }
       return new TestCaseIncidentGroupCount(
           rs.getString("groupKey"),
           rs.getString("groupType"),
           rs.getInt("incidentCount"),
           rs.getString("severity"),
           rs.getInt("statusRank"),
+          statusCounts,
           rs.getString("assignees"),
           rs.getInt("assigneeCount"),
           rs.getLong("firstSeen"),

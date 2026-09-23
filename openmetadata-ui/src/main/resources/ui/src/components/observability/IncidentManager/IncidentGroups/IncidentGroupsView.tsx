@@ -11,35 +11,66 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
+// The core-components icon barrel re-exports the design team's own SVG set
+// only; it carries no trend glyph, so this one comes from the shared
+// `@untitledui/icons` both packages pin at the same range.
+import { TrendUp02 } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
 import IncidentGroupByDropdown from './IncidentGroupByDropdown';
 import { IncidentGroupsViewProps } from './IncidentGroups.types';
+import { countRecurringIncidentGroups } from './IncidentGroups.utils';
+import IncidentGroupsTable from './IncidentGroupsTable';
 import { useIncidentGroups } from './useIncidentGroups';
 
 /**
- * Grouped incident listing: the `Group by` dimension picker plus the
- * loading/empty/error states of the groups fetch it drives. The group table
- * itself is rendered as `children` — until it lands, the legacy flat listing
- * stays in place on the page.
+ * Grouped incident listing: the `Group by` dimension picker, the header stats
+ * over the fetched groups, and the group table itself — plus the
+ * loading/empty/error states of the fetch that feeds all three.
  */
-const IncidentGroupsView = ({ children }: IncidentGroupsViewProps) => {
+const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
   const { t } = useTranslation();
   const {
     groupBy,
     incidentGroups,
     paging,
+    sortType,
     isLoading,
     isError,
     handleGroupByChange,
-  } = useIncidentGroups();
+    handleSortTypeChange,
+  } = useIncidentGroups({ refreshKey });
+
+  /**
+   * Only the loaded page can be counted: the endpoint reports the group total
+   * but no recurring total, and a group is recurring by a field that only
+   * arrives with the group itself.
+   */
+  const recurringCount = useMemo(
+    () => countRecurringIncidentGroups(incidentGroups),
+    [incidentGroups]
+  );
+
+  /**
+   * A refetch keeps the rows it already has: swapping the table for a loader on
+   * every sort click or status change flashes the section away, drops keyboard
+   * focus from the sort header, and shifts the incidents table the user is
+   * working in. Only a load with nothing to show yet takes the whole space.
+   */
+  const isInitialLoading = isLoading && isEmpty(incidentGroups);
 
   const renderContent = () => {
-    if (isLoading) {
+    if (isInitialLoading) {
       return (
         <Box className="tw:py-8" data-testid="incident-groups-loader">
           <Loader />
@@ -76,23 +107,56 @@ const IncidentGroupsView = ({ children }: IncidentGroupsViewProps) => {
       );
     }
 
-    return children;
+    return (
+      <IncidentGroupsTable
+        groupBy={groupBy}
+        groups={incidentGroups}
+        sortType={sortType}
+        onSortTypeChange={handleSortTypeChange}
+      />
+    );
   };
 
+  const hasStats = !isInitialLoading && !isError;
+
   return (
-    <Box className="tw:gap-4" data-testid="incident-groups" direction="col">
+    <Box
+      aria-busy={isLoading}
+      className="tw:gap-4"
+      data-testid="incident-groups"
+      direction="col">
       <Box className="tw:items-center tw:justify-between tw:gap-2">
-        <Typography
-          className="tw:text-secondary"
-          data-testid="incident-groups-count"
-          size="text-sm"
-          weight="semibold">
-          {isLoading || isError
-            ? ''
-            : t('label.group-count', {
-                count: paging?.total ?? incidentGroups.length,
-              })}
-        </Typography>
+        <Box className="tw:items-center tw:gap-3">
+          <Typography
+            className="tw:text-secondary"
+            data-testid="incident-groups-count"
+            size="text-sm"
+            weight="semibold">
+            {hasStats
+              ? t('label.group-count', {
+                  count: paging?.total ?? incidentGroups.length,
+                })
+              : ''}
+          </Typography>
+          {hasStats && (
+            <Tooltip
+              placement="top"
+              title={t('message.recurring-groups-loaded')}>
+              <TooltipTrigger>
+                <Box className="tw:items-center tw:gap-1 tw:text-secondary">
+                  <TrendUp02 className="tw:size-4" />
+                  <Typography
+                    as="span"
+                    data-testid="incident-groups-recurring-count"
+                    size="text-sm"
+                    weight="semibold">
+                    {t('label.recurring-count', { count: recurringCount })}
+                  </Typography>
+                </Box>
+              </TooltipTrigger>
+            </Tooltip>
+          )}
+        </Box>
         <IncidentGroupByDropdown
           value={groupBy}
           onChange={handleGroupByChange}

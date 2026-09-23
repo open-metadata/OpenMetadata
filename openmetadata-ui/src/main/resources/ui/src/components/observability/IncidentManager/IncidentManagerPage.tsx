@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, PageLayout } from '@openmetadata/ui-core-components';
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
@@ -49,6 +49,21 @@ const INCIDENT_WIDGETS_WRAPPER_CLASS = [
  */
 const IncidentManagerPage = () => {
   const { t } = useTranslation();
+
+  /**
+   * The group rows above the table aggregate the very incidents it lists, so a
+   * status, severity or assignee changed in the table leaves their counts,
+   * chips and breakdown bar showing the old values until the page is reloaded.
+   * Bumping the key re-reads the groups — one fetch per change that went
+   * through, and none while the user is only looking.
+   */
+  const [groupsRefreshKey, setGroupsRefreshKey] = useState(0);
+
+  const refreshIncidentGroups = useCallback(
+    () => setGroupsRefreshKey((key) => key + 1),
+    []
+  );
+
   const {
     commonTestCasePermission,
     filterDescriptors,
@@ -64,7 +79,10 @@ const IncidentManagerPage = () => {
     handleStatusSubmit,
     handleSeveritySubmit,
     handleAssigneeUpdate,
-  } = useIncidentManagerListPage({ isIncidentPage: true });
+  } = useIncidentManagerListPage({
+    isIncidentPage: true,
+    onIncidentChange: refreshIncidentGroups,
+  });
 
   // Consumer via a hook return value (useIncidentManagerListPage is out of this batch's
   // scope — incident permissions decouple from test-case perms in an open upstream PR
@@ -122,7 +140,7 @@ const IncidentManagerPage = () => {
       </div>
       {hasViewPermission ? (
         <Box className="tw:gap-4" direction="col">
-          <IncidentGroupsView />
+          <IncidentGroupsView refreshKey={groupsRefreshKey} />
           <Box
             className="tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:outline-secondary"
             direction="col">
