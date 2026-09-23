@@ -223,9 +223,17 @@ Throughput therefore depends on the number and size of write transactions:
 The supplied image includes a Graph Store extension. Its defaults are 50 seconds per upload,
 64 MiB decompressed per request, and 16 simultaneous receivers. Override the first two through
 `JVM_ARGS` properties `openmetadata.fuseki.writeTimeoutMs` and `openmetadata.fuseki.maxUploadBytes`.
-Indexing preflights the dataset's OPTIONS capabilities and fails before clearing data if these
-protections or the assembler settings are missing. Stock Fuseki requires this extension and an
-equivalent assembler. `arq:updateTimeout` alone does not protect Graph Store POST/PUT.
+Indexing preflights the dataset before clearing data, and fails only when the dataset cannot be
+used: it does not exist, the credentials are rejected, the user is not authorized, the dataset is
+read-only, or `tdb2:unionDefaultGraph` is off. Union is checked by behaviour, so it holds on any
+Fuseki: readiness writes one triple into a named graph, asks for it without a `GRAPH` clause, and
+removes it. OpenMetadata writes every entity into a named graph, so without union the SPARQL
+playground, the MCP tools, SHACL validation and inference see none of them. The extension and the
+`arq:*Timeout` settings are optional. On Apache Jena Fuseki without them, indexing proceeds with
+the client's own upload budget and deadline and logs each missing guarantee. Without the extension
+a Graph Store upload holds TDB2's writer while it transfers, so other writes wait behind it: a small
+update issued during a 4.4 MB upload at 200 KB/s waited 20 s on stock Fuseki 6.0.0 and 0.23 s with
+the extension. `arq:updateTimeout` alone does not protect Graph Store POST/PUT.
 
 These are cooperative deadlines: checks abort expired parsing and roll back the transaction;
 blocked storage I/O or a TDB2 commit itself cannot be forcibly interrupted safely. Client timeout,
