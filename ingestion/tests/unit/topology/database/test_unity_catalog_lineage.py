@@ -15,6 +15,7 @@ Test Unity Catalog lineage functionality
 
 import json
 from collections import namedtuple
+from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
@@ -1089,3 +1090,41 @@ class TestLineageDrivenIteration:
         list(lineage_source._iter())
 
         assert calls == ["locations", "lineage"]
+
+
+class TestMetricViewOptOut:
+    """``includeMetricViews`` gates the metric-view pass in both workflows.
+
+    It lives on the connection rather than on a pipeline config because the metadata
+    and lineage workflows each have their own, and both have to read the same switch.
+    """
+
+    @staticmethod
+    def _one_catalog(lineage_source):
+        lineage_source.metadata.list_all_entities.return_value = [
+            SimpleNamespace(name="cat", fullyQualifiedName="svc.cat")
+        ]
+
+    @staticmethod
+    def _discovery_queries(executed):
+        return [sql for sql in executed if "INFORMATION_SCHEMA.VIEWS" in sql]
+
+    def test_metric_views_are_discovered_by_default(self, lineage_source):
+        self._one_catalog(lineage_source)
+        executed = stub_rows(lineage_source)
+        resolve_tables(lineage_source, {})
+
+        list(lineage_source._iter())
+
+        assert self._discovery_queries(executed)
+
+    def test_the_opt_out_skips_the_pass_before_it_queries(self, lineage_source):
+        """The point of the flag is the cost, not just the edges: a run that does not
+        want metric views must not pay the per-catalog discovery queries either."""
+        lineage_source.service_connection.includeMetricViews = False
+        self._one_catalog(lineage_source)
+        executed = stub_rows(lineage_source)
+        resolve_tables(lineage_source, {})
+
+        assert list(lineage_source._iter()) == []
+        assert self._discovery_queries(executed) == []

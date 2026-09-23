@@ -640,8 +640,11 @@ class UnitycatalogLineageSource(Source):
             yield from self._process_external_location_lineage(databricks_table_fqn)
 
         # Metric views last: their definition is YAML rather than the SQL the system
-        # tables record, so nothing above can see the relations they read.
-        yield from self.metric_view_lineage.iter_lineage()
+        # tables record, so nothing above can see the relations they read. Behind the
+        # same `includeMetricViews` opt-out as the Metric entities themselves, so a run
+        # that does not want them never pays for the per-catalog discovery queries.
+        if self.service_connection.includeMetricViews:
+            yield from self.metric_view_lineage.iter_lineage()
 
     def test_connection(self) -> None:
         if self._connection is not None:

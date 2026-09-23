@@ -145,12 +145,19 @@ class FakeContext:
 class FakeSource(UnitycatalogMetricViewMixin):
     """A metric-view source with the two connector-supplied readers stubbed."""
 
-    def __init__(self, view_text, column_types=None, tables=(ORDERS_TABLE, CUSTOMER_TABLE, VIEW_TABLE)):
+    def __init__(
+        self,
+        view_text,
+        column_types=None,
+        tables=(ORDERS_TABLE, CUSTOMER_TABLE, VIEW_TABLE),
+        include_metric_views=True,
+    ):
         self.view_text = view_text
         self.column_types = column_types or {}
         self.metadata = FakeMetadata(tables)
         self.status = FakeStatus()
         self.context = FakeContext()
+        self.service_connection = SimpleNamespace(includeMetricViews=include_metric_views)
 
     def get_metric_view_text(self, table_name):
         return self.view_text
@@ -364,6 +371,13 @@ def test_the_stage_emits_one_metric_per_measure_linked_to_its_view():
     assert [metric.displayName for metric in metrics] == ["Total Revenue (USD)", "Order Count"]
     for metric in metrics:
         assert [asset.id.root for asset in metric.assets.root] == [VIEW_TABLE.id.root]
+
+
+def test_the_opt_out_yields_nothing_not_even_the_barrier():
+    """``includeMetricViews`` off has to cost nothing: the Barrier flushes the sink's
+    bulk buffer, so emitting one for a run that wants no metrics would negate the
+    bulk sink for every metric view in the catalog."""
+    assert _run(FakeSource(ORDERS_YAML, include_metric_views=False)) == []
 
 
 def test_the_stage_is_idempotent():

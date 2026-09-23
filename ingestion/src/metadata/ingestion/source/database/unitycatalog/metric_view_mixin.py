@@ -52,6 +52,15 @@ class UnitycatalogMetricViewMixin:
         used to tell a TIME dimension from a CATEGORICAL one. Empty when unavailable —
         the dimension then carries no type rather than a guessed one."""
 
+    @property
+    def include_metric_views(self) -> bool:
+        """The ``includeMetricViews`` connection opt-out.
+
+        On the connection rather than the metadata pipeline because the lineage
+        workflow has to read the same switch, and it never sees that pipeline's config.
+        """
+        return bool(self.service_connection.includeMetricViews)  # pyright: ignore[reportAttributeAccessIssue]
+
     def yield_table_metrics(
         self,
         table_name_and_type: tuple[str, TableType],
@@ -62,6 +71,8 @@ class UnitycatalogMetricViewMixin:
         differently across runtimes and APIs — the SDK's ``TableInfo.table_type`` is
         ``None`` for one — and the YAML body is the one signal every path agrees on.
         """
+        if not self.include_metric_views:
+            return
         view, _ = table_name_and_type
         database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
         schema = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
