@@ -12,6 +12,8 @@
  */
 
 import { Page } from '@playwright/test';
+import { DataContract } from '../../../src/generated/entity/data/dataContract';
+import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -136,5 +138,66 @@ test.describe('Alerts with several sources', () => {
 
     await expect(page.getByTestId('topic-warning')).toBeVisible();
     await expect(page.getByTestId('table-warning')).not.toBeAttached();
+  });
+
+  test('A name filter over table and data contract searches both', async ({
+    page,
+    browser,
+  }) => {
+    test.slow();
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const table = new TableClass();
+    await table.create(apiContext);
+    const tableName = table.entityResponseData.name;
+    const created = await apiContext.post('/api/v1/dataContracts', {
+      data: {
+        name: `${tableName}-contract`,
+        entity: { id: table.entityResponseData.id, type: 'table' },
+      },
+    });
+    expect(created.ok()).toBeTruthy();
+    const contract: DataContract = await created.json();
+
+    try {
+      await visitObservabilityAlertPage(page);
+      await inputBasicAlertInformation({
+        page,
+        name: generateAlertName(),
+        sourceName: 'table',
+        sourceDisplayName: 'Table',
+        createButtonId: 'create-observability',
+      });
+      await addSource(page, 'dataContract');
+
+      await page.getByTestId('add-filters').click();
+      await page.getByTestId('filter-select-0').click();
+      await page
+        .locator('.ant-select-dropdown:visible')
+        .getByTestId('Table Name-filter-option')
+        .click();
+
+      const names = page.getByTestId('fqn-list-select').getByRole('combobox');
+      const found = page.locator('.ant-select-dropdown:visible');
+
+      // Both are found by one search; the search index may take a moment to hold them.
+      await expect(async () => {
+        await names.click();
+        await names.fill(tableName);
+        await expect(
+          found.getByTitle(table.entityResponseData.fullyQualifiedName ?? '', {
+            exact: true,
+          })
+        ).toBeVisible({ timeout: 3_000 });
+        await expect(
+          found.getByTitle(contract.fullyQualifiedName ?? '', { exact: true })
+        ).toBeVisible({ timeout: 3_000 });
+      }).toPass({ timeout: 60_000 });
+    } finally {
+      await apiContext.delete(
+        `/api/v1/dataContracts/${contract.id}?hardDelete=true&recursive=true`
+      );
+      await table.delete(apiContext);
+      await afterAction();
+    }
   });
 });
