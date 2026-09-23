@@ -129,6 +129,9 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
       // matchName was already in the pre-search list so its visibility check
       // must come after, once the stale list is confirmed gone.
       await expect(page.getByText(otherName)).not.toBeVisible();
+      // Confirm at least one result row is rendered. Parallel specs may
+      // create metrics that partially match, so >= 1 is correct here.
+      await expect(page.getByTestId('metric-name')).not.toHaveCount(0);
       await expect(
         page.getByTestId('metric-name').filter({ hasText: matchName })
       ).toBeVisible();
