@@ -28,6 +28,15 @@ export interface Container {
      */
     children?: EntityReference[];
     /**
+     * Timestamp in Unix epoch time milliseconds corresponding to when this entity was created
+     * in OpenMetadata.
+     */
+    createdAt?: number;
+    /**
+     * User or Bot who created this entity in OpenMetadata.
+     */
+    createdBy?: string;
+    /**
      * Reference to the data contract for this entity.
      */
     dataContract?: EntityReference;

@@ -6,7 +6,10 @@
   "description": "A `Topic` is a feed or an event stream in a `Messaging Service` into which publishers publish messages and consumed by consumers.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Topic",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.CreationAudited"
+  ],
   "definitions": {
     "cleanupPolicy": {
       "javaType": "org.openmetadata.schema.type.topic.CleanupPolicy",
@@ -65,6 +68,14 @@
     },
     "updatedBy": {
       "description": "User who made the update.",
+      "type": "string"
+    },
+    "createdAt": {
+      "description": "Timestamp in Unix epoch time milliseconds corresponding to when this entity was created in OpenMetadata.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "createdBy": {
+      "description": "User or Bot who created this entity in OpenMetadata.",
       "type": "string"
     },
     "impersonatedBy": {

@@ -5,7 +5,10 @@
   "description": "This schema defines the type to capture any data asset's queries.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Query",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.CreationAudited"
+  ],
   "properties": {
     "id": {
       "description": "Unique identifier of the query.",
@@ -37,6 +40,14 @@
     },
     "updatedBy": {
       "description": "User who made the query.",
+      "type": "string"
+    },
+    "createdAt": {
+      "description": "Timestamp in Unix epoch time milliseconds corresponding to when this entity was created in OpenMetadata.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "createdBy": {
+      "description": "User or Bot who created this entity in OpenMetadata.",
       "type": "string"
     },
     "impersonatedBy": {
