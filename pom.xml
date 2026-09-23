@@ -32,6 +32,7 @@
     <module>openmetadata-spec</module>
     <module>openmetadata-sdk</module>
     <module>common</module>
+    <module>docker/rdf-store</module>
     <module>openmetadata-shaded-deps</module>
     <module>openmetadata-service</module>
     <module>openmetadata-k8s-operator</module>
@@ -135,7 +136,14 @@
          at local resources, so an update could read data off the machine
          running the engine; 6.2.0 restricts them to http/ftp). There is no
          5.x line with the fix — 5.6.0 is the last 5.x release — so the only
-         way off the CVE is the major bump. Do not go back below 6.2.0. -->
+         way off the CVE is the major bump. Do not go back below 6.2.0.
+
+         The client can run against a 5.6 or 6.2 Fuseki interchangeably: the
+         SPARQL/GSP protocols and the RDF Thrift wire format are identical
+         across the two, so client and server upgrade independently. That
+         decoupling is what lets the server-side Fuseki bump roll out on its
+         own schedule; it is not a reason to leave a server on 5.6, which is
+         still exposed to the CVE above. -->
     <jena.version>6.2.0</jena.version>
 
     <sonar.projectKey>open-metadata_OpenMetadata</sonar.projectKey>
@@ -155,7 +163,9 @@
     <jwks-rsa.version>0.22.1</jwks-rsa.version>
     <jjwt.version>0.9.1</jjwt.version>
     <rerunner-jupiter.version>2.1.6</rerunner-jupiter.version>
-    <freemarker.version>2.3.33</freemarker.version>
+    <!-- CVE-2026-84939: relative path traversal via ClassTemplateLoader / WebappTemplateLoader
+         during localized template lookup, fixed in 2.3.35. -->
+    <freemarker.version>2.3.35</freemarker.version>
     <passay.version>1.6.6</passay.version>
     <bcrypt.version>0.10.2</bcrypt.version>
     <simplejavamail.version>8.12.6</simplejavamail.version>
@@ -233,7 +243,7 @@
       <dependency>
         <groupId>com.squareup.okhttp3</groupId>
         <artifactId>logging-interceptor</artifactId>
-        <version>4.12.0</version>
+        <version>5.5.0</version>
       </dependency>
       <!-- CVE-2026-47857: reactor-core < 3.8.7 (reached transitively via reactor-netty and the
            azure/spring stacks). Pin the whole Reactor 2026.0 train together: reactor-core 3.8.7
@@ -768,13 +778,14 @@
       </dependency>
       <!-- Pin all transitive io.netty:* to one patched line via the BOM (netty-codec-http et al.
            arrive transitively through reactor-netty-http and others). Held on the 4.2.x line
-           because reactor-netty 1.3.x (pinned above) is built against Netty 4.2; 4.2.17.Final is
-           newer than the 4.1.137.Final we previously held, so it still clears the CorsHandler
-           Vary-header cache-poisoning / info-disclosure issue, CVE-2026-59903. -->
+           because reactor-netty 1.3.x (pinned above) is built against Netty 4.2; 4.2.18.Final
+           clears the netty-codec-http Transfer-Encoding request-smuggling issue CVE-2026-89044
+           and still covers the CorsHandler Vary-header cache-poisoning / info-disclosure issue
+           CVE-2026-59903. -->
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-bom</artifactId>
-        <version>4.2.17.Final</version>
+        <version>4.2.18.Final</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>

@@ -10,15 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, PageLayout } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
 import IncidentManagerTable from '../../IncidentManager/IncidentManagerTable.component';
 import { useIncidentManagerListPage } from '../../IncidentManager/useIncidentManagerListPage';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
@@ -53,8 +54,14 @@ const IncidentManagerPage = () => {
     handleAssigneeUpdate,
   } = useIncidentManagerListPage({ isIncidentPage: true });
 
-  const hasViewPermission =
-    commonTestCasePermission?.ViewAll || commonTestCasePermission?.ViewBasic;
+  // Consumer via a hook return value (useIncidentManagerListPage is out of this batch's
+  // scope — incident permissions decouple from test-case perms in an open upstream PR
+  // #26521), mirroring the classic IncidentManager.component.tsx precedent. Pure rename:
+  // `!hasViewAccess` is De Morgan's law applied to the old `!ViewAll && !ViewBasic` — the
+  // exact same condition, just via the named flag.
+  const hasViewPermission = getDerivedPermissionFlags(
+    commonTestCasePermission ?? DEFAULT_ENTITY_PERMISSION
+  ).hasViewAccess;
 
   // Attached to the test case links so the detail page breadcrumb reflects
   // the incidents page as the origin.
@@ -71,7 +78,7 @@ const IncidentManagerPage = () => {
   return (
     <ObservabilityPageShell
       header={
-        <HeaderShell
+        <PageLayout.PageHeader
           badge={
             <LearningIcon
               pageId={LEARNING_PAGE_IDS.INCIDENT_MANAGER}
@@ -92,7 +99,6 @@ const IncidentManagerPage = () => {
               showHome={false}
             />
           }
-          padding="comfortable"
           subtitle={t(PAGE_HEADERS.INCIDENT_MANAGER.subHeader)}
           title={t(PAGE_HEADERS.INCIDENT_MANAGER.header)}
           variant="gradient"

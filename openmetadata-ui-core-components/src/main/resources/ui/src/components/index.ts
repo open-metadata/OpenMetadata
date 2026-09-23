@@ -16,10 +16,13 @@ export * from './base/alert/alert';
 export * from './base/autocomplete/autocomplete';
 export * from './base/autocomplete/autocomplete-item';
 export * from './base/avatar/avatar';
+export * from './base/avatar/avatar-group';
 export * from './base/avatar/avatar-label-group';
 export * from './base/avatar/avatar-profile-photo';
+export * from './base/avatar/avatar-stack';
 export * from './base/avatar/base-components';
 export * from './base/avatar/utils';
+export * from './application/owner/owner.types';
 export * from './base/badges/badge-groups';
 export * from './base/badges/badge-types';
 export * from './base/badges/badges';
@@ -122,8 +125,16 @@ export type {
   NavItemDividerType,
   NavItemType,
 } from './application/app-navigation/config';
+export * from './application/credential-file-input/credential-file-input';
+export * from './application/credential-file-input/credential-file-input.types';
+// Only the size cap is part of the public contract; the other constants are
+// internal defaults and `DEFAULT_LABELS`/`DEFAULT_VALIDATION_MESSAGES` are names
+// sibling components use locally too. The utils module stays internal.
+export { DEFAULT_CREDENTIAL_FILE_MAX_SIZE } from './application/credential-file-input/credential-file-input.constants';
 export * from './application/file-upload/file-upload';
 export * from './application/filter-bar/filter-bar';
+export * from './application/filter-select/filter-select';
+export * from './application/filter-select/filter-select.types';
 export * from './application/date-picker/calendar';
 export * from './application/date-picker/cell';
 export * from './application/date-picker/date-input';
@@ -164,3 +175,14 @@ export * from './foundations/typography';
 
 // Other components
 export * from './checkbox-icons';
+
+// Owner
+export * from './application/owner/owner';
+export * from './application/owner/owner-chip';
+export * from './application/owner/owner-avatar-stack';
+export * from './application/owner/owner-utils';
+export type {
+  OwnerProps,
+  OwnerChipProps,
+  OwnerAvatarStackProps,
+} from './application/owner/owner.types';

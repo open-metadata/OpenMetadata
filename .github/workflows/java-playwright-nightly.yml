@@ -229,7 +229,20 @@ jobs:
           # is reused by everything that runs this workflow on the same SHA (or
           # later runs whose Dockerfile + dist tarball haven't changed).
           cache-from: type=gha,scope=jpw-server-image
-          cache-to: type=gha,scope=jpw-server-image,mode=max
+          # Never WRITE from a merge_group run. The queue's gh-readonly-queue/*
+          # ref dies the moment its entry merges or is dequeued, but every
+          # buildkit-blob-* entry saved there (mode=max exports each layer —
+          # dozens per build, 0–380 MB each) stays charged against the repo's
+          # 10 GB LRU budget until evicted. Measured 2026-09-09: one queue ref
+          # alone held ~40 blobs and the repo sat at 18 GB, which evicted every
+          # main-scoped Playwright cache (golden fixture, distribution,
+          # ingestion image). Downstream, 231 of 235 merge_group Playwright runs
+          # in 24h missed the fixture cache and rebuilt it from scratch (~17 min
+          # each on the critical path). Reads stay unconditional so queue runs
+          # still benefit from a PR- or dispatch-primed scope; only those two
+          # events, which run on refs that outlive the run, may repopulate it.
+          # Same rule the Playwright reusable applies to its own saves.
+          cache-to: ${{ github.event_name != 'merge_group' && 'type=gha,scope=jpw-server-image,mode=max' || '' }}
 
       - name: Export server image as artifact
         run: |

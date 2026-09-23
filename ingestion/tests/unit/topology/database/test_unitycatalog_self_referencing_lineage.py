@@ -31,13 +31,20 @@ SNAPSHOT = f"{CATALOG}.{SCHEMA}.orders_snapshot"
 
 
 def _row(source_table: str, target_table: str) -> SimpleNamespace:
-    return SimpleNamespace(source_table_full_name=source_table, target_table_full_name=target_table)
+    return SimpleNamespace(
+        source_table_full_name=source_table,
+        target_table_full_name=target_table,
+        source_path=None,
+        target_path=None,
+    )
 
 
 def _column_row(source_table: str, target_table: str, column: str) -> SimpleNamespace:
     return SimpleNamespace(
         source_table_full_name=source_table,
         target_table_full_name=target_table,
+        source_path=None,
+        target_path=None,
         source_column_name=column,
         target_column_name=column,
     )
@@ -52,7 +59,9 @@ def _source(rows, column_rows=None):
     source.source_config = MagicMock()
     source.source_config.queryLogDuration = 1
 
-    source.column_lineage_map = defaultdict(list)
+    source.column_lineage_map = defaultdict(dict)
+    source.path_to_table_map = defaultdict(set)
+    source.path_lineage_map = defaultdict(set)
 
     connection = MagicMock()
     # _cache_lineage runs the table query first, then the column query
@@ -108,4 +117,4 @@ class TestSelfReferencingColumnLineageCache:
             column_rows=[_column_row(EVENT_LOG, SNAPSHOT, "id")],
         )
         source._cache_lineage()
-        assert source.column_lineage_map[(EVENT_LOG, SNAPSHOT)] == [("id", "id")]
+        assert source.column_lineage_map[(EVENT_LOG, SNAPSHOT)] == {("id", "id"): None}
