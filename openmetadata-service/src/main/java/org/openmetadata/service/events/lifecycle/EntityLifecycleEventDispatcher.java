@@ -89,6 +89,9 @@ public class EntityLifecycleEventDispatcher {
       return;
     }
 
+    // Build the next snapshot off to the side and publish it in one write, so a
+    // concurrent dispatch sees either the old list or the new sorted one, never
+    // an intermediate append or a partially sorted array.
     List<EntityLifecycleEventHandler> updated = new ArrayList<>(handlers);
     updated.add(handler);
     publishSorted(updated);

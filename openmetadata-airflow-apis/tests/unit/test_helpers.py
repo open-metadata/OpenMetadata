@@ -85,10 +85,24 @@ def test_sanitize_task_id():
     assert sanitize_task_id("task$variable") == "task_variable"
 
 
-# get_all_start_methods() lists the platform default first, without pinning the context.
+# ScanDagsTask pins its own context, so ask the class rather than the platform
+# default: `_start_method` is None only for an unpinned Process, in which case
+# the context default applies (get_all_start_methods() lists it first).
+_SCAN_START_METHOD = (
+    getattr(ScanDagsTask, "_start_method", None)
+    or multiprocessing.get_start_method(allow_none=True)
+    or multiprocessing.get_all_start_methods()[0]
+)
+
+
 @pytest.mark.skipif(
-    (multiprocessing.get_start_method(allow_none=True) or multiprocessing.get_all_start_methods()[0]) != "fork",
-    reason="The race is in os.fork, and a non-fork child would not inherit the no-op scan patch",
+    _SCAN_START_METHOD != "fork",
+    reason=(
+        "The race is in os.fork, and a non-fork child would not inherit the "
+        "no-op scan patch -- it would run 50 real DAG scans instead. "
+        "ScanDagsTask currently spawns, which removes the race outright; this "
+        "guard comes back the moment it forks again."
+    ),
 )
 def test_concurrent_dag_scans_can_fork():
     """
