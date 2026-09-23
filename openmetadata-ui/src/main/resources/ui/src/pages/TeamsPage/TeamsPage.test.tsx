@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import TeamDetailsV1 from '../../components/Settings/Team/TeamDetails/TeamDetailsV1';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TeamType } from '../../generated/entity/teams/team';
@@ -43,11 +42,20 @@ jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () => {
 const mockOnShowDeletedTeamChange = jest.fn();
 
 jest.mock('../../components/Settings/Team/TeamDetails/TeamDetailsV1', () => {
-  return jest.fn().mockImplementation(({ onShowDeletedTeamChange }) => {
-    mockOnShowDeletedTeamChange.mockImplementation(onShowDeletedTeamChange);
+  return jest
+    .fn()
+    .mockImplementation(({ onShowDeletedTeamChange, currentTeam }) => {
+      mockOnShowDeletedTeamChange.mockImplementation(onShowDeletedTeamChange);
 
-    return <p>TeamDetailsV1</p>;
-  });
+      return (
+        <>
+          <p>TeamDetailsV1</p>
+          {currentTeam?.users?.map((user: { id: string; name: string }) => (
+            <span key={user.id}>{user.name}</span>
+          ))}
+        </>
+      );
+    });
 });
 
 jest.mock('../../components/common/Loader/Loader', () => {
@@ -218,7 +226,7 @@ describe('Test Teams Page', () => {
 
   it('should keep the team users when the basic-details response is slower than the advanced one', async () => {
     setMockPermissions({ ViewBasic: true });
-    const users = [{ id: 'user-id', type: 'user' }];
+    const users = [{ id: 'user-id', name: 'team-member', type: 'user' }];
     let resolveBasic: (team: unknown) => void = jest.fn();
     (getTeamByName as jest.Mock).mockImplementation(
       (_name: string, { fields }: { fields: string[] }) =>
@@ -236,9 +244,7 @@ describe('Test Teams Page', () => {
       resolveBasic({ ...MOCK_CURRENT_TEAM, users: undefined });
     });
 
-    const lastProps = (TeamDetailsV1 as jest.Mock).mock.calls.at(-1)[0];
-
-    expect(lastProps.currentTeam.users).toEqual(users);
+    expect(screen.getByText('team-member')).toBeInTheDocument();
 
     (getTeamByName as jest.Mock).mockImplementation(() =>
       Promise.resolve(MOCK_CURRENT_TEAM)
