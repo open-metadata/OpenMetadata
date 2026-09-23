@@ -270,7 +270,10 @@ const GlossaryDetails = ({
             ))}
           </Tabs.List>
           {tabs.map(({ key, children }) => (
-            <Tabs.Panel id={key} key={key}>
+            <Tabs.Panel
+              className="tw:h-[calc(100vh-176px-var(--ant-navbar-height))] tw:flex tw:flex-col tw:overflow-hidden"
+              id={key}
+              key={key}>
               {children}
             </Tabs.Panel>
           ))}

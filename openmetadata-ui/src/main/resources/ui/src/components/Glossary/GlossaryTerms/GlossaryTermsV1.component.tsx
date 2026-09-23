@@ -330,7 +330,10 @@ const GlossaryTermsV1 = ({
               ))}
             </Tabs.List>
             {tabItems.map(({ key, children }) => (
-              <Tabs.Panel id={key} key={key}>
+              <Tabs.Panel
+                className="tw:h-[calc(100vh-176px-var(--ant-navbar-height))] tw:overflow-y-auto tw:has-[.glossary-terms-empty-container]:flex tw:has-[.glossary-terms-empty-container]:flex-col"
+                id={key}
+                key={key}>
                 {children}
               </Tabs.Panel>
             ))}
