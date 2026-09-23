@@ -516,6 +516,7 @@ TOPIC_ID = "11111111-1111-4111-8111-111111111111"
 SEARCH_ID = "22222222-2222-4222-8222-222222222222"
 TABLE_ID = "33333333-3333-4333-8333-333333333333"
 ENDPOINT_ID = "44444444-4444-4444-8444-444444444444"
+OTHER_TABLE_ID = "55555555-5555-4555-8555-555555555555"
 
 
 class TestResolverRegistry:
@@ -764,11 +765,17 @@ class TestServiceClassDetection:
             "my": _db_service("my", MysqlConnection(username="u", hostPort="h:3306")),
         }.get(fqn)
 
-        assert airbyte_source.db_service_classes == {"pg": True, "my": False}
+        assert (airbyte_source.db_service_class("pg"), airbyte_source.db_service_class("my")) == (True, False)
 
-    def test_no_configured_services_is_an_empty_map(self, airbyte_source):
-        assert airbyte_source.get_db_service_names() == []
-        assert airbyte_source.db_service_classes == {}
+    def test_the_class_is_resolved_once_per_service(self, airbyte_source):
+        """Every stream needs the same answer, so the server is asked once per service."""
+        airbyte_source.source_config.lineageInformation = LineageInformation(dbServiceNames=["pg"])
+        airbyte_source.metadata.get_by_name.return_value = _db_service(
+            "pg", PostgresConnection(username="u", hostPort="h:5432", database="d")
+        )
+
+        assert [airbyte_source.db_service_class("pg") for _ in range(3)] == [True, True, True]
+        assert airbyte_source.metadata.get_by_name.call_count == 1
 
 
 class TestTableFqnCandidates:
@@ -968,6 +975,23 @@ class TestPerServiceTableResolution:
     def test_no_service_resolves_to_no_table(self, airbyte_source):
         airbyte_source.source_config.lineageInformation = LineageInformation(dbServiceNames=["a", "b"])
         self._route(airbyte_source, classes={"a": True, "b": False}, tables={})
+
+        assert airbyte_source.resolve_table(self.DETAILS) is None
+
+    def test_two_services_matching_at_the_same_rank_resolve_to_nothing(self, airbyte_source):
+        """
+        Equal rank means the reported levels do not separate the two readings, so neither can
+        be shown to be the right one. Emit nothing instead of picking by configured order.
+        """
+        airbyte_source.source_config.lineageInformation = LineageInformation(dbServiceNames=["a", "b"])
+        self._route(
+            airbyte_source,
+            classes={"a": True, "b": True},
+            tables={
+                "a.app_db.public.users": _stub(TABLE_ID, "a.app_db.public.users"),
+                "b.app_db.public.users": _stub(OTHER_TABLE_ID, "b.app_db.public.users"),
+            },
+        )
 
         assert airbyte_source.resolve_table(self.DETAILS) is None
 

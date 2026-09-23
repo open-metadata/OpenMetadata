@@ -12,10 +12,11 @@
 Airbyte source to extract metadata
 """
 
+from collections import defaultdict
 from collections.abc import Iterable
 from datetime import datetime, timezone
-from functools import cached_property
 
+from cachetools import LRUCache
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -69,6 +70,10 @@ from .utils import service_supports_database, table_fqn_candidates  # noqa: TID2
 logger = ingestion_logger()
 
 
+# Bound for the database-service class memo. `dbServiceNames` is static config and never has
+# this many entries; the cap only stops the map from being unbounded by construction.
+DB_SERVICE_CLASS_CACHE_SIZE = 100
+
 STATUS_MAP = {
     "cancelled": StatusType.Failed,
     "succeeded": StatusType.Successful,
@@ -113,6 +118,10 @@ class AirbyteSource(PipelineServiceSource):
 
     def __init__(self, config, metadata):
         super().__init__(config, metadata)
+
+        # Keyed on the names in `dbServiceNames`, so the real bound is the configured list;
+        # the cap is the backstop the repository requires of every cache.
+        self._db_service_classes: LRUCache = LRUCache(maxsize=DB_SERVICE_CLASS_CACHE_SIZE)
 
         # Job shape follows the API, not the deployment: the public API (Cloud
         # and self-hosted `api/public/v1`) returns flat jobs, while only the
@@ -301,17 +310,19 @@ class AirbyteSource(PipelineServiceSource):
                 )
             )
 
-    @cached_property
-    def db_service_classes(self) -> dict[str, bool | None]:
+    def db_service_class(self, service_name: str) -> bool | None:
         """
-        Service class per configured database service, resolved once.
+        Whether one configured database service models a real database level, resolved once.
 
-        ``dbServiceNames`` is static config, so the map is bounded by it and never grows with
-        the number of streams. The value is per service on purpose: a list mixing a
-        multi-database service with a single-database one has no single right answer, and
-        collapsing it would send every stream through one shape.
+        Classifying is a server read, and every stream on every connection needs the answer
+        for the same handful of services, so it is memoised in an explicitly capped LRU. The
+        value is per service on purpose: a list mixing a multi-database service with a
+        single-database one has no single right answer, and collapsing it would send every
+        stream through one shape.
         """
-        return {name: service_supports_database(self.metadata, name) for name in self.get_db_service_names()}
+        if service_name not in self._db_service_classes:
+            self._db_service_classes[service_name] = service_supports_database(self.metadata, service_name)
+        return self._db_service_classes[service_name]
 
     def resolve_table(self, table_details: TableDetails) -> Table | None:
         """
@@ -325,6 +336,12 @@ class AirbyteSource(PipelineServiceSource):
         so a per-service loop lets an earlier service win with a degraded shape before the
         right service is tried with its exact one -- which is how a MySQL destination resolved
         onto a Postgres table and a Postgres destination onto a MySQL one.
+
+        Ranking orders the shapes but cannot separate two of equal rank: with a database and
+        no schema, reading the level as a schema and reading it as a database are both one
+        level pinned down. When several shapes at the same rank find a table the answer is a
+        coin flip, so none is emitted -- the same "exactly one survivor" rule the container
+        and API collection guards apply.
 
         The entity is still fetched and verified rather than trusting ``fqn.build``, which
         returns a *constructed* FQN whenever service, database and schema are all present,
@@ -341,16 +358,31 @@ class AirbyteSource(PipelineServiceSource):
             )
             return None
 
-        shapes = [
-            (_shape_rank(candidate), service_name, candidate)
-            for service_name in (self.get_db_service_names() or ["*"])
-            for candidate in table_fqn_candidates(table_details, self.db_service_classes.get(service_name))
-        ]
-        # Stable sort, so services keep their configured order inside a rank.
-        for _, service_name, candidate in sorted(shapes, key=lambda shape: shape[0]):
-            entity = self._fetch_table(service_name, candidate)
-            if entity:
-                return entity
+        by_rank: dict[int, list[tuple[str, TableDetails]]] = defaultdict(list)
+        for service_name in self.get_db_service_names() or ["*"]:
+            for candidate in table_fqn_candidates(table_details, self.db_service_class(service_name)):
+                by_rank[_shape_rank(candidate)].append((service_name, candidate))
+
+        for rank in sorted(by_rank):
+            matches: dict[str, Table] = {}
+            for service_name, candidate in by_rank[rank]:
+                entity = self._fetch_table(service_name, candidate)
+                if entity:
+                    matches[model_str(entity.fullyQualifiedName)] = entity
+            if len(matches) > 1:
+                # Same rank means the shapes are equally specific, so nothing in the reported
+                # levels separates them -- one reads the Airbyte "database" as an OpenMetadata
+                # database, another as a schema, and both found a table. Picking either is a
+                # coin flip, so emit nothing, as the container and API guards do.
+                logger.warning(
+                    "Airbyte lineage: table [%s] matches %s; skipping. Narrow"
+                    " lineageInformation.dbServiceNames to disambiguate.",
+                    table_details.name,
+                    sorted(matches),
+                )
+                return None
+            if matches:
+                return next(iter(matches.values()))
         return None
 
     def _fetch_table(self, service_name: str, candidate: TableDetails) -> Table | None:
