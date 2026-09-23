@@ -1289,6 +1289,17 @@
     --color-bg-primary-solid: theme(--color-bg-secondary);
     --color-bg-primary_alt: theme(--color-bg-secondary);
     --color-bg-primary_hover: --alpha(theme(--color-white) / 6%);
+
+    /* Empty-placeholder "features" gradient — dark: fade to the page (gray-950)
+       with a subtle blue tint top/bottom, mirroring the light gradient. */
+    --gradient-empty-placeholder-features: linear-gradient(
+      180deg,
+      rgba(41, 53, 74, 0.5) 0%,
+      theme(--color-bg-primary) 25%,
+      theme(--color-bg-primary) 49.52%,
+      theme(--color-bg-primary) 75%,
+      rgba(41, 53, 74, 1) 100%
+    );
     --color-bg-secondary: theme(--color-gray-900);
     --color-bg-secondary-solid: theme(--color-gray-600);
     --color-bg-secondary_subtle: theme(--color-gray-900);
