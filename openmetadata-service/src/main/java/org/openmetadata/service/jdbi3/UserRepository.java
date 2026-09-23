@@ -1669,7 +1669,7 @@ public class UserRepository extends EntityRepository<User> {
           tasksToInvalidate.size(),
           category,
           entity.getFullyQualifiedName(),
-          tasksToInvalidate.stream().map(task -> task.id).toList());
+          sampleForLog(tasksToInvalidate, task -> String.valueOf(task.id)));
     }
     retry.executeRunnable(
         () -> daoCollection.taskDAO().deleteByCreatorAndCategory(creatorId, category));

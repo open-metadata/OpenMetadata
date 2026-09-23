@@ -315,6 +315,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public static final String BULK_IMPORT = "bulkImport";
   private static final int RELATION_DELETE_BATCH_SIZE = 500;
 
+  /** Ids logged per delete batch, so a large cascade cannot emit a truncated log line. */
+  private static final int MAX_LOGGED_IDS = 20;
+
   /**
    * Max entities per transaction in the wrapped bulk-create path. One transaction holds InnoDB row
    * locks for every entity + relationship + tag row it writes; chunking bounds the lock-hold and
@@ -7363,6 +7366,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * resolves. Both are reached through {@code entity --MENTIONED_IN--> artifact}, so they must be
    * collected here, before the entity's own relationship rows are removed.
    */
+  /**
+   * Bounded sample of a delete batch for logging. A subtree cascade can remove thousands of rows,
+   * and an unbounded id list would both allocate a second copy of the batch and produce a log line
+   * large enough to be truncated — losing the trail this logging exists to provide.
+   */
+  protected static <T> String sampleForLog(List<T> items, Function<T, String> describe) {
+    String sample =
+        items.stream().limit(MAX_LOGGED_IDS).map(describe).collect(Collectors.joining(", "));
+    int omitted = items.size() - MAX_LOGGED_IDS;
+    return omitted <= 0 ? sample : "%s, and %d more".formatted(sample, omitted);
+  }
+
   private void deleteFeedArtifactsAbout(UUID entityId) {
     deleteFeedArtifacts(entityId, Entity.TASK, daoCollection.taskDAO());
     deleteFeedArtifacts(entityId, Entity.ANNOUNCEMENT, daoCollection.announcementDAO());
@@ -7414,13 +7429,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (!artifacts.isEmpty()) {
         List<UUID> artifactIds =
             artifacts.stream().map(artifact -> UUID.fromString(artifact.getToId())).toList();
+        // artifact<-about, because the id that matters when tracing a cascade is the entity whose
+        // deletion triggered it, not the artifact that disappeared.
         LOG.info(
-            "Deleting {} {}(s) as artifacts about {} {}(s): {}",
+            "Deleting {} {}(s) as artifacts about {} {}(s) [artifact<-about]: {}",
             artifactIds.size(),
             artifactType,
             entityIds.size(),
             entityType,
-            artifactIds);
+            sampleForLog(artifacts, a -> a.getToId() + "<-" + a.getFromId()));
         daoCollection.relationshipDAO().batchDeleteRelationships(artifactIds, artifactType);
         artifactDao.deleteByIds(artifactIds);
       }
