@@ -23,17 +23,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
-import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
-import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -44,8 +41,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.events.scheduled.AlertJobs;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
-import org.openmetadata.service.events.subscription.AlertDefinition;
-import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.events.subscription.AlertDefinitionPolicy;
 import org.openmetadata.service.events.subscription.DestinationValidation;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
@@ -166,7 +162,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     if (!update) {
       requireLoadableConsumer(entity);
       DestinationValidation.ofANewAlert(entity);
-      compileNewDefinition(entity);
+      AlertDefinitionPolicy.ofNew(entity).prepareNew(entity);
     }
 
     // Validate custom template if assigned
@@ -190,43 +186,6 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
         Class.forName(alert.getClassName()).asSubclass(AbstractEventConsumer.class);
       } catch (ClassNotFoundException | ClassCastException e) {
         throw new BadRequestException("Consumer class cannot be loaded: " + alert.getClassName());
-      }
-    }
-  }
-
-  private void compileNewDefinition(EventSubscription entity) {
-    if (AlertDefinition.isCompiledFromSelections(entity, entity.getFilteringRules())) {
-      entity.setFilteringRules(AlertDefinition.compileStrictly(entity));
-    } else {
-      requireOneResource(entity.getFilteringRules());
-    }
-    fillAbsentRuleLists(entity);
-    validateFilterRules(entity);
-  }
-
-  private static void fillAbsentRuleLists(EventSubscription entity) {
-    FilteringRules filteringRules = entity.getFilteringRules();
-    if (filteringRules != null && filteringRules.getRules() == null) {
-      filteringRules.setRules(new ArrayList<>());
-    }
-    if (filteringRules != null && filteringRules.getActions() == null) {
-      filteringRules.setActions(new ArrayList<>());
-    }
-  }
-
-  private static void validateFilterRules(EventSubscription entity) {
-    // Resolve JSON blobs into Rule object and perform schema based validation
-    if (entity.getFilteringRules() != null) {
-      List<EventFilterRule> rules = entity.getFilteringRules().getRules();
-      // Validate all the expressions in the rule
-      for (EventFilterRule rule : rules) {
-        AlertUtil.validateExpression(rule.getCondition(), Boolean.class);
-      }
-      rules.sort(Comparator.comparing(EventFilterRule::getName));
-      if (!rules.isEmpty()) {
-        // Validate the combined condition too (each rule is validated above), so a bad
-        // combination is caught here instead of when it is first compiled at runtime.
-        AlertUtil.validateExpression(AlertUtil.buildCompleteCondition(rules), Boolean.class);
       }
     }
   }
@@ -287,56 +246,6 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     }
   }
 
-  /**
-   * Done once, against the alert as it is stored, before any comparison: when edits made within
-   * the session window are merged, later comparisons run against an older version, and only the
-   * final definition may be judged. A definition that did not change is never validated, so an
-   * alert stored under older rules can still be renamed or switched back on.
-   */
-  private static void settleDefinition(
-      EventSubscription stored, EventSubscription updated, Operation operation) {
-    FilteringRules storedRules = stored.getFilteringRules();
-    if (!AlertDefinition.isCompiledFromSelections(updated, storedRules)) {
-      requireOneResourceWhenChanged(storedRules, updated.getFilteringRules());
-      keepRulesWrittenByHand(storedRules, updated, operation);
-    } else if (AlertDefinition.isSameDefinition(stored, updated)) {
-      updated.setFilteringRules(AlertDefinition.compileOrKeep(updated, storedRules));
-    } else {
-      updated.setFilteringRules(AlertDefinition.compileStrictly(updated));
-      validateFilterRules(updated);
-    }
-    fillAbsentRuleLists(updated);
-  }
-
-  // Rules written by hand name the one resource they were written for.
-  private static void requireOneResource(FilteringRules rules) {
-    if (rules == null || listOrEmpty(rules.getResources()).size() != 1) {
-      throw new BadRequestException(
-          "One resource can be specified. Zero or Multiple resources are not supported.");
-    }
-  }
-
-  private static void requireOneResourceWhenChanged(FilteringRules stored, FilteringRules sent) {
-    List<String> storedResources = stored == null ? null : stored.getResources();
-    List<String> sentResources = sent == null ? null : sent.getResources();
-    if (!Objects.equals(storedResources, sentResources)) {
-      requireOneResource(sent);
-    }
-  }
-
-  // The body of a PUT has no place for rules, so it says nothing about them and they stay. A
-  // PATCH can write them, and what it wrote is checked like any new rule.
-  private static void keepRulesWrittenByHand(
-      FilteringRules storedRules, EventSubscription updated, Operation operation) {
-    FilteringRules sent = updated.getFilteringRules();
-    if (operation.isPut() && sent != null && storedRules != null) {
-      sent.setRules(storedRules.getRules());
-      sent.setActions(storedRules.getActions());
-    } else if (sent != null && !sent.equals(storedRules)) {
-      validateFilterRules(updated);
-    }
-  }
-
   @Override
   public EntityRepository<EventSubscription>.EntityUpdater getUpdater(
       EventSubscription original,
@@ -350,7 +259,11 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     public EventSubscriptionUpdater(
         EventSubscription original, EventSubscription updated, Operation operation) {
       super(original, updated, operation);
-      settleDefinition(original, updated, operation);
+      // Once, against the alert as it is stored, before any comparison: edits merged within the
+      // session window are later compared with an older version, and only the final definition
+      // may be judged.
+      AlertDefinitionPolicy.ofUpdate(original, updated)
+          .settle(original, updated, operation.isPut());
       DestinationValidation.ofWhatChanged(original, updated);
     }
 

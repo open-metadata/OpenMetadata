@@ -1,11 +1,9 @@
 package org.openmetadata.service.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.Comparator;
 import java.util.List;
-import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import lombok.extern.slf4j.Slf4j;
@@ -24,20 +22,7 @@ import org.openmetadata.schema.entity.events.FilteringRules;
 @Slf4j
 public final class AlertDefinition {
 
-  private static final Set<AlertType> COMPILED_FROM_SELECTIONS =
-      Set.of(AlertType.NOTIFICATION, AlertType.OBSERVABILITY);
-
   private AlertDefinition() {}
-
-  /**
-   * Alerts of the other types carry rules written by hand, by the system or by another product,
-   * and so does an alert of these types that has rules but no selections they could have come
-   * from. Those rules are never compiled, so nothing here may replace them.
-   */
-  public static boolean isCompiledFromSelections(EventSubscription alert, FilteringRules stored) {
-    boolean writtenByHand = alert.getInput() == null && !nullOrEmpty(rulesOf(stored));
-    return COMPILED_FROM_SELECTIONS.contains(alert.getAlertType()) && !writtenByHand;
-  }
 
   public static boolean isSameDefinition(EventSubscription one, EventSubscription other) {
     return Canonical.of(one).equals(Canonical.of(other));
@@ -69,10 +54,6 @@ public final class AlertDefinition {
     return alert.getFilteringRules() == null
         ? List.of()
         : listOrEmpty(alert.getFilteringRules().getResources());
-  }
-
-  private static List<?> rulesOf(FilteringRules stored) {
-    return stored == null ? List.of() : listOrEmpty(stored.getRules());
   }
 
   /**

@@ -42,6 +42,15 @@ class AlertDefinitionIT {
   private static final String UI_DESCRIPTION_SAVE =
       "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"edited in the form\"},"
           + "{\"op\":\"add\",\"path\":\"/input/actions\",\"value\":[]}]";
+  // What the form sends for an alert without selections: it keeps the rules and adds empty lists.
+  private static final String FORM_SAVE_WITHOUT_SELECTIONS =
+      "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"saved in the form\"},"
+          + "{\"op\":\"add\",\"path\":\"/input\",\"value\":{\"actions\":[],\"filters\":[]}}]";
+  private static final EventFilterRule WRITTEN =
+      new EventFilterRule()
+          .withName("writtenByHand")
+          .withEffect(ArgumentsInput.Effect.INCLUDE)
+          .withCondition("matchAnyEventType({'entityCreated'})");
 
   @Test
   void migratedMentionAlertIsEditableByPutAndPatch(TestNamespace ns) {
@@ -90,6 +99,37 @@ class AlertDefinitionIT {
     put(request.withDescription("and put"));
     assertEquals(
         List.of(written), AlertFixtures.stored(alert.getId()).getFilteringRules().getRules());
+  }
+
+  @Test
+  void handWrittenNotificationRulesSurviveFormSaves(TestNamespace ns) {
+    CreateEventSubscription request = tableAlert(ns, "hand_written_notification");
+    EventSubscription alert = handWritten(create(request));
+
+    for (int save = 0; save < 2; save++) {
+      put(request.withDescription("put " + save));
+      patch(alert, FORM_SAVE_WITHOUT_SELECTIONS);
+
+      assertEquals(
+          List.of(WRITTEN), AlertFixtures.stored(alert.getId()).getFilteringRules().getRules());
+    }
+  }
+
+  @Test
+  void formSelectionsTurnAHandWrittenAlertIntoACompiledOne(TestNamespace ns) {
+    EventSubscription alert = handWritten(create(tableAlert(ns, "converted_by_the_form")));
+    String chooseAnOwner =
+        "[{\"op\":\"add\",\"path\":\"/input\",\"value\":{\"actions\":[],\"filters\":"
+            + JsonUtils.pojoToJson(List.of(selection("filterByOwnerName", "alice")))
+            + "}}]";
+
+    patch(alert, chooseAnOwner);
+
+    assertEquals(
+        List.of("matchAnyOwnerName({'alice'})"),
+        AlertFixtures.stored(alert.getId()).getFilteringRules().getRules().stream()
+            .map(EventFilterRule::getCondition)
+            .toList());
   }
 
   // Rules written by hand name the one resource they were written for.
@@ -368,6 +408,12 @@ class AlertDefinitionIT {
   private static void assertRejected(Runnable save) {
     OpenMetadataException rejected = assertThrows(OpenMetadataException.class, save::run);
     assertEquals(400, rejected.getStatusCode());
+  }
+
+  // As an earlier release or a direct API client left it: rules, and no selections behind them.
+  private static EventSubscription handWritten(EventSubscription alert) {
+    alert.getFilteringRules().setRules(new ArrayList<>(List.of(WRITTEN)));
+    return AlertFixtures.writeBehindTheServer(alert);
   }
 
   // The 2.0 upgrade adds "task" beside "conversation" straight in the stored row.

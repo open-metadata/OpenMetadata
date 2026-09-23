@@ -10,7 +10,6 @@ import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
-import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FilteringRules;
 
@@ -63,25 +62,7 @@ class AlertDefinitionTest {
                 null)));
   }
 
-  @Test
-  void rulesWithNoSelectionsBehindThemWereWrittenByHand() {
-    FilteringRules written =
-        new FilteringRules()
-            .withResources(List.of("table"))
-            .withRules(List.of(new EventFilterRule().withName("custom").withCondition("true")));
-    EventSubscription withoutSelections =
-        new EventSubscription().withAlertType(AlertType.NOTIFICATION).withFilteringRules(written);
-    EventSubscription custom = alert(List.of("table"), List.of(byOwner("alice")), null);
-    custom.setAlertType(AlertType.CUSTOM);
-
-    assertFalse(AlertDefinition.isCompiledFromSelections(withoutSelections, written));
-    assertFalse(AlertDefinition.isCompiledFromSelections(custom, written));
-    assertTrue(
-        AlertDefinition.isCompiledFromSelections(
-            alert(List.of("table"), List.of(byOwner("alice")), null), written));
-  }
-
-  // Two sources cannot be compiled by today's builder, which is what an upgraded mention alert has.
+  // A source the catalog does not know cannot be compiled, so the alert keeps the text it has.
   @Test
   void definitionThatCannotBeCompiledKeepsItsWholeStoredText() {
     FilteringRules stored = new FilteringRules().withResources(List.of("thread", "task"));
