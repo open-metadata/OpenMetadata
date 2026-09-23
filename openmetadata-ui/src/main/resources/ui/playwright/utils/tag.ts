@@ -67,7 +67,9 @@ export const visitClassificationPage = async (
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(page.getByTestId('tags-container').getByTestId('table')).toBeVisible();
+  await expect(
+    page.getByTestId('tags-container').getByTestId('table')
+  ).toBeVisible();
 
   await expect(
     page
