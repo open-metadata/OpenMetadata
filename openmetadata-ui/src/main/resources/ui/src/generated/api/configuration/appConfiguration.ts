@@ -21,7 +21,7 @@ export interface AppConfiguration {
      * Null means no tenant default is configured.
      */
     defaultAppMode?: DefaultAppMode | null;
-    defaultTimeFormat?: string | null;
+    defaultTimeFormat?: string;
 }
 
 export enum DefaultAppMode {
