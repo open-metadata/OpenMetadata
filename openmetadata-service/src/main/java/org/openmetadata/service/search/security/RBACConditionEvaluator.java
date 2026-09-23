@@ -237,6 +237,10 @@ public class RBACConditionEvaluator {
         hasAnyRole(roles, collector);
       }
       case "hasDomain" -> hasDomain(collector);
+      case "matchAnyDomain" -> {
+        List<String> domainFqns = extractMethodArguments(methodRef);
+        matchAnyDomain(domainFqns, collector);
+      }
       case "inAnyTeam" -> {
         List<String> teams = extractMethodArguments(methodRef);
         inAnyTeam(teams, collector);
@@ -279,6 +283,20 @@ public class RBACConditionEvaluator {
       OMQueryBuilder tagQuery = queryBuilderFactory.termQuery("tags.tagFQN", tag);
       collector.addMust(tagQuery);
     }
+  }
+
+  public void matchAnyDomain(List<String> domainFqns, ConditionCollector collector) {
+    List<OMQueryBuilder> domainQueries = new ArrayList<>();
+    for (String domainFqn : domainFqns) {
+      domainQueries.add(queryBuilderFactory.termQuery("domains.fullyQualifiedName", domainFqn));
+    }
+    OMQueryBuilder domainQueryCombined;
+    if (domainQueries.size() == 1) {
+      domainQueryCombined = domainQueries.get(0);
+    } else {
+      domainQueryCombined = queryBuilderFactory.boolQuery().should(domainQueries);
+    }
+    collector.addMust(domainQueryCombined);
   }
 
   public void matchAnyCertification(
