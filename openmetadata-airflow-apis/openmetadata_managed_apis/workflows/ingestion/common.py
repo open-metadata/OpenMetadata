@@ -331,7 +331,7 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     return dag_kwargs
 
 
-def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_, **__):
+def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *args, **kwargs):
     """
     Airflow on_failure_callback to update workflow status if something unexpected
     happens or if the DAG is externally killed.
@@ -348,6 +348,14 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_,
     Here the workflow_config is already properly shaped, otherwise
     the DAG deployment would fail.
 
+    Run id resolution: if the callback fires after a DAG reparse, the freshly
+    parsed workflow_config has a brand-new random `pipelineRunId` from
+    build_dag that does not match the run the server actually recorded.
+    Prefer the id derived from `dag_run.run_id` via `pipeline_run_id()` (the
+    same helper `format_dag_run_state` uses), so the status update lands on
+    the correct run. Falls back to `workflow_config.pipelineRunId` for
+    call sites that don't pass an Airflow context.
+
     More info on context variables here
     https://airflow.apache.org/docs/apache-airflow/stable/templates-ref.html#templates-variables
     """
@@ -360,9 +368,28 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_,
         if workflow_config.ingestionPipelineFQN:
             logger.info(f"Sending status to Ingestion Pipeline {workflow_config.ingestionPipelineFQN}")
 
+            # Airflow calls on_failure_callback with a task/context dict as the
+            # 2nd positional arg (or as `context=`); production may also pass
+            # nothing when the caller has already substituted the id explicitly.
+            context = kwargs.get("context") or (args[0] if args else None)
+            dag_run = context.get("dag_run") if isinstance(context, dict) else None
+            run_id = (
+                pipeline_run_id(dag_run.dag_id, dag_run.run_id)
+                if dag_run is not None
+                else workflow_config.pipelineRunId.root
+                if workflow_config.pipelineRunId is not None
+                else None
+            )
+            if run_id is None:
+                logger.info(
+                    "No pipelineRunId available (no dag_run in context and workflow_config carries none)."
+                    " Skipping the failed-status callback."
+                )
+                return
+
             pipeline_status = metadata.get_pipeline_status(
                 workflow_config.ingestionPipelineFQN,
-                str(workflow_config.pipelineRunId.root),
+                str(run_id),
             )
             pipeline_status.endDate = Timestamp(int(datetime.now().timestamp() * 1000))
             pipeline_status.pipelineState = PipelineState.failed
