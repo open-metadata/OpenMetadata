@@ -19,6 +19,7 @@ from uuid import UUID
 import pytest
 
 from metadata.data_quality.processor.test_case_runner import TestCaseRunner
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition, TestPlatform
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -274,3 +275,69 @@ class TestFilterForOMTestCases:
         result = mock_runner.filter_for_om_test_cases([test_case])
 
         assert len(result) == 0
+
+
+def _result(status: TestCaseStatus, message: str = "boom") -> Mock:
+    """A TestCaseResultResponse carrying one result, as run_and_handle returns."""
+    response = Mock()
+    response.testCaseResult = TestCaseResult(
+        timestamp=1234567890000,
+        testCaseStatus=status,
+        result=message,
+    )
+    return response
+
+
+class TestAbortedTestCasesAreCounted:
+    """A test that could not be evaluated must not leave the step reporting success.
+
+    Validations return TestCaseStatus.Aborted rather than raising when they cannot
+    run, so without this the step sees only scanned records and a run in which no
+    test executed reports zero errors and 100% success.
+    """
+
+    @pytest.fixture
+    def runner(self):
+        # A real instance with a stubbed status, rather than a Mock with methods
+        # bound onto it: the methods under test then run for real, so a
+        # regression shows up as a failed assertion rather than as a missing
+        # attribute on the mock.
+        runner = TestCaseRunner.__new__(TestCaseRunner)
+        runner.status = Mock()
+        return runner
+
+    def test_aborted_result_is_recorded_as_a_failure(self, runner):
+        test_case = create_test_case("aborted_case", UUID(int=1))
+        test_case.fullyQualifiedName = Mock(root="svc.db.schema.table.aborted_case")
+        suite_runner = Mock()
+        suite_runner.run_and_handle.return_value = _result(TestCaseStatus.Aborted, "Login failed")
+
+        result = runner._run_test_case(test_case, suite_runner)
+
+        assert result is not None, "the aborted result still goes to the sink"
+        runner.status.scanned.assert_called_once()
+        runner.status.failed.assert_called_once()
+        assert "Login failed" in runner.status.failed.call_args[0][0].error
+
+    @pytest.mark.parametrize("status", [TestCaseStatus.Success, TestCaseStatus.Failed])
+    def test_success_and_failed_are_not_step_failures(self, runner, status):
+        """A Failed test case is a data problem, not an execution error."""
+        test_case = create_test_case(f"{status.value}_case", UUID(int=2))
+        test_case.fullyQualifiedName = Mock(root=f"svc.db.schema.table.{status.value}")
+        suite_runner = Mock()
+        suite_runner.run_and_handle.return_value = _result(status)
+
+        runner._run_test_case(test_case, suite_runner)
+
+        runner.status.scanned.assert_called_once()
+        runner.status.failed.assert_not_called()
+
+    def test_missing_result_is_not_a_failure(self, runner):
+        test_case = create_test_case("no_result_case", UUID(int=3))
+        test_case.fullyQualifiedName = Mock(root="svc.db.schema.table.no_result")
+        suite_runner = Mock()
+        suite_runner.run_and_handle.return_value = None
+
+        runner._run_test_case(test_case, suite_runner)
+
+        runner.status.failed.assert_not_called()
