@@ -826,16 +826,21 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   protected boolean deleteDeployedPipeline(
       IngestionPipeline entity, boolean allowUnavailableRunner) {
-    // A metadata-only pipeline has no deployed workflow to remove from the runner.
-    if (Boolean.FALSE.equals(entity.getDeployed())) {
-      return false;
-    }
+    // For pipelines that never fully deployed, still ATTEMPT runner cleanup — a
+    // first-deploy attempt can write DAG/config files to Airflow before the
+    // scheduler-readiness check times out (deployed stays false but files
+    // exist). Tolerate an unavailable runner in that case: the caller couldn't
+    // observe a deploy anyway, so blocking the delete on runner availability
+    // would leave the pipeline unreachable. When the runner IS reachable, the
+    // cleanup call safely no-ops if there's nothing to remove.
+    boolean effectiveAllowUnavailableRunner =
+        allowUnavailableRunner || Boolean.FALSE.equals(entity.getDeployed());
     boolean wasRunnerCleanupSkipped = false;
     if (pipelineServiceClient != null) {
       try {
         pipelineServiceClient.deletePipeline(entity);
       } catch (IngestionRunnerUnavailableException exception) {
-        if (allowUnavailableRunner) {
+        if (effectiveAllowUnavailableRunner) {
           wasRunnerCleanupSkipped = true;
         } else {
           throw exception;

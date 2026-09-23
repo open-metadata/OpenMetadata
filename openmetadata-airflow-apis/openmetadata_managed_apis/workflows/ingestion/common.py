@@ -348,13 +348,21 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *ar
     Here the workflow_config is already properly shaped, otherwise
     the DAG deployment would fail.
 
-    Run id resolution: if the callback fires after a DAG reparse, the freshly
-    parsed workflow_config has a brand-new random `pipelineRunId` from
-    build_dag that does not match the run the server actually recorded.
-    Prefer the id derived from `dag_run.run_id` via `pipeline_run_id()` (the
-    same helper `format_dag_run_state` uses), so the status update lands on
-    the correct run. Falls back to `workflow_config.pipelineRunId` for
-    call sites that don't pass an Airflow context.
+    Run id resolution priority (highest first):
+      1. `dag_run.conf.pipelineRunId` — server-triggered runs. The server names
+         the DagRun `manual__<timestamp>` and stashes the real UUID it recorded
+         under `conf.pipelineRunId`; we must use that so the failure status
+         updates the same run the server queued.
+      2. `pipeline_run_id(dag_run.dag_id, dag_run.run_id)` — scheduled runs (and
+         any manual run whose run_id is itself a UUID). Same helper the response
+         layer `format_dag_run_state` uses, so both halves converge on the same
+         UUID/UUIDv5.
+      3. `workflow_config.pipelineRunId.root` — fallback for callers that pass
+         no Airflow context.
+
+    Airflow 2.x's callback context is `airflow.utils.context.Context`, a
+    `collections.abc.MutableMapping` that is NOT a `dict` subclass — so we
+    duck-type on `.get` rather than `isinstance(..., dict)`.
 
     More info on context variables here
     https://airflow.apache.org/docs/apache-airflow/stable/templates-ref.html#templates-variables
@@ -372,9 +380,15 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *ar
             # 2nd positional arg (or as `context=`); production may also pass
             # nothing when the caller has already substituted the id explicitly.
             context = kwargs.get("context") or (args[0] if args else None)
-            dag_run = context.get("dag_run") if isinstance(context, dict) else None
+            dag_run = context.get("dag_run") if hasattr(context, "get") else None
+            conf_run_id = None
+            if dag_run is not None:
+                conf = getattr(dag_run, "conf", None) or {}
+                conf_run_id = conf.get(PIPELINE_RUN_ID_PARAM) if hasattr(conf, "get") else None
             run_id = (
-                pipeline_run_id(dag_run.dag_id, dag_run.run_id)
+                conf_run_id
+                if conf_run_id is not None
+                else pipeline_run_id(dag_run.dag_id, dag_run.run_id)
                 if dag_run is not None
                 else workflow_config.pipelineRunId.root
                 if workflow_config.pipelineRunId is not None

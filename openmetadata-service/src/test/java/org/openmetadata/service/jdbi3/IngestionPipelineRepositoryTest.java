@@ -67,11 +67,17 @@ class IngestionPipelineRepositoryTest {
 
   @Test
   void deleteUndeployedPipelineDoesNotRequireRunner() {
+    // For an undeployed pipeline, cleanup is attempted (a failed first-deploy
+    // can still have left DAG/config files in the runner) but an unavailable
+    // runner is tolerated: the caller couldn't observe a successful deploy, so
+    // blocking the delete on runner availability would leave the pipeline
+    // unreachable. The method returns true to indicate cleanup was skipped
+    // (runner unreachable) rather than confirmed complete.
     IngestionPipeline pipeline = createBasicPipeline().withDeployed(false);
     IngestionPipelineRepository cleanupRepository =
         repositoryWithClient(unavailableRunnerClient(pipeline));
 
-    assertFalse(cleanupRepository.deleteDeployedPipeline(pipeline, false));
+    assertTrue(cleanupRepository.deleteDeployedPipeline(pipeline, false));
   }
 
   @Test
