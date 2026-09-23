@@ -31,6 +31,7 @@ import {
   ANNOUNCEMENT_SURFACE_CLASSES,
   getAnnouncementTypeConfig,
 } from '../../../utils/AnnouncementsUtils';
+import type { IconComponentType } from '@openmetadata/ui-core-components';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
@@ -58,10 +59,12 @@ const stopAnd = (handler?: () => void) => (e: MouseEvent) => {
  */
 const AnnouncementTitle = ({
   className,
+  size = 'text-sm',
   onClick,
   title,
 }: {
   className: string;
+  size?: 'text-sm' | 'text-lg';
   onClick?: () => void;
   title: string;
 }) => {
@@ -70,8 +73,8 @@ const AnnouncementTitle = ({
       ellipsis
       as="span"
       className={className}
-      size="text-sm"
-      weight="medium">
+      size={size}
+      weight="semibold">
       {title}
     </Typography>
   );
@@ -315,6 +318,77 @@ const ExpandedBody = ({
   </Box>
 );
 
+/**
+ * The landing-page banner: the chip sits to the left of the whole block, and the
+ * badge follows the title on the same line rather than sitting above it. The
+ * title runs larger and in the type colour, and the footer carries the entity —
+ * this banner is not on that entity's page.
+ */
+const FullBody = ({
+  announcement,
+  badgeColor,
+  hasDescription,
+  labelKey,
+  title,
+  titleClassName,
+  typeChip,
+  actions,
+  onClick,
+}: Omit<AnnouncementBodyProps, 'plainDescription' | 'showEntity'> & {
+  actions: ReactNode;
+}) => (
+  <Box align="start" className="tw:gap-3">
+    {typeChip}
+
+    <Box className="tw:min-w-0 tw:flex-1 tw:gap-1.5" direction="col">
+      <Box align="center" className="tw:min-w-0 tw:gap-2">
+        <AnnouncementTitle
+          className={titleClassName}
+          size="text-lg"
+          title={title}
+          onClick={onClick}
+        />
+        <TypeBadge badgeColor={badgeColor} labelKey={labelKey} />
+      </Box>
+
+      {hasDescription && (
+        <RichTextEditorPreviewerV1
+          className="tw:[&_p]:text-text-secondary tw:[&_p]:text-sm"
+          data-testid="announcement-description"
+          enableSeeMoreVariant={false}
+          markdown={announcement.description}
+          showReadMoreBtn={false}
+        />
+      )}
+
+      <AnnouncementFooter showEntity announcement={announcement} />
+    </Box>
+
+    {actions}
+  </Box>
+);
+
+const TypeChip = ({
+  icon: TypeIcon,
+  isFull,
+  surface,
+}: {
+  icon: IconComponentType;
+  isFull: boolean;
+  surface: { border: string; icon: string };
+}) => (
+  <span
+    className={classNames(
+      'tw:flex tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border tw:bg-primary',
+      isFull ? 'tw:size-10' : 'tw:size-7',
+      surface.border
+    )}>
+    <TypeIcon
+      className={classNames(isFull ? 'tw:size-5' : 'tw:size-4', surface.icon)}
+    />
+  </span>
+);
+
 const AnnouncementBanner = ({
   announcement,
   variant = 'compact',
@@ -345,13 +419,7 @@ const AnnouncementBanner = ({
   const isExpanded = isFull || expanded;
 
   const typeChip = (
-    <span
-      className={classNames(
-        'tw:flex tw:size-7 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border tw:bg-primary',
-        surface.border
-      )}>
-      <TypeIcon className={classNames('tw:size-4', surface.icon)} />
-    </span>
+    <TypeChip icon={TypeIcon} isFull={isFull} surface={surface} />
   );
 
   const actions = (
@@ -384,14 +452,20 @@ const AnnouncementBanner = ({
       )}
       data-testid={testId}
       role="status">
-      {isExpanded ? (
+      {isFull && (
+        <FullBody {...shared} actions={actions} announcement={announcement} />
+      )}
+
+      {!isFull && isExpanded && (
         <ExpandedBody
           {...shared}
           actions={actions}
           announcement={announcement}
-          showEntity={isFull}
+          showEntity={false}
         />
-      ) : (
+      )}
+
+      {!isExpanded && (
         <Box align="center" className="tw:gap-2">
           <CollapsedBody {...shared} plainDescription={plainDescription} />
           {actions}

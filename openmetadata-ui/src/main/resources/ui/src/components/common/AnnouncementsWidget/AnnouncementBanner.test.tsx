@@ -195,4 +195,23 @@ describe('AnnouncementBanner', () => {
     expect(titleButton.querySelector('button')).toBeNull();
     expect(titleButton.closest('button')).toBe(titleButton);
   });
+
+  it('should put the badge beside the title on the landing banner', () => {
+    render(<AnnouncementBanner announcement={announcement} variant="full" />, {
+      wrapper: MemoryRouter,
+    });
+
+    const badge = screen.getByTestId('announcement-type-badge');
+    const title = screen.getByText('Pipeline maintenance');
+
+    // The frame runs title and badge on one line, unlike the expanded strip
+    // where the badge sits in its own header row above the title. The title is
+    // wrapped by its tooltip trigger, so compare the enclosing flex row.
+    // From the parent: Badge's own class list contains `items-center`, so
+    // `closest` from the badge matches the badge.
+    const row = badge.parentElement?.closest('[class*="items-center"]');
+
+    expect(row).not.toBeNull();
+    expect(row?.contains(title)).toBe(true);
+  });
 });
