@@ -1533,7 +1533,6 @@
     "ingestion/src/metadata/ingestion/source/database/mssql/metadata.py": {
       "0cdae4e9136eac8b7950955b9c0a6dadcb63e50765f22720c7b7582f0b10ad07": 1,
       "38ecf83f97228f760468d7df742c1ea26597528b79b6da2588a926e7b446ef11": 1,
-      "c16d7d50332fc01123413a15a62aa01e60abb0861ed58798cf12a2c65b8d914e": 1,
       "ec4b878de4bb65df9cad645911f66d9bd983b30377325636e9b063a9cbef1005": 1
     },
     "ingestion/src/metadata/ingestion/source/database/mysql/metadata.py": {

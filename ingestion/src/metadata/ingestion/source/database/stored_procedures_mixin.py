@@ -20,6 +20,7 @@ from collections.abc import Iterator
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -91,9 +92,21 @@ class StoredProcedureLineageMixin(ABC):
         Yield query and stored procedure object for lineage processing.
         """
         for engine in self.get_stored_procedure_engines():
+            # Built outside the guard below: a failure here is a bug in the source's
+            # statement builder, not an unreachable engine, and must not be reported
+            # as a skipped connection.
             query = self.get_stored_procedure_sql_statement()
-            with engine.connect() as conn:
-                results = conn.execute(text(query)).all()
+            try:
+                with engine.connect() as conn:
+                    results = conn.execute(text(query)).all()
+            # Narrowed: SQLAlchemy wraps driver failures, but mssql+pytds leaks raw
+            # OSError subclasses on connect (socket.gaierror, TimeoutError) - the same
+            # types NETWORK_ERRORS matches. A KeyError/AttributeError here is a code
+            # bug and must keep propagating.
+            except (SQLAlchemyError, OSError) as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning("Failed to fetch stored procedure query history from a connection, skipping it: %s", exc)
+                continue
 
             for row in results:
                 # Bound outside the try so the handler can still name the procedure, and
