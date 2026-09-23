@@ -120,7 +120,9 @@ const chooseSelectOption = async (
 ): Promise<void> => {
   // The wrapper div contains a react-aria <button aria-haspopup="listbox">.
   await page.getByTestId(wrapperTestId).getByRole('button').click();
-  await page.getByRole('option', { exact: true, name: optionName }).click();
+  const option = page.getByRole('option', { exact: true, name: optionName });
+  await expect(option).toBeVisible();
+  await option.click();
 };
 
 /**
@@ -133,9 +135,16 @@ const submitAddForm = async (page: Page): Promise<void> => {
       res.url().includes('/api/v1/metadata/types/') &&
       res.request().method() === 'PUT'
   );
+  const getResponse = page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/metadata/types/name/') &&
+      res.request().method() === 'GET' &&
+      res.status() === 200
+  );
   await page.getByTestId('custom-property-save').click();
   const res = await putResponse;
   expect(res.status()).toBe(200);
+  await getResponse;
   await page.getByTestId('custom-property-table').waitFor();
 };
 
@@ -325,15 +334,22 @@ test.describe('Custom Properties Panel — AI Mode', () => {
 
     await fillDescriptionBox(page, 'Updated description');
 
-    // Hoist PATCH listener before clicking Save.
+    // Hoist PATCH and GET listeners before clicking Save.
     const patchResponse = page.waitForResponse(
       (res) =>
         res.url().includes('/api/v1/metadata/types/') &&
         res.request().method() === 'PATCH'
     );
+    const getResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/metadata/types/name/') &&
+        res.request().method() === 'GET' &&
+        res.status() === 200
+    );
     await page.getByTestId('edit-custom-property-save').click();
     const res = await patchResponse;
     expect(res.status()).toBe(200);
+    await getResponse;
 
     // Back on detail page — updated display name is visible.
     await page.getByTestId('custom-property-table').waitFor();
