@@ -2154,8 +2154,12 @@ test.describe('Glossary tests', () => {
           name: 'Deutsch - DE',
         });
         await expect(germanOption).toBeVisible();
-        await germanOption.click();
 
+        // NavBar calls navigate(0) after language change — hoist the load listener
+        // before the click so the full-page reload is properly awaited.
+        const reloadPromise = page.waitForLoadState('load');
+        await germanOption.click();
+        await reloadPromise;
         await waitForAllLoadersToDisappear(page);
       });
 
@@ -2192,7 +2196,13 @@ test.describe('Glossary tests', () => {
           name: 'English - EN',
         });
         await expect(englishOption).toBeVisible();
+
+        // NavBar calls navigate(0) after language change — hoist the load listener
+        // before the click so the full-page reload is properly awaited.
+        const reloadPromise = page.waitForLoadState('load');
         await englishOption.click();
+        await reloadPromise;
+        await waitForAllLoadersToDisappear(page);
       });
     } finally {
       await afterAction();
