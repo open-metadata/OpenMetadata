@@ -33,9 +33,17 @@ describe('entityPalette', () => {
     ).toBe(true);
   });
 
+  it('exposes tokens with a hex fallback so consumers without the custom property still render', () => {
+    expect(
+      ENTITY_PALETTE.every(({ presentation, value }) =>
+        presentation.endsWith(`, ${value})`)
+      )
+    ).toBe(true);
+  });
+
   it('uses tokens for palette colors without rewriting custom colors', () => {
     expect(getEntityPalettePresentationColor('#1470ef')).toBe(
-      'var(--color-entity-palette-blue)'
+      'var(--color-entity-palette-blue, #1470EF)'
     );
     expect(getEntityPalettePresentationColor('#ABCDEF')).toBe('#ABCDEF');
   });
