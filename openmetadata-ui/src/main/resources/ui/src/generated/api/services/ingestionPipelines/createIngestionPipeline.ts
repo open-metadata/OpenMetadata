@@ -529,7 +529,9 @@ export interface Pipeline {
     /**
      * Optional configuration to toggle the ingestion of semantic-layer measures (e.g. LookML
      * measures) as first-class Metric entities. Metric names are unique across the whole
-     * OpenMetadata instance, so this is disabled by default.
+     * OpenMetadata instance, so this is disabled by default. Measures are discovered from the
+     * data models that expose them, so this requires 'Include Data Models' to be enabled as
+     * well.
      *
      * Optional configuration to toggle the ingestion of dbt semantic layer metrics.
      */
