@@ -116,6 +116,7 @@ export const keycloakOidcPublicProviderFixture: SsoProviderFixture = {
   // via oidc-client's signinSilent — same-origin refresh with no popup.
   supportsSilentCallback: true,
   usesBackendRefresh: false,
+  hasBackendIssuedRefreshCookie: false,
   supportsColdLoadRefresh: true,
 
   expectedResponseType: 'code',

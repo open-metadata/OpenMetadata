@@ -120,6 +120,7 @@ export const oktaProviderFixture: SsoProviderFixture = {
   supportsSelfSignup: true,
   supportsSilentCallback: false,
   usesBackendRefresh: false,
+  hasBackendIssuedRefreshCookie: false,
   supportsColdLoadRefresh: true,
 
   signInButtonPattern: /(sign in|log in) with Okta/i,
