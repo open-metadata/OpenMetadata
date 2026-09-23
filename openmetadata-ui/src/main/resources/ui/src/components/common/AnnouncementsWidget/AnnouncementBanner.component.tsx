@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { IconComponentType } from '@openmetadata/ui-core-components';
 import {
   Badge,
   BadgeColors,
@@ -31,7 +32,6 @@ import {
   ANNOUNCEMENT_SURFACE_CLASSES,
   getAnnouncementTypeConfig,
 } from '../../../utils/AnnouncementsUtils';
-import type { IconComponentType } from '@openmetadata/ui-core-components';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
