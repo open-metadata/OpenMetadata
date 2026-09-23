@@ -4231,6 +4231,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     for (T entity : uniqueEntities) {
       RdfUpdater.updateEntity(entity);
+      CacheBundle.invalidateEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
     }
     ListCountCache.invalidate(entityType);
   }
@@ -4813,7 +4814,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityLifecycleEventDispatcher.getInstance()
           .onEntitySoftDeletedOrRestored(entity, false, null);
     }
+    postRestoreFromSearch(entity);
   }
+
+  /**
+   * Runs after a restored entity's search document is updated. Both synchronous and asynchronous
+   * resource paths invoke {@link #restoreFromSearch(EntityInterface)} only after the database
+   * restore returns, so relationship-derived documents can be rebuilt from committed state here.
+   */
+  protected void postRestoreFromSearch(T entity) {}
 
   public ResultList<T> listFromSearchWithOffset(
       UriInfo uriInfo,
@@ -5240,8 +5249,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Run {@code flushBody} as a single JDBI transaction, wrapped in deadlock retry. The
    * {@code DeadlockRetry.execute} layer is OUTER (each replay opens a fresh handle) and
    * {@code inTransaction} is INNER, matching the {@code DeadlockRetry} contract that the operation
-   * opens its own transaction. Every {@code daoCollection.xDAO()} call inside {@code flushBody}
-   * enrolls in the single thread-bound handle and commits ONCE instead of auto-committing per call.
+   * opens its own transaction. The handle-bound {@link CollectionDAO} is exposed through {@link
+   * RepositoryTransactionContext} for mutations that must share this transaction.
    *
    * <p>No network side effect (RDF/SPARQL, Elasticsearch, Redis L2) may run inside {@code flushBody}
    * — a pooled connection is held for the whole body, so a network round trip there would pin the
@@ -5270,7 +5279,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
               Entity.getJdbi()
                   .inTransaction(
                       handle -> {
-                        flushBody.run();
+                        RepositoryTransactionContext.runWith(
+                            handle.attach(CollectionDAO.class), flushBody);
                         return null;
                       }));
     } finally {
@@ -5690,15 +5700,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
     store(entity, update, null);
   }
 
+  protected EntityDAO<T> entityDAOForWrite() {
+    return dao;
+  }
+
   protected void store(T entity, boolean update, Double expectedVersion) {
     String json = serializeForStorage(entity);
+    EntityDAO<T> writeDAO = entityDAOForWrite();
 
     if (update) {
       if (expectedVersion != null) {
         int rowsUpdated =
-            dao.updateWithVersion(
-                dao.getTableName(),
-                dao.getNameHashColumn(),
+            writeDAO.updateWithVersion(
+                writeDAO.getTableName(),
+                writeDAO.getNameHashColumn(),
                 entity.getFullyQualifiedName(),
                 entity.getId().toString(),
                 json,
@@ -5716,12 +5731,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
             expectedVersion,
             entity.getVersion());
       } else {
-        dao.update(entity.getId(), entity.getFullyQualifiedName(), json);
+        writeDAO.update(entity.getId(), entity.getFullyQualifiedName(), json);
         LOG.info("Updated {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
       }
       invalidate(entity);
     } else {
-      dao.insert(dao.getTableName(), dao.getNameHashColumn(), entity.getFullyQualifiedName(), json);
+      writeDAO.insert(
+          writeDAO.getTableName(),
+          writeDAO.getNameHashColumn(),
+          entity.getFullyQualifiedName(),
+          json);
       LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
     }
     StoredEntityJson pendingCapture = storedEntityJson.get();
@@ -5739,7 +5758,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       fqns.add(entity.getFullyQualifiedName());
       jsons.add(serializeForStorage(entity));
     }
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    EntityDAO<T> writeDAO = entityDAOForWrite();
+    writeDAO.insertMany(writeDAO.getTableName(), writeDAO.getNameHashColumn(), fqns, jsons);
   }
 
   protected void updateMany(List<T> entities) {
@@ -5751,7 +5771,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       ids.add(entity.getId());
       jsons.add(serializeForStorage(entity));
     }
-    dao.updateMany(dao.getTableName(), dao.getNameHashColumn(), fqns, ids, jsons);
+    EntityDAO<T> writeDAO = entityDAOForWrite();
+    writeDAO.updateMany(writeDAO.getTableName(), writeDAO.getNameHashColumn(), fqns, ids, jsons);
   }
 
   @Transaction
