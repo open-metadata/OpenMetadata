@@ -100,14 +100,20 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
     const searchInput = page.getByTestId('metric-search').getByRole('textbox');
     await expect(searchInput).toBeVisible();
 
-    // Establish baseline: both fixtures must be visible before searching so
-    // the post-search not.toBeVisible() is a real state transition, not vacuous.
-    await expect(
-      page.getByTestId('metric-name').filter({ hasText: matchName })
-    ).toBeVisible();
+    // Establish baseline via search — avoids assuming both fixtures land on
+    // page 1 of the paginated unfiltered list. Search for otherName, confirm
+    // it's visible, then clear so the main step starts from the full list.
+    const otherResponse = waitForMetricsSearchResponse(page);
+    await searchInput.fill(otherName);
+    await otherResponse;
+    await waitForAllLoadersToDisappear(page);
     await expect(
       page.getByTestId('metric-name').filter({ hasText: otherName })
     ).toBeVisible();
+    const clearBaseline = waitForMetricsSearchResponse(page);
+    await searchInput.fill('');
+    await clearBaseline;
+    await waitForAllLoadersToDisappear(page);
 
     await test.step('search fires a scoped metric query and narrows the results', async () => {
       // The debounced search must actually reach the API. Regression #29538
