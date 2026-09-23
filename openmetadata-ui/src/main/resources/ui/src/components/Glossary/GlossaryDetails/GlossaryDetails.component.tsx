@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+
 import { isEmpty, noop } from 'lodash';
 import type { ComponentType } from 'react';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
@@ -230,18 +230,19 @@ const GlossaryDetails = ({
   }
 
   return (
-    <Row
-      className="glossary-details"
+    <Box
+      className="glossary-details tw:h-full"
       data-testid="glossary-details"
-      gutter={[0, 12]}>
-      <Col span={24}>
+      direction="col"
+      gap={3}>
+      <div className="tw:flex-none">
         <GlossaryHeader
           updateVote={updateVote}
           onAddGlossaryTerm={onAddGlossaryTerm}
           onDelete={handleGlossaryDelete}
         />
-      </Col>
-      <Col className="glossary-page-tabs" span={24}>
+      </div>
+      <div className="glossary-page-tabs tw:min-h-0 tw:flex-auto">
         <Tabs
           className="tw:gap-3"
           data-testid="tabs"
@@ -274,8 +275,8 @@ const GlossaryDetails = ({
             </Tabs.Panel>
           ))}
         </Tabs>
-      </Col>
-    </Row>
+      </div>
+    </Box>
   );
 };
 

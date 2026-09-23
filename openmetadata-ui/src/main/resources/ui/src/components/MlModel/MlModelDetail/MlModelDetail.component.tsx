@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Col, Row, Typography } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -414,8 +414,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   return (
     <PageLayoutV1 pageTitle={mlModelName}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
+      <Box direction="col" gap={3}>
+        <div>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -434,7 +434,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
-        </Col>
+        </div>
         <GenericProvider<Mlmodel>
           customizedPage={customizedPage}
           data={mlModelDetail}
@@ -442,7 +442,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           permissions={mlModelPermissions}
           type={EntityType.MLMODEL}
           onUpdate={onMlModelUpdate}>
-          <Col className="entity-details-page-tabs" span={24}>
+          <div className="entity-details-page-tabs">
             <Tabs
               className="tw:gap-3"
               data-testid="tabs"
@@ -475,9 +475,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                 </Tabs.Panel>
               ))}
             </Tabs>
-          </Col>
+          </div>
         </GenericProvider>
-      </Row>
+      </Box>
 
       <LimitWrapper resource="mlmodel">
         <></>

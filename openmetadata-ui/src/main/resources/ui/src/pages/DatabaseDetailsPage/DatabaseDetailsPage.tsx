@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Tabs } from '@openmetadata/ui-core-components';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Col, Row } from 'antd';
+
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import type { TFunction } from 'i18next';
@@ -752,8 +752,8 @@ const DatabaseDetails: FunctionComponent = () => {
           {getEntityMissingError(EntityType.DATABASE, decodedDatabaseFQN)}
         </ErrorPlaceHolder>
       ) : (
-        <Row gutter={[0, 12]}>
-          <Col span={24}>
+        <Box direction="col" gap={3}>
+          <div>
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
@@ -773,7 +773,7 @@ const DatabaseDetails: FunctionComponent = () => {
               onUpdateVote={updateVote}
               onVersionClick={versionHandler}
             />
-          </Col>
+          </div>
           <GenericProvider<Database>
             customizedPage={customizedPage}
             data={database}
@@ -781,7 +781,7 @@ const DatabaseDetails: FunctionComponent = () => {
             permissions={databasePermission}
             type={EntityType.DATABASE}
             onUpdate={settingsUpdateHandler}>
-            <Col className="entity-details-page-tabs" span={24}>
+            <div className="entity-details-page-tabs">
               <Tabs
                 className="tw:gap-3"
                 data-testid="tabs"
@@ -814,7 +814,7 @@ const DatabaseDetails: FunctionComponent = () => {
                   </Tabs.Panel>
                 ))}
               </Tabs>
-            </Col>
+            </div>
           </GenericProvider>
 
           <ProfilerSettingsModal
@@ -822,7 +822,7 @@ const DatabaseDetails: FunctionComponent = () => {
             updateProfilerSetting={updateProfilerSetting}
             onVisibilityChange={setUpdateProfilerSetting}
           />
-        </Row>
+        </Box>
       )}
     </PageLayoutV1>
   );

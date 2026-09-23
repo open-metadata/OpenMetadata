@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Col, Row, Space } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
@@ -255,27 +255,26 @@ function DatabaseSchemaVersionPage() {
         ),
         key: EntityTabs.TABLE,
         children: (
-          <Row className="h-full" gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <Row gutter={[16, 16]}>
-                <Col data-testid="description-container" span={24}>
+          <Box className="h-full">
+            <div className="p-t-sm m-x-lg tw:min-w-0 tw:flex-auto">
+              <Box direction="col" gap={4}>
+                <div data-testid="description-container">
                   <Description
                     description={description}
                     entityType={EntityType.DATABASE_SCHEMA}
                     isDescriptionExpanded={isEmpty(tableData)}
                     showActions={false}
                   />
-                </Col>
-                <Col className="p-t-sm" flex="auto">
+                </div>
+                <div className="p-t-sm tw:min-w-0 tw:flex-auto">
                   <SchemaTablesTab isVersionView />
-                </Col>
-              </Row>
-            </Col>
+                </div>
+              </Box>
+            </div>
 
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="220px">
+            <div
+              className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
+              data-testid="entity-right-panel">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
@@ -296,8 +295,8 @@ function DatabaseSchemaVersionPage() {
                   />
                 ))}
               </Space>
-            </Col>
-          </Row>
+            </div>
+          </Box>
         ),
       },
 
@@ -353,8 +352,8 @@ function DatabaseSchemaVersionPage() {
           <Loader />
         ) : (
           <div className={classNames('version-data')}>
-            <Row gutter={[0, 12]}>
-              <Col span={24}>
+            <Box direction="col" gap={3}>
+              <div>
                 <DataAssetsVersionHeader
                   breadcrumbLinks={breadcrumbLinks}
                   currentVersionData={currentVersionData}
@@ -368,7 +367,7 @@ function DatabaseSchemaVersionPage() {
                   version={version}
                   onVersionClick={backHandler}
                 />
-              </Col>
+              </div>
               <GenericProvider
                 isVersionView
                 currentVersionData={currentVersionData}
@@ -376,7 +375,7 @@ function DatabaseSchemaVersionPage() {
                 permissions={servicePermissions}
                 type={EntityType.DATABASE}
                 onUpdate={() => Promise.resolve()}>
-                <Col className="entity-version-page-tabs" span={24}>
+                <div className="entity-version-page-tabs">
                   <Tabs
                     className="tw:gap-3"
                     data-testid="tabs"
@@ -395,9 +394,9 @@ function DatabaseSchemaVersionPage() {
                       </Tabs.Panel>
                     ))}
                   </Tabs>
-                </Col>
+                </div>
               </GenericProvider>
-            </Row>
+            </Box>
           </div>
         )}
 

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+
 import type { AxiosError } from 'axios';
 import type { EntityTags } from 'Models';
 import type { ComponentType } from 'react';
@@ -519,8 +519,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   return (
     <PageLayoutV1 pageTitle={entityName}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
+      <Box direction="col" gap={3}>
+        <div>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -539,7 +539,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
-        </Col>
+        </div>
         <GenericProvider<Topic>
           customizedPage={customizedPage}
           data={topicDetails}
@@ -547,7 +547,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           permissions={topicPermissions}
           type={EntityType.TOPIC}
           onUpdate={onTopicUpdate}>
-          <Col className="entity-details-page-tabs" span={24}>
+          <div className="entity-details-page-tabs">
             <Tabs
               className="tw:gap-3"
               data-testid="tabs"
@@ -580,9 +580,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 </Tabs.Panel>
               ))}
             </Tabs>
-          </Col>
+          </div>
         </GenericProvider>
-      </Row>
+      </Box>
       <LimitWrapper resource="topic">
         <></>
       </LimitWrapper>

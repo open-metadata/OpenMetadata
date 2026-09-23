@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -319,8 +319,8 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
 
   return (
     <PageLayoutV1 pageTitle={getEntityName(apiEndpointDetails)}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
+      <Box direction="col" gap={3}>
+        <div>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -339,7 +339,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
             onUpdateVote={onUpdateVote}
             onVersionClick={onVersionChange}
           />
-        </Col>
+        </div>
         <GenericProvider<APIEndpoint>
           customizedPage={customizedPage}
           data={apiEndpointDetails}
@@ -347,7 +347,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
           permissions={apiEndpointPermissions}
           type={EntityType.API_ENDPOINT}
           onUpdate={onApiEndpointUpdate}>
-          <Col className="entity-details-page-tabs" span={24}>
+          <div className="entity-details-page-tabs">
             <Tabs
               className="tw:gap-3"
               data-testid="tabs"
@@ -380,9 +380,9 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
                 </Tabs.Panel>
               ))}
             </Tabs>
-          </Col>
+          </div>
         </GenericProvider>
-      </Row>
+      </Box>
       <LimitWrapper resource="apiEndpoint">
         <></>
       </LimitWrapper>

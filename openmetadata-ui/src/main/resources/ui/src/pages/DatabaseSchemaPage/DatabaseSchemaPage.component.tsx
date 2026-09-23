@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Tabs } from '@openmetadata/ui-core-components';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Col, Row, Skeleton } from 'antd';
+import { Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -827,8 +827,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           )}
         </ErrorPlaceHolder>
       ) : (
-        <Row gutter={[0, 12]}>
-          <Col span={24}>
+        <Box direction="col" gap={3}>
+          <div>
             {databaseSchemaLoading || !databaseSchema ? (
               <Skeleton
                 active
@@ -858,7 +858,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 onVersionClick={versionHandler}
               />
             )}
-          </Col>
+          </div>
           <GenericProvider<DatabaseSchema>
             customizedPage={customizedPage}
             data={databaseSchema ?? ({} as DatabaseSchema)}
@@ -866,7 +866,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             permissions={databaseSchemaPermission}
             type={EntityType.DATABASE_SCHEMA}
             onUpdate={handleUpdateDatabaseSchema}>
-            <Col className="entity-details-page-tabs" span={24}>
+            <div className="entity-details-page-tabs">
               <Tabs
                 className="tw:gap-3"
                 data-testid="tabs"
@@ -889,7 +889,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                   </Tabs.Panel>
                 ))}
               </Tabs>
-            </Col>
+            </div>
           </GenericProvider>
           {updateProfilerSetting && (
             <ProfilerSettings
@@ -899,7 +899,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               onVisibilityChange={(value) => setUpdateProfilerSetting(value)}
             />
           )}
-        </Row>
+        </Box>
       )}
     </PageLayoutV1>
   );

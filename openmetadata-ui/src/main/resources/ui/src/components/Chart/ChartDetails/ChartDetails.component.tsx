@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -294,8 +294,8 @@ const ChartDetails = ({
 
   return (
     <PageLayoutV1 pageTitle={getEntityName(chartDetails)}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
+      <Box direction="col" gap={3}>
+        <div>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -314,7 +314,7 @@ const ChartDetails = ({
             onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
-        </Col>
+        </div>
         <GenericProvider<Chart>
           customizedPage={customizedPage}
           data={chartDetails}
@@ -322,7 +322,7 @@ const ChartDetails = ({
           permissions={chartPermissions}
           type={EntityType.CHART}
           onUpdate={onChartUpdate}>
-          <Col className="entity-details-page-tabs" span={24}>
+          <div className="entity-details-page-tabs">
             <Tabs
               className="tw:gap-3"
               data-testid="tabs"
@@ -355,9 +355,9 @@ const ChartDetails = ({
                 </Tabs.Panel>
               ))}
             </Tabs>
-          </Col>
+          </div>
         </GenericProvider>
-      </Row>
+      </Box>
 
       <LimitWrapper resource="chart">
         <></>

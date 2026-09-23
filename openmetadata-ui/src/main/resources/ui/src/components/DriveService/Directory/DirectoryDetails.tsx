@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
 import {
@@ -422,8 +422,8 @@ function DirectoryDetails({
 
   return (
     <PageLayoutV1 pageTitle={entityName}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
+      <Box direction="col" gap={3}>
+        <div>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -442,7 +442,7 @@ function DirectoryDetails({
             onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
-        </Col>
+        </div>
         <GenericProvider<Directory>
           customizedPage={customizedPage}
           data={directoryDetails}
@@ -450,7 +450,7 @@ function DirectoryDetails({
           permissions={directoryPermissions}
           type={EntityType.DIRECTORY}
           onUpdate={onDirectoryUpdate}>
-          <Col className="entity-details-page-tabs" span={24}>
+          <div className="entity-details-page-tabs">
             <Tabs
               className="tw:gap-3"
               data-testid="tabs"
@@ -483,9 +483,9 @@ function DirectoryDetails({
                 </Tabs.Panel>
               ))}
             </Tabs>
-          </Col>
+          </div>
         </GenericProvider>
-      </Row>
+      </Box>
       <LimitWrapper resource="directory">
         <></>
       </LimitWrapper>

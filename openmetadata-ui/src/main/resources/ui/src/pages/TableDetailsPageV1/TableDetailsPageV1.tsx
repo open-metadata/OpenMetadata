@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tabs } from '@openmetadata/ui-core-components';
+import { Box, Tabs, Tooltip } from '@openmetadata/ui-core-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Col, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -153,9 +152,12 @@ const TableDetailsPageV1: React.FC = () => {
   const alertBadge = useMemo(() => {
     return tableClassBase.getAlertEnableStatus() && dqFailureCount > 0 ? (
       <Tooltip
+        excludeTriggerFromTabOrder
         placement="right"
-        title={t('label.check-active-data-quality-incident-plural')}>
+        title={t('label.check-active-data-quality-incident-plural')}
+        triggerClassName="tw:inline-flex">
         <Link
+          aria-label={t('label.check-active-data-quality-incident-plural')}
           to={getEntityDetailsPath(
             EntityType.TABLE,
             tableFqn,
@@ -1014,9 +1016,9 @@ const TableDetailsPageV1: React.FC = () => {
         type={EntityType.TABLE}
         onEntitySync={handleTableSync}
         onUpdate={onTableUpdate}>
-        <Row gutter={[0, 12]}>
+        <Box direction="col" gap={3}>
           {/* Entity Heading */}
-          <Col data-testid="entity-page-header" span={24}>
+          <div data-testid="entity-page-header">
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
@@ -1038,15 +1040,13 @@ const TableDetailsPageV1: React.FC = () => {
               onUpdateVote={updateVote}
               onVersionClick={versionHandler}
             />
-          </Col>
+          </div>
           {/* Entity Tabs */}
-          <Col className="entity-details-page-tabs" span={24}>
-            {renderTabs()}
-          </Col>
+          <div className="entity-details-page-tabs">{renderTabs()}</div>
           <LimitWrapper resource="table">
             <></>
           </LimitWrapper>
-        </Row>
+        </Box>
       </GenericProvider>
     </PageLayoutV1>
   );

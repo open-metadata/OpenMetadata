@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tabs } from '@openmetadata/ui-core-components';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Col, Row } from 'antd';
+
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -651,8 +651,8 @@ const StoredProcedurePage = () => {
 
   return (
     <PageLayoutV1 pageTitle={entityName}>
-      <Row gutter={[0, 12]}>
-        <Col data-testid="entity-page-header" span={24}>
+      <Box direction="col" gap={3}>
+        <div data-testid="entity-page-header">
           <DataAssetsHeader
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
@@ -670,7 +670,7 @@ const StoredProcedurePage = () => {
             onUpdateVote={updateVote}
             onVersionClick={versionHandler}
           />
-        </Col>
+        </div>
 
         <GenericProvider<StoredProcedure>
           customizedPage={customizedPage}
@@ -680,7 +680,7 @@ const StoredProcedurePage = () => {
           type={EntityType.STORED_PROCEDURE}
           onUpdate={handleStoreProcedureUpdate}>
           {/* Entity Tabs */}
-          <Col className="entity-details-page-tabs" span={24}>
+          <div className="entity-details-page-tabs">
             <Tabs
               className="tw:gap-3"
               data-testid="tabs"
@@ -715,13 +715,13 @@ const StoredProcedurePage = () => {
                 </Tabs.Panel>
               ))}
             </Tabs>
-          </Col>
+          </div>
         </GenericProvider>
 
         <LimitWrapper resource="storedProcedure">
           <></>
         </LimitWrapper>
-      </Row>
+      </Box>
     </PageLayoutV1>
   );
 };

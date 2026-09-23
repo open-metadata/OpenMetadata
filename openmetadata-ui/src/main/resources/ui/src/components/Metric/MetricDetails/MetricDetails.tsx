@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -293,8 +293,8 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     <PageLayoutV1
       className="metric-details-page"
       pageTitle={getEntityName(metricDetails)}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
+      <Box direction="col" gap={3}>
+        <div>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -314,7 +314,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
             onUpdateVote={onUpdateVote}
             onVersionClick={onVersionChange}
           />
-        </Col>
+        </div>
         <GenericProvider<Metric>
           customizedPage={customizedPage}
           data={metricDetails}
@@ -322,7 +322,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
           permissions={metricPermissions}
           type={EntityType.METRIC as CustomizeEntityType}
           onUpdate={onMetricUpdate}>
-          <Col className="metric-page-tabs" span={24}>
+          <div className="metric-page-tabs">
             <Tabs
               className="tw:gap-3"
               data-testid="tabs"
@@ -355,9 +355,9 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                 </Tabs.Panel>
               ))}
             </Tabs>
-          </Col>
+          </div>
         </GenericProvider>
-      </Row>
+      </Box>
       <LimitWrapper resource="metric">
         <></>
       </LimitWrapper>

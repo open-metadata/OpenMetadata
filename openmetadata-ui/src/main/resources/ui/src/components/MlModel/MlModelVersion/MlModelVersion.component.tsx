@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Card, Col, Divider, Row, Space, Typography } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Card, Divider, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -144,42 +144,42 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
           />
         ),
         children: (
-          <Row className="h-full" gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <Row gutter={[0, 16]}>
-                <Col span={24}>
+          <Box className="h-full">
+            <div className="p-t-sm m-x-lg tw:min-w-0 tw:flex-auto">
+              <Box direction="col" gap={4}>
+                <div>
                   <Description
                     description={description}
                     entityType={EntityType.PIPELINE}
                     showActions={false}
                   />
-                </Col>
-                <Col span={24}>
+                </div>
+                <div>
                   {currentVersionData.mlFeatures?.length ? (
-                    <Row data-testid="feature-list">
-                      <Col span={24}>
+                    <Box data-testid="feature-list" direction="col">
+                      <div>
                         <Divider className="m-y-md" />
-                      </Col>
-                      <Col span={24}>
+                      </div>
+                      <div>
                         <Typography.Title level={5}>
                           {t('label.feature-plural-used')}
                         </Typography.Title>
-                      </Col>
+                      </div>
 
                       {mlFeaturesData?.map((feature: MlFeature) => (
-                        <Col key={feature.fullyQualifiedName} span={24}>
+                        <div key={feature.fullyQualifiedName}>
                           <Card
                             bordered
                             className="m-b-xlg"
                             data-testid={`feature-card-${feature.name ?? ''}`}
                             key={feature.fullyQualifiedName}>
-                            <Row>
-                              <Col className="m-b-xs" span={24}>
+                            <Box direction="col">
+                              <div className="m-b-xs">
                                 <Typography.Text className="font-semibold">
                                   {feature.name}
                                 </Typography.Text>
-                              </Col>
-                              <Col className="m-b-xs" span={24}>
+                              </div>
+                              <div className="m-b-xs">
                                 <Space align="start">
                                   <Space>
                                     <Typography.Text className="text-grey-muted">
@@ -202,16 +202,16 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                                     </Typography.Text>
                                   </Space>
                                 </Space>
-                              </Col>
-                              <Col className="m-b-xs" span={24}>
-                                <Row gutter={8} wrap={false}>
-                                  <Col flex="130px">
+                              </div>
+                              <div className="m-b-xs">
+                                <Box gap={2}>
+                                  <div className="tw:flex-[0_0_130px]">
                                     <Typography.Text className="text-grey-muted">
                                       {`${t('label.glossary-term-plural')} :`}
                                     </Typography.Text>
-                                  </Col>
+                                  </div>
 
-                                  <Col flex="auto">
+                                  <div className="tw:min-w-0 tw:flex-auto">
                                     <TagsViewer
                                       sizeCap={-1}
                                       tags={
@@ -219,18 +219,18 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                                           .Glossary
                                       }
                                     />
-                                  </Col>
-                                </Row>
-                              </Col>
+                                  </div>
+                                </Box>
+                              </div>
 
-                              <Col className="m-b-xs" span={24}>
-                                <Row gutter={8} wrap={false}>
-                                  <Col flex="130px">
+                              <div className="m-b-xs">
+                                <Box gap={2}>
+                                  <div className="tw:flex-[0_0_130px]">
                                     <Typography.Text className="text-grey-muted">
                                       {`${t('label.tag-plural')} :`}
                                     </Typography.Text>
-                                  </Col>
-                                  <Col flex="auto">
+                                  </div>
+                                  <div className="tw:min-w-0 tw:flex-auto">
                                     <TagsViewer
                                       sizeCap={-1}
                                       tags={
@@ -238,18 +238,18 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                                           .Classification
                                       }
                                     />
-                                  </Col>
-                                </Row>
-                              </Col>
+                                  </div>
+                                </Box>
+                              </div>
 
-                              <Col className="m-b-xs" span={24}>
-                                <Row gutter={8} wrap={false}>
-                                  <Col flex="120px">
+                              <div className="m-b-xs">
+                                <Box gap={2}>
+                                  <div className="tw:flex-[0_0_120px]">
                                     <Typography.Text className="text-grey-muted">
                                       {`${t('label.description')} :`}
                                     </Typography.Text>
-                                  </Col>
-                                  <Col flex="auto">
+                                  </div>
+                                  <div className="tw:min-w-0 tw:flex-auto">
                                     <Space align="start">
                                       {feature.description ? (
                                         <RichTextEditorPreviewerV1
@@ -264,28 +264,27 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                                         </Typography.Text>
                                       )}
                                     </Space>
-                                  </Col>
-                                </Row>
-                              </Col>
+                                  </div>
+                                </Box>
+                              </div>
 
-                              <Col span={24}>
+                              <div>
                                 <SourceList feature={feature} />
-                              </Col>
-                            </Row>
+                              </div>
+                            </Box>
                           </Card>
-                        </Col>
+                        </div>
                       ))}
-                    </Row>
+                    </Box>
                   ) : (
                     <ErrorPlaceHolder />
                   )}
-                </Col>
-              </Row>
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="220px">
+                </div>
+              </Box>
+            </div>
+            <div
+              className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
+              data-testid="entity-right-panel">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
@@ -304,8 +303,8 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                   />
                 ))}
               </Space>
-            </Col>
-          </Row>
+            </div>
+          </Box>
         ),
       },
       {
@@ -340,8 +339,8 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
         <Loader />
       ) : (
         <div className={classNames('version-data')} data-testid="version-data">
-          <Row gutter={[0, 12]}>
-            <Col span={24}>
+          <Box direction="col" gap={3}>
+            <div>
               <DataAssetsVersionHeader
                 breadcrumbLinks={slashedMlModelName}
                 currentVersionData={currentVersionData}
@@ -356,7 +355,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                 version={version}
                 onVersionClick={backHandler}
               />
-            </Col>
+            </div>
             <GenericProvider
               isVersionView
               currentVersionData={currentVersionData}
@@ -364,7 +363,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
               permissions={entityPermissions}
               type={EntityType.MLMODEL}
               onUpdate={() => Promise.resolve()}>
-              <Col className="entity-version-page-tabs" span={24}>
+              <div className="entity-version-page-tabs">
                 <Tabs
                   className="tw:gap-3"
                   defaultSelectedKey={getRenderedActiveTab(tabItems, tab)}
@@ -382,9 +381,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                     </Tabs.Panel>
                   ))}
                 </Tabs>
-              </Col>
+              </div>
             </GenericProvider>
-          </Row>
+          </Box>
         </div>
       )}
 

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Col, Row, Space } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, toString } from 'lodash';
@@ -284,22 +284,21 @@ const APICollectionVersionPage = () => {
         ),
         key: EntityTabs.API_ENDPOINT,
         children: (
-          <Row className="h-full" gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" span={24}>
+          <Box className="h-full">
+            <div className="p-t-sm m-x-lg">
               <Description
                 description={description}
                 entityType={EntityType.API_COLLECTION}
                 isDescriptionExpanded={isEmpty(apiEndpoints)}
                 showActions={false}
               />
-            </Col>
-            <Col className="p-t-sm m-x-lg" flex="auto">
+            </div>
+            <div className="p-t-sm m-x-lg tw:min-w-0 tw:flex-auto">
               <APIEndpointsTab isVersionView />
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="220px">
+            </div>
+            <div
+              className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
+              data-testid="entity-right-panel">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
@@ -320,8 +319,8 @@ const APICollectionVersionPage = () => {
                   />
                 ))}
               </Space>
-            </Col>
-          </Row>
+            </div>
+          </Box>
         ),
       },
 
@@ -380,8 +379,8 @@ const APICollectionVersionPage = () => {
           <Loader />
         ) : (
           <div className={classNames('version-data')}>
-            <Row gutter={[0, 12]}>
-              <Col span={24}>
+            <Box direction="col" gap={3}>
+              <div>
                 <DataAssetsVersionHeader
                   breadcrumbLinks={breadcrumbLinks}
                   currentVersionData={currentVersionData}
@@ -395,7 +394,7 @@ const APICollectionVersionPage = () => {
                   version={version}
                   onVersionClick={backHandler}
                 />
-              </Col>
+              </div>
               <GenericProvider
                 isVersionView
                 currentVersionData={currentVersionData}
@@ -403,7 +402,7 @@ const APICollectionVersionPage = () => {
                 permissions={collectionPermissions}
                 type={EntityType.API_COLLECTION}
                 onUpdate={() => Promise.resolve()}>
-                <Col className="entity-version-page-tabs" span={24}>
+                <div className="entity-version-page-tabs">
                   <Tabs
                     className="tw:gap-3"
                     data-testid="tabs"
@@ -422,9 +421,9 @@ const APICollectionVersionPage = () => {
                       </Tabs.Panel>
                     ))}
                   </Tabs>
-                </Col>
+                </div>
               </GenericProvider>
-            </Row>
+            </Box>
           </div>
         )}
 

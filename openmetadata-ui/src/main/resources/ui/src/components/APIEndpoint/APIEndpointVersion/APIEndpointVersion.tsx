@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Col, Row, Space } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import classNames from 'classnames';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -121,25 +121,24 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
         key: EntityTabs.SCHEMA,
         label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
         children: (
-          <Row className="h-full" gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <Row gutter={[0, 16]}>
-                <Col span={24}>
+          <Box className="h-full">
+            <div className="p-t-sm m-x-lg tw:min-w-0 tw:flex-auto">
+              <Box direction="col" gap={4}>
+                <div>
                   <Description
                     description={description}
                     entityType={EntityType.API_ENDPOINT}
                     showActions={false}
                   />
-                </Col>
-                <Col span={24}>
+                </div>
+                <div>
                   <APIEndpointSchema isVersionView />
-                </Col>
-              </Row>
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="220px">
+                </div>
+              </Box>
+            </div>
+            <div
+              className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
+              data-testid="entity-right-panel">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
@@ -158,8 +157,8 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
                   />
                 ))}
               </Space>
-            </Col>
-          </Row>
+            </div>
+          </Box>
         ),
       },
       {
@@ -189,8 +188,8 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
         <Loader />
       ) : (
         <div className={classNames('version-data')}>
-          <Row gutter={[0, 12]}>
-            <Col span={24}>
+          <Box direction="col" gap={3}>
+            <div>
               <DataAssetsVersionHeader
                 breadcrumbLinks={slashedApiEndpointName}
                 currentVersionData={currentVersionData}
@@ -205,7 +204,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
                 version={version}
                 onVersionClick={backHandler}
               />
-            </Col>
+            </div>
             <GenericProvider
               isVersionView
               currentVersionData={currentVersionData}
@@ -213,7 +212,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
               permissions={entityPermissions}
               type={EntityType.API_ENDPOINT}
               onUpdate={() => Promise.resolve()}>
-              <Col className="entity-version-page-tabs" span={24}>
+              <div className="entity-version-page-tabs">
                 <Tabs
                   className="tw:gap-3"
                   defaultSelectedKey={getRenderedActiveTab(tabItems, tab)}
@@ -231,9 +230,9 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
                     </Tabs.Panel>
                   ))}
                 </Tabs>
-              </Col>
+              </div>
             </GenericProvider>
-          </Row>
+          </Box>
         </div>
       )}
 

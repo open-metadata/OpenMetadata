@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder, Tabs } from '@openmetadata/ui-core-components';
+import { Box, EmptyPlaceholder, Tabs } from '@openmetadata/ui-core-components';
 import { Lock } from '@openmetadata/ui-core-components/icons';
-import { Col, Row } from 'antd';
+
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
@@ -543,8 +543,8 @@ function ServiceVersionPage() {
           <Loader />
         ) : (
           <div className={classNames('version-data')}>
-            <Row gutter={[0, 12]}>
-              <Col span={24}>
+            <Box direction="col" gap={3}>
+              <div>
                 <DataAssetsVersionHeader
                   breadcrumbLinks={breadcrumbLinks}
                   currentVersionData={currentVersionData}
@@ -558,8 +558,8 @@ function ServiceVersionPage() {
                   version={version}
                   onVersionClick={backHandler}
                 />
-              </Col>
-              <Col className="entity-version-page-tabs" span={24}>
+              </div>
+              <div className="entity-version-page-tabs">
                 <Tabs className="tw:gap-3" data-testid="tabs">
                   <Tabs.List size="sm" type="underline" variant="card">
                     {tabs.map(({ key, label }) => (
@@ -574,8 +574,8 @@ function ServiceVersionPage() {
                     </Tabs.Panel>
                   ))}
                 </Tabs>
-              </Col>
-            </Row>
+              </div>
+            </Box>
           </div>
         )}
 

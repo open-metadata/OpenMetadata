@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -293,17 +293,17 @@ const GlossaryTermsV1 = ({
       permissions={permissions}
       type={EntityType.GLOSSARY_TERM}
       onUpdate={onTermUpdate}>
-      <Row data-testid="glossary-term" gutter={[0, 12]}>
-        <Col span={24}>
+      <Box data-testid="glossary-term" direction="col" gap={3}>
+        <div>
           <GlossaryHeader
             updateVote={updateVote}
             onAddGlossaryTerm={onAddGlossaryTerm}
             onAssetAdd={() => setAssetModalVisible(true)}
             onDelete={handleGlossaryTermDelete}
           />
-        </Col>
+        </div>
 
-        <Col className="glossary-term-page-tabs" span={24}>
+        <div className="glossary-term-page-tabs">
           <Tabs
             className="tw:gap-3"
             selectedKey={getRenderedActiveTab(tabItems, activeTab)}
@@ -335,8 +335,8 @@ const GlossaryTermsV1 = ({
               </Tabs.Panel>
             ))}
           </Tabs>
-        </Col>
-      </Row>
+        </div>
+      </Box>
       {glossaryTerm.fullyQualifiedName && assetModalVisible && (
         <AssetSelectionModal
           entityFqn={glossaryTerm.fullyQualifiedName}

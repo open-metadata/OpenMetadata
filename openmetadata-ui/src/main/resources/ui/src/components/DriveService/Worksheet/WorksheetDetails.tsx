@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
 import {
@@ -404,8 +404,8 @@ function WorksheetDetails({
 
   return (
     <PageLayoutV1 pageTitle={entityName}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
+      <Box direction="col" gap={3}>
+        <div>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -424,7 +424,7 @@ function WorksheetDetails({
             onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
-        </Col>
+        </div>
         <GenericProvider<Worksheet>
           columnFqn={activeColumnFqn}
           customizedPage={customizedPage}
@@ -433,7 +433,7 @@ function WorksheetDetails({
           permissions={worksheetPermissions}
           type={EntityType.WORKSHEET}
           onUpdate={onWorksheetUpdate}>
-          <Col className="entity-details-page-tabs" span={24}>
+          <div className="entity-details-page-tabs">
             <Tabs
               className="tw:gap-3"
               data-testid="tabs"
@@ -466,9 +466,9 @@ function WorksheetDetails({
                 </Tabs.Panel>
               ))}
             </Tabs>
-          </Col>
+          </div>
         </GenericProvider>
-      </Row>
+      </Box>
       <LimitWrapper resource="worksheet">
         <></>
       </LimitWrapper>

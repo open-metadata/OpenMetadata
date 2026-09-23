@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Tabs } from '@openmetadata/ui-core-components';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Col, Row } from 'antd';
+
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
@@ -628,8 +628,8 @@ function SearchIndexDetailsPage() {
       title={t('label.entity-detail-plural', {
         entity: t('label.search-index'),
       })}>
-      <Row gutter={[0, 12]}>
-        <Col data-testid="entity-page-header" span={24}>
+      <Box direction="col" gap={3}>
+        <div data-testid="entity-page-header">
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -648,7 +648,7 @@ function SearchIndexDetailsPage() {
             onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
-        </Col>
+        </div>
 
         <GenericProvider<SearchIndex>
           customizedPage={customizedPage}
@@ -657,7 +657,7 @@ function SearchIndexDetailsPage() {
           permissions={searchIndexPermissions}
           type={EntityType.SEARCH_INDEX}
           onUpdate={onSearchIndexUpdate}>
-          <Col className="entity-details-page-tabs" span={24}>
+          <div className="entity-details-page-tabs">
             <Tabs
               className="tw:gap-3"
               data-testid="tabs"
@@ -690,13 +690,13 @@ function SearchIndexDetailsPage() {
                 </Tabs.Panel>
               ))}
             </Tabs>
-          </Col>
+          </div>
         </GenericProvider>
 
         <LimitWrapper resource="searchIndex">
           <></>
         </LimitWrapper>
-      </Row>
+      </Box>
     </PageLayoutV1>
   );
 }

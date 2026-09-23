@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tabs } from '@openmetadata/ui-core-components';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Col, Row } from 'antd';
+
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, omitBy, toString } from 'lodash';
@@ -849,8 +849,8 @@ const ContainerPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={getEntityName(containerData)}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
+      <Box direction="col" gap={3}>
+        <div>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -869,7 +869,7 @@ const ContainerPage = () => {
             onUpdateVote={updateVote}
             onVersionClick={versionHandler}
           />
-        </Col>
+        </div>
         <GenericProvider<Container>
           columnFqn={activeColumnFqn}
           customizedPage={customizedPage}
@@ -879,7 +879,7 @@ const ContainerPage = () => {
           type={EntityType.CONTAINER as CustomizeEntityType}
           onUpdate={handleContainerUpdate}>
           <ContainerChildrenCountContext.Provider value={setChildrenCount}>
-            <Col className="entity-details-page-tabs" span={24}>
+            <div className="entity-details-page-tabs">
               <Tabs
                 className="tw:gap-3"
                 data-testid="tabs"
@@ -902,14 +902,14 @@ const ContainerPage = () => {
                   </Tabs.Panel>
                 ))}
               </Tabs>
-            </Col>
+            </div>
           </ContainerChildrenCountContext.Provider>
         </GenericProvider>
 
         <LimitWrapper resource="container">
           <></>
         </LimitWrapper>
-      </Row>
+      </Box>
     </PageLayoutV1>
   );
 };
