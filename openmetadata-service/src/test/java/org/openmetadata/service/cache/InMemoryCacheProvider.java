@@ -16,17 +16,16 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 /** A bounded in-memory {@link CacheProvider} for tests that need the real cache classes. */
 public class InMemoryCacheProvider implements CacheProvider {
-  private static final int MAX_KEYS = 1_000;
+  private static final int MAX_ENTRIES = 1_000;
 
   private final Map<String, String> values = boundedMap();
   private final Map<String, Map<String, String>> hashes = boundedMap();
 
   private static <V> Map<String, V> boundedMap() {
-    return Caffeine.newBuilder().maximumSize(MAX_KEYS).<String, V>build().asMap();
+    return Caffeine.newBuilder().maximumSize(MAX_ENTRIES).<String, V>build().asMap();
   }
 
   @Override
@@ -59,7 +58,7 @@ public class InMemoryCacheProvider implements CacheProvider {
 
   @Override
   public void hset(String key, Map<String, String> fields, Duration ttl) {
-    hashes.computeIfAbsent(key, ignored -> new ConcurrentHashMap<>()).putAll(fields);
+    hashes.computeIfAbsent(key, ignored -> boundedMap()).putAll(fields);
   }
 
   @Override
