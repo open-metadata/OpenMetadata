@@ -455,7 +455,7 @@ function TestSummaryGraph({
   }
 
   return (
-    <Box className="tw:bg-primary">
+    <Box className="tw:bg-primary" direction="col">
       <ResponsiveContainer
         className="custom-test-summary-graph"
         id={`${testCaseName}_graph`}
