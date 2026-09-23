@@ -91,17 +91,25 @@ def test_encrypt_without_a_ca_certificate_is_not_honoured_but_is_announced(mssql
     assert "NOT be encrypted" in caplog.text
 
 
-def _no_odbc_driver() -> bool:
+def _the_driver_this_test_asks_for() -> str:
+    """The schema's own default, read rather than repeated, since that is what the
+    connection below will ask the driver manager for."""
+    return MssqlConnectionConfig.model_fields["driver"].default
+
+
+def _that_driver_is_missing() -> bool:
+    """Any other ODBC driver being installed is not enough: unixODBC will simply
+    fail to open the one named, so the test has to look for that name."""
     try:
         import pyodbc
     except ImportError:
         return True
-    return not pyodbc.drivers()
+    return _the_driver_this_test_asks_for() not in pyodbc.drivers()
 
 
 @pytest.mark.skipif(
-    _no_odbc_driver(),
-    reason="needs Microsoft's ODBC driver, which neither CI nor a plain dev machine installs",
+    _that_driver_is_missing(),
+    reason=f"needs {_the_driver_this_test_asks_for()}, which neither CI nor a plain dev machine installs",
 )
 def test_pyodbc_encrypts_when_asked_to(mssql_container):
     """The counterpart to the drivers above: ODBC takes both switches natively,
