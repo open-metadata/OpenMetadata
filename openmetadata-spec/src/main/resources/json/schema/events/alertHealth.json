@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/events/alertHealth.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AlertHealth",
   "description": "The delivery health of every destination of one alert, kept in a row so that edits, restarts and test sends never reset it.",
   "type": "object",

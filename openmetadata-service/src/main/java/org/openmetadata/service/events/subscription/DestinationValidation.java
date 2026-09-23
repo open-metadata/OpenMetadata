@@ -24,6 +24,7 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.events.subscription.channels.ChannelResolution;
+import org.openmetadata.service.util.URLValidator;
 
 /**
  * Checks a destination with the channel that serves it, when the destination is new or was
@@ -65,6 +66,24 @@ public final class DestinationValidation {
     if (configuredByTheUser) {
       requireAConfiguration(destination);
       served.channel().get().configRules().validate(destination);
+    } else {
+      requireAnAllowedEndpoint(destination);
+    }
+  }
+
+  // Only a destination the user configures has rules of its own, but the API can write an endpoint
+  // into any destination, so every other one still gets the outbound URL check.
+  private static void requireAnAllowedEndpoint(SubscriptionDestination destination) {
+    JsonNode endpoint =
+        destination.getConfig() == null
+            ? null
+            : JsonUtils.valueToTree(destination.getConfig()).get("endpoint");
+    if (endpoint != null && endpoint.isTextual()) {
+      try {
+        URLValidator.validateURL(endpoint.asText());
+      } catch (RuntimeException e) {
+        throw new BadRequestException("Invalid webhook endpoint URL: " + e.getMessage());
+      }
     }
   }
 

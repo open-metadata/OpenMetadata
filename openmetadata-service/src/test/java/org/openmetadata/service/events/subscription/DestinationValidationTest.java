@@ -74,7 +74,7 @@ class DestinationValidationTest {
   }
 
   @Test
-  void destinationTheUserDoesNotConfigureIsNeverChecked() {
+  void destinationTheUserDoesNotConfigureNeedsNoConfiguration() {
     SubscriptionDestination owners =
         new SubscriptionDestination()
             .withId(UUID.randomUUID())
@@ -82,6 +82,15 @@ class DestinationValidationTest {
             .withCategory(SubscriptionCategory.OWNERS);
 
     assertDoesNotThrow(() -> DestinationValidation.ofANewAlert(alertWith(owners)));
+  }
+
+  @Test
+  void endpointWrittenIntoADestinationTheUserDoesNotConfigureIsChecked() {
+    SubscriptionDestination owners =
+        webhook("http://169.254.169.254/latest").withCategory(SubscriptionCategory.OWNERS);
+
+    assertThrows(
+        BadRequestException.class, () -> DestinationValidation.ofANewAlert(alertWith(owners)));
   }
 
   @Test

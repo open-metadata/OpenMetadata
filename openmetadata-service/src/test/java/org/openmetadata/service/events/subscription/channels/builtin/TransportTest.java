@@ -14,8 +14,10 @@
 package org.openmetadata.service.events.subscription.channels.builtin;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -23,6 +25,7 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Invocation;
@@ -30,6 +33,7 @@ import jakarta.ws.rs.client.WebTarget;
 import java.net.URI;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import org.glassfish.jersey.client.ClientProperties;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.common.utils.CommonUtil;
@@ -38,6 +42,7 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.util.OutboundUrlBlockedException;
 
 class TransportTest {
   private static final String SECRET = "plain-secret";
@@ -93,6 +98,24 @@ class TransportTest {
 
     verify(client).close();
     assertEquals(0, transport.openClients());
+  }
+
+  // Every webhook send goes through these clients, so they carry the outbound URL policy.
+  @Test
+  void clientRefusesAMetadataAddressAndDoesNotFollowRedirects() {
+    HttpWebhookTransport transport = new HttpWebhookTransport();
+    try {
+      Client client = transport.clientFor(5, 10);
+      Invocation.Builder metadata =
+          client.target("http://169.254.169.254/latest/meta-data").request();
+
+      ProcessingException refused = assertThrows(ProcessingException.class, metadata::get);
+      assertInstanceOf(OutboundUrlBlockedException.class, refused);
+      assertEquals(
+          Boolean.FALSE, client.getConfiguration().getProperty(ClientProperties.FOLLOW_REDIRECTS));
+    } finally {
+      transport.close();
+    }
   }
 
   // The signature covers one body, so a request is built for each payload.

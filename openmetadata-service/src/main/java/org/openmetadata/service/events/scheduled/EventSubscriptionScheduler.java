@@ -15,6 +15,7 @@ package org.openmetadata.service.events.scheduled;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import com.google.common.util.concurrent.Striped;
 import io.dropwizard.db.DataSourceFactory;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
@@ -27,6 +28,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.SneakyThrows;
@@ -53,6 +55,7 @@ import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.openmetadata.service.apps.bundles.changeEvent.ServerStopping;
 import org.openmetadata.service.audit.AuditLogConsumer;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.events.subscription.AlertRows;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.events.subscription.channels.Channels;
@@ -106,6 +109,14 @@ public class EventSubscriptionScheduler {
   // One connection per worker thread that may be doing job-store work, plus the misfire handler,
   // the cluster manager and the reconciler, which each hold one while they run.
   private static final int POOL_MAX_SIZE = SCHEDULER_THREAD_COUNT + 3;
+
+  // Bounded by construction rather than a per-id map that would grow with the catalog. Updates to
+  // one subscription serialize; different subscriptions only collide when they share a stripe.
+  private static final Striped<Lock> SUBSCRIPTION_LOCKS = Striped.lock(64);
+
+  // The reconcile re-reads after applying, so a peer committing mid-flight costs one more round.
+  // The bound stops a subscription being rewritten in a tight loop from spinning here forever.
+  private static final int SCHEDULE_SYNC_ATTEMPTS = 3;
 
   private record CustomJobFactory(DIContainer di) implements JobFactory {
 
@@ -209,6 +220,11 @@ public class EventSubscriptionScheduler {
     }
   }
 
+  /**
+   * @deprecated the schedule is reconciled from the committed row, so {@code reinstall} no longer
+   *     changes anything. Use {@link #addSubscriptionPublisher(EventSubscription)}.
+   */
+  @Deprecated(forRemoval = true)
   public void addSubscriptionPublisher(EventSubscription eventSubscription, boolean reinstall)
       throws SchedulerException,
           ClassNotFoundException,
@@ -216,17 +232,83 @@ public class EventSubscriptionScheduler {
           InvocationTargetException,
           InstantiationException,
           IllegalAccessException {
+    addSubscriptionPublisher(eventSubscription);
+  }
+
+  public void addSubscriptionPublisher(EventSubscription eventSubscription)
+      throws SchedulerException,
+          ClassNotFoundException,
+          NoSuchMethodException,
+          InvocationTargetException,
+          InstantiationException,
+          IllegalAccessException {
     requireConsumerClass(eventSubscription);
-    if (Boolean.FALSE.equals(eventSubscription.getEnabled())) {
-      alertsScheduler.deleteJob(getJobKey(eventSubscription));
-      LOG.info("Event Subscription {} is disabled, so it has no job", eventSubscription.getName());
-    } else {
-      // Rows first: a tick that finds no position row does nothing.
-      AlertRecord.start(eventSubscription);
-      JobDetail jobDetail = jobBuilder(eventSubscription);
-      alertsScheduler.scheduleJob(jobDetail, Set.of(trigger(eventSubscription)), true);
-      LOG.info("Event Subscription {} scheduled", eventSubscription.getName());
+    syncScheduledState(eventSubscription.getId());
+  }
+
+  /**
+   * Bring the Quartz schedule in line with the subscription's committed state.
+   *
+   * <p>The decision cannot be taken from the entity a caller happens to hold. Two requests commit in
+   * one order and reach the scheduler in the other, so a disable that committed first but arrived
+   * second would delete the job a later enable had just installed, leaving the row enabled with
+   * nothing scheduled. Reading the committed row inside a per-subscription lock makes the last
+   * caller through the lock see the final state, so the schedule converges on it whichever order the
+   * requests arrive in.
+   *
+   * <p>A peer node holds its own lock and can still commit between this node's read and its write,
+   * so the row is read again after applying and applied once more when it moved. That settles on the
+   * last committed state no matter which node reached it first.
+   */
+  private void syncScheduledState(UUID subscriptionId) throws SchedulerException {
+    Lock lock = SUBSCRIPTION_LOCKS.get(subscriptionId);
+    lock.lock();
+    try {
+      boolean settled = false;
+      for (int attempt = 1; attempt <= SCHEDULE_SYNC_ATTEMPTS && !settled; attempt++) {
+        EventSubscription committed = AlertRows.readOrNull(subscriptionId);
+        applyScheduledState(subscriptionId, committed);
+        settled = isSettled(subscriptionId, committed);
+      }
+      if (!settled) {
+        LOG.warn(
+            "Event subscription {} kept changing while its schedule was applied; the reconciler repairs it",
+            subscriptionId);
+      }
+    } finally {
+      lock.unlock();
     }
+  }
+
+  /** Settled means the row has not moved since the decision was taken and the job store agrees. */
+  private boolean isSettled(UUID subscriptionId, EventSubscription applied)
+      throws SchedulerException {
+    EventSubscription current = AlertRows.readOrNull(subscriptionId);
+    return Objects.equals(versionOf(applied), versionOf(current))
+        && alertsScheduler.checkExists(new JobKey(subscriptionId.toString(), ALERT_JOB_GROUP))
+            == shouldBeScheduled(current);
+  }
+
+  private void applyScheduledState(UUID subscriptionId, EventSubscription committed)
+      throws SchedulerException {
+    if (shouldBeScheduled(committed)) {
+      // Rows first: a tick that finds no position row does nothing.
+      AlertRecord.start(committed);
+      // The job and its trigger are written in one job-store transaction, so there is no moment
+      // in which the alert is not scheduled, and a peer writing the same keys cannot interleave.
+      alertsScheduler.scheduleJob(jobBuilder(committed), Set.of(trigger(committed)), true);
+    } else {
+      removeAlertJob(subscriptionId);
+      LOG.info("Event Subscription {} is disabled or gone, so it has no job", subscriptionId);
+    }
+  }
+
+  private static boolean shouldBeScheduled(EventSubscription subscription) {
+    return subscription != null && !Boolean.FALSE.equals(subscription.getEnabled());
+  }
+
+  private static Double versionOf(EventSubscription subscription) {
+    return subscription == null ? null : subscription.getVersion();
   }
 
   /**
@@ -237,7 +319,7 @@ public class EventSubscriptionScheduler {
   public static void ensureScheduled(EventSubscription alert) {
     if (initialized) {
       try {
-        instance.addSubscriptionPublisher(alert, true);
+        instance.addSubscriptionPublisher(alert);
       } catch (SchedulerException | ReflectiveOperationException | RuntimeException e) {
         LOG.warn(
             "Alert {} saved but not scheduled; the reconciler will repair it", alert.getId(), e);
@@ -248,7 +330,7 @@ public class EventSubscriptionScheduler {
   public static void removeScheduled(UUID alertId) {
     if (initialized) {
       try {
-        instance.alertsScheduler.deleteJob(new JobKey(alertId.toString(), ALERT_JOB_GROUP));
+        instance.removeJobOf(alertId);
       } catch (SchedulerException e) {
         LOG.warn("Job of deleted alert {} not removed; the reconciler will remove it", alertId, e);
       }
@@ -326,15 +408,50 @@ public class EventSubscriptionScheduler {
 
   @SneakyThrows
   public void updateEventSubscription(EventSubscription eventSubscription) {
-    addSubscriptionPublisher(eventSubscription, true);
+    addSubscriptionPublisher(eventSubscription);
   }
 
+  /**
+   * Remove the scheduled alert. Unlike an update this does not reconcile from the committed row:
+   * every caller runs it before the row is deleted, so the row still reads enabled and reconciling
+   * would reinstall the job being torn down. The per-subscription lock is still taken so a delete
+   * cannot interleave with an update's read-modify-write.
+   */
   public void deleteEventSubscriptionPublisher(EventSubscription deletedEntity)
       throws SchedulerException {
-    alertsScheduler.deleteJob(new JobKey(deletedEntity.getId().toString(), ALERT_JOB_GROUP));
-    alertsScheduler.unscheduleJob(
-        new TriggerKey(deletedEntity.getId().toString(), ALERT_TRIGGER_GROUP));
+    removeJobOf(deletedEntity.getId());
     LOG.info("Alert publisher deleted for {}", deletedEntity.getName());
+  }
+
+  private void removeJobOf(UUID subscriptionId) throws SchedulerException {
+    Lock lock = SUBSCRIPTION_LOCKS.get(subscriptionId);
+    lock.lock();
+    try {
+      removeAlertJob(subscriptionId);
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  /**
+   * {@link Scheduler#deleteJob} lists a job's triggers and then unschedules them in separate
+   * transactions, so it fails when a trigger it just listed is already gone. Dropping the trigger
+   * first leaves it nothing to unschedule. If it fails even so, a writer on another node has
+   * installed a pair under this key since, and deleting that would undo work newer than ours -- so
+   * stop rather than retry and let the reconcile in {@link #syncScheduledState} settle the outcome.
+   */
+  private void removeAlertJob(UUID subscriptionId) throws SchedulerException {
+    String id = subscriptionId.toString();
+    alertsScheduler.unscheduleJob(new TriggerKey(id, ALERT_TRIGGER_GROUP));
+    JobKey jobKey = new JobKey(id, ALERT_JOB_GROUP);
+    try {
+      alertsScheduler.deleteJob(jobKey);
+    } catch (SchedulerException lostRace) {
+      LOG.debug(
+          "Alert job {} changed while being deleted; leaving it to the reconcile",
+          jobKey,
+          lostRace);
+    }
   }
 
   public void deleteSuccessfulAndFailedEventsRecordByAlert(UUID id) {

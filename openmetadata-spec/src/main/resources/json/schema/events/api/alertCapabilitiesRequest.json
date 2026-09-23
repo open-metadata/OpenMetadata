@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/events/api/alertCapabilitiesRequest.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AlertCapabilitiesRequest",
   "description": "A selection of sources, and optionally what has been chosen so far, for which the form asks what can still be chosen.",
   "type": "object",

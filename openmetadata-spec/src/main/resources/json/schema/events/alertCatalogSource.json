@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/events/alertCatalogSource.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AlertCatalogSource",
   "description": "One source an alert can watch: its kind, and the filters and triggers it supports, by name.",
   "type": "object",

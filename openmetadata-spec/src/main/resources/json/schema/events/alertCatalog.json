@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/events/alertCatalog.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AlertCatalogFile",
   "description": "Everything an alert can watch and the conditions it can use. Every filter and trigger is written once; sources name the ones they support. The catalog only grows: what an earlier release offered is kept as removed, never deleted, so every saved alert still builds.",
   "type": "object",

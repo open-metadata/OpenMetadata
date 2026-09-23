@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/events/api/alertCapabilities.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AlertCapabilities",
   "description": "What a selection of sources supports and what it cannot reach. The form, the save and the matching plan all derive from the same place, so the form cannot offer something the save would reject.",
   "type": "object",

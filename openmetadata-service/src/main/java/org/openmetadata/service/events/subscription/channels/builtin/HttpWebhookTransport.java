@@ -14,14 +14,12 @@
 package org.openmetadata.service.events.subscription.channels.builtin;
 
 import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.Webhook;
@@ -87,11 +85,9 @@ public final class HttpWebhookTransport implements Transport {
     return clients.size();
   }
 
+  // The one place a webhook client is built, so the outbound URL policy covers every send.
   private static Client build(Timeouts timeouts) {
-    return ClientBuilder.newBuilder()
-        .connectTimeout(timeouts.connectSeconds(), TimeUnit.SECONDS)
-        .readTimeout(timeouts.readSeconds(), TimeUnit.SECONDS)
-        .build();
+    return SubscriptionUtil.getClient(timeouts.connectSeconds(), timeouts.readSeconds());
   }
 
   private static int clamp(int value, int min, int max) {

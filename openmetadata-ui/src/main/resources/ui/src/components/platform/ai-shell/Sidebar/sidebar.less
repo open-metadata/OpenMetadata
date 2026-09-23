@@ -86,7 +86,7 @@
   --ask-selected-surface,
   var(--tw-color-utility-gray-blue-100)
 );
-@ask-bg-hover: var(--tw-background-color-secondary_hover);
+@ask-bg-hover: var(--ask-hover, var(--tw-background-color-secondary_hover));
 @ask-text-primary: var(--tw-text-color-primary);
 @ask-text-secondary: var(--tw-text-color-secondary);
 @ask-text-tertiary: var(--tw-text-color-tertiary);
@@ -97,7 +97,7 @@
 @ask-brand: var(--tw-color-brand-600);
 @ask-brand-active: var(--ask-selected-fg, var(--tw-color-utility-brand-800));
 @ask-brand-50: var(--tw-color-utility-brand-50);
-@ask-border-secondary: var(--tw-border-color-secondary);
+@ask-border-secondary: var(--ask-border, var(--tw-border-color-secondary));
 
 // Utility palette — used by the count badges on nav items.
 @ask-util-gray-50: var(--tw-color-gray-50);
@@ -114,26 +114,34 @@
 //  - selected label/icon -> brand-300 (#84caff); the utility-brand-800 scale lands
 //    on brand-200 in dark, one step too pale versus the recording.
 //  - rest nav/list icons -> gray-600; quaternary (gray-400) is a step too bright.
+//  - hover fill -> gray-700; nav-item hover reads a step up from the gray-800 nav
+//    backing, matching the PageShell (PR #33581) hover token.
+//  - border/divider -> gray-700; the PageShell nav/card edges sit on gray-700.
 .dark-mode {
   --ask-selected-surface: var(--color-bg-brand-primary);
   --ask-selected-fg: var(--color-brand-300);
   --ask-rest-icon: var(--color-gray-600);
+  --ask-hover: var(--om-color-gray-700);
+  --ask-border: var(--om-color-gray-700);
 }
 
-// Dark: flatten the sidebar surfaces (outer card, main panel, rail) to canvas so
-// the sidebar reads as one continuous piece with the page — no raised-card
-// standout, separate-color, or border look. In light these keep their existing
-// surface / gray-blue-page values (frozen); only dark collapses to canvas.
+// Dark: step the sidebar surfaces to match the PageShell ladder (PR #33581) —
+// page 950 / nav-card 900 / nav 800. The outer card sits on canvas (gray-900),
+// one step above the gray-950 page; the inner main panel and rail are the nav
+// backing on surface (gray-800), a step lighter again. In light these keep their
+// existing surface / gray-blue-page values (frozen).
 .dark-mode {
-  .ask-sidebar,
+  .ask-sidebar {
+    background: var(--om-color-bg-canvas);
+  }
   .ask-main-panel {
-    background: var(--color-bg-canvas);
+    background: var(--om-color-bg-surface);
   }
   // The rail is styled at `.ask-sidebar .ask-rail` (0,2,0); match that depth so
   // this override wins (a bare `.dark-mode .ask-rail` would tie and lose to the
   // later nested rule, leaving the collapsed/sub rail two-tone).
   .ask-sidebar .ask-rail {
-    background: var(--color-bg-canvas);
+    background: var(--om-color-bg-surface);
   }
 }
 

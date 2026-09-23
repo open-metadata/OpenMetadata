@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/governance/intakeForm.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "IntakeForm",
   "description": "An IntakeForm declares the fields shown when creating or updating a governance entity (Data Product, Domain, Glossary Term) and which of those fields are required. Required fields are enforced identically at the API and UI layers so both contracts match.",
   "$comment": "@om-entity-type",

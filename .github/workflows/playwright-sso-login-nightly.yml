@@ -125,6 +125,47 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Detects whether the PR touches Okta-specific files so the Okta leg (a
+  # ~40-min live-tenant run) can be selectively enabled on PRs that touch
+  # its own code without paying the cost on every unrelated auth PR.
+  # Mirrors the `check-changes` pattern used by playwright-visual.yml et al.
+  # Empty output on schedule / dispatch is fine — the SKIP_LEG expression
+  # only consults it inside the pull_request/push clause.
+  check-changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # dorny/paths-filter calls the PR-files API on pull_request events; the
+    # workflow-level `contents: read` block implicitly zeroes every other
+    # scope, so grant read here explicitly (public-repo default happens to
+    # allow it today, private forks would silently see zero changed files).
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      okta: ${{ steps.filter.outputs.okta }}
+    steps:
+      # Pinned by SHA — same policy the other paths-filter callers in this
+      # repo use, since this action decides which PR-critical legs run.
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
+        id: filter
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          filters: |
+            okta:
+              # Playwright fixture + Okta-only spec
+              - 'openmetadata-ui/src/main/resources/ui/playwright/utils/sso-providers/okta.ts'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/Auth/Okta*'
+              # UI authenticator + provider that drive the Okta login flow
+              - 'openmetadata-ui/src/main/resources/ui/src/components/Auth/AppAuthenticators/OktaAuthenticator.*'
+              - 'openmetadata-ui/src/main/resources/ui/src/components/Auth/AuthProviders/OktaAuthProvider.*'
+              - 'openmetadata-ui/src/main/resources/ui/src/utils/OktaCustomStorage.*'
+              # Backend Okta config validator + schema
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/security/auth/validator/OktaAuthValidator.java'
+              - 'openmetadata-spec/src/main/resources/json/schema/security/client/oktaSSOClientConfig.json'
+              # This workflow's own edits (a SKIP_LEG or matrix change should
+              # exercise the leg it's editing).
+              - '.github/workflows/playwright-sso-login-nightly.yml'
+
   # To onboard a new provider:
   #   1. Add a matrix entry below. `name` is the fixture's `slug` from
   #      SsoProviderFixture (used as the @<slug> tag in SsoScenarios.spec.ts
@@ -144,6 +185,7 @@ jobs:
   #   4. Every SsoScenarios describe block is tagged `[@<slug>, @sso-matrix]`
   #      — the filter picks a leg's own describes automatically.
   sso-login:
+    needs: check-changes
     runs-on: ubuntu-latest
     environment: test
     timeout-minutes: 45
@@ -206,20 +248,19 @@ jobs:
     # spins up a runner, but the runner short-circuits at the first step
     # when this leg isn't wanted for the current event:
     #   - workflow_dispatch with a specific provider → only that leg runs
-    #   - workflow_dispatch=all / schedule → every leg runs
-    #   - pull_request → skip okta (needs live tenant) and the
-    #     -crosssite variant (needs 127.0.0.1 name-resolution setup we
-    #     don't want to gate PR CI on).
-    #   - push (branch push without an open PR) → the whole workflow
-    #     shouldn't fire, but if it does, treat like PR (skip okta +
-    #     crosssite so nothing red-x's without secrets).
-    # Per-event filtering:
-    #   - workflow_dispatch with a specific provider → only that leg runs
-    #   - workflow_dispatch=all / schedule → every leg runs
-    #   - pull_request → skip okta (needs live tenant not on fork PRs)
-    #   - push → same as pull_request (defensive; the workflow's `on:`
-    #     doesn't list push, but GitHub may still fire on workflow-file
-    #     changes).
+    #   - workflow_dispatch=all / schedule → every leg runs (including
+    #     okta and the -crosssite variant)
+    #   - pull_request → skip keycloak-azure-saml-crosssite always (needs
+    #     127.0.0.1 name-resolution setup we don't want to gate PR CI on);
+    #     skip okta unless the PR touches Okta-specific files (see the
+    #     `check-changes` job above) — this catches Okta regressions early
+    #     without paying the ~40-min live-tenant cost on every auth PR.
+    #     Fork PRs that touch Okta files still run the leg; the fixture
+    #     self-gates on the missing secret, so Playwright reports the Okta
+    #     tests as skipped and the leg lands green.
+    #   - push → the workflow's `on:` doesn't list push, but if GitHub
+    #     fires on workflow-file changes, treat it like PR (needs
+    #     evaluates as ${{ }}-empty on push, so okta is skipped).
     env:
       SKIP_LEG: >-
         ${{
@@ -227,8 +268,10 @@ jobs:
             && github.event.inputs.sso_provider != 'all'
             && github.event.inputs.sso_provider != matrix.provider.name)
           || ((github.event_name == 'pull_request' || github.event_name == 'push')
-              && matrix.provider.name == 'okta')
-          || matrix.provider.name == 'keycloak-azure-saml-crosssite'
+              && matrix.provider.name == 'keycloak-azure-saml-crosssite')
+          || ((github.event_name == 'pull_request' || github.event_name == 'push')
+              && matrix.provider.name == 'okta'
+              && needs.check-changes.outputs.okta != 'true')
         }}
     steps:
       - name: Skip leg early
@@ -406,15 +449,31 @@ jobs:
           path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
           retention-days: 5
 
-      - name: Send Slack Notification
-        if: ${{ always() && (github.event_name == 'schedule' || inputs.send_slack_notification == true) }}
-        working-directory: openmetadata-ui/src/main/resources/ui
-        env:
-          RUN_TITLE: "SSO Login Nightly: ${{ matrix.provider.name }} (${{ github.ref_name }})"
-          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
+      # Per-leg outcome file consumed by the notify-slack aggregator job. We
+      # write a tiny status.txt (skipped / setup-failed / completed) alongside
+      # the results.json (when the test step actually ran) so the aggregator
+      # can distinguish "leg didn't run for this event" from "leg failed
+      # before tests started" from "tests ran, look at counts".
+      - name: Record leg outcome
+        if: always()
         run: |
-          npx playwright-slack-report -c playwright/slack-cli.config.json -j playwright/output/results.json > slack_report.json
+          mkdir -p /tmp/sso-leg
+          if [ "${SKIP_LEG:-false}" = "true" ]; then
+            echo "skipped" > /tmp/sso-leg/status.txt
+          elif [ -f openmetadata-ui/src/main/resources/ui/playwright/output/results.json ]; then
+            cp openmetadata-ui/src/main/resources/ui/playwright/output/results.json /tmp/sso-leg/results.json
+            echo "completed" > /tmp/sso-leg/status.txt
+          else
+            echo "setup-failed" > /tmp/sso-leg/status.txt
+          fi
+
+      - name: Upload leg outcome
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: sso-login-outcome-${{ matrix.provider.name }}
+          path: /tmp/sso-leg/
+          retention-days: 5
 
       - name: Clean Up
         # Runs even on step failure, but not on skipped legs — the leg never
@@ -428,3 +487,151 @@ jobs:
           cd ./docker/development
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume
+
+  # Slack renders a triple-backtick block as monospace — that's the only
+  # reason the table lines up. Any emoji inside the table would misalign
+  # (raw source width ≠ rendered glyph width), so emoji lives only in the
+  # header line, driven by the summary's verdict.
+  notify-slack:
+    if: ${{ always() && (github.event_name == 'schedule' || inputs.send_slack_notification == true) }}
+    needs: sso-login
+    runs-on: ubuntu-latest
+    steps:
+      # actions/* pinned by SHA — same policy dorny/paths-filter uses above,
+      # since these run before every notify + fetch the tree/artifacts the
+      # notifier trusts.
+      - name: Checkout (for shared summary script)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          sparse-checkout: |
+            .github/scripts/build_sso_login_summary.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Download leg outcomes
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: sso-login-outcome-*
+          path: outcomes
+
+      - name: Build consolidated summary
+        run: bash .github/scripts/build_sso_login_summary.sh /tmp/sso-summary
+
+      - name: Post to Slack
+        env:
+          SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
+          SLACK_CHANNEL: C04HGB0NY04
+          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          verdict=$(cat /tmp/sso-summary/status.txt)
+          totals=$(cat /tmp/sso-summary/totals.txt)
+          case "$verdict" in
+            failed)  title_emoji=':x:'; title_word='FAILED';;
+            passed)  title_emoji=':white_check_mark:'; title_word='PASSED';;
+            *)       title_emoji=':fast_forward:'; title_word='SKIPPED';;
+          esac
+
+          payload=$(jq -n \
+            --arg channel "$SLACK_CHANNEL" \
+            --arg text "${title_emoji} SSO Login Nightly ${title_word} on \`${REF_NAME}\` — ${totals}" \
+            --arg header "${title_emoji} SSO Login Nightly — ${title_word}" \
+            --arg context "Branch: \`${REF_NAME}\` · Event: ${EVENT_NAME} · <${RUN_URL}|View run>" \
+            --arg totals "$totals" \
+            --rawfile table /tmp/sso-summary/table.txt \
+            '{
+              channel: $channel,
+              text: $text,
+              blocks: [
+                { type: "header",  text: { type: "plain_text", text: $header, emoji: true } },
+                { type: "context", elements: [ { type: "mrkdwn", text: $context } ] },
+                { type: "section", text: { type: "mrkdwn", text: ("```\n" + $table + "\n```") } },
+                { type: "section", text: { type: "mrkdwn", text: ("*" + $totals + "*") } }
+              ]
+            }')
+
+          echo "$payload" > /tmp/sso-payload.json
+          response=$(curl -sS -X POST https://slack.com/api/chat.postMessage \
+            -H "Authorization: Bearer ${SLACK_BOT_USER_OAUTH_TOKEN}" \
+            -H 'Content-Type: application/json; charset=utf-8' \
+            --data @/tmp/sso-payload.json)
+          echo "Slack API response: $response"
+          if [ "$(echo "$response" | jq -r '.ok')" != "true" ]; then
+            echo "::error::Slack post failed: $response"
+            exit 1
+          fi
+
+  # continue-on-error on the post step: fork PRs run under a read-only
+  # GITHUB_TOKEN and the comment API returns 403 — swallow that rather
+  # than red-x'ing the whole workflow for a nice-to-have.
+  notify-pr:
+    if: ${{ always() && github.event_name == 'pull_request' }}
+    needs: sso-login
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout (for shared summary script)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          sparse-checkout: |
+            .github/scripts/build_sso_login_summary.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Download leg outcomes
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: sso-login-outcome-*
+          path: outcomes
+
+      - name: Build consolidated summary
+        run: bash .github/scripts/build_sso_login_summary.sh /tmp/sso-summary
+
+      - name: Post sticky PR comment
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          verdict=$(cat /tmp/sso-summary/status.txt)
+          totals=$(cat /tmp/sso-summary/totals.txt)
+          case "$verdict" in
+            failed)  header=':x: SSO Login Nightly — **FAILED**';;
+            passed)  header=':white_check_mark: SSO Login Nightly — **PASSED**';;
+            *)       header=':fast_forward: SSO Login Nightly — **SKIPPED**';;
+          esac
+
+          marker='<!-- sso-login-nightly-summary -->'
+          {
+            echo "$marker"
+            echo "$header"
+            echo
+            echo "[View workflow run]($RUN_URL) · Commit \`${GITHUB_SHA::7}\`"
+            echo
+            echo '```'
+            cat /tmp/sso-summary/table.txt
+            echo '```'
+            echo
+            echo "**$totals**"
+          } > /tmp/pr-comment.md
+
+          # Sticky lookup: match the marker AND scope to the workflow bot's
+          # own comments. Marker-only would let any PR participant paste the
+          # string into their comment and have subsequent runs overwrite it.
+          existing=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --paginate --jq \
+            ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"${marker}\"))) | .id" \
+            | head -n1 || true)
+
+          if [ -n "$existing" ]; then
+            gh api -X PATCH "repos/${REPO}/issues/comments/${existing}" \
+              -F body=@/tmp/pr-comment.md
+          else
+            gh api -X POST "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+              -F body=@/tmp/pr-comment.md
+          fi

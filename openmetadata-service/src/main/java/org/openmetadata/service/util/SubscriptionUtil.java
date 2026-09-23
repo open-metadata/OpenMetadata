@@ -17,15 +17,19 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.USER;
 
 import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.glassfish.jersey.client.ClientProperties;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.events.StatusContext;
 import org.openmetadata.schema.entity.events.TestDestinationStatus;
@@ -47,6 +51,26 @@ import org.openmetadata.service.security.SecurityUtil;
 
 @Slf4j
 public class SubscriptionUtil {
+  /**
+   * Headers a caller must not set: hop-by-hop headers and Host belong to the transport, and the
+   * cloud metadata headers exist only to make a metadata service answer.
+   */
+  private static final Set<String> PROTECTED_HEADERS =
+      Set.of(
+          "host",
+          "connection",
+          "keep-alive",
+          "proxy-authenticate",
+          "proxy-authorization",
+          "te",
+          "trailer",
+          "transfer-encoding",
+          "upgrade",
+          "metadata",
+          "metadata-flavor",
+          "x-aws-ec2-metadata-token",
+          "x-metadata-token");
+
   private SubscriptionUtil() {
     /* Hidden constructor */
   }
@@ -98,14 +122,33 @@ public class SubscriptionUtil {
       }
     }
 
-    if (webhook.getHeaders() != null && !webhook.getHeaders().isEmpty()) {
-      for (Map.Entry<String, String> entry : webhook.getHeaders().entrySet()) {
-        if (oauth2Active && "Authorization".equalsIgnoreCase(entry.getKey())) {
-          continue;
-        }
-        target.header(entry.getKey(), entry.getValue());
-      }
+    applyCustomHeaders(target, webhook, oauth2Active);
+  }
+
+  private static void applyCustomHeaders(
+      Invocation.Builder target, Webhook webhook, boolean oauth2Active) {
+    if (webhook.getHeaders() == null || webhook.getHeaders().isEmpty()) {
+      return;
     }
+    for (Map.Entry<String, String> entry : webhook.getHeaders().entrySet()) {
+      String name = entry.getKey();
+      if (oauth2Active && "Authorization".equalsIgnoreCase(name)) {
+        continue;
+      }
+      if (PROTECTED_HEADERS.contains(name.toLowerCase(Locale.ROOT))) {
+        LOG.warn("Dropping protected header {} from webhook request", name);
+        continue;
+      }
+      if (hasControlCharacters(name) || hasControlCharacters(entry.getValue())) {
+        LOG.warn("Dropping header {} from webhook request: illegal characters", name);
+        continue;
+      }
+      target.header(name, entry.getValue());
+    }
+  }
+
+  private static boolean hasControlCharacters(String value) {
+    return value != null && (value.indexOf('\r') >= 0 || value.indexOf('\n') >= 0);
   }
 
   public static String decryptWebhookSecretKey(String encryptedSecretkey) {
@@ -217,6 +260,35 @@ public class SubscriptionUtil {
         .withLocation(
             response.getLocation() != null ? response.getLocation().toString() : StringUtils.EMPTY)
         .withTimestamp(System.currentTimeMillis());
+  }
+
+  public static Client getClient(int connectTimeout, int readTimeout) {
+    // Cap timeouts to prevent runaway webhook destinations from exhausting resources
+    // Minimum 5 seconds to allow reasonable connection establishment
+    // Maximum 30 seconds for connect, 120 seconds for read to prevent indefinite waits
+    int effectiveConnectTimeout = Math.min(Math.max(connectTimeout, 5), 30);
+    int effectiveReadTimeout = Math.min(Math.max(readTimeout, 10), 120);
+
+    if (connectTimeout != effectiveConnectTimeout) {
+      LOG.debug(
+          "Connect timeout {} clamped to {} (valid range: 5-30 seconds)",
+          connectTimeout,
+          effectiveConnectTimeout);
+    }
+    if (readTimeout != effectiveReadTimeout) {
+      LOG.debug(
+          "Read timeout {} clamped to {} (valid range: 10-120 seconds)",
+          readTimeout,
+          effectiveReadTimeout);
+    }
+
+    ClientBuilder clientBuilder = ClientBuilder.newBuilder();
+    clientBuilder.connectTimeout(effectiveConnectTimeout, TimeUnit.SECONDS);
+    clientBuilder.readTimeout(effectiveReadTimeout, TimeUnit.SECONDS);
+    // A redirect is a failure for a callback, and following one would skip the policy check below
+    clientBuilder.property(ClientProperties.FOLLOW_REDIRECTS, false);
+    clientBuilder.register(new OutboundUrlPolicyFilter());
+    return clientBuilder.build();
   }
 
   public static Invocation.Builder getTarget(Client client, Webhook webhook, String json) {
