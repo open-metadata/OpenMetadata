@@ -368,23 +368,32 @@ const FullBody = ({
   </Box>
 );
 
-const TypeChip = ({
+/**
+ * The type icon inside a hairline circle, in the type's own palette family.
+ * Exported because the landing-page widget draws the same chip beside a card it
+ * lays out itself — `FeaturedIcon` cannot stand in, it only covers five colour
+ * families and announcements span thirteen.
+ */
+export const AnnouncementTypeChip = ({
   icon: TypeIcon,
-  isFull,
+  size = 'sm',
   surface,
 }: {
   icon: IconComponentType;
-  isFull: boolean;
+  size?: 'sm' | 'lg';
   surface: { border: string; icon: string };
 }) => (
   <span
     className={classNames(
       'tw:flex tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border tw:bg-primary',
-      isFull ? 'tw:size-10' : 'tw:size-7',
+      size === 'lg' ? 'tw:size-10' : 'tw:size-7',
       surface.border
     )}>
     <TypeIcon
-      className={classNames(isFull ? 'tw:size-5' : 'tw:size-4', surface.icon)}
+      className={classNames(
+        size === 'lg' ? 'tw:size-5' : 'tw:size-4',
+        surface.icon
+      )}
     />
   </span>
 );
@@ -419,7 +428,11 @@ const AnnouncementBanner = ({
   const isExpanded = isFull || expanded;
 
   const typeChip = (
-    <TypeChip icon={TypeIcon} isFull={isFull} surface={surface} />
+    <AnnouncementTypeChip
+      icon={TypeIcon}
+      size={isFull ? 'lg' : 'sm'}
+      surface={surface}
+    />
   );
 
   const actions = (
