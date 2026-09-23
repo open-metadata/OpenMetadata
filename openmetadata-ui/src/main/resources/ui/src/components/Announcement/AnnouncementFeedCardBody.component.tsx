@@ -123,13 +123,24 @@ const AnnouncementFeedCardBody = ({
     <Box className="tw:gap-3" data-testid="main-message" direction="col">
       <Box align="center" className="tw:gap-2" justify="between">
         <Box align="center" className="tw:min-w-0 tw:gap-2">
-          <TypeIcon
+          <span
             className={classNames(
-              'tw:size-4 tw:shrink-0',
-              ANNOUNCEMENT_SURFACE_CLASSES[color].icon
-            )}
-          />
-          <Badge color={color} data-testid="announcement-type-badge" size="sm">
+              'tw:flex tw:size-7 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border tw:bg-primary',
+              ANNOUNCEMENT_SURFACE_CLASSES[color].border
+            )}>
+            <TypeIcon
+              className={classNames(
+                'tw:size-4',
+                ANNOUNCEMENT_SURFACE_CLASSES[color].icon
+              )}
+            />
+          </span>
+          <Badge
+            className="tw:bg-primary!"
+            color={color}
+            data-testid="announcement-type-badge"
+            size="sm"
+            type="color">
             {t(labelKey)}
           </Badge>
         </Box>

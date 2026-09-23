@@ -170,72 +170,85 @@ export const getAnnouncementTypeConfig = (
  */
 export const ANNOUNCEMENT_SURFACE_CLASSES: Record<
   BadgeColors,
-  { surface: string; icon: string; title: string }
+  { surface: string; icon: string; title: string; border: string }
 > = {
   gray: {
     surface: 'tw:bg-utility-gray-50 tw:outline-utility-gray-200',
     icon: 'tw:text-utility-gray-500',
     title: 'tw:text-utility-gray-700',
+    border: 'tw:border-utility-gray-200',
   },
   brand: {
     surface: 'tw:bg-utility-brand-50 tw:outline-utility-brand-200',
     icon: 'tw:text-utility-brand-500',
     title: 'tw:text-utility-brand-700',
+    border: 'tw:border-utility-brand-200',
   },
   error: {
     surface: 'tw:bg-utility-error-50 tw:outline-utility-error-200',
     icon: 'tw:text-utility-error-500',
     title: 'tw:text-utility-error-700',
+    border: 'tw:border-utility-error-200',
   },
   warning: {
     surface: 'tw:bg-utility-warning-50 tw:outline-utility-warning-200',
     icon: 'tw:text-utility-warning-500',
     title: 'tw:text-utility-warning-700',
+    border: 'tw:border-utility-warning-200',
   },
   success: {
     surface: 'tw:bg-utility-success-50 tw:outline-utility-success-200',
     icon: 'tw:text-utility-success-500',
     title: 'tw:text-utility-success-700',
+    border: 'tw:border-utility-success-200',
   },
   'gray-blue': {
     surface: 'tw:bg-utility-gray-blue-50 tw:outline-utility-gray-blue-200',
     icon: 'tw:text-utility-gray-blue-500',
     title: 'tw:text-utility-gray-blue-700',
+    border: 'tw:border-utility-gray-blue-200',
   },
   'blue-light': {
     surface: 'tw:bg-utility-blue-light-50 tw:outline-utility-blue-light-200',
     icon: 'tw:text-utility-blue-light-500',
     title: 'tw:text-utility-blue-light-700',
+    border: 'tw:border-utility-blue-light-200',
   },
   blue: {
     surface: 'tw:bg-utility-blue-50 tw:outline-utility-blue-200',
     icon: 'tw:text-utility-blue-500',
     title: 'tw:text-utility-blue-700',
+    border: 'tw:border-utility-blue-200',
   },
   'blue-dark': {
     surface: 'tw:bg-utility-blue-dark-50 tw:outline-utility-blue-dark-200',
     icon: 'tw:text-utility-blue-dark-500',
     title: 'tw:text-utility-blue-dark-700',
+    border: 'tw:border-utility-blue-dark-200',
   },
   indigo: {
     surface: 'tw:bg-utility-indigo-50 tw:outline-utility-indigo-200',
     icon: 'tw:text-utility-indigo-500',
     title: 'tw:text-utility-indigo-700',
+    border: 'tw:border-utility-indigo-200',
   },
   purple: {
     surface: 'tw:bg-utility-purple-50 tw:outline-utility-purple-200',
     icon: 'tw:text-utility-purple-500',
     title: 'tw:text-utility-purple-700',
+    border: 'tw:border-utility-purple-200',
   },
   pink: {
     surface: 'tw:bg-utility-pink-50 tw:outline-utility-pink-200',
     icon: 'tw:text-utility-pink-500',
     title: 'tw:text-utility-pink-700',
+    border: 'tw:border-utility-pink-200',
   },
   orange: {
     surface: 'tw:bg-utility-orange-50 tw:outline-utility-orange-200',
     icon: 'tw:text-utility-orange-500',
     title: 'tw:text-utility-orange-700',
+    border: 'tw:border-utility-orange-200',
   },
 };
 

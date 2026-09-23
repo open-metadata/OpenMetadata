@@ -129,11 +129,13 @@ const AnnouncementFooter = ({
 };
 
 const AnnouncementActions = ({
+  actionClassName,
   expanded,
   showToggle,
   onDismiss,
   onToggleExpand,
 }: {
+  actionClassName: string;
   expanded: boolean;
   showToggle: boolean;
   onDismiss?: () => void;
@@ -145,7 +147,8 @@ const AnnouncementActions = ({
     <Box align="center" className="tw:shrink-0 tw:gap-1">
       {showToggle && (
         <Button
-          color="link-color"
+          className={actionClassName}
+          color="link-gray"
           data-testid="announcement-toggle-btn"
           size="sm"
           onClick={stopAnd(onToggleExpand)}>
@@ -155,6 +158,7 @@ const AnnouncementActions = ({
       {onDismiss && (
         <ButtonUtility
           aria-label={t('label.close')}
+          className={actionClassName}
           color="tertiary"
           data-testid="announcement-dismiss-btn"
           icon={XClose}
@@ -203,9 +207,11 @@ const AnnouncementContent = ({
     <Box className="tw:min-w-0 tw:flex-1 tw:gap-2" direction="col">
       <Box align="center" className="tw:min-w-0 tw:gap-2">
         <Badge
+          className="tw:bg-primary!"
           color={badgeColor}
           data-testid="announcement-type-badge"
-          size="sm">
+          size="sm"
+          type="color">
           {t(labelKey)}
         </Badge>
 
@@ -272,7 +278,7 @@ const AnnouncementBanner = ({
   return (
     <div
       className={classNames(
-        'tw:rounded-lg tw:outline-1 tw:-outline-offset-1',
+        'tw:rounded-[10px] tw:outline-1 tw:-outline-offset-1',
         surface.surface,
         isFull ? 'tw:px-4 tw:py-3.5' : 'tw:px-3 tw:py-2',
         className
@@ -280,9 +286,13 @@ const AnnouncementBanner = ({
       data-testid={testId}
       role="status">
       <Box align={isExpanded ? 'start' : 'center'} className="tw:gap-2">
-        <TypeIcon
-          className={classNames('tw:size-4 tw:shrink-0', surface.icon)}
-        />
+        <span
+          className={classNames(
+            'tw:flex tw:size-7 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border tw:bg-primary',
+            surface.border
+          )}>
+          <TypeIcon className={classNames('tw:size-4', surface.icon)} />
+        </span>
 
         <AnnouncementContent
           announcement={announcement}
@@ -297,6 +307,7 @@ const AnnouncementBanner = ({
         />
 
         <AnnouncementActions
+          actionClassName={surface.title}
           expanded={expanded}
           showToggle={Boolean(onToggleExpand) && !isFull}
           onDismiss={onDismiss}
