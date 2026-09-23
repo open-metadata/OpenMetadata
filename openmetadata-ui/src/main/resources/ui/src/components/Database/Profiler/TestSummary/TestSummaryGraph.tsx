@@ -56,6 +56,7 @@ import {
   TABLE_FRESHNESS_KEY,
 } from '../../../../constants/TestSuite.constant';
 import type { TestCaseResult } from '../../../../generated/tests/testCase';
+import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { useChartColors } from '../../../../hooks/useChartColors';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { getTaskById } from '../../../../rest/tasksAPI';
@@ -79,6 +80,7 @@ import {
   formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
 import TestSummaryCustomTooltip from '../TestSummaryCustomTooltip/TestSummaryCustomTooltip.component';
+import TestSummaryStatusKey from './TestSummaryStatusKey';
 import {
   STATUS_DOT_RADIUS,
   STATUS_DOT_SIZE,
@@ -406,6 +408,14 @@ function TestSummaryGraph({
     [testCaseParameterValue, testCaseResults]
   );
 
+  const plottedStatuses = useMemo(
+    () =>
+      chartData.data
+        .map((point) => point.status)
+        .filter((status): status is TestCaseStatus => Boolean(status)),
+    [chartData.data]
+  );
+
   const plottedData = useMemo(
     () =>
       applyStatusPlacements(
@@ -567,10 +577,13 @@ function TestSummaryGraph({
           ))}
         </ComposedChart>
       </ResponsiveContainer>
-      <div
-        className="tw:px-4 tw:pb-2 tw:text-right tw:text-xs tw:text-tertiary"
-        data-testid="run-selection-hint">
-        {t('message.click-a-point-for-run-details')}
+      <div className="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-2 tw:px-4 tw:pb-2">
+        <TestSummaryStatusKey statuses={plottedStatuses} />
+        <span
+          className="tw:text-xs tw:text-tertiary"
+          data-testid="run-selection-hint">
+          {t('message.click-a-point-for-run-details')}
+        </span>
       </div>
     </Box>
   );
