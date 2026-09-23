@@ -6,8 +6,14 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -746,6 +752,75 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
         Exception.class,
         () -> client.pipelines().addPipelineStatus(pipeline.getId().toString(), pipelineStatus),
         "Adding status with invalid task name should fail");
+  }
+
+  /**
+   * A DAG start date has {@code microsecond == 0}, so the Python client serializes {@code
+   * startDate} with no fractional part — {@code "2025-08-01T00:00:00Z"}. The strict global {@code
+   * SimpleDateFormat("…SSSSSS'Z'")} rejected that form, which broke a whole chain during Airflow
+   * ingestion: the Pipeline PATCH was skipped, so the stored task list went stale, so the status
+   * write that follows it was rejected with "Invalid task name". Both halves are asserted here.
+   */
+  @Test
+  void patch_pipelineStartDateWithoutFractionalSeconds_200_OK(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    // dbt-style task ids, matching what the Airflow connector emits for a Cosmos-generated DAG
+    String existingTask = "model.dbt_project.existing_model";
+    String addedTask = "model.dbt_project.added_model";
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_bare_second_start_date"));
+    request.setService(service.getFullyQualifiedName());
+    request.setStartDate(new Date());
+    request.setTasks(List.of(new Task().withName(existingTask)));
+
+    Pipeline pipeline = createEntity(request);
+    assertNotNull(pipeline.getStartDate());
+
+    // Hand-built body on purpose: the Java SDK serializes Dates with the strict ".SSSSSS'Z'"
+    // format, so patching through it would never reproduce the payload the Python client sends.
+    String patch =
+        """
+        [{"op":"replace","path":"/startDate","value":"2025-08-01T00:00:00Z"},\
+        {"op":"replace","path":"/tasks","value":[{"name":"%s"},{"name":"%s"}]}]"""
+            .formatted(existingTask, addedTask);
+
+    HttpRequest httpRequest =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + getResourcePath() + pipeline.getId()))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json-patch+json")
+            .method("PATCH", HttpRequest.BodyPublishers.ofString(patch))
+            .build();
+
+    HttpResponse<String> response =
+        HttpClient.newHttpClient().send(httpRequest, HttpResponse.BodyHandlers.ofString());
+    assertEquals(
+        200, response.statusCode(), "PATCH rejected the bare-second startDate: " + response.body());
+
+    Pipeline patched = client.pipelines().get(pipeline.getId().toString(), "tasks");
+    assertEquals(
+        Instant.parse("2025-08-01T00:00:00Z"),
+        patched.getStartDate().toInstant(),
+        "startDate must round-trip, not merely be accepted");
+    assertEquals(
+        List.of(existingTask, addedTask), patched.getTasks().stream().map(Task::getName).toList());
+
+    // The task list landed, so a status naming the newly added task is accepted. This is the
+    // "Invalid task name" 400 that the stale task list used to produce.
+    PipelineStatus pipelineStatus =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Successful)
+            .withTimestamp(System.currentTimeMillis())
+            .withTaskStatus(
+                List.of(
+                    new Status().withName(addedTask).withExecutionStatus(StatusType.Successful)));
+    client.pipelines().addPipelineStatus(patched.getFullyQualifiedName(), pipelineStatus);
+
+    Pipeline withStatus = client.pipelines().get(pipeline.getId().toString(), "pipelineStatus");
+    assertEquals(StatusType.Successful, withStatus.getPipelineStatus().getExecutionStatus());
   }
 
   @Test
