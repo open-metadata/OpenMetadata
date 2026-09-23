@@ -75,9 +75,7 @@ export const visitClassificationPage = async (
   ).toBeVisible();
 
   await expect(
-    tagsContainer
-      .locator('.table-container')
-      .getByTestId('loader')
+    tagsContainer.locator('.table-container').getByTestId('loader')
   ).toHaveCount(0, { timeout: 30000 });
 
   await expect(
