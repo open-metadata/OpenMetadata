@@ -1458,9 +1458,9 @@ test.describe('Glossary tests', () => {
       // guarantees A is gone before we navigate and verify.
       await glossaryA.delete(apiContext);
       await page.goto(GLOSSARY_ROUTE, { waitUntil: 'commit' });
-      await expectGlossaryNotVisible(page, glossaryA.data.displayName);
       await expectGlossaryVisible(page, glossaryB.data.displayName);
       await expectGlossaryVisible(page, glossaryC.data.displayName);
+      await expectGlossaryNotVisible(page, glossaryA.data.displayName);
 
       // Delete B (fails via mocked WebSocket event)
       await selectActiveGlossary(page, glossaryB.data.displayName);
