@@ -540,6 +540,49 @@ describe('IncidentGroupsView', () => {
     expect(mockListIncidentGroups).toHaveBeenCalledTimes(1);
   });
 
+  it('should own the loader and the error when a reported change finds the table empty', async () => {
+    let rendered: ReturnType<typeof render> | undefined;
+
+    await act(async () => {
+      rendered = render(
+        <MemoryRouter
+          initialEntries={[
+            '/observability/incident-manager?groupBy=testDefinition',
+          ]}>
+          {viewTree(0)}
+        </MemoryRouter>
+      );
+    });
+
+    // The dimension switch never settles, so its rows never reach the table.
+    mockListIncidentGroups.mockReturnValue(new Promise(() => undefined));
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('select-owner'));
+    });
+
+    mockListIncidentGroups.mockRejectedValue(new Error('failure'));
+
+    await act(async () => {
+      rendered?.rerender(
+        <MemoryRouter
+          initialEntries={[
+            '/observability/incident-manager?groupBy=testDefinition',
+          ]}>
+          {viewTree(1)}
+        </MemoryRouter>
+      );
+    });
+
+    // The re-read supersedes the switch it raced, so it is the only request
+    // left to speak for the section: with no rows to preserve, reporting 'no
+    // active incidents' would hide a fetch that failed.
+    expect(screen.getByTestId('incident-groups-error')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('incident-groups-empty')
+    ).not.toBeInTheDocument();
+  });
+
   it('should not refire the fetch when the selected dimension is picked again', async () => {
     await act(async () => {
       renderView('/observability/incident-manager?groupBy=testDefinition');

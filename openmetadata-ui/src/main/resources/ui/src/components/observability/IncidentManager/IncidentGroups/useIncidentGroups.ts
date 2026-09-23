@@ -43,7 +43,8 @@ import { parseIncidentGroupBy } from './IncidentGroups.utils';
  * `refreshKey` is the caller's way of saying the groups it is showing are out
  * of date — a new value refires the fetch once, which is how an incident
  * changed elsewhere on the page reaches these rows without a reload. That
- * re-read runs in the background: the rows stay put until the new ones land.
+ * re-read runs in the background whenever there are rows to keep: they stay put
+ * until the new ones land.
  */
 export const useIncidentGroups = ({
   refreshKey,
@@ -85,6 +86,10 @@ export const useIncidentGroups = ({
   // something new.
   const fetchedRefreshKey = useRef(refreshKey);
   const fetchedGroupBy = useRef(groupBy);
+  // Whether the rows on screen are ones a settled fetch put there. A dimension
+  // switch still in flight, or a read that failed, leaves the table empty —
+  // there is then nothing for a re-read to preserve.
+  const hasSettledGroups = useRef(false);
 
   const fetchIncidentGroups = useCallback(async () => {
     const requestId = latestRequest.current + 1;
@@ -93,15 +98,21 @@ export const useIncidentGroups = ({
     // they would render under the new dimension's column header and badge, and
     // the header stats would describe the dimension the user just left.
     const isDimensionChange = fetchedGroupBy.current !== groupBy;
-    // A new key means the caller is only saying the rows are stale, so they
-    // stay on screen while they are re-read: no loader swapped in for the table
-    // the user is reading, and no wipe if the re-read fails.
+    // A new key over a settled table means the caller is only saying the rows
+    // are stale, so they stay on screen while they are re-read: no loader
+    // swapped in for the table the user is reading, and no wipe if the re-read
+    // fails. With nothing settled to keep, the re-read has to report itself
+    // like any first read — it supersedes whatever it raced, so it is the only
+    // request left to fill the section.
     const isBackground =
-      !isDimensionChange && fetchedRefreshKey.current !== refreshKey;
+      !isDimensionChange &&
+      hasSettledGroups.current &&
+      fetchedRefreshKey.current !== refreshKey;
     fetchedRefreshKey.current = refreshKey;
     fetchedGroupBy.current = groupBy;
 
     if (isDimensionChange) {
+      hasSettledGroups.current = false;
       setIncidentGroups([]);
       setPaging(undefined);
     }
@@ -125,6 +136,7 @@ export const useIncidentGroups = ({
         return;
       }
 
+      hasSettledGroups.current = true;
       setIncidentGroups(response.data);
       setPaging(response.paging);
       setIsError(false);
@@ -134,6 +146,7 @@ export const useIncidentGroups = ({
       }
 
       if (!isBackground) {
+        hasSettledGroups.current = false;
         setIncidentGroups([]);
         setPaging(undefined);
         setIsError(true);
