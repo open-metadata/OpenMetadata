@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { test as playwrightTest } from '@playwright/test';
+import { guardStorageStateBoot } from '../../utils/storageStateRecovery';
 import { installServerLoadReducers } from './serverLoad';
 
 /**
@@ -29,6 +30,7 @@ import { installServerLoadReducers } from './serverLoad';
 export const test = playwrightTest.extend({
   context: async ({ context }, use) => {
     await installServerLoadReducers(context);
+    guardStorageStateBoot(context);
 
     await use(context);
   },

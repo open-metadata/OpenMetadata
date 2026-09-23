@@ -309,8 +309,7 @@ export const redirectToHomePage = async (
     waitUntil: 'domcontentloaded',
   });
 
-  if (await recoverLostStorageStateToken(page, bootedSignedOut)) {
-    await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
+  if (await recoverLostStorageStateToken(page, bootedSignedOut, '/my-data')) {
     await page.waitForURL('**/my-data', { waitUntil: 'domcontentloaded' });
   }
 

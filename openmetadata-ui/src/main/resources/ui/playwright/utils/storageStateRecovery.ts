@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { BrowserContext, Page, test } from '@playwright/test';
+import { BrowserContext, Page, Request, test } from '@playwright/test';
 import { readdir, readFile } from 'fs/promises';
 import path from 'path';
 import { APP_STATE_KEY, getToken, OIDC_TOKEN_KEY } from './tokenStorage';
@@ -117,8 +117,10 @@ const findStateTokenForSession = async (
       ({ name, value }) => name === SESSION_COOKIE_NAME && value === session
     );
 
-    if (ownsSession) {
-      return tokenFromStateFile(state);
+    const token = ownsSession ? tokenFromStateFile(state) : undefined;
+
+    if (token) {
+      return token;
     }
   }
 
@@ -177,13 +179,10 @@ const annotateRecovery = (description: string) => {
   }
 };
 
-/**
- * Re-seeds the token and reloads when the boot landed on /signin only because
- * the storageState token was lost. Returns whether it recovered.
- */
-export const recoverLostStorageStateToken = async (
+const recover = async (
   page: Page,
-  bootedSignedOut: Promise<boolean>
+  bootedSignedOut: Promise<boolean>,
+  reloadUrl: string
 ): Promise<boolean> => {
   if (!(await bootedSignedOut) || (await getToken(page))) {
     return false;
@@ -197,9 +196,77 @@ export const recoverLostStorageStateToken = async (
 
   annotateRecovery(
     'storageState token missing from IndexedDB at boot; re-seeded from ' +
-      `${AUTH_STATE_DIR} and reloaded (landed on ${page.url()})`
+      `${AUTH_STATE_DIR} and reloaded ${reloadUrl} (landed on ${page.url()})`
   );
   await writeTokenThroughServiceWorker(page, token);
+  await page.goto(reloadUrl, { waitUntil: 'domcontentloaded' });
 
   return true;
+};
+
+// Both the context fixture and redirectToHomePage watch the same first boot.
+// Whichever asks first runs the recovery (and its single reload); the other
+// awaits that outcome, so a page is never reloaded twice.
+const recoveries = new WeakMap<Page, Promise<boolean>>();
+
+/**
+ * Re-seeds the token and reloads `reloadUrl` when the boot landed on /signin
+ * only because the storageState token was lost. Returns whether this page was
+ * recovered, by this call or a concurrent one.
+ */
+export const recoverLostStorageStateToken = (
+  page: Page,
+  bootedSignedOut: Promise<boolean>,
+  reloadUrl: string
+): Promise<boolean> => {
+  const inFlight = recoveries.get(page);
+
+  if (inFlight) {
+    return inFlight;
+  }
+
+  const recovery = recover(page, bootedSignedOut, reloadUrl);
+  recoveries.set(page, recovery);
+
+  return recovery;
+};
+
+const guardFirstBoot = (page: Page) => {
+  const onRequest = (request: Request) => {
+    if (
+      !request.isNavigationRequest() ||
+      request.frame() !== page.mainFrame()
+    ) {
+      return;
+    }
+    page.off('request', onRequest);
+
+    // Runs alongside the test: by the time it acts, the test is on /signin
+    // and would fail anyway. Reloading the URL the test asked for lets its
+    // pending locator and response waits resolve against the signed-in app.
+    recoverLostStorageStateToken(
+      page,
+      watchAuthBoot(page),
+      request.url()
+    ).catch((error) => {
+      // A test that closes or navigates the page mid-check is not a failure
+      // of this guard; it must never fail a test on its own.
+      if (!page.isClosed()) {
+        console.warn(`[auth] storageState recovery skipped: ${error}`);
+      }
+    });
+  };
+
+  page.on('request', onRequest);
+};
+
+/**
+ * Covers specs whose first navigation is not redirectToHomePage (a direct
+ * `page.goto('/observability')` etc.). Watches only each page's first main
+ * frame navigation — the only boot that can observe a lost restore — and adds
+ * no wait to the test itself.
+ */
+export const guardStorageStateBoot = (context: BrowserContext) => {
+  context.pages().forEach(guardFirstBoot);
+  context.on('page', guardFirstBoot);
 };
