@@ -47,6 +47,7 @@ import { StorageService } from '../../generated/entity/services/storageService';
 import { Type } from '../../generated/entity/type';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
+import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
@@ -55,32 +56,6 @@ export type UrlParams = {
   searchQuery: string;
   tab: string;
 };
-
-export type ExploreSearchIndex =
-  | SearchIndex.DATA_PRODUCT
-  | SearchIndex.TABLE
-  | SearchIndex.COLUMN
-  | SearchIndex.PIPELINE
-  | SearchIndex.DASHBOARD
-  | SearchIndex.DATABASE
-  | SearchIndex.DATABASE_SCHEMA
-  | SearchIndex.CHART
-  | SearchIndex.MLMODEL
-  | SearchIndex.TOPIC
-  | SearchIndex.CONTAINER
-  | SearchIndex.GLOSSARY_TERM
-  | SearchIndex.TAG
-  | SearchIndex.SEARCH_INDEX
-  | SearchIndex.STORED_PROCEDURE
-  | SearchIndex.DASHBOARD_DATA_MODEL
-  | SearchIndex.API_COLLECTION
-  | SearchIndex.API_ENDPOINT
-  | SearchIndex.METRIC
-  | SearchIndex.DIRECTORY
-  | SearchIndex.FILE
-  | SearchIndex.SPREADSHEET
-  | SearchIndex.WORKSHEET
-  | SearchIndex.KNOWLEDGE_PAGE_INDEX;
 
 export type SearchHitCounts = Record<ExploreSearchIndex, number>;
 

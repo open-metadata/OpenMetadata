@@ -14,17 +14,13 @@
 import { DateRangeObject } from 'Models';
 import { SVGAttributes } from 'react';
 import type { LinkProps, NavigateFunction } from 'react-router-dom';
+import { IncidentTimeMetricsType } from '../../enums/DataQuality.enum';
 import { TestCaseType } from '../../enums/TestSuite.enum';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
 import { TestPlatform } from '../../generated/tests/testDefinition';
 import { DataQualityDashboardChartFilters } from '../../interface/observability/dataQuality.interface';
 import { AreaChartColorScheme } from '../Visualisations/Chart/Chart.interface';
-
-export enum IncidentTimeMetricsType {
-  TIME_TO_RESPONSE = 'timeToResponse',
-  TIME_TO_RESOLUTION = 'timeToResolution',
-}
 
 export type TestSuiteSearchParams = {
   searchValue: string;

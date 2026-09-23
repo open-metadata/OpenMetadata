@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { ReactNode } from 'react';
 import type { Column } from 'react-data-grid';
 import { VALIDATION_STEP } from '../../../constants/BulkImport.constant';
@@ -85,11 +86,6 @@ export interface BulkEntityImportLocationState {
   metricBulkEditScope?: MetricBulkEditScope;
   selectedMetricNames?: string[];
 }
-
-export type CSVImportAsyncResponse = {
-  jobId: string;
-  message: string;
-};
 
 export type CSVImportAsyncWebsocketResponse = {
   jobId: string;

@@ -10,3 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import { PipelineStatus } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+
+export interface DataInsightLatestRun {
+  data_insight_task: string;
+  application_task: string;
+  total: string;
+  pipelineStatus: PipelineStatus;
+}

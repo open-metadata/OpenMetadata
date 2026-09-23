@@ -10,3 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import { Chart } from '../../generated/entity/data/chart';
+
+export type ChartType = {
+  displayName: string;
+} & Chart;
