@@ -321,6 +321,29 @@ public class McpIntegrationIT extends McpTestBase {
   }
 
   /**
+   * The bot attribution a tool call carries has to reach the policy engine. Same user and same
+   * table: the REST read is allowed and only the MCP call is denied, so the deny is driven by what
+   * is making the call rather than by the user's own permissions.
+   */
+  @Test
+  void getEntityDetailsIsDeniedWhenTheCallCarriesBotAttribution() throws Exception {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    String tagFqn = createRestrictedTag(suffix);
+    Table restricted = createServiceDatabaseSchemaTable("mcp_imp_" + suffix);
+    tagTable(restricted.getId().toString(), tagFqn);
+    String token =
+        createUserDeniedByCondition(
+            suffix, String.format("isImpersonated() && matchAnyTag('%s')", tagFqn));
+
+    assertThat(getResponse("tables/name/" + restricted.getFullyQualifiedName(), token).statusCode())
+        .isEqualTo(200);
+
+    Map<String, Object> call =
+        McpTestUtils.createGetEntityToolCall(Entity.TABLE, restricted.getFullyQualifiedName());
+    assertThat(executeMcpRequest(call, token).toString()).doesNotContain("created_at");
+  }
+
+  /**
    * A Deny whose condition matches the asset's tag must deny lineage as well as details. An
    * unresolved ResourceContext reads the tag as absent, so the Deny never fires and the graph comes
    * back - the fail-open half of #31941.
