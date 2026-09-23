@@ -169,7 +169,9 @@ const TagSelector: FC<TagSelectorProps> = ({
   const handleOpenChange = useCallback(
     (open: boolean) => {
       debouncedSearch.cancel();
-      void fetchTags('');
+      if (open) {
+        void fetchTags('');
+      }
       onOpenChange?.(open);
     },
     [debouncedSearch, fetchTags, onOpenChange]
