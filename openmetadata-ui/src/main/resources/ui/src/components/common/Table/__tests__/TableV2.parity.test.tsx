@@ -335,6 +335,8 @@ describe('TableV2 — ellipsis columns', () => {
 
     expect(titleSpan).toBeInTheDocument();
     expect(titleSpan).toHaveTextContent(LONG_TITLE);
+    // AntD exposed the clipped header text on hover through a native title.
+    expect(titleSpan).toHaveAttribute('title', LONG_TITLE);
     // Both the flex container and the truncating span need min-w-0, or the span
     // (a flex item, min-width:auto by default) refuses to shrink and the header
     // overflows anyway.

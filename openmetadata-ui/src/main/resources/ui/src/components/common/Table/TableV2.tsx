@@ -343,7 +343,14 @@ const renderColumnHeaderTitle = <T,>(
   propsColumns: ColumnsType<T>
 ): ReactNode =>
   hasTruncatingHeader(col) ? (
-    <span className="tw:min-w-0 tw:truncate">{col.title}</span>
+    // Native title, not the design-system <Tooltip>: AntD's `ellipsis` header
+    // exposed the clipped text through a native title, and react-aria's
+    // Tooltip does not reliably open on hover inside a column header that
+    // already owns press handling (see TableAliases for the same call).
+    // eslint-disable-next-line openmetadata-ui-patterns/no-raw-title-attribute -- see comment above
+    <span className="tw:min-w-0 tw:truncate" title={col.title}>
+      {col.title}
+    </span>
   ) : (
     resolveColumnTitle(col, propsColumns)
   );
