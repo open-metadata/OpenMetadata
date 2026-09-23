@@ -13,6 +13,8 @@
 Utils for Airbyte
 """
 
+import re
+import unicodedata
 from typing import cast
 
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -33,6 +35,9 @@ from .constants import (  # noqa: TID252
 from .models import AirbyteDestinationResponse, AirbyteSourceResponse, AirbyteStream  # noqa: TID252
 
 logger = ingestion_logger()
+
+_WHITESPACE_RUN = re.compile(r"\s+")
+_NON_ALPHANUMERIC_OR_UNDERSCORE = re.compile(r"[^A-Za-z0-9_]")
 
 
 def _table_details(name: str, schema: str | None, database: str | None) -> TableDetails:
@@ -141,16 +146,28 @@ def get_source_table_details(stream: AirbyteStream, source_connection: AirbyteSo
     )
 
 
-def render_stream_pattern(pattern: str, stream: AirbyteStream) -> str | None:
+def render_stream_pattern(pattern: str, stream: AirbyteStream) -> str:
     """
     Render an Airbyte destination name template over ``{namespace}`` and ``{stream}``.
 
-    Returns None when the template needs a namespace the stream does not carry, so the caller
-    falls back to a name it can actually build rather than emitting a literal ``{namespace}``.
+    Mirrors ``KafkaRecordConsumer.buildTopicMap()``: a missing namespace renders as an empty
+    string, which is what the destination writes. It does not fall back to the stream name.
     """
-    if "{namespace}" in pattern and not stream.namespace:
-        return None
     return pattern.replace("{namespace}", stream.namespace or "").replace("{stream}", stream.name)
+
+
+def normalize_airbyte_name(name: str) -> str:
+    """
+    Apply Airbyte's ``StandardNameTransformer`` to a destination entity name.
+
+    ``getIdentifier`` delegates to ``Names.toAlphanumericAndUnderscore``: NFKD-normalise, drop
+    combining marks, collapse whitespace runs to one ``_``, then replace every character outside
+    ``[A-Za-z0-9_]`` with ``_``. A ``{namespace}.{stream}`` topic pattern therefore lands on
+    ``shopdb_products``, not ``shopdb.products``.
+    """
+    decomposed = unicodedata.normalize("NFKD", name)
+    unmarked = "".join(char for char in decomposed if not unicodedata.category(char).startswith("M"))
+    return _NON_ALPHANUMERIC_OR_UNDERSCORE.sub("_", _WHITESPACE_RUN.sub("_", unmarked))
 
 
 def is_object_store_connector(resolved_type: str | None) -> bool:

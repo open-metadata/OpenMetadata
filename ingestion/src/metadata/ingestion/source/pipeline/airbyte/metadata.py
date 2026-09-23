@@ -484,7 +484,11 @@ class AirbyteSource(PipelineServiceSource):
                 source_resolver, stream, source_connection, SOURCE, pipeline_name
             )
             to_reference, to_supported = self._resolve_entity(
-                destination_resolver, stream, destination_connection, DESTINATION, pipeline_name
+                destination_resolver,
+                pipeline_details.connection.destination_stream(stream),
+                destination_connection,
+                DESTINATION,
+                pipeline_name,
             )
             if from_reference is not None:
                 unresolved_sides.pop(SOURCE, None)

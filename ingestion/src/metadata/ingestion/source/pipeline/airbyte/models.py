@@ -15,6 +15,13 @@ Airbyte Source Model module
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from .constants import (  # noqa: TID252
+    NAMESPACE_CUSTOM_FORMAT,
+    NAMESPACE_DESTINATION,
+    NAMESPACE_SOURCE,
+    SOURCE_NAMESPACE_TOKEN,
+)
+
 
 class AirbyteWorkspace(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -82,6 +89,11 @@ class AirbyteConnectionModel(BaseModel):
     # while the public API (`api/public/v1`) returns them flat under `configurations.streams`.
     syncCatalog: AirbyteSyncCatalog | None = None  # noqa: N815
     configurations: AirbyteConnectionConfigurations | None = None
+    # Airbyte resolves the destination namespace from the connection, not from the namespace the
+    # source reported, so every destination name depends on these two fields.
+    namespaceDefinition: str | None = None  # noqa: N815
+    namespaceFormat: str | None = None  # noqa: N815
+    prefix: str | None = None
 
     @property
     def resolved_streams(self) -> list[AirbyteStream]:
@@ -91,6 +103,37 @@ class AirbyteConnectionModel(BaseModel):
         if self.configurations and self.configurations.streams:
             return self.configurations.streams
         return []
+
+    def destination_namespace(self, stream: AirbyteStream) -> str | None:
+        """
+        The namespace the destination writes under, which is not always the one the source
+        reported. ``destination`` is the API default, so an absent value means no namespace.
+        """
+        definition = self.namespaceDefinition or NAMESPACE_DESTINATION
+        if definition == NAMESPACE_SOURCE:
+            return stream.namespace
+        if definition == NAMESPACE_CUSTOM_FORMAT:
+            # Per the public API schema: a blank format behaves like ``destination``, and
+            # ``${SOURCE_NAMESPACE}`` like ``source``.
+            if not self.namespaceFormat:
+                return None
+            return self.namespaceFormat.replace(SOURCE_NAMESPACE_TOKEN, stream.namespace or "") or None
+        return None
+
+    def destination_stream(self, stream: AirbyteStream) -> AirbyteStream:
+        """
+        The stream as the destination writes it: prefixed name, connection-resolved namespace.
+
+        ``prefix`` is prepended to the stream name before the destination ever sees it, so every
+        destination name -- table, container path, topic, index -- is built from this stream
+        rather than from the one the source reported.
+        """
+        return stream.model_copy(
+            update={
+                "name": f"{self.prefix or ''}{stream.name}",
+                "namespace": self.destination_namespace(stream),
+            }
+        )
 
 
 class AirbyteJobAttempt(BaseModel):

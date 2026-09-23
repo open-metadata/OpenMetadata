@@ -129,3 +129,10 @@ SEARCH_CONNECTOR_TYPES = frozenset({"Elasticsearch", "ElasticSearch", "elasticse
 # ambiguous match into a confident wrong edge. Ask for more than any real catalog holds and
 # treat a full page as proof the answer cannot be trusted.
 ES_MATCH_LIMIT = 100
+
+# Connection-level destination naming, from the public API's NamespaceDefinitionEnum
+# (["source", "destination", "custom_format"], default "destination").
+NAMESPACE_SOURCE = "source"
+NAMESPACE_DESTINATION = "destination"
+NAMESPACE_CUSTOM_FORMAT = "custom_format"
+SOURCE_NAMESPACE_TOKEN = "${SOURCE_NAMESPACE}"

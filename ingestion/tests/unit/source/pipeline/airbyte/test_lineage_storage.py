@@ -1256,26 +1256,42 @@ class TestUnresolvedSideWarning:
 class TestDestinationEntityNaming:
     """
     A destination renames the stream on its way in, so the name to look up in OpenMetadata is
-    not always ``stream.name``. Both rules here were read off the live connector specs and
-    confirmed against a real Airbyte 2.2.0 sync.
+    never assumed to be ``stream.name``. Every rule here was read off the live connector source
+    for the deployed image tag and confirmed against a real Airbyte 2.2.0 sync.
+
+    The stream reaching a resolver on the destination side has already been through
+    ``AirbyteConnectionModel.destination_stream``, so its name carries the connection prefix and
+    its namespace is the one the connection resolved -- not the one the source reported.
     """
 
     NAMESPACED = AirbyteStream(name="products", namespace="shopdb")
     BARE = AirbyteStream(name="pokemon")
 
     def test_search_index_destination_prefixes_the_namespace(self):
-        """destination-elasticsearch 0.2.0 exposes no index-naming option and always writes
-        `<namespace>_<stream>`; a real sync of shopdb.products produced `shopdb_products`."""
+        """`ElasticsearchWriteConfig.getIndexName()` prefixes a non-empty namespace; a real sync
+        of shopdb.products with `namespaceDefinition: source` produced `shopdb_products`."""
         names = SearchIndexResolver()._entity_names(
             self.NAMESPACED, AirbyteDestinationResponse(destinationType="elasticsearch"), DESTINATION
         )
-        assert names == ["shopdb_products", "products"]
+        assert names == ["shopdb_products"]
 
     def test_search_index_without_a_namespace_is_the_bare_stream(self):
+        """The same sync with `namespaceDefinition: destination` wrote the bare `products`, so a
+        resolved-away namespace must not leave the namespaced name as a candidate."""
         names = SearchIndexResolver()._entity_names(
             self.BARE, AirbyteDestinationResponse(destinationType="elasticsearch"), DESTINATION
         )
         assert names == ["pokemon"]
+
+    def test_search_index_name_is_normalised_and_lower_cased(self):
+        """getIndexName() lower-cases the namespace and runs the stream name through
+        StandardNameTransformer before lower-casing it."""
+        names = SearchIndexResolver()._entity_names(
+            AirbyteStream(name="Order Items", namespace="ShopDB"),
+            AirbyteDestinationResponse(destinationType="elasticsearch"),
+            DESTINATION,
+        )
+        assert names == ["shopdb_order_items"]
 
     def test_search_index_source_reads_the_index_named_by_the_stream(self):
         names = SearchIndexResolver()._entity_names(
@@ -1286,15 +1302,16 @@ class TestDestinationEntityNaming:
     @pytest.mark.parametrize(
         ("pattern", "expected"),
         [
-            ("{stream}", ["products", "products"]),
-            ("{namespace}.{stream}", ["shopdb.products", "products"]),
-            ("{namespace}_{stream}_v2", ["shopdb_products_v2", "products"]),
-            ("fixed.topic", ["fixed.topic", "products"]),
+            ("{stream}", ["products"]),
+            ("{namespace}.{stream}", ["shopdb_products"]),
+            ("{namespace}_{stream}_v2", ["shopdb_products_v2"]),
+            ("fixed.topic", ["fixed_topic"]),
         ],
     )
     def test_topic_destination_renders_its_pattern(self, pattern, expected):
-        """destination-kafka 0.1.11 declares no default for `topic_pattern`, so the topic is
-        only the stream name when the user wrote the pattern that way."""
+        """`KafkaRecordConsumer.buildTopicMap()` renders the pattern and runs the result through
+        StandardNameTransformer, so every character outside [A-Za-z0-9_] becomes `_`. A real sync
+        with `{namespace}.{stream}` over shopdb.products produced the topic `shopdb_products`."""
         names = TopicResolver()._entity_names(
             self.NAMESPACED,
             AirbyteDestinationResponse(destinationType="kafka", configuration={"topic_pattern": pattern}),
@@ -1303,6 +1320,8 @@ class TestDestinationEntityNaming:
         assert names == expected
 
     def test_topic_destination_without_a_pattern_falls_back_to_the_stream(self):
+        """destination-kafka 0.1.11 declares no default for `topic_pattern`, so with none
+        configured nothing is derivable and the stream name is the only key left."""
         names = TopicResolver()._entity_names(
             self.NAMESPACED, AirbyteDestinationResponse(destinationType="kafka", configuration={}), DESTINATION
         )
@@ -1315,10 +1334,11 @@ class TestDestinationEntityNaming:
         )
         assert names == ["pokemon"]
 
-    def test_a_pattern_needing_a_namespace_the_stream_lacks_is_skipped(self):
-        """Rendering `{namespace}` against a namespace-less stream would look up a literal
-        `.pokemon`; drop the candidate instead and fall back to the stream name."""
-        assert render_stream_pattern("{namespace}.{stream}", self.BARE) is None
+    def test_a_pattern_needing_a_namespace_the_stream_lacks_renders_it_empty(self):
+        """buildTopicMap() substitutes an empty string for a missing namespace rather than
+        falling back to the stream name, so `{namespace}.{stream}` writes `_pokemon`. Looking up
+        the bare `pokemon` instead would attach lineage to a topic this connection never wrote."""
+        assert render_stream_pattern("{namespace}.{stream}", self.BARE) == ".pokemon"
         names = TopicResolver()._entity_names(
             self.BARE,
             AirbyteDestinationResponse(
@@ -1326,11 +1346,11 @@ class TestDestinationEntityNaming:
             ),
             DESTINATION,
         )
-        assert names == ["pokemon"]
+        assert names == ["_pokemon"]
 
-    def test_every_candidate_is_tried_against_every_service(self, airbyte_source):
-        """The namespaced name is searched first, and the bare stream name is still tried when
-        the first one misses."""
+    def test_the_resolved_name_is_the_only_candidate(self, airbyte_source):
+        """A destination writes exactly one name per stream, so a miss is no edge rather than a
+        second guess at a same-named entity the connection never wrote."""
         airbyte_source.source_config.lineageInformation = LineageInformation(searchServiceNames=["es_svc"])
         airbyte_source.metadata.get_by_name.side_effect = lambda entity=None, fqn=None, **_: (
             _stub(SEARCH_ID) if entity is SearchIndex and fqn == "es_svc.shopdb_products" else None
@@ -1346,5 +1366,92 @@ class TestDestinationEntityNaming:
                 DESTINATION,
                 "pipe",
             )
-        assert ref is not None
-        assert str(ref.id.root) == SEARCH_ID
+            assert ref is not None
+            assert str(ref.id.root) == SEARCH_ID
+
+            # The bare stream name resolves in the same service, and is still not taken.
+            assert (
+                SearchIndexResolver().resolve(
+                    airbyte_source,
+                    self.BARE.model_copy(update={"name": "shopdb_products"}),
+                    AirbyteDestinationResponse(destinationType="elasticsearch"),
+                    SOURCE,
+                    "pipe",
+                )
+                is not None
+            )
+
+
+class TestConnectionResolvedDestinationStream:
+    """
+    Airbyte decides the destination's namespace and stream name on the connection, not on the
+    stream the source reported. Every case below was confirmed against a real Airbyte 2.2.0
+    sync of the same MySQL stream `shopdb.products` into destination-elasticsearch 0.2.0.
+    """
+
+    STREAM = AirbyteStream(name="products", namespace="shopdb")
+
+    @staticmethod
+    def _connection(**kwargs) -> AirbyteConnectionModel:
+        return AirbyteConnectionModel(connectionId="conn", **kwargs)
+
+    @pytest.mark.parametrize(
+        ("namespace_definition", "namespace_format", "expected"),
+        [
+            ("source", None, "shopdb"),
+            ("destination", None, None),
+            # `destination` is the API default, so an absent value must not be read as `source`.
+            (None, None, None),
+            # A blank custom format behaves like `destination`, per the public API schema.
+            ("custom_format", None, None),
+            ("custom_format", "${SOURCE_NAMESPACE}", "shopdb"),
+            ("custom_format", "warehouse", "warehouse"),
+        ],
+    )
+    def test_destination_namespace(self, namespace_definition, namespace_format, expected):
+        connection = self._connection(namespaceDefinition=namespace_definition, namespaceFormat=namespace_format)
+        assert connection.destination_namespace(self.STREAM) == expected
+
+    def test_namespace_definition_source_keeps_the_namespaced_index(self):
+        """A real sync of this connection created the index `shopdb_products`."""
+        stream = self._connection(namespaceDefinition="source").destination_stream(self.STREAM)
+        names = SearchIndexResolver()._entity_names(
+            stream, AirbyteDestinationResponse(destinationType="elasticsearch"), DESTINATION
+        )
+        assert names == ["shopdb_products"]
+
+    def test_namespace_definition_destination_drops_the_namespace(self):
+        """The same stream on a `destination` connection wrote the bare index `products`."""
+        stream = self._connection(namespaceDefinition="destination").destination_stream(self.STREAM)
+        names = SearchIndexResolver()._entity_names(
+            stream, AirbyteDestinationResponse(destinationType="elasticsearch"), DESTINATION
+        )
+        assert names == ["products"]
+
+    def test_prefix_is_prepended_to_the_destination_name(self):
+        """Setting `prefix: ab_` on a real connection made the destination write `ab_products`."""
+        stream = self._connection(namespaceDefinition="destination", prefix="ab_").destination_stream(self.STREAM)
+        assert stream.name == "ab_products"
+        names = SearchIndexResolver()._entity_names(
+            stream, AirbyteDestinationResponse(destinationType="elasticsearch"), DESTINATION
+        )
+        assert names == ["ab_products"]
+
+    def test_prefix_reaches_the_topic_pattern(self):
+        """The prefix is applied before the destination renders `{stream}`."""
+        stream = self._connection(namespaceDefinition="source", prefix="ab_").destination_stream(self.STREAM)
+        names = TopicResolver()._entity_names(
+            stream,
+            AirbyteDestinationResponse(
+                destinationType="kafka", configuration={"topic_pattern": "{namespace}.{stream}"}
+            ),
+            DESTINATION,
+        )
+        assert names == ["shopdb_ab_products"]
+
+    def test_the_source_side_stream_is_untouched(self):
+        """Only the destination renames streams; the source reads what it reported."""
+        connection = self._connection(namespaceDefinition="destination", prefix="ab_")
+        assert connection.destination_stream(self.STREAM) != self.STREAM
+        assert self.STREAM.name == "products"
+        assert self.STREAM.namespace == "shopdb"

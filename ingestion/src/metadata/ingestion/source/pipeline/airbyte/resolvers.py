@@ -57,6 +57,7 @@ from .utils import (  # noqa: TID252
     get_destination_table_details,
     get_source_container_path,
     get_source_table_details,
+    normalize_airbyte_name,
     render_stream_pattern,
 )
 
@@ -228,10 +229,14 @@ class TopicResolver(_ServiceScopedResolver):
         if direction == SOURCE:
             return [stream.name]
         pattern = connection.resolved_configuration.get(KAFKA_TOPIC_PATTERN_KEY)
-        rendered = render_stream_pattern(pattern, stream) if pattern else None
-        # The destination also normalises the rendered name, so the bare stream name is kept as
-        # a fallback rather than relying on the pattern alone.
-        return [name for name in (rendered, stream.name) if name]
+        if not pattern:
+            # destination-kafka 0.1.11 declares no default for `topic_pattern`, so nothing is
+            # derivable from it and the stream name is the only key left.
+            return [stream.name]
+        # `KafkaRecordConsumer.buildTopicMap()` renders the pattern and runs the result through
+        # StandardNameTransformer, so the rendered-and-normalised name is the only topic written.
+        # A bare stream name is a different topic that this connection never produced.
+        return [normalize_airbyte_name(render_stream_pattern(pattern, stream))]
 
     def _build_fqn(self, source: "AirbyteSource", service_name: str, entity_name: str) -> str | None:
         return fqn.build(
@@ -261,9 +266,16 @@ class SearchIndexResolver(_ServiceScopedResolver):
         return SearchIndex
 
     def _entity_names(self, stream: AirbyteStream, connection: Connection, direction: str) -> list[str]:
-        if direction == SOURCE or not stream.namespace:
+        if direction == SOURCE:
             return [stream.name]
-        return [f"{stream.namespace}_{stream.name}", stream.name]
+        # `ElasticsearchWriteConfig.getIndexName()` (destination-elasticsearch 0.2.0) passes the
+        # stream name through StandardNameTransformer and lower-cases it, then prefixes a
+        # non-empty namespace, lower-cased and untransformed. The namespace here is the one the
+        # connection resolved, which is empty whenever `namespaceDefinition` is `destination`.
+        index_name = normalize_airbyte_name(stream.name).lower()
+        if stream.namespace:
+            index_name = f"{stream.namespace.lower()}_{index_name}"
+        return [index_name]
 
     def _build_fqn(self, source: "AirbyteSource", service_name: str, entity_name: str) -> str | None:
         return fqn.build(
