@@ -154,7 +154,7 @@ export const EntityTitleSection = ({
         className
       )}>
       <div className="tw:flex tw:gap-2 tw:items-center tw:rounded-lg tw:px-1 tw:bg-gray-blue-50 tw:dark:bg-surface tw:py-2">
-        <span className="tw:text-blue-700 tw:ml-1 tw:shrink-0 tw:leading-0">
+        <span className="tw:text-blue-700 tw:dark:text-brand-300 tw:ml-1 tw:shrink-0 tw:leading-0">
           {searchClassBase.getEntityIcon(entityTypeValue, 'tw:w-4.5 tw:h-4.5')}
         </span>
         <Tooltip
@@ -163,7 +163,7 @@ export const EntityTitleSection = ({
           trigger="hover">
           <TooltipTrigger className="tw:max-w-[75%]">
             <Link
-              className="tw:min-w-0 tw:overflow-hidden tw:text-sm tw:font-semibold tw:truncate tw:no-underline tw:text-blue-700 tw:block"
+              className="tw:min-w-0 tw:overflow-hidden tw:text-sm tw:font-semibold tw:truncate tw:no-underline tw:text-blue-700 tw:dark:text-brand-300 tw:block"
               data-testid={testId}
               to={linkHref}>
               {renderHighlightedText(entityName)}
