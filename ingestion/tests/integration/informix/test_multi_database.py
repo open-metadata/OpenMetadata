@@ -35,6 +35,7 @@ from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.table import DataType, Table
 from metadata.generated.schema.entity.services.connections.database.informixConnection import (
     InformixConnection,
 )
@@ -99,3 +100,24 @@ class TestIngestAllDatabases:
             THIRD_DATABASE,
             ANSI_DATABASE,
         }, sorted(ingested_databases)
+
+
+class TestColumnTypesAcrossDatabases:
+    """Every Informix database owns its tables as "informix"."""
+
+    def test_a_large_object_in_the_second_database_is_typed(
+        self, patch_passwords_for_db_services, run_workflow, ingestion_config, metadata, db_service
+    ):
+        """orders.receipt is a CLOB, and only the second database has it.
+
+        Cached per schema name, this column keeps the VARCHAR(2147483647) the
+        driver reports for every large object, and the profiler then fails on it
+        with "Type (clob) is not hashable".
+        """
+        run_workflow(MetadataWorkflow, ingestion_config)
+        fqn = f"{db_service.fullyQualifiedName.root}.{SECOND_DATABASE}.informix.orders"
+        table = metadata.get_by_name(entity=Table, fqn=fqn, fields=["columns"])
+        assert table is not None, f"{fqn} was not ingested"
+
+        receipt = next(c for c in table.columns if model_str(c.name) == "receipt")
+        assert receipt.dataType == DataType.CLOB, receipt.dataTypeDisplay

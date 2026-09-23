@@ -186,7 +186,14 @@ def informix_container():
         # A second user database, so ingestAllDatabases has something real to find
         # besides the four the server creates for itself.
         _dbaccess(container, "", f"CREATE DATABASE {SECOND_DATABASE} WITH LOG;")
-        _dbaccess(container, SECOND_DATABASE, "CREATE TABLE orders (id INTEGER PRIMARY KEY, note VARCHAR(40));")
+        # A large object in the *second* database: the schema is called
+        # "informix" here too, so a per-schema cache answers this database with
+        # the first one's columns and the CLOB keeps its VARCHAR(2147483647).
+        _dbaccess(
+            container,
+            SECOND_DATABASE,
+            "CREATE TABLE orders (id INTEGER PRIMARY KEY, note VARCHAR(40), receipt CLOB);",
+        )
         _dbaccess(container, "", f"CREATE DATABASE {THIRD_DATABASE} WITH BUFFERED LOG;")
         _dbaccess(container, THIRD_DATABASE, "CREATE TABLE receipts (id INTEGER PRIMARY KEY);")
         _dbaccess(container, "", f"CREATE DATABASE {ANSI_DATABASE} WITH LOG MODE ANSI;")

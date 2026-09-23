@@ -326,18 +326,33 @@ class TestLargeObjectTypes:
         source, connection = build_source([])
         with patch.object(InformixSource, "connection", property(lambda self: connection)):
             for index in range(MAX_CACHED_SCHEMAS + 25):
-                source._column_overrides(f"schema_{index}")
+                source._column_overrides("db", f"schema_{index}")
 
         assert len(source._column_overrides_cache) == MAX_CACHED_SCHEMAS
-        assert "schema_0" not in source._column_overrides_cache
+        assert ("db", "schema_0") not in source._column_overrides_cache
 
     def test_schema_is_looked_up_once(self):
         source, connection = build_source([])
         with patch.object(InformixSource, "connection", property(lambda self: connection)):
             for _ in range(5):
-                source._column_overrides("informix")
+                source._column_overrides("db", "informix")
 
         assert connection.execute.call_count == 1
+
+    def test_each_database_is_looked_up_separately(self):
+        """Almost every Informix database owns its tables as "informix".
+
+        Keying the cache on the schema name alone answers every database with
+        the first one's columns, so a CLOB in the second database keeps the
+        VARCHAR(2147483647) the driver reported and the profiler then tries to
+        GROUP BY it.
+        """
+        source, connection = build_source([])
+        with patch.object(InformixSource, "connection", property(lambda self: connection)):
+            source._column_overrides("first_db", "informix")
+            source._column_overrides("second_db", "informix")
+
+        assert connection.execute.call_count == 2
 
 
 def build_interface(om_columns):

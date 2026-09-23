@@ -124,8 +124,8 @@ class ColumnOverride(NamedTuple):
     length: int | None
 
 
-# One entry per schema, holding only the columns the driver got wrong -- rare enough that an
-# -- bounded so a catalogue with many schemas cannot grow it without limit.
+# One entry per (database, schema), bounded so a server with many databases
+# cannot grow it without limit.
 MAX_CACHED_SCHEMAS = 64
 
 
@@ -140,7 +140,9 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata) -> None:
         super().__init__(config, metadata)
-        self._column_overrides_cache: OrderedDict[str, dict[tuple[str, str], ColumnOverride]] = OrderedDict()
+        self._column_overrides_cache: OrderedDict[tuple[str, str], dict[tuple[str, str], ColumnOverride]] = (
+            OrderedDict()
+        )
 
     @classmethod
     def create(cls, config_dict: dict, metadata: OpenMetadata, pipeline_name: str | None = None):
@@ -203,15 +205,21 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
             return collength
         return None
 
-    def _column_overrides(self, schema_name: str) -> dict[tuple[str, str], ColumnOverride]:
+    def _column_overrides(self, db_name: str, schema_name: str) -> dict[tuple[str, str], ColumnOverride]:
         """Map (table, column) to what the JDBC driver got wrong, for one schema.
 
         Queried per schema rather than per table: a wide catalogue costs one
         round trip per schema instead of one per table.
+
+        Keyed by database as well, because the schema name alone does not
+        identify one: nearly every Informix database owns its tables as
+        "informix", so ingesting a server-full of them would otherwise answer
+        every database with the first one's columns.
         """
-        cached = self._column_overrides_cache.get(schema_name)
+        cache_key = (db_name, schema_name)
+        cached = self._column_overrides_cache.get(cache_key)
         if cached is not None:
-            self._column_overrides_cache.move_to_end(schema_name)
+            self._column_overrides_cache.move_to_end(cache_key)
             return cached
 
         found: dict[tuple[str, str], ColumnOverride] = {}
@@ -235,7 +243,7 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
             if sqa_type is not None or length is not None:
                 found[(tabname, colname)] = ColumnOverride(sqa_type, display, length)
 
-        self._column_overrides_cache[schema_name] = found
+        self._column_overrides_cache[cache_key] = found
         while len(self._column_overrides_cache) > MAX_CACHED_SCHEMAS:
             self._column_overrides_cache.popitem(last=False)
         return found
@@ -314,7 +322,7 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
         as 1 -- every string column in the catalogue claiming to hold one byte.
         """
         columns = super()._get_columns_internal(schema_name, table_name, db_name, inspector, table_type)
-        overrides = self._column_overrides(schema_name)
+        overrides = self._column_overrides(db_name, schema_name)
         if not overrides:
             return columns
 
