@@ -429,6 +429,95 @@ describe('IncidentGroupsView', () => {
     expect(mockShowErrorToast).toHaveBeenCalled();
   });
 
+  it('should drop the previous dimension rows while the new one loads', async () => {
+    await act(async () => {
+      renderView('/observability/incident-manager?groupBy=testDefinition');
+    });
+
+    let resolveSwitched: (value: unknown) => void = jest.fn();
+    mockListIncidentGroups.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSwitched = resolve;
+      })
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('select-owner'));
+    });
+
+    // Kept, they would render test-definition groups under the owner column
+    // header, and the stats would count the dimension the user just left.
+    expect(
+      screen.queryByTestId('incident-groups-table')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('incident-groups-loader')).toBeInTheDocument();
+    expect(screen.getByTestId('incident-groups-count')).toBeEmptyDOMElement();
+
+    await act(async () => {
+      resolveSwitched({ data: mockGroups.slice(0, 1), paging: { total: 1 } });
+    });
+
+    expect(screen.getByTestId('table-group-count')).toHaveTextContent('1');
+  });
+
+  it('should hold the error state when a reported change fails to re-read it', async () => {
+    mockListIncidentGroups.mockRejectedValue(new Error('failure'));
+    let rendered: ReturnType<typeof render> | undefined;
+
+    await act(async () => {
+      rendered = render(
+        <MemoryRouter initialEntries={['/observability/incident-manager']}>
+          {viewTree(0)}
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByTestId('incident-groups-error')).toBeInTheDocument();
+
+    await act(async () => {
+      rendered?.rerender(
+        <MemoryRouter initialEntries={['/observability/incident-manager']}>
+          {viewTree(1)}
+        </MemoryRouter>
+      );
+    });
+
+    // Clearing the flag for a re-read that fails too would leave the section
+    // on the 'no incidents' placeholder while the endpoint is still down.
+    expect(screen.getByTestId('incident-groups-error')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('incident-groups-empty')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should clear the error once a reported change re-reads successfully', async () => {
+    mockListIncidentGroups.mockRejectedValueOnce(new Error('failure'));
+    let rendered: ReturnType<typeof render> | undefined;
+
+    await act(async () => {
+      rendered = render(
+        <MemoryRouter initialEntries={['/observability/incident-manager']}>
+          {viewTree(0)}
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByTestId('incident-groups-error')).toBeInTheDocument();
+
+    await act(async () => {
+      rendered?.rerender(
+        <MemoryRouter initialEntries={['/observability/incident-manager']}>
+          {viewTree(1)}
+        </MemoryRouter>
+      );
+    });
+
+    expect(
+      screen.queryByTestId('incident-groups-error')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('table-group-count')).toHaveTextContent('3');
+  });
+
   it('should not re-read the groups while the reported change stands', async () => {
     let rendered: ReturnType<typeof render> | undefined;
 

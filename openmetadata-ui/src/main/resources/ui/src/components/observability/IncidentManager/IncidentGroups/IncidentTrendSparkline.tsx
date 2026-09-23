@@ -19,7 +19,6 @@ import {
   INCIDENT_TREND_DIRECTION_LABELS,
   INCIDENT_TREND_TEXT_CLASSES,
   SPARKLINE_HEIGHT,
-  SPARKLINE_INSET,
   SPARKLINE_WIDTH,
 } from './IncidentGroups.constants';
 import { IncidentTrendSparklineProps } from './IncidentGroups.types';

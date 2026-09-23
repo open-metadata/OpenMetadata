@@ -80,23 +80,39 @@ export const useIncidentGroups = ({
   const [isError, setIsError] = useState(false);
   // Guards against a slow response for a dimension the user already left.
   const latestRequest = useRef(0);
-  // The key the rows on screen were last fetched for, so a fetch can tell a
-  // refresh of what is already displayed from a load of something new.
+  // The key and the dimension the rows on screen were last fetched for, so a
+  // fetch can tell a refresh of what is already displayed from a load of
+  // something new.
   const fetchedRefreshKey = useRef(refreshKey);
+  const fetchedGroupBy = useRef(groupBy);
 
   const fetchIncidentGroups = useCallback(async () => {
     const requestId = latestRequest.current + 1;
     latestRequest.current = requestId;
+    // A new dimension means the rows on screen describe something else: kept,
+    // they would render under the new dimension's column header and badge, and
+    // the header stats would describe the dimension the user just left.
+    const isDimensionChange = fetchedGroupBy.current !== groupBy;
     // A new key means the caller is only saying the rows are stale, so they
     // stay on screen while they are re-read: no loader swapped in for the table
     // the user is reading, and no wipe if the re-read fails.
-    const isBackground = fetchedRefreshKey.current !== refreshKey;
+    const isBackground =
+      !isDimensionChange && fetchedRefreshKey.current !== refreshKey;
     fetchedRefreshKey.current = refreshKey;
+    fetchedGroupBy.current = groupBy;
+
+    if (isDimensionChange) {
+      setIncidentGroups([]);
+      setPaging(undefined);
+    }
 
     if (!isBackground) {
       setIsLoading(true);
+      // Only a foreground read owns the error flag. A background one that
+      // clears it up front and then fails leaves the section on the empty
+      // placeholder, with nothing left to put the error back.
+      setIsError(false);
     }
-    setIsError(false);
 
     try {
       const response = await listIncidentGroups({
@@ -111,6 +127,7 @@ export const useIncidentGroups = ({
 
       setIncidentGroups(response.data);
       setPaging(response.paging);
+      setIsError(false);
     } catch (error) {
       if (latestRequest.current !== requestId) {
         return;

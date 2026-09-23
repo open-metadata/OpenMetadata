@@ -681,10 +681,7 @@ public class IncidentGroupsIT {
         createTestDefinition("incident_groups_bulk_def_" + ts, TestDefinitionEntityType.TABLE);
     TestCase bulkCase =
         createTestCase(
-            "incident_groups_bulk_case_" + ts,
-            tableLink(bulkTable),
-            bulkDefinition,
-            List.of());
+            "incident_groups_bulk_case_" + ts, tableLink(bulkTable), bulkDefinition, List.of());
     createStatus(bulkCase, TestCaseResolutionStatusTypes.New, null);
 
     CreateTestCaseResolutionStatus ackBulkCase =
