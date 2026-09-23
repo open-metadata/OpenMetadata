@@ -493,6 +493,58 @@ describe('AuthCoordinator', () => {
   // caller's `await getOidcToken()`. The fast-path must re-check
   // `inflight` after the await, not just before, or the unforced
   // caller hands back the just-known-stale stored token.
+  // Greptile P1 r4073450836: the post-await `!this.inflight` check
+  // alone is not enough — a refresh that STARTS AND COMPLETES inside
+  // the storage-read window leaves `inflight` back to null, so the
+  // check would accept the stale snapshot. `refreshGeneration`
+  // catches that: any delta between the read's start and end means
+  // "don't trust this read; return the just-minted token".
+  it('unforced ensureFreshToken discards its snapshot when a refresh completes during the storage read', async () => {
+    const renewer = jest.fn(async () => ({
+      expiresAt: Date.now() + 300_000,
+      idToken: 'fresh',
+    }));
+    coordinator.registerRenewer(renewer);
+
+    // Defer the fast-path's storage read. While it's pending, we
+    // fire and fully complete a forced refresh — inflight is set
+    // and cleared before we release the read below.
+    let releaseFirstRead!: (value: string) => void;
+    mockedGetOidcToken.mockReturnValueOnce(
+      new Promise<string>((r) => {
+        releaseFirstRead = r;
+      })
+    );
+    mockedExtractDetailsFromToken.mockReturnValueOnce({
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      isExpired: false,
+      timeoutExpiry: 3600 * 1000,
+    });
+
+    try {
+      const unforced = coordinator.ensureFreshToken();
+      await Promise.resolve();
+
+      // Forced call runs its renewer and completes in microtasks —
+      // inflight goes back to null. The naive post-await
+      // `!inflight` check alone would let the stale snapshot slip
+      // through; the generation delta blocks it.
+      await coordinator.ensureFreshToken({ force: true });
+
+      expect(renewer).toHaveBeenCalledTimes(1);
+
+      // Release the fast-path's storage read with the stale value.
+      releaseFirstRead('stale');
+
+      await expect(unforced).resolves.toBe('fresh');
+      expect(renewer).toHaveBeenCalledTimes(1);
+    } finally {
+      mockedGetOidcToken.mockReset();
+      mockedGetOidcToken.mockImplementation(async () => 'stale-token');
+      mockedExtractDetailsFromToken.mockReset();
+    }
+  });
+
   it('unforced ensureFreshToken awaits an inflight refresh that starts during its storage read', async () => {
     let resolveRenewer!: (r: { expiresAt: number; idToken: string }) => void;
     const renewer = jest.fn(

@@ -62,6 +62,14 @@ export class AuthCoordinator {
   // to distinguish a "current token is being rejected" real refresh
   // loop from an in-flight straggler carrying a pre-refresh token.
   private lastMintedToken: string | null = null;
+  // Monotonic counter bumped once per successful refresh (local OR
+  // sibling-tab). The fast-path snapshots it before its async
+  // storage read and discards the read if the value changed during
+  // the await — a refresh that STARTED AND COMPLETED inside that
+  // window would leave `inflight` back to null and the naive
+  // re-check would accept the just-known-stale snapshot
+  // (Greptile P1 r4073450836).
+  private refreshGeneration = 0;
   private disposeCrossTabDone: (() => void) | null = null;
   private readonly bus = new TypedEventBus();
   private readonly queue = new RefreshQueue();
@@ -162,6 +170,7 @@ export class AuthCoordinator {
       const token = this.extractIdToken(payload);
       if (token) {
         this.lastMintedToken = token;
+        this.refreshGeneration += 1;
       }
     });
 
@@ -177,34 +186,9 @@ export class AuthCoordinator {
     const force = options.force ?? false;
 
     if (!force && !this.inflight) {
-      // Fast-path: reuse a still-time-fresh stored token (another tab
-      // may have already refreshed it) instead of hitting the IdP.
-      // `force:true` callers skip this because a 401 IS proof the
-      // stored token is server-rejected regardless of `exp`. Also skip
-      // while OUR own refresh is in flight: storage may still hold the
-      // stale, server-rejected token until the refresh persists —
-      // returning `this.inflight` below yields the freshly-minted
-      // token instead of racing the write.
-      try {
-        const stored = await getOidcToken();
-        // Re-check `this.inflight` AFTER the storage read: a
-        // concurrent `ensureFreshToken({force:true})` (e.g. from the
-        // 401 interceptor) may have set it during our await. Falling
-        // through to the inflight join below yields the freshly-
-        // minted token instead of the stale one storage just handed
-        // us (code-review finding).
-        if (!this.inflight && stored) {
-          const { exp } = extractDetailsFromToken(stored);
-          if (typeof exp !== 'number' || exp <= 0) {
-            return stored;
-          }
-          const msRemaining = exp * 1000 - Date.now();
-          if (msRemaining > EXPIRY_THRESHOLD_MILLES) {
-            return stored;
-          }
-        }
-      } catch {
-        // Storage flaky (SW not ready). Fall through to doRefresh().
+      const fastPath = await this.tryFastPath();
+      if (fastPath !== null) {
+        return fastPath;
       }
     }
 
@@ -434,8 +418,44 @@ export class AuthCoordinator {
     throw err;
   }
 
+  // Fast-path: reuse a still-time-fresh stored token (another tab may
+  // have already refreshed it) instead of hitting the IdP. Returns
+  // `null` when the caller should fall through to a real refresh:
+  //   - a refresh completed during our async storage read
+  //     (`refreshGeneration` delta — Greptile P1 r4073450836);
+  //   - a concurrent forced refresh set `this.inflight` during the
+  //     await (code-review finding on cda0d24);
+  //   - storage is empty, the token failed to decode, or its exp is
+  //     inside the pre-expiry buffer.
+  private async tryFastPath(): Promise<string | null> {
+    const genBefore = this.refreshGeneration;
+    try {
+      const stored = await getOidcToken();
+      if (this.refreshGeneration !== genBefore && this.lastMintedToken) {
+        return this.lastMintedToken;
+      }
+      if (this.inflight || !stored) {
+        return null;
+      }
+      const { exp } = extractDetailsFromToken(stored);
+      if (typeof exp !== 'number' || exp <= 0) {
+        return stored;
+      }
+      const msRemaining = exp * 1000 - Date.now();
+      if (msRemaining > EXPIRY_THRESHOLD_MILLES) {
+        return stored;
+      }
+
+      return null;
+    } catch {
+      // Storage flaky (SW not ready). Fall through to doRefresh().
+      return null;
+    }
+  }
+
   private applyRefreshed(result: RenewResult): string {
     this.lastMintedToken = result.idToken;
+    this.refreshGeneration += 1;
     this.bus.emit('refreshed', {
       expiresAt: result.expiresAt,
       idToken: result.idToken,
