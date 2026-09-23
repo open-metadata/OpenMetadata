@@ -15,33 +15,12 @@ import {
   SETTINGS_OPTIONS_PATH,
   SETTING_CUSTOM_PROPERTIES_PATH,
 } from '../constant/settings';
-import { SidebarItem } from '../constant/sidebar';
+import { SidebarItem, SIDEBAR_LIST_ITEMS } from '../constant/sidebar';
 import { waitForAllLoadersToDisappear } from './entity';
 
 export type SettingOptionsType =
   | keyof typeof SETTINGS_OPTIONS_PATH
   | keyof typeof SETTING_CUSTOM_PROPERTIES_PATH;
-
-const SIDEBAR_ITEM_URL: Record<string, string> = {
-  [SidebarItem.EXPLORE]: '/explore',
-  [SidebarItem.DATA_QUALITY]: '/data-quality',
-  [SidebarItem.INCIDENT_MANAGER]: '/incident-manager',
-  [SidebarItem.OBSERVABILITY_ALERT]: '/observability/alerts',
-  [SidebarItem.DATA_INSIGHT]: '/data-insights',
-  [SidebarItem.DOMAIN]: '/domain',
-  [SidebarItem.GLOSSARY]: '/glossary',
-  [SidebarItem.ONTOLOGY_EXPLORER]: '/governance/ontology',
-  [SidebarItem.DATA_MARKETPLACE]: '/data-marketplace',
-  [SidebarItem.DATA_PRODUCT]: '/dataProduct',
-  [SidebarItem.TAGS]: '/tags',
-  [SidebarItem.SETTINGS]: '/settings',
-  [SidebarItem.METRICS]: '/metrics',
-  [SidebarItem.LINEAGE]: '/lineage',
-  [SidebarItem.COLUMN_BULK_OPERATIONS]: '/column-bulk-operations',
-  [SidebarItem.WORKFLOWS]: '/workflows',
-  [SidebarItem.CONTEXT_CENTER]: '/context-center',
-  [SidebarItem.ARTICLE]: '/context-center/articles',
-};
 
 export const clickOnLogo = async (page: Page) => {
   await page.click('#openmetadata_logo > [data-testid="image"]');
@@ -49,11 +28,29 @@ export const clickOnLogo = async (page: Page) => {
 };
 
 export const sidebarClick = async (page: Page, id: string) => {
-  const url = SIDEBAR_ITEM_URL[id];
-  if (url) {
-    await page.goto(url, { waitUntil: 'commit' });
-    await waitForAllLoadersToDisappear(page);
+  const items = SIDEBAR_LIST_ITEMS[id as keyof typeof SIDEBAR_LIST_ITEMS];
+  if (items) {
+    await page.mouse.move(0, 0); // Dismiss any open tooltips before interacting with sidebar
+    await page
+      .locator('[data-testid="left-sidebar"]')
+      .waitFor({ state: 'visible' });
+    await page.hover('[data-testid="left-sidebar"]');
+    await page.click(`[data-testid="${items[0]}"]`);
+
+    const targetElement = page
+      .locator(`[data-testid="app-bar-item-${items[1]}"]`)
+      .first();
+    await targetElement.waitFor({ state: 'visible' });
+    await targetElement.click();
+  } else {
+    const targetElement = page
+      .locator(`[data-testid="app-bar-item-${id}"]`)
+      .first();
+    await targetElement.waitFor({ state: 'visible' });
+    await targetElement.click();
   }
+
+  await page.mouse.move(1280, 0); // Move mouse to top right corner
 };
 
 export const settingClick = async (

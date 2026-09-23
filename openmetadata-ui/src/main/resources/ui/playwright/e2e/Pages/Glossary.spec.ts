@@ -1456,10 +1456,8 @@ test.describe('Glossary tests', () => {
       // Delete A (succeeds - not mocked, real deletion)
       await selectActiveGlossary(page, glossaryA.data.displayName);
       await initiateDelete(page);
-      // Verify A is removed from the current page's sidebar via React's optimistic update,
-      // before navigating (hard reload would expose the pending server-side async delete).
-      await expectGlossaryNotVisible(page, glossaryA.data.displayName);
       await sidebarClick(page, SidebarItem.GLOSSARY);
+      await expectGlossaryNotVisible(page, glossaryA.data.displayName);
 
       // Delete B (fails via mocked WebSocket event)
       await selectActiveGlossary(page, glossaryB.data.displayName);
