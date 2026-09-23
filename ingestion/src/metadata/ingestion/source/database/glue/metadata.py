@@ -474,9 +474,7 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
         is_iceberg = bool(table.Parameters and table.Parameters.table_type == "ICEBERG")
         for column in [*column_data.Columns, *table.PartitionKeys]:
             if is_iceberg and not column.is_current_iceberg_field():
-                logger.debug(
-                    "Table [%s]: dropping retired Iceberg column [%s].", table.Name, column.Name
-                )
+                logger.debug("Table [%s]: dropping retired Iceberg column [%s].", table.Name, column.Name)
                 continue
             yield self._get_column_object(column)
 
