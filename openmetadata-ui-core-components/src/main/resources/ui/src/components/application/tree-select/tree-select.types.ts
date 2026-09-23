@@ -30,6 +30,8 @@ export interface TreeSelectNode<T = unknown> {
   parentId?: string;
   /** Child count displayed as a trailing badge on parent nodes. */
   count?: number;
+  /** Set when the loaded children are a truncated page, not the whole branch. */
+  hasMoreChildren?: boolean;
   /**
    * When true, children of this node are mutually exclusive (radio buttons)
    * and this node itself will not render a selection control.
@@ -110,6 +112,8 @@ export interface TreeSelectProps<T = unknown> {
   pageSize?: number;
 
   noDataMessage?: string;
+  /** Shown under a branch that loaded no children; defaults to noDataMessage. */
+  emptyBranchMessage?: string;
   loadingMessage?: string;
   searchPlaceholder?: string;
 

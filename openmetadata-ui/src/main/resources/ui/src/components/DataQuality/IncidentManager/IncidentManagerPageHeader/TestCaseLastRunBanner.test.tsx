@@ -119,8 +119,8 @@ describe('TestCaseLastRunBanner', () => {
       expect(screen.getByTestId(LAST_RUN_SUMMARY_TEST_ID)).toHaveClass(
         'tw:py-3.5',
         {
-          [TestCaseStatus.Aborted]: 'tw:bg-yellow-50',
-          [TestCaseStatus.Failed]: 'tw:bg-error-50',
+          [TestCaseStatus.Aborted]: 'tw:bg-utility-warning-50',
+          [TestCaseStatus.Failed]: 'tw:bg-utility-error-50',
           [TestCaseStatus.Queued]: 'tw:bg-brand-primary',
           [TestCaseStatus.Success]: 'tw:bg-success-primary',
         }[testCaseStatus]
@@ -167,8 +167,8 @@ describe('TestCaseLastRunBanner', () => {
 
         expect(incidentRow).toHaveClass(
           {
-            [TestCaseStatus.Aborted]: 'tw:bg-yellow-50',
-            [TestCaseStatus.Failed]: 'tw:bg-error-50',
+            [TestCaseStatus.Aborted]: 'tw:bg-utility-warning-50',
+            [TestCaseStatus.Failed]: 'tw:bg-utility-error-50',
           }[testCaseStatus]
         );
         expect(incidentRow).toHaveTextContent('INC–9');
