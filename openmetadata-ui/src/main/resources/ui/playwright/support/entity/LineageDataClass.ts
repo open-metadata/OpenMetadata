@@ -328,7 +328,14 @@ export class LineageDataClass {
     });
   }
 
-  /** Rehydrate the static instances from disk on module import. */
+  /**
+   * True after loadResponseData() has populated every instance at least
+   * once. Lets test-time helpers detect the "module imported before setup
+   * wrote the JSON" race and re-load on demand.
+   */
+  static isLoaded = false;
+
+  /** Rehydrate the static instances from disk. Safe to call repeatedly. */
   static loadResponseData(): void {
     try {
       const filePath = path.join(
@@ -391,11 +398,38 @@ export class LineageDataClass {
       restoreSimple(this.file, data.file);
       restoreSimple(this.spreadsheet, data.spreadsheet);
       restoreSimple(this.worksheet, data.worksheet);
-    } catch {
-      // No data file yet (first-time bootstrap) — leave the static
-      // instances with their empty responseData. The setup project
-      // populates them; anything reading them before that hits an
-      // empty FQN, which surfaces clearly.
+      // Flip only after every restoreSimple completed without throwing —
+      // partial hydration would still be a stale-instance risk.
+      this.isLoaded = Boolean(
+        this.lineageEntity.entityResponseData?.fullyQualifiedName
+      );
+    } catch (err) {
+      // Surface the load error to CI logs instead of swallowing it — the
+      // silent catch hid a race where module-import ran before setup
+      // wrote the file, and every LineageFilters test then fell back to
+      // FQN-less navigation. Callers must still handle the pre-setup
+      // case; loadOrThrow() below is the escape hatch.
+      console.error('LineageDataClass.loadResponseData failed:', err);
+    }
+  }
+
+  /**
+   * Idempotent, throws on failure. Call from a test-time hook
+   * (beforeAll/beforeEach) to defeat the module-import race: if the file
+   * did not exist at import time, this re-attempts the load and either
+   * succeeds or fails loudly with the FQN that was still missing.
+   */
+  static ensureLoaded(): void {
+    if (this.isLoaded) {
+      return;
+    }
+    this.loadResponseData();
+    if (!this.isLoaded) {
+      throw new Error(
+        `LineageDataClass.ensureLoaded: lineageEntity FQN still empty ` +
+          `after loadResponseData(). Setup project 'lineage-data-setup' ` +
+          `must run before any Lineage spec.`
+      );
     }
   }
 }

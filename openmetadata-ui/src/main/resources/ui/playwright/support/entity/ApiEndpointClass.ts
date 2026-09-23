@@ -31,7 +31,7 @@ import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 import { SharedInfra } from './SharedInfra';
 
-/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to true; pass false to route parents through SharedInfra (see LineageDataClass for the consumer). */
+/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false; the entity routes its parent service/chain through SharedInfra. Pass true only for tests that navigate a per-fixture service page, exercise service-level cascade, or otherwise assert on a unique service name. */
 export type ApiEndpointClassOptions = {
   createFullHierarchy?: boolean;
 };
@@ -91,7 +91,7 @@ export class ApiEndpointClass extends EntityClass {
     options?: ApiEndpointClassOptions
   ) {
     super(EntityTypeEndpoint.API_ENDPOINT);
-    this.createFullHierarchy = options?.createFullHierarchy ?? true;
+    this.createFullHierarchy = options?.createFullHierarchy ?? false;
 
     this.serviceName = name ?? `pw-api-service-${uuid()}`;
     this.apiCollectionName = `pw-api-collection-${uuid()}`;

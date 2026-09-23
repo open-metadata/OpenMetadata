@@ -41,13 +41,19 @@ import { SharedInfra } from './SharedInfra';
 /**
  * Options for TableClass construction.
  *
- * `createFullHierarchy` defaults to `true` — every existing caller keeps
- * the historical isolation model (own service + database + schema, cascade
- * delete on the service). Pass `false` to route parents through
- * SharedInfra so N tables in one shard cost 1 service + 1 database +
- * 1 schema + N tables instead of 4×N. LineageDataClass is the intended
- * consumer of the shared mode; opt in for new suites that don't assert
- * on service-page or per-fixture-service isolation.
+ * `createFullHierarchy` defaults to `false` — parents (databaseService,
+ * database, databaseSchema) are pulled from SharedInfra, so N tables in
+ * one shard cost 1 service + 1 database + 1 schema + N tables instead of
+ * 4×N. Pass `true` only for tests that:
+ *   - navigate a per-fixture service/database/databaseSchema page and
+ *     assert on unique listings (a shared service page contains other
+ *     workers' rows);
+ *   - exercise service-level cascade delete or rename;
+ *   - assert on a unique service name string.
+ * See constant/conditionalPermissions.ts and the three tests in
+ * DataAssetRulesDisabled.spec.ts for concrete isolate callsites; leave the
+ * default in place for lineage-, tag-, domain-, and data-product-asset
+ * scenarios (audited in the accompanying PR).
  */
 export type TableClassOptions = {
   createFullHierarchy?: boolean;
@@ -106,7 +112,7 @@ export class TableClass extends EntityClass {
     this.serviceType = ServiceTypes.DATABASE_SERVICES;
     this.type = 'Table';
     this.childrenTabId = 'schema';
-    this.createFullHierarchy = options?.createFullHierarchy ?? true;
+    this.createFullHierarchy = options?.createFullHierarchy ?? false;
 
     // Names are always generated eagerly so full-hierarchy mode (the
     // default) keeps its current shape. In shared mode (opt-in via

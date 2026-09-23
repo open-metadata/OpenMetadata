@@ -30,7 +30,7 @@ import {
 import { EntityClass } from './EntityClass';
 import { SharedInfra } from './SharedInfra';
 
-/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to true; pass false to route parents through SharedInfra (see LineageDataClass for the consumer). */
+/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false; the entity routes its parent service/chain through SharedInfra. Pass true only for tests that navigate a per-fixture service page, exercise service-level cascade, or otherwise assert on a unique service name. */
 export type DirectoryClassOptions = {
   createFullHierarchy?: boolean;
 };
@@ -85,7 +85,7 @@ export class DirectoryClass extends EntityClass {
     this.type = 'Directory';
     this.serviceCategory = SERVICE_TYPE.DriveService;
     this.serviceType = ServiceTypes.DRIVE_SERVICES;
-    this.createFullHierarchy = options?.createFullHierarchy ?? true;
+    this.createFullHierarchy = options?.createFullHierarchy ?? false;
   }
 
   async create(apiContext: APIRequestContext) {
