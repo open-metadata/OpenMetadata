@@ -406,7 +406,7 @@ export default [
       'sonarjs/no-clear-text-protocols': 'error',
       'sonarjs/no-hardcoded-passwords': 'error',
       'sonarjs/no-hardcoded-ip': 'error',
-      'sonarjs/no-invariant-returns': 'warn', // 0 in sample
+      'sonarjs/no-invariant-returns': 'error',
 
       // React correctness and re-render cost — the enforceable slice of
       // frontend-performance.md. Cleared to zero by the ESLint-cleanup stack —
@@ -626,7 +626,7 @@ export default [
       '@typescript-eslint/no-unused-vars': 'off',
       '@typescript-eslint/no-duplicate-enum-values': 'off',
       '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-unused-expressions': 'warn',
+      '@typescript-eslint/no-unused-expressions': 'error',
       'prefer-const': 'off',
 
       // Playwright must not import application code from `src/`.
