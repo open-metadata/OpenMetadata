@@ -13,7 +13,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sun.net.httpserver.HttpServer;
@@ -244,15 +244,9 @@ public class RdfLiveProjectionIT {
       final UUID termId,
       final boolean expected) {
     final Model model = storage.getEntity(Entity.TABLE, tableId);
-    if (model == null) {
-      // getEntity returns null for an empty CONSTRUCT, which is the normal state until the
-      // projection has written this table's graph — exactly what these polls exist to wait for.
-      // Report it as the assertion outcome "edge absent" rather than dereferencing: an NPE is not
-      // an AssertionError, so untilAsserted propagates it on the first attempt instead of polling,
-      // and the finally block below would mask it with a second NPE from model.close().
-      assertFalse(expected, "no RDF graph yet for table " + tableId);
-      return;
-    }
+    // getEntity returns null for a graph not yet written and for a failed or circuit-open read;
+    // neither proves the edge state. The table is never deleted, so retry until it is readable.
+    assertNotNull(model, "no readable RDF graph for table " + tableId);
     try {
       assertEquals(
           expected,
