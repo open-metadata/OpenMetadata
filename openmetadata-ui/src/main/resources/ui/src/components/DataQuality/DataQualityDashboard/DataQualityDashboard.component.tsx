@@ -22,9 +22,15 @@ import { ReactComponent as DropDownIcon } from '../../../assets/svg/drop-down.sv
 import DatePickerMenu from '../../../components/common/DatePickerMenu/DatePickerMenu.component';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
-import SearchDropdown from '../../../components/SearchDropdown/SearchDropdown';
+import { DQ_FILTER_TYPES } from '../../../constants/DataQuality.constants';
 import { getSelectedOptionLabelString } from '../../../utils/AdvancedSearchPureUtils';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
+import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
+import {
+  fqnsToGlossaryTags,
+  glossaryTagsToFqns,
+} from '../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
 import './data-quality-dashboard.style.less';
 import { DqDashboardChartFilters } from './DataQualityDashboard.interface';
 import DqDashboardSectionContent, {
@@ -87,7 +93,7 @@ const DataQualityDashboard = ({
       {showFilterBar && hasVisibleFilters && (
         <div className="tw:flex tw:items-center tw:gap-4 tw:w-full">
           {filters.map((filter) => {
-            if (filter.type === 'owner') {
+            if (filter.type === DQ_FILTER_TYPES.OWNER) {
               return (
                 <Tooltip
                   isDisabled={filter.selectedOwnerKeys.length === 0}
@@ -105,15 +111,7 @@ const DataQualityDashboard = ({
                       onUpdate={filter.onChange}>
                       <div
                         className="tw:flex tw:items-center tw:gap-1  tw:rounded-md quick-filter-dropdown-trigger-btn"
-                        data-testid={`search-dropdown-${filter.key}`}
-                        title={
-                          filter.selectedOwnerKeys.length > 0
-                            ? getSelectedOptionLabelString(
-                                filter.selectedOwnerKeys,
-                                true
-                              )
-                            : undefined
-                        }>
+                        data-testid={`search-dropdown-${filter.key}`}>
                         <div className="tw:flex tw:items-center tw:gap-0">
                           <span>{filter.label}</span>
                           {filter.selectedOwnerKeys.length > 0 && (
@@ -139,13 +137,29 @@ const DataQualityDashboard = ({
               );
             }
 
+            if (filter.type === DQ_FILTER_TYPES.GLOSSARY_TERM) {
+              return (
+                <GlossaryTermPicker
+                  commitMode="staged"
+                  data-testid={`search-dropdown-${filter.label}`}
+                  key={filter.key}
+                  label={filter.label}
+                  triggerVariant="button"
+                  value={fqnsToGlossaryTags(filter.selectedFqns)}
+                  onChange={(terms) =>
+                    filter.onChange(glossaryTagsToFqns(terms))
+                  }
+                />
+              );
+            }
+
             return (
-              <SearchDropdown
+              <FilterSelectDropdown
                 hideCounts
+                showSelectAll
                 key={filter.key}
                 label={filter.label}
                 searchKey={filter.searchKey}
-                triggerButtonSize="middle"
                 {...filter.searchProps}
               />
             );

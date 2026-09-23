@@ -11,17 +11,12 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { TagSource } from '../../../generated/type/tagLabel';
 import AsyncSelectList from '../../common/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
-import TreeAsyncSelectList from '../../common/AsyncSelectList/TreeAsyncSelectList';
 import TagSelectForm from './TagsSelectForm.component';
 
 jest.mock('../../common/AsyncSelectList/AsyncSelectList', () => {
   return jest.fn().mockReturnValue(<div>AsyncSelectList</div>);
-});
-jest.mock('../../common/AsyncSelectList/TreeAsyncSelectList', () => {
-  return jest.fn().mockReturnValue(<div>TreeAsyncSelectList</div>);
 });
 
 describe('TagSelectForm', () => {
@@ -31,17 +26,14 @@ describe('TagSelectForm', () => {
   const onSubmit = jest.fn();
   const onCancel = jest.fn();
   const tagData: SelectOption[] = [];
-  let tagType = TagSource.Classification;
 
   beforeEach(() => {
-    tagType = TagSource.Classification;
     render(
       <TagSelectForm
         defaultValue={defaultValue}
         fetchApi={fetchApi}
         placeholder={placeholder}
         tagData={tagData}
-        tagType={tagType}
         onCancel={onCancel}
         onSubmit={onSubmit}
       />
@@ -52,52 +44,9 @@ describe('TagSelectForm', () => {
     expect(screen.getByText('AsyncSelectList')).toBeInTheDocument();
   });
 
-  it('should render TreeAsyncSelectList', async () => {
-    tagType = TagSource.Glossary;
-
-    render(
-      <TagSelectForm
-        defaultValue={defaultValue}
-        fetchApi={fetchApi}
-        placeholder={placeholder}
-        tagData={tagData}
-        tagType={tagType}
-        onCancel={onCancel}
-        onSubmit={onSubmit}
-      />
-    );
-
-    expect(screen.getByText('TreeAsyncSelectList')).toBeInTheDocument();
-  });
-
-  it('should pass isSubmitLoading for saving form for tagType Glossary', async () => {
-    tagType = TagSource.Glossary;
-    const mockSubmit = jest
-      .fn()
-      .mockImplementation(
-        () => new Promise((resolve) => setTimeout(resolve, 0))
-      );
-
-    render(
-      <TagSelectForm
-        defaultValue={defaultValue}
-        fetchApi={fetchApi}
-        placeholder={placeholder}
-        tagData={tagData}
-        tagType={tagType}
-        onCancel={onCancel}
-        onSubmit={mockSubmit}
-      />
-    );
-
-    const form = (await screen.findAllByTestId('tag-form'))[1];
-
-    await act(async () => {
-      fireEvent.submit(form);
-    });
-
-    expect(TreeAsyncSelectList).toHaveBeenCalledWith(
-      expect.objectContaining({ isSubmitLoading: true }),
+  it('should pass the default value through to the list', () => {
+    expect(AsyncSelectList).toHaveBeenLastCalledWith(
+      expect.objectContaining({ initialOptions: tagData }),
       {}
     );
   });
@@ -115,7 +64,6 @@ describe('TagSelectForm', () => {
         fetchApi={fetchApi}
         placeholder={placeholder}
         tagData={tagData}
-        tagType={tagType}
         onCancel={onCancel}
         onSubmit={mockSubmit}
       />
@@ -129,73 +77,6 @@ describe('TagSelectForm', () => {
 
     expect(AsyncSelectList).toHaveBeenLastCalledWith(
       expect.objectContaining({ isSubmitLoading: true }),
-      {}
-    );
-  });
-
-  it('should pass scalar value to TreeAsyncSelectList in single-select mode', () => {
-    (TreeAsyncSelectList as unknown as jest.Mock).mockClear();
-
-    render(
-      <TagSelectForm
-        defaultValue={['Glossary.term1']}
-        multiSelect={false}
-        placeholder={placeholder}
-        tagType={TagSource.Glossary}
-        onCancel={onCancel}
-        onSubmit={onSubmit}
-      />
-    );
-
-    expect(TreeAsyncSelectList).toHaveBeenCalledWith(
-      expect.objectContaining({
-        isMultiSelect: false,
-        value: 'Glossary.term1',
-      }),
-      {}
-    );
-  });
-
-  it('should pass array value to TreeAsyncSelectList in multi-select mode', () => {
-    (TreeAsyncSelectList as unknown as jest.Mock).mockClear();
-
-    render(
-      <TagSelectForm
-        defaultValue={['Glossary.term1', 'Glossary.term2']}
-        placeholder={placeholder}
-        tagType={TagSource.Glossary}
-        onCancel={onCancel}
-        onSubmit={onSubmit}
-      />
-    );
-
-    expect(TreeAsyncSelectList).toHaveBeenCalledWith(
-      expect.objectContaining({
-        value: ['Glossary.term1', 'Glossary.term2'],
-      }),
-      {}
-    );
-  });
-
-  it('should pass undefined value when single-select with empty defaultValue', () => {
-    (TreeAsyncSelectList as unknown as jest.Mock).mockClear();
-
-    render(
-      <TagSelectForm
-        defaultValue={[]}
-        multiSelect={false}
-        placeholder={placeholder}
-        tagType={TagSource.Glossary}
-        onCancel={onCancel}
-        onSubmit={onSubmit}
-      />
-    );
-
-    expect(TreeAsyncSelectList).toHaveBeenCalledWith(
-      expect.objectContaining({
-        isMultiSelect: false,
-        value: undefined,
-      }),
       {}
     );
   });

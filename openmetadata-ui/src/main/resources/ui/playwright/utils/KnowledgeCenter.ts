@@ -82,12 +82,12 @@ export const addTitle = async (page: Page, title: string) => {
 };
 
 export const updateBody = async (page: Page, body: string) => {
-  await page.fill('.om-block-editor', body);
   const updateBodyResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/contextCenter/pages/') &&
       response.request().method() === 'PATCH'
   );
+  await page.fill('.om-block-editor', body);
   const res = await updateBodyResponse;
   expect(res.status()).toBe(200);
 
@@ -237,7 +237,12 @@ export const createQuickLink = async (
   );
 
   await assetInput.click();
-  await assetInput.fill(dataAsset.entity.name);
+  // `fill` sets .value and fires one synthetic input event; react-aria's
+  // combobox closes its popover on that, so the query still runs but the
+  // results have nowhere to render and the option below never appears. The
+  // trace shows the listbox present at the end of the click above and gone
+  // from every snapshot after the fill. Real keystrokes keep it open.
+  await assetInput.pressSequentially(dataAsset.entity.name);
 
   await expect(
     page.getByRole('option', { name: dataAsset.entity.name })
@@ -323,7 +328,8 @@ export const updateQuickLink = async (
   );
 
   await tagInput.click();
-  await tagInput.fill(knowledgePageQuickLink.tag);
+  // Same react-aria combobox as the data-asset one above; same reason.
+  await tagInput.pressSequentially(knowledgePageQuickLink.tag);
 
   await expect(
     page.getByRole('option', { name: knowledgePageQuickLink.tag })
@@ -720,7 +726,11 @@ export const verifyTextFormatting = async (
     code: 'code',
   }[format];
 
-  await expect(editor.locator(formatTag, { hasText: text })).toBeVisible();
+  await expect(editor.locator(formatTag).filter({ hasText: text })).toBeVisible(
+    {
+      timeout: 15_000,
+    }
+  );
 };
 
 export const undo = async (page: Page): Promise<void> => {

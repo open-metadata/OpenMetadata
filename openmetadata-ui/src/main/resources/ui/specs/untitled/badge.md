@@ -40,7 +40,7 @@ border), **label**, optional **addon** (`Dot`/icon/flag/image), optional
 | Root layout | `tw:flex tw:items-center tw:whitespace-nowrap tw:size-max` |
 | Radius | `tw:rounded-full` (pill), `tw:rounded-md` (color / modern) |
 | Filled surface (gray) | `tw:bg-utility-gray-50 tw:text-utility-gray-700 tw:outline-utility-gray-200` |
-| Modern surface | `tw:bg-primary tw:text-secondary tw:outline-primary tw:shadow-xs` |
+| Modern surface | `tw:bg-surface tw:text-secondary tw:outline-subtle tw:shadow-xs` |
 | Border | `tw:outline-1 tw:-outline-offset-1` (when `bordered`) — never `tw:ring-*` |
 | Addon (dot/icon) | `tw:text-utility-gray-500` (per color) |
 | Dismiss button hover | `tw:hover:bg-utility-gray-100 tw:hover:text-utility-gray-500` |

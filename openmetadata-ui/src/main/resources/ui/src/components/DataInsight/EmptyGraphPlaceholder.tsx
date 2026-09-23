@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,21 +35,24 @@ export const EmptyGraphPlaceholder = ({ icon }: { icon?: ReactElement }) => {
         })}
       </Typography.Paragraph>
       <Typography.Paragraph>
-        <Transi18next
-          i18nKey="message.refer-to-our-doc"
-          renderElement={
-            <a
-              aria-label={t('label.documentation')}
-              href={DATA_INSIGHT_DOCS}
-              rel="noreferrer"
-              target="_blank"
-              title="Data Insight Documentation"
+        <Tooltip title={t('label.documentation')}>
+          <span>
+            <Transi18next
+              i18nKey="message.refer-to-our-doc"
+              renderElement={
+                <a
+                  aria-label={t('label.documentation')}
+                  href={DATA_INSIGHT_DOCS}
+                  rel="noreferrer"
+                  target="_blank"
+                />
+              }
+              values={{
+                doc: t('label.doc-plural-lowercase'),
+              }}
             />
-          }
-          values={{
-            doc: t('label.doc-plural-lowercase'),
-          }}
-        />
+          </span>
+        </Tooltip>
       </Typography.Paragraph>
     </ErrorPlaceHolder>
   );

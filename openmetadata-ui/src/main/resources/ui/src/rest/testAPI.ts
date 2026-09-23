@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
 import { SORT_ORDER } from '../enums/common.enum';
+import { DataQualityDimensions } from '../enums/DataQuality.enum';
 import { TestCaseType, TestSuiteType } from '../enums/TestSuite.enum';
 import {
   BundleSuiteBulkAddRequestClass,
@@ -34,7 +35,6 @@ import {
   TestCaseStatus,
 } from '../generated/tests/testCase';
 import {
-  DataQualityDimensions,
   EntityType,
   TestDefinition,
   TestPlatform,
@@ -46,7 +46,7 @@ import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { CSVImportAsyncResponse } from '../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export type ListTestSuitePrams = ListParams & {
   testSuiteType?: TestSuiteType;
@@ -89,6 +89,7 @@ export type ListTestCaseParamsBySearch = Omit<
   dataQualityDimension?: string;
   followedBy?: string;
   dataProductFqn?: string;
+  includePermissions?: boolean;
   testCaseStatus?: TestCaseStatus | TestCaseStatus[];
 };
 
@@ -98,6 +99,11 @@ export type ListTestDefinitionsParams = ListParams & {
   supportedDataType?: string;
   enabled?: boolean;
   supportedService?: string;
+  /** Free-text match against the test definition name and display name. */
+  q?: string;
+  /** One of `displayName`, `entityType`, `testPlatforms`. */
+  sortField?: string;
+  sortOrder?: 'asc' | 'desc';
 };
 
 export type ListTestCaseResultsParams = Omit<

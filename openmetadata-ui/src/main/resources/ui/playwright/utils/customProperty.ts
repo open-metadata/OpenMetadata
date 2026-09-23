@@ -25,6 +25,11 @@ import {
 import { UserClass } from '../support/user/UserClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
 import {
+  CODE_EDITOR,
+  CODE_EDITOR_CONTENT,
+  typeInCodeEditor,
+} from './codeEditor';
+import {
   clickOutside,
   descriptionBox,
   descriptionBoxReadOnly,
@@ -32,6 +37,7 @@ import {
   getDescriptionBox,
   selectOptionWithRetry,
   uuid,
+  waitForToastStackToClear,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import {
@@ -138,6 +144,10 @@ export const setValueForProperty = async (data: {
 
   const editButton = container.getByTestId('edit-icon');
   await editButton.scrollIntoViewIfNeeded();
+  // Background async-delete notifications stack as toasts at bottom-center and
+  // intercept the click; force skips the actionability check but the event
+  // still lands on the toast, so drain the stack before clicking.
+  await waitForToastStackToClear(page);
   // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
   await editButton.click({ force: true });
 
@@ -181,8 +191,7 @@ export const setValueForProperty = async (data: {
       break;
 
     case 'sqlQuery':
-      await container.locator("pre[role='presentation']").last().click();
-      await page.keyboard.type(value);
+      await typeInCodeEditor(page, container, value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -336,12 +345,16 @@ export const validateValueForProperty = async (data: {
       endValue
     );
   } else if (propertyType === 'sqlQuery') {
-    await expect(container.locator('.CodeMirror-scroll')).toContainText(value);
+    await expect(container.locator(CODE_EDITOR_CONTENT)).toContainText(value);
   } else if (propertyType === 'table-cp') {
     const values = value.split(',');
 
     await expect(
-      page.getByRole('row', { name: `${values[0]} ${values[1]}` }).first()
+      page
+        .getByRole('row')
+        .filter({ hasText: values[0] })
+        .filter({ hasText: values[1] })
+        .first()
     ).toBeVisible();
   } else if (propertyType === 'hyperlink-cp') {
     // Value format: "url,displayText" or just "url"
@@ -1032,7 +1045,7 @@ export const editColumnCustomProperty = async (
     await page.getByTestId('save').click();
   } else if (propertyType === 'sqlQuery') {
     const codeMirror = page.locator(
-      '.custom-properties-section-container .CodeMirror'
+      `.custom-properties-section-container ${CODE_EDITOR}`
     );
     await expect(codeMirror).toBeVisible();
     await codeMirror.click();
@@ -1143,7 +1156,10 @@ export const validateColumnCustomProperty = async (
     await expect(card.getByTestId('property-value')).toContainText(end);
   } else if (propertyType === 'table-cp') {
     await expect(
-      page.getByRole('row', { name: `${testValue} row1col2` })
+      page
+        .getByRole('row')
+        .filter({ hasText: testValue })
+        .filter({ hasText: 'row1col2' })
     ).toBeVisible();
   } else if (propertyType === 'entityReference') {
     await expect(card.getByTestId('property-value')).toContainText(testValue);
@@ -1478,8 +1494,7 @@ export const updateCustomPropertyInRightPanel = async (data: {
     }
 
     case 'sqlQuery':
-      await page.locator("pre[role='presentation']").last().click();
-      await page.keyboard.type(value);
+      await typeInCodeEditor(page, container, value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -1522,7 +1537,11 @@ export const updateCustomPropertyInRightPanel = async (data: {
     const values = value.split(',');
 
     await expect(
-      page.getByRole('row', { name: `${values[0]} ${values[1]}` }).first()
+      page
+        .getByRole('row')
+        .filter({ hasText: values[0] })
+        .filter({ hasText: values[1] })
+        .first()
     ).toBeVisible();
   } else if (propertyType === 'markdown') {
     // For markdown, remove * and _ as they are formatting characters

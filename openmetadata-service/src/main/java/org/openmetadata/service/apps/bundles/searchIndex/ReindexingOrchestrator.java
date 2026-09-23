@@ -202,8 +202,8 @@ public class ReindexingOrchestrator {
   }
 
   private void cleanupOrphanedIndicesPreFlight() {
+    OrphanedIndexCleaner cleaner = new OrphanedIndexCleaner();
     try {
-      OrphanedIndexCleaner cleaner = new OrphanedIndexCleaner();
       OrphanedIndexCleaner.CleanupResult result =
           cleaner.cleanupOrphanedIndices(searchRepository.getSearchClient());
       if (result.found() > 0) {
@@ -215,6 +215,24 @@ public class ReindexingOrchestrator {
       }
     } catch (Exception e) {
       LOG.warn("Preflight: failed to cleanup orphaned indices: {}", e.getMessage());
+    }
+    detachOrphanedIndexesPreFlight(cleaner);
+  }
+
+  /**
+   * An upgrade that renames or drops an entity type leaves its index behind still attached to the
+   * parent aliases the old release gave it, and {@code index=all} keeps querying it with this
+   * release's clauses. Reindexing is the point at which the cluster is reconciled against the
+   * registry, so it is the point at which the stale alias links go.
+   */
+  private void detachOrphanedIndexesPreFlight(OrphanedIndexCleaner cleaner) {
+    try {
+      int detached = cleaner.detachOrphanedIndexesFromAliases(searchRepository);
+      if (detached > 0) {
+        LOG.info("Preflight: detached {} orphaned index-to-alias links", detached);
+      }
+    } catch (Exception e) {
+      LOG.warn("Preflight: failed to detach orphaned indexes from aliases: {}", e.getMessage());
     }
   }
 

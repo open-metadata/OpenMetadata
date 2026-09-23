@@ -42,7 +42,6 @@ import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
-import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
@@ -57,15 +56,13 @@ import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { getEntityBulkEditPath } from '../../utils/EntityPureUtils';
-import { highlightSearchText } from '../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../utils/EntitySortUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
-import {
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
-import { stringToHTML } from '../../utils/StringUtils';
 import {
   certificationTableObject,
   dataProductTableObject,
@@ -113,7 +110,7 @@ function SchemaTablesTab({
   const allowEditDisplayNamePermission = useMemo(() => {
     return (
       !isVersionView &&
-      getPrioritizedEditPermission(permissions.table, Operation.EditDisplayName)
+      getDerivedPermissionFlags(permissions.table).canEditDisplayName
     );
   }, [permissions, isVersionView]);
 
@@ -142,10 +139,9 @@ function SchemaTablesTab({
 
   const { viewDatabaseSchemaPermission } = useMemo(
     () => ({
-      viewDatabaseSchemaPermission: getPrioritizedViewPermission(
-        databaseSchemaPermission,
-        Operation.ViewBasic
-      ),
+      viewDatabaseSchemaPermission: getDerivedPermissionFlags(
+        databaseSchemaPermission
+      ).canViewBasic,
     }),
     [databaseSchemaPermission]
   );
@@ -274,7 +270,7 @@ function SchemaTablesTab({
         render: (_, record: Table) => {
           return (
             <DisplayName
-              displayName={stringToHTML(
+              displayName={renderHighlightedText(
                 highlightSearchText(record.displayName, searchValue)
               )}
               hasEditPermission={allowEditDisplayNamePermission}
@@ -284,7 +280,9 @@ function SchemaTablesTab({
                 EntityType.TABLE,
                 record.fullyQualifiedName as string
               )}
-              name={stringToHTML(highlightSearchText(record.name, searchValue))}
+              name={renderHighlightedText(
+                highlightSearchText(record.name, searchValue)
+              )}
               onEditDisplayName={handleDisplayNameUpdate}
             />
           );

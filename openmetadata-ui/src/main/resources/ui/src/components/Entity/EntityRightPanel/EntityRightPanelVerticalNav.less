@@ -100,6 +100,22 @@
           color: @primary-6;
           font-weight: var(--om-font-weight-semibold);
         }
+
+        // Dark: re-tint the selected item's accent (bar / icon / text) to
+        // blue-300; @primary-6/-7 stay the injected brand (#1570ef/#175cd3) in
+        // light.
+        .dark-mode & {
+          color: var(--om-color-brand-300);
+
+          &::before {
+            background-color: var(--om-color-brand-300);
+          }
+
+          .ant-menu-item-icon,
+          .ant-menu-title-content {
+            color: var(--om-color-brand-300);
+          }
+        }
       }
       .ant-menu-item-icon {
         display: flex;

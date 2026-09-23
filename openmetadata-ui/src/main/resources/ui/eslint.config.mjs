@@ -349,10 +349,21 @@ export default [
       'jsx-a11y/media-has-caption': 'error',
       'jsx-a11y/no-noninteractive-element-to-interactive-role': 'error',
       'jsx-a11y/anchor-ambiguous-text': 'error',
-      // Downgraded to warn: rule flags pre-existing inherited title= (incl.
-      // false positives on member-expression components and required iframe
-      // titles); tracked for follow-up rather than blocking.
-      'openmetadata-ui-patterns/no-raw-title-attribute': 'warn',
+      // Error: production has zero raw native title= (PR #32916 migrated them to
+      // <Tooltip>), and the rule no longer false-positives on member-expression
+      // components or required <iframe> titles. Locked at error so new raw titles
+      // fail CI. Test/mock files are exempted below — their Tooltip mocks render
+      // <div title={title}> on purpose so tests can read the tooltip text.
+      'openmetadata-ui-patterns/no-raw-title-attribute': 'error',
+      // Raw palette classes (tw:bg-blue-50, tw:text-gray-500, …) are static in
+      // dark mode — use the utility-* variant or a semantic token. Report-only
+      // (no autofix) on purpose: `ui-checkstyle` runs `eslint --fix` then fails
+      // on the diff, so a fixable rule would rewrite pre-existing violations in
+      // files an unrelated PR merely touches and fail its gate. ~358 existing
+      // hits at promotion time; kept at 'warn' until the backlog is cleared
+      // per-area, then promote to 'error' (and re-add a shade-restricted
+      // fixer). See docs/colors.md + the dark-mode guidelines.
+      'openmetadata-ui-patterns/no-non-adaptive-palette': 'warn',
       'sonarjs/no-collapsible-if': 'error',
       'sonarjs/no-extra-arguments': 'error',
       'sonarjs/no-redundant-jump': 'error',
@@ -370,7 +381,7 @@ export default [
       // t() keys and label./message./server. strings and is enforced at error.
       'sonarjs/no-duplicate-string': 'off',
       'openmetadata-i18n/no-duplicate-string': 'error',
-      'sonarjs/cognitive-complexity': ['warn', 15], // 85
+      'sonarjs/cognitive-complexity': ['error', 15], // cleared tree-wide; blocks regressions
 
       // Complexity and structure. SonarCloud gates these on new code; these
       // surface the same findings locally and in the editor.
@@ -395,7 +406,7 @@ export default [
       'sonarjs/no-clear-text-protocols': 'error',
       'sonarjs/no-hardcoded-passwords': 'error',
       'sonarjs/no-hardcoded-ip': 'error',
-      'sonarjs/no-invariant-returns': 'warn', // 0 in sample
+      'sonarjs/no-invariant-returns': 'error',
 
       // React correctness and re-render cost — the enforceable slice of
       // frontend-performance.md. Cleared to zero by the ESLint-cleanup stack —
@@ -418,10 +429,10 @@ export default [
       'openmetadata-imports/no-api-calls-in-iteration': 'warn',
       'openmetadata-imports/no-circular-imports': 'warn',
       'openmetadata-imports/no-cross-page-imports': 'warn',
-      'openmetadata-imports/no-hook-ui-imports': 'warn',
+      'openmetadata-imports/no-hook-ui-imports': 'error',
       'openmetadata-imports/no-impure-pure-utils': 'warn',
-      'openmetadata-imports/no-internal-barrel-imports': 'warn',
-      'openmetadata-imports/no-lodash-default-import': 'warn',
+      'openmetadata-imports/no-internal-barrel-imports': 'error',
+      'openmetadata-imports/no-lodash-default-import': 'error',
       'openmetadata-imports/no-lower-layer-page-imports': 'warn',
       'openmetadata-imports/no-rest-ui-imports': 'warn',
       'openmetadata-imports/review-sequential-api-calls': 'warn',
@@ -470,23 +481,8 @@ export default [
       // sanctioned fallback/placeholder object used throughout the already-
       // converted code (e.g. before a permissions fetch resolves), unlike
       // the two prioritization helpers.
-      //
-      // Deviation from the task brief: the brief assumed this would land at
-      // 'error', with the sweep having already driven direct call sites to
-      // (near) zero. Verification at promotion time found 40 files (45
-      // import specifiers) still importing these two functions directly
-      // from components/pages — not "a few, small" stragglers, and
-      // concentrated in a category the sweep never touched (the per-entity
-      // `*Version` components — TableVersion, ChartVersion, PipelineVersion,
-      // etc. — plus a handful of widgets and hooks). Converting 40 files'
-      // worth of permission derivation is its own sweep-scale task
-      // (mirroring Task 8), not something to fold silently into a
-      // lint-hardening/promotion task. Landing this specific restriction at
-      // 'warn' follows the repo's own documented convention (see the "warn
-      // tier" comment above) for a real, counted backlog that is not zero
-      // yet; promote to 'error' once a follow-up sweep clears it.
       'no-restricted-imports': [
-        'warn', // 40 files (45 import specifiers) import getPrioritizedEditPermission/getPrioritizedViewPermission directly (measured via this rule at promotion time)
+        'error',
         {
           patterns: [
             {
@@ -565,8 +561,8 @@ export default [
       // TypeScript/base rule overrides for Playwright files
       '@typescript-eslint/no-unused-vars': 'off',
       '@typescript-eslint/no-duplicate-enum-values': 'off',
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unused-expressions': 'warn',
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unused-expressions': 'error',
       'prefer-const': 'off',
 
       // Playwright must not import application code from `src/`.
@@ -725,6 +721,24 @@ export default [
     rules: {
       'i18next/no-literal-string': 'off',
       'openmetadata-i18n/no-duplicate-string': 'off',
+    },
+  },
+
+  // no-raw-title-attribute targets shipped UI (use <Tooltip>, not a raw DOM
+  // title). Test files legitimately render a native `title` — the standard jest
+  // mock of <Tooltip> is `({ title, children }) => <div title={title}>{children}
+  // </div>` so a test can read the tooltip text off the DOM — so exempt them.
+  {
+    files: [
+      'src/**/*.test.{js,jsx,ts,tsx}',
+      'src/**/*.spec.{js,jsx,ts,tsx}',
+      'src/**/*.mock.{ts,tsx,js}',
+      'src/**/mocks/**/*.{ts,tsx,js}',
+      'src/**/__mocks__/**/*.{ts,tsx,js}',
+      'src/test/**/*.{ts,tsx,js}',
+    ],
+    rules: {
+      'openmetadata-ui-patterns/no-raw-title-attribute': 'off',
     },
   },
 

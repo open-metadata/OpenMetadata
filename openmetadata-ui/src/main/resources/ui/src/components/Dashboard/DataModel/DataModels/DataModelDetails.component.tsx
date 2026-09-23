@@ -18,15 +18,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
-import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../../../enums/entity.enum';
+import { ServiceCategory } from '../../../../enums/service.enum';
 import { Tag } from '../../../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
-import { Operation } from '../../../../generated/entity/policies/policy';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomPages } from '../../../../hooks/useCustomPages';
 import { useFqn } from '../../../../hooks/useFqn';
 import { FeedCounts } from '../../../../interface/feed.interface';
 import { restoreDataModel } from '../../../../rest/dataModelsAPI';
+import connectionsRouterClassBase from '../../../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -39,7 +40,8 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../../utils/FeedUtilsPure';
-import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
+import { getPartialNameFromTableFQN } from '../../../../utils/FqnUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import {
   getEntityDetailsPath,
   getVersionPath,
@@ -189,17 +191,22 @@ const DataModelDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    [navigate]
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.DASHBOARD_SERVICES,
+          getPartialNameFromTableFQN(decodedDataModelFQN, [FqnPart.Service])
+        )
+      ),
+    [decodedDataModelFQN, navigate]
   );
 
   const { editLineagePermission } = useMemo(() => {
     return {
       editLineagePermission:
-        getPrioritizedEditPermission(
-          dataModelPermissions,
-          Operation.EditLineage
-        ) && !deleted,
+        getDerivedPermissionFlags(dataModelPermissions).canEditLineage &&
+        !deleted,
     };
   }, [dataModelPermissions, deleted]);
 

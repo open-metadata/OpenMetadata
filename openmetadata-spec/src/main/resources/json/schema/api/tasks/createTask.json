@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/tasks/createTask.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CreateTaskRequest",
   "description": "Request to create a new Task.",
   "javaType": "org.openmetadata.schema.api.tasks.CreateTask",

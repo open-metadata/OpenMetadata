@@ -258,6 +258,32 @@ SET json = JSON_SET(json, '$.connection.config.scheme', 'oracle+oracledb')
 WHERE serviceType = 'Oracle'
   AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.connection.config.scheme')) = 'oracle+cx_oracle';
 
+-- Data quality dimensions become first class entities (issue #30362): test definitions and test
+-- cases point at them by relationship so that a dimension can be renamed, recoloured or added
+-- without touching the tests that use it. System dimensions are seeded from
+-- json/data/dataQualityDimension on startup.
+-- An earlier revision of this (unreleased) migration declared `id` as a plain column. Because
+-- EntityDAO.insert only writes fqnHash and json, MySQL rejected every insert with "Field 'id'
+-- doesn't have a default value". The table is dropped unconditionally rather than patched: it is
+-- new in this unreleased version, so any existing copy is either empty (the broken shape could not
+-- be inserted into) or holds nothing but the system dimensions, which are re-seeded from
+-- json/data/dataQualityDimension on the next startup.
+DROP TABLE IF EXISTS data_quality_dimension;
+CREATE TABLE data_quality_dimension (
+    -- EntityDAO.insert only writes fqnHash and json, so every other column has to be derived
+    -- from the json document, id included.
+    id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.id'))) STORED NOT NULL,
+    json json NOT NULL,
+    fqnHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    name varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.name'))) STORED NOT NULL,
+    provider varchar(32) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.provider'))) STORED,
+    updatedAt bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.updatedAt'))) STORED NOT NULL,
+    deleted tinyint(1) GENERATED ALWAYS AS (json_extract(json, '$.deleted')) STORED,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_data_quality_dimension_fqn_hash (fqnHash),
+    KEY idx_data_quality_dimension_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE IF NOT EXISTS rdf_custom_ontology (
   name varchar(64) NOT NULL,
   json json NOT NULL,
@@ -338,6 +364,31 @@ SET @ddl = (
     ),
     'SELECT 1',
     'CREATE INDEX idx_automations_workflow_updated_at ON automations_workflow (updatedAt)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- audit_log_event.entity_fqn stores the raw FQN. For lineage events that FQN is two
+-- entity FQNs joined by the relationship marker, so ordinary deeply-nested entities
+-- push it past 768 characters; the insert then fails and AuditLogRepository drops the
+-- row with only a WARN, losing audit history silently. Nothing indexes entity_fqn --
+-- lookups go through entity_fqn_hash (idx_audit_log_event_entity_hash_ts), an
+-- MD5-per-segment digest that stays far inside its own bound -- so the column has no
+-- reason to be length-capped.
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'audit_log_event'
+        AND column_name = 'entity_fqn'
+        AND data_type = 'text'
+    ),
+    'SELECT 1',
+    'ALTER TABLE audit_log_event MODIFY COLUMN entity_fqn TEXT NULL'
   )
 );
 PREPARE stmt FROM @ddl;
