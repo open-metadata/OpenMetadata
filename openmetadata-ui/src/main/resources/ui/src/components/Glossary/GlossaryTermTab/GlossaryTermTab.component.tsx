@@ -1922,7 +1922,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         <Table
           cellClassName="tw:p-2 tw:align-middle"
           columns={columns}
-          containerClassName="glossary-terms-table drop-over-background tw:!border-0 tw:!rounded-none tw:min-h-0 tw:flex-1 tw:!overflow-auto"
+          // `tw:flex tw:flex-col` turns this outer container into a flex column so
+          // its inner scroll region (`scrollContainerClassName`, below) has an
+          // actual box to grow into instead of collapsing to nothing.
+          containerClassName="glossary-terms-table drop-over-background tw:!border-0 tw:!rounded-none tw:flex tw:flex-col tw:min-h-0 tw:flex-1 tw:!overflow-y-auto"
           data-testid="glossary-terms-table"
           dataSource={filteredGlossaryTerms}
           defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
@@ -1934,6 +1937,16 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           rowClassName={getRowClassName}
           rowKey="fullyQualifiedName"
           scroll={GLOSSARY_TABLE_SCROLL}
+          // Stretches the table's own scroll region to fill this panel
+          // instead of shrinking to the row content's height, so a short
+          // result set doesn't leave the scrollbar floating above empty
+          // space. Safe only because `containerClassName` above also makes
+          // the outer wrapper `flex flex-col` with a bounded height (via
+          // `tw:flex-1 tw:min-h-0`) — vertical scrolling still happens on
+          // that outer wrapper (`tw:!overflow-y-auto`), not here, so the
+          // sticky header never ends up pinned against a container that
+          // actually scrolls.
+          scrollContainerClassName="tw:!flex-1 tw:!min-h-0 tw:!max-h-none"
           size="small"
           staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
         />
