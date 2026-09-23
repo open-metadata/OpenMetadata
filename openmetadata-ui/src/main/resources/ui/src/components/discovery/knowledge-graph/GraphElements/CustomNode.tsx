@@ -31,14 +31,14 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CustomNodeProps } from '../../../../interface/discovery/knowledge-graph.interface';
 import {
-  getEntityNameLabel,
-  getPluralizeEntityName,
-} from '../../../../utils/EntityNameUtils';
-import {
   getGraphNodeLabel,
   getGroupMemberLabelKey,
   getSharedMemberType,
 } from '../../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
+import {
+  getEntityNameLabel,
+  getPluralizeEntityName,
+} from '../../../../utils/EntityNameUtils';
 import { GraphNodePresentation } from '../KnowledgeGraph.interface';
 import { normalizeRelationKey } from '../KnowledgeGraph.relations';
 import './custom-node.less';

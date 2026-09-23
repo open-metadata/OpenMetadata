@@ -26,11 +26,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Column } from '../../../generated/entity/data/table';
-import { getEntityNameLabel } from '../../../utils/EntityNameUtils';
-import Fqn from '../../../utils/Fqn';
+import { transformToG6Format } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
 import { getGraphNodeHref } from '../../../utils/discovery/knowledge-graph/knowledgeGraphNavigation.utils';
 import { isCoverageNode } from '../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
-import { transformToG6Format } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
+import { getEntityNameLabel } from '../../../utils/EntityNameUtils';
+import Fqn from '../../../utils/Fqn';
 import {
   GraphData,
   GraphNode,

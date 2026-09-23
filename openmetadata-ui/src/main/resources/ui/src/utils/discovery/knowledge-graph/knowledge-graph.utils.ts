@@ -23,6 +23,26 @@ import type {
 import type { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
 import { toString } from 'lodash';
 import {
+  ElementFocusState,
+  GraphData,
+  GraphInteractionCtx,
+  GraphLevelRing,
+  GraphNode,
+  GraphNodePresentation,
+  KnowledgeGraphEdge,
+  KnowledgeGraphG6Edge,
+  KnowledgeGraphLayout,
+  KnowledgeGraphLevel,
+} from '../../../components/discovery/knowledge-graph/KnowledgeGraph.interface';
+import {
+  classifyRelation,
+  getGraphRelationCategory,
+  getRelationStyle,
+  RelationCategory,
+  RELATION_CATEGORIES,
+} from '../../../components/discovery/knowledge-graph/KnowledgeGraph.relations';
+import { LITE_GRAY_COLOR, WHITE_COLOR } from '../../../constants/constants';
+import {
   BAND_PADDING,
   DAGRE_PORTS,
   DIMMED_OPACITY,
@@ -52,32 +72,12 @@ import {
   ZOOM_DURATION_MS,
   ZOOM_EASING,
 } from '../../../constants/discovery/knowledge-graph.constants';
-import {
-  ElementFocusState,
-  GraphData,
-  GraphInteractionCtx,
-  GraphLevelRing,
-  GraphNode,
-  GraphNodePresentation,
-  KnowledgeGraphEdge,
-  KnowledgeGraphG6Edge,
-  KnowledgeGraphLayout,
-  KnowledgeGraphLevel,
-} from '../../../components/discovery/knowledge-graph/KnowledgeGraph.interface';
-import {
-  classifyRelation,
-  getGraphRelationCategory,
-  getRelationStyle,
-  RelationCategory,
-  RELATION_CATEGORIES,
-} from '../../../components/discovery/knowledge-graph/KnowledgeGraph.relations';
-import { LITE_GRAY_COLOR, WHITE_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { resolveCssColor } from '../../common/cssColor.utils';
 import { getEntityLinkFromType } from '../../EntityLinkUtils';
 import { getEntityNameLabel } from '../../EntityNameUtils';
-import { routeGraphEdges } from './knowledgeGraphLayout.utils';
 import ELKLayout from '../../Lineage/Layout/ELKUtil/ELKUtil';
+import { routeGraphEdges } from './knowledgeGraphLayout.utils';
 
 // Layout: padding(8) + icon(14) + gap(8) + label + gap(8) + typeChip + padding(8)
 // label: 14px bold ≈ 9.5px per char

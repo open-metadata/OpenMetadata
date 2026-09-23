@@ -14,11 +14,11 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ThemeProvider } from '../../../context/UntitledUIThemeProvider/theme-provider';
-import { buildGraphPresentation } from '../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
 import {
   identifyGraphEdges,
   transformToG6Format,
 } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
+import { buildGraphPresentation } from '../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
 import { GraphData } from './KnowledgeGraph.interface';
 import KnowledgeGraphGroupInspector from './KnowledgeGraphGroupInspector';
 

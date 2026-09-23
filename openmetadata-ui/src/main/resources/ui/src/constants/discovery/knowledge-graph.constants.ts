@@ -12,8 +12,8 @@
  */
 
 import type { NodePortStyleProps } from '@antv/g6';
-import { EntityGraphExportFormat } from '../../rest/rdfAPI.interface';
 import { ExportFormat } from '../../components/OntologyExplorer/ExportGraphPanel.interface';
+import { EntityGraphExportFormat } from '../../rest/rdfAPI.interface';
 
 /**
  * Pulls the entity id off the tail of an RDF node URI

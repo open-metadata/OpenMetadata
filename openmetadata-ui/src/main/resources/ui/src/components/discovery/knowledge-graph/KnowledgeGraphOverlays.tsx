@@ -20,23 +20,23 @@ import {
 import { Link01, XClose } from '@untitledui/icons';
 import { lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityType } from '../../../enums/entity.enum';
-import { GraphSelection } from '../../../hooks/discovery/knowledge-graph/useKnowledgeGraphCanvas';
-import {
-  getGraphNodeHref,
-  isGraphColumnNode,
-} from '../../../utils/discovery/knowledge-graph/knowledgeGraphNavigation.utils';
-import {
-  getColorSetForType,
-  resolveFocusNodeId,
-} from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
-import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import { SearchSourceDetails } from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.interface';
-import { getNodeTypeLabel } from './GraphElements/CustomNode';
 import {
   ENTITY_UUID_REGEX,
   PANEL_WIDTH,
 } from '../../../constants/discovery/knowledge-graph.constants';
+import { EntityType } from '../../../enums/entity.enum';
+import { GraphSelection } from '../../../hooks/discovery/knowledge-graph/useKnowledgeGraphCanvas';
+import {
+  getColorSetForType,
+  resolveFocusNodeId,
+} from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
+import {
+  getGraphNodeHref,
+  isGraphColumnNode,
+} from '../../../utils/discovery/knowledge-graph/knowledgeGraphNavigation.utils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import { SearchSourceDetails } from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.interface';
+import { getNodeTypeLabel } from './GraphElements/CustomNode';
 import {
   EdgeTooltipState,
   GraphNode,

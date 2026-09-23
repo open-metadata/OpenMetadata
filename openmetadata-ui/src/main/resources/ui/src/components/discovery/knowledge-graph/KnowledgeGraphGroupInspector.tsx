@@ -13,12 +13,12 @@
 
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
-import { getPluralizeEntityName } from '../../../utils/EntityNameUtils';
+import { getGroupRelationship } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
 import {
   getGroupMemberLabelKey,
   getSharedMemberType,
 } from '../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
-import { getGroupRelationship } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
+import { getPluralizeEntityName } from '../../../utils/EntityNameUtils';
 import { GraphNode, KnowledgeGraphG6Edge } from './KnowledgeGraph.interface';
 import { getRelationStyle } from './KnowledgeGraph.relations';
 import {

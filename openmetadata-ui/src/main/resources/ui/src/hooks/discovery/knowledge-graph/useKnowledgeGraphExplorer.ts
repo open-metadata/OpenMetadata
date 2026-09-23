@@ -13,6 +13,7 @@
 
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { RelationCategory } from '../../../interface/discovery/knowledge-graph-relations.interface';
 import {
   GraphData,
   KnowledgeGraphFilters,
@@ -21,7 +22,12 @@ import {
   KnowledgeGraphPresentation,
   MappingCoverage,
 } from '../../../interface/discovery/knowledge-graph.interface';
-import { RelationCategory } from '../../../interface/discovery/knowledge-graph-relations.interface';
+import {
+  countRelationCategories,
+  graphLevelToDepth,
+  resolveFocusNodeId,
+  transformToG6Format,
+} from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
 import { addDeclaredOntologyProperties } from '../../../utils/discovery/knowledge-graph/knowledgeGraphOntology.utils';
 import {
   annotateGraphCoverage,
@@ -32,12 +38,6 @@ import {
   restrictToEntityLevel,
   sentenceCaseGraphLabels,
 } from '../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
-import {
-  countRelationCategories,
-  graphLevelToDepth,
-  resolveFocusNodeId,
-  transformToG6Format,
-} from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
 import { useKnowledgeGraphColumns } from './useKnowledgeGraphColumns';
 import { useKnowledgeGraphData } from './useKnowledgeGraphData';
 import {

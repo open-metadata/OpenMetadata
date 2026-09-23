@@ -18,6 +18,7 @@ jest.mock('../../EntityLinkUtils', () => ({
 
 import { Graph, NodePortStyleProps } from '@antv/g6';
 import { ELK } from 'elkjs/lib/elk-api';
+import { getRelationStyle } from '../../../components/discovery/knowledge-graph/KnowledgeGraph.relations';
 import {
   BAND_PADDING,
   DAGRE_PORTS,
@@ -32,8 +33,7 @@ import {
   RADIAL_EDGE_CURVE_OFFSET,
   RING_STRETCH_MAX,
 } from '../../../constants/discovery/knowledge-graph.constants';
-import { getRelationStyle } from '../../../components/discovery/knowledge-graph/KnowledgeGraph.relations';
-import { buildGraphPresentation } from './knowledgeGraphPresentation.utils';
+import ELKLayout from '../../Lineage/Layout/ELKUtil/ELKUtil';
 import {
   applyGraphLayout,
   applyInitialFocus,
@@ -63,7 +63,7 @@ import {
   stretchRingToViewport,
   transformToG6Format,
 } from './knowledge-graph.utils';
-import ELKLayout from '../../Lineage/Layout/ELKUtil/ELKUtil';
+import { buildGraphPresentation } from './knowledgeGraphPresentation.utils';
 
 const makeNode = (id: string, extra: Record<string, unknown> = {}) => ({
   id,
