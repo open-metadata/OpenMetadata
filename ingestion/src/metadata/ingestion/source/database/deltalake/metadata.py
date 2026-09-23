@@ -13,6 +13,7 @@ Deltalake source methods.
 """
 
 import traceback
+from collections import defaultdict
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any, cast
 
@@ -49,6 +50,7 @@ from metadata.ingestion.source.connections import (
     create_connection,
 )
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
+from metadata.ingestion.source.database.deltalake.clients.base import TableInfo
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema, filter_by_table
@@ -164,6 +166,69 @@ class DeltalakeSource(DatabaseServiceSource):
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
+    def _build_table_fqn(self, table_name: str, schema_name: str) -> str:
+        return cast(
+            "str",
+            fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                schema_name=schema_name,
+                table_name=table_name,
+            ),
+        )
+
+    def _get_filtered_table_info(self, schema_name: str) -> Iterable[TableInfo]:
+        """Yield the discovered tables that pass the table filter pattern."""
+        for table_info in self.client.get_table_info(self.service_connection, schema_name=schema_name):
+            table_fqn = self._build_table_fqn(table_info.name, schema_name)
+            if filter_by_table(
+                self.source_config.tableFilterPattern,
+                table_fqn if self.source_config.useFqnForFiltering else table_info.name,
+            ):
+                self.status.filter(
+                    table_fqn,
+                    "Table Filtered Out",
+                )
+                continue
+            yield table_info
+
+    def _get_unique_table_info(self, schema_name: str) -> Iterable[TableInfo]:
+        """Yield the tables whose name is unique within the schema, failing on the rest.
+
+        A storage-backed Delta table takes its name from the folder it lives in, so two tables
+        stored under different prefixes of the same bucket - `a/sales` and `b/sales` - produce the
+        same `service.database.schema.table` FQN. Emitting both makes whichever is ingested last
+        overwrite the other, losing that table's metadata without any error (issue #24840). Report
+        the collision instead, and skip every table involved so that none of them is silently
+        replaced by a namesake.
+        """
+        table_info_by_name: dict[str, list[TableInfo]] = defaultdict(list)
+        for table_info in self._get_filtered_table_info(schema_name):
+            table_info_by_name[table_info.name].append(table_info)
+
+        for table_name, table_info_list in table_info_by_name.items():
+            if len(table_info_list) == 1:
+                yield table_info_list[0]
+                continue
+
+            table_fqn = self._build_table_fqn(table_name, schema_name)
+            locations = ", ".join(sorted(info.location or "<unknown location>" for info in table_info_list))
+            self.status.failed(
+                StackTraceError(
+                    name=table_fqn,
+                    error=(
+                        f"Found {len(table_info_list)} Delta tables named '{table_name}' in schema"
+                        f" '{schema_name}' of service '{self.config.serviceName}', at: {locations}."
+                        f" OpenMetadata identifies a table by its FQN, so all of them resolve to"
+                        f" '{table_fqn}' and would overwrite each other. None of them has been ingested."
+                        " Ingest the conflicting locations under a prefix or a service of their own,"
+                        " or rename the Delta tables so that their names are unique within the schema."
+                    ),
+                )
+            )
+
     def get_tables_name_and_type(self) -> Iterable[tuple[str, str]] | None:
         """
         Handle table and views.
@@ -174,26 +239,8 @@ class DeltalakeSource(DatabaseServiceSource):
         :return: tables or views, depending on config
         """
         schema_name = self.context.get().database_schema
-        for table_info in self.client.get_table_info(self.service_connection, schema_name=schema_name):
+        for table_info in self._get_unique_table_info(schema_name):
             try:
-                table_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=self.context.get().database_schema,
-                    table_name=table_info.name,
-                )
-                if filter_by_table(
-                    self.source_config.tableFilterPattern,
-                    table_fqn if self.source_config.useFqnForFiltering else table_info.name,
-                ):
-                    self.status.filter(
-                        table_fqn,
-                        "Table Filtered Out",
-                    )
-                    continue
-
                 if self.source_config.includeTables and table_info._type != TableType.View:
                     table_info = self.client.update_table_info(table_info)  # noqa: PLW2901
                     self.context.get().table_description = table_info.description
