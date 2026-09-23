@@ -189,6 +189,20 @@ class MetricDaoContractTest {
                 List.class,
                 int.class),
             sqlQuery(
+                CollectionDAO.EntityRelationshipDAO.class,
+                "countFindTo",
+                UUID.class,
+                String.class,
+                List.class),
+            sqlQuery(
+                CollectionDAO.EntityRelationshipDAO.class,
+                "findToWithOffset",
+                UUID.class,
+                String.class,
+                List.class,
+                int.class,
+                int.class),
+            sqlQuery(
                 CollectionDAO.MetricDAO.class,
                 "listChildIds",
                 UUID.class,
@@ -207,6 +221,40 @@ class MetricDaoContractTest {
                 "findDownstreamAssetIds",
                 UUID.class,
                 List.class,
+                int.class));
+
+    queries.forEach(query -> assertTrue(query.contains("deleted = FALSE"), query));
+  }
+
+  @Test
+  void singleRelationshipLookupsMatchActiveBatchLookupSemantics() throws Exception {
+    List<String> queries =
+        List.of(
+            sqlQuery(
+                CollectionDAO.EntityRelationshipDAO.class,
+                "findTo",
+                UUID.class,
+                String.class,
+                List.class),
+            sqlQuery(
+                CollectionDAO.EntityRelationshipDAO.class,
+                "findTo",
+                UUID.class,
+                String.class,
+                int.class,
+                String.class),
+            sqlQuery(
+                CollectionDAO.EntityRelationshipDAO.class,
+                "findFrom",
+                UUID.class,
+                String.class,
+                int.class,
+                String.class),
+            sqlQuery(
+                CollectionDAO.EntityRelationshipDAO.class,
+                "findFrom",
+                UUID.class,
+                String.class,
                 int.class));
 
     queries.forEach(query -> assertTrue(query.contains("deleted = FALSE"), query));

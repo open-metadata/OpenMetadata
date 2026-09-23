@@ -839,7 +839,8 @@ public interface CoreRelationshipDAOs {
     //
     @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship "
-            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation IN (<relation>)")
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity "
+            + "AND relation IN (<relation>) AND deleted = FALSE")
     @RegisterRowMapper(ToRelationshipMapper.class)
     List<EntityRelationshipRecord> findTo(
         @BindUUID("fromId") UUID fromId,
@@ -1044,7 +1045,8 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship "
-            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity")
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation "
+            + "AND toEntity = :toEntity AND deleted = FALSE")
     @RegisterRowMapper(ToRelationshipMapper.class)
     List<EntityRelationshipRecord> findTo(
         @BindUUID("fromId") UUID fromId,
@@ -1054,7 +1056,8 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery(
         "SELECT toId FROM entity_relationship  "
-            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity")
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation "
+            + "AND toEntity = :toEntity AND deleted = FALSE")
     @RegisterRowMapper(ToRelationshipMapper.class)
     List<UUID> findToIds(
         @BindUUID("fromId") UUID fromId,
@@ -1098,7 +1101,8 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery(
         "SELECT fromId, COUNT(toId) FROM entity_relationship "
-            + "WHERE fromId IN (<fromIds>) AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity "
+            + "WHERE fromId IN (<fromIds>) AND fromEntity = :fromEntity AND relation = :relation "
+            + "AND toEntity = :toEntity AND deleted = FALSE "
             + "GROUP BY fromId")
     @RegisterRowMapper(ToRelationshipCountMapper.class)
     List<EntityRelationshipCount> countFindTo(
@@ -1138,7 +1142,7 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery(
         "SELECT COUNT(toId) FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
-            + "AND relation IN (<relation>)")
+            + "AND relation IN (<relation>) AND deleted = FALSE")
     @RegisterRowMapper(ToRelationshipMapper.class)
     int countFindTo(
         @BindUUID("fromId") UUID fromId,
@@ -1204,7 +1208,8 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
-            + "AND relation IN (<relation>) ORDER BY toId LIMIT :limit OFFSET :offset")
+            + "AND relation IN (<relation>) AND deleted = FALSE "
+            + "ORDER BY toId LIMIT :limit OFFSET :offset")
     @RegisterRowMapper(ToRelationshipMapper.class)
     List<EntityRelationshipRecord> findToWithOffset(
         @BindUUID("fromId") UUID fromId,
@@ -1242,7 +1247,8 @@ public interface CoreRelationshipDAOs {
     //
     @SqlQuery(
         "SELECT fromId, fromEntity, json FROM entity_relationship "
-            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity ")
+            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation "
+            + "AND fromEntity = :fromEntity AND deleted = FALSE")
     @RegisterRowMapper(FromRelationshipMapper.class)
     List<EntityRelationshipRecord> findFrom(
         @BindUUID("toId") UUID toId,
@@ -1375,7 +1381,8 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery(
         "SELECT fromId, fromEntity, json FROM entity_relationship "
-            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation")
+            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation "
+            + "AND deleted = FALSE")
     @RegisterRowMapper(FromRelationshipMapper.class)
     List<EntityRelationshipRecord> findFrom(
         @BindUUID("toId") UUID toId,
