@@ -939,9 +939,18 @@ a[href].link-text-grey,
 // (Bare-anchor dark link color is handled in tailwind.css via `:where(.dark-mode) a`
 // so it keeps base specificity and doesn't override nav/chrome anchors.)
 
-// Carousel active dot draws with --ant-primary-color (#1570ef); re-tint in dark.
+// Ant Typography links (a.ant-typography / .ant-typography a, colored @blue-9 in
+// fonts.less at 0,1,1) aren't caught by the base-specificity `:where(.dark-mode) a`.
+// Retint them in dark at a higher specificity that wins regardless of load order.
+.dark-mode a.ant-typography,
+.dark-mode .ant-typography a {
+  color: var(--om-color-link);
+}
+
+// Carousel active dot draws with --ant-primary-color (#1570ef) via a `!important`
+// rule in temp.css; match !important to win and re-tint in dark.
 .dark-mode .slick-dots li.slick-active button:before {
-  color: var(--om-color-brand-300);
+  color: var(--om-color-brand-300) !important;
 }
 
 // Dark-mode canvas chrome for every reactflow surface (lineage, workflow,
