@@ -27,7 +27,7 @@ import org.openmetadata.service.jdbi3.TimeSeriesDAOs.AppExtensionTimeSeries;
 
 @Slf4j
 public final class RdfProjectionStateResolver {
-  static final String RDF_INDEX_APP = "RdfIndexApp";
+  public static final String RDF_INDEX_APP = "RdfIndexApp";
   private final AppExtensionTimeSeries runStore;
   private final BooleanSupplier isDegraded;
 

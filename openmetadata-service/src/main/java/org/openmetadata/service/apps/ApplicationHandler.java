@@ -10,6 +10,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -47,6 +48,9 @@ import org.quartz.impl.matchers.GroupMatcher;
 public class ApplicationHandler {
 
   private static final String CACHE_WARMUP_APPLICATION = "CacheWarmupApplication";
+
+  /** Recovers its own runs: its distributed job can outlive the server that started it. */
+  private static final String SEARCH_INDEXING_APPLICATION = "SearchIndexingApplication";
 
   @Getter private static ApplicationHandler instance;
   private final OpenMetadataApplicationConfig config;
@@ -126,9 +130,16 @@ public class ApplicationHandler {
   public void cleanupStaleJobs() {
     try {
       LOG.info("Cleaning up stale application jobs from previous server runs");
-      CollectionDAO.AppExtensionTimeSeries dao =
+      final CollectionDAO.AppExtensionTimeSeries runs =
           Entity.getCollectionDAO().appExtensionTimeSeriesDao();
-      dao.markAllStaleEntriesFailedExcludingApp("SearchIndexingApplication");
+      final List<String> appNames =
+          runs.listAppNamesWithRunningStatus().stream()
+              .filter(appName -> !SEARCH_INDEXING_APPLICATION.equals(appName))
+              .toList();
+      if (!appNames.isEmpty()) {
+        runs.markRunningEntriesInterrupted(
+            appNames, AppRunInterruption.stillRunningAtStartup(), System.currentTimeMillis());
+      }
       LOG.info("Stale application jobs cleanup completed successfully");
     } catch (Exception e) {
       LOG.error("Failed to cleanup stale application jobs", e);

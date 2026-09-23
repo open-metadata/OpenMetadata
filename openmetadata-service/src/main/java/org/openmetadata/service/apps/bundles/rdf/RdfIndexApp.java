@@ -627,6 +627,9 @@ public class RdfIndexApp extends AbstractNativeApplication {
     distributedExecutor = new DistributedRdfIndexExecutor(collectionDAO, partitionSize);
     distributedExecutor.performStartupRecovery();
 
+    // Other servers can finish the job after this one stops; the timestamp lets them find this
+    // run's record to write the outcome into.
+    jobData.setTimestamp(getJobRecord(jobExecutionContext).getTimestamp());
     RdfIndexJob distributedJob =
         distributedExecutor.createJob(jobData.getEntities(), jobData, createdBy);
 

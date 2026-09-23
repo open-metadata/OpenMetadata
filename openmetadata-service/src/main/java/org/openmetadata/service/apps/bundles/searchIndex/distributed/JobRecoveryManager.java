@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.apps.AppRunInterruption;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchReindexLockDAO;
 
@@ -504,7 +505,8 @@ public class JobRecoveryManager {
     try {
       collectionDAO
           .appExtensionTimeSeriesDao()
-          .markRunningEntriesFailedByName(SEARCH_INDEX_APP_NAME);
+          .markRunningEntriesInterrupted(
+              List.of(SEARCH_INDEX_APP_NAME), AppRunInterruption.failure(errorMessage), now);
     } catch (Exception e) {
       LOG.warn("Failed to update app_extension_time_series for failed job {}", job.getId(), e);
     }
