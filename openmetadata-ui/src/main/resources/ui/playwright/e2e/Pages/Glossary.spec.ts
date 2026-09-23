@@ -12,7 +12,6 @@
  */
 import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
-import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
@@ -107,7 +106,6 @@ import {
   pickGlossaryTermInField,
   toggleGlossaryTermInPicker,
 } from '../../utils/glossaryPicker';
-import { sidebarClick } from '../../utils/sidebar';
 import { TaskDetails, waitForTaskResolveResponse } from '../../utils/task';
 import { performUserLogin } from '../../utils/user';
 
@@ -151,19 +149,19 @@ test.describe('Glossary tests', () => {
     glossary1.data.terms = [new GlossaryTerm(glossary1)];
 
     await test.step('Create Glossary', async () => {
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await createGlossary(page, glossary1.data, false);
       await verifyGlossaryDetails(page, glossary1.data);
     });
 
     await test.step('Create Glossary Terms', async () => {
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await createGlossaryTerms(page, glossary1.data);
     });
 
     await test.step('Approve Glossary Term from Glossary Listing for reviewer user', async () => {
       await redirectToHomePage(page1);
-      await sidebarClick(page1, SidebarItem.GLOSSARY);
+      await page1.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page1, glossary1.data.displayName);
       await verifyTaskCreated(
         page1,
@@ -187,7 +185,7 @@ test.describe('Glossary tests', () => {
 
       await approveGlossaryTermTask(page1, glossary1.data.terms[0].data);
       await redirectToHomePage(page1);
-      await sidebarClick(page1, SidebarItem.GLOSSARY);
+      await page1.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page1, glossary1.data.displayName);
       await validateGlossaryTerm(
         page1,
@@ -219,20 +217,20 @@ test.describe('Glossary tests', () => {
     glossary2.data.terms = [new GlossaryTerm(glossary2)];
 
     await test.step('Create Glossary', async () => {
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await createGlossary(page, glossary2.data, false);
       await verifyGlossaryDetails(page, glossary2.data);
     });
 
     await test.step('Create Glossary Terms', async () => {
       await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await createGlossaryTerms(page, glossary2.data);
     });
 
     await test.step('Approve Glossary Term from Glossary Listing for reviewer team', async () => {
       await redirectToHomePage(page1);
-      await sidebarClick(page1, SidebarItem.GLOSSARY);
+      await page1.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page1, glossary2.data.displayName);
 
       await verifyTaskCreated(
@@ -244,7 +242,7 @@ test.describe('Glossary tests', () => {
       await approveGlossaryTermTask(page1, glossary2.data.terms[0].data);
 
       await redirectToHomePage(page1);
-      await sidebarClick(page1, SidebarItem.GLOSSARY);
+      await page1.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page1, glossary2.data.displayName);
       await validateGlossaryTerm(
         page1,
@@ -286,7 +284,7 @@ test.describe('Glossary tests', () => {
 
     try {
       await test.step('Update Glossary', async () => {
-        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await page.goto('/glossary', { waitUntil: 'commit' });
         await selectActiveGlossary(page, glossary1.data.displayName);
 
         // Update description
@@ -324,7 +322,7 @@ test.describe('Glossary tests', () => {
 
       await test.step('Update Glossary Term', async () => {
         await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await page.goto('/glossary', { waitUntil: 'commit' });
         await selectActiveGlossary(page, glossary1.data.displayName);
         await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
         // Update description
@@ -379,7 +377,7 @@ test.describe('Glossary tests', () => {
       await owner1.create(apiContext);
       await reviewer1.create(apiContext);
       await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary1.data.displayName);
 
       await updateGlossaryTermOwners(page, glossaryTerm1.data, [
@@ -448,7 +446,7 @@ test.describe('Glossary tests', () => {
     ];
 
     await test.step('Create Glossary and Terms', async () => {
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await createGlossary(page, glossary1.data, false);
       await verifyGlossaryDetails(page, glossary1.data);
       await createGlossaryTerms(page, glossary1.data);
@@ -456,7 +454,7 @@ test.describe('Glossary tests', () => {
 
     await test.step('Approve and Reject Glossary Term', async () => {
       await redirectToHomePage(page1);
-      await sidebarClick(page1, SidebarItem.GLOSSARY);
+      await page1.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page1, glossary1.data.displayName);
       await verifyTaskCreated(
         page1,
@@ -469,7 +467,7 @@ test.describe('Glossary tests', () => {
         glossary1.data.terms[1].data.name
       );
       await redirectToHomePage(page1);
-      await sidebarClick(page1, SidebarItem.GLOSSARY);
+      await page1.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page1, glossary1.data.displayName);
 
       const taskResolve = page1.waitForResponse('/api/v1/tasks/*/resolve');
@@ -535,7 +533,7 @@ test.describe('Glossary tests', () => {
 
     try {
       await test.step('Add asset to glossary term using entity', async () => {
-        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await page.goto('/glossary', { waitUntil: 'commit' });
 
         await selectActiveGlossary(page, glossary2.data.displayName);
         await goToAssetsTab(page, glossaryTerm3.data.displayName);
@@ -664,7 +662,7 @@ test.describe('Glossary tests', () => {
 
         await expect(icon).toBeVisible();
 
-        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await page.goto('/glossary', { waitUntil: 'commit' });
 
         await selectActiveGlossary(page, glossary2.data.displayName);
         await goToAssetsTab(page, glossaryTerm3.data.displayName, 2);
@@ -736,7 +734,7 @@ test.describe('Glossary tests', () => {
       await test.step('Rename Glossary Term', async () => {
         const newName = `PW.${uuid()}%${getRandomLastName()}`;
         await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await page.goto('/glossary', { waitUntil: 'commit' });
         await selectActiveGlossary(page, glossary1.data.displayName);
         await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
 
@@ -807,7 +805,7 @@ test.describe('Glossary tests', () => {
       await test.step('Rename the same entity again', async () => {
         const newName = `PW Space.${uuid()}%${getRandomLastName()}`;
         await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await page.goto('/glossary', { waitUntil: 'commit' });
         await selectActiveGlossary(page, glossary1.data.displayName);
         await goToAssetsTab(
           page,
@@ -856,7 +854,7 @@ test.describe('Glossary tests', () => {
     try {
       await test.step('Verify filters are visible upfront and can be applied', async () => {
         await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await page.goto('/glossary', { waitUntil: 'commit' });
         await selectActiveGlossary(page, glossary1.data.displayName);
         await goToAssetsTab(page, glossaryTerm1.data.displayName);
         await verifyAssetModalFilters(page);
@@ -881,7 +879,7 @@ test.describe('Glossary tests', () => {
       await glossary1.create(apiContext);
       await glossaryTerm1.create(apiContext);
       await glossaryTerm2.create(apiContext);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary1.data.displayName);
 
       await test.step('Drag and Drop Glossary Term', async () => {
@@ -914,7 +912,7 @@ test.describe('Glossary tests', () => {
 
       await test.step('Drag and Drop Glossary Term back at parent level', async () => {
         await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await page.goto('/glossary', { waitUntil: 'commit' });
         await selectActiveGlossary(page, glossary1.data.displayName);
         await performExpandAll(page);
 
@@ -961,7 +959,7 @@ test.describe('Glossary tests', () => {
       await glossary1.create(apiContext);
       await glossaryTerm1.create(apiContext);
       await glossaryTerm2.create(apiContext);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary1.data.displayName);
 
       await test.step('Update Glossary Term Reviewer', async () => {
@@ -1021,7 +1019,7 @@ test.describe('Glossary tests', () => {
       await glossary1.create(apiContext);
       await glossaryTerm1.create(apiContext);
       await glossaryTerm2.create(apiContext);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary1.data.displayName);
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
 
@@ -1031,7 +1029,7 @@ test.describe('Glossary tests', () => {
         glossaryTerm2.responseData.fullyQualifiedName
       );
 
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary1.data.displayName);
 
       await expect(
@@ -1071,7 +1069,7 @@ test.describe('Glossary tests', () => {
       await glossary2.create(apiContext);
       await glossaryTerm1.create(apiContext);
       await glossaryTerm2.create(apiContext);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary1.data.displayName);
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
 
@@ -1083,7 +1081,7 @@ test.describe('Glossary tests', () => {
       );
 
       // Verify the term is no longer in the source glossary (glossary1)
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary1.data.displayName);
 
       await expect(
@@ -1105,7 +1103,7 @@ test.describe('Glossary tests', () => {
       await test.step('Delete glossary to verify broken relation', async () => {
         await glossary1.delete(apiContext);
         await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await page.goto('/glossary', { waitUntil: 'commit' });
         await selectActiveGlossary(page, glossary2.data.displayName);
 
         // check .ant-alert-error is not visible
@@ -1141,7 +1139,7 @@ test.describe('Glossary tests', () => {
         'Add',
         EntityTypeEndpoint.Table
       );
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary1.data.displayName);
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
       await page.getByTestId('assets').click();
@@ -1180,7 +1178,7 @@ test.describe('Glossary tests', () => {
     try {
       await user1.create(apiContext);
       await glossary1.create(apiContext);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary1.data.displayName);
 
       const value: TaskDetails = {
@@ -1197,7 +1195,7 @@ test.describe('Glossary tests', () => {
       await taskResolve;
 
       await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary1.data.displayName);
 
       await expect(
@@ -1222,7 +1220,7 @@ test.describe('Glossary tests', () => {
       await user1.create(apiContext);
       await glossary1.create(apiContext);
       await glossaryTerm1.create(apiContext);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary1.data.displayName);
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
 
@@ -1240,7 +1238,7 @@ test.describe('Glossary tests', () => {
       await taskResolve;
 
       await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary1.data.displayName);
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
 
@@ -1268,7 +1266,7 @@ test.describe('Glossary tests', () => {
     const glossary1 = new Glossary();
     try {
       await glossary1.create(apiContext);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary1.data.displayName);
 
       const value: TaskDetails = {
@@ -1300,7 +1298,7 @@ test.describe('Glossary tests', () => {
     glossary1.data.terms = [glossaryTerm1];
     await glossary1.create(apiContext);
     await glossaryTerm1.create(apiContext);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
+    await page.goto('/glossary', { waitUntil: 'commit' });
     await selectActiveGlossary(page, glossary1.data.displayName);
 
     // Delete Glossary Term
@@ -1322,7 +1320,7 @@ test.describe('Glossary tests', () => {
 
     try {
       await glossary1.create(apiContext);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary1.data.displayName);
       await expectGlossaryVisible(page, glossary1.data.displayName);
 
@@ -1354,7 +1352,7 @@ test.describe('Glossary tests', () => {
 
     try {
       await glossary1.create(apiContext);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary1.data.displayName);
       await expectGlossaryVisible(page, glossary1.data.displayName);
 
@@ -1395,7 +1393,7 @@ test.describe('Glossary tests', () => {
       await glossaryB.create(apiContext);
       await glossaryC.create(apiContext);
 
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await expectGlossaryVisible(page, glossaryA.data.displayName);
       await expectGlossaryVisible(page, glossaryB.data.displayName);
       await expectGlossaryVisible(page, glossaryC.data.displayName);
@@ -1448,7 +1446,7 @@ test.describe('Glossary tests', () => {
       await glossaryB.create(apiContext);
       await glossaryC.create(apiContext);
 
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await expectGlossaryVisible(page, glossaryA.data.displayName);
       await expectGlossaryVisible(page, glossaryB.data.displayName);
       await expectGlossaryVisible(page, glossaryC.data.displayName);
@@ -1456,7 +1454,7 @@ test.describe('Glossary tests', () => {
       // Delete A (succeeds - not mocked, real deletion)
       await selectActiveGlossary(page, glossaryA.data.displayName);
       await initiateDelete(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await expectGlossaryNotVisible(page, glossaryA.data.displayName);
 
       // Delete B (fails via mocked WebSocket event)
@@ -1468,7 +1466,7 @@ test.describe('Glossary tests', () => {
       emitDeleteFailure(jobIdB, glossaryB.data.name);
       await refetch;
 
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
 
       // A deleted, B restored, C untouched
       await expect(
@@ -1506,7 +1504,7 @@ test.describe('Glossary tests', () => {
     await glossaryTerm3.create(apiContext);
 
     try {
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary1.data.displayName);
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
       await page.getByTestId('terms').click();
@@ -1546,7 +1544,7 @@ test.describe('Glossary tests', () => {
       await glossary1.create(apiContext);
       await glossaryTerm1.create(apiContext);
       await glossaryTerm2.create(apiContext);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary1.data.displayName);
 
       await test.step('Open column dropdown and select columns and check if they are visible', async () => {
@@ -1627,7 +1625,7 @@ test.describe('Glossary tests', () => {
       await glossary1.create(apiContext);
       await glossaryTerm1.create(apiContext);
       await glossaryTerm2.create(apiContext);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary1.data.displayName);
 
       await test.step('Deselect status and check if the table has filtered rows', async () => {
@@ -1657,7 +1655,7 @@ test.describe('Glossary tests', () => {
     try {
       await glossary1.create(apiContext);
       await glossaryTerm1.create(apiContext);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary1.data.displayName);
       await openColumnDropdown(page);
       await ensureColumnsVisible(page, [
@@ -1706,7 +1704,7 @@ test.describe('Glossary tests', () => {
     await glossaryTerm3.create(apiContext);
 
     try {
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary1.data.displayName);
 
       await performExpandAll(page);
@@ -1749,7 +1747,7 @@ test.describe('Glossary tests', () => {
       await glossary1.create(apiContext);
       await glossaryTerm1.create(apiContext);
       await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary1.data.displayName);
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
       await page.getByTestId('terms').click();
@@ -1788,7 +1786,7 @@ test.describe('Glossary tests', () => {
     await glossary1.create(apiContext);
 
     try {
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary1.data.displayName);
 
       await test.step('Create Glossary Term One', async () => {
@@ -1839,7 +1837,7 @@ test.describe('Glossary tests', () => {
     );
     await glossary1.create(apiContext);
 
-    await sidebarClick(page, SidebarItem.GLOSSARY);
+    await page.goto('/glossary', { waitUntil: 'commit' });
     await selectActiveGlossary(page, glossary1.data.displayName);
 
     await test.step('Create Glossary Term One', async () => {
@@ -1878,7 +1876,7 @@ test.describe('Glossary tests', () => {
 
     try {
       await redirectToHomePage(dataConsumerPage);
-      await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
+      await dataConsumerPage.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(
         dataConsumerPage,
         glossary1.data.displayName,
@@ -1913,7 +1911,7 @@ test.describe('Glossary tests', () => {
 
     try {
       await redirectToHomePage(dataConsumerPage);
-      await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
+      await dataConsumerPage.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(dataConsumerPage, glossary1.data.displayName);
       await dataConsumerPage
         .getByTestId(glossaryTerm1.data.displayName)
@@ -1969,7 +1967,7 @@ test.describe('Glossary tests', () => {
 
       await test.step('Navigate to glossary and verify workflow widget', async () => {
         await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await page.goto('/glossary', { waitUntil: 'commit' });
         await selectActiveGlossary(page, glossary.data.displayName);
 
         await verifyWorkflowInstanceExists(
@@ -2001,7 +1999,7 @@ test.describe('Glossary tests', () => {
 
       await test.step('Perform Changes by reviewer', async () => {
         await redirectToHomePage(reviewerPage);
-        await sidebarClick(reviewerPage, SidebarItem.GLOSSARY);
+        await reviewerPage.goto('/glossary', { waitUntil: 'commit' });
         await selectActiveGlossary(reviewerPage, glossary.data.displayName);
         await selectActiveGlossaryTerm(
           reviewerPage,
@@ -2056,7 +2054,7 @@ test.describe('Glossary tests', () => {
 
       await test.step('Navigate to Glossary page', async () => {
         await redirectToHomePage(page1);
-        await sidebarClick(page1, SidebarItem.GLOSSARY);
+        await page1.goto('/glossary', { waitUntil: 'commit' });
 
         await page1.getByTestId('domain-dropdown').click();
 
@@ -2124,7 +2122,7 @@ test.describe('Glossary tests', () => {
 
       await test.step('Navigate to Glossary page', async () => {
         await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await page.goto('/glossary', { waitUntil: 'commit' });
         await waitForAllLoadersToDisappear(page);
 
         await selectActiveGlossary(page, glossary.data.displayName);
@@ -2155,7 +2153,7 @@ test.describe('Glossary tests', () => {
       });
 
       await test.step('Open delete modal and verify delete confirmation', async () => {
-        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await page.goto('/glossary', { waitUntil: 'commit' });
         await waitForAllLoadersToDisappear(page);
 
         await selectActiveGlossary(page, glossary.data.displayName);
@@ -2330,7 +2328,7 @@ test.describe('Glossary tests', () => {
       await domain.create(apiContext);
 
       await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
 
       await page.click('[data-testid="add-glossary"]');
       await page.getByTestId('form-heading').waitFor();
@@ -2425,7 +2423,7 @@ test.describe('Glossary tests', () => {
       await parentTerm.create(apiContext);
 
       await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary.data.displayName);
       await performExpandAll(page);
 
@@ -2747,7 +2745,7 @@ test.describe('Glossary tests', () => {
       await glossaryTerm.create(apiContext);
 
       await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary.data.displayName);
       await performExpandAll(page);
 
@@ -2793,7 +2791,7 @@ test.describe('Glossary tests', () => {
       await glossary.create(apiContext);
 
       await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary.data.displayName);
 
       // Click manage button and rename
@@ -2836,7 +2834,7 @@ test.describe('Glossary tests', () => {
       await glossary.create(apiContext);
 
       await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary.data.displayName);
 
       // Open delete modal
@@ -2878,7 +2876,7 @@ test.describe('Glossary tests', () => {
       await glossaryTerm.create(apiContext);
 
       await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.goto('/glossary', { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary.data.displayName);
       await selectActiveGlossaryTerm(page, glossaryTerm.data.displayName);
 
