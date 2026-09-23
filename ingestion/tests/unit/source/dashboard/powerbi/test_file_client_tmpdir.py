@@ -68,7 +68,9 @@ class TestExtractDirRecreatedBeforeDownload:
 
     @patch("metadata.ingestion.source.dashboard.powerbi.file_client.get_reader")
     @patch("metadata.ingestion.source.dashboard.powerbi.file_client.AWSClient")
-    def test_extract_dir_created_when_absent(self, mock_aws, _mock_get_reader, tmp_path):
+    def test_extract_dir_created_when_absent(
+        self, mock_aws, _mock_get_reader, tmp_path
+    ):
         extract_dir = tmp_path / "pbitFiles"
         # Intentionally do not create extract_dir to simulate post-cleanup state.
         assert not extract_dir.exists()
@@ -84,14 +86,19 @@ class TestExtractDirRecreatedBeforeDownload:
 
         # No blobs → download_pbit_files is never called, but extract_dir must still exist
         # so that get_datamodel_schema_files_from_pbit can open it without error.
-        with patch(
-            "metadata.ingestion.source.dashboard.powerbi.file_client.list_s3_objects",
-            return_value=[],
-        ), patch(
-            "metadata.ingestion.source.dashboard.powerbi.file_client.get_datamodel_schema_files_from_pbit",
-            return_value=None,
-        ) as mock_schema:
+        with (
+            patch(
+                "metadata.ingestion.source.dashboard.powerbi.file_client.list_s3_objects",
+                return_value=[],
+            ),
+            patch(
+                "metadata.ingestion.source.dashboard.powerbi.file_client.get_datamodel_schema_files_from_pbit",
+                return_value=None,
+            ) as mock_schema,
+        ):
             get_pbit_files(s3_config)
             mock_schema.assert_called_once_with(path=str(extract_dir))
 
-        assert extract_dir.exists(), "extract_dir must be created by get_pbit_files before use"
+        assert extract_dir.exists(), (
+            "extract_dir must be created by get_pbit_files before use"
+        )
