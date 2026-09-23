@@ -23,6 +23,7 @@ import {
   formatTestSummaryYAxis,
   getStatusDotColor,
   getTestSummaryTooltipPosition,
+  getThresholdReference,
   isSameTooltipPosition,
   prepareChartData,
   PrepareChartDataType,
@@ -620,5 +621,60 @@ describe('isSameTooltipPosition', () => {
     expect(isSameTooltipPosition({ x: 516, y: 196 }, { x: 516, y: 196 })).toBe(
       true
     );
+  });
+});
+
+describe('getThresholdReference', () => {
+  const params = (values: Record<string, string>) =>
+    Object.entries(values).map(([name, value]) => ({ name, value }));
+
+  it('should read the single assertion parameter as the expected value', () => {
+    expect(
+      getThresholdReference(
+        params({ value: '10000', threshold: '5', thresholdUnit: 'PERCENTAGE' })
+      )
+    ).toEqual({
+      y: 10000,
+      labelKey: 'label.expected-value',
+      labelValue: (10000).toLocaleString(),
+    });
+  });
+
+  // `threshold` is a tolerance on tableRowCountToEqual and the assertion
+  // itself on tableCustomSQLQuery, so it only becomes the line when no other
+  // numeric parameter carries the assertion.
+  it('should fall back to threshold when it is the only numeric parameter', () => {
+    expect(
+      getThresholdReference(
+        params({
+          sqlExpression: 'SELECT 1',
+          strategy: 'ROWS',
+          operator: '==',
+          threshold: '0',
+        })
+      )
+    ).toEqual({
+      y: 0,
+      labelKey: 'label.threshold-value',
+      labelValue: (0).toLocaleString(),
+    });
+  });
+
+  it('should draw the upper bound for a two-sided range', () => {
+    expect(
+      getThresholdReference(params({ minValue: '1', maxValue: '3489' }))
+    ).toEqual({ y: 3489, labelKey: 'label.allowed-max' });
+  });
+
+  it('should fall back to the learned bound when no parameter is numeric', () => {
+    expect(getThresholdReference([], { maxBound: 10500 })).toEqual({
+      y: 10500,
+      labelKey: 'label.learned-baseline',
+    });
+  });
+
+  it('should return undefined when there is nothing to draw', () => {
+    expect(getThresholdReference([])).toBeUndefined();
+    expect(getThresholdReference(params({ strategy: 'ROWS' }))).toBeUndefined();
   });
 });

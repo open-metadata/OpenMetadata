@@ -145,6 +145,70 @@ export const prepareChartData = ({
 
 // Aborted and Queued used to share one colour, which read as a single state:
 // a run that produced no result and a run that has not happened yet.
+/**
+ * Parameters that qualify the assertion rather than state it. `threshold` is a
+ * tolerance on tableRowCountToEqual and friends, but the assertion itself on
+ * tableCustomSQLQuery, which carries no other numeric parameter - so it is
+ * only read once nothing else can supply the line.
+ */
+const TOLERANCE_PARAMETERS = new Set(['threshold', 'thresholdUnit']);
+
+export interface ThresholdReference {
+  y: number;
+  labelKey: string;
+  labelValue?: string;
+}
+
+const toFiniteNumber = (value?: string) => {
+  const parsed = Number(value);
+
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+/**
+ * The value the chart draws its expectation line at, with the label the mock
+ * puts beside it. Returns nothing when the test states no numeric expectation,
+ * so the caller renders no line rather than one at zero.
+ */
+export const getThresholdReference = (
+  testCaseParameterValue: TestCaseParameterValue[],
+  latestResult?: Pick<TestCaseResult, 'maxBound'>
+): ThresholdReference | undefined => {
+  const assertions = testCaseParameterValue
+    .filter((parameter) => !TOLERANCE_PARAMETERS.has(parameter.name ?? ''))
+    .map((parameter) => toFiniteNumber(parameter.value))
+    .filter((value): value is number => !isUndefined(value));
+
+  if (assertions.length === 1) {
+    return {
+      y: assertions[0],
+      labelKey: 'label.expected-value',
+      labelValue: assertions[0].toLocaleString(),
+    };
+  }
+
+  if (assertions.length > 1) {
+    return { y: Math.max(...assertions), labelKey: 'label.allowed-max' };
+  }
+
+  const threshold = toFiniteNumber(
+    testCaseParameterValue.find((parameter) => parameter.name === 'threshold')
+      ?.value
+  );
+
+  if (!isUndefined(threshold)) {
+    return {
+      y: threshold,
+      labelKey: 'label.threshold-value',
+      labelValue: threshold.toLocaleString(),
+    };
+  }
+
+  return isUndefined(latestResult?.maxBound)
+    ? undefined
+    : { y: latestResult.maxBound, labelKey: 'label.learned-baseline' };
+};
+
 export const getStatusDotColor = (status: TestCaseStatus): string => {
   if (status === TestCaseStatus.Success) {
     return GREEN_3;

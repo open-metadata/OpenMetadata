@@ -135,9 +135,11 @@ jest.mock('recharts', () => ({
       </div>
     );
   }),
-  ReferenceLine: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="reference-line" />),
+  ReferenceLine: jest.fn().mockImplementation(({ label, y }) => (
+    <div data-testid="reference-line" data-y={y}>
+      {label?.value}
+    </div>
+  )),
   ResponsiveContainer: jest
     .fn()
     .mockImplementation(({ children, className, id }) => (
@@ -332,22 +334,50 @@ describe('TestSummaryGraph', () => {
     expect(minButton).toBeInTheDocument();
   });
 
-  it('should render reference line when single parameter value', () => {
+  it('should draw the expectation line at the asserted value', () => {
     render(
       <TestSummaryGraph
         {...mockProps}
         testCaseParameterValue={[
-          {
-            name: 'threshold',
-            value: '100',
-          },
+          { name: 'value', value: '10000' },
+          { name: 'threshold', value: '5' },
         ]}
       />
     );
 
-    expect(
-      queryByAttribute('id', document.body, `${mockProps.testCaseName}_graph`)
-    ).toBeInTheDocument();
+    const referenceLine = screen.getByTestId('reference-line');
+
+    expect(referenceLine).toHaveAttribute('data-y', '10000');
+    expect(referenceLine).toHaveTextContent('label.expected-value');
+  });
+
+  it('should fall back to the learned bound when no parameter asserts a number', () => {
+    render(
+      <TestSummaryGraph
+        {...mockProps}
+        testCaseParameterValue={[{ name: 'strategy', value: 'ROWS' }]}
+      />
+    );
+
+    const referenceLine = screen.getByTestId('reference-line');
+
+    expect(referenceLine).toHaveAttribute('data-y', '96162');
+    expect(referenceLine).toHaveTextContent('label.learned-baseline');
+  });
+
+  // A line at no value is the bug this replaced: recharts silently drops it.
+  it('should draw no expectation line when nothing supplies a value', () => {
+    render(
+      <TestSummaryGraph
+        {...mockProps}
+        testCaseParameterValue={[{ name: 'strategy', value: 'ROWS' }]}
+        testCaseResults={[
+          { ...mockProps.testCaseResults[0], maxBound: undefined },
+        ]}
+      />
+    );
+
+    expect(screen.queryByTestId('reference-line')).not.toBeInTheDocument();
   });
 
   it('should render incident areas when entity threads exist', () => {

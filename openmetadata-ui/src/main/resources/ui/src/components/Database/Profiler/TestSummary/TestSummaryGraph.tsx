@@ -54,6 +54,7 @@ import {
   TABLE_DATA_TO_BE_FRESH,
   TABLE_FRESHNESS_KEY,
 } from '../../../../constants/TestSuite.constant';
+import type { TestCaseResult } from '../../../../generated/tests/testCase';
 import { useChartColors } from '../../../../hooks/useChartColors';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { getTaskById } from '../../../../rest/tasksAPI';
@@ -62,6 +63,7 @@ import {
   formatTestSummaryYAxis,
   formatTestSummaryXAxis,
   getStatusDotColor,
+  getThresholdReference,
   getTestSummaryTooltipPosition,
   isSameTooltipPosition,
   isTestSummaryTooltipBoundary,
@@ -360,21 +362,35 @@ function TestSummaryGraph({
     );
   };
 
+  // A ReferenceLine with no `y` draws nothing, so the expectation line was
+  // absent for every test: the parameter name was passed as its label and the
+  // value it should sit at was never supplied.
   const referenceArea = useMemo(() => {
-    const params = testCaseParameterValue ?? [];
+    const reference = getThresholdReference(
+      testCaseParameterValue ?? [],
+      // Dimension results carry no learned bound, so the fallback simply
+      // finds nothing for them.
+      testCaseResults[0] as Pick<TestCaseResult, 'maxBound'> | undefined
+    );
 
-    if (params.length === 1) {
-      return (
-        <ReferenceLine
-          label={params[0].name}
-          stroke={GREEN_3}
-          strokeDasharray="4"
-        />
-      );
+    if (!reference) {
+      return <></>;
     }
 
-    return <></>;
-  }, [testCaseParameterValue]);
+    return (
+      <ReferenceLine
+        label={{
+          fill: axis,
+          fontSize: 12,
+          position: 'insideTopRight',
+          value: t(reference.labelKey, { value: reference.labelValue }),
+        }}
+        stroke={GREEN_3}
+        strokeDasharray="4"
+        y={reference.y}
+      />
+    );
+  }, [testCaseParameterValue, testCaseResults, axis, t]);
 
   if (isEmpty(testCaseResults)) {
     return (
