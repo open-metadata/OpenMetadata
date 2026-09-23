@@ -25,7 +25,6 @@ import {
   Column,
   DashboardDataModel,
 } from '../../../../generated/entity/data/dashboardDataModel';
-import { Operation } from '../../../../generated/entity/policies/policy';
 import { TagSource } from '../../../../generated/type/schema';
 import {
   getColumnsDataWithVersionChanges,
@@ -34,7 +33,7 @@ import {
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtilsPure';
 import { getPartialNameFromTableFQN } from '../../../../utils/FqnUtils';
-import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getVersionPath } from '../../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
@@ -133,10 +132,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   };
 
   const viewCustomPropertiesPermission = useMemo(() => {
-    return getPrioritizedViewPermission(
-      entityPermissions,
-      Operation.ViewCustomFields
-    );
+    return getDerivedPermissionFlags(entityPermissions).canViewCustomFields;
   }, [entityPermissions]);
 
   const tabItems: TabsProps['items'] = useMemo(

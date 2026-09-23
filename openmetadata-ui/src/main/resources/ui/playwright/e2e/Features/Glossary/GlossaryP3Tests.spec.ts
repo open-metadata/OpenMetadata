@@ -692,44 +692,25 @@ test.describe('Glossary P3 Tests', () => {
     });
 
     try {
-      // Navigate directly to a non-existent glossary (without redirectToHomePage)
+      // Hoist the listener before the navigation so the response is not missed
+      const glossaryApiResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/glossaries/name/') &&
+          response.request().method() === 'GET'
+      );
+
       await page.goto(`/glossary/NonExistentGlossary_${Date.now()}`);
       await page.waitForLoadState('domcontentloaded');
-      await waitForAllLoadersToDisappear(page).catch(() => {});
 
-      // Check for various states that indicate the app handled the invalid URL
-      // App may show error OR redirect to glossary list page
-      const badMessage = page.getByText(/bad message|bad request/i);
-      const errorState = page.getByText(/not found|error|doesn't exist/i);
-      const noDataPlaceholder = page.getByTestId('no-data-placeholder');
-      // Check for glossary page elements (redirect behavior)
-      const glossaryHeader = page.getByTestId('entity-header-name');
-      const addGlossaryButton = page.getByTestId('add-glossary');
-      const glossarySidebar = page.locator('.left-panel-card');
+      const apiResponse = await glossaryApiResponse;
 
-      // Any of these states is acceptable for error handling
-      const hasValidResponse =
-        (await badMessage
-          .first()
-          .isVisible({ timeout: 10000 })
-          .catch(() => false)) ||
-        (await errorState
-          .first()
-          .isVisible({ timeout: 2000 })
-          .catch(() => false)) ||
-        (await noDataPlaceholder
-          .isVisible({ timeout: 2000 })
-          .catch(() => false)) ||
-        (await glossaryHeader
-          .isVisible({ timeout: 2000 })
-          .catch(() => false)) ||
-        (await addGlossaryButton
-          .isVisible({ timeout: 2000 })
-          .catch(() => false)) ||
-        (await glossarySidebar.isVisible({ timeout: 2000 }).catch(() => false));
+      expect(apiResponse.status()).toBe(404);
 
-      // Verify the app handled the invalid URL (either error page or redirect)
-      expect(hasValidResponse).toBeTruthy();
+      // GlossaryPage renders EmptyPlaceholder (data-testid="empty-placeholder")
+      // when isGlossaryNotFound is true — wait for it with auto-retry
+      await expect(page.getByTestId('empty-placeholder')).toBeVisible({
+        timeout: 10000,
+      });
     } finally {
       await afterAction();
     }

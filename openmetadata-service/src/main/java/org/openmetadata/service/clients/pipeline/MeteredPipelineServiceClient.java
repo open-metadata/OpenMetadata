@@ -14,6 +14,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.RunOptions;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 
 public class MeteredPipelineServiceClient implements PipelineServiceClientInterface {
@@ -111,6 +112,16 @@ public class MeteredPipelineServiceClient implements PipelineServiceClientInterf
       Map<String, Object> config) {
     return this.respondWithMetering(
         RUN, () -> this.decoratedClient.runPipeline(ingestionPipeline, service, config));
+  }
+
+  // Must delegate as is: the interface default would apply the options to the pipeline and call the
+  // decorated client without them, skipping a client that sends them with the trigger instead.
+  @Override
+  public PipelineServiceClientResponse runPipelineWithOptions(
+      IngestionPipeline ingestionPipeline, ServiceEntityInterface service, RunOptions options) {
+    return this.respondWithMetering(
+        RUN,
+        () -> this.decoratedClient.runPipelineWithOptions(ingestionPipeline, service, options));
   }
 
   @Override

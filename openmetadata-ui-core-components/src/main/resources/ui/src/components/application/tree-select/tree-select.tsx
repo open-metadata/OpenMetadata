@@ -12,7 +12,9 @@
  */
 import { ChevronDown, RefreshCw01, SearchLg, XClose } from '@untitledui/icons';
 import {
-  SearchInputIcon,
+  DropdownSearchField,
+  DropdownStagedFooter,
+  DropdownStatusFooter,
   TriggerCountBadge,
 } from '../filter-select/filter-select.shared';
 import {
@@ -30,7 +32,6 @@ import { Button } from '@/components/base/buttons/button';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { HintText } from '@/components/base/input/hint-text';
-import { Input } from '@/components/base/input/input';
 import { Label } from '@/components/base/input/label';
 import { sizes } from '@/components/base/select/select';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
@@ -47,6 +48,7 @@ import {
   useTreeSelectSearch,
 } from './use-tree-select-search';
 import {
+  getNodeSelectionState,
   hasExclusiveChildren,
   useTreeSelectSelection,
 } from './use-tree-select-selection';
@@ -292,13 +294,18 @@ export const TreeSelect = <T = unknown,>({
   // Staged mode reports once on Apply, not per toggle.
   const commit = isStaged ? undefined : onChange;
 
-  const { selectedData, isNodeSelected, toggleNodeSelection, setSelection } =
-    useTreeSelectSelection<T>({
-      multiple,
-      cascadeSelection,
-      treeData,
-      onChange: commit,
-    });
+  const {
+    selectedData,
+    isNodeSelected,
+    getDescendantSelection,
+    toggleNodeSelection,
+    setSelection,
+  } = useTreeSelectSelection<T>({
+    multiple,
+    cascadeSelection,
+    treeData,
+    onChange: commit,
+  });
 
   useEffect(() => {
     if (value !== prevValueRef.current) {
@@ -484,6 +491,10 @@ export const TreeSelect = <T = unknown,>({
 
       return visibleNodes.map((node) => {
         const isExclusiveGroup = hasExclusiveChildren(node);
+        const { isFullySelected, isPartiallySelected } = getNodeSelectionState(
+          getDescendantSelection(node),
+          isNodeSelected(node.id)
+        );
 
         return (
           <Tree.Item id={node.id} key={node.id} textValue={node.label}>
@@ -492,8 +503,9 @@ export const TreeSelect = <T = unknown,>({
               hasChildItems={
                 Boolean(node.children?.length) || node.isLeaf === false
               }
+              isIndeterminate={isPartiallySelected}
               isLoading={loadingNodes.has(node.id)}
-              isSelected={isNodeSelected(node.id)}
+              isSelected={isFullySelected}
               multiple={multiple}
               node={node}
               showCheckbox={showCheckbox && !isExclusiveGroup}
@@ -527,6 +539,7 @@ export const TreeSelect = <T = unknown,>({
       resolvedEmptyBranchMessage,
       isNodeVisible,
       isNodeSelected,
+      getDescendantSelection,
       loadingNodes,
       disabled,
       multiple,
@@ -717,16 +730,12 @@ export const TreeSelect = <T = unknown,>({
       data-testid={dataTestId ? `${dataTestId}-popover` : undefined}
       ref={popoverRef}>
       {usesDropdownChrome && searchable && (
-        <div className="tw:p-2">
-          <Input
-            icon={SearchInputIcon}
-            inputDataTestId={dataTestId ? `${dataTestId}-search` : undefined}
-            placeholder={searchPlaceholder ?? t('label.search')}
-            size="sm"
-            value={inputValue}
-            onChange={(val) => searchable && setInputValue(val)}
-          />
-        </div>
+        <DropdownSearchField
+          inputDataTestId={dataTestId ? `${dataTestId}-search` : undefined}
+          placeholder={searchPlaceholder ?? t('label.search')}
+          value={inputValue}
+          onChange={(val) => searchable && setInputValue(val)}
+        />
       )}
       {showSelectAllRow && (
         <div
@@ -776,57 +785,24 @@ export const TreeSelect = <T = unknown,>({
         )}
       </div>
       {showFooter && (
-        <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:p-3">
-          <Button
-            color="tertiary"
-            data-testid="clear-filter-btn"
-            isDisabled={selectedData.length === 0}
-            size="sm"
-            onPress={handleClearAll}>
-            {t('label.clear-all')}
-          </Button>
-          <div className="tw:flex tw:items-center tw:gap-2">
-            <Button
-              color="secondary"
-              data-testid="close-btn"
-              size="sm"
-              onPress={dismiss}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              color="primary"
-              data-testid="update-btn"
-              size="sm"
-              onPress={handleApply}>
-              {selectedData.length > 0
-                ? t('label.apply-count', { count: selectedData.length })
-                : t('label.apply')}
-            </Button>
-          </div>
-        </div>
+        <DropdownStagedFooter
+          count={displayedSelectedCount}
+          isClearDisabled={selectedData.length === 0}
+          onApply={handleApply}
+          onCancel={dismiss}
+          onClear={handleClearAll}
+        />
       )}
 
       {showStatusFooter && (
-        <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-1.5 tw:pr-1.5 tw:pl-3">
-          <span
-            className="tw:text-xs tw:font-normal tw:text-tertiary"
-            data-testid="selected-count">
-            {displayedSelectedCount === 0
-              ? t('label.none-selected')
-              : t('label.count-selected', { count: displayedSelectedCount })}
-          </span>
-          <Button
-            color="tertiary"
-            data-testid="clear-filter-btn"
-            isDisabled={selectedData.length === 0}
-            size="sm"
-            onPress={() => {
-              handleClearAll();
-              setShowSelectedOnly(false);
-            }}>
-            {t('label.clear-all')}
-          </Button>
-        </div>
+        <DropdownStatusFooter
+          count={displayedSelectedCount}
+          isClearDisabled={selectedData.length === 0}
+          onClear={() => {
+            handleClearAll();
+            setShowSelectedOnly(false);
+          }}
+        />
       )}
     </div>
   );
@@ -867,7 +843,7 @@ export const TreeSelect = <T = unknown,>({
             toggle: toggleOpen,
             open: openTrigger,
             close: dismiss,
-            selectedCount: selectedData.length,
+            selectedCount: displayedSelectedCount,
           })}
         </div>
         {isOpen && treeDropdown}

@@ -32,7 +32,6 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Directory } from '../../generated/entity/data/directory';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
@@ -63,7 +62,7 @@ import {
   getEntityVersionByField,
 } from '../../utils/EntityVersionUtilsPure';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
-import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import {
   getServiceDetailsPath,
   getServiceVersionPath,
@@ -186,10 +185,9 @@ function ServiceVersionPage() {
 
   const fetchDatabases = useCallback(
     async (paging?: PagingWithoutTotal) => {
-      const databaseUsagePermission = getPrioritizedViewPermission(
-        permissions.database,
-        PermissionOperation.ViewUsage
-      );
+      const databaseUsagePermission = getDerivedPermissionFlags(
+        permissions.database
+      ).canViewUsage;
       const { data, paging: resPaging } = await getDatabases(
         decodedServiceFQN,
         databaseUsagePermission
@@ -219,10 +217,9 @@ function ServiceVersionPage() {
 
   const fetchDashboards = useCallback(
     async (paging?: PagingWithoutTotal) => {
-      const dashboardUsagePermission = getPrioritizedViewPermission(
-        permissions.dashboard,
-        PermissionOperation.ViewUsage
-      );
+      const dashboardUsagePermission = getDerivedPermissionFlags(
+        permissions.dashboard
+      ).canViewUsage;
       const { data, paging: resPaging } = await getDashboards(
         decodedServiceFQN,
         dashboardUsagePermission
