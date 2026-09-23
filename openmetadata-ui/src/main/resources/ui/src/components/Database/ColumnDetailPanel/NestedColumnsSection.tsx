@@ -33,7 +33,7 @@ const NestedColumnItem: React.FC<{
         className="tw:group tw:flex tw:items-center tw:gap-1 tw:border-0 tw:bg-transparent tw:py-1 tw:text-left"
         style={{ paddingLeft: `${depth * 8}px` }}>
         <ColumnIcon
-          className="tw:text-brand-700"
+          className="tw:text-brand-700 tw:dark:text-brand-300"
           style={{
             width: 11,
             height: 11,

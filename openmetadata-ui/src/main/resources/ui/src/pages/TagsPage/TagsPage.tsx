@@ -726,7 +726,7 @@ const TagsPage = () => {
                     classificationForm.reset();
                     handleClassificationDrawerOpen();
                   }}>
-                  <span className="tw:text-brand-600 tw:font-normal">
+                  <span className="tw:text-brand-600 tw:dark:text-brand-300 tw:font-normal">
                     {t('label.add-entity', {
                       entity: t('label.classification'),
                     })}
@@ -751,7 +751,7 @@ const TagsPage = () => {
                   ellipsis
                   as="p"
                   className={classNames('tw:truncate', {
-                    'tw:font-bold tw:text-brand-600':
+                    'tw:font-bold tw:text-brand-600 tw:dark:text-brand-300':
                       currentClassification?.name === category.name,
                   })}
                   data-testid="tag-name"

@@ -57,3 +57,11 @@ img {
 a {
   color: var(--tw-color-brand-700);
 }
+
+/* Dark: bare content anchors flip to the link token (blue-300). `:where`
+ * keeps specificity at the base `a` level, so anchors that carry their own
+ * color rule (e.g. the AI sidebar's `.ask-nav-item`) are unaffected — this
+ * only recolors links that would otherwise use the default anchor color. */
+:where(.dark-mode) a {
+  color: var(--om-color-link);
+}

@@ -539,7 +539,7 @@ const CustomControls: FC<{
                     </Typography>
                     <Typography
                       as="span"
-                      className="tw:text-brand-600 tw:font-normal">
+                      className="tw:text-brand-600 tw:dark:text-brand-300 tw:font-normal">
                       {nodeDepth}
                     </Typography>
                     <DropdownIcon height={12} width={12} />

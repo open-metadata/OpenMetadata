@@ -747,7 +747,7 @@ const ContextCenterMemoriesPage: FC = () => {
                     onClick={() => handleFilterChange(filterKey)}>
                     <ChevronRight
                       className={classNames(
-                        'tw:absolute tw:top-3 tw:right-3 tw:text-brand-600 tw:transition-opacity tw:duration-150',
+                        'tw:absolute tw:top-3 tw:right-3 tw:text-brand-600 tw:dark:text-brand-300 tw:transition-opacity tw:duration-150',
                         {
                           'tw:opacity-100': isActive,
                           'tw:opacity-0 tw:group-hover:opacity-100': !isActive,
@@ -956,7 +956,7 @@ const ContextCenterMemoriesPage: FC = () => {
                             <span className="tw:flex-1">{opt.label}</span>
                             {selectedAuthor?.id === opt.id && (
                               <Check
-                                className="tw:shrink-0 tw:text-brand-600"
+                                className="tw:shrink-0 tw:text-brand-600 tw:dark:text-brand-300"
                                 size={14}
                                 strokeWidth={2.5}
                               />
