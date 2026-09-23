@@ -936,6 +936,18 @@ a[href].link-text-grey,
   color: var(--om-color-link);
 }
 
+// All anchors default to `var(--tw-color-brand-700)` (#175cd3, injected) via the
+// global `a` rule; flip them to the link token in dark. Button/solid-fill
+// anchors set their own color at higher specificity, so they are unaffected.
+.dark-mode a {
+  color: var(--om-color-link);
+}
+
+// Carousel active dot draws with --ant-primary-color (#1570ef); re-tint in dark.
+.dark-mode .slick-dots li.slick-active button:before {
+  color: var(--om-color-brand-300);
+}
+
 // Dark-mode canvas chrome for every reactflow surface (lineage, workflow,
 // ontology, ports). Themes the shared chrome — background dots, minimap,
 // zoom controls, default edges/handles, attribution — via semantic tokens so
