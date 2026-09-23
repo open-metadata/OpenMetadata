@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { get, isEmpty } from 'lodash';
 import type { LineageScene } from '../../src/generated/api/lineage/lineageScene';
 import { SidebarItem } from '../constant/sidebar';
@@ -361,14 +361,10 @@ export const clickEdgeBetweenNodes = async (
   const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
-  const edgeDiv = page.getByTestId(
-    isPipeline
-      ? `pipeline-label-${fromNodeFqn}-${toNodeFqn}`
-      : `edge-${fromNodeFqn}-${toNodeFqn}`
+  await clickCanvasEdge(
+    page,
+    edgeMarker(page, fromNodeFqn, toNodeFqn, isPipeline)
   );
-  await expect(edgeDiv).toBeVisible();
-
-  await edgeDiv.dispatchEvent('click');
 };
 
 export const clickEdgeBetweenColumns = async (
@@ -378,9 +374,7 @@ export const clickEdgeBetweenColumns = async (
 ) => {
   const edgeDiv = page.getByTestId(`column-edge-${fromNodeFqn}-${toNodeFqn}`);
 
-  await expect(edgeDiv).toBeVisible();
-
-  await edgeDiv.dispatchEvent('click');
+  await clickCanvasEdge(page, edgeDiv);
 };
 
 export const deleteEdge = async (

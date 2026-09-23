@@ -153,50 +153,65 @@ const PlatformLineage = () => {
   // since it has no term to narrow three indices by. Without this guard its
   // late answer overwrites the newer one and the list shows results for a
   // query the box is no longer holding.
+  //
+  // Token bump is SYNCHRONOUS on every call (before debounce), not inside the
+  // debounced body: a keystroke fires debouncedSearch immediately, which
+  // advances searchOrder and invalidates any in-flight request from the
+  // previous keystroke. If we bumped inside the debounced body instead, a
+  // request that resolved between the keystroke and the next debounced fire
+  // would still match the current token and paint stale results.
   const searchOrder = useRef(0);
+  const runSearch = useMemo(
+    () =>
+      debounce(async (value: string, request: number) => {
+        try {
+          setIsSearchLoading(true);
+          const searchIndices = [
+            SearchIndex.DATA_ASSET,
+            SearchIndex.DOMAIN,
+            SearchIndex.SERVICE,
+          ];
+
+          const response = await searchQuery({
+            query: escapeESReservedCharacters(value),
+            searchIndex: searchIndices,
+            pageSize: PAGE_SIZE_BASE,
+            queryFilter: getLineageEntityExclusionFilter(),
+            includeDeleted: false,
+          });
+
+          if (request !== searchOrder.current) {
+            return;
+          }
+
+          setOptions(
+            response.hits.hits.map((hit) => ({
+              value: hit._source.fullyQualifiedName ?? '',
+              label: (
+                <EntitySuggestionOption
+                  showEntityTypeBadge
+                  entity={hit._source as EntityReference}
+                  onSelectHandler={handleEntitySelect}
+                />
+              ),
+              data: hit,
+            }))
+          );
+        } finally {
+          if (request === searchOrder.current) {
+            setIsSearchLoading(false);
+          }
+        }
+      }, 300),
+    [handleEntitySelect]
+  );
+
   const debouncedSearch = useCallback(
-    debounce(async (value: string) => {
+    (value: string) => {
       const request = ++searchOrder.current;
-      try {
-        setIsSearchLoading(true);
-        const searchIndices = [
-          SearchIndex.DATA_ASSET,
-          SearchIndex.DOMAIN,
-          SearchIndex.SERVICE,
-        ];
-
-        const response = await searchQuery({
-          query: escapeESReservedCharacters(value),
-          searchIndex: searchIndices,
-          pageSize: PAGE_SIZE_BASE,
-          queryFilter: getLineageEntityExclusionFilter(),
-          includeDeleted: false,
-        });
-
-        if (request !== searchOrder.current) {
-          return;
-        }
-
-        setOptions(
-          response.hits.hits.map((hit) => ({
-            value: hit._source.fullyQualifiedName ?? '',
-            label: (
-              <EntitySuggestionOption
-                showEntityTypeBadge
-                entity={hit._source as EntityReference}
-                onSelectHandler={handleEntitySelect}
-              />
-            ),
-            data: hit,
-          }))
-        );
-      } finally {
-        if (request === searchOrder.current) {
-          setIsSearchLoading(false);
-        }
-      }
-    }, 300),
-    []
+      runSearch(value, request);
+    },
+    [runSearch]
   );
 
   const init = useCallback(async () => {
