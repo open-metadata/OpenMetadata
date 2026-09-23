@@ -406,7 +406,7 @@ export default [
       'sonarjs/no-clear-text-protocols': 'error',
       'sonarjs/no-hardcoded-passwords': 'error',
       'sonarjs/no-hardcoded-ip': 'error',
-      'sonarjs/no-invariant-returns': 'warn', // 0 in sample
+      'sonarjs/no-invariant-returns': 'error',
 
       // React correctness and re-render cost — the enforceable slice of
       // frontend-performance.md. Cleared to zero by the ESLint-cleanup stack —
@@ -447,6 +447,70 @@ export default [
       // severity `eslint --fix` would rewrite files and hard-fail the
       // git-diff check in ui-checkstyle. Land a one-time repo-wide autofix
       // commit first, then add it here at error.
+    },
+  },
+
+  {
+    files: [
+      'src/components/Metric/**/*.{js,jsx,ts,tsx}',
+      'src/components/DataAssets/DataAssetsHeader/DataAssetsHeader.component.tsx',
+      'src/components/DataAssets/DataAssetsHeader/StatItem.component.tsx',
+      'src/components/common/Table/TableV2.tsx',
+      'src/components/common/Table/TableV2Utils.ts',
+      'src/context/LimitsProvider/useLimitsStore.ts',
+      'src/pages/MetricsPage/**/*.{js,jsx,ts,tsx}',
+      'src/hooks/useMetric*.{js,jsx,ts,tsx}',
+      'src/hoc/LimitWrapper.tsx',
+      'src/rest/metricGroupsAPI.ts',
+      'src/rest/metricsAPI.ts',
+      'src/utils/ToastUtils.ts',
+      'src/utils/MetricEntityUtils/**/*.{js,jsx,ts,tsx}',
+    ],
+    // These two still render the antd Tabs/Row/Col entity-page scaffold that
+    // every other entity details and version page shares; migrate them with
+    // that scaffold rather than in isolation.
+    ignores: [
+      'src/components/Metric/MetricDetails/MetricDetails.tsx',
+      'src/components/Metric/MetricVersion/MetricVersion.tsx',
+    ],
+    rules: {
+      // The typescript-eslint variant is used on purpose: flat config replaces
+      // a rule's options wholesale, so a core `no-restricted-imports` entry here
+      // would be discarded by the later permission block (and would itself
+      // discard the base design-system restrictions) for these files.
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'antd',
+              allowTypeImports: true,
+              message:
+                'Metric workflows use Untitled UI from @openmetadata/ui-core-components.',
+            },
+            {
+              name: '@ant-design/icons',
+              allowTypeImports: true,
+              message:
+                'Metric workflows use icons from @openmetadata/ui-core-components/icons.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['antd/*'],
+              allowTypeImports: true,
+              message:
+                'Metric workflows use Untitled UI from @openmetadata/ui-core-components.',
+            },
+            {
+              group: ['@ant-design/icons/*'],
+              allowTypeImports: true,
+              message:
+                'Metric workflows use icons from @openmetadata/ui-core-components/icons.',
+            },
+          ],
+        },
+      ],
     },
   },
 
@@ -562,7 +626,7 @@ export default [
       '@typescript-eslint/no-unused-vars': 'off',
       '@typescript-eslint/no-duplicate-enum-values': 'off',
       '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-unused-expressions': 'warn',
+      '@typescript-eslint/no-unused-expressions': 'error',
       'prefer-const': 'off',
 
       // Playwright must not import application code from `src/`.

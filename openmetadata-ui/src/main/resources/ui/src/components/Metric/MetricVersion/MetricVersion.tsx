@@ -10,23 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { Space } from 'antd';
-import classNames from 'classnames';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { CustomizeEntityType } from '../../../constants/Customize.constants';
-import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/data/metric';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { getRenderedActiveTab } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import {
-  getCommonExtraInfoForVersionDetails,
-  getEntityVersionByField,
-  getEntityVersionTags,
+    getCommonExtraInfoForVersionDetails,
+    getEntityVersionByField,
+    getEntityVersionTags
 } from '../../../utils/EntityVersionUtilsPure';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getVersionPath } from '../../../utils/RouterUtils';
@@ -36,32 +32,40 @@ import Description from '../../common/EntityDescription/Description';
 import Loader from '../../common/Loader/Loader';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../../common/TabsLabel/TabsLabel.interface';
+import { TitleLink } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
-import MetricExpression from '../MetricExpression/MetricExpression';
+import MetricDefinitionCard from '../MetricDefinitionCard/MetricDefinitionCard';
 import { MetricVersionProp } from './MetricVersion.interface';
+
 const MetricVersion: FC<MetricVersionProp> = ({
   version,
   currentVersionData,
   isVersionLoading,
   owners,
+  domains,
   tier,
   slashedMetricName,
   versionList,
   backHandler,
   versionHandler,
   entityPermissions,
-  domains,
-}: MetricVersionProp) => {
+}) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
+
+  useEffect(() => {
+    setChangeDescription(
+      currentVersionData.changeDescription as ChangeDescription
+    );
+  }, [currentVersionData]);
 
   const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
     useMemo(
@@ -75,11 +79,35 @@ const MetricVersion: FC<MetricVersionProp> = ({
       [changeDescription, owners, tier, domains]
     );
 
-  useEffect(() => {
-    setChangeDescription(
-      currentVersionData.changeDescription as ChangeDescription
-    );
-  }, [currentVersionData]);
+  const tags = useMemo(
+    () => getEntityVersionTags(currentVersionData, changeDescription),
+    [currentVersionData, changeDescription]
+  );
+
+  const description = useMemo(
+    () =>
+      getEntityVersionByField(
+        changeDescription,
+        'description',
+        currentVersionData.description
+      ),
+    [currentVersionData, changeDescription]
+  );
+
+  const displayName = useMemo(
+    () =>
+      getEntityVersionByField(
+        changeDescription,
+        'displayName',
+        currentVersionData.displayName
+      ),
+    [currentVersionData, changeDescription]
+  );
+
+  const viewCustomPropertiesPermission = useMemo(
+    () => getDerivedPermissionFlags(entityPermissions).canViewCustomFields,
+    [entityPermissions]
+  );
 
   const handleTabChange = (activeKey: string) => {
     navigate(
@@ -92,38 +120,13 @@ const MetricVersion: FC<MetricVersionProp> = ({
     );
   };
 
-  const tags = useMemo(() => {
-    return getEntityVersionTags(currentVersionData, changeDescription);
-  }, [currentVersionData, changeDescription]);
-
-  const description = useMemo(() => {
-    return getEntityVersionByField(
-      changeDescription,
-      EntityField.DESCRIPTION,
-      currentVersionData.description
-    );
-  }, [currentVersionData, changeDescription]);
-
-  const displayName = useMemo(() => {
-    return getEntityVersionByField(
-      changeDescription,
-      EntityField.DISPLAYNAME,
-      currentVersionData.displayName
-    );
-  }, [currentVersionData, changeDescription]);
-
-  const viewCustomPropertiesPermission = useMemo(
-    () => getDerivedPermissionFlags(entityPermissions).canViewCustomFields,
-    [entityPermissions]
-  );
-
   const tabItems: TabProps[] = useMemo(
     () => [
       {
+        key: EntityTabs.OVERVIEW,
         label: (
           <TabsLabel id={EntityTabs.OVERVIEW} name={t('label.overview')} />
         ),
-        key: EntityTabs.OVERVIEW,
         children: (
           <Box className="h-full">
             <div className="p-t-sm m-x-lg tw:min-w-0 tw:flex-auto">
@@ -136,7 +139,10 @@ const MetricVersion: FC<MetricVersionProp> = ({
                   />
                 </div>
                 <div>
-                  <MetricExpression />
+                  <MetricDefinitionCard
+                    changeDescription={changeDescription}
+                    metric={currentVersionData}
+                  />
                 </div>
               </Box>
             </div>
@@ -147,7 +153,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
                 <DataProductsContainer
                   newLook
                   activeDomains={domains}
-                  dataProducts={currentVersionData?.dataProducts ?? []}
+                  dataProducts={currentVersionData.dataProducts ?? []}
                   hasPermission={false}
                 />
                 {Object.keys(TagSource).map((tagType) => (
@@ -183,61 +189,70 @@ const MetricVersion: FC<MetricVersionProp> = ({
         ),
       },
     ],
-    [description, currentVersionData, viewCustomPropertiesPermission, tags]
+    [
+      changeDescription,
+      currentVersionData,
+      description,
+      tags,
+      domains,
+      t,
+      viewCustomPropertiesPermission,
+    ]
   );
+
+  if (isVersionLoading) {
+    return <Loader />;
+  }
 
   return (
     <>
-      {isVersionLoading ? (
-        <Loader />
-      ) : (
-        <div className={classNames('version-data')}>
-          <Box direction="col" gap={3}>
-            <div>
-              <DataAssetsVersionHeader
-                breadcrumbLinks={slashedMetricName}
-                currentVersionData={currentVersionData}
-                deleted={Boolean(currentVersionData?.deleted)}
-                displayName={displayName}
-                domainDisplayName={domainDisplayName}
-                entityType={EntityType.METRIC}
-                ownerDisplayName={ownerDisplayName}
-                ownerRef={ownerRef}
-                tierDisplayName={tierDisplayName}
-                version={version}
-                onVersionClick={backHandler}
-              />
-            </div>
-            <GenericProvider
-              isVersionView
+      <div className="version-data">
+        <Box direction="col" gap={3}>
+          <div>
+            <DataAssetsVersionHeader
+              breadcrumbLinks={slashedMetricName as unknown as TitleLink[]}
               currentVersionData={currentVersionData}
-              data={currentVersionData}
-              permissions={entityPermissions}
-              type={EntityType.METRIC as CustomizeEntityType}
-              onUpdate={() => Promise.resolve()}>
-              <div className="entity-version-page-tabs">
-                <Tabs
-                  className="tw:gap-3"
-                  defaultSelectedKey={getRenderedActiveTab(tabItems, tab)}
-                  onSelectionChange={(key) => handleTabChange(String(key))}>
-                  <Tabs.List size="sm" type="underline" variant="card">
-                    {tabItems.map(({ key, label }) => (
-                      <Tabs.Item id={key} key={key}>
-                        {label}
-                      </Tabs.Item>
-                    ))}
-                  </Tabs.List>
-                  {tabItems.map(({ key, children }) => (
-                    <Tabs.Panel id={key} key={key}>
-                      {children}
-                    </Tabs.Panel>
+              deleted={Boolean(currentVersionData.deleted)}
+              displayName={displayName}
+              domainDisplayName={domainDisplayName}
+              entityType={EntityType.METRIC}
+              ownerDisplayName={ownerDisplayName}
+              ownerRef={ownerRef}
+              tierDisplayName={tierDisplayName}
+              version={version}
+              onVersionClick={backHandler}
+            />
+          </div>
+          <GenericProvider
+            isVersionView
+            currentVersionData={currentVersionData}
+            data={currentVersionData}
+            permissions={entityPermissions}
+            type={EntityType.METRIC}
+            onUpdate={() => Promise.resolve()}>
+            <div className="entity-version-page-tabs">
+              <Tabs
+                className="tw:gap-3"
+                data-testid="tabs"
+                defaultSelectedKey={getRenderedActiveTab(tabItems, tab)}
+                onSelectionChange={(key) => handleTabChange(String(key))}>
+                <Tabs.List size="sm" type="underline" variant="card">
+                  {tabItems.map(({ key, label }) => (
+                    <Tabs.Item id={key} key={key}>
+                      {label}
+                    </Tabs.Item>
                   ))}
-                </Tabs>
-              </div>
-            </GenericProvider>
-          </Box>
-        </div>
-      )}
+                </Tabs.List>
+                {tabItems.map(({ key, children }) => (
+                  <Tabs.Panel id={key} key={key}>
+                    {children}
+                  </Tabs.Panel>
+                ))}
+              </Tabs>
+            </div>
+          </GenericProvider>
+        </Box>
+      </div>
 
       <EntityVersionTimeLine
         currentVersion={version ?? ''}
