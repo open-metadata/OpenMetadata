@@ -93,6 +93,18 @@ class DestinationValidationTest {
         BadRequestException.class, () -> DestinationValidation.ofANewAlert(alertWith(owners)));
   }
 
+  // What the server ships for the activity feed and for governance workflows.
+  @Test
+  void systemDestinationNeedsNoConfiguration() {
+    SubscriptionDestination activityFeed =
+        new SubscriptionDestination()
+            .withId(UUID.randomUUID())
+            .withType(SubscriptionType.ACTIVITY_FEED)
+            .withCategory(SubscriptionCategory.EXTERNAL);
+
+    assertDoesNotThrow(() -> DestinationValidation.ofANewAlert(alertWith(activityFeed)));
+  }
+
   @Test
   void externalDestinationNeedsAConfiguration() {
     SubscriptionDestination empty = webhook(USABLE).withConfig(null);

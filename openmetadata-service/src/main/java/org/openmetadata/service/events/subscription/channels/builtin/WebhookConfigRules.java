@@ -15,6 +15,7 @@ package org.openmetadata.service.events.subscription.channels.builtin;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.BadRequestException;
 import java.util.Map;
 import org.openmetadata.schema.SubscriptionAction;
@@ -29,7 +30,24 @@ import org.openmetadata.service.util.URLValidator;
 class WebhookConfigRules implements ConfigRules {
   @Override
   public void validate(SubscriptionDestination destination) {
-    Webhook webhook = read(destination.getConfig());
+    if (ConfigRules.configuredByTheUser(destination)) {
+      RequiredConfig.require(destination);
+      validateConfigured(read(destination.getConfig()));
+    } else {
+      requireAnAllowedEndpointIfAny(destination.getConfig());
+    }
+  }
+
+  // Read loosely, as the configuration of a destination the user does not configure is free-form,
+  // but the API can still write an endpoint into it.
+  private static void requireAnAllowedEndpointIfAny(Object config) {
+    JsonNode endpoint = config == null ? null : JsonUtils.valueToTree(config).get("endpoint");
+    if (endpoint != null && endpoint.isTextual()) {
+      requireAllowedUrl(endpoint.asText(), "Invalid webhook endpoint URL: %s");
+    }
+  }
+
+  private static void validateConfigured(Webhook webhook) {
     if (webhook.getEndpoint() == null) {
       throw new BadRequestException("Webhook destination requires an 'endpoint' URL");
     }

@@ -26,7 +26,13 @@ import org.openmetadata.service.util.email.EmailUtil;
 final class EmailConfigRules implements ConfigRules {
   @Override
   public void validate(SubscriptionDestination destination) {
-    EmailAlertConfig config = read(destination.getConfig());
+    if (ConfigRules.configuredByTheUser(destination)) {
+      RequiredConfig.require(destination);
+      validateReceivers(read(destination.getConfig()));
+    }
+  }
+
+  private static void validateReceivers(EmailAlertConfig config) {
     if (nullOrEmpty(config.getReceivers())) {
       throw new BadRequestException(
           "Email destination requires at least one email address in 'receivers'");
