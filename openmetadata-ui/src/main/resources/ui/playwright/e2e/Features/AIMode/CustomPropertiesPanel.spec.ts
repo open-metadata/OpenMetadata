@@ -138,13 +138,13 @@ const submitAddForm = async (page: Page): Promise<void> => {
   const getResponse = page.waitForResponse(
     (res) =>
       res.url().includes('/api/v1/metadata/types/name/') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.request().method() === 'GET'
   );
   await page.getByTestId('custom-property-save').click();
   const res = await putResponse;
   expect(res.status()).toBe(200);
-  await getResponse;
+  const getRes = await getResponse;
+  expect(getRes.status()).toBe(200);
   await page.getByTestId('custom-property-table').waitFor();
 };
 
@@ -343,13 +343,13 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     const getResponse = page.waitForResponse(
       (res) =>
         res.url().includes('/api/v1/metadata/types/name/') &&
-        res.request().method() === 'GET' &&
-        res.status() === 200
+        res.request().method() === 'GET'
     );
     await page.getByTestId('edit-custom-property-save').click();
     const res = await patchResponse;
     expect(res.status()).toBe(200);
-    await getResponse;
+    const getRes2 = await getResponse;
+    expect(getRes2.status()).toBe(200);
 
     // Back on detail page — updated display name is visible.
     await page.getByTestId('custom-property-table').waitFor();
