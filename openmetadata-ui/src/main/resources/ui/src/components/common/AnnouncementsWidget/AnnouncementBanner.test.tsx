@@ -167,9 +167,7 @@ describe('AnnouncementBanner', () => {
       screen.queryByText('service.db.schema.table')
     ).not.toBeInTheDocument();
 
-    rerender(
-      <AnnouncementBanner announcement={announcement} variant="full" />
-    );
+    rerender(<AnnouncementBanner announcement={announcement} variant="full" />);
 
     expect(screen.getByText('service.db.schema.table')).toBeInTheDocument();
   });
