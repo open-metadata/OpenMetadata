@@ -9717,6 +9717,22 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/constants/GlobalSettings.constants.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Glossary.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/constants/constants.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Glossary.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/context/LineageProvider/LineageProvider.tsx"
       ],
       "specs": [
@@ -9823,6 +9839,14 @@
         "playwright/e2e/Pages/Lineage/LineageNodePagination.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/generated/entity/applications/appRunRecord.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Glossary.spec.ts"
       ]
     },
     {
@@ -11770,6 +11794,38 @@
       "specs": [
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryMutualExclusivity.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/i18next/LocalUtil.interface.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Glossary.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/i18next/LocalUtil.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Glossary.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/i18next/LocalUtilClassBase.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Glossary.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/i18next/i18nextUtil.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Glossary.spec.ts"
       ]
     },
     {
