@@ -14,9 +14,11 @@
 import { FC } from 'react';
 import {
   IncidentGroupBy,
+  IncidentStatusCount,
   IncidentTrendDirection,
   Severities,
   TestCaseIncidentGroup,
+  TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseIncidentGroup';
 import { IncidentSortType } from '../../../../rest/incidentManagerAPI';
 
@@ -36,6 +38,18 @@ export interface IncidentGroupsTableProps {
   groupBy: IncidentGroupBy;
   sortType: IncidentSortType;
   onSortTypeChange: (sortType: IncidentSortType) => void;
+}
+
+/** One status' slice of the breakdown bar, already sized against the group. */
+export interface IncidentGroupStatusSegment {
+  status: TestCaseResolutionStatusTypes;
+  count: number;
+  /** Width of the slice, as a percentage of the bar. */
+  share: number;
+}
+
+export interface IncidentStatusBreakdownProps {
+  statusCounts?: IncidentStatusCount[];
 }
 
 export interface IncidentTrendSparklineProps {

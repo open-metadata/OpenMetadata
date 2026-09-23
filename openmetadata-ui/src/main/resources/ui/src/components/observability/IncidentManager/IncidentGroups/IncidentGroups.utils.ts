@@ -13,16 +13,21 @@
 
 import {
   IncidentGroupBy,
+  IncidentStatusCount,
   TestCaseIncidentGroup,
 } from '../../../../generated/tests/testCaseIncidentGroup';
 import Fqn from '../../../../utils/Fqn';
 import {
   DEFAULT_INCIDENT_GROUP_BY,
   INCIDENT_GROUP_BY_OPTIONS,
-  INCIDENT_GROUP_FQN_SEPARATOR,
   INCIDENT_GROUP_MAX_AVATARS,
+  INCIDENT_GROUP_SEPARATOR,
+  INCIDENT_GROUP_STATUS_ORDER,
 } from './IncidentGroups.constants';
-import { IncidentGroupByOption } from './IncidentGroups.types';
+import {
+  IncidentGroupByOption,
+  IncidentGroupStatusSegment,
+} from './IncidentGroups.types';
 import { isRecurring } from './IncidentTrendSparkline';
 
 /**
@@ -68,7 +73,46 @@ export const getIncidentGroupSubLine = (
   return Fqn.split(fullyQualifiedName)
     .slice(0, -1)
     .map((part) => part.replaceAll('"', ''))
-    .join(INCIDENT_GROUP_FQN_SEPARATOR);
+    .join(INCIDENT_GROUP_SEPARATOR);
+};
+
+/**
+ * The owner dimension carries one group for the incidents on test cases nobody
+ * owns, so unowned work is not silently dropped from the listing. It stands for
+ * no entity, which is how it is told apart: the server resolves every other
+ * owner group to a user or a team and gives it that entity's id.
+ */
+export const isUnownedIncidentGroup = (group: TestCaseIncidentGroup): boolean =>
+  group.groupBy === IncidentGroupBy.Owner && !group.id;
+
+/**
+ * The group's open incidents split into the slices of the status bar, ordered
+ * from the most actionable status to the least. Statuses the group has no
+ * incident in are dropped rather than drawn as zero-width slices, and a
+ * `Resolved` count — which the server does not send, as resolving an incident
+ * takes it out of the group — is ignored if one ever arrives.
+ */
+export const getIncidentGroupStatusSegments = (
+  statusCounts?: IncidentStatusCount[]
+): IncidentGroupStatusSegment[] => {
+  const countByStatus = new Map(
+    (statusCounts ?? [])
+      .filter(({ count }) => count > 0)
+      .map(({ status, count }) => [status, count])
+  );
+  const present = INCIDENT_GROUP_STATUS_ORDER.filter((status) =>
+    countByStatus.has(status)
+  );
+  const total = present.reduce(
+    (sum, status) => sum + (countByStatus.get(status) ?? 0),
+    0
+  );
+
+  return present.map((status) => {
+    const count = countByStatus.get(status) ?? 0;
+
+    return { status, count, share: (count / total) * 100 };
+  });
 };
 
 /** Up to two initials for an assignee avatar, e.g. `tomas.montiel` → `TM`. */

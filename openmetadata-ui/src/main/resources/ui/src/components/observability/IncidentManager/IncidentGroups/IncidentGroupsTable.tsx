@@ -26,16 +26,11 @@ import { startCase } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import {
-  SEVERITY_COLORS,
-  STATUS_COLORS,
-} from '../../../../constants/Color.constants';
+import { SEVERITY_COLORS } from '../../../../constants/Color.constants';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
-import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../../constants/TestSuite.constant';
 import {
   Severities,
   TestCaseIncidentGroup,
-  TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseIncidentGroup';
 import {
   formatDate,
@@ -49,7 +44,9 @@ import {
   getIncidentGroupByOption,
   getIncidentGroupName,
   getIncidentGroupSubLine,
+  isUnownedIncidentGroup,
 } from './IncidentGroups.utils';
+import IncidentStatusBreakdown from './IncidentStatusBreakdown';
 import IncidentTrendSparkline from './IncidentTrendSparkline';
 
 /** Key the shared severity palette carries the "no severity" pill under. */
@@ -58,19 +55,12 @@ const NO_SEVERITY = 'NoSeverity';
 /** Short form of the first-seen date, e.g. `Aug '25`. */
 const FIRST_SEEN_FORMAT = "MMM ''yy";
 
-/**
- * The group schema re-declares the incident status enum, so its members are a
- * distinct TS type carrying the same values. Reading the shared labels by value
- * keeps one source of wording for a status the incidents table already names.
- */
-const statusLabels: Record<string, string> = TEST_CASE_RESOLUTION_STATUS_LABELS;
-
 const CHIP_CLASS =
   'tw:inline-flex tw:max-w-max tw:items-center tw:whitespace-nowrap tw:rounded-full tw:px-2 tw:py-1 tw:text-xs tw:font-medium tw:leading-none';
 
 /**
- * Both palettes are the ones the editable incident chips already use, so a
- * group reads the same as the incidents it aggregates.
+ * The palette is the one the editable incident chips already use, so a group
+ * reads the same as the incidents it aggregates.
  */
 const IncidentGroupChip = ({
   label,
@@ -177,22 +167,6 @@ const SeverityCell = ({ severity }: { severity?: Severities }) => {
   );
 };
 
-const StatusCell = ({ status }: { status?: TestCaseResolutionStatusTypes }) => {
-  const palette = status ? STATUS_COLORS[status] : undefined;
-
-  if (!status || !palette) {
-    return <span data-testid="group-status">{NO_DATA_PLACEHOLDER}</span>;
-  }
-
-  return (
-    <IncidentGroupChip
-      dataTestId="group-status"
-      label={statusLabels[status] ?? status}
-      palette={palette}
-    />
-  );
-};
-
 const LastSeenCell = ({ group }: { group: TestCaseIncidentGroup }) => {
   const { t } = useTranslation();
 
@@ -266,7 +240,13 @@ const IncidentGroupsTable = ({
           <StackedCell
             caption={getIncidentGroupSubLine(group) || undefined}
             captionTestId="group-sub-line"
-            value={getIncidentGroupName(group)}
+            value={
+              // The unowned bucket stands for no entity, so it is named here
+              // rather than after something the server resolved.
+              isUnownedIncidentGroup(group)
+                ? t('label.no-entity', { entity: t('label.owner') })
+                : getIncidentGroupName(group)
+            }
             valueTestId="group-name"
           />
         </Table.Cell>
@@ -290,7 +270,7 @@ const IncidentGroupsTable = ({
           <SeverityCell severity={group.severity} />
         </Table.Cell>
         <Table.Cell>
-          <StatusCell status={group.status} />
+          <IncidentStatusBreakdown statusCounts={group.statusCounts} />
         </Table.Cell>
         <Table.Cell>
           <AssigneesCell group={group} />

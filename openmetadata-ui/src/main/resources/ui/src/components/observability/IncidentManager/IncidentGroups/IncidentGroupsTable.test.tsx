@@ -48,6 +48,11 @@ const fixtureGroup: TestCaseIncidentGroup = {
   incidentCount: 5,
   severity: Severities.Severity1,
   status: TestCaseResolutionStatusTypes.Assigned,
+  statusCounts: [
+    { status: TestCaseResolutionStatusTypes.Assigned, count: 3 },
+    { status: TestCaseResolutionStatusTypes.ACK, count: 1 },
+    { status: TestCaseResolutionStatusTypes.New, count: 1 },
+  ],
   assignees: ['tomas.montiel', 'mohit', 'paul.jones'],
   assigneeCount: 5,
   firstSeen: 1755000000000,
@@ -86,8 +91,8 @@ describe('IncidentGroupsTable', () => {
     expect(screen.getByTestId('group-severity')).toHaveTextContent(
       'Severity 1'
     );
-    expect(screen.getByTestId('group-status')).toHaveTextContent(
-      'label.assigned'
+    expect(screen.getByTestId('group-status-counts')).toHaveTextContent(
+      '3 label.assigned-lowercase · 1 label.ack-lowercase · 1 label.new-lowercase'
     );
     expect(screen.getByTestId('group-last-seen')).toHaveTextContent(
       formatDate(fixtureGroup.lastSeen)
@@ -138,6 +143,18 @@ describe('IncidentGroupsTable', () => {
     expect(screen.queryByTestId('group-assignees')).not.toBeInTheDocument();
     expect(screen.getByText('label.none')).toBeInTheDocument();
     expect(screen.getByTestId('trend-sparkline')).toHaveTextContent('none:');
+  });
+
+  it('should name the owner dimension bucket of unowned test cases', () => {
+    renderTable(
+      [{ groupBy: IncidentGroupBy.Owner, name: 'No Owner', incidentCount: 4 }],
+      IncidentGroupBy.Owner
+    );
+
+    expect(screen.getByTestId('group-name')).toHaveTextContent(
+      'label.no-entity'
+    );
+    expect(screen.getByTestId('group-incident-count')).toHaveTextContent('4');
   });
 
   it('should name the first column after the dimension in use', () => {

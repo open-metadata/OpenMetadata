@@ -15,6 +15,7 @@ import {
   IncidentGroupBy,
   IncidentTrendDirection,
   TestCaseIncidentGroup,
+  TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseIncidentGroup';
 import { DEFAULT_INCIDENT_GROUP_BY } from './IncidentGroups.constants';
 import {
@@ -23,7 +24,9 @@ import {
   getIncidentGroupAssignees,
   getIncidentGroupByOption,
   getIncidentGroupName,
+  getIncidentGroupStatusSegments,
   getIncidentGroupSubLine,
+  isUnownedIncidentGroup,
   parseIncidentGroupBy,
 } from './IncidentGroups.utils';
 
@@ -122,6 +125,88 @@ describe('getIncidentGroupSubLine', () => {
 
   it('should return nothing when the group carries no FQN', () => {
     expect(getIncidentGroupSubLine(group())).toBe('');
+  });
+});
+
+describe('isUnownedIncidentGroup', () => {
+  it('should single out the owner group that resolved to no entity', () => {
+    expect(
+      isUnownedIncidentGroup(
+        group({ groupBy: IncidentGroupBy.Owner, name: 'No Owner' })
+      )
+    ).toBe(true);
+  });
+
+  it('should leave a resolved owner and every other dimension alone', () => {
+    expect(
+      isUnownedIncidentGroup(
+        group({
+          groupBy: IncidentGroupBy.Owner,
+          id: 'a3f6b0de-1a0e-4a2f-9f2e-8c6a9f1b2c3d',
+          name: 'adam.matthews',
+        })
+      )
+    ).toBe(false);
+    expect(
+      isUnownedIncidentGroup(group({ groupBy: IncidentGroupBy.Table }))
+    ).toBe(false);
+  });
+});
+
+describe('getIncidentGroupStatusSegments', () => {
+  it('should size each status against the group and order them by triage', () => {
+    expect(
+      getIncidentGroupStatusSegments([
+        { status: TestCaseResolutionStatusTypes.New, count: 1 },
+        { status: TestCaseResolutionStatusTypes.Assigned, count: 2 },
+        { status: TestCaseResolutionStatusTypes.ACK, count: 1 },
+      ])
+    ).toEqual([
+      {
+        status: TestCaseResolutionStatusTypes.Assigned,
+        count: 2,
+        share: 50,
+      },
+      { status: TestCaseResolutionStatusTypes.ACK, count: 1, share: 25 },
+      { status: TestCaseResolutionStatusTypes.New, count: 1, share: 25 },
+    ]);
+  });
+
+  it('should give a single status the whole bar', () => {
+    expect(
+      getIncidentGroupStatusSegments([
+        { status: TestCaseResolutionStatusTypes.New, count: 3 },
+      ])
+    ).toEqual([
+      { status: TestCaseResolutionStatusTypes.New, count: 3, share: 100 },
+    ]);
+  });
+
+  it('should drop a status no incident is in', () => {
+    expect(
+      getIncidentGroupStatusSegments([
+        { status: TestCaseResolutionStatusTypes.Assigned, count: 0 },
+        { status: TestCaseResolutionStatusTypes.New, count: 2 },
+      ])
+    ).toEqual([
+      { status: TestCaseResolutionStatusTypes.New, count: 2, share: 100 },
+    ]);
+  });
+
+  it('should keep a resolved count out of the bar', () => {
+    expect(
+      getIncidentGroupStatusSegments([
+        { status: TestCaseResolutionStatusTypes.Resolved, count: 4 },
+        { status: TestCaseResolutionStatusTypes.New, count: 1 },
+      ])
+    ).toEqual([
+      { status: TestCaseResolutionStatusTypes.New, count: 1, share: 100 },
+    ]);
+  });
+
+  it('should report nothing when the group carries no counts', () => {
+    expect(getIncidentGroupStatusSegments()).toEqual([]);
+    expect(getIncidentGroupStatusSegments([])).toEqual([]);
   });
 });
 

@@ -51,6 +51,7 @@ import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.tests.type.Assigned;
 import org.openmetadata.schema.tests.type.IncidentGroupBy;
+import org.openmetadata.schema.tests.type.IncidentStatusCount;
 import org.openmetadata.schema.tests.type.IncidentTrendDirection;
 import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.Severity;
@@ -72,6 +73,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -87,7 +89,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
  *       with a New → Assigned(userA) chain
  *   <li>testCase3 — tableB, tableDefinition, owner userB; open incident (New)
  *   <li>testCase4 — tableB, tableDefinition, no owner; resolved incident (New → Resolved)
- *   <li>5 pager tables — each with one test case (pagerDefinition) whose incident is New →
+ *   <li>5 pager tables — each with one unowned test case (pagerDefinition) whose incident is New →
  *       Assigned(pagerUser); {@code assignee=pagerUser} scopes the groups listing to exactly these
  *       5 single-incident groups, giving the pagination tests a deterministic population
  * </ul>
@@ -238,6 +240,27 @@ public class IncidentGroupsIT {
 
     TestCaseIncidentGroup groupUserB = findGroup(groups, userB.getFullyQualifiedName());
     assertEquals(2, groupUserB.getIncidentCount(), "case 2 (co-owned) and case 3 incidents");
+  }
+
+  // The pager population is 5 open incidents on test cases nobody owns. The owner dimension must
+  // still account for them — under its catch-all bucket, which stands for no entity and so comes
+  // back with neither an id nor a fully qualified name.
+  @Test
+  void testGroupByOwnerBucketsUnownedTestCases() throws Exception {
+    Map<String, String> params = groupParams(GROUP_BY_OWNER);
+    params.put("assignee", pagerUser.getName());
+    List<TestCaseIncidentGroup> groups = fetchGroups(params);
+
+    assertEquals(1, groups.size(), "every pager test case is unowned, so they share one group");
+    TestCaseIncidentGroup unowned = groups.getFirst();
+    assertEquals(pagerTableFqns.size(), unowned.getIncidentCount());
+    assertEquals(IncidentGroupBy.Owner, unowned.getGroupBy());
+    assertEquals(
+        TestCaseResolutionStatusRepository.NO_OWNER_GROUP_NAME,
+        unowned.getName(),
+        "the dimension names the bucket itself, having no entity to name it after");
+    assertNull(unowned.getId(), "the bucket stands for no entity");
+    assertNull(unowned.getFullyQualifiedName());
   }
 
   @Test
@@ -591,6 +614,11 @@ public class IncidentGroupsIT {
         TestCaseResolutionStatusTypes.Assigned,
         groupA.getStatus(),
         "case 2's Assigned outranks case 1's status in the triage order");
+    assertEquals(
+        List.of(TestCaseResolutionStatusTypes.Assigned, TestCaseResolutionStatusTypes.New),
+        statuses(groupA),
+        "case 2 is Assigned and case 1 is New, most actionable first");
+    assertEquals(List.of(1, 1), statusCounts(groupA));
     assertEquals(List.of(userA.getName()), groupA.getAssignees());
     assertEquals(1, groupA.getAssigneeCount());
     assertTrue(groupA.getFirstSeen() <= groupA.getLastSeen());
@@ -602,6 +630,11 @@ public class IncidentGroupsIT {
 
     TestCaseIncidentGroup groupB = findGroup(groups, tableB.getFullyQualifiedName());
     assertEquals(TestCaseResolutionStatusTypes.New, groupB.getStatus());
+    assertEquals(
+        List.of(TestCaseResolutionStatusTypes.New),
+        statuses(groupB),
+        "case 4 is resolved, so it is absent from the breakdown as well as from the count");
+    assertEquals(List.of(1), statusCounts(groupB));
     assertEquals(Severity.Severity2, groupB.getSeverity(), "case 3's explicit severity");
     assertEquals(0, groupB.getAssigneeCount());
     assertEquals(
@@ -1204,6 +1237,14 @@ public class IncidentGroupsIT {
     return statuses.stream()
         .map(status -> status.getTestCaseReference().getFullyQualifiedName())
         .collect(Collectors.toSet());
+  }
+
+  private static List<TestCaseResolutionStatusTypes> statuses(TestCaseIncidentGroup group) {
+    return group.getStatusCounts().stream().map(IncidentStatusCount::getStatus).toList();
+  }
+
+  private static List<Integer> statusCounts(TestCaseIncidentGroup group) {
+    return group.getStatusCounts().stream().map(IncidentStatusCount::getCount).toList();
   }
 
   private TestCaseIncidentGroup findGroup(

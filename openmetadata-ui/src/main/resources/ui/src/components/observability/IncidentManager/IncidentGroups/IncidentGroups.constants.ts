@@ -18,6 +18,7 @@ import { CheckCircle, User01 } from '@untitledui/icons';
 import {
   IncidentGroupBy,
   IncidentTrendDirection,
+  TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseIncidentGroup';
 import { IncidentSortType } from '../../../../rest/incidentManagerAPI';
 import { IncidentGroupByOption } from './IncidentGroups.types';
@@ -66,7 +67,29 @@ export const INCIDENT_GROUPS_SORT_COLUMN = 'incidentCount';
  */
 export const INCIDENT_GROUP_MAX_AVATARS = 3;
 
-export const INCIDENT_GROUP_FQN_SEPARATOR = ' · ';
+/** Joins the parts of a group's FQN sub-line and of its status count line. */
+export const INCIDENT_GROUP_SEPARATOR = ' · ';
+
+/**
+ * Statuses of the breakdown bar, most actionable first — the order the server
+ * reports them in and the one the design draws them in. `Resolved` is not among
+ * them: a resolved incident has left the group.
+ */
+export const INCIDENT_GROUP_STATUS_ORDER: TestCaseResolutionStatusTypes[] = [
+  TestCaseResolutionStatusTypes.Assigned,
+  TestCaseResolutionStatusTypes.ACK,
+  TestCaseResolutionStatusTypes.New,
+];
+
+/**
+ * Wording of the count line under the bar, which reads as a sentence fragment
+ * (`3 assigned · 1 ack`) rather than as the title-case chips elsewhere.
+ */
+export const INCIDENT_GROUP_STATUS_LABELS: Record<string, string> = {
+  [TestCaseResolutionStatusTypes.Assigned]: 'label.assigned-lowercase',
+  [TestCaseResolutionStatusTypes.ACK]: 'label.ack-lowercase',
+  [TestCaseResolutionStatusTypes.New]: 'label.new-lowercase',
+};
 
 export const SPARKLINE_WIDTH = 72;
 export const SPARKLINE_HEIGHT = 24;
