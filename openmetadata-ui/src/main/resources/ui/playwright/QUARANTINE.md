@@ -44,10 +44,13 @@ suite modal at 12-21s under a `test.slow()` timeout, Table Difference at
 10-19s, the glossary drag at 6-7s. Their recorded rates are 3/11 and 2/11 so
 this is the expected result rather than a contradiction — these are
 load-dependent and an idle laptop does not reproduce them. **More local runs
-will not settle them** — but neither will waiting for CI: nothing under
-`.github/` sets `PLAYWRIGHT_RUN_QUARANTINED`, so a quarantined test runs in no
-lane at all and has produced no evidence since it was tagged. The soak lane this
-file describes does not exist. Getting these three moving needs that lane (or a
+will not settle them** — but neither will waiting for CI: the only thing under
+`.github/` that sets `PLAYWRIGHT_RUN_QUARANTINED` is the *Inventory existing
+quarantined coverage* step in `playwright-e2e-reusable.yml`, and it runs
+`playwright test --list`. Listing is not executing, so a quarantined test still
+runs in no lane at all and has produced no evidence since it was tagged. The
+soak lane this file describes does not exist; the inventory step only makes the
+dropped coverage countable. Getting these three moving needs that lane (or a
 one-off dispatch) first.
 
 The test suite modal and Table Difference entries from this triage have since
