@@ -436,14 +436,16 @@ test.describe('Data Contracts', () => {
             NEW_TABLE_TEST_CASE.value
           );
 
-          await page.click('[data-testid="tags-selector"] input');
-          await page.fill(
-            '[data-testid="tags-selector"] input',
-            testTag.data.name
-          );
+          await page.getByTestId('tags-input').click();
+          const tagSearch = page
+            .getByTestId('drop-down-menu')
+            .getByTestId('search-input');
+          await tagSearch.waitFor({ state: 'visible' });
+          await tagSearch.fill(testTag.data.name);
           await page
+            .getByTestId('drop-down-menu')
             .getByTestId(
-              `tag-option-${testTag.responseData.fullyQualifiedName}`
+              testTag.responseData.fullyQualifiedName ?? ''
             )
             .click();
 
