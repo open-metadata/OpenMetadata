@@ -100,11 +100,11 @@ const AssetHealthWidget = withSuspenseFallback(
   )
 );
 
+const importSampleDataTable = () =>
+  import('../components/Database/SampleDataTable/SampleDataTable.component');
+
 const SampleDataTableComponent = withSuspenseFallback(
-  lazy(
-    () =>
-      import('../components/Database/SampleDataTable/SampleDataTable.component')
-  ),
+  lazy(importSampleDataTable),
   TAB_CONTENT_FALLBACK
 );
 
@@ -122,24 +122,39 @@ const ContractTab = withSuspenseFallback(
   TAB_CONTENT_FALLBACK
 );
 
+const importDataObservabilityTab = () =>
+  import(
+    '../components/Database/Profiler/DataObservability/DataObservabilityTab'
+  );
+
 const DataObservabilityTab = withSuspenseFallback(
-  lazy(
-    () =>
-      import(
-        '../components/Database/Profiler/DataObservability/DataObservabilityTab'
-      )
+  lazy(importDataObservabilityTab),
+  TAB_CONTENT_FALLBACK
+);
+
+const importEntityLineageTab = () =>
+  import('../components/Lineage/EntityLineageTab/EntityLineageTab');
+
+const EntityLineageTab = withSuspenseFallback(
+  lazy(() =>
+    importEntityLineageTab().then((module) => ({
+      default: module.EntityLineageTab,
+    }))
   ),
   TAB_CONTENT_FALLBACK
 );
 
-const EntityLineageTab = withSuspenseFallback(
-  lazy(() =>
-    import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
-      (module) => ({ default: module.EntityLineageTab })
-    )
-  ),
-  TAB_CONTENT_FALLBACK
-);
+/**
+ * The product tour highlights elements rendered inside these lazy tabs, and react-tour closes
+ * itself when a step's selector is still missing once its fixed stepWaitTimer elapses. Loading
+ * the chunks before the tour starts keeps a slow chunk download from ending the tour.
+ */
+export const preloadTourTableTabs = () =>
+  Promise.allSettled([
+    importSampleDataTable(),
+    importDataObservabilityTab(),
+    importEntityLineageTab(),
+  ]);
 
 const TableConstraints = withSuspenseFallback(
   lazy(
