@@ -460,7 +460,11 @@ class LookerSource(DashboardServiceSource):
             # measures a different hashed Metric name on each run. Following the model order
             # also keeps that project paired with the `_all_lookml_models[0]` name the same
             # method uses.
-            all_projects = dict.fromkeys(model.project_name for model in all_lookml_models)
+            # A model with no project name has no repository to parse, so it is skipped rather
+            # than keyed under None.
+            all_projects = dict.fromkeys(
+                project_name for model in all_lookml_models if (project_name := model.project_name)
+            )
             self._project_parsers: dict[str, BulkLkmlParser] = {}
 
             # Create readers for all repositories
