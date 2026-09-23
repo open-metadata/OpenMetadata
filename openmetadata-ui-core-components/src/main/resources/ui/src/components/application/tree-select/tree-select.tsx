@@ -760,11 +760,14 @@ export const TreeSelect = <T = unknown,>({
   }, [replaceSelection]);
 
   // Hand the term to the consumer (to prefill its create form) and close, so
-  // the picker is not left open behind the form the consumer opens.
+  // the picker is not left open behind the form the consumer opens. Route
+  // through dismiss (capturing the term first, since dismiss clears the search)
+  // so this non-Apply close discards the draft like every other one.
   const handleCreate = useCallback(() => {
-    onCreate?.(searchTerm);
-    setOpen(false);
-  }, [onCreate, searchTerm, setOpen]);
+    const term = searchTerm;
+    dismiss();
+    onCreate?.(term);
+  }, [onCreate, searchTerm, dismiss]);
 
   const handleApply = useCallback(() => {
     onChange?.(multiple ? selectedData : selectedData[0] ?? null);

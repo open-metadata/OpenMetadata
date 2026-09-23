@@ -96,10 +96,15 @@ describe('TreeSelect create row', () => {
       target: { value: 'Finance' },
     });
 
-    await waitFor(() => {
-      fireEvent.click(screen.getByTestId('domain-tree-create'));
+    // Let the debounced search term settle before creating: the non-matching
+    // filter hides the seeded nodes once it applies. Clicking earlier would
+    // route through dismiss() and cancel the in-flight debounce.
+    await waitFor(() =>
+      expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
+    );
 
-      expect(onCreate).toHaveBeenCalledWith('Finance');
-    });
+    fireEvent.click(screen.getByTestId('domain-tree-create'));
+
+    expect(onCreate).toHaveBeenCalledWith('Finance');
   });
 });
