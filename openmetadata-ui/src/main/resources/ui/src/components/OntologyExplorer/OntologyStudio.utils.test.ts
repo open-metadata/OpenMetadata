@@ -158,6 +158,102 @@ describe('OntologyStudio utils', () => {
     expect(detached).toMatchObject({ isIsolated: true, relationCount: 0 });
   });
 
+  it('nests the part under the whole and counts an inverse pair once', () => {
+    const graph: OntologyGraphData = {
+      nodes: [
+        {
+          id: 'whole',
+          label: 'Retention',
+          type: 'glossaryTerm',
+          glossaryId: 'g1',
+        },
+        {
+          id: 'part',
+          label: 'Churn Rate',
+          type: 'glossaryTerm',
+          glossaryId: 'g1',
+        },
+      ],
+      edges: [
+        {
+          id: 'relation-1',
+          from: 'part',
+          to: 'whole',
+          label: 'partOf',
+          relationType: 'partOf',
+        },
+        {
+          id: 'relation-1',
+          from: 'whole',
+          to: 'part',
+          label: 'hasPart',
+          relationType: 'hasPart',
+        },
+      ],
+    };
+    const [group] = buildOntologyTreeGroups(
+      graph,
+      { ...FILTERS, glossaryIds: ['g1'] },
+      GLOSSARIES,
+      [
+        createRelationshipTypeMock({ name: 'partOf' }),
+        createRelationshipTypeMock({ name: 'hasPart' }),
+      ]
+    );
+
+    expect(group.rows.map((row) => row.node.id)).toEqual(['whole', 'part']);
+    expect(group.rows[0]).toMatchObject({
+      depth: 0,
+      parentCount: 0,
+      relationCount: 1,
+    });
+    expect(group.rows[1]).toMatchObject({
+      depth: 1,
+      parentCount: 1,
+      relationCount: 1,
+    });
+  });
+
+  it('lists every child directly under its own parent', () => {
+    const term = (id: string, label: string) => ({
+      id,
+      label,
+      type: 'glossaryTerm',
+      glossaryId: 'g1',
+    });
+    const parentOf = (from: string, to: string) => ({
+      from,
+      to,
+      label: 'Parent of',
+      relationType: 'parentOf',
+    });
+    const [group] = buildOntologyTreeGroups(
+      {
+        nodes: [
+          term('retention', 'Retention'),
+          term('churn', 'Churn'),
+          term('voluntary', 'Voluntary Churn'),
+          term('churnRate', 'Churn Rate'),
+        ],
+        edges: [
+          parentOf('retention', 'churn'),
+          parentOf('churn', 'voluntary'),
+          parentOf('retention', 'churnRate'),
+        ],
+      },
+      { ...FILTERS, glossaryIds: ['g1'] },
+      GLOSSARIES,
+      RELATION_TYPES
+    );
+
+    expect(group.rows.map((row) => [row.node.label, row.depth])).toEqual([
+      ['Retention', 0],
+      ['Churn', 1],
+      ['Voluntary Churn', 2],
+      ['Churn Rate', 1],
+    ]);
+  });
+
   it('derives executable query suggestions from scoped ontology relations', () => {
     const suggestions = buildOntologyQuerySuggestions(
       GRAPH,

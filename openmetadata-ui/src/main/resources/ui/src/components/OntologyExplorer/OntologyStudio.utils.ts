@@ -247,9 +247,23 @@ function scopedTerms(
 }
 
 function termRelations(graphData: OntologyGraphData, termIds: Set<string>) {
-  return graphData.edges.filter(
-    (edge) => termIds.has(edge.from) && termIds.has(edge.to)
-  );
+  // Both directions of one stored relation (partOf / hasPart) arrive as edges
+  // sharing the relation id; it is still one relation.
+  const relationIds = new Set<string>();
+
+  return graphData.edges.filter((edge) => {
+    if (!termIds.has(edge.from) || !termIds.has(edge.to)) {
+      return false;
+    }
+    if (edge.id) {
+      if (relationIds.has(edge.id)) {
+        return false;
+      }
+      relationIds.add(edge.id);
+    }
+
+    return true;
+  });
 }
 
 export function getOntologyHealthSummary(
@@ -288,6 +302,17 @@ export function getOntologyHealthSummary(
   };
 }
 
+// Hierarchical relation names (normalized) by edge direction. The inverse of a
+// child-to-parent relation points from the parent, so it must not make the
+// parent a child.
+const PARENT_TO_CHILD_RELATIONS = new Set([
+  'parentof',
+  'narrower',
+  'haspart',
+  'superclassof',
+]);
+const CHILD_TO_PARENT_RELATIONS = new Set(['broader', 'isa', 'subclassof']);
+
 function buildParentMap(
   graphData: OntologyGraphData,
   termIds: Set<string>,
@@ -310,12 +335,10 @@ function buildParentMap(
       return;
     }
     const relationType = normalizeRelationType(edge.relationType);
-    if (relationType === 'parentof' || relationType === 'narrower') {
+    if (PARENT_TO_CHILD_RELATIONS.has(relationType)) {
       addParent(edge.to, edge.from);
     } else if (
-      relationType === 'broader' ||
-      relationType === 'isa' ||
-      relationType === 'subclassof' ||
+      CHILD_TO_PARENT_RELATIONS.has(relationType) ||
       hierarchicalTypes.has(relationType)
     ) {
       addParent(edge.from, edge.to);
@@ -323,6 +346,21 @@ function buildParentMap(
   });
 
   return parentMap;
+}
+
+function resolvePrimaryParent(
+  nodeId: string,
+  parentMap: Map<string, Set<string>>,
+  nodeById: Map<string, OntologyNode>
+): string | undefined {
+  return [...(parentMap.get(nodeId) ?? [])]
+    .filter((parentId) => nodeById.has(parentId))
+    .sort((left, right) => {
+      const leftLabel = nodeById.get(left)?.label ?? left;
+      const rightLabel = nodeById.get(right)?.label ?? right;
+
+      return leftLabel.localeCompare(rightLabel);
+    })[0];
 }
 
 function buildDepthResolver(
@@ -340,14 +378,7 @@ function buildDepthResolver(
       return 0;
     }
     const nextPath = new Set(path).add(nodeId);
-    const primaryParent = [...(parentMap.get(nodeId) ?? [])]
-      .filter((parentId) => nodeById.has(parentId))
-      .sort((left, right) => {
-        const leftLabel = nodeById.get(left)?.label ?? left;
-        const rightLabel = nodeById.get(right)?.label ?? right;
-
-        return leftLabel.localeCompare(rightLabel);
-      })[0];
+    const primaryParent = resolvePrimaryParent(nodeId, parentMap, nodeById);
     const depth = primaryParent
       ? Math.min(16, resolveDepth(primaryParent, nextPath) + 1)
       : 0;
@@ -357,6 +388,52 @@ function buildDepthResolver(
   };
 
   return resolveDepth;
+}
+
+const compareRows = (left: OntologyTreeRow, right: OntologyTreeRow) =>
+  left.depth - right.depth || left.node.label.localeCompare(right.node.label);
+
+// Depth-first, so each row is followed by its own subtree. A row whose primary
+// parent is in another glossary starts a subtree of its own.
+function orderAsTree(
+  rows: OntologyTreeRow[],
+  primaryParentOf: (nodeId: string) => string | undefined
+): OntologyTreeRow[] {
+  const rowIds = new Set(rows.map((row) => row.node.id));
+  const childrenOf = new Map<string, OntologyTreeRow[]>();
+  const roots: OntologyTreeRow[] = [];
+  rows.forEach((row) => {
+    const parentId = primaryParentOf(row.node.id);
+    if (!parentId || !rowIds.has(parentId)) {
+      roots.push(row);
+
+      return;
+    }
+    const siblings = childrenOf.get(parentId);
+    if (siblings) {
+      siblings.push(row);
+    } else {
+      childrenOf.set(parentId, [row]);
+    }
+  });
+  const ordered: OntologyTreeRow[] = [];
+  const visited = new Set<string>();
+  const visit = (row: OntologyTreeRow) => {
+    if (visited.has(row.node.id)) {
+      return;
+    }
+    visited.add(row.node.id);
+    ordered.push(row);
+    childrenOf.get(row.node.id)?.sort(compareRows).forEach(visit);
+  };
+  roots.sort(compareRows).forEach(visit);
+  // Rows on a parent cycle never hang from a root; keep them visible.
+  rows
+    .filter((row) => !visited.has(row.node.id))
+    .sort(compareRows)
+    .forEach(visit);
+
+  return ordered;
 }
 
 export function buildOntologyTreeGroups(
@@ -409,10 +486,8 @@ export function buildOntologyTreeGroups(
       glossaryId,
       glossaryName:
         glossaryNameById.get(glossaryId) ?? rows[0]?.node.group ?? glossaryId,
-      rows: rows.sort(
-        (left, right) =>
-          left.depth - right.depth ||
-          left.node.label.localeCompare(right.node.label)
+      rows: orderAsTree(rows, (nodeId) =>
+        resolvePrimaryParent(nodeId, parentMap, nodeById)
       ),
     }))
     .sort((left, right) => left.glossaryName.localeCompare(right.glossaryName));

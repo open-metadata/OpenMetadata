@@ -196,9 +196,13 @@ const OntologyAuthoringInspector = ({
       ),
     [relationTypes]
   );
-  const relations = useMemo<InspectorRelation[]>(
-    () =>
-      edges.flatMap((edge) => {
+  const relations = useMemo<InspectorRelation[]>(() => {
+    // Both edges of an inverse pair (partOf / hasPart) read as the same
+    // relationship from this node, so list it once.
+    const listed = new Set<string>();
+
+    return edges
+      .flatMap((edge) => {
         if (edge.from === node.id) {
           return [
             {
@@ -226,9 +230,21 @@ const OntologyAuthoringInspector = ({
         }
 
         return [];
-      }),
-    [edges, node.id, nodes, relationTypeMap]
-  );
+      })
+      .filter((relation) => {
+        const otherEnd =
+          relation.edge.from === node.id
+            ? relation.edge.to
+            : relation.edge.from;
+        const key = `${otherEnd}|${relation.relationName}`;
+        if (listed.has(key)) {
+          return false;
+        }
+        listed.add(key);
+
+        return true;
+      });
+  }, [edges, node.id, nodes, relationTypeMap]);
   const targetNodes = useMemo(() => {
     const normalizedSearch = targetSearch.trim().toLocaleLowerCase();
 
