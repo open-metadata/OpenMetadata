@@ -165,3 +165,35 @@ def test_filtered_out_duplicates_do_not_fail_the_ingestion(source):
     assert names == ["table_a"]
     assert source.status.failures == []
     assert len(source.status.filtered) == 2
+
+
+def test_duplicates_keep_the_existing_entity_out_of_the_deletion_sweep(source):
+    """The colliding tables exist, so a namesake ingested earlier must not be marked stale."""
+    discover(
+        source,
+        [
+            table_info("deltatable-name", "prefix/a/deltatable-name/"),
+            table_info("deltatable-name", "prefix/b/deltatable-name/"),
+        ],
+    )
+
+    assert source.database_source_state == {f"{SERVICE_NAME}.{DATABASE_NAME}.{SCHEMA_NAME}.deltatable-name"}
+
+
+def test_a_listing_error_keeps_the_tables_already_discovered(source):
+    """A failure partway through the S3 listing must not discard the tables found before it."""
+
+    def failing_listing(*_, **__):
+        yield table_info("table_a", "prefix/a/table_a/")
+        yield table_info("table_b", "prefix/b/table_b/")
+        raise ConnectionError("s3 pagination failed")
+
+    source.client = MagicMock()
+    source.client.get_table_info.side_effect = failing_listing
+    source.client.update_table_info.side_effect = lambda info: info
+
+    names = [name for name, _ in source.get_tables_name_and_type()]
+
+    assert names == ["table_a", "table_b"]
+    assert len(source.status.failures) == 1
+    assert "s3 pagination failed" in source.status.failures[0].error

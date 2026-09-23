@@ -201,3 +201,52 @@ def test_prefix_scoped_service_ingests_the_table(metadata, single_prefix_service
 
     assert table is not None, f"Table not found at FQN: {fqn}"
     assert [column.name.root for column in table.columns] == ["COL_FROM_A"]
+
+
+DELETE_PREFIX = "latecollision"
+
+
+def test_a_late_collision_does_not_soft_delete_the_ingested_table(metadata, deltalake_storage_environment):
+    """A table ingested before a namesake appeared must survive the run that reports the collision."""
+    bucket = deltalake_storage_environment.bucket_name
+    storage_options = deltalake_storage_environment.storage_options
+
+    for path, df in {
+        f"{DELETE_PREFIX}/a/{DUPLICATE_TABLE_NAME}": pd.DataFrame({"COL_FROM_A": ["a"]}),
+        # The stale-entity sweep is skipped when a schema reports no live table at all, so the
+        # collision only risks a deletion while some other table keeps the sweep running.
+        f"{DELETE_PREFIX}/keep/other_table": pd.DataFrame({"KEEP": [1]}),
+    }.items():
+        deltalake.write_deltalake(
+            f"s3://{bucket}/{path}/",
+            data=df,
+            storage_options=storage_options,
+        )
+
+    service = _create_service(metadata, deltalake_storage_environment, DELETE_PREFIX)
+    try:
+        fqn = f"{service.name.root}.default.{bucket}.{DUPLICATE_TABLE_NAME}"
+
+        _run_ingestion(metadata, service).raise_from_status()
+        assert metadata.get_by_name(entity=Table, fqn=fqn) is not None, "First run should ingest the table"
+
+        # The namesake shows up only now, so the next run has to refuse both copies
+        deltalake.write_deltalake(
+            f"s3://{bucket}/{DELETE_PREFIX}/b/{DUPLICATE_TABLE_NAME}/",
+            data=pd.DataFrame({"COL_FROM_B": ["b"]}),
+            storage_options=storage_options,
+        )
+
+        second_run = _run_ingestion(metadata, service)
+        with pytest.raises(WorkflowExecutionError):
+            second_run.raise_from_status()
+
+        assert metadata.get_by_name(entity=Table, fqn=fqn) is not None, (
+            "The collision soft-deleted a table that still exists in storage"
+        )
+        keep_fqn = f"{service.name.root}.default.{bucket}.other_table"
+        assert metadata.get_by_name(entity=Table, fqn=keep_fqn) is not None, (
+            "The unrelated table vanished, so the deletion sweep never ran and the test proves nothing"
+        )
+    finally:
+        metadata.delete(DatabaseService, service.id, recursive=True, hard_delete=True)

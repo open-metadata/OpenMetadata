@@ -85,6 +85,9 @@ class DeltalakeSource(DatabaseServiceSource):
         self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
 
         self.metadata = metadata
+        # `DatabaseServiceSource` declares this set on the class, so without a per-instance copy
+        # two services running in the same process would share - and under-delete from - it.
+        self.database_source_state = set()
 
         self.service_connection = self.config.serviceConnection.root.config
         self._connection = create_connection(self.service_connection)
@@ -166,7 +169,7 @@ class DeltalakeSource(DatabaseServiceSource):
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def _build_table_fqn(self, table_name: str, schema_name: str) -> str:
+    def _build_table_fqn(self, table_name: str, schema_name: str, skip_es_search: bool = False) -> str:
         return cast(
             "str",
             fqn.build(
@@ -176,6 +179,7 @@ class DeltalakeSource(DatabaseServiceSource):
                 database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
                 schema_name=schema_name,
                 table_name=table_name,
+                skip_es_search=skip_es_search,
             ),
         )
 
@@ -205,13 +209,31 @@ class DeltalakeSource(DatabaseServiceSource):
         replaced by a namesake.
         """
         table_info_by_name: dict[str, list[TableInfo]] = defaultdict(list)
-        for table_info in self._get_filtered_table_info(schema_name):
-            table_info_by_name[table_info.name].append(table_info)
+        try:
+            for table_info in self._get_filtered_table_info(schema_name):
+                table_info_by_name[table_info.name].append(table_info)
+        except Exception as exc:
+            # Names must be grouped before anything is emitted, so a listing that dies halfway
+            # would otherwise discard the tables already discovered - and let the deletion pass
+            # mark them stale. Report the error and continue with what was collected.
+            logger.debug(traceback.format_exc())
+            self.status.failed(
+                StackTraceError(
+                    name=f"{self.config.serviceName}.{schema_name}",
+                    error=f"Error listing the Delta tables of schema [{schema_name}]: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
         for table_name, table_info_list in table_info_by_name.items():
             if len(table_info_list) == 1:
                 yield table_info_list[0]
                 continue
+
+            # The tables do exist; we are only refusing to pick one of them. Keep the FQN in the
+            # source state - as register_record would - so that the deletion pass does not treat
+            # an already ingested namesake as stale and soft-delete it.
+            self.database_source_state.add(self._build_table_fqn(table_name, schema_name, skip_es_search=True))
 
             table_fqn = self._build_table_fqn(table_name, schema_name)
             locations = ", ".join(sorted(info.location or "<unknown location>" for info in table_info_list))
