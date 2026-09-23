@@ -976,6 +976,11 @@ test.describe('Context Center Articles', () => {
     });
     await expect(ExpandIcon).toBeVisible();
     await ExpandIcon.click();
+    // Scroll to the child as well, not just the parent. The hierarchy is an
+    // infinite-scroll list, so expanding a node does not guarantee its child
+    // is inside the rendered window -- and the more articles the Context
+    // Center holds, the further down it lands.
+    await scrollHierarchyToNode(page, child.displayName);
     await expect(
       page.getByTestId(`page-node-${child.displayName}`)
     ).toBeVisible();
