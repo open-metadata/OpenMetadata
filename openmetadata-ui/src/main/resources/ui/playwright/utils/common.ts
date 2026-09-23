@@ -149,32 +149,32 @@ export const getToken = async (page: Page) => {
   return await getTokenFromStorage(page);
 };
 
-// Failures that mean the request never reached the server. Anything the server
-// actually saw comes back as a status code instead, so these -- and only these
-// -- are safe to send again.
+// Transport-layer failures where the connection died without the client
+// receiving a response. These strings do NOT reliably distinguish
+// "request never reached the server" from "server processed it and then the
+// connection dropped before the response landed" -- ECONNRESET/socket hang up
+// can be either. Retrying is therefore only safe for idempotent methods
+// (GET/HEAD/PUT); repeating a POST/PATCH/DELETE risks a duplicate write, a
+// second application of an array patch, or a spurious 404 on cleanup.
 const UNSENT_REQUEST_ERROR =
   /socket hang up|ECONNRESET|EPIPE|socket disconnected|other side closed/i;
 
-const REQUEST_METHODS = new Set([
-  'delete',
-  'fetch',
-  'get',
-  'head',
-  'patch',
-  'post',
-  'put',
-]);
+// Idempotent methods only. POST/PATCH/DELETE deliberately excluded -- see the
+// comment on UNSENT_REQUEST_ERROR above. A POST fixture-setup call that hits
+// this race should be wrapped explicitly (e.g. via createOrFetch, which has
+// 409 recovery) rather than silently double-fired.
+const RETRIABLE_METHODS = new Set(['get', 'head', 'put']);
 
 /**
- * Re-sends a request that died with the connection rather than with a response.
+ * Re-sends an idempotent request that died with the connection rather than
+ * with a response.
  *
  * `conf/openmetadata.yaml` closes idle connections after `SERVER_IDLE_TIMEOUT`
  * (60s), while this context asks for `Connection: keep-alive`. A request handed
  * to a connection the server is closing in the same instant loses that race and
- * surfaces as `apiRequestContext.post: socket hang up`, which failed a shard on
- * a `POST /services/databaseServices` during fixture setup. There is no
- * handshake that would let the client see the close coming, so retrying once on
- * a fresh connection is the only fix available on this side.
+ * surfaces as `apiRequestContext.get: socket hang up`. Retrying once on a fresh
+ * connection is the only fix available on this side, and only safe for methods
+ * where a duplicate application is a no-op.
  */
 const retryUnsentRequests = (context: APIRequestContext): APIRequestContext =>
   new Proxy(context, {
@@ -186,7 +186,7 @@ const retryUnsentRequests = (context: APIRequestContext): APIRequestContext =>
       if (typeof value !== 'function') {
         return value;
       }
-      if (!REQUEST_METHODS.has(String(property))) {
+      if (!RETRIABLE_METHODS.has(String(property))) {
         return value.bind(target);
       }
 
