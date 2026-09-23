@@ -146,13 +146,14 @@ export const initiateDelete = async (page: Page) => {
 /**
  * Waits for a response from the glossaries list API.
  */
-export const waitForGlossaryListRefetch = (page: Page) => {
-  return page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/glossaries') &&
-      !response.url().includes('/async') &&
-      response.status() === 200
+export const waitForGlossaryListRefetch = async (page: Page) => {
+  const response = await page.waitForResponse(
+    (r) =>
+      r.url().includes('/api/v1/glossaries') && !r.url().includes('/async')
   );
+  expect(response.status()).toBe(200);
+
+  return response;
 };
 
 /**
