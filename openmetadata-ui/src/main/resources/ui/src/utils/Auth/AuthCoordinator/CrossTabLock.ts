@@ -29,6 +29,15 @@ export class LockTimeoutError extends Error {
 // bounded time (Greptile P1 r4043885089).
 const DEFAULT_WAIT_TIMEOUT_MS = 60_000;
 
+// How long a `done` broadcast is retained in the class-level ring so a
+// runExclusive slot that opens shortly after the broadcast still sees
+// it. Sized to cover HANDOFF_GRACE_MS (250 ms — see
+// `raceForFollowerOutcome`) plus a comfortable buffer for postMessage
+// propagation and event-loop scheduling. Kept small so a truly
+// separate refresh cycle happening seconds later isn't muddled with
+// an old broadcast.
+const DONE_RETAIN_MS = 750;
+
 export type LockDoneMessage = { type: 'done'; payload?: unknown };
 export type LockFailedMessage = { type: 'failed'; reason?: string };
 export type LockMessage = LockDoneMessage | LockFailedMessage;
@@ -53,9 +62,24 @@ interface MessageListener {
 
 export class CrossTabLock {
   private readonly channel: BroadcastChannel;
+  // Most-recent `done` broadcast, retained for `DONE_RETAIN_MS`.
+  // Primes per-slot listeners on attach so a runExclusive that opens
+  // shortly AFTER a `done` was broadcast (e.g. a third follower entering
+  // during the previous follower's HANDOFF_GRACE_MS hold) still sees the
+  // mint and takes the follower-with-done path instead of racing the
+  // grace to a synthetic `failed` and retrying with a duplicate
+  // renewer call. Only tracks `done` (a `failed` shouldn't stop a
+  // subsequent legitimate refresh attempt).
+  private recentDone: { message: LockDoneMessage; at: number } | null = null;
 
   constructor(private readonly lockName: string, channelName: string) {
     this.channel = new BroadcastChannel(channelName);
+    this.channel.addEventListener('message', (event: MessageEvent) => {
+      const data = event.data as LockMessage | undefined;
+      if (data?.type === 'done') {
+        this.recentDone = { message: data, at: Date.now() };
+      }
+    });
   }
 
   // Runs `work` under an exclusive cross-tab lock. The optional `publish`
@@ -96,8 +120,23 @@ export class CrossTabLock {
     // `done` posted between our probe returning `null` and the follower
     // wait starting is not lost — see the docblock on `MessageListener`.
     const listener = this.attachMessageListener();
+
+    // Short-circuit the lock dance when the listener was primed with a
+    // recent `done` from the class-level ring. A probe that acquires
+    // would run `work` again — duplicating the mint we already have
+    // (rotating-refresh IdPs would consume the just-rotated refresh
+    // token). Only honours `done` here; a stale `failed` shouldn't
+    // stop a subsequent legitimate refresh attempt.
+    const primed = listener.received();
+    if (primed?.type === 'done') {
+      listener.cancel();
+
+      return { role: 'follower', message: primed };
+    }
+
     let acquired = false;
     let leaderValue: T | undefined;
+    let workSucceeded = false;
     try {
       await locks.request(
         this.lockName,
@@ -109,14 +148,30 @@ export class CrossTabLock {
           acquired = true;
           try {
             leaderValue = await work();
+            workSucceeded = true;
             if (publish) {
               await publish(leaderValue);
             }
           } catch (err) {
-            this.channel.postMessage({
-              type: 'failed',
-              reason: err instanceof Error ? err.message : String(err),
-            } as LockFailedMessage);
+            // Distinguish work-threw from publish-threw. When publish
+            // threw AFTER work succeeded, the leader still holds a
+            // valid value in memory — broadcast `done` so followers
+            // apply it instead of re-running `work` (rotating-refresh
+            // IdPs would consume the just-rotated refresh token and
+            // invalidate this leader's session). When work itself
+            // threw, no value exists to hand over — broadcast `failed`
+            // so followers retry.
+            if (workSucceeded) {
+              this.channel.postMessage({
+                type: 'done',
+                payload: leaderValue,
+              } as LockDoneMessage);
+            } else {
+              this.channel.postMessage({
+                type: 'failed',
+                reason: err instanceof Error ? err.message : String(err),
+              } as LockFailedMessage);
+            }
 
             throw err;
           }
@@ -187,8 +242,15 @@ export class CrossTabLock {
   // a subscriber calls `onMessage`. Followers drain the buffer immediately
   // after they discover they didn't win the `ifAvailable:true` probe so a
   // broadcast that arrived during the probe window isn't lost.
+  //
+  // Seeded from the class-level `recentDone` ring so a runExclusive slot
+  // that opens shortly after a broadcast (during the previous follower's
+  // HANDOFF_GRACE_MS hold) doesn't miss the mint.
   private attachMessageListener(): MessageListener {
-    let buffered: LockMessage | undefined;
+    let buffered: LockMessage | undefined =
+      this.recentDone && Date.now() - this.recentDone.at < DONE_RETAIN_MS
+        ? this.recentDone.message
+        : undefined;
     let subscriber: ((message: LockMessage) => void) | undefined;
     const handler = (event: MessageEvent) => {
       const data = event.data as LockMessage | undefined;
