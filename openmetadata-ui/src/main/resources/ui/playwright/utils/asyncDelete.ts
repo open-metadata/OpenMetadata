@@ -146,15 +146,11 @@ export const initiateDelete = async (page: Page) => {
 /**
  * Waits for a response from the glossaries list API.
  */
-export const waitForGlossaryListRefetch = async (page: Page) => {
-  const response = await page.waitForResponse(
+export const waitForGlossaryListRefetch = (page: Page) =>
+  page.waitForResponse(
     (r) =>
       r.request().method() === 'GET' && r.url().includes('/api/v1/glossaries')
   );
-  expect(response.status()).toBe(200);
-
-  return response;
-};
 
 /**
  * Verifies that a glossary is visible in the sidebar menu.

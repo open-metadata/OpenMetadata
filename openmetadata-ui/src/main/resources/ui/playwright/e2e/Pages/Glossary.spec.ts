@@ -1367,7 +1367,8 @@ test.describe('Glossary tests', () => {
       // Simulate WebSocket failure event - this should trigger recovery
       const refetch = waitForGlossaryListRefetch(page);
       emitDeleteFailure(jobId, glossary1.data.name);
-      await refetch;
+      const refetchRes = await refetch;
+      expect(refetchRes.status()).toBe(200);
 
       // Item should be restored after failure
       await expectGlossaryVisible(page, glossary1.data.displayName);
@@ -1466,7 +1467,8 @@ test.describe('Glossary tests', () => {
 
       const refetch = waitForGlossaryListRefetch(page);
       emitDeleteFailure(jobIdB, glossaryB.data.name);
-      await refetch;
+      const refetchRes = await refetch;
+      expect(refetchRes.status()).toBe(200);
 
       // No navigation — the client already has the correct state after the refetch.
       // A full reload would wipe the mock and fetch server state instead of testing
