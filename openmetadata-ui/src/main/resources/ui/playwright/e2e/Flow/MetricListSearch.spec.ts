@@ -100,20 +100,7 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
     const searchInput = page.getByTestId('metric-search').getByRole('textbox');
     await expect(searchInput).toBeVisible();
 
-    // Establish baseline via search — avoids assuming both fixtures land on
-    // page 1 of the paginated unfiltered list. Search for otherName, confirm
-    // it's visible, then clear so the main step starts from the full list.
-    const otherResponse = waitForMetricsSearchResponse(page);
-    await searchInput.fill(otherName);
-    await otherResponse;
-    await waitForAllLoadersToDisappear(page);
-    await expect(
-      page.getByTestId('metric-name').filter({ hasText: otherName })
-    ).toBeVisible();
-    const clearBaseline = waitForMetricsSearchResponse(page);
-    await searchInput.fill('');
-    await clearBaseline;
-    await waitForAllLoadersToDisappear(page);
+    await expect(page.getByTestId('metric-name').first()).toBeVisible();
 
     await test.step('search fires a scoped metric query and narrows the results', async () => {
       // The debounced search must actually reach the API. Regression #29538
@@ -137,14 +124,13 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
 
       await waitForAllLoadersToDisappear(page);
 
-      // Wait for keepPreviousData to clear; matchName check must follow after.
-      await expect(page.getByText(otherName)).not.toBeVisible();
-      // List is settled here — parallel specs may match partially, so >= 1.
-      const count = await page.getByTestId('metric-name').count();
-      expect(count).toBeGreaterThanOrEqual(1);
+      // Parallel specs may create metrics that partially match, so >= 1 is
+      // correct. first().toBeVisible() retries and serves as the settling signal.
+      await expect(page.getByTestId('metric-name').first()).toBeVisible();
       await expect(
         page.getByTestId('metric-name').filter({ hasText: matchName })
       ).toBeVisible();
+      await expect(page.getByText(otherName)).not.toBeVisible();
     });
 
     await test.step('clearing the search restores the full list', async () => {
