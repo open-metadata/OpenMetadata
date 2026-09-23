@@ -2517,12 +2517,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // the rows that still exist. Also guards entities.getFirst() from IndexOutOfBounds (500).
         beforeCursor = after;
       } else {
-        beforeCursor = getCursorValue(entities.getFirst());
+        beforeCursor = getCursorValue(entities.getFirst(), filter);
       }
       if (entities.size()
           > limitParam) { // If extra result exists, then next page exists - return after cursor
         entities.remove(limitParam);
-        afterCursor = getCursorValue(entities.get(limitParam - 1));
+        afterCursor = getCursorValue(entities.get(limitParam - 1), filter);
       }
       return getResultList(entities, beforeCursor, afterCursor, total);
     } else {
@@ -2596,7 +2596,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       String afterCursor = null;
       if (hasMoreData && !entities.isEmpty()) {
-        afterCursor = getCursorValue(entities.get(entities.size() - 1));
+        afterCursor = getCursorValue(entities.get(entities.size() - 1), filter);
       }
       return getResultList(entities, errors, null, afterCursor, cachedTotal);
     } else {
@@ -2648,13 +2648,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entities.size()
         > limitParam) { // If extra result exists, then previous page exists - return before cursor
       entities.remove(0);
-      beforeCursor = getCursorValue(entities.getFirst());
+      beforeCursor = getCursorValue(entities.getFirst(), filter);
     }
     // entities can be empty when the caller holds a valid before-cursor but all earlier rows were
     // deleted concurrently, so the page is empty. Echo the caller's cursor as afterCursor rather
     // than null: a null after reads as end-of-pagination and dead-ends forward navigation, whereas
     // echoing lets the caller page forward to rows that still exist. Also guards getLast() (500).
-    afterCursor = entities.isEmpty() ? before : getCursorValue(entities.getLast());
+    afterCursor = entities.isEmpty() ? before : getCursorValue(entities.getLast(), filter);
     return getResultList(entities, beforeCursor, afterCursor, total);
   }
 
@@ -2666,6 +2666,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   public String getCursorValue(T entity) {
     return getCursorValue(entity.getName(), String.valueOf(entity.getId()));
+  }
+
+  /**
+   * The cursor has to be built from the same key the listing is ordered by, so a repository whose
+   * order depends on the request — a caller-chosen sort field, say — needs the filter to know
+   * which key that is. Overriding this instead of {@link #getCursorValue(EntityInterface)} keeps
+   * that choice available; the default ignores the filter, which is correct for every repository
+   * with a single fixed order.
+   */
+  public String getCursorValue(T entity, ListFilter filter) {
+    return getCursorValue(entity);
   }
 
   protected String getCursorValue(String name, String id) {
