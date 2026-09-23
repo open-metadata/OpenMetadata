@@ -3414,7 +3414,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await expect(customPropertyBadge).toBeVisible();
 
           await fieldPanel.click();
-          await setSliderValue(page, 'field-weight-slider', 20);
+          await setSliderValue(page, 'field-weight-slider', 20, 0, 100, 'field-weight-value');
 
           const matchTypeSelect = page.getByTestId('match-type-select');
           await matchTypeSelect.click();
@@ -3555,7 +3555,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await expect(customPropertyBadge).toBeVisible();
 
           await fieldPanel.click();
-          await setSliderValue(page, 'field-weight-slider', 12);
+          await setSliderValue(page, 'field-weight-slider', 12, 0, 100, 'field-weight-value');
 
           const matchTypeSelect = page.getByTestId('match-type-select');
           await matchTypeSelect.click();
