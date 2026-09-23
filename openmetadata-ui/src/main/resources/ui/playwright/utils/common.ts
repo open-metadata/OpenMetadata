@@ -149,21 +149,78 @@ export const getToken = async (page: Page) => {
   return await getTokenFromStorage(page);
 };
 
+// Transport-layer failures where the connection died without the client
+// receiving a response. These strings do NOT reliably distinguish
+// "request never reached the server" from "server processed it and then the
+// connection dropped before the response landed" -- ECONNRESET/socket hang up
+// can be either. Retrying is therefore only safe for idempotent methods
+// (GET/HEAD/PUT); repeating a POST/PATCH/DELETE risks a duplicate write, a
+// second application of an array patch, or a spurious 404 on cleanup.
+const UNSENT_REQUEST_ERROR =
+  /socket hang up|ECONNRESET|EPIPE|socket disconnected|other side closed/i;
+
+// Idempotent methods only. POST/PATCH/DELETE deliberately excluded -- see the
+// comment on UNSENT_REQUEST_ERROR above. A POST fixture-setup call that hits
+// this race should be wrapped explicitly (e.g. via createOrFetch, which has
+// 409 recovery) rather than silently double-fired.
+const RETRIABLE_METHODS = new Set(['get', 'head', 'put']);
+
+/**
+ * Re-sends an idempotent request that died with the connection rather than
+ * with a response.
+ *
+ * `conf/openmetadata.yaml` closes idle connections after `SERVER_IDLE_TIMEOUT`
+ * (60s), while this context asks for `Connection: keep-alive`. A request handed
+ * to a connection the server is closing in the same instant loses that race and
+ * surfaces as `apiRequestContext.get: socket hang up`. Retrying once on a fresh
+ * connection is the only fix available on this side, and only safe for methods
+ * where a duplicate application is a no-op.
+ */
+const retryUnsentRequests = (context: APIRequestContext): APIRequestContext =>
+  new Proxy(context, {
+    get(target, property) {
+      // Read against the target, not the proxy: a getter that used `this`
+      // would otherwise re-enter this trap.
+      const value = Reflect.get(target, property);
+
+      if (typeof value !== 'function') {
+        return value;
+      }
+      if (!RETRIABLE_METHODS.has(String(property))) {
+        return value.bind(target);
+      }
+
+      return async (...args: unknown[]) => {
+        try {
+          return await value.apply(target, args);
+        } catch (error) {
+          if (!UNSENT_REQUEST_ERROR.test(String(error))) {
+            throw error;
+          }
+
+          return await value.apply(target, args);
+        }
+      };
+    },
+  });
+
 export const getAuthContext = async (token: string) => {
   const isH2Mode = process.env.PW_PROTOCOL === 'h2';
 
-  return await request.newContext({
-    baseURL:
-      process.env.PLAYWRIGHT_TEST_BASE_URL ??
-      (isH2Mode ? 'https://localhost:8585' : 'http://localhost:8585'),
-    // Default timeout is 30s making it to 1m for AUTs
-    timeout: 90000,
-    ignoreHTTPSErrors: isH2Mode,
-    extraHTTPHeaders: {
-      ...(isH2Mode ? {} : { Connection: 'keep-alive' }),
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  return retryUnsentRequests(
+    await request.newContext({
+      baseURL:
+        process.env.PLAYWRIGHT_TEST_BASE_URL ??
+        (isH2Mode ? 'https://localhost:8585' : 'http://localhost:8585'),
+      // Default timeout is 30s making it to 1m for AUTs
+      timeout: 90000,
+      ignoreHTTPSErrors: isH2Mode,
+      extraHTTPHeaders: {
+        ...(isH2Mode ? {} : { Connection: 'keep-alive' }),
+        Authorization: `Bearer ${token}`,
+      },
+    })
+  );
 };
 
 const DISABLE_ETAG_CONDITIONAL_READS_KEY = 'OM_DISABLE_ETAG_CONDITIONAL_READS';

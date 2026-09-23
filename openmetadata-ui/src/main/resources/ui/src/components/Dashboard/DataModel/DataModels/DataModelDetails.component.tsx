@@ -22,7 +22,6 @@ import { EntityTabs, EntityType, FqnPart } from '../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { Tag } from '../../../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
-import { Operation } from '../../../../generated/entity/policies/policy';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomPages } from '../../../../hooks/useCustomPages';
 import { useFqn } from '../../../../hooks/useFqn';
@@ -42,7 +41,7 @@ import {
   getFeedCounts,
 } from '../../../../utils/FeedUtilsPure';
 import { getPartialNameFromTableFQN } from '../../../../utils/FqnUtils';
-import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import {
   getEntityDetailsPath,
   getVersionPath,
@@ -206,10 +205,8 @@ const DataModelDetails = ({
   const { editLineagePermission } = useMemo(() => {
     return {
       editLineagePermission:
-        getPrioritizedEditPermission(
-          dataModelPermissions,
-          Operation.EditLineage
-        ) && !deleted,
+        getDerivedPermissionFlags(dataModelPermissions).canEditLineage &&
+        !deleted,
     };
   }, [dataModelPermissions, deleted]);
 

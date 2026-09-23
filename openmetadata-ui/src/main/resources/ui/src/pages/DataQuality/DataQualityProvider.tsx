@@ -17,7 +17,6 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { DataQualityPageParams } from '../../components/DataQuality/DataQuality.interface';
 import { INITIAL_TEST_SUMMARY } from '../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { Operation } from '../../generated/entity/policies/policy';
 import { TestSummary } from '../../generated/tests/testCase';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import {
@@ -26,7 +25,7 @@ import {
   fetchTotalEntityCount,
 } from '../../rest/dataQualityDashboardAPI';
 import { transformToTestCaseStatusObject } from '../../utils/DataQuality/DataQualityPureUtils';
-import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import {
@@ -184,7 +183,7 @@ const DataQualityProvider = ({
       return;
     }
 
-    if (getPrioritizedViewPermission(testCasePermission, Operation.ViewBasic)) {
+    if (getDerivedPermissionFlags(testCasePermission).canViewBasic) {
       fetchTestSummary(filterParams, () => ignore);
     } else {
       setIsTestCaseSummaryLoading(false);
