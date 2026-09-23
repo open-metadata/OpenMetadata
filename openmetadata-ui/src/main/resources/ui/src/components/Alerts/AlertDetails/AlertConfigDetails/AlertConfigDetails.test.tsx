@@ -69,8 +69,6 @@ jest.mock('../../DestinationFormItem/DestinationFormItemFormBridge', () =>
 describe('AlertConfigDetails notification template permissions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // The template widget only mounts when the class base contributes extra
-    // widgets, which is what triggers the permission-gated template fetch.
     jest
       .spyOn(alertsClassBase, 'getAddAlertFormExtraWidgets')
       .mockReturnValue({ template: jest.fn() });
