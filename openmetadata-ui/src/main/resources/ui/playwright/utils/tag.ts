@@ -79,7 +79,9 @@ export const visitClassificationPage = async (
   ).toHaveCount(0, { timeout: 30000 });
 
   await expect(
-    page.getByTestId('tags-container').getByTestId('entity-header-display-name')
+    tagsContainer
+      .getByTestId('entity-header-display-name')
+      .or(tagsContainer.getByTestId('entity-header-name'))
   ).toContainText(classificationDisplayName);
 };
 
