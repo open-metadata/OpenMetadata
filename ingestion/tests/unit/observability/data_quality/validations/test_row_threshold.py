@@ -269,21 +269,53 @@ def test_get_failure_threshold_is_read_once(monkeypatch):
     assert len(readings) == 1
 
 
+# The validators whose denominator is the table row count, the metric counting their violations, and
+# parameters that put 20 of the 80 rows in violation - a quarter of the table, whichever validator runs.
+# The SQLAlchemy SQLite dialect registers a `REGEXP` implementation on connect, so the regex validator
+# runs its `REGEXP` query here rather than the `LIKE` fallback, which has its own test further down.
+FOLDED_VALIDATORS = [
+    pytest.param(
+        ColumnValuesToBeNotNullValidator,
+        ENTITY_LINK_AGE,
+        [],
+        Metrics.nullCount.name,
+        id="columnValuesToBeNotNull",  # `age` is NULL on 20 rows
+    ),
+    pytest.param(
+        ColumnValuesToBeNotInSetValidator,
+        ENTITY_LINK_NAME,
+        [TestCaseParameterValue(name="forbiddenValues", value="['John']")],
+        Metrics.countInSet.name,
+        id="columnValuesToBeNotInSet",  # `name` is John on 20 rows
+    ),
+    pytest.param(
+        ColumnValuesToNotMatchRegexValidator,
+        ENTITY_LINK_NAME,
+        [TestCaseParameterValue(name="forbiddenRegex", value="^Jo")],
+        Metrics.notRegexCount.name,
+        id="columnValuesToNotMatchRegex",  # `name` starts with Jo on 20 rows
+    ),
+]
+
+
+@pytest.mark.parametrize("validator_class,entity_link,test_params,violation_metric", FOLDED_VALIDATORS)
 @pytest.mark.parametrize(
     "threshold,expected_status",
     [
-        # `age` is NULL on 20 of the 80 rows, 25% of the column
+        # 20 violating rows out of 80 is 25% of the table
         (30, TestCaseStatus.Success),
         (25, TestCaseStatus.Success),
         (20, TestCaseStatus.Failed),
     ],
 )
-def test_percentage_threshold_computes_its_denominator(create_sqlite_table, threshold, expected_status):
+def test_percentage_threshold_computes_its_denominator(
+    create_sqlite_table, validator_class, entity_link, test_params, violation_metric, threshold, expected_status
+):
     """The row count denominator is queried even when the test case does not ask for row counts"""
-    validator = ColumnValuesToBeNotNullValidator(
+    validator = validator_class(
         create_sqlite_table,
         test_case=build_test_case(
-            threshold_params(threshold, ThresholdUnit.PERCENTAGE.value), entity_link=ENTITY_LINK_AGE
+            test_params + threshold_params(threshold, ThresholdUnit.PERCENTAGE.value), entity_link=entity_link
         ),
         execution_date=EXECUTION_DATE.timestamp(),
     )
@@ -293,27 +325,6 @@ def test_percentage_threshold_computes_its_denominator(create_sqlite_table, thre
     assert result.testCaseStatus == expected_status
     assert result.failedRows == 20
     assert result.passedRows == 60
-
-
-# The validators whose denominator is the table row count, and the metric counting their violations.
-# columnValuesToNotMatchRegex is left out: SQLite has no `REGEXP`, so it always falls back to `LIKE`
-# and the statement count would measure the fallback rather than the folding.
-FOLDED_VALIDATORS = [
-    pytest.param(
-        ColumnValuesToBeNotNullValidator,
-        ENTITY_LINK_AGE,
-        [],
-        Metrics.nullCount.name,
-        id="columnValuesToBeNotNull",
-    ),
-    pytest.param(
-        ColumnValuesToBeNotInSetValidator,
-        ENTITY_LINK_NAME,
-        [TestCaseParameterValue(name="forbiddenValues", value="['John']")],
-        Metrics.countInSet.name,
-        id="columnValuesToBeNotInSet",
-    ),
-]
 
 
 @pytest.mark.parametrize("validator_class,entity_link,test_params,violation_metric", FOLDED_VALIDATORS)
@@ -356,6 +367,28 @@ def test_absolute_threshold_does_not_query_a_denominator(
     assert len(statements) == 1
     assert violation_metric in statements[0]
     assert Metrics.rowCount.name not in statements[0]
+
+
+def test_not_match_regex_folds_its_denominator_into_the_regexp_query(create_sqlite_table):
+    """The folded query the regex validator runs is the `REGEXP` one, not the `LIKE` fallback"""
+    validator = ColumnValuesToNotMatchRegexValidator(
+        create_sqlite_table,
+        test_case=build_test_case(
+            [TestCaseParameterValue(name="forbiddenRegex", value="^Jo")]
+            + threshold_params(25, ThresholdUnit.PERCENTAGE.value),
+            entity_link=ENTITY_LINK_NAME,
+        ),
+        execution_date=EXECUTION_DATE.timestamp(),
+    )
+
+    with executed_statements(create_sqlite_table) as statements:
+        result = validator.run_validation()
+
+    assert result.testCaseStatus == TestCaseStatus.Success
+    assert result.failedRows == 20
+    assert len(statements) == 1
+    assert " REGEXP " in statements[0]
+    assert Metrics.notLikeCount.name not in statements[0]
 
 
 def test_not_match_regex_folds_its_denominator_into_the_like_fallback(monkeypatch):
