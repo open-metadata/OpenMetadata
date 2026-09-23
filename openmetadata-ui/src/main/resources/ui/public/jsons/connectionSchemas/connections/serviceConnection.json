@@ -24049,7 +24049,6 @@
                       "mask": true,
                       "oneOf": [
                         {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "title": "Username and Password",
                           "description": "Username and password authentication for NATS.",
                           "javaType": "org.openmetadata.schema.services.connections.messaging.nats.BasicAuth",
@@ -24074,7 +24073,6 @@
                           "additionalProperties": false
                         },
                         {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "title": "Token",
                           "description": "Token-based authentication for NATS.",
                           "javaType": "org.openmetadata.schema.services.connections.messaging.nats.TokenAuth",
@@ -24093,7 +24091,6 @@
                           "additionalProperties": false
                         },
                         {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "title": "NKey Seed",
                           "description": "NKey seed authentication for NATS.",
                           "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NkeyAuth",
@@ -32359,7 +32356,6 @@
                           ]
                         },
                         {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "title": "Nats",
                           "description": "NATS JetStream configuration for OpenLineage events.",
                           "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.NatsBrokerConfig",
@@ -32446,7 +32442,6 @@
                               "mask": true,
                               "oneOf": [
                                 {
-                                  "$schema": "http://json-schema.org/draft-07/schema#",
                                   "title": "Username and Password",
                                   "description": "Username and password authentication for NATS.",
                                   "javaType": "org.openmetadata.schema.services.connections.messaging.nats.BasicAuth",
@@ -32471,7 +32466,6 @@
                                   "additionalProperties": false
                                 },
                                 {
-                                  "$schema": "http://json-schema.org/draft-07/schema#",
                                   "title": "Token",
                                   "description": "Token-based authentication for NATS.",
                                   "javaType": "org.openmetadata.schema.services.connections.messaging.nats.TokenAuth",
@@ -32490,7 +32484,6 @@
                                   "additionalProperties": false
                                 },
                                 {
-                                  "$schema": "http://json-schema.org/draft-07/schema#",
                                   "title": "NKey Seed",
                                   "description": "NKey seed authentication for NATS.",
                                   "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NkeyAuth",
@@ -32509,7 +32502,6 @@
                                   "additionalProperties": false
                                 },
                                 {
-                                  "$schema": "http://json-schema.org/draft-07/schema#",
                                   "title": "Credentials File",
                                   "description": "Decentralized authentication with the contents of a NATS .creds file (user JWT and NKey seed).",
                                   "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.nats.CredentialsAuth",
@@ -32536,7 +32528,6 @@
                               "mask": true,
                               "oneOf": [
                                 {
-                                  "$schema": "http://json-schema.org/draft-07/schema#",
                                   "title": "Validate SSL Client Config",
                                   "description": "OpenMetadata Client configured to validate SSL certificates.",
                                   "type": "object",
@@ -61943,7 +61934,6 @@
                       "mask": true,
                       "oneOf": [
                         {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "title": "Username and Password",
                           "description": "Username and password authentication for NATS.",
                           "javaType": "org.openmetadata.schema.services.connections.messaging.nats.BasicAuth",
@@ -61968,7 +61958,6 @@
                           "additionalProperties": false
                         },
                         {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "title": "Token",
                           "description": "Token-based authentication for NATS.",
                           "javaType": "org.openmetadata.schema.services.connections.messaging.nats.TokenAuth",
@@ -61987,7 +61976,6 @@
                           "additionalProperties": false
                         },
                         {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "title": "NKey Seed",
                           "description": "NKey seed authentication for NATS.",
                           "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NkeyAuth",
@@ -70253,7 +70241,6 @@
                           ]
                         },
                         {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "title": "Nats",
                           "description": "NATS JetStream configuration for OpenLineage events.",
                           "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.NatsBrokerConfig",
@@ -70340,7 +70327,6 @@
                               "mask": true,
                               "oneOf": [
                                 {
-                                  "$schema": "http://json-schema.org/draft-07/schema#",
                                   "title": "Username and Password",
                                   "description": "Username and password authentication for NATS.",
                                   "javaType": "org.openmetadata.schema.services.connections.messaging.nats.BasicAuth",
@@ -70365,7 +70351,6 @@
                                   "additionalProperties": false
                                 },
                                 {
-                                  "$schema": "http://json-schema.org/draft-07/schema#",
                                   "title": "Token",
                                   "description": "Token-based authentication for NATS.",
                                   "javaType": "org.openmetadata.schema.services.connections.messaging.nats.TokenAuth",
@@ -70384,7 +70369,6 @@
                                   "additionalProperties": false
                                 },
                                 {
-                                  "$schema": "http://json-schema.org/draft-07/schema#",
                                   "title": "NKey Seed",
                                   "description": "NKey seed authentication for NATS.",
                                   "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NkeyAuth",
@@ -70403,7 +70387,6 @@
                                   "additionalProperties": false
                                 },
                                 {
-                                  "$schema": "http://json-schema.org/draft-07/schema#",
                                   "title": "Credentials File",
                                   "description": "Decentralized authentication with the contents of a NATS .creds file (user JWT and NKey seed).",
                                   "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.nats.CredentialsAuth",
@@ -70430,7 +70413,6 @@
                               "mask": true,
                               "oneOf": [
                                 {
-                                  "$schema": "http://json-schema.org/draft-07/schema#",
                                   "title": "Validate SSL Client Config",
                                   "description": "OpenMetadata Client configured to validate SSL certificates.",
                                   "type": "object",
