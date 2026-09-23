@@ -25,7 +25,10 @@ import { MemoryRouter } from 'react-router-dom';
 import { ThemeProvider } from '../../../context/UntitledUIThemeProvider/theme-provider';
 import { downloadEntityGraph, getEntityGraphData } from '../../../rest/rdfAPI';
 import { GraphData } from '../../../rest/rdfAPI.interface';
-import { renderWithQueryClient } from '../../../test/unit/test-utils';
+import {
+  flushReactQuery,
+  renderWithQueryClient,
+} from '../../../test/unit/test-utils';
 import KnowledgeGraph from './KnowledgeGraph';
 
 // React Query adds microtask hops between fetch → observer → re-render → derived
@@ -151,17 +154,10 @@ const openGraph = async () => {
       </MemoryRouter>
     </ThemeProvider>
   );
-  // React Query resolves its promise outside React's `act` scope, so the RQ
-  // cache reaches `success`/`error` but the component tree stays on `pending`
-  // until we tick React one more time inside `act`. Wait for the initial fetch
-  // and flush several microtask/macrotask cycles so the observer notification,
-  // the derived useMemo chain, the canvas queue draw, and the overlay update
-  // have all landed before the test asserts on the DOM.
+  // Wait for the initial fetch, then flush the RQ observer notification into
+  // the tree (see flushReactQuery for why this is needed on top of waitFor).
   await waitFor(() => expect(api).toHaveBeenCalled());
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  });
+  await flushReactQuery();
 
   return result;
 };
@@ -171,10 +167,7 @@ const press = async (element: Element) => {
   });
   // A click can trigger a new React Query fetch; flush its resolved-outside-
   // act observer notification the same way openGraph does.
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  });
+  await flushReactQuery();
 };
 const chooseLevel = async (level: number) => {
   await press(screen.getByRole('button', { name: /label.kg-levels/ }));

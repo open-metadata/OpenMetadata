@@ -12,7 +12,7 @@
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, RenderOptions, RenderResult } from '@testing-library/react';
+import { act, render, RenderOptions, RenderResult } from '@testing-library/react';
 import { ReactElement, ReactNode } from 'react';
 
 /**
@@ -44,4 +44,27 @@ export function renderWithQueryClient(
     ...render(ui, { wrapper: Wrapper, ...options }),
     queryClient,
   };
+}
+
+/**
+ * Flushes React Query's post-fetch observer notification into the component
+ * tree. React Query resolves its promise outside React's `act` scope, so a
+ * bare `await screen.findBy*` after a fetch-triggering action sees the RQ
+ * cache in `success`/`error` but the tree still rendering `pending` — until
+ * we tick React once more inside `act`.
+ *
+ * Two zero-timeout ticks: the first drains the observer notification and
+ * React re-render; the second drains any effect the re-render scheduled
+ * (derived state, downstream fetches). Enough for most components; complex
+ * effect chains may want a third.
+ *
+ * Prefer this over ad-hoc `await new Promise((r) => setTimeout(r, 0))` at
+ * call sites — one helper keeps the pattern greppable and the reasoning in
+ * one place.
+ */
+export async function flushReactQuery(): Promise<void> {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
 }

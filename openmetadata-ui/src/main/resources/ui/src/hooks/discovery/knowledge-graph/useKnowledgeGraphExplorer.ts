@@ -272,20 +272,23 @@ export const useKnowledgeGraphExplorer = ({
     () => countRelationCategories(allData),
     [allData]
   );
-  const detailCounts = {
-    columns:
-      mode === 'ontology'
-        ? concepts.terms.reduce(
-            (total, term) =>
-              total +
-              (term.effectiveAttributes ?? term.attributes ?? []).length,
-            0
-          )
-        : columns.total,
-    relationships: displayData?.edges.length ?? 0,
-    coverage: [...coverage.values()].filter((value) => value === 'unmapped')
-      .length,
-  };
+  const detailCounts = useMemo(
+    () => ({
+      columns:
+        mode === 'ontology'
+          ? concepts.terms.reduce(
+              (total, term) =>
+                total +
+                (term.effectiveAttributes ?? term.attributes ?? []).length,
+              0
+            )
+          : columns.total,
+      relationships: displayData?.edges.length ?? 0,
+      coverage: [...coverage.values()].filter((value) => value === 'unmapped')
+        .length,
+    }),
+    [mode, concepts.terms, columns.total, displayData?.edges.length, coverage]
+  );
 
   return {
     result,
