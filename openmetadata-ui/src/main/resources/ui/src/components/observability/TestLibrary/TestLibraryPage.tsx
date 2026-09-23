@@ -38,6 +38,7 @@ const TestLibraryPage = () => {
   const {
     testDefinitions,
     isLoading,
+    isInitialLoading,
     createPermission,
     viewPermission,
     testDefinitionPermissions,
@@ -45,7 +46,11 @@ const TestLibraryPage = () => {
     pagingData,
     showPagination,
     urlFilters,
+    searchQuery,
+    sortDescriptor,
+    handleSortChange,
     setSingleFilter,
+    handleSearchChange,
     clearAllFilters,
     hasActiveFilters,
     isFormVisible,
@@ -124,22 +129,27 @@ const TestLibraryPage = () => {
             <TestDefinitionFilterBar
               filterValues={urlFilters}
               hasActiveFilters={hasActiveFilters}
+              searchQuery={searchQuery}
               onClearAll={clearAllFilters}
               onFilterChange={setSingleFilter}
+              onSearchChange={handleSearchChange}
             />
           </div>
           <TestDefinitionTable
             hasActiveFilters={hasActiveFilters}
+            isInitialLoading={isInitialLoading}
             isLoading={isLoading}
             pagingData={pagingData}
             permissionLoading={permissionLoading}
             showPagination={showPagination}
+            sortDescriptor={sortDescriptor}
             testDefinitionPermissions={testDefinitionPermissions}
             testDefinitions={testDefinitions}
             onClearFilters={clearAllFilters}
             onDelete={handleDeleteClick}
             onEdit={handleEdit}
             onEnableToggle={handleEnableToggle}
+            onSortChange={handleSortChange}
           />
         </div>
       </ObservabilityPageShell>
