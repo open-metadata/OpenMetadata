@@ -181,8 +181,7 @@ public class EventSubscriptionResource
         .forEach(
             subscription -> {
               try {
-                EventSubscriptionScheduler.getInstance()
-                    .addSubscriptionPublisher(subscription, true);
+                EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(subscription);
               } catch (Exception ex) {
                 LOG.error("Failed to initialize subscription: {}", subscription.getId(), ex);
               }
@@ -348,7 +347,7 @@ public class EventSubscriptionResource
     EventSubscription eventSub =
         mapper.createToEntity(request, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, eventSub);
-    EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub, false);
+    EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub);
     return response;
   }
 

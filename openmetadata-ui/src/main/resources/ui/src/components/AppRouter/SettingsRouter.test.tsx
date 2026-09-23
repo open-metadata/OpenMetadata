@@ -13,6 +13,7 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
+import { AuthProvider } from '../../generated/settings/settings';
 import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import SettingsRouter from './SettingsRouter';
 
@@ -189,7 +190,19 @@ jest.mock('./AdminProtectedRoute', () => ({
   default: jest.fn().mockImplementation(({ children }) => children),
 }));
 
+let mockAuthProvider: AuthProvider = AuthProvider.Basic;
+
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn((selector) =>
+    selector({ authConfig: { provider: mockAuthProvider } })
+  ),
+}));
+
 describe('SettingsRouter', () => {
+  beforeEach(() => {
+    mockAuthProvider = AuthProvider.Basic;
+  });
+
   // SettingsRouter declares its routes relative to ROUTES.SETTINGS (the `/settings` prefix is
   // stripped off each path), so it only resolves them when mounted under a parent route that
   // consumes that prefix — rendering it bare at `/settings/...` matches nothing.
@@ -320,6 +333,16 @@ describe('SettingsRouter', () => {
     ).toBeInTheDocument();
   });
 
+  it('should render LoginConfigurationPage component for LDAP, which the server also gates on', async () => {
+    mockAuthProvider = AuthProvider.LDAP;
+
+    renderAtSettingsPath('/settings/preferences/loginConfiguration');
+
+    expect(
+      await screen.findByText('LoginConfigurationPage')
+    ).toBeInTheDocument();
+  });
+
   it('should render NotificationListPage component for notification list route', async () => {
     renderAtSettingsPath(ROUTES.NOTIFICATION_ALERT_LIST);
 
@@ -363,19 +386,21 @@ describe('SettingsRouter', () => {
   });
 });
 
-// Kept as a separate suite because it additionally mounts a sibling `/404` route and spies on
-// connectionsRouterClassBase to exercise the services route guard end to end.
-describe('SettingsRouter services routes', () => {
-  const renderAt = (entry: string) =>
-    render(
-      <MemoryRouter initialEntries={[entry]}>
-        <Routes>
-          <Route element={<SettingsRouter />} path="/settings/*" />
-          <Route element={<div>NotFound</div>} path="/404" />
-        </Routes>
-      </MemoryRouter>
-    );
+// Mounts a sibling `/404` route so a guard's redirect lands somewhere assertable, rather than
+// being inferred from the guarded page merely being absent.
+const renderAt = (entry: string) =>
+  render(
+    <MemoryRouter initialEntries={[entry]}>
+      <Routes>
+        <Route element={<SettingsRouter />} path="/settings/*" />
+        <Route element={<div>NotFound</div>} path="/404" />
+      </Routes>
+    </MemoryRouter>
+  );
 
+// Kept as a separate suite because it additionally spies on connectionsRouterClassBase to
+// exercise the services route guard end to end.
+describe('SettingsRouter services routes', () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
@@ -438,4 +463,54 @@ describe('SettingsRouter services routes', () => {
     expect(await screen.findByText('ServicesPage')).toBeInTheDocument();
     expect(screen.queryByText('NotFound')).not.toBeInTheDocument();
   });
+});
+
+// The login configuration (failed-attempt lockout, access block time, JWT expiry) is enforced by
+// OpenMetadata's own login flow. Under an external IdP those settings are inert, so the pages are
+// 404'd rather than left to display placeholders and save values that never take effect.
+describe('SettingsRouter login configuration routes', () => {
+  // mockAuthProvider is module-scoped and every case here depends on its value, so reset it
+  // rather than let a case inherit whatever the previous one left behind.
+  beforeEach(() => {
+    mockAuthProvider = AuthProvider.Basic;
+  });
+
+  it.each([
+    [
+      'details',
+      '/settings/preferences/loginConfiguration',
+      'LoginConfigurationPage',
+    ],
+    [
+      'edit',
+      ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG,
+      'EditLoginConfigurationPage',
+    ],
+  ])(
+    'treats the login configuration %s route as not found under an external SSO provider',
+    async (_, entry, pageText) => {
+      mockAuthProvider = AuthProvider.Google;
+
+      renderAt(entry);
+
+      expect(await screen.findByText('NotFound')).toBeInTheDocument();
+      expect(screen.queryByText(pageText)).not.toBeInTheDocument();
+    }
+  );
+
+  // `openmetadata` is a second name for the same native-password authenticator as `basic`, so the
+  // server enforces the login configuration for it and the route must stay reachable.
+  it.each([AuthProvider.Basic, AuthProvider.Openmetadata, AuthProvider.LDAP])(
+    'still renders the login configuration page under %s',
+    async (provider) => {
+      mockAuthProvider = provider;
+
+      renderAt('/settings/preferences/loginConfiguration');
+
+      expect(
+        await screen.findByText('LoginConfigurationPage')
+      ).toBeInTheDocument();
+      expect(screen.queryByText('NotFound')).not.toBeInTheDocument();
+    }
+  );
 });
