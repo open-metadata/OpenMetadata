@@ -107,17 +107,19 @@ export const getQueryWithSlash = (query: string): string => {
     return '';
   }
 
-  // Always escape a raw single quote. Escape a double quote only when it
-  // isn't already escaped: escapeESReservedCharacters pre-escapes " -> \"
-  // for callers that use it (e.g. Suggestions.tsx), while other callers
-  // (e.g. TagsUtils#fetchGlossaryList) pass raw text straight here and
-  // still need an unescaped quote escaped so it doesn't break
-  // Elasticsearch's query_string parser. A quote is only actually escaped
-  // when it's preceded by an odd number of backslashes -- an even run
-  // (including zero) resolves to literal backslashes, leaving the quote
-  // itself unescaped. Walking the string once (instead of a `(\\*)"` regex)
-  // avoids the super-linear backtracking a quantified-group-then-literal
-  // pattern causes on long non-matching backslash runs.
+  /*
+   * Always escape a raw single quote. Escape a double quote only when it
+   * isn't already escaped: escapeESReservedCharacters pre-escapes " -> \"
+   * for callers that use it (e.g. Suggestions.tsx), while other callers
+   * (e.g. TagsUtils#fetchGlossaryList) pass raw text straight here and
+   * still need an unescaped quote escaped so it doesn't break
+   * Elasticsearch's query_string parser. A quote is only actually escaped
+   * when it's preceded by an odd number of backslashes -- an even run
+   * (including zero) resolves to literal backslashes, leaving the quote
+   * itself unescaped. Walking the string once (instead of a `(\\*)"` regex)
+   * avoids the super-linear backtracking a quantified-group-then-literal
+   * pattern causes on long non-matching backslash runs.
+   */
   let result = '';
   let precedingBackslashes = 0;
   for (const char of query) {
