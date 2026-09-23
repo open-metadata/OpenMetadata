@@ -470,6 +470,26 @@ class OpenSearchVectorServiceTest {
   }
 
   @Test
+  void testInlinePipelineDefinitionIsByteIdenticalToTheStoredPipelineBody() throws IOException {
+    // Hybrid ranking now travels with the query as an ad-hoc pipeline, because creating the
+    // stored one needs cluster:admin/search/pipeline/put and a search role confined to a single
+    // index prefix does not have it. Both forms must stay the same document: if they drift,
+    // deployments on the stored pipeline and deployments inlining it silently rank differently.
+    mockOpenSearchResponse("{\"acknowledged\":true}");
+    ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
+        ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
+
+    vectorService.ensureHybridSearchPipeline(0.4, 0.6);
+
+    verify(mockGenericClient).execute(captor.capture());
+    String storedBody =
+        new String(
+            captor.getValue().getBody().get().bodyAsBytes(),
+            java.nio.charset.StandardCharsets.UTF_8);
+    assertEquals(storedBody, OpenSearchVectorService.buildHybridRrfPipelineDefinition(0.4, 0.6));
+  }
+
+  @Test
   void testEnsureHybridSearchPipelineWithCustomWeights() throws IOException {
     mockOpenSearchResponse("{\"acknowledged\":true}");
 

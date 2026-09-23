@@ -32,7 +32,7 @@ const CertificationTag = ({
   const imageItem = useMemo(() => {
     const iconURL = certification.tagLabel.style?.iconURL;
     const name = getEntityName(certification.tagLabel);
-    const defaultIconSize = 14;
+    const defaultIconSize = 16;
 
     return (
       <Icon
@@ -63,7 +63,7 @@ const CertificationTag = ({
         title={getTagTooltip(name, certification.tagLabel.description)}
         trigger="hover">
         <Link
-          className={classNames('d-flex items-center', {
+          className={classNames('d-flex items-center tw:leading-0', {
             'certification-tag-with-name  gap-1': showName,
           })}
           data-testid={`certification-${certification.tagLabel.tagFQN}`}

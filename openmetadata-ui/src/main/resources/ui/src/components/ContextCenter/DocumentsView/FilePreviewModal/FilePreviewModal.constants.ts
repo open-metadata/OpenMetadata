@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,14 +10,5 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PopoverProps } from 'antd';
-import { TagLabel } from '../../../generated/type/tagLabel';
 
-export interface GlossaryTermSelectableListProps {
-  onCancel: () => void;
-  selectedTerms?: TagLabel[];
-  onUpdate: (terms: TagLabel[]) => Promise<void>;
-  children?: React.ReactNode;
-  popoverProps?: Partial<PopoverProps>;
-  multiSelect?: boolean;
-}
+export const MAX_PREVIEW_SIZE = 25 * 1024 * 1024;
