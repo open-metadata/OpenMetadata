@@ -74,6 +74,7 @@ from openmetadata_managed_apis.utils.parser import (
     parse_service_connection,
     parse_validation_err,
 )
+from openmetadata_managed_apis.utils.pipeline_run_id import pipeline_run_id
 
 logger = workflow_logger()
 
@@ -420,6 +421,13 @@ class CustomPythonOperator(PythonOperator):
         workflow's statuses - and the failure callback's, which shares this config - update the
         queued run rather than show up as a separate one. It may also carry a source config
         override that applies to this run alone; see apply_source_config_override.
+
+        For scheduled runs (which carry no `params.pipelineRunId`), derive the run id from
+        `dag_run.run_id` using the same `pipeline_run_id()` helper the response layer uses
+        (`format_dag_run_state` in api/response.py). Without this, the parse-time random UUID
+        from `build_dag` diverges from the deterministic UUIDv5 the status API reports for the
+        same run, and the server tracks two separate runs (one from the response layer, one
+        from the worker's status callback).
         """
         params = context.get("params") or {}
         workflow_config = self.op_kwargs.get("workflow_config")
@@ -427,6 +435,12 @@ class CustomPythonOperator(PythonOperator):
             run_id = params.get(PIPELINE_RUN_ID_PARAM)
             if run_id:
                 workflow_config.pipelineRunId = Uuid(run_id)
+            else:
+                dag_run = context.get("dag_run")
+                if dag_run is not None:
+                    workflow_config.pipelineRunId = Uuid(
+                        pipeline_run_id(dag_run.dag_id, dag_run.run_id)
+                    )
             apply_source_config_override(workflow_config, params.get(SOURCE_CONFIG_OVERRIDE_PARAM))
         return super().execute(context)
 
