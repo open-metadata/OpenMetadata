@@ -45,6 +45,7 @@ import {
   toastNotification,
   uuid,
   visitGlossaryPage,
+  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import {
   addAssetsToDataProduct,
@@ -448,6 +449,18 @@ test.describe('Domains', () => {
   });
 
   test('Rename domain', async ({ page }) => {
+    // Ran 66.7s wall against the 60s default, 17.9s of it in Before Hooks. Its
+    // 30.3s baseline leaves under 2x headroom, and shards run ~1.7x baseline, so
+    // this sits on the edge rather than having regressed -- eight tests in this
+    // file are already slow() for the same reason.
+    //
+    // The trace looks alarming and is not: a 57s "Wait for selector
+    // input[name=\"email\"]" spans most of it. That is the losing branch of the
+    // Promise.any in authenticateAdminPage, left running once the sidebar won,
+    // and it costs nothing. The helper's own comment warns about reading it as a
+    // login stall.
+    test.slow();
+
     const { afterAction, apiContext } = await getApiContext(page);
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
     const domain = new Domain();
@@ -462,8 +475,14 @@ test.describe('Domains', () => {
     await expect(manageButton).toBeVisible();
     await manageButton.click();
 
+    // The manage menu is an Ant dropdown, and pressing an item while it is
+    // still scaling puts mousedown and mouseup in different places, so no
+    // click is synthesised -- the item just takes focus and the dialog that
+    // was supposed to follow never opens. Same failure signature as the
+    // subdomain delete race fixed in DataProductAndSubdomains.spec.ts.
     const renameButton = page.getByTestId('rename-button-title');
     await expect(renameButton).toBeVisible();
+    await waitForAntdPopupToSettle(page);
     await renameButton.click();
 
     const displayNameInput = page.locator('#displayName');

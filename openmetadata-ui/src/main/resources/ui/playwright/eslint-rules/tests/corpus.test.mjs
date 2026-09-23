@@ -44,9 +44,8 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     'om-playwright/no-blanket-test-slow': 1,
     // main's count, less one in entity.ts: replyAnnouncement now targets the
     // announcement banner's title button instead of the first of a list of
-    // items. (The CodeMirror 6 selectors this branch used to also account for
-    // have since landed on main, so they are in main's number already.)
-    'om-playwright/no-positional-locator': 1174,
+    // items.
+    'om-playwright/no-positional-locator': 1172,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 2,
     'playwright/no-wait-for-selector': 25,
