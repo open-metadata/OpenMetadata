@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-
 export type LimitConfig = {
   enable: boolean;
   limits: {
