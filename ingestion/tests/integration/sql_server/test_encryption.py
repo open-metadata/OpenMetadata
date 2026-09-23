@@ -16,12 +16,12 @@ without a CA certificate does not encrypt anything. Only the server can settle
 that, so it is asked - sys.dm_exec_connections.encrypt_option reports whether the
 session carrying the question is encrypted.
 
-mssql+pyodbc is absent by necessity: it needs Microsoft's ODBC driver, which the
-CI runners install no more than a plain dev machine does (the workflows install
-unixodbc-dev, which is the manager, not a driver). What this connector is
-responsible for there - Encrypt=yes and TrustServerCertificate=yes reaching the
-connection arguments - is asserted in tests/unit/test_ssl_manager.py. Honouring
-them once they arrive is the ODBC driver's own contract.
+mssql+pyodbc is the one scheme that can enforce encryption without a CA
+certificate, and it is asserted here too - but only where Microsoft's ODBC driver
+is installed, which the CI runners no more do than a plain dev machine (the
+workflows install unixodbc-dev, the driver manager, not a driver). It skips
+rather than fails there; tests/unit/test_ssl_manager.py covers the part that
+holds without a driver, namely the switches reaching the connection arguments.
 """
 
 import logging
@@ -89,3 +89,29 @@ def test_encrypt_without_a_ca_certificate_is_not_honoured_but_is_announced(mssql
 
     assert encryption == "FALSE"
     assert "NOT be encrypted" in caplog.text
+
+
+def _no_odbc_driver() -> bool:
+    try:
+        import pyodbc
+    except ImportError:
+        return True
+    return not pyodbc.drivers()
+
+
+@pytest.mark.skipif(
+    _no_odbc_driver(),
+    reason="needs Microsoft's ODBC driver, which neither CI nor a plain dev machine installs",
+)
+def test_pyodbc_encrypts_when_asked_to(mssql_container):
+    """The counterpart to the drivers above: ODBC takes both switches natively,
+    so it is the only scheme that can encrypt against a server whose certificate
+    OpenMetadata was given nothing to verify."""
+    encryption = _encryption_reported_by_the_server(
+        mssql_container,
+        MssqlScheme.mssql_pyodbc,
+        encrypt=True,
+        trustServerCertificate=True,
+    )
+
+    assert encryption == "TRUE"
