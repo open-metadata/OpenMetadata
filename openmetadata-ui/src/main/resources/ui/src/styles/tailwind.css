@@ -57,3 +57,32 @@ img {
 a {
   color: var(--tw-color-brand-700);
 }
+
+/* Dark: bare content anchors flip to the link token (blue-300). `:where`
+ * keeps specificity at the base `a` level, so anchors that carry their own
+ * color rule (e.g. the AI sidebar's `.ask-nav-item`) are unaffected — this
+ * only recolors links that would otherwise use the default anchor color. */
+:where(.dark-mode) a {
+  color: var(--om-color-link);
+}
+
+/* Dark: raw brand/blue palette used as TEXT flips to the accent tone (blue-300).
+ * Scoped to the text utility CLASSES — NOT the shared `--tw-color-brand-*`
+ * token — so `bg-`/`border-brand-*` utilities that read the same ramp keep their
+ * solid fill. `:where` keeps base specificity; being unlayered, it still wins
+ * over the layered utility. */
+:where(.dark-mode) .tw\:text-brand-600,
+:where(.dark-mode) .tw\:text-brand-700,
+:where(.dark-mode) .tw\:text-blue-700 {
+  color: var(--om-color-brand-300);
+}
+
+/* Dark: brand-tint surfaces darken so the flipped brand-300 text stays readable
+ * on them. Dark-scoped, so the utility token (which flips to brand-950/900 under
+ * .dark-mode) is safe to reference directly here. */
+:where(.dark-mode) .tw\:bg-brand-50 {
+  background-color: var(--color-utility-brand-50);
+}
+:where(.dark-mode) .tw\:bg-brand-100 {
+  background-color: var(--color-utility-brand-100);
+}
