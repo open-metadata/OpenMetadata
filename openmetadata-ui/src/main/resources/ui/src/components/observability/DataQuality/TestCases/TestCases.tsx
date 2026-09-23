@@ -49,6 +49,7 @@ const TestCases = () => {
     hasActiveFilters,
     clearAll,
     testCase,
+    entityPermissions,
     isLoading,
     pagingData,
     showPagination,
@@ -137,6 +138,7 @@ const TestCases = () => {
           editVariant="modal"
           emptyStateAction={emptyStateAction}
           enableBulkActions={Boolean(testSuitePermission?.Create)}
+          entityPermissions={entityPermissions}
           fetchTestCases={sortTestCase}
           hasActiveFilters={hasActiveFilters}
           isLoading={isLoading}
