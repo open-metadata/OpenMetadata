@@ -12,15 +12,22 @@
  */
 package org.openmetadata.service.cache;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** A map-backed {@link CacheProvider} for tests that need the real cache classes without Redis. */
+/** A bounded in-memory {@link CacheProvider} for tests that need the real cache classes. */
 public class InMemoryCacheProvider implements CacheProvider {
-  private final Map<String, String> values = new ConcurrentHashMap<>();
-  private final Map<String, Map<String, String>> hashes = new ConcurrentHashMap<>();
+  private static final int MAX_KEYS = 1_000;
+
+  private final Map<String, String> values = boundedMap();
+  private final Map<String, Map<String, String>> hashes = boundedMap();
+
+  private static <V> Map<String, V> boundedMap() {
+    return Caffeine.newBuilder().maximumSize(MAX_KEYS).<String, V>build().asMap();
+  }
 
   @Override
   public Optional<String> get(String key) {
