@@ -1463,6 +1463,7 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossary(page, glossaryB.data.displayName);
       const jobIdB = await mockDeleteApiSuccess(page, 'glossaries');
       await initiateDelete(page);
+      await expectGlossaryNotVisible(page, glossaryB.data.displayName);
 
       const refetch = waitForGlossaryListRefetch(page);
       emitDeleteFailure(jobIdB, glossaryB.data.name);
