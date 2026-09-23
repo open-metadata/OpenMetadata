@@ -12,7 +12,12 @@
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, render, RenderOptions, RenderResult } from '@testing-library/react';
+import {
+  act,
+  render,
+  RenderOptions,
+  RenderResult,
+} from '@testing-library/react';
 import { ReactElement, ReactNode } from 'react';
 
 /**

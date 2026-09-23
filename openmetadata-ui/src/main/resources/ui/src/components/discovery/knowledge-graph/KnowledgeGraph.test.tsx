@@ -108,7 +108,9 @@ jest.mock('../../../rest/tableAPI', () => ({
 jest.mock('../../../rest/glossaryAPI', () => ({
   getGlossaryTermsByIds: jest.fn().mockResolvedValue([]),
 }));
-jest.mock('../../../utils/TableUtils', () => ({ getEntityIcon: () => <svg /> }));
+jest.mock('../../../utils/TableUtils', () => ({
+  getEntityIcon: () => <svg />,
+}));
 jest.mock(
   '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component',
   () => () => <div />

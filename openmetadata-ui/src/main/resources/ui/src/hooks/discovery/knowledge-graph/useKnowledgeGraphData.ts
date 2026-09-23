@@ -132,6 +132,10 @@ export const useKnowledgeGraphData = (
   const filteredParams = filtered ? query : unfilteredParams;
   const { unfilteredKey, filteredKey } = buildKeys(query, refresh, filtered);
 
+  // Opt out of the app's default retry policy: a KG traversal is expensive,
+  // and the pre-migration hand-rolled code failed immediately. Two retries
+  // with backoff would delay the error banner by ~3s and re-send the heavy
+  // request three times on a 5xx.
   const unfilteredQuery = useQuery({
     queryKey: unfilteredKey,
     queryFn: async ({ signal }) => {
@@ -140,6 +144,7 @@ export const useKnowledgeGraphData = (
       return { params: unfilteredParams, data };
     },
     enabled,
+    retry: false,
   });
   const filteredQuery = useQuery({
     queryKey: filteredKey,
@@ -149,6 +154,7 @@ export const useKnowledgeGraphData = (
       return { params: filteredParams, data };
     },
     enabled: enabled && filtered,
+    retry: false,
   });
   const dataQuery = filtered ? filteredQuery : unfilteredQuery;
   const retainedData = useRetainedValue(dataQuery.data, query.entityId);

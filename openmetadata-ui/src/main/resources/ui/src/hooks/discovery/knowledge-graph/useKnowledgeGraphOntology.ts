@@ -133,7 +133,13 @@ export const useKnowledgeGraphConceptDetails = (
     });
   }, [refresh, queryClient]);
 
-  const queries = useQueries({
+  // `combine` runs inside the useQueries observer and keeps the returned
+  // `terms` reference stable across renders when no chunk's data has changed
+  // (React Query's structural sharing). Without it the raw
+  // `queries.flatMap((q) => q.data ?? [])` would allocate a new array on every
+  // render, which cascades through the derived useMemo chain in
+  // useKnowledgeGraphExplorer and re-lays out the canvas on every tick.
+  const combined = useQueries({
     queries: chunks.map((chunk) => ({
       queryKey: [...CONCEPT_DETAILS_QUERY_KEY, chunk],
       queryFn: async ({ signal }: { signal: AbortSignal }) =>
@@ -143,7 +149,13 @@ export const useKnowledgeGraphConceptDetails = (
           signal
         ),
       enabled,
+      retry: false,
     })),
+    combine: (results) => ({
+      terms: results.flatMap((result) => result.data ?? []),
+      loading: results.some((result) => result.isFetching),
+      error: results.find((result) => result.error)?.error ?? null,
+    }),
   });
 
   if (!enabled || ids.length === 0) {
@@ -155,9 +167,7 @@ export const useKnowledgeGraphConceptDetails = (
     };
   }
 
-  const loading = queries.some((query) => query.isFetching);
-  const error = queries.find((query) => query.error)?.error ?? null;
-  const terms = queries.flatMap((query) => query.data ?? []);
+  const { terms, loading, error } = combined;
   const partial = !loading && !error && terms.length !== ids.length;
 
   return { terms, loading, partial, error };

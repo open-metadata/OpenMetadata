@@ -84,6 +84,9 @@ export const useKnowledgeGraphColumns = (
       return loaded;
     },
     enabled: queryEnabled,
+    // Opt out of the app's default retry so a failed columns fetch surfaces
+    // the error immediately, matching the pre-migration hand-rolled behaviour.
+    retry: false,
   });
 
   // Retain the last successful pages so the panel doesn't blank while a

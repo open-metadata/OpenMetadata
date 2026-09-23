@@ -47,9 +47,12 @@ it('keeps a bounded first page and loads the remaining columns on demand', async
     paging: { total: columns.length },
   }));
   const { wrapper } = withClient();
-  const { result } = renderHook(() => useKnowledgeGraphColumns('table', true, 0), {
-    wrapper,
-  });
+  const { result } = renderHook(
+    () => useKnowledgeGraphColumns('table', true, 0),
+    {
+      wrapper,
+    }
+  );
   await waitFor(() => expect(result.current.loading).toBe(false));
 
   expect(result.current.columns).toHaveLength(1000);

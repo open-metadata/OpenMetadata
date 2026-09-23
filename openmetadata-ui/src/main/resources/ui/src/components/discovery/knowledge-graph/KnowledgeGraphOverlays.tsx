@@ -54,7 +54,8 @@ import KnowledgeGraphRelationship from './KnowledgeGraphRelationship';
 
 const EntitySummaryPanel = withSuspenseFallback(
   lazy(
-    () => import('../../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
+    () =>
+      import('../../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
   )
 );
 
