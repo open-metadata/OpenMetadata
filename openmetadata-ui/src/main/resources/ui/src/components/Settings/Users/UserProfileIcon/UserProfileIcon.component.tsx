@@ -120,21 +120,20 @@ const renderListSection = ({
 export const UserProfileIcon = () => {
   const { currentUser, selectedPersona, setSelectedPersona } =
     useApplicationStore();
-
   const defaultPersona = currentUser?.defaultPersona;
   const { onLogoutHandler } = useAuthProvider();
+
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
   const { t } = useTranslation();
-
   const profilePicture = getImageWithResolutionAndFallback(
     ImageQuality['6x'],
     currentUser?.profile?.images
   );
-
   const [showAllPersona, setShowAllPersona] = useState<boolean>(false);
 
   const handleOnImageError = useCallback(() => {
     setIsImgUrlValid(false);
+
     return false;
   }, []);
 
@@ -160,11 +159,15 @@ export const UserProfileIcon = () => {
         const directPersonas = currentUser?.personas ?? [];
         const inheritedPersonas = currentUser?.inheritedPersonas ?? [];
         const allPersonas = [...directPersonas, ...inheritedPersonas];
+
         if (currentUser?.defaultPersona) {
           allPersonas.push(currentUser.defaultPersona);
         }
+
+        // Deduplicate by id
         const uniquePersonasMap = new Map();
         allPersonas.forEach((p) => uniquePersonasMap.set(p.id, p));
+
         return Array.from(uniquePersonasMap.values());
       })(),
     };
@@ -221,8 +224,10 @@ export const UserProfileIcon = () => {
     if (!personas?.length) {
       return [];
     }
+
     const defaultId = defaultPersona?.id;
     const selectedId = selectedPersona?.id;
+
     const others: typeof personas = [];
     let defaultMatch: typeof defaultPersona | undefined;
     let selectedMatch: typeof selectedPersona | undefined;
@@ -237,7 +242,9 @@ export const UserProfileIcon = () => {
       }
     }
 
+    // Sort remaining personas alphabetically
     const sortedOthers = orderBy(others, (p) => getEntityName(p), 'asc');
+
     return [
       ...(defaultMatch ? [defaultMatch] : []),
       ...(selectedMatch ? [selectedMatch] : []),
