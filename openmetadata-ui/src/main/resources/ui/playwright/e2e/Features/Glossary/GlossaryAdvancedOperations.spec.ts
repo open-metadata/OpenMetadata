@@ -1178,7 +1178,6 @@ test.describe('Glossary Advanced Operations', () => {
         page.getByTestId('classification-tag-picker-search')
       ).toBeVisible();
 
-      // Search for the tag and uncheck it
       const searchRemove = page.waitForResponse(
         `/api/v1/search/query?q=*${encodeURIComponent('Sensitive')}*`
       );
