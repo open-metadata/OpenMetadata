@@ -3402,9 +3402,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             { exact: true }
           );
           await customPropertyOption.click();
-          await expect(
-            page.locator('.ant-dropdown:visible')
-          ).toBeHidden();
+          await expect(page.locator('.ant-dropdown:visible')).toBeHidden();
 
           const fieldPanel = page.getByTestId(
             `field-configuration-panel-extension.${dashboardSearchPropertyName}`
@@ -3553,9 +3551,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             { exact: true }
           );
           await customPropertyOption.click();
-          await expect(
-            page.locator('.ant-dropdown:visible')
-          ).toBeHidden();
+          await expect(page.locator('.ant-dropdown:visible')).toBeHidden();
 
           const fieldPanel = page.getByTestId(
             `field-configuration-panel-extension.${pipelineSearchPropertyName}`
