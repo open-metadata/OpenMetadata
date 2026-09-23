@@ -103,6 +103,13 @@ class TestLargeObjectTypes:
         assert _column(table, "c_vchar").dataType == DataType.VARCHAR
 
 
+class TestIntervalType:
+    def test_interval_is_not_catalogued_as_char(self, ingested_tables):
+        column = _column(ingested_tables("driver_types"), "d_span")
+        assert column.dataType == DataType.INTERVAL
+        assert column.dataTypeDisplay == "interval hour to minute"
+
+
 class TestDeclaredWidths:
     @pytest.mark.parametrize(("column_name", "expected_length"), DECLARED_WIDTHS.items())
     def test_declared_width_reaches_the_catalogue(self, ingested_tables, column_name, expected_length):

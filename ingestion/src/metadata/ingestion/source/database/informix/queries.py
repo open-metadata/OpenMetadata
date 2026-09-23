@@ -100,7 +100,7 @@ JOIN syscolumns c ON c.tabid = t.tabid
 LEFT JOIN sysxtdtypes x ON x.extended_id = c.extended_id
 WHERE t.owner = :owner
   AND t.tabtype IN ('T', 'V')
-  AND MOD(c.coltype, 256) IN (0, 11, 12, 13, 15, 16, 40, 41)
+  AND MOD(c.coltype, 256) IN (0, 11, 12, 13, 14, 15, 16, 40, 41)
 """
 
 # Informix reserves tabid below 100 for its own catalogue. The JDBC driver's

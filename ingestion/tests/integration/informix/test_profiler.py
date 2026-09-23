@@ -199,3 +199,36 @@ class TestProfilerHandlesInapplicableMetrics:
 
     def test_the_table_still_profiles_around_it(self, opaque_profiled_table):
         assert _profile_of(opaque_profiled_table, "id") is not None
+
+    def test_an_interval_column_is_profiled(self, opaque_profiled_table):
+        """Catalogued as CHAR, it was sent LENGTH(), which is ambiguous on an INTERVAL."""
+        assert _profile_of(opaque_profiled_table, "d_span").valuesCount == 1
+
+
+@pytest.fixture(scope="module")
+def view_profiled_table(
+    patch_passwords_for_db_services,
+    run_workflow,
+    ingestion_config,
+    profiler_config,
+    metadata,
+    db_service,
+) -> Table:
+    search_cache.clear()
+    config = deepcopy(profiler_config)
+    config["source"]["sourceConfig"]["config"]["includeViews"] = True
+    run_workflow(MetadataWorkflow, ingestion_config)
+    run_workflow(ProfilerWorkflow, config)
+
+    fqn = f"{db_service.fullyQualifiedName.root}.itest.informix.lob_expr_view"
+    table = metadata.get_latest_table_profile(fqn)
+    assert table is not None, f"no profile written for {fqn}"
+    return table
+
+
+class TestMedianOverAViewExpression:
+    """Ordering a window by LENGTH() of a view's expression column is error 768."""
+
+    def test_median_is_computed(self, view_profiled_table):
+        # 'alpha!' and 'beta!'
+        assert _profile_of(view_profiled_table, "label").median == 5.5

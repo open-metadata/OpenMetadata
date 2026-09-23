@@ -32,6 +32,7 @@ from metadata.ingestion.source.database.informix.dialect import InformixDialect
 from metadata.ingestion.source.database.informix.metadata import (
     MAX_CACHED_SCHEMAS,
     InformixSource,
+    interval_display,
 )
 from metadata.ingestion.source.database.informix.queries import (
     INFORMIX_DRIVER_CONVERTIBLE_EXTENDED_TYPES,
@@ -362,6 +363,21 @@ def build_interface(om_columns):
         columns=[Column(name=ColumnName(root=name), dataType=data_type) for name, data_type in om_columns],
     )
     return interface
+
+
+class TestIntervalDisplay:
+    # syscolumns.collength as Informix stores it for each declaration.
+    @pytest.mark.parametrize(
+        ("collength", "expected"),
+        [
+            (1128, "INTERVAL HOUR TO MINUTE"),
+            (1538, "INTERVAL YEAR TO MONTH"),
+            (2378, "INTERVAL DAY TO SECOND"),
+            (1933, "INTERVAL MINUTE TO FRACTION(3)"),
+        ],
+    )
+    def test_qualifier_is_decoded(self, collength, expected):
+        assert interval_display(collength) == expected
 
 
 class TestProfilerInterface:

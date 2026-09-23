@@ -123,3 +123,8 @@ class TestSamplerSkipsUnconvertibleTypes:
         rows = metadata.get_sample_data(sampled_table).sampleData.rows
         values = [row[sample_columns.index("d_tagged")] for row in rows]
         assert values == ["recovered"], values
+
+    def test_an_interval_arrives_as_its_text(self, sampled_table, sample_columns, metadata):
+        """SQLAlchemy's emulated Interval would subtract an epoch from this string."""
+        rows = metadata.get_sample_data(sampled_table).sampleData.rows
+        assert rows[0][sample_columns.index("d_span")].strip() == "1:30"

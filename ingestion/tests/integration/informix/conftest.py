@@ -90,6 +90,10 @@ ANSI_DATABASE = "itest_ansi"
 # d_date is unrelated to the driver: no standard deviation applies to a date, so
 # the profiler asks for that metric as a bare NULL in the SELECT list, which
 # Informix rejects outright.
+#
+# d_span: the driver reports INTERVAL as CHAR, and LENGTH() on it is ambiguous.
+# lob_expr_view: a window ordered by an expression over an expression column of a
+# view is an internal error (768), which is what the median metric used to send.
 SEED_SQL = """
 CREATE TABLE lob_types (
     id        INTEGER PRIMARY KEY,
@@ -111,6 +115,7 @@ CREATE TABLE lob_children (
     parent_id  INTEGER REFERENCES lob_types(id)
 );
 CREATE VIEW lob_view AS SELECT id, c_char, c_vchar FROM lob_types;
+CREATE VIEW lob_expr_view (id, label) AS SELECT id, TRIM(c_vchar) || '!' FROM lob_types;
 CREATE PROCEDURE add_two(a INT, b INT) RETURNING INT;
   RETURN a + b;
 END PROCEDURE;
@@ -146,11 +151,13 @@ CREATE TABLE driver_types (
     d_row      row_probe,
     d_set      SET(INTEGER NOT NULL),
     d_plain    VARCHAR(20),
-    d_date     DATE
+    d_date     DATE,
+    d_span     INTERVAL HOUR TO MINUTE
 );
-INSERT INTO driver_types (id, d_distinct, d_row, d_set, d_plain, d_date)
+INSERT INTO driver_types (id, d_distinct, d_row, d_set, d_plain, d_date, d_span)
     VALUES (1, CAST(CAST('tagged' AS LVARCHAR) AS distinct_probe),
-            ROW('Main St', 'Brussels')::row_probe, SET{1,2}, 'ok', MDY(1,31,2026));
+            ROW('Main St', 'Brussels')::row_probe, SET{1,2}, 'ok', MDY(1,31,2026),
+            INTERVAL(1:30) HOUR TO MINUTE);
 """
 
 

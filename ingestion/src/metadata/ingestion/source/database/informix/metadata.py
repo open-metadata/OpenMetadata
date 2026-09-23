@@ -40,7 +40,7 @@ from collections import OrderedDict
 from collections.abc import Iterable
 from typing import NamedTuple
 
-from sqlalchemy import BLOB, CLOB, TEXT, LargeBinary, text
+from sqlalchemy import BLOB, CLOB, TEXT, Interval, LargeBinary, text
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -79,6 +79,7 @@ COLTYPE_CHAR = 0
 COLTYPE_BYTE = 11
 COLTYPE_TEXT = 12
 COLTYPE_VARCHAR = 13
+COLTYPE_INTERVAL = 14
 COLTYPE_NCHAR = 15
 COLTYPE_NVARCHAR = 16
 COLTYPE_LVARCHAR = 40
@@ -102,6 +103,18 @@ LOB_TYPES_BY_SUBTYPE = {
     "clob": (CLOB, "CLOB"),
     "blob": (BLOB, "BLOB"),
 }
+
+# collength packs an INTERVAL's qualifier into its low byte, one nibble per end.
+INTERVAL_UNITS = {0: "YEAR", 2: "MONTH", 4: "DAY", 6: "HOUR", 8: "MINUTE", 10: "SECOND"}
+
+
+def interval_display(collength: int) -> str:
+    """Name an INTERVAL column's type the way its DDL did, e.g. INTERVAL HOUR TO MINUTE."""
+
+    def unit(code: int) -> str:
+        return INTERVAL_UNITS.get(code) or f"FRACTION({code - 10})"
+
+    return f"INTERVAL {unit(collength // 16 % 16)} TO {unit(collength % 16)}"
 
 
 class InformixStoredProcedure(NamedTuple):
@@ -238,6 +251,10 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
                 # 41 is also BOOLEAN and every other opaque type; only the named
                 # smart large objects belong here.
                 mapped = LOB_TYPES_BY_SUBTYPE.get((xtype or "").lower())
+            if mapped is None and basetype == COLTYPE_INTERVAL:
+                # The driver reports INTERVAL as CHAR, and LENGTH() -- which the
+                # profiler then sends -- is ambiguous on an INTERVAL.
+                mapped = (Interval, interval_display(collength))
             sqa_type, display = mapped if mapped else (None, None)
             length = None if mapped else self._declared_length(basetype, collength)
             if sqa_type is not None or length is not None:
@@ -313,7 +330,7 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
         inspector,
         table_type=None,
     ):
-        """Restore what the JDBC driver drops: large-object types, and string widths.
+        """Restore what the JDBC driver drops: large-object and INTERVAL types, and string widths.
 
         Informix reports BYTE, TEXT, CLOB and BLOB all as VARCHAR(2147483647), so
         a column of scanned documents is otherwise catalogued as ordinary text and
@@ -333,7 +350,7 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
             if override.sqa_type is not None:
                 column["type"] = override.sqa_type()
                 column["system_data_type"] = override.display_name
-                logger.debug(f"{table_name}.{column['name']} reported as VARCHAR, corrected to {override.display_name}")
+                logger.debug(f"{table_name}.{column['name']} corrected to {override.display_name}")
             elif override.length is not None:
                 # Mutated rather than rebuilt so the reflected type keeps whatever
                 # else it carries (collation, charset).

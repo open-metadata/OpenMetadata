@@ -28,7 +28,9 @@ layout -- on 14.10 the same table carries tblspace flags 902 against 15.0.1's
 ones. See the note on the pin below for why the failure is easy to miss.
 """
 
-from sqlalchemy import text
+from typing import ClassVar
+
+from sqlalchemy import Interval, text
 from sqlalchemy.dialects import registry
 from sqlalchemy.engine.default import DefaultDialect
 from sqlalchemy.engine.url import URL
@@ -165,6 +167,20 @@ class InformixSQLCompiler(SQLCompiler):
         return ""
 
 
+class InformixInterval(Interval):
+    """INTERVAL as the text Informix returns, e.g. '12 03:04:05'.
+
+    SQLAlchemy emulates INTERVAL as an offset from 1970 and would subtract that
+    epoch from the string; YEAR TO MONTH has no timedelta equivalent anyway.
+    """
+
+    def bind_processor(self, dialect):
+        return None
+
+    def result_processor(self, dialect, coltype):
+        return None
+
+
 class InformixDialect(GBase8sDialect, DefaultDialect):
     """IBM Informix dialect.
 
@@ -182,6 +198,7 @@ class InformixDialect(GBase8sDialect, DefaultDialect):
     driver = "jdbcapi"
     supports_statement_cache = True
     statement_compiler = InformixSQLCompiler
+    colspecs: ClassVar[dict] = {**DefaultDialect.colspecs, Interval: InformixInterval}
 
     @classmethod
     def import_dbapi(cls) -> type:
