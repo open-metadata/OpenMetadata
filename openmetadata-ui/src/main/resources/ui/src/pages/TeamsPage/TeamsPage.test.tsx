@@ -12,6 +12,7 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
+import TeamDetailsV1 from '../../components/Settings/Team/TeamDetails/TeamDetailsV1';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TeamType } from '../../generated/entity/teams/team';
@@ -213,6 +214,35 @@ describe('Test Teams Page', () => {
         include: 'all',
       },
     ]);
+  });
+
+  it('should keep the team users when the basic-details response is slower than the advanced one', async () => {
+    setMockPermissions({ ViewBasic: true });
+    const users = [{ id: 'user-id', type: 'user' }];
+    let resolveBasic: (team: unknown) => void = jest.fn();
+    (getTeamByName as jest.Mock).mockImplementation(
+      (_name: string, { fields }: { fields: string[] }) =>
+        fields.includes('users')
+          ? Promise.resolve({ ...MOCK_CURRENT_TEAM, users })
+          : new Promise((resolve) => {
+              resolveBasic = resolve;
+            })
+    );
+
+    await act(async () => {
+      render(<TeamsPage />);
+    });
+    await act(async () => {
+      resolveBasic({ ...MOCK_CURRENT_TEAM, users: undefined });
+    });
+
+    const lastProps = (TeamDetailsV1 as jest.Mock).mock.calls.at(-1)[0];
+
+    expect(lastProps.currentTeam.users).toEqual(users);
+
+    (getTeamByName as jest.Mock).mockImplementation(() =>
+      Promise.resolve(MOCK_CURRENT_TEAM)
+    );
   });
 
   it('should render component data', async () => {
