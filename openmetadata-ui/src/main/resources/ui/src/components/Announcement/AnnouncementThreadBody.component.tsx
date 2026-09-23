@@ -182,7 +182,10 @@ const AnnouncementThreadBody = ({
               </Typography>
             </Dialog.Content>
             <Dialog.Footer>
-              <Button color="secondary" data-testid="cancel" onClick={onDiscard}>
+              <Button
+                color="secondary"
+                data-testid="cancel"
+                onClick={onDiscard}>
                 {t('label.cancel')}
               </Button>
               <Button
