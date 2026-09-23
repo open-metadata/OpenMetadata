@@ -1133,6 +1133,33 @@ describe('AuthCoordinator', () => {
       expect(renewer).not.toHaveBeenCalled();
     });
 
+    // Fast-path JWT sanity: extractDetailsFromToken's decode-throw
+    // branch returns `{ exp: 0, isExpired: true }`. Previously the
+    // fast-path handed the corrupt/torn stored token back as a bearer
+    // (opaque bot tokens have the same `exp <= 0` shape). Now the
+    // isExpired signal distinguishes them: opaque → return, corrupt
+    // → refresh.
+    it('does NOT hand back a corrupt / undecodable stored token — falls through to a refresh', async () => {
+      const renewer = jest.fn(async () => ({
+        expiresAt: Date.now() + 300_000,
+        idToken: 'renewer-fresh',
+      }));
+      coordinator.registerRenewer(renewer);
+      mockedGetOidcToken.mockResolvedValueOnce('torn-jwt');
+      // Exact shape extractDetailsFromToken returns on jwt-decode
+      // throw (see AuthProvider.util:495-499).
+      mockedExtractDetailsFromToken.mockReturnValueOnce({
+        exp: 0,
+        isExpired: true,
+        timeoutExpiry: 0,
+      });
+
+      const token = await coordinator.ensureFreshToken();
+
+      expect(token).toBe('renewer-fresh');
+      expect(renewer).toHaveBeenCalledTimes(1);
+    });
+
     it('falls through to the full refresh when the storage read itself throws', async () => {
       const renewer = jest.fn(async () => ({
         expiresAt: Date.now() + 300_000,

@@ -437,11 +437,23 @@ export class AuthCoordinator {
       if (this.inflight || !stored) {
         return null;
       }
-      const { exp } = extractDetailsFromToken(stored);
-      if (typeof exp !== 'number' || exp <= 0) {
+      const details = extractDetailsFromToken(stored);
+      // Opaque bot token: no `exp` claim, extractDetailsFromToken
+      // returns `{ exp: undefined, isExpired: false }`. The fast-path
+      // honours it — this is intentional, opaque tokens have no
+      // expiry to check against and are the calling contract for
+      // service-account style credentials. Anything ELSE with an
+      // absent/non-positive exp comes from
+      // extractDetailsFromToken's catch branch (jwt-decode threw),
+      // which sets `isExpired: true` on `{ exp: 0 }` — a corrupt or
+      // torn JWT that must NOT be handed back as a bearer.
+      if (details.exp === undefined && !details.isExpired) {
         return stored;
       }
-      const msRemaining = exp * 1000 - Date.now();
+      if (typeof details.exp !== 'number' || details.exp <= 0) {
+        return null;
+      }
+      const msRemaining = details.exp * 1000 - Date.now();
       if (msRemaining > EXPIRY_THRESHOLD_MILLES) {
         return stored;
       }
