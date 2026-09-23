@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { ResourceEntity } from '../../enums/permissions.enum';
-
 import { ReactNode } from 'react';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 
 export type UIPermission = {
@@ -46,3 +45,8 @@ export interface PermissionContextType {
     resource: ResourceEntity
   ) => Promise<OperationPermission>;
 }
+
+// The enum now lives in enums/permissions.enum so the REST layer can use it
+// without importing this context module. Re-exported here because consumers
+// outside this repository import it from this path.
+export { ResourceEntity };
