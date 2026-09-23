@@ -51,7 +51,7 @@ export const clickOnLogo = async (page: Page) => {
 export const sidebarClick = async (page: Page, id: string) => {
   const url = SIDEBAR_ITEM_URL[id];
   if (url) {
-    await page.goto(url);
+    await page.goto(url, { waitUntil: 'commit' });
     await waitForAllLoadersToDisappear(page);
   }
 };
