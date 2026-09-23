@@ -100,7 +100,14 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
     const searchInput = page.getByTestId('metric-search').getByRole('textbox');
     await expect(searchInput).toBeVisible();
 
-    await expect(page.getByTestId('metric-name').first()).toBeVisible();
+    // Establish baseline: both fixtures must be visible before searching so
+    // the post-search not.toBeVisible() is a real state transition, not vacuous.
+    await expect(
+      page.getByTestId('metric-name').filter({ hasText: matchName })
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('metric-name').filter({ hasText: otherName })
+    ).toBeVisible();
 
     await test.step('search fires a scoped metric query and narrows the results', async () => {
       // The debounced search must actually reach the API. Regression #29538
