@@ -432,12 +432,17 @@ test.describe('Data Contracts', () => {
             NEW_TABLE_TEST_CASE.value
           );
 
-          await page.getByTestId('tags-input').click();
-          const tagSearch = page
-            .getByTestId('drop-down-menu')
-            .getByTestId('search-input');
-          await tagSearch.waitFor({ state: 'visible' });
-          await tagSearch.fill(testTag.data.name);
+          await expect
+            .poll(
+              async () => {
+                await page.getByTestId('tags-input').click();
+
+                return page.getByTestId('search-input').isVisible();
+              },
+              { timeout: 10_000 }
+            )
+            .toBe(true);
+          await page.getByTestId('search-input').fill(testTag.data.name);
           await page
             .getByTestId('drop-down-menu')
             .getByTestId(testTag.responseData.fullyQualifiedName ?? '')
