@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FC } from 'react';
+import { FC, ReactNode } from 'react';
 import {
   IncidentGroupBy,
   IncidentStatusCount,
@@ -66,4 +66,25 @@ export interface IncidentTrendSparklineProps {
   trendDirection?: IncidentTrendDirection;
   /** Grades a rising trend; a falling or steady one colours the same either way. */
   severity?: Severities;
+}
+
+/** Hue a trend reads in, picked from its direction and the group's severity. */
+export type IncidentTrendTone = 'error' | 'warning' | 'success' | 'neutral';
+
+/** Assignees to draw for a group, and how many more it has. */
+export interface IncidentGroupAssignees {
+  visible: string[];
+  overflowCount: number;
+}
+
+/** A cell that stacks a value over a smaller caption, e.g. a name over its FQN. */
+export interface StackedCellProps {
+  value: ReactNode;
+  caption?: ReactNode;
+  valueTestId: string;
+  captionTestId?: string;
+}
+
+export interface IncidentGroupCellProps {
+  group: TestCaseIncidentGroup;
 }

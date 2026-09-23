@@ -15,74 +15,18 @@ import { Box, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import {
-  IncidentTrendDirection,
-  Severities,
-  TestCaseIncidentGroup,
-} from '../../../../generated/tests/testCaseIncidentGroup';
-import {
   INCIDENT_TREND_COLORS,
   INCIDENT_TREND_DIRECTION_LABELS,
+  INCIDENT_TREND_TEXT_CLASSES,
   SPARKLINE_HEIGHT,
   SPARKLINE_INSET,
   SPARKLINE_WIDTH,
 } from './IncidentGroups.constants';
 import { IncidentTrendSparklineProps } from './IncidentGroups.types';
-
-/**
- * A group counts as recurring when its incidents keep coming back faster than
- * they did: the server compares the second half of the trend buckets against
- * the first and reports `Rising`. It lives with the sparkline because both read
- * the same field, and the header's `recurring` chip must agree with the arrow
- * the user sees on the row.
- */
-export const isRecurring = (group: TestCaseIncidentGroup): boolean =>
-  group.trendDirection === IncidentTrendDirection.Rising;
-
-/**
- * Colour of the trend line. Falling incident creation is good news and steady
- * is neither, so only a rising trend is graded — by the severity the group
- * carries, since a rising `Severity1` group is the one to look at first.
- */
-export const getIncidentTrendColor = (
-  trendDirection?: IncidentTrendDirection,
-  severity?: Severities
-): string => {
-  if (trendDirection === IncidentTrendDirection.Rising) {
-    return severity === Severities.Severity1
-      ? INCIDENT_TREND_COLORS.error
-      : INCIDENT_TREND_COLORS.warning;
-  }
-
-  return trendDirection === IncidentTrendDirection.Falling
-    ? INCIDENT_TREND_COLORS.success
-    : INCIDENT_TREND_COLORS.neutral;
-};
-
-/**
- * Bucket counts to `x,y` pairs for an SVG polyline. Buckets are equally spaced
- * across the width and scaled against the tallest bucket, so the line shows the
- * shape of the group's incident creation rather than its absolute volume — a
- * group with 40 incidents and one with 4 are equally readable. An all-zero
- * trend has no shape to scale, so it draws flat through the middle.
- */
-export const getIncidentTrendPoints = (trend: number[]): string => {
-  const usableWidth = SPARKLINE_WIDTH - SPARKLINE_INSET * 2;
-  const usableHeight = SPARKLINE_HEIGHT - SPARKLINE_INSET * 2;
-  const peak = Math.max(...trend);
-  const stepX = trend.length > 1 ? usableWidth / (trend.length - 1) : 0;
-
-  return trend
-    .map((count, index) => {
-      const x = SPARKLINE_INSET + index * stepX;
-      const y =
-        peak === 0
-          ? SPARKLINE_INSET + usableHeight / 2
-          : SPARKLINE_INSET + (1 - count / peak) * usableHeight;
-
-      return `${x},${y}`;
-    })
-    .join(' ');
-};
+import {
+  getIncidentTrendPoints,
+  getIncidentTrendTone,
+} from './IncidentGroups.utils';
 
 /**
  * Read-only trend line for one incident group: the bucket counts the server
@@ -102,7 +46,7 @@ const IncidentTrendSparkline = ({
     return null;
   }
 
-  const color = getIncidentTrendColor(trendDirection, severity);
+  const tone = getIncidentTrendTone(trendDirection, severity);
   const directionLabel = trendDirection
     ? t(INCIDENT_TREND_DIRECTION_LABELS[trendDirection])
     : '';
@@ -119,7 +63,8 @@ const IncidentTrendSparkline = ({
         <polyline
           data-testid="incident-trend-line"
           points={getIncidentTrendPoints(trend)}
-          stroke={color}
+          // An SVG stroke takes no class, so the tone arrives as its token.
+          stroke={INCIDENT_TREND_COLORS[tone]}
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeWidth={1.5}
@@ -128,9 +73,9 @@ const IncidentTrendSparkline = ({
       {directionLabel && (
         <Typography
           as="span"
+          className={INCIDENT_TREND_TEXT_CLASSES[tone]}
           data-testid="incident-trend-direction"
           size="text-xs"
-          style={{ color }}
           weight="semibold">
           {directionLabel}
         </Typography>

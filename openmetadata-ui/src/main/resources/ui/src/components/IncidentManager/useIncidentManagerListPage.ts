@@ -26,11 +26,14 @@ import { useIncidentRowPermissions } from './useIncidentRowPermissions';
 export interface UseIncidentManagerListPageProps {
   isIncidentPage?: boolean;
   tableDetails?: Table;
+  /** Fired after a row mutation went through — see {@link useIncidentActions}. */
+  onIncidentChange?: () => void;
 }
 
 export const useIncidentManagerListPage = ({
   isIncidentPage = true,
   tableDetails,
+  onIncidentChange,
 }: UseIncidentManagerListPageProps) => {
   const location = useCustomLocation();
   const allParams = useMemo(() => {
@@ -123,7 +126,7 @@ export const useIncidentManagerListPage = ({
   });
 
   const { handleSeveritySubmit, handleAssigneeUpdate, handleStatusSubmit } =
-    useIncidentActions({ setTestCaseListData });
+    useIncidentActions({ setTestCaseListData, onIncidentChange });
 
   return {
     isIncidentPage,

@@ -41,8 +41,9 @@ import { parseIncidentGroupBy } from './IncidentGroups.utils';
  * can pass them straight back as `offset`.
  *
  * `refreshKey` is the caller's way of saying the groups it is showing are out
- * of date — a new value refires the fetch once, which is how a status changed
- * elsewhere on the page reaches these rows without a reload.
+ * of date — a new value refires the fetch once, which is how an incident
+ * changed elsewhere on the page reaches these rows without a reload. That
+ * re-read runs in the background: the rows stay put until the new ones land.
  */
 export const useIncidentGroups = ({
   refreshKey,
@@ -79,11 +80,22 @@ export const useIncidentGroups = ({
   const [isError, setIsError] = useState(false);
   // Guards against a slow response for a dimension the user already left.
   const latestRequest = useRef(0);
+  // The key the rows on screen were last fetched for, so a fetch can tell a
+  // refresh of what is already displayed from a load of something new.
+  const fetchedRefreshKey = useRef(refreshKey);
 
   const fetchIncidentGroups = useCallback(async () => {
     const requestId = latestRequest.current + 1;
     latestRequest.current = requestId;
-    setIsLoading(true);
+    // A new key means the caller is only saying the rows are stale, so they
+    // stay on screen while they are re-read: no loader swapped in for the table
+    // the user is reading, and no wipe if the re-read fails.
+    const isBackground = fetchedRefreshKey.current !== refreshKey;
+    fetchedRefreshKey.current = refreshKey;
+
+    if (!isBackground) {
+      setIsLoading(true);
+    }
     setIsError(false);
 
     try {
@@ -104,9 +116,11 @@ export const useIncidentGroups = ({
         return;
       }
 
-      setIncidentGroups([]);
-      setPaging(undefined);
-      setIsError(true);
+      if (!isBackground) {
+        setIncidentGroups([]);
+        setPaging(undefined);
+        setIsError(true);
+      }
       showErrorToast(
         error as AxiosError,
         t('server.entity-fetch-error', { entity: t('label.incident-plural') })
@@ -116,7 +130,7 @@ export const useIncidentGroups = ({
         setIsLoading(false);
       }
     }
-  }, [groupBy, sortType, t]);
+  }, [groupBy, sortType, refreshKey, t]);
 
   useEffect(() => {
     fetchIncidentGroups();
@@ -127,20 +141,6 @@ export const useIncidentGroups = ({
       latestRequest.current += 1;
     };
   }, [fetchIncidentGroups]);
-
-  // Compared against the last value seen rather than watched on its own, so the
-  // refetch happens for a new key alone — the effect also reruns whenever the
-  // fetch is rebuilt, which the effect above already covers.
-  const lastRefreshKey = useRef(refreshKey);
-
-  useEffect(() => {
-    if (refreshKey === lastRefreshKey.current) {
-      return;
-    }
-
-    lastRefreshKey.current = refreshKey;
-    fetchIncidentGroups();
-  }, [refreshKey, fetchIncidentGroups]);
 
   const handleGroupByChange = useCallback(
     (updatedGroupBy: IncidentGroupBy) => {
@@ -161,11 +161,6 @@ export const useIncidentGroups = ({
     [groupBy, navigate, searchParams]
   );
 
-  const handleSortTypeChange = useCallback(
-    (updatedSortType: IncidentSortType) => setSortType(updatedSortType),
-    []
-  );
-
   return {
     groupBy,
     incidentGroups,
@@ -174,7 +169,6 @@ export const useIncidentGroups = ({
     isLoading,
     isError,
     handleGroupByChange,
-    handleSortTypeChange,
-    refreshIncidentGroups: fetchIncidentGroups,
+    handleSortTypeChange: setSortType,
   };
 };

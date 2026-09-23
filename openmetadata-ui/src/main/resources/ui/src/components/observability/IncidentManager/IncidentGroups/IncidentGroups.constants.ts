@@ -21,7 +21,10 @@ import {
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseIncidentGroup';
 import { IncidentSortType } from '../../../../rest/incidentManagerAPI';
-import { IncidentGroupByOption } from './IncidentGroups.types';
+import {
+  IncidentGroupByOption,
+  IncidentTrendTone,
+} from './IncidentGroups.types';
 
 /**
  * Query string param holding the selected grouping dimension. It shares its
@@ -71,34 +74,30 @@ export const INCIDENT_GROUP_MAX_AVATARS = 3;
 export const INCIDENT_GROUP_SEPARATOR = ' · ';
 
 /**
- * Statuses of the breakdown bar, most actionable first — the order the server
- * reports them in and the one the design draws them in. `Resolved` is not among
- * them: a resolved incident has left the group.
- */
-export const INCIDENT_GROUP_STATUS_ORDER: TestCaseResolutionStatusTypes[] = [
-  TestCaseResolutionStatusTypes.Assigned,
-  TestCaseResolutionStatusTypes.ACK,
-  TestCaseResolutionStatusTypes.New,
-];
-
-/**
  * Fill of each status' slice. A status chip names itself, so it can carry its
  * hue in the 700 shade over a light fill; a slice is colour alone, and at 700
  * assigned reads brown and ack reads navy rather than as the amber and the blue
  * those statuses are known by. Same hue per status as the chip, at the mid
- * shade the design bars them in.
+ * shade the design bars them in — as utility classes rather than palette vars,
+ * so the bar follows the theme into dark mode.
+ *
+ * Partial: `Resolved` has no slice, as a resolved incident has left the group.
  */
-export const INCIDENT_GROUP_STATUS_COLORS: Record<string, string> = {
-  [TestCaseResolutionStatusTypes.Assigned]: 'var(--om-color-warning-500)',
-  [TestCaseResolutionStatusTypes.ACK]: 'var(--om-color-blue-light-500)',
-  [TestCaseResolutionStatusTypes.New]: 'var(--om-color-purple-500)',
+export const INCIDENT_GROUP_STATUS_BAR_CLASS: Partial<
+  Record<TestCaseResolutionStatusTypes, string>
+> = {
+  [TestCaseResolutionStatusTypes.Assigned]: 'tw:bg-utility-warning-500',
+  [TestCaseResolutionStatusTypes.ACK]: 'tw:bg-utility-blue-light-500',
+  [TestCaseResolutionStatusTypes.New]: 'tw:bg-utility-purple-500',
 };
 
 /**
  * Wording of the count line under the bar, which reads as a sentence fragment
  * (`3 assigned · 1 ack`) rather than as the title-case chips elsewhere.
  */
-export const INCIDENT_GROUP_STATUS_LABELS: Record<string, string> = {
+export const INCIDENT_GROUP_STATUS_LABELS: Partial<
+  Record<TestCaseResolutionStatusTypes, string>
+> = {
   [TestCaseResolutionStatusTypes.Assigned]: 'label.assigned-lowercase',
   [TestCaseResolutionStatusTypes.ACK]: 'label.ack-lowercase',
   [TestCaseResolutionStatusTypes.New]: 'label.new-lowercase',
@@ -113,14 +112,22 @@ export const SPARKLINE_HEIGHT = 24;
 export const SPARKLINE_INSET = 2;
 
 /**
- * Trend line colours. Tokens rather than raw palette values so the line follows
- * the active theme.
+ * Trend line colours, as CSS vars because an SVG `stroke` cannot take a class.
+ * Tokens rather than raw palette values so the line follows the active theme.
  */
-export const INCIDENT_TREND_COLORS = {
+export const INCIDENT_TREND_COLORS: Record<IncidentTrendTone, string> = {
   error: 'var(--om-color-utility-error-700)',
   warning: 'var(--om-color-utility-orange-700)',
   success: 'var(--om-color-utility-success-700)',
   neutral: 'var(--om-color-utility-gray-700)',
+};
+
+/** The same tones for the direction label, which can take a class. */
+export const INCIDENT_TREND_TEXT_CLASSES: Record<IncidentTrendTone, string> = {
+  error: 'tw:text-utility-error-700',
+  warning: 'tw:text-utility-orange-700',
+  success: 'tw:text-utility-success-700',
+  neutral: 'tw:text-utility-gray-700',
 };
 
 export const INCIDENT_TREND_DIRECTION_LABELS: Record<

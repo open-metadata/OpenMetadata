@@ -12,12 +12,13 @@
  */
 
 import { Box, Typography } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import {
   INCIDENT_GROUP_SEPARATOR,
-  INCIDENT_GROUP_STATUS_COLORS,
+  INCIDENT_GROUP_STATUS_BAR_CLASS,
   INCIDENT_GROUP_STATUS_LABELS,
 } from './IncidentGroups.constants';
 import { IncidentStatusBreakdownProps } from './IncidentGroups.types';
@@ -50,13 +51,13 @@ const IncidentStatusBreakdown = ({
       <Box aria-hidden className="tw:h-1.5 tw:gap-0.5">
         {segments.map(({ status, share }) => (
           <span
-            className="tw:rounded-full"
+            className={classNames(
+              'tw:rounded-full',
+              INCIDENT_GROUP_STATUS_BAR_CLASS[status]
+            )}
             data-testid={`group-status-segment-${status}`}
             key={status}
-            style={{
-              width: `${share}%`,
-              backgroundColor: INCIDENT_GROUP_STATUS_COLORS[status],
-            }}
+            style={{ width: `${share}%` }}
           />
         ))}
       </Box>

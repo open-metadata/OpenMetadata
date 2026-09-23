@@ -13,8 +13,11 @@
 
 import { render, screen } from '@testing-library/react';
 import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseIncidentGroup';
-import { INCIDENT_GROUP_STATUS_COLORS } from './IncidentGroups.constants';
+import { INCIDENT_GROUP_STATUS_BAR_CLASS } from './IncidentGroups.constants';
 import IncidentStatusBreakdown from './IncidentStatusBreakdown';
+
+const barClass = (status: TestCaseResolutionStatusTypes) =>
+  INCIDENT_GROUP_STATUS_BAR_CLASS[status] ?? '';
 
 describe('IncidentStatusBreakdown', () => {
   it('should give each status a slice sized against the group', () => {
@@ -27,24 +30,23 @@ describe('IncidentStatusBreakdown', () => {
       />
     );
 
-    expect(screen.getByTestId('group-status-segment-Assigned')).toHaveStyle({
-      width: '75%',
-      backgroundColor:
-        INCIDENT_GROUP_STATUS_COLORS[TestCaseResolutionStatusTypes.Assigned],
-    });
-    expect(screen.getByTestId('group-status-segment-Ack')).toHaveStyle({
-      width: '25%',
-      backgroundColor:
-        INCIDENT_GROUP_STATUS_COLORS[TestCaseResolutionStatusTypes.ACK],
-    });
+    const assigned = screen.getByTestId('group-status-segment-Assigned');
+    const ack = screen.getByTestId('group-status-segment-Ack');
+
+    expect(assigned).toHaveStyle({ width: '75%' });
+    expect(assigned).toHaveClass(
+      barClass(TestCaseResolutionStatusTypes.Assigned)
+    );
+    expect(ack).toHaveStyle({ width: '25%' });
+    expect(ack).toHaveClass(barClass(TestCaseResolutionStatusTypes.ACK));
   });
 
   it('should spell the counts out under the bar', () => {
     render(
       <IncidentStatusBreakdown
         statusCounts={[
-          { status: TestCaseResolutionStatusTypes.New, count: 2 },
           { status: TestCaseResolutionStatusTypes.Assigned, count: 3 },
+          { status: TestCaseResolutionStatusTypes.New, count: 2 },
         ]}
       />
     );
@@ -54,40 +56,16 @@ describe('IncidentStatusBreakdown', () => {
     );
   });
 
-  it('should draw no slice for a status the group has no incident in', () => {
+  it('should give a lone status the whole bar', () => {
     render(
       <IncidentStatusBreakdown
-        statusCounts={[
-          { status: TestCaseResolutionStatusTypes.New, count: 2 },
-          { status: TestCaseResolutionStatusTypes.ACK, count: 0 },
-        ]}
+        statusCounts={[{ status: TestCaseResolutionStatusTypes.New, count: 2 }]}
       />
     );
 
     expect(screen.getByTestId('group-status-segment-New')).toHaveStyle({
       width: '100%',
     });
-    expect(
-      screen.queryByTestId('group-status-segment-Ack')
-    ).not.toBeInTheDocument();
-  });
-
-  it('should keep resolved incidents out of the bar', () => {
-    render(
-      <IncidentStatusBreakdown
-        statusCounts={[
-          { status: TestCaseResolutionStatusTypes.Resolved, count: 5 },
-          { status: TestCaseResolutionStatusTypes.New, count: 1 },
-        ]}
-      />
-    );
-
-    expect(
-      screen.queryByTestId('group-status-segment-Resolved')
-    ).not.toBeInTheDocument();
-    expect(screen.getByTestId('group-status-counts')).toHaveTextContent(
-      '1 label.new-lowercase'
-    );
   });
 
   it('should fall back to a placeholder when no status is carried', () => {

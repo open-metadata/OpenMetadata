@@ -14,18 +14,26 @@
 import {
   IncidentGroupBy,
   IncidentTrendDirection,
+  Severities,
   TestCaseIncidentGroup,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseIncidentGroup';
-import { DEFAULT_INCIDENT_GROUP_BY } from './IncidentGroups.constants';
+import {
+  DEFAULT_INCIDENT_GROUP_BY,
+  INCIDENT_TREND_COLORS,
+  SPARKLINE_HEIGHT,
+  SPARKLINE_INSET,
+  SPARKLINE_WIDTH,
+} from './IncidentGroups.constants';
 import {
   countRecurringIncidentGroups,
-  getAssigneeInitials,
   getIncidentGroupAssignees,
   getIncidentGroupByOption,
-  getIncidentGroupName,
   getIncidentGroupStatusSegments,
   getIncidentGroupSubLine,
+  getIncidentTrendColor,
+  getIncidentTrendPoints,
+  isRecurring,
   isUnownedIncidentGroup,
   parseIncidentGroupBy,
 } from './IncidentGroups.utils';
@@ -69,15 +77,6 @@ describe('getIncidentGroupByOption', () => {
     expect(
       getIncidentGroupByOption(IncidentGroupBy.TestDefinition).labelKey
     ).toBe('label.test-case-type');
-  });
-});
-
-describe('getIncidentGroupName', () => {
-  it('should prefer the display name and fall back to the name', () => {
-    expect(getIncidentGroupName(group({ displayName: 'Row count' }))).toBe(
-      'Row count'
-    );
-    expect(getIncidentGroupName(group())).toBe('columnValuesToBeUnique');
   });
 });
 
@@ -154,12 +153,14 @@ describe('isUnownedIncidentGroup', () => {
 });
 
 describe('getIncidentGroupStatusSegments', () => {
-  it('should size each status against the group and order them by triage', () => {
+  // The server sends the counts most actionable first, with unoccupied
+  // statuses and `Resolved` already left out, so sizing is all that is left.
+  it('should size each status against the group, keeping the order it arrived in', () => {
     expect(
       getIncidentGroupStatusSegments([
-        { status: TestCaseResolutionStatusTypes.New, count: 1 },
         { status: TestCaseResolutionStatusTypes.Assigned, count: 2 },
         { status: TestCaseResolutionStatusTypes.ACK, count: 1 },
+        { status: TestCaseResolutionStatusTypes.New, count: 1 },
       ])
     ).toEqual([
       {
@@ -182,40 +183,9 @@ describe('getIncidentGroupStatusSegments', () => {
     ]);
   });
 
-  it('should drop a status no incident is in', () => {
-    expect(
-      getIncidentGroupStatusSegments([
-        { status: TestCaseResolutionStatusTypes.Assigned, count: 0 },
-        { status: TestCaseResolutionStatusTypes.New, count: 2 },
-      ])
-    ).toEqual([
-      { status: TestCaseResolutionStatusTypes.New, count: 2, share: 100 },
-    ]);
-  });
-
-  it('should keep a resolved count out of the bar', () => {
-    expect(
-      getIncidentGroupStatusSegments([
-        { status: TestCaseResolutionStatusTypes.Resolved, count: 4 },
-        { status: TestCaseResolutionStatusTypes.New, count: 1 },
-      ])
-    ).toEqual([
-      { status: TestCaseResolutionStatusTypes.New, count: 1, share: 100 },
-    ]);
-  });
-
   it('should report nothing when the group carries no counts', () => {
     expect(getIncidentGroupStatusSegments()).toEqual([]);
     expect(getIncidentGroupStatusSegments([])).toEqual([]);
-  });
-});
-
-describe('getAssigneeInitials', () => {
-  it('should take up to two initials from the assignee name', () => {
-    expect(getAssigneeInitials('tomas.montiel')).toBe('TM');
-    expect(getAssigneeInitials('mohit')).toBe('M');
-    expect(getAssigneeInitials('paul_james_jones')).toBe('PJ');
-    expect(getAssigneeInitials('')).toBe('');
   });
 });
 
@@ -248,6 +218,94 @@ describe('getIncidentGroupAssignees', () => {
       visible: [],
       overflowCount: 0,
     });
+  });
+});
+
+describe('getIncidentTrendPoints', () => {
+  it('should spread the buckets across the width and scale them to the peak', () => {
+    const points = getIncidentTrendPoints([0, 1, 2, 3, 4, 3, 2, 4]).split(' ');
+
+    expect(points).toHaveLength(8);
+    // First bucket is 0 — it sits on the floor, inset from the bottom edge.
+    expect(points[0]).toBe(
+      `${SPARKLINE_INSET},${SPARKLINE_HEIGHT - SPARKLINE_INSET}`
+    );
+    // Last bucket ties the peak, so it sits on the ceiling at the right edge.
+    expect(points[7]).toBe(
+      `${SPARKLINE_WIDTH - SPARKLINE_INSET},${SPARKLINE_INSET}`
+    );
+  });
+
+  it('should scale against the peak, not against an absolute volume', () => {
+    // Same shape at two volumes must draw the same line.
+    expect(getIncidentTrendPoints([1, 2, 4])).toBe(
+      getIncidentTrendPoints([10, 20, 40])
+    );
+  });
+
+  it('should draw an all-zero trend flat through the middle', () => {
+    const points = getIncidentTrendPoints([0, 0, 0, 0]).split(' ');
+    const midY = SPARKLINE_INSET + (SPARKLINE_HEIGHT - SPARKLINE_INSET * 2) / 2;
+
+    points.forEach((point) => expect(point.split(',')[1]).toBe(`${midY}`));
+  });
+
+  it('should place a single bucket at the left edge', () => {
+    expect(getIncidentTrendPoints([4])).toBe(
+      `${SPARKLINE_INSET},${SPARKLINE_INSET}`
+    );
+  });
+});
+
+describe('getIncidentTrendColor', () => {
+  it.each([
+    [
+      IncidentTrendDirection.Rising,
+      Severities.Severity1,
+      INCIDENT_TREND_COLORS.error,
+    ],
+    [
+      IncidentTrendDirection.Rising,
+      Severities.Severity3,
+      INCIDENT_TREND_COLORS.warning,
+    ],
+    [IncidentTrendDirection.Rising, undefined, INCIDENT_TREND_COLORS.warning],
+    [
+      IncidentTrendDirection.Falling,
+      Severities.Severity1,
+      INCIDENT_TREND_COLORS.success,
+    ],
+    [IncidentTrendDirection.Falling, undefined, INCIDENT_TREND_COLORS.success],
+    [
+      IncidentTrendDirection.Steady,
+      Severities.Severity1,
+      INCIDENT_TREND_COLORS.neutral,
+    ],
+    [IncidentTrendDirection.Steady, undefined, INCIDENT_TREND_COLORS.neutral],
+    [undefined, Severities.Severity1, INCIDENT_TREND_COLORS.neutral],
+  ])(
+    'should colour %s / %s with the matching token',
+    (direction, severity, expected) => {
+      expect(getIncidentTrendColor(direction, severity)).toBe(expected);
+    }
+  );
+});
+
+describe('isRecurring', () => {
+  it('should treat a rising group as recurring', () => {
+    expect(
+      isRecurring(group({ trendDirection: IncidentTrendDirection.Rising }))
+    ).toBe(true);
+  });
+
+  it('should not treat a falling, steady or trendless group as recurring', () => {
+    expect(
+      isRecurring(group({ trendDirection: IncidentTrendDirection.Falling }))
+    ).toBe(false);
+    expect(
+      isRecurring(group({ trendDirection: IncidentTrendDirection.Steady }))
+    ).toBe(false);
+    expect(isRecurring(group())).toBe(false);
   });
 });
 

@@ -61,8 +61,16 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
     [incidentGroups]
   );
 
+  /**
+   * A refetch keeps the rows it already has: swapping the table for a loader on
+   * every sort click or status change flashes the section away, drops keyboard
+   * focus from the sort header, and shifts the incidents table the user is
+   * working in. Only a load with nothing to show yet takes the whole space.
+   */
+  const isInitialLoading = isLoading && isEmpty(incidentGroups);
+
   const renderContent = () => {
-    if (isLoading) {
+    if (isInitialLoading) {
       return (
         <Box className="tw:py-8" data-testid="incident-groups-loader">
           <Loader />
@@ -109,10 +117,14 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
     );
   };
 
-  const hasStats = !isLoading && !isError;
+  const hasStats = !isInitialLoading && !isError;
 
   return (
-    <Box className="tw:gap-4" data-testid="incident-groups" direction="col">
+    <Box
+      aria-busy={isLoading}
+      className="tw:gap-4"
+      data-testid="incident-groups"
+      direction="col">
       <Box className="tw:items-center tw:justify-between tw:gap-2">
         <Box className="tw:items-center tw:gap-3">
           <Typography

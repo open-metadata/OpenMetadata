@@ -670,11 +670,26 @@ public class IncidentGroupsIT {
     assertEquals(404, error.getStatusCode());
   }
 
+  // Appends to an incident of its own rather than to a shared fixture case: the IT module runs
+  // methods concurrently, so mutating a @BeforeAll case would make every assertion about that
+  // case's status depend on scheduling.
   @Test
   void testBulkCreateStatuses() throws Exception {
-    CreateTestCaseResolutionStatus ackCase1 =
+    long ts = System.currentTimeMillis();
+    Table bulkTable = createTable(schemaFqn, "incident_groups_bulk_" + ts);
+    TestDefinition bulkDefinition =
+        createTestDefinition("incident_groups_bulk_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase bulkCase =
+        createTestCase(
+            "incident_groups_bulk_case_" + ts,
+            tableLink(bulkTable),
+            bulkDefinition,
+            List.of());
+    createStatus(bulkCase, TestCaseResolutionStatusTypes.New, null);
+
+    CreateTestCaseResolutionStatus ackBulkCase =
         new CreateTestCaseResolutionStatus()
-            .withTestCaseReference(testCase1.getFullyQualifiedName())
+            .withTestCaseReference(bulkCase.getFullyQualifiedName())
             .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack);
     CreateTestCaseResolutionStatus unknownCase =
         new CreateTestCaseResolutionStatus()
@@ -682,7 +697,7 @@ public class IncidentGroupsIT {
             .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack);
 
     BulkOperationResult result =
-        client.testCaseResolutionStatuses().bulkCreate(List.of(ackCase1, unknownCase));
+        client.testCaseResolutionStatuses().bulkCreate(List.of(ackBulkCase, unknownCase));
 
     assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
     assertEquals(2, result.getNumberOfRowsProcessed());
@@ -690,8 +705,8 @@ public class IncidentGroupsIT {
     assertEquals(1, result.getNumberOfRowsFailed());
     assertEquals(
         TestCaseResolutionStatusTypes.Ack,
-        fetchStatuses(testCase1).getFirst().getTestCaseResolutionStatusType(),
-        "the bulk entry must append an Ack record to case 1's incident chain");
+        fetchStatuses(bulkCase).getFirst().getTestCaseResolutionStatusType(),
+        "the bulk entry must append an Ack record to the case's incident chain");
   }
 
   @Test

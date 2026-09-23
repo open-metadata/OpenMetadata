@@ -74,13 +74,11 @@ public class TestCaseResolutionStatusRepository
   public static final String INCIDENT_SORT_TYPE_DESC = "desc";
   private static final int TREND_BUCKET_COUNT = 8;
 
-  // Open statuses from the most actionable to the least, the same order statusRank picks the
-  // group's headline status by. Resolved is absent: a resolved incident has left the group.
+  // Open statuses from the most actionable to the least. Shared with the query rather than
+  // restated here, so the breakdown order, the statusRank expression and the set of statuses a
+  // group is counted over cannot drift apart.
   private static final List<TestCaseResolutionStatusTypes> STATUS_TRIAGE_ORDER =
-      List.of(
-          TestCaseResolutionStatusTypes.Assigned,
-          TestCaseResolutionStatusTypes.Ack,
-          TestCaseResolutionStatusTypes.New);
+      CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.OPEN_STATUSES;
 
   // Name the owner dimension gives the group of incidents whose test cases have no owner.
   public static final String NO_OWNER_GROUP_NAME = "No Owner";
@@ -948,12 +946,11 @@ public class TestCaseResolutionStatusRepository
         .toList();
   }
 
+  // The query ranks a group by the 1-based position of its most actionable status in the triage
+  // order; anything past the end falls to the least actionable one, as the old CASE default did.
   private static TestCaseResolutionStatusTypes statusFromRank(int statusRank) {
-    return switch (statusRank) {
-      case 1 -> TestCaseResolutionStatusTypes.Assigned;
-      case 2 -> TestCaseResolutionStatusTypes.Ack;
-      default -> TestCaseResolutionStatusTypes.New;
-    };
+    int index = Math.min(Math.max(statusRank, 1), STATUS_TRIAGE_ORDER.size()) - 1;
+    return STATUS_TRIAGE_ORDER.get(index);
   }
 
   private static void setIncidentTrend(TestCaseIncidentGroup group, List<Long> incidentCreatedAt) {

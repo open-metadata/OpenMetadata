@@ -37,6 +37,7 @@ const mockUpdate = updateTestCaseIncidentById as jest.Mock;
 const mockTransition = transitionIncident as jest.Mock;
 const mockGetByStateId = getListTestCaseIncidentByStateId as jest.Mock;
 const mockSetData = jest.fn();
+const mockOnIncidentChange = jest.fn();
 
 type ListUpdater = (
   prev: TestCaseIncidentStatusData
@@ -49,7 +50,12 @@ const lastUpdater = (): ListUpdater => {
 };
 
 const renderActions = () =>
-  renderHook(() => useIncidentActions({ setTestCaseListData: mockSetData }));
+  renderHook(() =>
+    useIncidentActions({
+      setTestCaseListData: mockSetData,
+      onIncidentChange: mockOnIncidentChange,
+    })
+  );
 
 describe('useIncidentActions', () => {
   it('should expose the three row-mutation handlers', () => {
@@ -90,6 +96,8 @@ describe('useIncidentActions', () => {
     });
 
     expect(next.data[0].severity).toBe(Severities.Severity2);
+    // The group rows above the table render the severity too.
+    expect(mockOnIncidentChange).toHaveBeenCalledTimes(1);
   });
 
   it('should fall back to an empty id when the record has none', async () => {
@@ -121,6 +129,7 @@ describe('useIncidentActions', () => {
 
     expect(showErrorToast).toHaveBeenCalled();
     expect(mockSetData).not.toHaveBeenCalled();
+    expect(mockOnIncidentChange).not.toHaveBeenCalled();
   });
 
   it('should reassign an already-assigned incident and refresh the row', async () => {
@@ -181,6 +190,8 @@ describe('useIncidentActions', () => {
     });
 
     expect(next.data[0].id).toBe('x');
+    // The transition also moves the incident to Assigned.
+    expect(mockOnIncidentChange).toHaveBeenCalledTimes(1);
   });
 
   it('should use the assign transition when the incident is not yet assigned', async () => {
@@ -279,6 +290,7 @@ describe('useIncidentActions', () => {
 
     expect(showErrorToast).toHaveBeenCalled();
     expect(mockSetData).not.toHaveBeenCalled();
+    expect(mockOnIncidentChange).not.toHaveBeenCalled();
   });
 
   it('should optimistically replace the matching row on handleStatusSubmit', () => {
@@ -318,5 +330,6 @@ describe('useIncidentActions', () => {
     expect(next.data[0].testCaseResolutionStatusType).toBe(
       TestCaseResolutionStatusTypes.Resolved
     );
+    expect(mockOnIncidentChange).toHaveBeenCalledTimes(1);
   });
 });

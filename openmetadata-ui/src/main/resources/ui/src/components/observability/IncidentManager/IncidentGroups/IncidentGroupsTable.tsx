@@ -22,74 +22,57 @@ import {
 // only; it carries no generic person glyph, so this one comes from the shared
 // `@untitledui/icons` both packages pin at the same range.
 import { User01 } from '@untitledui/icons';
-import { startCase } from 'lodash';
-import { ReactNode, useMemo } from 'react';
+import { useMemo } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { SEVERITY_COLORS } from '../../../../constants/Color.constants';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import {
   Severities,
   TestCaseIncidentGroup,
 } from '../../../../generated/tests/testCaseIncidentGroup';
+import { Severities as ResolutionSeverities } from '../../../../generated/tests/testCaseResolutionStatus';
 import {
   formatDate,
   formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
+import InlineSeverity from '../../../DataQuality/IncidentManager/Severity/InlineSeverity.component';
 import { INCIDENT_GROUPS_SORT_COLUMN } from './IncidentGroups.constants';
-import { IncidentGroupsTableProps } from './IncidentGroups.types';
 import {
-  getAssigneeInitials,
+  IncidentGroupCellProps,
+  IncidentGroupsTableProps,
+  StackedCellProps,
+} from './IncidentGroups.types';
+import {
   getIncidentGroupAssignees,
   getIncidentGroupByOption,
-  getIncidentGroupName,
   getIncidentGroupSubLine,
   isUnownedIncidentGroup,
 } from './IncidentGroups.utils';
 import IncidentStatusBreakdown from './IncidentStatusBreakdown';
 import IncidentTrendSparkline from './IncidentTrendSparkline';
 
-/** Key the shared severity palette carries the "no severity" pill under. */
-const NO_SEVERITY = 'NoSeverity';
-
 /** Short form of the first-seen date, e.g. `Aug '25`. */
 const FIRST_SEEN_FORMAT = "MMM ''yy";
 
-const CHIP_CLASS =
-  'tw:inline-flex tw:max-w-max tw:items-center tw:whitespace-nowrap tw:rounded-full tw:px-2 tw:py-1 tw:text-xs tw:font-medium tw:leading-none';
-
 /**
- * The palette is the one the editable incident chips already use, so a group
- * reads the same as the incidents it aggregates.
+ * The groups schema `$ref`s the severity of a resolution status, but the TS
+ * generator emits one enum per schema file, so the two are nominally distinct
+ * with identical members. This bridges them for the shared severity chip.
  */
-const IncidentGroupChip = ({
-  label,
-  palette,
-  dataTestId,
-}: {
-  label: string;
-  palette: { bg: string; color: string };
-  dataTestId: string;
-}) => (
-  <span
-    className={CHIP_CLASS}
-    data-testid={dataTestId}
-    style={{ backgroundColor: palette.bg, color: palette.color }}>
-    {label}
-  </span>
-);
+const toResolutionSeverity = (severity?: Severities) =>
+  severity as unknown as ResolutionSeverities | undefined;
+
+/** Matches the avatars the incident rows below draw for their assignees. */
+const ASSIGNEE_AVATAR_WIDTH = '24';
 
 const StackedCell = ({
   value,
   caption,
   valueTestId,
   captionTestId,
-}: {
-  value: ReactNode;
-  caption?: ReactNode;
-  valueTestId: string;
-  captionTestId?: string;
-}) => (
+}: StackedCellProps) => (
   <Box className="tw:gap-0.5" direction="col">
     <Typography
       as="span"
@@ -111,7 +94,13 @@ const StackedCell = ({
   </Box>
 );
 
-const AssigneesCell = ({ group }: { group: TestCaseIncidentGroup }) => {
+/**
+ * The assignee names the group carries, drawn by the app's standard avatar so a
+ * group row reads the same as the incident rows it aggregates. Only the `+N`
+ * bubble is local to the group: it counts from `assigneeCount`, which no single
+ * user's avatar knows about.
+ */
+const AssigneesCell = ({ group }: IncidentGroupCellProps) => {
   const { t } = useTranslation();
   const { visible, overflowCount } = getIncidentGroupAssignees(group);
 
@@ -129,13 +118,10 @@ const AssigneesCell = ({ group }: { group: TestCaseIncidentGroup }) => {
   return (
     <Box className="tw:items-center tw:gap-1" data-testid="group-assignees">
       {visible.map((assignee) => (
-        <Avatar
-          alt={assignee}
-          data-testid={`group-assignee-${assignee}`}
-          initials={getAssigneeInitials(assignee)}
-          key={assignee}
-          size="xs"
-        />
+        // ProfilePicture takes no `data-testid`, so the hook sits on a wrapper.
+        <span data-testid={`group-assignee-${assignee}`} key={assignee}>
+          <ProfilePicture name={assignee} width={ASSIGNEE_AVATAR_WIDTH} />
+        </span>
       ))}
       {overflowCount > 0 && (
         <Avatar
@@ -149,25 +135,7 @@ const AssigneesCell = ({ group }: { group: TestCaseIncidentGroup }) => {
   );
 };
 
-const SeverityCell = ({ severity }: { severity?: Severities }) => {
-  const { t } = useTranslation();
-
-  return (
-    <IncidentGroupChip
-      dataTestId="group-severity"
-      label={
-        severity
-          ? startCase(severity)
-          : t('label.no-entity', { entity: t('label.severity') })
-      }
-      palette={
-        SEVERITY_COLORS[severity ?? NO_SEVERITY] ?? SEVERITY_COLORS[NO_SEVERITY]
-      }
-    />
-  );
-};
-
-const LastSeenCell = ({ group }: { group: TestCaseIncidentGroup }) => {
+const LastSeenCell = ({ group }: IncidentGroupCellProps) => {
   const { t } = useTranslation();
 
   return (
@@ -245,7 +213,7 @@ const IncidentGroupsTable = ({
               // rather than after something the server resolved.
               isUnownedIncidentGroup(group)
                 ? t('label.no-entity', { entity: t('label.owner') })
-                : getIncidentGroupName(group)
+                : getEntityName(group)
             }
             valueTestId="group-name"
           />
@@ -267,7 +235,15 @@ const IncidentGroupsTable = ({
           />
         </Table.Cell>
         <Table.Cell>
-          <SeverityCell severity={group.severity} />
+          {/* The same read-only chip the incident rows below render, so the
+              group and its incidents cannot drift apart in palette or wording.
+              InlineSeverity takes no `data-testid`; the hook sits on a wrapper. */}
+          <span data-testid="group-severity">
+            <InlineSeverity
+              hasEditPermission={false}
+              severity={toResolutionSeverity(group.severity)}
+            />
+          </span>
         </Table.Cell>
         <Table.Cell>
           <IncidentStatusBreakdown statusCounts={group.statusCounts} />

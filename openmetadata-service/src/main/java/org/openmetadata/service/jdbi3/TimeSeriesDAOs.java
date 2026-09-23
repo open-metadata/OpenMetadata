@@ -21,7 +21,6 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -1882,13 +1881,18 @@ public interface TimeSeriesDAOs {
         connectionType = POSTGRES)
     int deleteOrphanedRecords(@Bind("limit") int limit);
 
-    // Statuses an open incident can currently be in. Resolved is left out throughout: a resolved
-    // incident has left the group, so it neither counts toward the group nor appears in the
-    // per-status breakdown of it.
+    // Statuses an open incident can currently be in, from the most actionable to the least.
+    // Resolved is left out throughout: a resolved incident has left the group, so it neither
+    // counts toward the group nor appears in the per-status breakdown of it.
+    //
+    // This is the one place the triage order is written down: the statusRank expression below,
+    // the per-status count columns and the repository's breakdown ordering are all derived from
+    // it, so a new status value cannot drift between them.
     List<TestCaseResolutionStatusTypes> OPEN_STATUSES =
-        Arrays.stream(TestCaseResolutionStatusTypes.values())
-            .filter(status -> status != TestCaseResolutionStatusTypes.Resolved)
-            .toList();
+        List.of(
+            TestCaseResolutionStatusTypes.Assigned,
+            TestCaseResolutionStatusTypes.Ack,
+            TestCaseResolutionStatusTypes.New);
 
     // Column a status' incident count is selected under, e.g. statusCountAssigned.
     static String statusCountColumn(TestCaseResolutionStatusTypes status) {
@@ -1906,7 +1910,7 @@ public interface TimeSeriesDAOs {
     @SqlQuery(
         "SELECT <groupKey> AS groupKey, <groupType> AS groupType, COUNT(DISTINCT i.stateId) AS incidentCount, "
             + "MIN(i.severity) AS severity, "
-            + "MIN(CASE i.testCaseResolutionStatusType WHEN 'Assigned' THEN 1 WHEN 'Ack' THEN 2 ELSE 3 END) AS statusRank, "
+            + "<statusRank> AS statusRank, "
             + "<statusCounts>, "
             + "<assigneesExpr> AS assignees, "
             + "COUNT(DISTINCT i.assignee) AS assigneeCount, "
@@ -1921,6 +1925,7 @@ public interface TimeSeriesDAOs {
     @RegisterRowMapper(TestCaseIncidentGroupCountMapper.class)
     List<TestCaseIncidentGroupCount> listIncidentGroups(
         @Define("openStatuses") String openStatuses,
+        @Define("statusRank") String statusRank,
         @Define("statusCounts") String statusCounts,
         @Define("assigneesExpr") String assigneesExpr,
         @Define("createdAtAgg") String createdAtAgg,
@@ -1964,6 +1969,7 @@ public interface TimeSeriesDAOs {
       Map<String, Object> params = new HashMap<>(filter.getQueryParams());
       List<String> openStatusBinds = new ArrayList<>();
       List<String> statusCountExprs = new ArrayList<>();
+      List<String> statusRankWhens = new ArrayList<>();
       int openStatusIndex = 0;
       for (TestCaseResolutionStatusTypes status : OPEN_STATUSES) {
         String bind = "openStatus" + openStatusIndex++;
@@ -1973,11 +1979,22 @@ public interface TimeSeriesDAOs {
             String.format(
                 "COUNT(DISTINCT CASE WHEN i.testCaseResolutionStatusType = :%s THEN i.stateId END) AS %s",
                 bind, statusCountColumn(status)));
+        // 1-based so the rank reads as a position in OPEN_STATUSES; the repository turns it back
+        // into the status at that position. The value is inlined rather than bound: a simple CASE
+        // is a rendered expression here, and the strings come from the enum, never from input.
+        statusRankWhens.add(String.format("WHEN '%s' THEN %d", status.value(), openStatusIndex));
       }
       String openStatuses = String.join(", ", openStatusBinds);
+      // A status outside the open set cannot reach this query — the WHERE clause bars it — but
+      // SQL needs an ELSE, and ranking it past the last one keeps MIN() picking a real status.
+      String statusRank =
+          String.format(
+              "MIN(CASE i.testCaseResolutionStatusType %s ELSE %d END)",
+              String.join(" ", statusRankWhens), OPEN_STATUSES.size() + 1);
       List<TestCaseIncidentGroupCount> counts =
           listIncidentGroups(
               openStatuses,
+              statusRank,
               String.join(", ", statusCountExprs),
               assigneesExpr(),
               createdAtAggExpr(),

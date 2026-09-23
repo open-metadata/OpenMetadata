@@ -192,6 +192,36 @@ describe('IncidentGroupsView', () => {
     });
   });
 
+  it('should keep the table mounted across a sort refetch', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    let resolveSorted: (value: unknown) => void = jest.fn();
+    mockListIncidentGroups.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSorted = resolve;
+      })
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('flip-sort'));
+    });
+
+    // Swapping the table for a loader here would drop focus from the sort
+    // header the user just pressed.
+    expect(
+      screen.queryByTestId('incident-groups-loader')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('incident-groups-table')).toBeInTheDocument();
+
+    await act(async () => {
+      resolveSorted({ data: mockGroups, paging: { total: 5 } });
+    });
+
+    expect(screen.getByTestId('incident-groups-table')).toBeInTheDocument();
+  });
+
   it('should render the empty state when no group is returned', async () => {
     mockListIncidentGroups.mockResolvedValue({
       data: [],
@@ -329,6 +359,74 @@ describe('IncidentGroupsView', () => {
     });
 
     expect(mockListIncidentGroups).toHaveBeenCalledTimes(2);
+  });
+
+  it('should keep the rows and the stats on screen while a reported change is re-read', async () => {
+    let rendered: ReturnType<typeof render> | undefined;
+
+    await act(async () => {
+      rendered = render(
+        <MemoryRouter initialEntries={['/observability/incident-manager']}>
+          {viewTree(0)}
+        </MemoryRouter>
+      );
+    });
+
+    let resolveRefresh: (value: unknown) => void = jest.fn();
+    mockListIncidentGroups.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRefresh = resolve;
+      })
+    );
+
+    rendered?.rerender(
+      <MemoryRouter initialEntries={['/observability/incident-manager']}>
+        {viewTree(1)}
+      </MemoryRouter>
+    );
+
+    // The re-read is in flight: the table the user is reading stays put.
+    expect(
+      screen.queryByTestId('incident-groups-loader')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('incident-groups-table')).toBeInTheDocument();
+    expect(screen.getByTestId('incident-groups-count')).toHaveTextContent(
+      'label.group-count:5'
+    );
+
+    await act(async () => {
+      resolveRefresh({ data: mockGroups.slice(0, 2), paging: { total: 2 } });
+    });
+
+    expect(screen.getByTestId('table-group-count')).toHaveTextContent('2');
+  });
+
+  it('should leave the rows in place when a reported change fails to re-read', async () => {
+    let rendered: ReturnType<typeof render> | undefined;
+
+    await act(async () => {
+      rendered = render(
+        <MemoryRouter initialEntries={['/observability/incident-manager']}>
+          {viewTree(0)}
+        </MemoryRouter>
+      );
+    });
+
+    mockListIncidentGroups.mockRejectedValue(new Error('failure'));
+
+    await act(async () => {
+      rendered?.rerender(
+        <MemoryRouter initialEntries={['/observability/incident-manager']}>
+          {viewTree(1)}
+        </MemoryRouter>
+      );
+    });
+
+    expect(
+      screen.queryByTestId('incident-groups-error')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('table-group-count')).toHaveTextContent('3');
+    expect(mockShowErrorToast).toHaveBeenCalled();
   });
 
   it('should not re-read the groups while the reported change stands', async () => {

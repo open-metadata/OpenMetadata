@@ -34,7 +34,17 @@ jest.mock('./IncidentTrendSparkline', () => ({
         </div>
       )
     ),
-  isRecurring: jest.fn(),
+}));
+
+// The shared avatar fetches a profile picture and reads permissions; the rows
+// only care that it is handed the assignee's name.
+jest.mock('../../../common/ProfilePicture/ProfilePicture', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(({ name }: { name: string }) => (
+      <span>{`avatar:${name}`}</span>
+    )),
 }));
 
 const mockOnSortTypeChange = jest.fn();
@@ -110,10 +120,12 @@ describe('IncidentGroupsTable', () => {
 
     expect(
       screen.getByTestId('group-assignee-tomas.montiel')
-    ).toHaveTextContent('TM');
-    expect(screen.getByTestId('group-assignee-mohit')).toHaveTextContent('M');
+    ).toHaveTextContent('avatar:tomas.montiel');
+    expect(screen.getByTestId('group-assignee-mohit')).toHaveTextContent(
+      'avatar:mohit'
+    );
     expect(screen.getByTestId('group-assignee-paul.jones')).toHaveTextContent(
-      'PJ'
+      'avatar:paul.jones'
     );
     // 5 assignees, 3 in the (server-capped) array.
     expect(screen.getByTestId('group-assignee-overflow')).toHaveTextContent(

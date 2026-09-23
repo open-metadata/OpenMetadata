@@ -16,7 +16,6 @@ import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -39,6 +38,21 @@ import IncidentManagerPageWidgets from './IncidentManagerPageWidgets';
  */
 const IncidentManagerPage = () => {
   const { t } = useTranslation();
+
+  /**
+   * The group rows above the table aggregate the very incidents it lists, so a
+   * status, severity or assignee changed in the table leaves their counts,
+   * chips and breakdown bar showing the old values until the page is reloaded.
+   * Bumping the key re-reads the groups — one fetch per change that went
+   * through, and none while the user is only looking.
+   */
+  const [groupsRefreshKey, setGroupsRefreshKey] = useState(0);
+
+  const refreshIncidentGroups = useCallback(
+    () => setGroupsRefreshKey((key) => key + 1),
+    []
+  );
+
   const {
     commonTestCasePermission,
     filterDescriptors,
@@ -54,7 +68,10 @@ const IncidentManagerPage = () => {
     handleStatusSubmit,
     handleSeveritySubmit,
     handleAssigneeUpdate,
-  } = useIncidentManagerListPage({ isIncidentPage: true });
+  } = useIncidentManagerListPage({
+    isIncidentPage: true,
+    onIncidentChange: refreshIncidentGroups,
+  });
 
   // Consumer via a hook return value (useIncidentManagerListPage is out of this batch's
   // scope — incident permissions decouple from test-case perms in an open upstream PR
@@ -64,23 +81,6 @@ const IncidentManagerPage = () => {
   const hasViewPermission = getDerivedPermissionFlags(
     commonTestCasePermission ?? DEFAULT_ENTITY_PERMISSION
   ).hasViewAccess;
-
-  /**
-   * The group rows above the table aggregate the very incidents it lists, so a
-   * status changed in the table leaves their breakdown bar showing the old
-   * split until the page is reloaded. Bumping the key on a status that went
-   * through re-reads the groups — one fetch per change, and none while the user
-   * is only looking.
-   */
-  const [groupsRefreshKey, setGroupsRefreshKey] = useState(0);
-
-  const handleStatusSubmitAndRefreshGroups = useCallback(
-    (value: TestCaseResolutionStatus) => {
-      handleStatusSubmit(value);
-      setGroupsRefreshKey((key) => key + 1);
-    },
-    [handleStatusSubmit]
-  );
 
   // Attached to the test case links so the detail page breadcrumb reflects
   // the incidents page as the origin.
@@ -145,7 +145,7 @@ const IncidentManagerPage = () => {
               breadcrumbData={incidentBreadcrumb}
               handleAssigneeUpdate={handleAssigneeUpdate}
               handleSeveritySubmit={handleSeveritySubmit}
-              handleStatusSubmit={handleStatusSubmitAndRefreshGroups}
+              handleStatusSubmit={handleStatusSubmit}
               isIncidentPage={isIncidentPage}
               isPermissionLoading={isPermissionLoading}
               pagingData={pagingData}
