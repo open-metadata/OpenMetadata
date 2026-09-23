@@ -164,9 +164,19 @@ const AnnouncementDrawer: FC<Props> = ({
             // again; keeping the current tab avoids an unfiltered flash.
             setActiveTab((prev) => (selected as string) ?? prev);
           }}>
-          <ButtonGroupItem id={ALL_TAB}>{t('label.all')}</ButtonGroupItem>
+          {/* Test ids are keyed on the status value, not the label: `Expired`
+              is shown as "In-Active", and react-aria renders these as radios
+              rather than buttons, so a role+name lookup is the wrong hook. */}
+          <ButtonGroupItem
+            data-testid={`announcement-status-${ALL_TAB}`}
+            id={ALL_TAB}>
+            {t('label.all')}
+          </ButtonGroupItem>
           {STATUS_TABS.map((status) => (
-            <ButtonGroupItem id={status} key={status}>
+            <ButtonGroupItem
+              data-testid={`announcement-status-${status}`}
+              id={status}
+              key={status}>
               {t(ANNOUNCEMENT_STATUS_LABEL_KEYS[status])}
             </ButtonGroupItem>
           ))}

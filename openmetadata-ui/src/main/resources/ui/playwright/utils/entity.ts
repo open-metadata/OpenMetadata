@@ -1834,10 +1834,10 @@ export const createInactiveAnnouncement = async (
 
   const announcementDrawer = page.getByTestId('announcement-drawer');
 
-  await announcementDrawer
-    .getByTestId('announcement-status-tabs')
-    .getByRole('button', { name: 'In-Active' })
-    .click();
+  // The dates above are 6-11 days out, so this announcement is Scheduled, not
+  // Expired. The old assertion used the "inactive announcements" divider, which
+  // counted anything not currently active; the status tabs separate the two.
+  await announcementDrawer.getByTestId('announcement-status-Scheduled').click();
 
   await expect(
     announcementDrawer
