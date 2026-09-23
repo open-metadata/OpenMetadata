@@ -110,11 +110,13 @@ public class ActivityStreamRepository {
       int limit) {
     long afterTimestamp = afterTimestamp(days);
     List<UUID> domainIds = getEffectiveDomainsByFqn(securityContext, domain);
+    int total = countByEntity(entityType, entityId, domainIds, afterTimestamp);
     if (limit == 0) {
-      int total = countByEntity(entityType, entityId, domainIds, afterTimestamp);
       return new ResultList<>(List.of(), null, null, total);
     }
-    return result(listByEntity(entityType, entityId, domainIds, afterTimestamp, limit));
+    List<ActivityEvent> events =
+        listByEntity(entityType, entityId, domainIds, afterTimestamp, limit);
+    return new ResultList<>(events, null, null, total);
   }
 
   public ResultList<ActivityEvent> getEntityActivityByFqn(

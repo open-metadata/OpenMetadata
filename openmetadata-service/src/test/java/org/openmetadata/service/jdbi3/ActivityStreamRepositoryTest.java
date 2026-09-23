@@ -17,6 +17,10 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -27,6 +31,7 @@ import static org.mockito.Mockito.when;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -48,8 +53,11 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class ActivityStreamRepositoryTest {
 
@@ -271,6 +279,34 @@ class ActivityStreamRepositoryTest {
         ArgumentCaptor.forClass(List.class);
     verify(dao).insertBatch(captor.capture());
     return captor.getValue();
+  }
+
+  @Test
+  void getEntityActivityByIdReturnsTrueCountNotListSize() {
+    CollectionDAO.ActivityStreamDAO dao = mock(CollectionDAO.ActivityStreamDAO.class);
+    ActivityStreamRepository repository = new ActivityStreamRepository(dao);
+
+    UUID entityId = UUID.randomUUID();
+    String entityIdStr = entityId.toString();
+
+    String eventJson = JsonUtils.pojoToJson(baseEvent());
+    when(dao.listByEntity(eq("table"), eq(entityIdStr), anyLong(), eq(2)))
+        .thenReturn(List.of(eventJson, eventJson));
+    when(dao.countByEntity(eq("table"), eq(entityIdStr), anyLong())).thenReturn(5);
+
+    SecurityContext securityContext = mock(SecurityContext.class);
+    SubjectContext subjectContext = mock(SubjectContext.class);
+    when(subjectContext.isAdmin()).thenReturn(true);
+
+    try (MockedStatic<DefaultAuthorizer> authMock = mockStatic(DefaultAuthorizer.class)) {
+      authMock.when(() -> DefaultAuthorizer.getSubjectContext(any())).thenReturn(subjectContext);
+
+      ResultList<ActivityEvent> result =
+          repository.getEntityActivityById(securityContext, "table", entityId, null, 30, 2);
+
+      assertEquals(2, result.getData().size());
+      assertEquals(5, result.getPaging().getTotal());
+    }
   }
 
   private ActivityEvent baseEvent() {
