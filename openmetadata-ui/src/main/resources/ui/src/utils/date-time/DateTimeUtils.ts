@@ -82,20 +82,26 @@ export const useActiveTimeFormat = (): '12h' | '24h' => {
 /**
  * Maps the time tokens of a luxon format string to the requested
  * 12h/24h representation; date tokens are left untouched.
- * e.g. getMappedTimeFormat("MMM dd, yyyy, hh:mm a '(UTC'ZZ')'", '24h')
- *  => "MMM dd, yyyy, HH:mm '(UTC'ZZ')'"
+ * 
+ * NOTE: In 12h mode, we leave the format EXACTLY as the caller provided it.
+ * We do NOT rewrite explicit HH:mm formats to hh:mm a, because some components
+ * (like agent run times) intentionally use 24h formats regardless of user preference.
  */
 export const getMappedTimeFormat = (
   format: string,
   timeFormat: '12h' | '24h'
-): string =>
-  timeFormat === '24h'
-    ? format.replace(/(h{1,2}):mm a/g, (_, h: string) =>
-        h.length === 2 ? 'HH:mm' : 'H:mm'
-      )
-    : format.replace(/(H{1,2}):mm(?!:)/g, (_, H: string) =>
-        H.length === 2 ? 'hh:mm a' : 'h:mm a'
-      );
+): string => {
+  if (timeFormat === '24h') {
+    // Only convert 12h tokens (h:mm a) to 24h tokens (HH:mm) when 24h is selected
+    return format.replace(/(h{1,2}):mm a/g, (_, h: string) =>
+      h.length === 2 ? 'HH:mm' : 'H:mm'
+    );
+  }
+
+  // In 12h mode, return the format untouched. 
+  // Let callers who explicitly want 24h (like agent run times) keep their HH:mm formats.
+  return format;
+};
 
 /**
  * @param date EPOCH millis
