@@ -14,9 +14,6 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
-import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
-import { MoveGlossaryTermWebsocketResponse } from '../components/Modals/ChangeParentHierarchy/ChangeParentHierarchy.interface';
 import { ES_MAX_PAGE_SIZE, PAGE_SIZE_MEDIUM } from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -37,6 +34,9 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { RelationshipTypeUsage } from '../generated/type/relationshipTypeUsage';
 import { TermRelation } from '../generated/type/termRelation';
 import { ListParams, ListParamsWithOffset } from '../interface/API.interface';
+import { CSVExportResponse } from '../interface/entity/csv.interface';
+import { VotingDataProps } from '../interface/entity/vote.interface';
+import { MoveGlossaryTermWebsocketResponse } from '../interface/governance/glossary.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
 

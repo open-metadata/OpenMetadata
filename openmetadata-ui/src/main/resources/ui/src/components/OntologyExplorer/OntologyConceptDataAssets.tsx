@@ -16,6 +16,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AssetsOfEntity } from '../../enums/Assets.enum';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../generated/entity/type';
 import {
@@ -26,7 +27,6 @@ import { getQueryFilterToExcludeTerm } from '../../utils/GlossaryPureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { AssetSelectionModal } from '../DataAssets/AssetsSelectionModal/AssetSelectionModal';
-import { AssetsOfEntity } from '../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import {
   InspectorAddButton,
   InspectorSectionHeading,

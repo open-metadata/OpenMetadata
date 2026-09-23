@@ -24,7 +24,7 @@ import type { Key } from 'react';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';

@@ -21,17 +21,17 @@ import type {
   NodeProps,
   ReactFlowInstance,
 } from 'reactflow';
-import { CSVExportResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
-import { LineageConfig } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import { ExploreQuickFilterField } from '../../components/Explore/ExplorePage.interface';
-import {
-  EntityLineageResponse,
-  LineageNodeType,
-} from '../../components/Lineage/Lineage.interface';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { ExportTypes } from '../../constants/Export.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
+import { CSVExportResponse } from '../../interface/entity/csv.interface';
+import {
+  EntityLineageResponse,
+  LineageConfig,
+  LineageNodeType,
+} from '../../interface/lineage.interface';
 
 export interface LineageProviderProps {
   children: ReactNode;

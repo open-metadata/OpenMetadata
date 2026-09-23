@@ -16,9 +16,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { LINEAGE_CHILD_ITEMS_PER_PAGE } from '../../../../constants/Lineage.constants';
 import { TestSummary } from '../../../../generated/tests/testCase';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
+import {
+  EntityChildren,
+  EntityChildrenItem,
+} from '../../../../interface/lineage.interface';
 import EntityLink from '../../../../utils/EntityLink';
 import { ColumnContent } from '../CustomNode.utils';
-import { EntityChildren, EntityChildrenItem } from './NodeChildren.interface';
 
 export interface VirtualColumnListProps {
   flatItems: EntityChildren;

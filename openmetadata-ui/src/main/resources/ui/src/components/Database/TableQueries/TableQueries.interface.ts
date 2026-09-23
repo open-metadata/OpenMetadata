@@ -17,17 +17,8 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { SORT_ORDER } from '../../../enums/common.enum';
 import { Query } from '../../../generated/entity/data/query';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { QueryVote } from '../../../interface/entity/vote.interface';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
-
-export enum QueryVoteType {
-  'votedUp' = 'votedUp',
-  'votedDown' = 'votedDown',
-  'unVoted' = 'unVoted',
-}
-
-export type QueryVote = {
-  updatedVoteType: QueryVoteType;
-};
 
 export interface TableQueriesProp {
   isTableDeleted?: boolean;

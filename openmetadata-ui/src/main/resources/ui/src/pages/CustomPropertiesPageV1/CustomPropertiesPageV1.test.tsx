@@ -15,8 +15,8 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { ENTITY_PATH } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import CustomEntityDetailV1 from './CustomPropertiesPageV1';
 
 const mockNavigate = jest.fn();

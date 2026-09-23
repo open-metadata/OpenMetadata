@@ -21,6 +21,7 @@ import {
   SOCKET_EVENTS,
 } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -35,6 +36,7 @@ import {
   Response as BulkResponse,
   Status,
 } from '../../../generated/type/bulkOperationResult';
+import { CSVExportResponse } from '../../../interface/entity/csv.interface';
 import { Aggregations } from '../../../interface/search.interface';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { queryClient } from '../../../queryClient';
@@ -61,12 +63,8 @@ import {
   getQuickFilterQuery,
 } from '../../../utils/ExplorePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import {
-  CSVExportJob,
-  CSVExportResponse,
-} from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
+import { CSVExportJob } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
-import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 
 export interface UseAssetSelectionStateProps {

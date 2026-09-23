@@ -15,8 +15,8 @@ import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrev
 import { EntityType } from '../../enums/entity.enum';
 import { ChangeDescription } from '../../generated/entity/type';
 import { Paging } from '../../generated/type/paging';
+import { ServicePageData } from '../../interface/platform/service.interface';
 import { ServicesType } from '../../interface/service.interface';
-import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 
 export interface ServiceVersionMainTabContentProps {
   serviceName: string;

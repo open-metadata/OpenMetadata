@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 
-import { Votes } from '../../../generated/type/votes';
-import {
-  QueryVoteType,
-  VotingDataProps,
-} from '../../../interface/entity/vote.interface';
+export enum QueryVoteType {
+  'votedUp' = 'votedUp',
+  'votedDown' = 'votedDown',
+  'unVoted' = 'unVoted',
+}
 
-export interface VotingProps {
-  votes?: Votes;
-  disabled?: boolean;
-  voteStatus: QueryVoteType;
-  onUpdateVote: (updatedVoteType: VotingDataProps) => void | Promise<void>;
+export type QueryVote = {
+  updatedVoteType: QueryVoteType;
+};
+
+export interface VotingDataProps {
+  updatedVoteType: QueryVoteType;
 }

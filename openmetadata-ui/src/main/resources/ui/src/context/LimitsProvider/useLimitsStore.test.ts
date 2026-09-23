@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { LimitConfig } from '../../interface/platform/limits.interface';
 import { getLimitByResource } from '../../rest/limitsAPI';
-import { LimitConfig, useLimitStore } from './useLimitsStore';
+import { useLimitStore } from './useLimitsStore';
 
 jest.mock('../../rest/limitsAPI');
 

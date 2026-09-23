@@ -16,10 +16,8 @@ import { PermissionDebugger as AccessControlIcon } from '@openmetadata/ui-core-c
 import { Key01, Settings02, ShieldTick, User01 } from '@untitledui/icons';
 import type { Key } from 'react';
 import React, { FC } from 'react';
-import {
-  ResourceEntity,
-  UIPermission,
-} from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { userPermissions } from '../../../../utils/PermissionsUtils';
 import AccessTokenPanel from './components/AccessTokenPanel';

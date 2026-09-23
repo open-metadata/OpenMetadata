@@ -21,7 +21,7 @@ import { ReactComponent as MarketplaceIcon } from '../../../assets/svg/marketpla
 import { ReactComponent as OverviewActiveIcon } from '../../../assets/svg/overview-active.svg';
 import { ReactComponent as OverviewIcon } from '../../../assets/svg/overview-default.svg';
 import { ROUTES } from '../../../constants/constants';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { AppModule } from '../../platform/ai-shell/AppModule.types';
 import { LiveRefreshBoundary } from '../../platform/ai-shell/LiveRefreshBoundary/LiveRefreshBoundary';

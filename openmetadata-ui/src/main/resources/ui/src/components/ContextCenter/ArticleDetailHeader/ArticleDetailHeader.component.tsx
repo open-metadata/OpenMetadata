@@ -52,7 +52,6 @@ import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.sv
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../../components/common/Loader/Loader';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
-import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
 import { EntityStatusBadge } from '../../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -64,6 +63,7 @@ import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
+import { QueryVoteType } from '../../../interface/entity/vote.interface';
 import {
   ContentChangeState,
   RecentlyViewedQuickLinks,

@@ -21,8 +21,8 @@ import {
   TableType,
   TagSource,
 } from '../../generated/entity/data/table';
+import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 import { SearchResponse } from '../../interface/search.interface';
-import { ExploreSearchIndex } from './ExplorePage.interface';
 
 export const MOCK_EXPLORE_SEARCH_RESULTS: SearchResponse<ExploreSearchIndex> = {
   hits: {

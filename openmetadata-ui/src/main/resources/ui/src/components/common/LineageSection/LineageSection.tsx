@@ -16,7 +16,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DownstreamIcon } from '../../../assets/svg/lineage-downstream-icon.svg';
 import { ReactComponent as UpstreamIcon } from '../../../assets/svg/lineage-upstream-icon.svg';
-import { LineagePagingInfo } from '../../../components/LineageTable/LineageTable.interface';
+import { LineagePagingInfo } from '../../../interface/lineage.interface';
 import { getLineagePagingData } from '../../../rest/lineageAPI';
 import { getEntityCountAtDepth } from '../../../utils/EntityLineageNodeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';

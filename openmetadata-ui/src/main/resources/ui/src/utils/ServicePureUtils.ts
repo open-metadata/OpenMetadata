@@ -18,11 +18,9 @@ import {
   SERVICE_TYPES_ENUM,
   SERVICE_TYPE_MAP,
 } from '../constants/Services.constant';
-import {
-  ResourceEntity,
-  UIPermission,
-} from '../context/PermissionProvider/PermissionProvider.interface';
+import { UIPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
+import { ResourceEntity } from '../enums/permissions.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { StorageServiceType } from '../generated/entity/data/container';

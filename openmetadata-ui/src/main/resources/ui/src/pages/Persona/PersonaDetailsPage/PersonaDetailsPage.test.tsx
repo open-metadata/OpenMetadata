@@ -19,7 +19,7 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Description from '../../../components/common/EntityDescription/Description';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { PersonaDetailsPage } from './PersonaDetailsPage';

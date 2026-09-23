@@ -12,10 +12,8 @@
  */
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { MOCK_DOMAIN } from '../../../mocks/Domains.mock';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';

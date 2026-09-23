@@ -33,10 +33,11 @@ import {
   TestSummary,
 } from '../../../../generated/tests/testCase';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
+import { EntityChildren } from '../../../../interface/lineage.interface';
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageNodeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
+import { NodeChildrenProps } from './NodeChildren.interface';
 import VirtualColumnList from './VirtualColumnList.component';
 
 const NodeChildren = ({

@@ -30,13 +30,13 @@ import { PAGE_SIZE } from '../../../constants/constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
+import { ExploreSearchIndex } from '../../../interface/discovery/explore.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { ExploreSearchIndex } from '../../Explore/ExplorePage.interface';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import './node-suggestion.less';
 

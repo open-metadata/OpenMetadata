@@ -76,10 +76,8 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
-import {
-  ResourceEntity,
-  UIPermission,
-} from '../context/PermissionProvider/PermissionProvider.interface';
+import { UIPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../enums/permissions.enum';
 import { AuthProvider } from '../generated/settings/settings';
 import { userPermissions } from '../utils/PermissionsUtils';
 import { isLoginConfigurationApplicable } from './AuthProvider.util';

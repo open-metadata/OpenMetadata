@@ -26,9 +26,9 @@ import { useTranslation } from 'react-i18next';
 import { STEPS_FOR_ADD_INGESTION } from '../../../../constants/Ingestions.constant';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { LOADING_STATE } from '../../../../enums/common.enum';
 import { FormSubmitType } from '../../../../enums/form.enum';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import {
   CreateIngestionPipeline,
   LogLevels,

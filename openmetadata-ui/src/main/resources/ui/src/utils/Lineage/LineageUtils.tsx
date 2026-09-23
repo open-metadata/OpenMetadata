@@ -18,9 +18,9 @@ import {
 } from '@openmetadata/ui-core-components';
 import { ReactComponent as ColumnIcon } from '../../assets/svg/entity/column.svg';
 import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-new.svg';
-import { NodeData } from '../../components/Lineage/Lineage.interface';
 import { EImpactLevel } from '../../components/LineageTable/LineageTable.interface';
 import { EntityType } from '../../enums/entity.enum';
+import { NodeData } from '../../interface/lineage.interface';
 import i18n from '../i18next/LocalUtil';
 
 export const LINEAGE_IMPACT_OPTIONS = [

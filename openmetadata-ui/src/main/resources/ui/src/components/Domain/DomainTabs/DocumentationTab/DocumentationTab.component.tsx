@@ -17,8 +17,8 @@ import { useTranslation } from 'react-i18next';
 import Description from '../../../../components/common/EntityDescription/Description';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import {
   DataProduct,
   TagLabel,

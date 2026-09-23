@@ -13,7 +13,7 @@
 
 import { PropsWithChildren } from 'react';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { userPermissions } from '../../../../utils/PermissionsUtils';
 import AdminProtectedRoute from '../../../AppRouter/AdminProtectedRoute';
 import { LiveRefreshBoundary } from '../LiveRefreshBoundary/LiveRefreshBoundary';

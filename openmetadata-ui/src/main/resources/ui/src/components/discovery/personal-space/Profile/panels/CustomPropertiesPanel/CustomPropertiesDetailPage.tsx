@@ -27,10 +27,8 @@ import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CUSTOM_PROPERTIES_ICON_MAP } from '../../../../../../constants/CustomProperty.constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import { Type } from '../../../../../../generated/entity/type';
 import { CustomProperty } from '../../../../../../generated/type/customProperty';
 import {

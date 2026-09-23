@@ -13,9 +13,9 @@
 
 import Qs from 'qs';
 import { ReactNode } from 'react';
+import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 import { SearchHitBody } from '../../interface/search.interface';
 import { SourceType } from '../../interface/source.interface';
-import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
 
 export type { SourceType } from '../../interface/source.interface';
 

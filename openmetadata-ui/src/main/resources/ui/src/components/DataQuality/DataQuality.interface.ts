@@ -18,7 +18,7 @@ import { TestCaseType } from '../../enums/TestSuite.enum';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
 import { TestPlatform } from '../../generated/tests/testDefinition';
-import { DataQualityDashboardChartFilters } from '../../pages/DataQuality/DataQualityPage.interface';
+import { DataQualityDashboardChartFilters } from '../../interface/observability/dataQuality.interface';
 import { AreaChartColorScheme } from '../Visualisations/Chart/Chart.interface';
 
 export enum IncidentTimeMetricsType {

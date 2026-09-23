@@ -51,7 +51,7 @@ import { TEST_CASE_NAME_REGEX } from '../../../../constants/regex.constants';
 import { TEST_CASE_FORM } from '../../../../constants/service-guide.constant';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { TagSource } from '../../../../generated/entity/data/container';

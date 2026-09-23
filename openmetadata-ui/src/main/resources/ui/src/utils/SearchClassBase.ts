@@ -13,7 +13,6 @@
 import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import type { ComponentType } from 'react';
 import type { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
-import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import { ExploreTreeNode } from '../components/Explore/ExploreTree/ExploreTree.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import {
@@ -53,6 +52,7 @@ import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { QuickLink } from '../generated/api/data/createPage';
 import { TestSuite } from '../generated/tests/testCase';
+import { ExploreSearchIndex } from '../interface/discovery/explore.interface';
 import { PageType } from '../interface/knowledge-center.interface';
 import {
   KnowledgePageSearchSource,

@@ -12,7 +12,7 @@
  */
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { VotingDataProps } from '../Entity/Voting/voting.interface';
+import { VotingDataProps } from '../../interface/entity/vote.interface';
 import { EntityDetailsObjectInterface } from '../Explore/ExplorePage.interface';
 
 export type GlossaryV1Props = {

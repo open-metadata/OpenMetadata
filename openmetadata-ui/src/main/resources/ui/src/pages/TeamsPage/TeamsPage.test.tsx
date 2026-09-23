@@ -12,8 +12,8 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { TeamType } from '../../generated/entity/teams/team';
 import { Include } from '../../generated/type/include';
 import { mockUserData } from '../../mocks/MyDataPage.mock';

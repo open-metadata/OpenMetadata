@@ -13,7 +13,7 @@
 
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Glossary } from '../../../generated/entity/data/glossary';
-import { VotingDataProps } from '../../Entity/Voting/voting.interface';
+import { VotingDataProps } from '../../../interface/entity/vote.interface';
 
 export type GlossaryDetailsProps = {
   isVersionView?: boolean;
