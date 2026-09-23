@@ -43,6 +43,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CachedEntityDao;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -262,6 +263,60 @@ class EntityRepositoryRestoreTest {
           () ->
               CacheBundle.invalidateEntity(
                   Entity.PIPELINE, pipeline.getId(), pipeline.getFullyQualifiedName()));
+    }
+  }
+
+  /**
+   * The writer must not evict the Redis L2 while its own transaction is still open. A {@code DEL}
+   * sent pre-commit is undone by any concurrent reader: that reader takes the miss, loads the
+   * not-yet-committed row, and re-populates the key with the pre-write value, which then outlives
+   * the commit. Issue #33860 — a restored table kept answering {@code deleted=true} and 404ing
+   * because the restore cascade's eviction ran inside {@code executeInTransaction}.
+   */
+  @Test
+  void invalidateCache_insideDeferralScope_holdsRedisEvictionUntilDrain() {
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    Pipeline pipeline =
+        new Pipeline()
+            .withId(UUID.randomUUID())
+            .withName("pipeline")
+            .withFullyQualifiedName("service.pipeline");
+    CachedEntityDao redis = mock(CachedEntityDao.class);
+
+    try (MockedStatic<CacheBundle> cacheBundle = mockStatic(CacheBundle.class)) {
+      cacheBundle.when(CacheBundle::getCachedEntityDao).thenReturn(redis);
+      boolean owns = EntityRepository.beginCacheInvalidationDeferral();
+      try {
+        repo.invalidateCache(pipeline);
+        verify(redis, never()).invalidateBase(any(), any());
+      } finally {
+        if (owns) {
+          EntityRepository.drainCacheInvalidations();
+        }
+      }
+      verify(redis).invalidateBase(Entity.PIPELINE, pipeline.getId());
+      verify(redis).invalidateByName(Entity.PIPELINE, pipeline.getFullyQualifiedName());
+    }
+  }
+
+  /** Without an open scope there is no commit to wait for, so the eviction still runs inline. */
+  @Test
+  void invalidateCache_withoutDeferralScope_evictsRedisImmediately() {
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    Pipeline pipeline =
+        new Pipeline()
+            .withId(UUID.randomUUID())
+            .withName("pipeline")
+            .withFullyQualifiedName("service.pipeline");
+    CachedEntityDao redis = mock(CachedEntityDao.class);
+
+    try (MockedStatic<CacheBundle> cacheBundle = mockStatic(CacheBundle.class)) {
+      cacheBundle.when(CacheBundle::getCachedEntityDao).thenReturn(redis);
+      EntityRepository.clearCacheInvalidations();
+
+      repo.invalidateCache(pipeline);
+
+      verify(redis).invalidateBase(Entity.PIPELINE, pipeline.getId());
     }
   }
 
