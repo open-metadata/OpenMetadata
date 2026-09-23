@@ -53,10 +53,13 @@ export class RolesClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/roles/${this.responseData.id}?hardDelete=true&recursive=true`
     );
 
     return await response.json();
   }
 }
+
+import { deleteFixtureEntity } from '../../utils/apiResponse';
