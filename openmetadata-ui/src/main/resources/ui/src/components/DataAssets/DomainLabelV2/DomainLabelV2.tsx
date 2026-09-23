@@ -43,6 +43,11 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericCo
 import { AssetsUnion } from '../AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../DataAssetsHeader/DataAssetsHeader.interface';
 
+// Stable identity key for a domain list, used to skip no-op state updates that
+// would otherwise remount the picker on every context re-render.
+const domainsRefKey = (list: EntityReference[]): string =>
+  list.map((d) => d.id ?? d.fullyQualifiedName ?? d.name).join(',');
+
 const resolveDomainsForPatch = (
   selectedDomain: EntityReference | EntityReference[]
 ): EntityReference[] => {
@@ -159,13 +164,22 @@ export const DomainLabelV2 = <
   );
 
   useEffect(() => {
-    if (domains) {
-      if (Array.isArray(domains)) {
-        setActiveDomain(domains);
-      } else {
-        setActiveDomain([domains]);
-      }
+    let nextDomains: EntityReference[] = [];
+    if (Array.isArray(domains)) {
+      nextDomains = domains;
+    } else if (domains) {
+      nextDomains = [domains];
     }
+
+    // `data.domains` arrives as a fresh array reference on every context
+    // re-render (and is `[]`, which is truthy, when nothing is assigned).
+    // Setting state unconditionally would churn `activeDomain`'s identity on
+    // every render, remounting the DomainSelect subtree and collapsing an open
+    // picker. Only commit when the referenced domains actually changed; return
+    // the previous reference otherwise so React bails out of the update.
+    setActiveDomain((prev) =>
+      domainsRefKey(prev) === domainsRefKey(nextDomains) ? prev : nextDomains
+    );
   }, [domains]);
 
   // Named-flag derivation (Task 8 sweep): raw EditAll-only read, deleted-gated exactly as
