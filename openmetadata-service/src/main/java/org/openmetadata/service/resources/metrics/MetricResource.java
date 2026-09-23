@@ -460,6 +460,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
     Metric metric = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     repository.prepareInternal(metric, false);
     authorizeHierarchyDestinations(securityContext, null, metric);
+    authorizeRequestedAssets(securityContext, metric);
     return create(uriInfo, securityContext, metric);
   }
 
@@ -496,6 +497,17 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       original = repository.get(null, original.getId(), repository.getFields("parent,metricGroup"));
     }
     authorizeHierarchyChange(securityContext, original, metric);
+    authorizeRequestedAssets(securityContext, metric);
+  }
+
+  /** Linking an asset exposes it on the metric, so require the VIEW access /assets/add requires. */
+  private void authorizeRequestedAssets(SecurityContext securityContext, Metric metric) {
+    for (EntityReference asset : listOrEmpty(metric.getAssets())) {
+      if (!canViewAsset(securityContext, asset)) {
+        throw new AuthorizationException(
+            String.format("Not authorized to view the requested asset %s", asset.getId()));
+      }
+    }
   }
 
   @PUT

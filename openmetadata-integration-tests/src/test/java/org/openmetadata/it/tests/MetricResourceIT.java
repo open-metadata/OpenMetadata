@@ -2252,6 +2252,43 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   }
 
   @Test
+  void linkingAnAssetRequiresPermissionToViewIt(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Table hiddenTable = ShortStackFactory.table(ns);
+    hiddenTable.setTags(List.of(new TagLabel().withTagFQN(RESTRICTED_TAG_FQN)));
+    admin.tables().update(hiddenTable.getId().toString(), hiddenTable);
+    List<EntityReference> hiddenAsset =
+        List.of(hiddenTable.getEntityReference().withType(Entity.TABLE));
+    String existingName = ns.prefix("hidden_asset_existing");
+    Metric existing = createEntity(createRequest(existingName, ns));
+
+    withRestrictedTableViewer(
+        ns,
+        editor -> {
+          assertApiStatus(
+              403,
+              () ->
+                  editor
+                      .metrics()
+                      .create(
+                          createRequest(ns.prefix("hidden_asset_new"), ns)
+                              .withAssets(hiddenAsset)));
+          assertApiStatus(
+              403,
+              () ->
+                  editor
+                      .getHttpClient()
+                      .execute(
+                          HttpMethod.PUT,
+                          "/v1/metrics",
+                          createRequest(existingName, ns).withAssets(hiddenAsset),
+                          Metric.class));
+        });
+
+    assertEquals(0, getMetricAssets(admin, existing).get("paging").get("total").asInt());
+  }
+
+  @Test
   void put_existingMetricLinksRequestedAssetsWithoutUnlinkingOthers(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Table firstSource = ShortStackFactory.table(ns);
@@ -3188,11 +3225,38 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
 
   private static void withRestrictedHierarchyDestinationEditor(
       TestNamespace ns, Consumer<OpenMetadataClient> assertions) {
+    withRestrictedEditor(
+        ns,
+        new Rule()
+            .withName("DenyRestrictedHierarchyDestinations")
+            .withResources(List.of("metric", "metricGroup"))
+            .withOperations(List.of(MetadataOperation.EDIT_ALL))
+            .withCondition("matchAnyTag('" + RESTRICTED_TAG_FQN + "')")
+            .withEffect(Rule.Effect.DENY),
+        assertions);
+  }
+
+  private static void withRestrictedTableViewer(
+      TestNamespace ns, Consumer<OpenMetadataClient> assertions) {
+    withRestrictedEditor(
+        ns,
+        new Rule()
+            .withName("DenyRestrictedTables")
+            .withResources(List.of(Entity.TABLE))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL, MetadataOperation.VIEW_BASIC))
+            .withCondition("matchAnyTag('" + RESTRICTED_TAG_FQN + "')")
+            .withEffect(Rule.Effect.DENY),
+        assertions);
+  }
+
+  /** Runs {@code assertions} as a user who may create, view and edit all but what {@code deny} forbids. */
+  private static void withRestrictedEditor(
+      TestNamespace ns, Rule deny, Consumer<OpenMetadataClient> assertions) {
     OpenMetadataClient admin = SdkClients.adminClient();
     String suffix = ns.uniqueShortId();
     Rule allowCatalog =
         new Rule()
-            .withName("AllowHierarchyDestinationWrites")
+            .withName("AllowCatalogWrites")
             .withResources(List.of("All"))
             .withOperations(
                 List.of(
@@ -3200,20 +3264,13 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
                     MetadataOperation.VIEW_ALL,
                     MetadataOperation.EDIT_ALL))
             .withEffect(Rule.Effect.ALLOW);
-    Rule denyRestrictedDestinations =
-        new Rule()
-            .withName("DenyRestrictedHierarchyDestinations")
-            .withResources(List.of("metric", "metricGroup"))
-            .withOperations(List.of(MetadataOperation.EDIT_ALL))
-            .withCondition("matchAnyTag('" + RESTRICTED_TAG_FQN + "')")
-            .withEffect(Rule.Effect.DENY);
     Policy policy =
         admin
             .policies()
             .create(
                 new CreatePolicy()
                     .withName("metricDestinationPolicy_" + suffix)
-                    .withRules(List.of(allowCatalog, denyRestrictedDestinations)));
+                    .withRules(List.of(allowCatalog, deny)));
     try {
       Role role =
           admin
