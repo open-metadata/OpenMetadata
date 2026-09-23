@@ -25,7 +25,6 @@ import org.openmetadata.service.apps.bundles.rdf.distributed.RdfAbandonedRunReco
 import org.openmetadata.service.apps.bundles.rdf.distributed.RdfIndexJob;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfReindexLockDAO.RdfReindexLockRecord;
 
 /**
  * A run that ends without reporting its own status must still say why, on MySQL and Postgres. Every
@@ -69,6 +68,7 @@ public class AppRunInterruptionIT {
     assertEquals(5_000L, interrupted.getEndTime());
     assertEquals("the server stopped", failure(interrupted).getMessage());
     assertEquals(IndexingError.ErrorSource.JOB, failure(interrupted).getErrorSource());
+    assertTrue(AppRunInterruption.isInterrupted(interrupted));
     assertEquals("kept", interrupted.getFailureContext().getAdditionalProperties().get("partial"));
     assertEquals(AppRunRecord.Status.SUCCESS, read(2_000L).getStatus());
     assertFalse(runs.listAppNamesWithRunningStatus().contains(appName));
@@ -92,16 +92,15 @@ public class AppRunInterruptionIT {
   }
 
   @Test
-  void rdfRunGetsTheOutcomeOfTheJobOtherServersFinished() {
-    insert(
-        run(1_000L, AppRunRecord.Status.FAILED)
-            .withEndTime(4_000L)
-            .withFailureContext(
-                new FailureContext()
-                    .withFailure(new IndexingError().withMessage("Still running at startup"))));
+  void rdfRunMarkedInterruptedAfterItsJobFinishedGetsTheOutcomeOnce() {
+    insert(run(1_000L, AppRunRecord.Status.RUNNING));
+    runs.markRunningEntriesInterrupted(
+        List.of(appName), AppRunInterruption.stillRunningAtStartup(), 20_000L);
     final RdfIndexJob job = finishedJob(1_000L, 9_000L);
+    final RdfAbandonedRunRecorder recorder = new RdfAbandonedRunRecorder(runs, appName);
 
-    new RdfAbandonedRunRecorder(runs, appName).recordIfAbandoned(job, expiredLock(job));
+    recorder.recordIfAbandoned(job);
+    recorder.recordIfAbandoned(job);
 
     final AppRunRecord recorded = read(1_000L);
     assertEquals(AppRunRecord.Status.SUCCESS, recorded.getStatus());
@@ -109,6 +108,18 @@ public class AppRunInterruptionIT {
     assertEquals(8_000L, recorded.getExecutionTime());
     assertNull(recorded.getFailureContext());
     assertEquals(TABLES, recorded.getSuccessContext().getStats().getJobStats().getSuccessRecords());
+  }
+
+  @Test
+  void rdfRunItsCoordinatorRecordedIsLeftAlone() {
+    insert(run(1_000L, AppRunRecord.Status.SUCCESS).withEndTime(12_000L));
+
+    new RdfAbandonedRunRecorder(runs, appName).recordIfAbandoned(finishedJob(1_000L, 9_000L));
+
+    final AppRunRecord recorded = read(1_000L);
+    assertEquals(AppRunRecord.Status.SUCCESS, recorded.getStatus());
+    assertEquals(12_000L, recorded.getEndTime());
+    assertNull(recorded.getSuccessContext());
   }
 
   private AppRunRecord run(final long timestamp, final AppRunRecord.Status status) {
@@ -154,10 +165,5 @@ public class AppRunInterruptionIT {
                     .build()))
         .completedAt(completedAt)
         .build();
-  }
-
-  private static RdfReindexLockRecord expiredLock(final RdfIndexJob job) {
-    return new RdfReindexLockRecord(
-        "RDF_REINDEX_LOCK", job.getId().toString(), "stopped-server", 1_000L, 1_000L, 1_001L);
   }
 }

@@ -16,8 +16,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.apps.bundles.rdf.distributed.RdfAbandonedRunRecorder.isAbandoned;
-import static org.openmetadata.service.apps.bundles.rdf.distributed.RdfAbandonedRunRecorder.outcome;
+import static org.openmetadata.service.apps.bundles.rdf.distributed.RdfAbandonedRunRecorder.COORDINATOR_GRACE_MS;
+import static org.openmetadata.service.apps.bundles.rdf.distributed.RdfAbandonedRunRecorder.finished;
+import static org.openmetadata.service.apps.bundles.rdf.distributed.RdfAbandonedRunRecorder.isFinishedWithRunLink;
+import static org.openmetadata.service.apps.bundles.rdf.distributed.RdfAbandonedRunRecorder.isLeftUnfinished;
 
 import java.util.Map;
 import java.util.UUID;
@@ -26,63 +28,89 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
-import org.openmetadata.schema.system.Stats;
+import org.openmetadata.service.apps.AppRunInterruption;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
-import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfReindexLockDAO.RdfReindexLockRecord;
 
 /**
  * The shape the devrel failure had: the coordinating server stopped mid-run, a restarting server
  * marked the run failed, and the other servers finished all 5,695 tables afterwards.
  */
 class RdfAbandonedRunRecorderTest {
-  private static final String LOCK_KEY = "RDF_REINDEX_LOCK";
   private static final long RUN_STARTED = 1_000L;
-  private static final long SERVER_RESTARTED = 4_000L;
   private static final long JOB_COMPLETED = 9_000L;
+  private static final long RESTARTED_AFTER_COMPLETION = 20_000L;
   private static final int TABLES = 5_695;
-  private static final UUID JOB_ID = UUID.randomUUID();
 
   @Test
-  void jobFinishedAfterItsCoordinatorStoppedIsAbandoned() {
-    assertTrue(isAbandoned(job(IndexJobStatus.COMPLETED), expiredLock(JOB_ID)));
+  void runMarkedInterruptedAfterItsJobFinishedStillGetsTheOutcome() {
+    assertTrue(
+        isLeftUnfinished(
+            interruptedRun(RESTARTED_AFTER_COMPLETION),
+            job(IndexJobStatus.COMPLETED),
+            RESTARTED_AFTER_COMPLETION));
   }
 
   @Test
-  void coordinatorStillRenewingTheLockIsNotAbandoned() {
-    assertFalse(isAbandoned(job(IndexJobStatus.COMPLETED), liveLock()));
+  void runStillUnfinishedLongAfterItsJobEndedHasNoCoordinatorLeft() {
+    assertTrue(
+        isLeftUnfinished(
+            unfinishedRun(),
+            job(IndexJobStatus.COMPLETED),
+            JOB_COMPLETED + COORDINATOR_GRACE_MS + 1));
   }
 
   @Test
-  void lockReleasedOrHeldForAnotherJobIsNotAbandoned() {
-    assertFalse(isAbandoned(job(IndexJobStatus.COMPLETED), null));
-    assertFalse(isAbandoned(job(IndexJobStatus.COMPLETED), expiredLock(UUID.randomUUID())));
+  void runJustAfterItsJobEndedIsLeftToItsCoordinator() {
+    assertFalse(
+        isLeftUnfinished(unfinishedRun(), job(IndexJobStatus.COMPLETED), JOB_COMPLETED + 60_000L));
   }
 
   @Test
-  void unfinishedJobIsNotAbandonedYet() {
-    assertFalse(isAbandoned(job(IndexJobStatus.RUNNING), expiredLock(JOB_ID)));
+  void runItsCoordinatorRecordedIsLeftAlone() {
+    final AppRunRecord recorded =
+        unfinishedRun().withStatus(AppRunRecord.Status.SUCCESS).withEndTime(JOB_COMPLETED + 5);
+
+    assertFalse(
+        isLeftUnfinished(
+            recorded, job(IndexJobStatus.COMPLETED), JOB_COMPLETED + COORDINATOR_GRACE_MS + 1));
   }
 
   @Test
-  void jobStartedBeforeRunsWereLinkedIsLeftAlone() {
-    final RdfIndexJob job = job(IndexJobStatus.COMPLETED);
-    job.getJobConfiguration().setTimestamp(null);
+  void runThisRecorderWroteIsNotWrittenAgain() {
+    final RdfIndexJob job = job(IndexJobStatus.COMPLETED_WITH_ERRORS);
+    final AppRunRecord written = finished(interruptedRun(RESTARTED_AFTER_COMPLETION), job);
 
-    assertFalse(isAbandoned(job, expiredLock(JOB_ID)));
+    assertFalse(isLeftUnfinished(written, job, JOB_COMPLETED + COORDINATOR_GRACE_MS + 1));
   }
 
   @Test
-  void completedRunIsRecordedAsSuccessWithTheFinalStats() {
-    final AppRunRecord run = outcome(job(IndexJobStatus.COMPLETED), interruptedRun()).orElseThrow();
+  void onlyFinishedJobsLinkedToARunAreRecorded() {
+    final RdfIndexJob unlinked = job(IndexJobStatus.COMPLETED);
+    unlinked.getJobConfiguration().setTimestamp(null);
+
+    assertTrue(isFinishedWithRunLink(job(IndexJobStatus.COMPLETED)));
+    assertFalse(isFinishedWithRunLink(job(IndexJobStatus.RUNNING)));
+    assertFalse(isFinishedWithRunLink(unlinked));
+  }
+
+  @Test
+  void completedRunIsRecordedAsSuccessWithTheFinalStatsAndNoFailure() {
+    final AppRunRecord run =
+        finished(interruptedRun(RESTARTED_AFTER_COMPLETION), job(IndexJobStatus.COMPLETED));
 
     assertEquals(AppRunRecord.Status.SUCCESS, run.getStatus());
     assertEquals(JOB_COMPLETED, run.getEndTime());
     assertEquals(JOB_COMPLETED - RUN_STARTED, run.getExecutionTime());
     assertNull(run.getFailureContext());
-    assertEquals(TABLES, stats(run).getJobStats().getSuccessRecords());
+    assertEquals(TABLES, run.getSuccessContext().getStats().getJobStats().getSuccessRecords());
     assertEquals(
         TABLES,
-        stats(run).getEntityStats().getAdditionalProperties().get("table").getSuccessRecords());
+        run.getSuccessContext()
+            .getStats()
+            .getEntityStats()
+            .getAdditionalProperties()
+            .get("table")
+            .getSuccessRecords());
   }
 
   @Test
@@ -90,11 +118,12 @@ class RdfAbandonedRunRecorderTest {
     final RdfIndexJob job = job(IndexJobStatus.COMPLETED);
     job.getJobConfiguration().setRdfBuildDataset("openmetadata_b");
 
-    final AppRunRecord run = outcome(job, interruptedRun()).orElseThrow();
+    final AppRunRecord run = finished(interruptedRun(RESTARTED_AFTER_COMPLETION), job);
 
     assertEquals(AppRunRecord.Status.FAILED, run.getStatus());
     assertTrue(failure(run).contains("'openmetadata_b'"), failure(run));
     assertTrue(failure(run).contains("before promoting it"), failure(run));
+    assertFalse(AppRunInterruption.isInterrupted(run));
   }
 
   @Test
@@ -102,7 +131,7 @@ class RdfAbandonedRunRecorderTest {
     final RdfIndexJob job = job(IndexJobStatus.COMPLETED_WITH_ERRORS);
     job.setErrorMessage("3 record(s) failed across 1 partition(s)");
 
-    final String failure = failure(outcome(job, interruptedRun()).orElseThrow());
+    final String failure = failure(finished(interruptedRun(RESTARTED_AFTER_COMPLETION), job));
 
     assertTrue(failure.contains("coordinating this run stopped before it finished"), failure);
     assertTrue(failure.endsWith("with errors: 3 record(s) failed across 1 partition(s)"), failure);
@@ -111,29 +140,25 @@ class RdfAbandonedRunRecorderTest {
   @Test
   void runWithErrorsButNoJobMessageStillSaysSo() {
     final String failure =
-        failure(outcome(job(IndexJobStatus.FAILED), interruptedRun()).orElseThrow());
+        failure(finished(interruptedRun(RESTARTED_AFTER_COMPLETION), job(IndexJobStatus.FAILED)));
 
     assertTrue(failure.endsWith("remaining partitions with errors."), failure);
   }
 
   @Test
-  void stoppedJobIsRecordedAsStopped() {
-    final AppRunRecord run = outcome(job(IndexJobStatus.STOPPED), interruptedRun()).orElseThrow();
+  void stoppedRunIsRecordedAsStoppedWithoutTheInterruptionFailure() {
+    final AppRunRecord run =
+        finished(interruptedRun(RESTARTED_AFTER_COMPLETION), job(IndexJobStatus.STOPPED));
 
     assertEquals(AppRunRecord.Status.STOPPED, run.getStatus());
     assertEquals(JOB_COMPLETED, run.getEndTime());
-  }
-
-  @Test
-  void runRecordedAfterTheJobFinishedIsLeftAlone() {
-    final AppRunRecord alreadyRecorded = interruptedRun().withEndTime(JOB_COMPLETED);
-
-    assertTrue(outcome(job(IndexJobStatus.COMPLETED), alreadyRecorded).isEmpty());
+    assertNull(run.getFailureContext());
+    assertEquals(TABLES, run.getSuccessContext().getStats().getJobStats().getSuccessRecords());
   }
 
   private static RdfIndexJob job(final IndexJobStatus status) {
     return RdfIndexJob.builder()
-        .id(JOB_ID)
+        .id(UUID.randomUUID())
         .status(status)
         .jobConfiguration(new EventPublisherJob().withTimestamp(RUN_STARTED))
         .totalRecords(TABLES)
@@ -152,33 +177,24 @@ class RdfAbandonedRunRecorderTest {
         .build();
   }
 
-  /** How the startup cleanup leaves a run whose coordinating server stopped. */
-  private static AppRunRecord interruptedRun() {
+  private static AppRunRecord unfinishedRun() {
     return new AppRunRecord()
         .withAppId(UUID.randomUUID())
         .withAppName("RdfIndexApp")
         .withTimestamp(RUN_STARTED)
         .withStartTime(RUN_STARTED)
-        .withEndTime(SERVER_RESTARTED)
+        .withStatus(AppRunRecord.Status.RUNNING);
+  }
+
+  /** How the startup cleanup leaves a run whose coordinating server stopped. */
+  private static AppRunRecord interruptedRun(final long serverStarted) {
+    return unfinishedRun()
         .withStatus(AppRunRecord.Status.FAILED)
+        .withEndTime(serverStarted)
         .withFailureContext(
             new FailureContext()
-                .withFailure(new IndexingError().withMessage("Still running when server started")));
-  }
-
-  private static RdfReindexLockRecord expiredLock(final UUID jobId) {
-    return new RdfReindexLockRecord(
-        LOCK_KEY, jobId.toString(), "stopped-server", RUN_STARTED, RUN_STARTED, RUN_STARTED + 1);
-  }
-
-  private static RdfReindexLockRecord liveLock() {
-    final long later = System.currentTimeMillis() + 60_000L;
-    return new RdfReindexLockRecord(
-        LOCK_KEY, JOB_ID.toString(), "running-server", RUN_STARTED, RUN_STARTED, later);
-  }
-
-  private static Stats stats(final AppRunRecord run) {
-    return run.getSuccessContext().getStats();
+                .withFailure(new IndexingError().withMessage("Still running when server started"))
+                .withAdditionalProperty(AppRunInterruption.INTERRUPTED, true));
   }
 
   private static String failure(final AppRunRecord run) {

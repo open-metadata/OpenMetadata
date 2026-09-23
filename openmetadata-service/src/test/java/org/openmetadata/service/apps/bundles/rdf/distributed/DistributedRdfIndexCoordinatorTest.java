@@ -45,8 +45,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.apps.AppRunInterruption;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.PartitionStatus;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
@@ -57,6 +60,7 @@ import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexPartitionDAO;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexPartitionDAO.RdfAggregatedStatsRecord;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexPartitionDAO.RdfIndexPartitionRecord;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexServerStatsDAO;
+import org.openmetadata.service.jdbi3.TimeSeriesDAOs.AppExtensionTimeSeries;
 
 @ExtendWith(MockitoExtension.class)
 class DistributedRdfIndexCoordinatorTest {
@@ -67,6 +71,7 @@ class DistributedRdfIndexCoordinatorTest {
   @Mock private RdfIndexJobDAO jobDAO;
   @Mock private RdfIndexPartitionDAO partitionDAO;
   @Mock private RdfIndexServerStatsDAO serverStatsDAO;
+  @Mock private AppExtensionTimeSeries runsDAO;
   @Mock private RdfPartitionCalculator partitionCalculator;
 
   private DistributedRdfIndexCoordinator coordinator;
@@ -83,6 +88,7 @@ class DistributedRdfIndexCoordinatorTest {
     lenient().when(collectionDAO.rdfIndexJobDAO()).thenReturn(jobDAO);
     lenient().when(collectionDAO.rdfIndexPartitionDAO()).thenReturn(partitionDAO);
     lenient().when(collectionDAO.rdfIndexServerStatsDAO()).thenReturn(serverStatsDAO);
+    lenient().when(collectionDAO.appExtensionTimeSeriesDao()).thenReturn(runsDAO);
 
     coordinator = new DistributedRdfIndexCoordinator(collectionDAO, partitionCalculator);
   }
@@ -1032,5 +1038,58 @@ class DistributedRdfIndexCoordinatorTest {
         null,
         retryCount,
         0L);
+  }
+
+  @Test
+  void recoverySweepRecordsAnInterruptedRunFromItsFinishedJobWithoutTheLock() {
+    final long runStarted = 1_000L;
+    when(jobDAO.findByStatusesWithLimit(List.of("READY", "RUNNING", "STOPPING"), 20))
+        .thenReturn(List.of());
+    when(jobDAO.findByStatusesWithLimit(
+            List.of("COMPLETED", "COMPLETED_WITH_ERRORS", "FAILED", "STOPPED"), 5))
+        .thenReturn(
+            List.of(
+                new RdfIndexJobRecord(
+                    UUID.randomUUID().toString(),
+                    "COMPLETED",
+                    JsonUtils.pojoToJson(new EventPublisherJob().withTimestamp(runStarted)),
+                    10,
+                    10,
+                    10,
+                    0,
+                    "{}",
+                    "RdfIndexApp",
+                    runStarted,
+                    runStarted,
+                    9_000L,
+                    9_000L,
+                    null)));
+    final AppRunRecord interrupted =
+        new AppRunRecord()
+            .withAppId(UUID.randomUUID())
+            .withAppName("RdfIndexApp")
+            .withTimestamp(runStarted)
+            .withStartTime(runStarted)
+            .withStatus(AppRunRecord.Status.FAILED)
+            .withEndTime(20_000L)
+            .withFailureContext(
+                new FailureContext().withAdditionalProperty(AppRunInterruption.INTERRUPTED, true));
+    when(runsDAO.listAppExtensionInWindowByName(
+            "RdfIndexApp", 1, 0, runStarted, runStarted + 1, "status"))
+        .thenReturn(List.of(JsonUtils.pojoToJson(interrupted)));
+
+    coordinator.performStartupRecovery();
+
+    final ArgumentCaptor<String> recorded = ArgumentCaptor.forClass(String.class);
+    verify(runsDAO)
+        .update(
+            eq(interrupted.getAppId().toString()),
+            recorded.capture(),
+            eq(runStarted),
+            eq("status"));
+    assertEquals(
+        AppRunRecord.Status.SUCCESS,
+        JsonUtils.readValue(recorded.getValue(), AppRunRecord.class).getStatus());
+    verify(collectionDAO, never()).rdfReindexLockDAO();
   }
 }

@@ -14,7 +14,11 @@ package org.openmetadata.service.apps.bundles.rdf.distributed;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.util.EnumSet;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.function.LongSupplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
@@ -23,19 +27,31 @@ import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.apps.AppRunInterruption;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfReindexLockDAO.RdfReindexLockRecord;
 
 /**
- * Records how a distributed RDF run ended when the server coordinating it stopped first. Other
- * servers finish its partitions and the job still reaches a terminal state, but only the
- * coordinator writes the run record, so the run would otherwise keep whatever status it had when
- * that server stopped. A stopped coordinator is recognised by the reindex lock it never released;
- * one that finished releases the lock and records the run itself.
+ * Records how a distributed RDF run ended when the server coordinating it stopped before writing
+ * the run record. Other servers finish its partitions and the job still reaches a terminal state,
+ * but only the coordinator records the run, so the run would otherwise keep whatever status it had
+ * when that server stopped. The run record itself shows this: a restarting server marks it
+ * interrupted, and a coordinator that stopped without a restart leaves it unfinished.
  */
 @Slf4j
 public final class RdfAbandonedRunRecorder {
+  /**
+   * Longer than anything a live coordinator still does after its job finishes (promotion, and
+   * compaction's 10-minute wait), so a run still unfinished after it has no coordinator left.
+   */
+  static final long COORDINATOR_GRACE_MS = TimeUnit.HOURS.toMillis(1);
+
   private static final String STATUS_EXTENSION = AppExtension.ExtensionType.STATUS.toString();
+  private static final Set<AppRunRecord.Status> FINISHED =
+      EnumSet.of(
+          AppRunRecord.Status.SUCCESS,
+          AppRunRecord.Status.COMPLETED,
+          AppRunRecord.Status.FAILED,
+          AppRunRecord.Status.STOPPED);
   private static final String FINISHED_WITH_ERRORS =
       "The server coordinating this run stopped before it finished, and other servers completed"
           + " its remaining partitions with errors";
@@ -48,48 +64,34 @@ public final class RdfAbandonedRunRecorder {
 
   private final CollectionDAO.AppExtensionTimeSeries runs;
   private final String appName;
+  private final LongSupplier clock;
 
   /** Records runs of {@code appName}, whose jobs this recorder is given. */
   public RdfAbandonedRunRecorder(
       final CollectionDAO.AppExtensionTimeSeries runs, final String appName) {
-    this.runs = runs;
-    this.appName = appName;
+    this(runs, appName, System::currentTimeMillis);
   }
 
-  /** Writes {@code job}'s outcome into its run record if {@code lock} shows its coordinator gone. */
-  public void recordIfAbandoned(final RdfIndexJob job, final RdfReindexLockRecord lock) {
-    if (isAbandoned(job, lock)) {
+  RdfAbandonedRunRecorder(
+      final CollectionDAO.AppExtensionTimeSeries runs,
+      final String appName,
+      final LongSupplier clock) {
+    this.runs = runs;
+    this.appName = appName;
+    this.clock = clock;
+  }
+
+  /** Writes finished {@code job}'s outcome into its run record if its coordinator never did. */
+  public void recordIfAbandoned(final RdfIndexJob job) {
+    if (isFinishedWithRunLink(job)) {
       findRun(job.getJobConfiguration().getTimestamp())
-          .flatMap(run -> outcome(job, run))
+          .filter(run -> isLeftUnfinished(run, job, clock.getAsLong()))
+          .map(run -> finished(run, job))
           .ifPresent(this::save);
     }
   }
 
-  static boolean isAbandoned(final RdfIndexJob job, final RdfReindexLockRecord lock) {
-    return isFinishedWithRunLink(job) && isHeldByStoppedCoordinator(job, lock);
-  }
-
-  /**
-   * The run record as the finished job leaves it, or empty when the record was already written
-   * after the job finished.
-   */
-  static Optional<AppRunRecord> outcome(final RdfIndexJob job, final AppRunRecord run) {
-    return isWrittenAfterFinishing(run, job) ? Optional.empty() : Optional.of(finished(run, job));
-  }
-
-  private static boolean isWrittenAfterFinishing(final AppRunRecord run, final RdfIndexJob job) {
-    return run.getEndTime() != null && run.getEndTime() >= job.getCompletedAt();
-  }
-
-  private static AppRunRecord finished(final AppRunRecord run, final RdfIndexJob job) {
-    final long completedAt = job.getCompletedAt();
-    run.withEndTime(completedAt)
-        .withExecutionTime(run.getStartTime() == null ? null : completedAt - run.getStartTime())
-        .withSuccessContext(new SuccessContext().withStats(STATS_AGGREGATOR.toStats(job)));
-    return withFinalStatus(run, job);
-  }
-
-  private static boolean isFinishedWithRunLink(final RdfIndexJob job) {
+  static boolean isFinishedWithRunLink(final RdfIndexJob job) {
     final EventPublisherJob configuration = job.getJobConfiguration();
     return job.isTerminal()
         && job.getCompletedAt() != null
@@ -97,9 +99,24 @@ public final class RdfAbandonedRunRecorder {
         && configuration.getTimestamp() != null;
   }
 
-  private static boolean isHeldByStoppedCoordinator(
-      final RdfIndexJob job, final RdfReindexLockRecord lock) {
-    return lock != null && lock.isExpired() && job.getId().toString().equals(lock.jobId());
+  /**
+   * Whether the run never got its outcome: marked interrupted, or still unfinished well after its
+   * job ended. A run its coordinator recorded, or one this recorder wrote, is neither.
+   */
+  static boolean isLeftUnfinished(final AppRunRecord run, final RdfIndexJob job, final long now) {
+    return AppRunInterruption.isInterrupted(run)
+        || (!FINISHED.contains(run.getStatus())
+            && now - job.getCompletedAt() > COORDINATOR_GRACE_MS);
+  }
+
+  /** The run record as its finished job leaves it; any interruption failure is dropped. */
+  static AppRunRecord finished(final AppRunRecord run, final RdfIndexJob job) {
+    final long completedAt = job.getCompletedAt();
+    run.withEndTime(completedAt)
+        .withExecutionTime(run.getStartTime() == null ? null : completedAt - run.getStartTime())
+        .withSuccessContext(new SuccessContext().withStats(STATS_AGGREGATOR.toStats(job)))
+        .withFailureContext(null);
+    return withFinalStatus(run, job);
   }
 
   private static AppRunRecord withFinalStatus(final AppRunRecord run, final RdfIndexJob job) {
@@ -112,7 +129,7 @@ public final class RdfAbandonedRunRecorder {
 
   private static AppRunRecord completed(final AppRunRecord run, final String buildDataset) {
     return buildDataset == null
-        ? run.withStatus(AppRunRecord.Status.SUCCESS).withFailureContext(null)
+        ? run.withStatus(AppRunRecord.Status.SUCCESS)
         : failed(run, NOT_PROMOTED.formatted(buildDataset));
   }
 

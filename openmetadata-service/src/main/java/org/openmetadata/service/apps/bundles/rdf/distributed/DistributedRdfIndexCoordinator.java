@@ -43,7 +43,6 @@ import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexPartitionDAO.RdfAggre
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexPartitionDAO.RdfEntityStatsRecord;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexPartitionDAO.RdfIndexPartitionRecord;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexPartitionDAO.RdfServerPartitionStatsRecord;
-import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfReindexLockDAO.RdfReindexLockRecord;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
@@ -59,6 +58,16 @@ public class DistributedRdfIndexCoordinator {
   private static final int MAX_ERROR_MESSAGE_LENGTH = 4000;
   private static final int MAX_IN_FLIGHT_PARTITIONS_PER_SERVER = 5;
   private static final int CURSOR_WALK_BATCH_SIZE = 10_000;
+
+  /** RDF runs are serialized, so only the latest few finished jobs can still lack a run outcome. */
+  private static final int RECENT_FINISHED_JOBS = 5;
+
+  private static final List<IndexJobStatus> FINISHED_JOB_STATUSES =
+      List.of(
+          IndexJobStatus.COMPLETED,
+          IndexJobStatus.COMPLETED_WITH_ERRORS,
+          IndexJobStatus.FAILED,
+          IndexJobStatus.STOPPED);
 
   private final CollectionDAO collectionDAO;
   private final RdfPartitionCalculator partitionCalculator;
@@ -671,23 +680,19 @@ public class DistributedRdfIndexCoordinator {
       reclaimStalePartitions(job.getId());
       refreshAggregatedJob(job.getId());
     }
-    recordAbandonedRun();
+    getRecentJobs(FINISHED_JOB_STATUSES, RECENT_FINISHED_JOBS).forEach(this::recordIfAbandoned);
     evictStaleCursorCacheEntries();
   }
 
   /**
-   * Best effort: this also runs as a new reindex starts, and failing to finish an old run's record
-   * must not stop the new run.
+   * Best effort: this also runs as a new reindex starts, which one old run must not stop. A run
+   * left unrecorded keeps its marker, so the next sweep tries it again.
    */
-  private void recordAbandonedRun() {
-    final RdfReindexLockRecord lock = collectionDAO.rdfReindexLockDAO().findByKey(REINDEX_LOCK_KEY);
-    if (lock != null) {
-      try {
-        getJob(UUID.fromString(lock.jobId()))
-            .ifPresent(job -> abandonedRuns.recordIfAbandoned(job, lock));
-      } catch (RuntimeException exception) {
-        LOG.warn("Could not record the outcome of RDF job {}", lock.jobId(), exception);
-      }
+  private void recordIfAbandoned(final RdfIndexJob job) {
+    try {
+      abandonedRuns.recordIfAbandoned(job);
+    } catch (RuntimeException exception) {
+      LOG.warn("Could not record the outcome of RDF job {}", job.getId(), exception);
     }
   }
 

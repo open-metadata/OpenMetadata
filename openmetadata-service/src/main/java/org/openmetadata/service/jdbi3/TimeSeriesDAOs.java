@@ -1409,16 +1409,18 @@ public interface TimeSeriesDAOs {
 
     /**
      * Ends the named apps' running runs as failed with an end time and the given {@code failure},
-     * so a run whose server stopped says why instead of staying failed without a reason. Other
-     * failure-context entries are kept; an earlier {@code failure} is replaced whole.
+     * so a run whose server stopped says why instead of staying failed without a reason. The
+     * failure context is also marked {@code interrupted}, which tells a later recovery the run never
+     * recorded its own outcome. Other failure-context entries are kept; an earlier {@code failure}
+     * is replaced whole.
      */
     @ConnectionAwareSqlUpdate(
         value =
-            "UPDATE apps_extension_time_series SET json = JSON_SET(json, '$.status', 'failed', '$.endTime', :endTime, '$.failureContext', JSON_SET(IF(JSON_TYPE(JSON_EXTRACT(json, '$.failureContext')) = 'OBJECT', JSON_EXTRACT(json, '$.failureContext'), JSON_OBJECT()), '$.failure', CAST(:failure AS JSON))) WHERE extension = 'status' AND appName IN (<appNames>) AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.status')) = 'running'",
+            "UPDATE apps_extension_time_series SET json = JSON_SET(json, '$.status', 'failed', '$.endTime', :endTime, '$.failureContext', JSON_SET(IF(JSON_TYPE(JSON_EXTRACT(json, '$.failureContext')) = 'OBJECT', JSON_EXTRACT(json, '$.failureContext'), JSON_OBJECT()), '$.failure', CAST(:failure AS JSON), '$.interrupted', CAST('true' AS JSON))) WHERE extension = 'status' AND appName IN (<appNames>) AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.status')) = 'running'",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "UPDATE apps_extension_time_series SET json = jsonb_set(jsonb_set(jsonb_set(json, '{status}', '\"failed\"'), '{endTime}', to_jsonb(CAST(:endTime AS bigint))), '{failureContext}', jsonb_set(CASE WHEN jsonb_typeof(json->'failureContext') = 'object' THEN json->'failureContext' ELSE '{}'::jsonb END, '{failure}', CAST(:failure AS jsonb))) WHERE extension = 'status' AND appName IN (<appNames>) AND json->>'status' = 'running'",
+            "UPDATE apps_extension_time_series SET json = jsonb_set(jsonb_set(jsonb_set(json, '{status}', '\"failed\"'), '{endTime}', to_jsonb(CAST(:endTime AS bigint))), '{failureContext}', jsonb_set(jsonb_set(CASE WHEN jsonb_typeof(json->'failureContext') = 'object' THEN json->'failureContext' ELSE '{}'::jsonb END, '{failure}', CAST(:failure AS jsonb)), '{interrupted}', 'true'::jsonb)) WHERE extension = 'status' AND appName IN (<appNames>) AND json->>'status' = 'running'",
         connectionType = POSTGRES)
     int markRunningEntriesInterrupted(
         @BindList("appNames") List<String> appNames,
