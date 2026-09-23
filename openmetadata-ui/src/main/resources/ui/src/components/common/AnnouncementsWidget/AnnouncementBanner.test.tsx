@@ -158,4 +158,31 @@ describe('AnnouncementBanner', () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText('ProfilePicture')).toBeInTheDocument();
   });
+
+  it('should leave the entity out of the expanded strip but keep it on the landing banner', () => {
+    const { rerender } = renderBanner({ expanded: true });
+
+    // On an entity's own page the FQN just repeats the page you are looking at.
+    expect(
+      screen.queryByText('service.db.schema.table')
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <AnnouncementBanner announcement={announcement} variant="full" />
+    );
+
+    expect(screen.getByText('service.db.schema.table')).toBeInTheDocument();
+  });
+
+  it('should not indent the expanded title past the type chip', () => {
+    renderBanner({ expanded: true });
+
+    const banner = screen.getByTestId('announcement-banner');
+    const chip = banner.querySelector('span.tw\\:rounded-full');
+    const title = screen.getByText('Pipeline maintenance');
+
+    // The chip sits in the header row; the title is its sibling's sibling, not a
+    // descendant of the column the chip opens — that nesting is what indented it.
+    expect(chip?.parentElement?.contains(title)).toBe(false);
+  });
 });

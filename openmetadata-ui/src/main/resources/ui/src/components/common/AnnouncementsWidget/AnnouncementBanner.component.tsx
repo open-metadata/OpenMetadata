@@ -21,7 +21,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@untitledui/icons';
 import classNames from 'classnames';
-import { MouseEvent, useMemo } from 'react';
+import { MouseEvent, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
@@ -63,7 +63,7 @@ const AnnouncementTitle = ({
       as="span"
       className={className}
       size="text-sm"
-      weight="semibold">
+      weight="medium">
       {title}
     </Typography>
   );
@@ -85,8 +85,10 @@ const AnnouncementTitle = ({
 
 const AnnouncementFooter = ({
   announcement,
+  showEntity,
 }: {
   announcement: AnnouncementEntity;
+  showEntity: boolean;
 }) => {
   const createdBy = announcement.createdBy;
   const [, , user] = useUserProfile({
@@ -106,13 +108,13 @@ const AnnouncementFooter = ({
       <ProfilePicture displayName={postedBy} name={createdBy} width="16" />
       <Typography as="span" className="tw:text-text-secondary" size="text-xs">
         <Link
-          className="tw:text-text-secondary tw:no-underline"
+          className="tw:text-text-secondary tw:no-underline!"
           to={getUserPath(createdBy)}
           onClick={(e) => e.stopPropagation()}>
           {postedBy}
         </Link>
       </Typography>
-      {entityFQN && (
+      {showEntity && entityFQN && (
         <>
           <span className="tw:text-text-tertiary">&middot;</span>
           <Typography
@@ -170,81 +172,118 @@ const AnnouncementActions = ({
   );
 };
 
-interface AnnouncementContentProps {
+interface AnnouncementBodyProps {
   announcement: AnnouncementEntity;
   badgeColor: BadgeColors;
-  expanded: boolean;
   hasDescription: boolean;
   labelKey: string;
   plainDescription: string;
+  showEntity: boolean;
   title: string;
   titleClassName: string;
+  typeChip: ReactNode;
   onClick?: () => void;
 }
 
-const AnnouncementContent = ({
-  announcement,
+const TypeBadge = ({
   badgeColor,
-  expanded,
+  labelKey,
+}: {
+  badgeColor: BadgeColors;
+  labelKey: string;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Badge
+      className="tw:bg-primary!"
+      color={badgeColor}
+      data-testid="announcement-type-badge"
+      size="sm"
+      type="color">
+      {t(labelKey)}
+    </Badge>
+  );
+};
+
+/** One line: chip, badge, title and a flattened description, then the actions. */
+const CollapsedBody = ({
+  badgeColor,
   hasDescription,
   labelKey,
   plainDescription,
   title,
   titleClassName,
+  typeChip,
   onClick,
-}: AnnouncementContentProps) => {
-  const { t } = useTranslation();
-
-  const titleNode = (
+}: Omit<AnnouncementBodyProps, 'announcement' | 'showEntity'>) => (
+  <>
+    {typeChip}
+    <TypeBadge badgeColor={badgeColor} labelKey={labelKey} />
     <AnnouncementTitle
       className={titleClassName}
       title={title}
       onClick={onClick}
     />
-  );
+    {hasDescription && (
+      <Typography
+        ellipsis
+        as="span"
+        className="tw:min-w-0 tw:flex-1 tw:text-text-secondary"
+        data-testid="announcement-description"
+        size="text-sm">
+        {plainDescription}
+      </Typography>
+    )}
+  </>
+);
 
-  return (
-    <Box className="tw:min-w-0 tw:flex-1 tw:gap-2" direction="col">
-      <Box align="center" className="tw:min-w-0 tw:gap-2">
-        <Badge
-          className="tw:bg-primary!"
-          color={badgeColor}
-          data-testid="announcement-type-badge"
-          size="sm"
-          type="color">
-          {t(labelKey)}
-        </Badge>
-
-        {!expanded && titleNode}
-
-        {!expanded && hasDescription && (
-          <Typography
-            ellipsis
-            as="span"
-            className="tw:min-w-0 tw:flex-1 tw:text-text-secondary"
-            data-testid="announcement-description"
-            size="text-sm">
-            {plainDescription}
-          </Typography>
-        )}
-      </Box>
-
-      {expanded && titleNode}
-
-      {expanded && hasDescription && (
-        <RichTextEditorPreviewerV1
-          className="tw:[&_p]:text-text-secondary tw:[&_p]:text-sm"
-          data-testid="announcement-description"
-          enableSeeMoreVariant={false}
-          markdown={announcement.description}
-          showReadMoreBtn={false}
-        />
-      )}
-
-      {expanded && <AnnouncementFooter announcement={announcement} />}
+/**
+ * Chip and badge share a header row with the actions; the title, description and
+ * footer then run the full width of the banner rather than being indented past
+ * the chip, which is how the frame lays it out.
+ */
+const ExpandedBody = ({
+  announcement,
+  badgeColor,
+  hasDescription,
+  labelKey,
+  showEntity,
+  title,
+  titleClassName,
+  typeChip,
+  actions,
+  onClick,
+}: Omit<AnnouncementBodyProps, 'plainDescription'> & {
+  actions: ReactNode;
+}) => (
+  <Box className="tw:min-w-0 tw:flex-1 tw:gap-2" direction="col">
+    <Box align="center" className="tw:min-w-0 tw:gap-2">
+      {typeChip}
+      <TypeBadge badgeColor={badgeColor} labelKey={labelKey} />
+      <span className="tw:flex-1" />
+      {actions}
     </Box>
-  );
-};
+
+    <AnnouncementTitle
+      className={titleClassName}
+      title={title}
+      onClick={onClick}
+    />
+
+    {hasDescription && (
+      <RichTextEditorPreviewerV1
+        className="tw:[&_p]:text-text-secondary tw:[&_p]:text-sm"
+        data-testid="announcement-description"
+        enableSeeMoreVariant={false}
+        markdown={announcement.description}
+        showReadMoreBtn={false}
+      />
+    )}
+
+    <AnnouncementFooter announcement={announcement} showEntity={showEntity} />
+  </Box>
+);
 
 const AnnouncementBanner = ({
   announcement,
@@ -275,45 +314,59 @@ const AnnouncementBanner = ({
   const isFull = variant === 'full';
   const isExpanded = isFull || expanded;
 
+  const typeChip = (
+    <span
+      className={classNames(
+        'tw:flex tw:size-7 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border tw:bg-primary',
+        surface.border
+      )}>
+      <TypeIcon className={classNames('tw:size-4', surface.icon)} />
+    </span>
+  );
+
+  const actions = (
+    <AnnouncementActions
+      actionClassName={surface.title}
+      expanded={expanded}
+      showToggle={Boolean(onToggleExpand) && !isFull}
+      onDismiss={onDismiss}
+      onToggleExpand={onToggleExpand}
+    />
+  );
+
+  const shared = {
+    badgeColor: color,
+    hasDescription: !isDescriptionContentEmpty(announcement.description),
+    labelKey,
+    title: announcement.displayName ?? announcement.name,
+    titleClassName: isFull ? surface.title : 'tw:text-text-primary',
+    typeChip,
+    onClick,
+  };
+
   return (
     <div
       className={classNames(
         'tw:rounded-[10px] tw:outline-1 tw:-outline-offset-1',
         surface.surface,
-        isFull ? 'tw:px-4 tw:py-3.5' : 'tw:px-3 tw:py-2',
+        isExpanded ? 'tw:px-4 tw:py-3.5' : 'tw:px-3 tw:py-2',
         className
       )}
       data-testid={testId}
       role="status">
-      <Box align={isExpanded ? 'start' : 'center'} className="tw:gap-2">
-        <span
-          className={classNames(
-            'tw:flex tw:size-7 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border tw:bg-primary',
-            surface.border
-          )}>
-          <TypeIcon className={classNames('tw:size-4', surface.icon)} />
-        </span>
-
-        <AnnouncementContent
+      {isExpanded ? (
+        <ExpandedBody
+          {...shared}
+          actions={actions}
           announcement={announcement}
-          badgeColor={color}
-          expanded={isExpanded}
-          hasDescription={!isDescriptionContentEmpty(announcement.description)}
-          labelKey={labelKey}
-          plainDescription={plainDescription}
-          title={announcement.displayName ?? announcement.name}
-          titleClassName={isFull ? surface.title : 'tw:text-text-primary'}
-          onClick={onClick}
+          showEntity={isFull}
         />
-
-        <AnnouncementActions
-          actionClassName={surface.title}
-          expanded={expanded}
-          showToggle={Boolean(onToggleExpand) && !isFull}
-          onDismiss={onDismiss}
-          onToggleExpand={onToggleExpand}
-        />
-      </Box>
+      ) : (
+        <Box align="center" className="tw:gap-2">
+          <CollapsedBody {...shared} plainDescription={plainDescription} />
+          {actions}
+        </Box>
+      )}
     </div>
   );
 };
