@@ -532,23 +532,8 @@ export default [
       // sanctioned fallback/placeholder object used throughout the already-
       // converted code (e.g. before a permissions fetch resolves), unlike
       // the two prioritization helpers.
-      //
-      // Deviation from the task brief: the brief assumed this would land at
-      // 'error', with the sweep having already driven direct call sites to
-      // (near) zero. Verification at promotion time found 40 files (45
-      // import specifiers) still importing these two functions directly
-      // from components/pages — not "a few, small" stragglers, and
-      // concentrated in a category the sweep never touched (the per-entity
-      // `*Version` components — TableVersion, ChartVersion, PipelineVersion,
-      // etc. — plus a handful of widgets and hooks). Converting 40 files'
-      // worth of permission derivation is its own sweep-scale task
-      // (mirroring Task 8), not something to fold silently into a
-      // lint-hardening/promotion task. Landing this specific restriction at
-      // 'warn' follows the repo's own documented convention (see the "warn
-      // tier" comment above) for a real, counted backlog that is not zero
-      // yet; promote to 'error' once a follow-up sweep clears it.
       'no-restricted-imports': [
-        'warn', // 40 files (45 import specifiers) import getPrioritizedEditPermission/getPrioritizedViewPermission directly (measured via this rule at promotion time)
+        'error',
         {
           patterns: [
             {

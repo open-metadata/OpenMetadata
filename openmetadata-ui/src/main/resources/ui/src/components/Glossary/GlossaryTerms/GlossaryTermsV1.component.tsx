@@ -26,7 +26,6 @@ import {
   EntityStatus,
   GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
@@ -46,7 +45,7 @@ import {
 } from '../../../utils/FeedUtilsPure';
 import glossaryTermClassBase from '../../../utils/Glossary/GlossaryTermClassBase';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryPureUtils';
-import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import {
   getGlossaryTermDetailsPath,
   getGlossaryTermsVersionsPath,
@@ -190,7 +189,7 @@ const GlossaryTermsV1 = ({
   );
 
   const viewCustomPropertiesPermission = useMemo(
-    () => getPrioritizedViewPermission(permissions, Operation.ViewCustomFields),
+    () => getDerivedPermissionFlags(permissions).canViewCustomFields,
     [permissions]
   );
 

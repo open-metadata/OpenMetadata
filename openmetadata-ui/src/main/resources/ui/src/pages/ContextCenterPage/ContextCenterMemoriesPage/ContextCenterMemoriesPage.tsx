@@ -951,7 +951,7 @@ const ContextCenterMemoriesPage: FC = () => {
                           textValue={opt.label}>
                           <Box align="center" gap={2} justify="between">
                             {opt.id && (
-                              <ProfilePicture name={opt.id} size={20} />
+                              <ProfilePicture name={opt.id} size="xs" />
                             )}
                             <span className="tw:flex-1">{opt.label}</span>
                             {selectedAuthor?.id === opt.id && (
