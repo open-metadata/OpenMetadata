@@ -1937,15 +1937,12 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           rowClassName={getRowClassName}
           rowKey="fullyQualifiedName"
           scroll={GLOSSARY_TABLE_SCROLL}
-          // Stretches the table's own scroll region to fill this panel
-          // instead of shrinking to the row content's height, so a short
-          // result set doesn't leave the scrollbar floating above empty
-          // space. Safe only because `containerClassName` above also makes
-          // the outer wrapper `flex flex-col` with a bounded height (via
-          // `tw:flex-1 tw:min-h-0`) — vertical scrolling still happens on
-          // that outer wrapper (`tw:!overflow-y-auto`), not here, so the
-          // sticky header never ends up pinned against a container that
-          // actually scrolls.
+          // Stretches the table's own scroll region to fill this panel so a
+          // short result set doesn't leave the horizontal scrollbar floating
+          // above empty space. The outer wrapper is a bounded flex column
+          // (`tw:flex tw:flex-col tw:flex-1 tw:min-h-0`), so this region takes
+          // the remaining height and scrolls both axes itself (overflow-y comes
+          // from scroll.y's inline style); the sticky header pins against it.
           scrollContainerClassName="tw:!flex-1 tw:!min-h-0 tw:!max-h-none"
           size="small"
           staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
