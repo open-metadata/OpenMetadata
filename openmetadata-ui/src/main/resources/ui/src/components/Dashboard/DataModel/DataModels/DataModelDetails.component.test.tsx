@@ -13,10 +13,12 @@
 
 import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   DashboardDataModel,
   DataModelType,
 } from '../../../../generated/entity/data/dashboardDataModel';
+import dashboardDataModelClassBase from '../../../../utils/DashboardDataModelClassBase';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import DataModelDetails from './DataModelDetails.component';
@@ -143,5 +145,59 @@ describe('DataModelDetails component', () => {
       }),
       expect.anything()
     );
+  });
+});
+
+describe('DataModelDetails lineage permission', () => {
+  const renderWith = (
+    dataModelPermissions: OperationPermission,
+    deleted = false
+  ) =>
+    render(
+      <DataModelDetails
+        {...mockProps}
+        dataModelData={{ ...mockDataModelData, deleted }}
+        dataModelPermissions={dataModelPermissions}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+  const lastEditLineagePermission = () => {
+    const calls = (
+      dashboardDataModelClassBase.getDashboardDataModelDetailPageTabs as jest.Mock
+    ).mock.calls;
+
+    return calls[calls.length - 1][0].editLineagePermission;
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should grant lineage editing on EditLineage', () => {
+    renderWith({ EditLineage: true } as OperationPermission);
+
+    expect(lastEditLineagePermission()).toBe(true);
+  });
+
+  it('should grant lineage editing on EditAll', () => {
+    renderWith({ EditAll: true } as OperationPermission);
+
+    expect(lastEditLineagePermission()).toBe(true);
+  });
+
+  it('should let a denied EditLineage beat EditAll', () => {
+    renderWith({
+      EditAll: true,
+      EditLineage: false,
+    } as OperationPermission);
+
+    expect(lastEditLineagePermission()).toBe(false);
+  });
+
+  it('should deny lineage editing on a deleted data model', () => {
+    renderWith({ EditLineage: true } as OperationPermission, true);
+
+    expect(lastEditLineagePermission()).toBe(false);
   });
 });

@@ -58,7 +58,6 @@ import {
   NotificationTemplate,
   ProviderType,
 } from '../../generated/entity/events/notificationTemplate';
-import { Operation } from '../../generated/entity/policies/policy';
 import { AlertType as CapabilitiesAlertType } from '../../generated/events/api/alertCapabilitiesRequest';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
@@ -83,10 +82,8 @@ import { getAllNotificationTemplates } from '../../rest/notificationtemplateAPI'
 import { toCapabilitiesInput } from '../../utils/Alerts/AlertSelectionUtil';
 import alertsClassBase from '../../utils/AlertsClassBase';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getNotificationAlertDetailsPath,
   getSettingPath,
@@ -274,7 +271,7 @@ const AddNotificationPage = () => {
 
       setTemplateResourcePermission(permission);
 
-      if (getPrioritizedViewPermission(permission, Operation.ViewAll)) {
+      if (getDerivedPermissionFlags(permission).canViewAll) {
         const { data } = await getAllNotificationTemplates({
           limit: PAGE_SIZE_LARGE,
           provider: ProviderType.User,
