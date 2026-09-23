@@ -15,13 +15,47 @@ package org.openmetadata.service.cache;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 class UnconfirmedWritesTest {
+  private static final int WRITERS = 8;
+  private static final int KEYS_PER_WRITER = 1_000;
+  private static final int LIMIT = 100;
+
+  @Test
+  void concurrentWritersNeverPushTheMapPastTheLimit() throws Exception {
+    UnconfirmedWrites writes = new UnconfirmedWrites(LIMIT);
+    ExecutorService pool = Executors.newFixedThreadPool(WRITERS);
+    try {
+      List<Future<?>> writers = new ArrayList<>();
+      for (int writer = 0; writer < WRITERS; writer++) {
+        List<String> keys = distinctKeys(writer * KEYS_PER_WRITER);
+        writers.add(pool.submit(() -> writes.record(keys)));
+      }
+      for (Future<?> writer : writers) {
+        writer.get(10, TimeUnit.SECONDS);
+      }
+    } finally {
+      pool.shutdownNow();
+    }
+
+    assertEquals(LIMIT, writes.snapshot(Integer.MAX_VALUE).size());
+    assertEquals(WRITERS * KEYS_PER_WRITER - LIMIT, writes.takeUntrackedCount());
+  }
+
+  private static List<String> distinctKeys(int from) {
+    return IntStream.range(from, from + KEYS_PER_WRITER).mapToObj(i -> "key-" + i).toList();
+  }
 
   @Test
   void deletedKeysAreForgotten() {

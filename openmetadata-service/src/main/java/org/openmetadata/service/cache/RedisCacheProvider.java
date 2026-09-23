@@ -146,8 +146,9 @@ public class RedisCacheProvider implements CacheProvider {
       }
       deleteUnconfirmedWrites();
       recordSuccess();
-      // Writes skipped between the delete above and a recovery flip in recordSuccess would
-      // otherwise be served stale until the next health check.
+      // Clears writes skipped between the first pass and a recovery flip in recordSuccess.
+      // Skips are recorded under stateLock, which the flip also takes, so all of them are
+      // recorded by now.
       deleteUnconfirmedWrites();
     } catch (Exception e) {
       recordFailure(e);
@@ -185,11 +186,21 @@ public class RedisCacheProvider implements CacheProvider {
   }
 
   private boolean skippedWhileUnavailable(Collection<String> writtenKeys) {
-    boolean skipped = !available;
-    if (skipped) {
-      unconfirmedWrites.record(writtenKeys);
+    return !available && recordIfStillUnavailable(writtenKeys);
+  }
+
+  /**
+   * Re-checks under {@link #stateLock}, which the recovery flip also takes: a write that saw the
+   * provider down is either recorded before recovery becomes visible or sent to Redis after it.
+   */
+  private boolean recordIfStillUnavailable(Collection<String> writtenKeys) {
+    synchronized (stateLock) {
+      boolean skipped = !available;
+      if (skipped) {
+        unconfirmedWrites.record(writtenKeys);
+      }
+      return skipped;
     }
-    return skipped;
   }
 
   private void recordWriteFailure(Exception e, String... writtenKeys) {
@@ -357,7 +368,12 @@ public class RedisCacheProvider implements CacheProvider {
 
   @Override
   public void set(String key, String value, Duration ttl) {
-    if (skippedWhileUnavailable(key)) return;
+    trySet(key, value, ttl);
+  }
+
+  @Override
+  public boolean trySet(String key, String value, Duration ttl) {
+    if (skippedWhileUnavailable(key)) return false;
 
     CacheMetrics m = metrics();
     Timer.Sample sample = startWriteTimer(m);
@@ -366,10 +382,12 @@ public class RedisCacheProvider implements CacheProvider {
       syncCommands.set(key, value, args);
       if (m != null) m.recordWrite();
       recordSuccess();
+      return true;
     } catch (Exception e) {
       if (m != null) m.recordError();
       recordWriteFailure(e, key);
       LOG.error("Error setting key: {}", key, e);
+      return false;
     } finally {
       stopWriteTimer(m, sample);
     }
@@ -472,7 +490,12 @@ public class RedisCacheProvider implements CacheProvider {
 
   @Override
   public void hset(String key, Map<String, String> fields, Duration ttl) {
-    if (fields.isEmpty() || skippedWhileUnavailable(key)) return;
+    tryHset(key, fields, ttl);
+  }
+
+  @Override
+  public boolean tryHset(String key, Map<String, String> fields, Duration ttl) {
+    if (fields.isEmpty() || skippedWhileUnavailable(key)) return false;
 
     CacheMetrics m = metrics();
     Timer.Sample sample = startWriteTimer(m);
@@ -483,10 +506,12 @@ public class RedisCacheProvider implements CacheProvider {
       }
       if (m != null) m.recordWrite();
       recordSuccess();
+      return true;
     } catch (Exception e) {
       if (m != null) m.recordError();
       recordWriteFailure(e, key);
       LOG.error("Error setting hash fields: {}", key, e);
+      return false;
     } finally {
       stopWriteTimer(m, sample);
     }

@@ -38,7 +38,8 @@ final class UnconfirmedWrites {
     this.maxKeys = maxKeys;
   }
 
-  void record(Collection<String> keysToRecord) {
+  /** Serialized so concurrent writers cannot all see room and push the map past {@code maxKeys}. */
+  synchronized void record(Collection<String> keysToRecord) {
     keysToRecord.stream().filter(Objects::nonNull).forEach(this::recordKey);
   }
 

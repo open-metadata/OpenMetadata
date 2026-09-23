@@ -52,13 +52,13 @@ public class CachedEntityDao {
     LOG.info(
         "CACHE: Writing entity to Redis - Key: {}, JSON length: {}", cacheKey, entityJson.length());
     try {
-      cache.hset(cacheKey, Map.of("base", entityJson), Duration.ofSeconds(config.entityTtlSeconds));
-      if (cache.available()) {
+      if (cache.tryHset(
+          cacheKey, Map.of("base", entityJson), Duration.ofSeconds(config.entityTtlSeconds))) {
         LOG.info(
             "CACHE: Successfully wrote entity to Redis - Type: {} -> ID: {}", entityType, entityId);
       } else {
         LOG.info(
-            "CACHE: Redis unavailable, entity write skipped - Type: {} -> ID: {}",
+            "CACHE: Entity not written to Redis (unavailable or failed) - Type: {} -> ID: {}",
             entityType,
             entityId);
       }
@@ -89,15 +89,14 @@ public class CachedEntityDao {
         cacheKey,
         entityJson.length());
     try {
-      cache.set(cacheKey, entityJson, Duration.ofSeconds(config.entityTtlSeconds));
-      if (cache.available()) {
+      if (cache.trySet(cacheKey, entityJson, Duration.ofSeconds(config.entityTtlSeconds))) {
         LOG.info(
             "CACHE: Successfully wrote entity by name to Redis - Type: {} -> FQN: {}",
             entityType,
             fqn);
       } else {
         LOG.info(
-            "CACHE: Redis unavailable, entity write by name skipped - Type: {} -> FQN: {}",
+            "CACHE: Entity not written to Redis by name (unavailable or failed) - Type: {} -> FQN: {}",
             entityType,
             fqn);
       }

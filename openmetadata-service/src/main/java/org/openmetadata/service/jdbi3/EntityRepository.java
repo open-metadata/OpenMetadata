@@ -473,7 +473,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * reader that loaded the pre-commit row could otherwise store it after the writer's post-commit
    * eviction and serve it until {@link EntityCacheRepair} ran.
    */
-  private static Caffeine<Object, String> entityCacheBuilder(long maxWeightBytes, int ttlSeconds) {
+  @VisibleForTesting
+  static Caffeine<Object, String> entityCacheBuilder(long maxWeightBytes, int ttlSeconds) {
     return Caffeine.newBuilder()
         .initialCapacity(ENTITY_CACHE_INITIAL_CAPACITY)
         .maximumWeight(maxWeightBytes)
