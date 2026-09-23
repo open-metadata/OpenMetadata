@@ -16,6 +16,7 @@ wiring: when metrics are emitted relative to the Barrier, what ends up in ``asse
 one measure surfaced by several paths is still one entity.
 """
 
+import logging
 import uuid
 from unittest.mock import MagicMock, patch
 
@@ -180,7 +181,12 @@ def _looker_source(**source_config) -> LookerSource:
         return LookerSource.create(config_dict["source"], config.workflowConfig.openMetadataServerConfig)
 
 
-def _run_bulk_stage(source_config: dict, db_service_prefixes: list[str] | None = None):
+def _run_bulk_stage(
+    source_config: dict,
+    db_service_prefixes: list[str] | None = None,
+    views: dict[str, LookMlView] | None = None,
+    explores: list[LookmlModelExplore] | None = None,
+):
     """Drive the bulk data-model stage the way the workflow does.
 
     The sink commits its buffer on a Barrier, so `_build_data_model` only returns an entity
@@ -189,7 +195,7 @@ def _run_bulk_stage(source_config: dict, db_service_prefixes: list[str] | None =
     looker = _looker_source(**source_config)
     looker.context.get().__dict__["dashboard_service"] = SERVICE
 
-    views = _views()
+    views = views if views is not None else _views()
 
     def find_view(view_name):
         """`_process_view` calls this by keyword, so `views.get` cannot stand in."""
@@ -221,7 +227,7 @@ def _run_bulk_stage(source_config: dict, db_service_prefixes: list[str] | None =
         patch.object(LookerSource, "_clean_table_name", side_effect=lambda name, dialect=None: name),
         patch.object(LookerSource, "_resolve_source_table", return_value=_source_table()),
     ):
-        for node_entity in (_explore(), DATAMODEL_LINEAGE_SENTINEL):
+        for node_entity in (*(explores if explores is not None else [_explore()]), DATAMODEL_LINEAGE_SENTINEL):
             for either in looker.yield_bulk_datamodel(node_entity):
                 records.append(either)
                 if either.right is not None and isinstance(either.right, Barrier):
@@ -263,6 +269,19 @@ def test_metrics_are_off_by_default():
 
 def test_no_metric_lineage_when_metrics_are_off():
     assert _metric_lineage(_run_bulk_stage({}, db_service_prefixes=["trino"])) == []
+
+
+def test_metrics_without_data_models_warns_instead_of_silently_ingesting_nothing(caplog):
+    """Measures are read off the explores and views the data-model stage walks.
+
+    With `includeDataModels` off that stage yields nothing, so the combination can only ever
+    produce zero metrics. A run that reports success and writes nothing is the failure mode
+    worth avoiding, so it is said out loud.
+    """
+    with caplog.at_level(logging.WARNING):
+        _looker_source(includeMetrics=True, includeDataModels=False)
+
+    assert "includeDataModels" in caplog.text
 
 
 # --------------------------------------------------------------------------------------
@@ -399,7 +418,52 @@ def test_table_to_metric_lineage_carries_column_lineage():
     assert [
         ([model_str(column) for column in c.fromColumns], model_str(c.toColumn))
         for c in edge.lineage_details.columnsLineage
-    ] == [(["trino.db.schema.my_table.amount"], f"{metric_name}.measure.total_revenue")]
+    ] == [(["trino.db.schema.my_table.amount"], metric_name)]
+
+
+def test_the_column_lineage_target_is_the_metric_itself():
+    """A Metric has `measures`, not columns, so its own FQN is its only column endpoint.
+
+    `LineageRepository.getChildrenNames` answers `{metricFqn}` for a metric, and
+    `validateLineageDetails` silently drops any `toColumn` outside that set -- the request comes
+    back 200 having stored nothing. Addressing the measure as `<metric>.measure.<name>` is
+    exactly that silent drop, so the target is pinned here.
+    """
+    records = _run_bulk_stage({"includeMetrics": True}, db_service_prefixes=["trino"])
+
+    targets = [
+        (model_str(column_lineage.toColumn), edge.to_entity_fqn)
+        for edge in _metric_lineage(records)
+        if edge.from_entity_type == "table"
+        for column_lineage in edge.lineage_details.columnsLineage or []
+    ]
+
+    assert targets
+    assert all(to_column == metric_fqn for to_column, metric_fqn in targets)
+
+
+def test_every_source_column_of_a_measure_rides_one_edge():
+    """One `toColumn` is valid on a metric, so the columns are `fromColumns` of a single entry.
+
+    Emitting one ColumnLineage per source column would be the same target repeated, and the
+    server keeps only what the last entry resolves to.
+    """
+    views = _views()
+    views["my_view"].measures[0].sql = "${TABLE}.amount + ${TABLE}.id"
+    records = _run_bulk_stage({"includeMetrics": True}, db_service_prefixes=["trino"], views=views)
+
+    metric_name = looker_metric_name(SERVICE, PROJECT, "my_view", "total_revenue")
+    (edge,) = [
+        edge
+        for edge in _metric_lineage(records)
+        if edge.from_entity_type == "table" and edge.to_entity_fqn == metric_name
+    ]
+
+    (column_lineage,) = edge.lineage_details.columnsLineage
+    assert [model_str(column) for column in column_lineage.fromColumns] == [
+        "trino.db.schema.my_table.amount",
+        "trino.db.schema.my_table.id",
+    ]
 
 
 def test_a_derived_measure_resolves_its_columns_transitively():

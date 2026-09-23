@@ -78,14 +78,19 @@ _METRIC_TYPE_BY_MEASURE_TYPE = {
     "sum_distinct": MetricType.SUM,
 }
 
-# `value_format_name` is a named Looker format. Only the two families that carry an unambiguous
+# `value_format_name` is a named Looker format. Only the families that carry an unambiguous
 # unit are mapped; `decimal_2` and friends say how to render a number, not what it measures.
-_UNIT_BY_VALUE_FORMAT_PREFIX = (
-    ("usd", UnitOfMeasurement.DOLLARS),
-    ("gbp", UnitOfMeasurement.DOLLARS),
-    ("eur", UnitOfMeasurement.DOLLARS),
-    ("percent", UnitOfMeasurement.PERCENTAGE),
+# `DOLLARS` is the enum's only currency, so a pound- or euro-denominated measure is OTHER with
+# the currency preserved in `customUnitOfMeasurement` rather than being relabelled as dollars.
+_UNIT_BY_VALUE_FORMAT_PREFIX: tuple[tuple[str, UnitOfMeasurement, str | None], ...] = (
+    ("usd", UnitOfMeasurement.DOLLARS, None),
+    ("gbp", UnitOfMeasurement.OTHER, "GBP"),
+    ("eur", UnitOfMeasurement.OTHER, "EUR"),
+    ("percent", UnitOfMeasurement.PERCENTAGE, None),
 )
+
+# LookML `hidden` is a yes/no string; the API reports the resolved boolean.
+_TRUTHY_LOOKML_FLAGS = {"yes", "true"}
 
 # LookML data types that make a dimension a TIME dimension rather than CATEGORICAL, expressed
 # through the type map the column builder already uses so the two never disagree.
@@ -137,12 +142,17 @@ def map_metric_type(measure_type: str | None) -> MetricType:
     return _METRIC_TYPE_BY_MEASURE_TYPE.get((measure_type or "").lower(), MetricType.OTHER)
 
 
-def map_unit_of_measurement(value_format_name: str | None) -> UnitOfMeasurement | None:
+def map_unit_of_measurement(value_format_name: str | None) -> tuple[UnitOfMeasurement | None, str | None]:
+    """The measure's unit, plus the custom unit that names it when the enum cannot.
+
+    Returned together because the two fields are only valid as a pair: the schema defines
+    ``customUnitOfMeasurement`` as the name of the unit when ``unitOfMeasurement`` is ``OTHER``.
+    """
     lowered = (value_format_name or "").lower()
-    for prefix, unit in _UNIT_BY_VALUE_FORMAT_PREFIX:
+    for prefix, unit, custom_unit in _UNIT_BY_VALUE_FORMAT_PREFIX:
         if lowered.startswith(prefix):
-            return unit
-    return None
+            return unit, custom_unit
+    return None, None
 
 
 def measure_references(sql: str | None) -> list[str]:
@@ -236,6 +246,19 @@ def _dimension(field: LookMlField | LookmlModelExploreField, name: str) -> Metri
     )
 
 
+def _is_hidden(field: LookMlField | LookmlModelExploreField) -> bool:
+    """Whether the field is hidden from Looker's own field picker.
+
+    A hidden measure is an intermediate a visible measure is built from, not something a user
+    can chart. It must not become a Metric: names are globally unique across the instance, so
+    every hidden helper would take a permanent slot in that namespace for nothing.
+    """
+    hidden = field.hidden
+    if isinstance(hidden, str):
+        return hidden.strip().lower() in _TRUTHY_LOOKML_FLAGS
+    return bool(hidden)
+
+
 def _view_dimensions(view: LookMlView) -> list[MetricDimension]:
     """The fields the view's measures can be sliced by.
 
@@ -250,13 +273,17 @@ def _explore_dimensions(model: LookmlModelExplore, view: str) -> list[MetricDime
 
     The API reports a field as ``view.field``; the view is already the metric's identity, so
     repeating it in every dimension name would be noise.
+
+    Dropping the qualifier is also what makes one view joined twice -- ``billing.status`` and
+    ``shipping.status``, both declared by the same view -- collapse back into the one ``status``
+    dimension the view actually declares, instead of repeating it once per join alias.
     """
-    dimensions = []
+    dimensions: dict[str, MetricDimension] = {}
     for field in (model.fields.dimensions if model.fields else None) or []:
         field_view, _, short_name = (field.name or "").partition(".")
         if short_name and (field.original_view or field_view) == view:
-            dimensions.append(_dimension(field, short_name))
-    return dimensions
+            dimensions.setdefault(short_name, _dimension(field, short_name))
+    return list(dimensions.values())
 
 
 def candidates_from_view(view: LookMlView, project: str) -> list[MeasureCandidate]:
@@ -278,6 +305,7 @@ def candidates_from_view(view: LookMlView, project: str) -> list[MeasureCandidat
             from_lookml=True,
         )
         for measure in view.measures
+        if not _is_hidden(measure)
     ]
 
 
@@ -290,7 +318,7 @@ def candidates_from_explore(model: LookmlModelExplore, project: str) -> list[Mea
     """
     candidates = []
     for field in (model.fields.measures if model.fields else None) or []:
-        if not field.measure or not field.name:
+        if not field.measure or not field.name or _is_hidden(field):
             continue
         field_view, _, short_name = field.name.partition(".")
         view = field.original_view or field.view or field_view
@@ -315,20 +343,45 @@ def candidates_from_explore(model: LookmlModelExplore, project: str) -> list[Mea
     return candidates
 
 
+def _backfill_from_api(lookml: MeasureCandidate, api: MeasureCandidate) -> MeasureCandidate:
+    """The LookML candidate, with anything it does not declare taken from the API one.
+
+    LookML wins field by field rather than wholesale because the parser reads view files
+    verbatim: it does not resolve ``extends``, so a child view that overrides only a measure's
+    ``label`` parses to a measure with no type, no SQL and no filters. Replacing the
+    API-resolved candidate with that would turn a `sum` into an untyped metric with no
+    expression. The API has already applied inheritance and refinements, so it is the right
+    source for everything the LookML declaration is silent about.
+    """
+    return lookml._replace(
+        label=lookml.label or api.label,
+        description=lookml.description or api.description,
+        measure_type=lookml.measure_type or api.measure_type,
+        sql=lookml.sql or api.sql,
+        value_format_name=lookml.value_format_name or api.value_format_name,
+        tags=lookml.tags or api.tags,
+        filters=lookml.filters or api.filters,
+        dimensions=lookml.dimensions or api.dimensions,
+    )
+
+
 def merge_candidates(
     known: dict[tuple[str, str, str], MeasureCandidate],
     incoming: Iterable[MeasureCandidate],
 ) -> dict[tuple[str, str, str], MeasureCandidate]:
     """Fold candidates into the known set, LookML winning over the API for one identity.
 
-    LookML is strictly richer -- it keeps the exact filter syntax and the raw ``sql`` the user
-    wrote -- so it replaces an API-sourced candidate. Two candidates from the same source are
-    the same measure seen twice, and the first is kept.
+    LookML is richer where it speaks -- it keeps the exact filter syntax and the raw ``sql`` the
+    user wrote -- so it wins field by field over an API-sourced candidate, but does not erase
+    what it leaves unsaid. Two candidates from the same source are the same measure seen twice,
+    and the first is kept.
     """
     for candidate in incoming:
         existing = known.get(candidate.key)
-        if existing is None or (candidate.from_lookml and not existing.from_lookml):
+        if existing is None:
             known[candidate.key] = candidate
+        elif candidate.from_lookml and not existing.from_lookml:
+            known[candidate.key] = _backfill_from_api(candidate, existing)
     return known
 
 
@@ -375,6 +428,7 @@ def build_metric_request(
     entity that Looker never wrote and that could not be compared back to the source; the
     aggregation is preserved losslessly on the measure child instead.
     """
+    unit, custom_unit = map_unit_of_measurement(candidate.value_format_name)
     return CreateMetricRequest(  # pyright: ignore[reportCallIssue]
         name=EntityName(looker_metric_name(service, candidate.project, candidate.view, candidate.name)),
         displayName=candidate.label or candidate.name,
@@ -383,7 +437,8 @@ def build_metric_request(
         metricExpression=(
             MetricExpression(language=Language.SQL, code=candidate.sql) if candidate.sql else None  # pyright: ignore[reportCallIssue]
         ),
-        unitOfMeasurement=map_unit_of_measurement(candidate.value_format_name),
+        unitOfMeasurement=unit,
+        customUnitOfMeasurement=custom_unit,
         measures=[
             MetricMeasure(  # pyright: ignore[reportCallIssue]
                 name=candidate.name,

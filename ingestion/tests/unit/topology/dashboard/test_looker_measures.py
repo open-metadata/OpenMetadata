@@ -333,20 +333,40 @@ def test_measure_type_maps_to_metric_type(lookml_type, expected):
 
 
 @pytest.mark.parametrize(
-    ("value_format_name", "expected"),
+    ("value_format_name", "expected", "expected_custom"),
     [
-        ("usd", UnitOfMeasurement.DOLLARS),
-        ("usd_0", UnitOfMeasurement.DOLLARS),
-        ("percent_2", UnitOfMeasurement.PERCENTAGE),
-        ("decimal_1", None),
-        (None, None),
+        ("usd", UnitOfMeasurement.DOLLARS, None),
+        ("usd_0", UnitOfMeasurement.DOLLARS, None),
+        ("percent_2", UnitOfMeasurement.PERCENTAGE, None),
+        ("decimal_1", None, None),
+        (None, None, None),
     ],
 )
-def test_value_format_maps_to_unit_of_measurement(value_format_name, expected):
+def test_value_format_maps_to_unit_of_measurement(value_format_name, expected, expected_custom):
     field = explore_field(name="orders.m", view="orders", type="sum", value_format_name=value_format_name)
     (candidate,) = candidates_from_explore(explore(field), PROJECT)
+    request = build_metric_request(SERVICE, candidate)
 
-    assert build_metric_request(SERVICE, candidate).unitOfMeasurement == expected
+    assert request.unitOfMeasurement == expected
+    assert request.customUnitOfMeasurement == expected_custom
+
+
+@pytest.mark.parametrize(
+    ("value_format_name", "expected_custom"),
+    [("gbp", "GBP"), ("gbp_0", "GBP"), ("eur", "EUR"), ("eur_0", "EUR")],
+)
+def test_a_non_dollar_currency_is_named_rather_than_relabelled_as_dollars(value_format_name, expected_custom):
+    """`DOLLARS` is the enum's only currency, and a pound is not a dollar.
+
+    Calling a GBP measure `DOLLARS` is a wrong assertion about the data; `OTHER` plus the
+    currency in `customUnitOfMeasurement` says exactly what the measure is denominated in.
+    """
+    field = explore_field(name="orders.m", view="orders", type="sum", value_format_name=value_format_name)
+    (candidate,) = candidates_from_explore(explore(field), PROJECT)
+    request = build_metric_request(SERVICE, candidate)
+
+    assert request.unitOfMeasurement == UnitOfMeasurement.OTHER
+    assert request.customUnitOfMeasurement == expected_custom
 
 
 def test_the_defining_views_dimensions_are_attached(candidates):
@@ -452,3 +472,119 @@ def test_table_columns_resolve_transitively_through_other_measures(view):
 
 def test_self_referencing_sql_does_not_recurse_forever():
     assert table_column_references("${a}", {"a": "${b}", "b": "${a}"}) == set()
+
+
+# --------------------------------------------------------------------------------------
+# Hidden measures
+# --------------------------------------------------------------------------------------
+
+HIDDEN_VIEW_LKML = """
+view: orders {
+  measure: visible_total { type: sum  sql: ${TABLE}.amount ;; }
+  measure: internal_helper {
+    hidden: yes
+    type: sum
+    sql: ${TABLE}.raw_amount ;;
+  }
+  measure: explicitly_visible { hidden: no  type: count }
+}
+"""
+
+
+def test_a_hidden_lookml_measure_is_not_a_metric():
+    """`hidden: yes` marks an intermediate, not something a user can chart.
+
+    Metric names are unique across the whole instance, so every hidden helper ingested takes a
+    permanent slot in that namespace for a measure Looker itself will not show.
+    """
+    view = LkmlFile.model_validate(lkml.load(HIDDEN_VIEW_LKML)).views[0]
+
+    names = {candidate.name for candidate in candidates_from_view(view, PROJECT)}
+
+    assert names == {"visible_total", "explicitly_visible"}
+
+
+def test_a_hidden_api_measure_is_not_a_metric():
+    fields = [
+        explore_field(name="orders.visible", view="orders", type="sum"),
+        explore_field(name="orders.internal", view="orders", type="sum", hidden=True),
+    ]
+
+    assert [candidate.name for candidate in candidates_from_explore(explore(*fields), PROJECT)] == ["visible"]
+
+
+# --------------------------------------------------------------------------------------
+# Aliased joins
+# --------------------------------------------------------------------------------------
+
+
+def test_a_view_joined_twice_does_not_repeat_its_dimensions():
+    """`billing.status` and `shipping.status` are one view's one `status` dimension."""
+    model = explore(
+        explore_field(name="billing.status", view="billing", original_view="addresses", type="string", measure=False),
+        explore_field(name="shipping.status", view="shipping", original_view="addresses", type="string", measure=False),
+        explore_field(name="billing.count", view="billing", original_view="addresses", type="count"),
+    )
+
+    (candidate,) = candidates_from_explore(model, PROJECT)
+
+    assert [dimension.name for dimension in candidate.dimensions] == ["status"]
+
+
+# --------------------------------------------------------------------------------------
+# Partial LookML declarations
+# --------------------------------------------------------------------------------------
+
+OVERRIDE_VIEW_LKML = """
+view: orders_extended {
+  extends: [orders]
+  measure: total_revenue { label: "Revenue (extended)" }
+}
+"""
+
+
+def test_a_partial_lookml_override_keeps_what_the_api_resolved():
+    """The parser reads view files verbatim -- it never expands `extends`.
+
+    A child view overriding only `label` therefore parses to a measure with no type and no SQL.
+    Letting that replace the API candidate wholesale would turn a `sum` into an untyped metric
+    with no expression; the API has already applied inheritance, so it backfills.
+    """
+    view = LkmlFile.model_validate(lkml.load(OVERRIDE_VIEW_LKML)).views[0]
+    api_field = explore_field(
+        name="orders_extended.total_revenue",
+        view="orders_extended",
+        type="sum",
+        sql="${TABLE}.amount",
+        value_format_name="usd",
+        description="Sum of order amounts",
+    )
+
+    merged = merge_candidates({}, candidates_from_explore(explore(api_field), PROJECT))
+    merged = merge_candidates(merged, candidates_from_view(view, PROJECT))
+    request = build_metric_request(SERVICE, merged[(PROJECT, "orders_extended", "total_revenue")])
+
+    assert request.displayName == "Revenue (extended)"
+    assert request.metricType == MetricType.SUM
+    assert request.metricExpression.code == "${TABLE}.amount"
+    assert request.unitOfMeasurement == UnitOfMeasurement.DOLLARS
+
+
+def test_a_full_lookml_declaration_still_wins_over_the_api():
+    """Backfilling must not let a stale API value survive a LookML declaration."""
+    api_field = explore_field(
+        name="orders.total_revenue",
+        view="orders",
+        type="count",
+        sql="${TABLE}.stale",
+        label="Stale label",
+    )
+
+    merged = merge_candidates({}, candidates_from_explore(explore(api_field), PROJECT))
+    view = LkmlFile.model_validate(lkml.load(VIEW_LKML)).views[0]
+    merged = merge_candidates(merged, candidates_from_view(view, PROJECT))
+    request = build_metric_request(SERVICE, merged[(PROJECT, "orders", "total_revenue")])
+
+    assert request.displayName == "Total Revenue"
+    assert request.metricType == MetricType.SUM
+    assert request.metricExpression.code == "${TABLE}.amount"
