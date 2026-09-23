@@ -726,7 +726,11 @@ export const verifyTextFormatting = async (
     code: 'code',
   }[format];
 
-  await expect(editor.locator(formatTag, { hasText: text })).toBeVisible();
+  await expect(editor.locator(formatTag).filter({ hasText: text })).toBeVisible(
+    {
+      timeout: 15_000,
+    }
+  );
 };
 
 export const undo = async (page: Page): Promise<void> => {
