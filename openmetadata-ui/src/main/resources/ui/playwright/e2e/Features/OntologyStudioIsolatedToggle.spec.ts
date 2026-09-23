@@ -67,14 +67,33 @@ test.describe('Ontology Studio — isolated concepts', () => {
     );
     await page.route('**/api/v1/glossaryTerms?*', async (route) => {
       const response = await route.fetch();
-      const body = (await response.json()) as {
-        data: Array<{
+      let body: {
+        data?: Array<{
           displayName?: string;
           fullyQualifiedName: string;
           id: string;
           name: string;
         }>;
       };
+      try {
+        body = (await response.json()) as typeof body;
+      } catch {
+        await route.fulfill({ response });
+
+        return;
+      }
+
+      // This pattern catches every call to the collection, not just the
+      // listing this test rewrites, and an error body carries no `data`.
+      // Mapping over it throws inside the handler, which leaves the request
+      // unfulfilled -- so the page hangs on it and the test reports a
+      // TypeError plus a graph stuck on its loader, neither of which names
+      // the response that actually came back.
+      if (!Array.isArray(body.data)) {
+        await route.fulfill({ response });
+
+        return;
+      }
 
       await route.fulfill({
         response,

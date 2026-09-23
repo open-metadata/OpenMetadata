@@ -355,6 +355,15 @@ export default [
       // fail CI. Test/mock files are exempted below — their Tooltip mocks render
       // <div title={title}> on purpose so tests can read the tooltip text.
       'openmetadata-ui-patterns/no-raw-title-attribute': 'error',
+      // Raw palette classes (tw:bg-blue-50, tw:text-gray-500, …) are static in
+      // dark mode — use the utility-* variant or a semantic token. Report-only
+      // (no autofix) on purpose: `ui-checkstyle` runs `eslint --fix` then fails
+      // on the diff, so a fixable rule would rewrite pre-existing violations in
+      // files an unrelated PR merely touches and fail its gate. ~358 existing
+      // hits at promotion time; kept at 'warn' until the backlog is cleared
+      // per-area, then promote to 'error' (and re-add a shade-restricted
+      // fixer). See docs/colors.md + the dark-mode guidelines.
+      'openmetadata-ui-patterns/no-non-adaptive-palette': 'warn',
       'sonarjs/no-collapsible-if': 'error',
       'sonarjs/no-extra-arguments': 'error',
       'sonarjs/no-redundant-jump': 'error',
@@ -472,23 +481,8 @@ export default [
       // sanctioned fallback/placeholder object used throughout the already-
       // converted code (e.g. before a permissions fetch resolves), unlike
       // the two prioritization helpers.
-      //
-      // Deviation from the task brief: the brief assumed this would land at
-      // 'error', with the sweep having already driven direct call sites to
-      // (near) zero. Verification at promotion time found 40 files (45
-      // import specifiers) still importing these two functions directly
-      // from components/pages — not "a few, small" stragglers, and
-      // concentrated in a category the sweep never touched (the per-entity
-      // `*Version` components — TableVersion, ChartVersion, PipelineVersion,
-      // etc. — plus a handful of widgets and hooks). Converting 40 files'
-      // worth of permission derivation is its own sweep-scale task
-      // (mirroring Task 8), not something to fold silently into a
-      // lint-hardening/promotion task. Landing this specific restriction at
-      // 'warn' follows the repo's own documented convention (see the "warn
-      // tier" comment above) for a real, counted backlog that is not zero
-      // yet; promote to 'error' once a follow-up sweep clears it.
       'no-restricted-imports': [
-        'warn', // 40 files (45 import specifiers) import getPrioritizedEditPermission/getPrioritizedViewPermission directly (measured via this rule at promotion time)
+        'error',
         {
           patterns: [
             {
