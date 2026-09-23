@@ -364,11 +364,7 @@ class AirbyteSource(PipelineServiceSource):
                 by_rank[_shape_rank(candidate)].append((service_name, candidate))
 
         for rank in sorted(by_rank):
-            matches: dict[str, Table] = {}
-            for service_name, candidate in by_rank[rank]:
-                entity = self._fetch_table(service_name, candidate)
-                if entity:
-                    matches[model_str(entity.fullyQualifiedName)] = entity
+            matches = self._match_shape_rank(by_rank[rank])
             if len(matches) > 1:
                 # Same rank means the shapes are equally specific, so nothing in the reported
                 # levels separates them -- one reads the Airbyte "database" as an OpenMetadata
@@ -384,6 +380,15 @@ class AirbyteSource(PipelineServiceSource):
             if matches:
                 return next(iter(matches.values()))
         return None
+
+    def _match_shape_rank(self, candidates: list[tuple[str, TableDetails]]) -> dict[str, Table]:
+        """Resolve every candidate of one specificity rank, keyed by the FQN each landed on."""
+        matches: dict[str, Table] = {}
+        for service_name, candidate in candidates:
+            entity = self._fetch_table(service_name, candidate)
+            if entity:
+                matches[model_str(entity.fullyQualifiedName)] = entity
+        return matches
 
     def _fetch_table(self, service_name: str, candidate: TableDetails) -> Table | None:
         """Fetch the Table one FQN shape points at in one service, or None."""
