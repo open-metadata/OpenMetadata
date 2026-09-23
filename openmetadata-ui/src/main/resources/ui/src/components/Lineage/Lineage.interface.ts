@@ -25,12 +25,12 @@ import {
   ColumnLineage,
   TempLineageTable,
 } from '../../generated/type/entityLineage';
+import { EntityChildren } from '../../interface/lineage.interface';
 import {
   SearchSourceAlias,
   TableSearchSource,
 } from '../../interface/search.interface';
 import { FormattedDatabaseServiceType } from '../../utils/EntityUtils.interface';
-import { EntityChildren } from '../Entity/EntityLineage/NodeChildren/NodeChildren.interface';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 
 export interface LineageProps {
