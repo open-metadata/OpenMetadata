@@ -128,13 +128,7 @@ class UnitycatalogMetricViewLineage:
         logger.info("Processing Unity Catalog Metric View Lineage")
         for database in self._databases():
             self._table_cache.clear()
-            try:
-                rows = self._view_definitions(database)
-            except Exception as exc:  # pylint: disable=broad-except
-                logger.debug(traceback.format_exc())
-                logger.warning("Could not list view definitions for catalog [%s]: %s", database, exc)
-                continue
-            for schema, view, definition_text in rows:
+            for schema, view, definition_text in self._view_definitions(database):
                 yield from self._iter_view_lineage(database, schema, view, definition_text)
 
     def _iter_view_lineage(
@@ -198,11 +192,26 @@ class UnitycatalogMetricViewLineage:
         the whole feature yields nothing on such a runtime, silently. The extra
         ``DESCRIBE`` is per metric view the first pass missed, so the cost scales with
         the number of metric views rather than the size of the catalog.
+
+        Each pass absorbs its own failure. They read different relations, so the one
+        that answers is not always the one that fails: a runtime that refuses
+        ``information_schema.views`` is exactly the runtime the second pass exists for,
+        and letting the first pass abort the catalog would lose every metric view it
+        would have found.
         """
-        query = UNITY_CATALOG_GET_VIEW_DEFINITIONS_IN_CATALOG.format(database_name=escape_identifier(database))
-        rows = [(row[0], row[1], row[2]) for row in self.run_query(query)]
+        rows = self._listed_view_definitions(database)
         rows.extend(self._described_metric_views(database, {(schema, view) for schema, view, _ in rows}))
         return rows
+
+    def _listed_view_definitions(self, database: str) -> list[ViewDefinitionRow]:
+        """Every ``information_schema.views`` body in one catalog."""
+        query = UNITY_CATALOG_GET_VIEW_DEFINITIONS_IN_CATALOG.format(database_name=escape_identifier(database))
+        try:
+            return [(row[0], row[1], row[2]) for row in self.run_query(query)]
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not list view definitions for catalog [%s]: %s", database, exc)
+            return []
 
     def _described_metric_views(self, database: str, already_found: set[tuple[str, str]]) -> list[ViewDefinitionRow]:
         """The catalog's metric views that the ``information_schema.views`` scan missed.

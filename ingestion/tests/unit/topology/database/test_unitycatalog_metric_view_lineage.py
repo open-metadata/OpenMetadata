@@ -217,6 +217,10 @@ def test_is_table_reference_separates_a_relation_from_a_query():
         ("tpch.orders", [(CATALOG, "tpch", "orders")]),
         ("orders", [(CATALOG, SCHEMA, "orders")]),
         ("SELECT * FROM orders", [(CATALOG, SCHEMA, "orders")]),
+        ("SELECT * FROM tpch.orders", [(CATALOG, "tpch", "orders")]),
+        # A query may reach outside the metric view's own catalog; the reference
+        # carries its own, and the view's scope must not be substituted for it.
+        ("SELECT * FROM other.tpch.orders", [("other", "tpch", "orders")]),
         (None, []),
         ("", []),
     ],
@@ -303,6 +307,38 @@ def test_a_plain_sql_view_produces_no_lineage():
     """The pass sees every view in the catalog, so a SQL view must fall straight
     through -- the shared view-lineage path already owns those."""
     assert _edges(_extractor([(SCHEMA, "orders_view", SQL_VIEW_DEFINITION)])) == []
+
+
+def test_the_metric_view_scan_still_runs_when_the_view_listing_fails():
+    """The two discovery passes read different relations, and the runtime that refuses
+    ``information_schema.views`` is exactly the one the ``DESCRIBE`` pass exists for.
+    Letting the first pass abort the catalog would lose every metric view in it."""
+    queries = []
+
+    def run_query(query):
+        queries.append(query)
+        if "INFORMATION_SCHEMA.VIEWS" in query:
+            raise RuntimeError("no permission on information_schema.views")
+        if "TABLE_TYPE = 'METRIC_VIEW'" in query:
+            return [(SCHEMA, VIEW)]
+        return [(json.dumps({"view_text": ORDERS_YAML}),)]
+
+    extractor = UnitycatalogMetricViewLineage(
+        service_name=SERVICE,
+        source_config=FakeSourceConfig(),
+        status=FakeStatus(),
+        run_query=run_query,
+        resolve_table_by_fqn={table.fullyQualifiedName.root: table for table in ALL_TABLES}.get,
+        resolve_metric_by_name=ALL_METRICS.get,
+        list_databases=_databases(CATALOG),
+    )
+
+    edges = [either.right for either in extractor.iter_lineage()]
+    assert [query for query in queries if query.startswith("DESCRIBE")]
+    assert {request.edge.fromEntity.id.root for request in edges if request.edge.toEntity.type == "table"} == {
+        ORDERS_TABLE.id.root,
+        CUSTOMER_TABLE.id.root,
+    }
 
 
 def test_a_catalog_whose_views_cannot_be_listed_does_not_stop_the_run():
