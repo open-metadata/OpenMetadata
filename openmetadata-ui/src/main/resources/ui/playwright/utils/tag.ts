@@ -62,6 +62,13 @@ export const visitClassificationPage = async (
   );
   await page.goto(`/tags/${encodeURIComponent(classificationName)}`);
 
+  const response = await fetchTags;
+  expect(response.status()).toBe(200);
+
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(page.getByTestId('tags-container').getByTestId('table')).toBeVisible();
+
   await expect(
     page
       .getByTestId('tags-container')
@@ -69,17 +76,9 @@ export const visitClassificationPage = async (
       .getByTestId('loader')
   ).toHaveCount(0, { timeout: 30000 });
 
-  await expect(page.locator('.activeCategory')).toContainText(
-    classificationDisplayName
-  );
-
-  await fetchTags;
   await expect(
-    page
-      .getByTestId('tags-container')
-      .locator('.table-container')
-      .getByTestId('loader')
-  ).toHaveCount(0, { timeout: 30000 });
+    page.getByTestId('tags-container').getByTestId('entity-header-display-name')
+  ).toContainText(classificationDisplayName);
 };
 
 // Other asset type that should not get from the search in explore, they are not added to the tag
