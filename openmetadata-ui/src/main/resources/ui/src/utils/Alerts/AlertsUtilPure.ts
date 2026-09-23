@@ -287,9 +287,10 @@ const DESTINATION_CATEGORY_EXCLUDES: Record<string, SubscriptionCategory[]> = {
   announcement: [SubscriptionCategory.Assignees],
 };
 
+// With several sources, a category is offered when any of them allows it.
 export const getFilteredDestinationOptions = (
   key: keyof typeof DESTINATION_SOURCE_ITEMS,
-  selectedSource: string
+  selectedSources: string | string[]
 ) => {
   const options = DESTINATION_SOURCE_ITEMS[key];
   const isExternalDestination = !isEqual(
@@ -301,13 +302,18 @@ export const getFilteredDestinationOptions = (
     return options;
   }
 
-  const excludedCategories =
-    DESTINATION_CATEGORY_EXCLUDES[selectedSource] ||
-    DESTINATION_CATEGORY_EXCLUDES.__default__;
+  const sources = [selectedSources].flat();
+  const excludedBySource = (isEmpty(sources) ? [''] : sources).map(
+    (source) =>
+      DESTINATION_CATEGORY_EXCLUDES[source] ||
+      DESTINATION_CATEGORY_EXCLUDES.__default__
+  );
 
   return options.filter(
     (option) =>
-      !excludedCategories.includes(option.value as SubscriptionCategory)
+      !excludedBySource.every((excluded) =>
+        excluded.includes(option.value as SubscriptionCategory)
+      )
   );
 };
 

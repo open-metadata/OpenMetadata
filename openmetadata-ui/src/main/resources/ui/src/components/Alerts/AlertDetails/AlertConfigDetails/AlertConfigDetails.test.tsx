@@ -14,7 +14,14 @@
 import { act, render, screen } from '@testing-library/react';
 import { mockAlertDetails } from '../../../../mocks/Alerts.mock';
 import { MOCK_FILTER_RESOURCES } from '../../../../test/unit/mocks/observability.mock';
+import { useAlertCapabilities } from '../../../../hooks/useAlertCapabilities';
 import AlertConfigDetails from './AlertConfigDetails';
+
+jest.mock('../../../../hooks/useAlertCapabilities', () => ({
+  useAlertCapabilities: jest
+    .fn()
+    .mockReturnValue({ selection: undefined, loading: false }),
+}));
 
 jest.mock('../../../../rest/observabilityAPI', () => ({
   getResourceFunctions: jest.fn().mockImplementation(() => ({
@@ -103,6 +110,40 @@ describe('AlertConfigDetails', () => {
     expect(
       screen.getByText('ObservabilityFormTriggerItem')
     ).toBeInTheDocument();
+  });
+
+  it('asks the server what several saved sources support, and nothing for one', async () => {
+    await act(async () => {
+      render(
+        <AlertConfigDetails
+          alertDetails={{
+            ...mockAlertDetails,
+            filteringRules: {
+              ...mockAlertDetails.filteringRules,
+              resources: ['table', 'topic'],
+            },
+          }}
+          isNotificationAlert={false}
+        />
+      );
+    });
+
+    expect(useAlertCapabilities).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sources: ['table', 'topic'] })
+    );
+
+    await act(async () => {
+      render(
+        <AlertConfigDetails
+          alertDetails={mockAlertDetails}
+          isNotificationAlert={false}
+        />
+      );
+    });
+
+    expect(useAlertCapabilities).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sources: [] })
+    );
   });
 
   it('should show loader when fetching data', async () => {

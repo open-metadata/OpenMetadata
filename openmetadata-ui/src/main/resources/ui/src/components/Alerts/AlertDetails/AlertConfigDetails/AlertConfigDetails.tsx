@@ -27,11 +27,14 @@ import {
   ProviderType,
 } from '../../../../generated/entity/events/notificationTemplate';
 import { Operation } from '../../../../generated/entity/policies/policy';
+import { AlertType as CapabilitiesAlertType } from '../../../../generated/events/api/alertCapabilitiesRequest';
 import { FilterResourceDescriptor } from '../../../../generated/events/filterResourceDescriptor';
+import { useAlertCapabilities } from '../../../../hooks/useAlertCapabilities';
 import { ModifiedCreateEventSubscription } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { getResourceFunctions as getNotificationResourceFunctions } from '../../../../rest/alertsAPI';
 import { getAllNotificationTemplates } from '../../../../rest/notificationtemplateAPI';
 import { getResourceFunctions } from '../../../../rest/observabilityAPI';
+import { getSelectionSupport } from '../../../../utils/Alerts/AlertSelectionUtil';
 import alertsClassBase from '../../../../utils/AlertsClassBase';
 import Fqn from '../../../../utils/Fqn';
 import {
@@ -76,23 +79,32 @@ function AlertConfigDetails({
   const [templateResourcePermission, setTemplateResourcePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
+  const savedSources = useMemo(
+    () => alertDetails.filteringRules?.resources ?? [],
+    [alertDetails]
+  );
+  // With one source the catalog already says what it supports; with several the server does.
+  const capabilities = useAlertCapabilities({
+    alertType: isNotificationAlert
+      ? CapabilitiesAlertType.Notification
+      : CapabilitiesAlertType.Observability,
+    sources: savedSources.length > 1 ? savedSources : [],
+  });
+
   const {
     supportedFilters,
     supportedTriggers,
     containerEntities,
     supportedEventTypes,
-  } = useMemo(() => {
-    const resource = filterResources.find(
-      (resource) => resource.name === alertDetails.filteringRules?.resources[0]
-    );
-
-    return {
-      supportedFilters: resource?.supportedFilters,
-      supportedTriggers: resource?.supportedActions,
-      containerEntities: resource?.containerEntities,
-      supportedEventTypes: resource?.supportedEventTypes,
-    };
-  }, [filterResources, alertDetails]);
+  } = useMemo(
+    () =>
+      getSelectionSupport(
+        filterResources,
+        savedSources,
+        capabilities.selection
+      ),
+    [filterResources, savedSources, capabilities.selection]
+  );
 
   const fetchFunctions = useCallback(async () => {
     try {

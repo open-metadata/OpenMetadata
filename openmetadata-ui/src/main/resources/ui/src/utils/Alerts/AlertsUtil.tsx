@@ -277,17 +277,28 @@ export const getFieldByArgumentType = (
   containerEntities: string[] = [],
   supportedEventTypes: EventType[] = []
 ) => {
+  // Data contract names come from the contract API, every other source from the search indexes,
+  // and an alert that watches both searches both.
   const getEntityByFQN = async (searchText: string) => {
-    if (firstOf(selectedTrigger) === EntityType.DATA_CONTRACT) {
-      return getDataContractSuggestions(searchText);
-    }
+    const sources = [selectedTrigger].flat();
+    const indexedSources = sources.filter(
+      (source) => source !== EntityType.DATA_CONTRACT
+    );
+    const [contracts, entities] = await Promise.all([
+      sources.includes(EntityType.DATA_CONTRACT)
+        ? getDataContractSuggestions(searchText)
+        : [],
+      isEmpty(indexedSources)
+        ? []
+        : searchEntity({
+            searchText,
+            searchIndex: getFqnSearchIndexes(indexedSources, containerEntities),
+            showDisplayNameAsLabel: false,
+            wildcardEntityTypes: containerEntities,
+          }),
+    ]);
 
-    return searchEntity({
-      searchText,
-      searchIndex: getFqnSearchIndexes(selectedTrigger, containerEntities),
-      showDisplayNameAsLabel: false,
-      wildcardEntityTypes: containerEntities,
-    });
+    return [...contracts, ...entities];
   };
 
   const getEntityByIdSuggestions = async (searchText?: string) => {

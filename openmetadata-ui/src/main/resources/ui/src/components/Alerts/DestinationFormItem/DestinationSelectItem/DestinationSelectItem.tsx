@@ -58,7 +58,8 @@ function DestinationSelectItem({
 
   const destinationItem =
     useWatch({ name: `destinations.${id}`, control }) ?? {};
-  const [selectedSource = ''] = useWatch({ name: 'resources', control }) ?? [];
+  const selectedSources: string[] =
+    useWatch({ name: 'resources', control }) ?? [];
   const [isSelectionWarningDismissed, setIsSelectionWarningDismissed] =
     useState(false);
 
@@ -76,9 +77,9 @@ function DestinationSelectItem({
       buildGroupedOptions(
         t('label.internal'),
         t('label.external'),
-        selectedSource
+        selectedSources
       ),
-    [selectedSource, t]
+    [selectedSources, t]
   );
 
   const destinationStatusDetails = useMemo(() => {

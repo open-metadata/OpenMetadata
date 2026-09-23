@@ -260,6 +260,22 @@ describe('AlertsUtil tests', () => {
     expect(taskCategories).not.toContain(SubscriptionCategory.Teams);
   });
 
+  it('getFilteredDestinationOptions offers a category any of several sources allows, in any order', () => {
+    const categoriesOf = (sources: string[]) =>
+      getFilteredDestinationOptions(DESTINATION_DROPDOWN_TABS.internal, sources)
+        .map((result) => result.value as SubscriptionCategory)
+        .sort();
+
+    const taskFirst = categoriesOf(['task', 'announcement']);
+
+    expect(taskFirst).toEqual(categoriesOf(['announcement', 'task']));
+    expect(taskFirst).toContain(SubscriptionCategory.Assignees);
+    expect(taskFirst).toContain(SubscriptionCategory.Followers);
+    expect(categoriesOf(['task', 'conversation'])).not.toContain(
+      SubscriptionCategory.Followers
+    );
+  });
+
   it('getFilteredDestinationOptions should return correct internal options for "conversation" source', () => {
     const resultConversation = getFilteredDestinationOptions(
       DESTINATION_DROPDOWN_TABS.internal,
@@ -390,6 +406,38 @@ describe('getFieldByArgumentType tests', () => {
     ]);
     expect(searchContracts).toHaveBeenCalledWith('test', 50);
     expect(searchQuery).not.toHaveBeenCalled();
+  });
+
+  it('should search contracts and tables together when both are selected', async () => {
+    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
+      '../../components/common/AsyncSelect/AsyncSelect'
+    );
+    MockedAsyncSelect.mockClear();
+    (searchQuery as jest.Mock).mockClear();
+    (searchQuery as jest.Mock).mockResolvedValue({
+      hits: { hits: [{ _source: { fullyQualifiedName: 'svc.db.schema.orders' } }] },
+    });
+    (searchContracts as jest.Mock).mockResolvedValue([
+      { fullyQualifiedName: 'svc.db.schema.orders.contract' },
+    ]);
+
+    render(getFieldByArgumentType(0, 'fqnList', 0, ['table', 'dataContract']));
+
+    const api = MockedAsyncSelect.mock.calls[0][0].api as (
+      query: string
+    ) => Promise<unknown>;
+
+    await expect(api('orders')).resolves.toEqual([
+      {
+        label: 'svc.db.schema.orders.contract',
+        value: 'svc.db.schema.orders.contract',
+      },
+      { label: 'svc.db.schema.orders', value: 'svc.db.schema.orders' },
+    ]);
+    expect(searchContracts).toHaveBeenCalledWith('orders', 50);
+    expect(searchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ searchIndex: [SearchIndex.TABLE] })
+    );
   });
 
   it('should return correct fields for argumentType domainList', async () => {

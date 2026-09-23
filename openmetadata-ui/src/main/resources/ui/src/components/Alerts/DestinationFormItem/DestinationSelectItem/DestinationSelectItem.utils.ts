@@ -20,15 +20,15 @@ import { getAlertDestinationCategoryIcons } from '../../../../utils/Observabilit
 export const buildGroupedOptions = (
   internalLabel: string,
   externalLabel: string,
-  selectedSource: string
+  selectedSources: string | string[]
 ): SelectItemType[] => {
   const internalOptions = getFilteredDestinationOptions(
     DESTINATION_DROPDOWN_TABS.internal,
-    selectedSource
+    selectedSources
   );
   const externalOptions = getFilteredDestinationOptions(
     DESTINATION_DROPDOWN_TABS.external,
-    selectedSource
+    selectedSources
   );
 
   return [
