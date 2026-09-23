@@ -69,7 +69,7 @@ const DateField = ({
     </Label>
     <input
       aria-label={label}
-      className="tw:w-full tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:px-3 tw:py-2 tw:text-sm tw:text-text-primary tw:outline-brand tw:focus-visible:outline-2"
+      className="tw:w-full tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:px-3 tw:py-2 tw:text-sm tw:text-primary tw:outline-brand tw:focus-visible:outline-2"
       data-testid={id}
       id={id}
       type="date"
@@ -177,7 +177,7 @@ const AnnouncementForm = ({
                       />
                       {fieldState.error && (
                         <span
-                          className="tw:text-sm tw:text-text-error-primary"
+                          className="tw:text-sm tw:text-error-primary"
                           data-testid="color-error">
                           {fieldState.error.message}
                         </span>

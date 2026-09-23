@@ -64,7 +64,7 @@ const AnnouncementTitle = ({
   title,
 }: {
   className: string;
-  size?: 'text-sm' | 'text-lg';
+  size?: 'text-sm' | 'text-xl';
   onClick?: () => void;
   title: string;
 }) => {
@@ -125,9 +125,9 @@ const AnnouncementFooter = ({
   return (
     <Box align="center" className="tw:gap-1.5">
       <ProfilePicture displayName={postedBy} name={createdBy} width="16" />
-      <Typography as="span" className="tw:text-text-secondary" size="text-xs">
+      <Typography as="span" className="tw:text-secondary" size="text-xs">
         <Link
-          className="tw:text-text-secondary tw:no-underline!"
+          className="tw:text-secondary tw:no-underline!"
           to={getUserPath(createdBy)}
           onClick={(e) => e.stopPropagation()}>
           {postedBy}
@@ -135,14 +135,14 @@ const AnnouncementFooter = ({
       </Typography>
       {showEntity && entityFQN && (
         <>
-          <span className="tw:text-text-tertiary">&middot;</span>
+          <span className="tw:text-placeholder_subtle">&middot;</span>
           <Tooltip
             title={entityFQN}
             triggerClassName="tw:block tw:min-w-0 tw:cursor-[inherit] tw:text-left">
             <Typography
               ellipsis
               as="span"
-              className="tw:text-text-secondary"
+              className="tw:text-secondary"
               size="text-xs">
               {entityFQN}
             </Typography>
@@ -262,7 +262,7 @@ const CollapsedBody = ({
         <Typography
           ellipsis
           as="span"
-          className="tw:text-text-secondary"
+          className="tw:text-secondary"
           data-testid="announcement-description"
           size="text-sm">
           {plainDescription}
@@ -306,7 +306,7 @@ const ExpandedBody = ({
 
     {hasDescription && (
       <RichTextEditorPreviewerV1
-        className="tw:[&_p]:text-text-secondary tw:[&_p]:text-sm"
+        className="tw:[&_p]:text-secondary tw:[&_p]:text-sm"
         data-testid="announcement-description"
         enableSeeMoreVariant={false}
         markdown={announcement.description}
@@ -344,7 +344,7 @@ const FullBody = ({
       <Box align="center" className="tw:min-w-0 tw:gap-2">
         <AnnouncementTitle
           className={titleClassName}
-          size="text-lg"
+          size="text-xl"
           title={title}
           onClick={onClick}
         />
@@ -353,7 +353,7 @@ const FullBody = ({
 
       {hasDescription && (
         <RichTextEditorPreviewerV1
-          className="tw:[&_p]:text-text-secondary tw:[&_p]:text-sm"
+          className="tw:[&_p]:text-primary tw:[&_p]:text-sm"
           data-testid="announcement-description"
           enableSeeMoreVariant={false}
           markdown={announcement.description}
@@ -437,7 +437,7 @@ const AnnouncementBanner = ({
     hasDescription: !isDescriptionContentEmpty(announcement.description),
     labelKey,
     title: announcement.displayName ?? announcement.name,
-    titleClassName: isFull ? surface.title : 'tw:text-text-primary',
+    titleClassName: isFull ? surface.title : 'tw:text-primary',
     typeChip,
     onClick,
   };

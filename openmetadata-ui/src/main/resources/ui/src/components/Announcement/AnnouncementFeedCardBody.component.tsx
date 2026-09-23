@@ -181,7 +181,7 @@ const AnnouncementFeedCardBody = ({
 
       <Typography
         as="span"
-        className="tw:text-text-primary"
+        className="tw:text-primary"
         size="text-sm"
         weight="semibold">
         {announcementTitle}
@@ -189,7 +189,7 @@ const AnnouncementFeedCardBody = ({
 
       {details.description && (
         <RichTextEditorPreviewerV1
-          className="tw:[&_p]:text-text-secondary tw:[&_p]:text-xs"
+          className="tw:[&_p]:text-secondary tw:[&_p]:text-xs"
           data-testid="announcement-description"
           enableSeeMoreVariant={false}
           markdown={details.description}
@@ -202,19 +202,16 @@ const AnnouncementFeedCardBody = ({
         {announcement.createdBy && (
           <>
             <ProfilePicture name={announcement.createdBy} width="16" />
-            <Typography
-              as="span"
-              className="tw:text-text-secondary"
-              size="text-xs">
+            <Typography as="span" className="tw:text-secondary" size="text-xs">
               {announcement.createdBy}
             </Typography>
             <span className="tw:text-border-secondary">|</span>
           </>
         )}
-        <Calendar className="tw:size-3.5 tw:shrink-0 tw:text-text-tertiary" />
+        <Calendar className="tw:size-3.5 tw:shrink-0 tw:text-tertiary" />
         <Typography
           as="span"
-          className="tw:text-text-secondary"
+          className="tw:text-secondary"
           data-testid="announcement-date-range"
           size="text-xs">
           {`${formatDate(details.startTime)} - ${formatDate(details.endTime)}`}

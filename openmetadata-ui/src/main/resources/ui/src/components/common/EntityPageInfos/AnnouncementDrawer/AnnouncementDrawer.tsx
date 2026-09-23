@@ -114,12 +114,12 @@ const AnnouncementDrawer: FC<Props> = ({
       <Box className="tw:min-w-0 tw:flex-1 tw:gap-0.5" direction="col">
         <Typography
           as="span"
-          className="tw:text-text-primary"
+          className="tw:text-primary"
           size="text-md"
           weight="semibold">
           {t('label.announcement-plural')}
         </Typography>
-        <Typography as="span" className="tw:text-text-secondary" size="text-xs">
+        <Typography as="span" className="tw:text-secondary" size="text-xs">
           {t('message.view-edit-and-schedule-announcements')}
         </Typography>
       </Box>

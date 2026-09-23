@@ -144,7 +144,7 @@ const AnnouncementThreadBody = ({
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <Typography
           as="p"
-          className="tw:text-text-secondary"
+          className="tw:text-secondary"
           data-testid="announcement-error">
           {t('message.no-announcement-message')}
         </Typography>
@@ -177,7 +177,7 @@ const AnnouncementThreadBody = ({
             onClose={onDiscard}>
             <Dialog.Header title={t('message.delete-message-question-mark')} />
             <Dialog.Content>
-              <Typography as="p" className="tw:text-text-secondary">
+              <Typography as="p" className="tw:text-secondary">
                 {t('message.confirm-delete-message')}
               </Typography>
             </Dialog.Content>
