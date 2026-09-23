@@ -20,14 +20,13 @@ import { useNavigate } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/data/table';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/tagLabel';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtilsPure';
-import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
@@ -39,7 +38,9 @@ import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/Da
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
+import { StoredProcedureCodeCard } from '../StoredProcedureCodeCard/StoredProcedureCodeCard';
 import { StoredProcedureVersionProp } from './StoredProcedureVersion.interface';
+
 const StoredProcedureVersion = ({
   version,
   currentVersionData,
@@ -109,10 +110,7 @@ const StoredProcedureVersion = ({
   }, [currentVersionData]);
 
   const viewCustomPropertiesPermission = useMemo(() => {
-    return getPrioritizedViewPermission(
-      entityPermissions,
-      Operation.ViewCustomFields
-    );
+    return getDerivedPermissionFlags(entityPermissions).canViewCustomFields;
   }, [entityPermissions]);
 
   const tabItems: TabsProps['items'] = useMemo(
@@ -130,6 +128,9 @@ const StoredProcedureVersion = ({
                     entityType={EntityType.STORED_PROCEDURE}
                     showActions={false}
                   />
+                </Col>
+                <Col span={24}>
+                  <StoredProcedureCodeCard />
                 </Col>
               </Row>
             </Col>

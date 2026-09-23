@@ -120,6 +120,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAccessor;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -2516,12 +2517,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // the rows that still exist. Also guards entities.getFirst() from IndexOutOfBounds (500).
         beforeCursor = after;
       } else {
-        beforeCursor = getCursorValue(entities.getFirst());
+        beforeCursor = getCursorValue(entities.getFirst(), filter);
       }
       if (entities.size()
           > limitParam) { // If extra result exists, then next page exists - return after cursor
         entities.remove(limitParam);
-        afterCursor = getCursorValue(entities.get(limitParam - 1));
+        afterCursor = getCursorValue(entities.get(limitParam - 1), filter);
       }
       return getResultList(entities, beforeCursor, afterCursor, total);
     } else {
@@ -2595,7 +2596,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       String afterCursor = null;
       if (hasMoreData && !entities.isEmpty()) {
-        afterCursor = getCursorValue(entities.get(entities.size() - 1));
+        afterCursor = getCursorValue(entities.get(entities.size() - 1), filter);
       }
       return getResultList(entities, errors, null, afterCursor, cachedTotal);
     } else {
@@ -2647,13 +2648,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entities.size()
         > limitParam) { // If extra result exists, then previous page exists - return before cursor
       entities.remove(0);
-      beforeCursor = getCursorValue(entities.getFirst());
+      beforeCursor = getCursorValue(entities.getFirst(), filter);
     }
     // entities can be empty when the caller holds a valid before-cursor but all earlier rows were
     // deleted concurrently, so the page is empty. Echo the caller's cursor as afterCursor rather
     // than null: a null after reads as end-of-pagination and dead-ends forward navigation, whereas
     // echoing lets the caller page forward to rows that still exist. Also guards getLast() (500).
-    afterCursor = entities.isEmpty() ? before : getCursorValue(entities.getLast());
+    afterCursor = entities.isEmpty() ? before : getCursorValue(entities.getLast(), filter);
     return getResultList(entities, beforeCursor, afterCursor, total);
   }
 
@@ -2665,6 +2666,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   public String getCursorValue(T entity) {
     return getCursorValue(entity.getName(), String.valueOf(entity.getId()));
+  }
+
+  /**
+   * The cursor has to be built from the same key the listing is ordered by, so a repository whose
+   * order depends on the request — a caller-chosen sort field, say — needs the filter to know
+   * which key that is. Overriding this instead of {@link #getCursorValue(EntityInterface)} keeps
+   * that choice available; the default ignores the filter, which is correct for every repository
+   * with a single fixed order.
+   */
+  public String getCursorValue(T entity, ListFilter filter) {
+    return getCursorValue(entity);
   }
 
   protected String getCursorValue(String name, String id) {
@@ -4219,6 +4231,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     for (T entity : uniqueEntities) {
       RdfUpdater.updateEntity(entity);
+      CacheBundle.invalidateEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
     }
     ListCountCache.invalidate(entityType);
   }
@@ -4710,6 +4723,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // For example ingestion pipeline deletes a pipeline in AirFlow.
   }
 
+  protected DeleteLifecycle beginDeleteLifecycle(T entity, String deletedBy) {
+    preDelete(entity, deletedBy);
+    return DeleteLifecycle.NOOP;
+  }
+
   protected void postDelete(T entity, boolean hardDelete) {
     // Delete from RDF only on hard delete
     if (hardDelete) {
@@ -4717,6 +4735,67 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     // Both hard and soft delete change the count of non-deleted entities returned by listings.
     ListCountCache.invalidate(entityType);
+  }
+
+  protected void postRestore(T entity) {}
+
+  @FunctionalInterface
+  protected interface DeleteLifecycle extends AutoCloseable {
+    DeleteLifecycle NOOP = () -> {};
+
+    @Override
+    void close();
+  }
+
+  private static final class DeleteLifecycleGroup implements DeleteLifecycle {
+    private final ArrayDeque<DeleteLifecycle> lifecycles = new ArrayDeque<>();
+
+    private void add(DeleteLifecycle lifecycle) {
+      lifecycles.addFirst(lifecycle);
+    }
+
+    private void closeAfter(Throwable originalFailure) {
+      try {
+        close();
+      } catch (RuntimeException | java.lang.Error closeFailure) {
+        originalFailure.addSuppressed(closeFailure);
+      }
+    }
+
+    @Override
+    public void close() {
+      Throwable failure = null;
+      while (!lifecycles.isEmpty()) {
+        try {
+          lifecycles.removeFirst().close();
+        } catch (RuntimeException | java.lang.Error closeFailure) {
+          if (failure == null) {
+            failure = closeFailure;
+          } else {
+            failure.addSuppressed(closeFailure);
+          }
+        }
+      }
+      if (failure instanceof RuntimeException runtimeFailure) {
+        throw runtimeFailure;
+      }
+      if (failure instanceof java.lang.Error error) {
+        throw error;
+      }
+    }
+  }
+
+  private DeleteLifecycle beginDeleteLifecycles(List<T> entities, String deletedBy) {
+    DeleteLifecycleGroup group = new DeleteLifecycleGroup();
+    try {
+      for (T entity : entities) {
+        group.add(beginDeleteLifecycle(entity, deletedBy));
+      }
+      return group;
+    } catch (RuntimeException | java.lang.Error failure) {
+      group.closeAfter(failure);
+      throw failure;
+    }
   }
 
   public final void deleteFromSearch(T entity, boolean hardDelete) {
@@ -4735,7 +4814,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityLifecycleEventDispatcher.getInstance()
           .onEntitySoftDeletedOrRestored(entity, false, null);
     }
+    postRestoreFromSearch(entity);
   }
+
+  /**
+   * Runs after a restored entity's search document is updated. Both synchronous and asynchronous
+   * resource paths invoke {@link #restoreFromSearch(EntityInterface)} only after the database
+   * restore returns, so relationship-derived documents can be rebuilt from committed state here.
+   */
+  protected void postRestoreFromSearch(T entity) {}
 
   public ResultList<T> listFromSearchWithOffset(
       UriInfo uriInfo,
@@ -4790,65 +4877,66 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private DeleteResponse<T> delete(
       String deletedBy, T original, boolean recursive, boolean hardDelete) {
     checkSystemEntityDeletion(original);
-    preDelete(original, deletedBy);
-    setFieldsForDelete(original);
+    try (DeleteLifecycle ignored = beginDeleteLifecycle(original, deletedBy)) {
+      setFieldsForDelete(original);
 
-    // Acquire deletion lock to prevent concurrent modifications
-    DeletionLock lock = null;
-    if (lockManager != null && recursive) {
-      try {
-        lock = lockManager.acquireDeletionLock(original, deletedBy, recursive);
-        LOG.info("Acquired deletion lock for {} {}", entityType, original.getId());
-      } catch (Exception e) {
-        LOG.error(
-            "Failed to acquire deletion lock for {} {}: {}",
-            entityType,
-            original.getId(),
-            e.getMessage());
-        // Continue without lock for backward compatibility
-      }
-    }
-
-    try {
-      deleteChildren(original.getId(), recursive, hardDelete, deletedBy);
-
-      EventType changeType;
-      T updated = loadForDelete(original.getId());
-      if (supportsSoftDelete && !hardDelete) {
-        updated.setUpdatedBy(deletedBy);
-        updated.setUpdatedAt(System.currentTimeMillis());
-        updated.setDeleted(true);
-        EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE, null);
-        updater.update();
-        changeType = ENTITY_SOFT_DELETED;
-        // Run the same hook the bulk path runs — keeps direct-entity soft delete in sync
-        // with bulkSoftDeleteSubtree for repos that link non-CONTAINS entities (e.g.,
-        // dashboard charts).
-        softDeleteAdditionalChildren(original.getId(), deletedBy);
-      } else {
-        // Run hook BEFORE cleanup(): cleanup() deletes this entity's relationship rows
-        // (including HAS), and subclass hooks like DashboardRepository.cascadeChartCleanup
-        // need to walk HAS to discover linked entities. Mirrors bulkHardDeleteSubtree
-        // ordering for direct-entity hard delete.
-        hardDeleteAdditionalChildren(original.getId(), deletedBy);
-        cleanup(updated);
-        changeType = ENTITY_DELETED;
-      }
-      LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
-      return new DeleteResponse<>(updated, changeType);
-
-    } finally {
-      // Always release the lock
-      if (lock != null && lockManager != null) {
+      // Acquire deletion lock to prevent concurrent modifications
+      DeletionLock lock = null;
+      if (lockManager != null && recursive) {
         try {
-          lockManager.releaseDeletionLock(original.getId(), entityType);
-          LOG.info("Released deletion lock for {} {}", entityType, original.getId());
+          lock = lockManager.acquireDeletionLock(original, deletedBy, recursive);
+          LOG.info("Acquired deletion lock for {} {}", entityType, original.getId());
         } catch (Exception e) {
           LOG.error(
-              "Failed to release deletion lock for {} {}: {}",
+              "Failed to acquire deletion lock for {} {}: {}",
               entityType,
               original.getId(),
               e.getMessage());
+          // Continue without lock for backward compatibility
+        }
+      }
+
+      try {
+        deleteChildren(original.getId(), recursive, hardDelete, deletedBy);
+
+        EventType changeType;
+        T updated = loadForDelete(original.getId());
+        if (supportsSoftDelete && !hardDelete) {
+          updated.setUpdatedBy(deletedBy);
+          updated.setUpdatedAt(System.currentTimeMillis());
+          updated.setDeleted(true);
+          EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE, null);
+          updater.update();
+          changeType = ENTITY_SOFT_DELETED;
+          // Run the same hook the bulk path runs — keeps direct-entity soft delete in sync
+          // with bulkSoftDeleteSubtree for repos that link non-CONTAINS entities (e.g.,
+          // dashboard charts).
+          softDeleteAdditionalChildren(original.getId(), deletedBy);
+        } else {
+          // Run hook BEFORE cleanup(): cleanup() deletes this entity's relationship rows
+          // (including HAS), and subclass hooks like DashboardRepository.cascadeChartCleanup
+          // need to walk HAS to discover linked entities. Mirrors bulkHardDeleteSubtree
+          // ordering for direct-entity hard delete.
+          hardDeleteAdditionalChildren(original.getId(), deletedBy);
+          cleanup(updated);
+          changeType = ENTITY_DELETED;
+        }
+        LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
+        return new DeleteResponse<>(updated, changeType);
+
+      } finally {
+        // Always release the lock
+        if (lock != null && lockManager != null) {
+          try {
+            lockManager.releaseDeletionLock(original.getId(), entityType);
+            LOG.info("Released deletion lock for {} {}", entityType, original.getId());
+          } catch (Exception e) {
+            LOG.error(
+                "Failed to release deletion lock for {} {}: {}",
+                entityType,
+                original.getId(),
+                e.getMessage());
+          }
         }
       }
     }
@@ -5161,8 +5249,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Run {@code flushBody} as a single JDBI transaction, wrapped in deadlock retry. The
    * {@code DeadlockRetry.execute} layer is OUTER (each replay opens a fresh handle) and
    * {@code inTransaction} is INNER, matching the {@code DeadlockRetry} contract that the operation
-   * opens its own transaction. Every {@code daoCollection.xDAO()} call inside {@code flushBody}
-   * enrolls in the single thread-bound handle and commits ONCE instead of auto-committing per call.
+   * opens its own transaction. The handle-bound {@link CollectionDAO} is exposed through {@link
+   * RepositoryTransactionContext} for mutations that must share this transaction.
    *
    * <p>No network side effect (RDF/SPARQL, Elasticsearch, Redis L2) may run inside {@code flushBody}
    * — a pooled connection is held for the whole body, so a network round trip there would pin the
@@ -5191,7 +5279,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
               Entity.getJdbi()
                   .inTransaction(
                       handle -> {
-                        flushBody.run();
+                        RepositoryTransactionContext.runWith(
+                            handle.attach(CollectionDAO.class), flushBody);
                         return null;
                       }));
     } finally {
@@ -5611,15 +5700,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
     store(entity, update, null);
   }
 
+  protected EntityDAO<T> entityDAOForWrite() {
+    return dao;
+  }
+
   protected void store(T entity, boolean update, Double expectedVersion) {
     String json = serializeForStorage(entity);
+    EntityDAO<T> writeDAO = entityDAOForWrite();
 
     if (update) {
       if (expectedVersion != null) {
         int rowsUpdated =
-            dao.updateWithVersion(
-                dao.getTableName(),
-                dao.getNameHashColumn(),
+            writeDAO.updateWithVersion(
+                writeDAO.getTableName(),
+                writeDAO.getNameHashColumn(),
                 entity.getFullyQualifiedName(),
                 entity.getId().toString(),
                 json,
@@ -5637,12 +5731,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
             expectedVersion,
             entity.getVersion());
       } else {
-        dao.update(entity.getId(), entity.getFullyQualifiedName(), json);
+        writeDAO.update(entity.getId(), entity.getFullyQualifiedName(), json);
         LOG.info("Updated {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
       }
       invalidate(entity);
     } else {
-      dao.insert(dao.getTableName(), dao.getNameHashColumn(), entity.getFullyQualifiedName(), json);
+      writeDAO.insert(
+          writeDAO.getTableName(),
+          writeDAO.getNameHashColumn(),
+          entity.getFullyQualifiedName(),
+          json);
       LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
     }
     StoredEntityJson pendingCapture = storedEntityJson.get();
@@ -5660,7 +5758,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       fqns.add(entity.getFullyQualifiedName());
       jsons.add(serializeForStorage(entity));
     }
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    EntityDAO<T> writeDAO = entityDAOForWrite();
+    writeDAO.insertMany(writeDAO.getTableName(), writeDAO.getNameHashColumn(), fqns, jsons);
   }
 
   protected void updateMany(List<T> entities) {
@@ -5672,7 +5771,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       ids.add(entity.getId());
       jsons.add(serializeForStorage(entity));
     }
-    dao.updateMany(dao.getTableName(), dao.getNameHashColumn(), fqns, ids, jsons);
+    EntityDAO<T> writeDAO = entityDAOForWrite();
+    writeDAO.updateMany(writeDAO.getTableName(), writeDAO.getNameHashColumn(), fqns, ids, jsons);
   }
 
   @Transaction
@@ -6649,13 +6749,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return RestUtil.getHref(uriInfo, collectionPath, id);
   }
 
-  @Transaction
   public final PutResponse<T> restoreEntity(String updatedBy, UUID id) {
+    // Repositories are instantiated directly rather than as JDBI SQL-object proxies, so an
+    // annotation here would not create a transaction. The explicit boundary also drains deferred
+    // credential/cache work only after the restore commits.
+    return executeInTransaction(() -> restoreEntityInternal(updatedBy, id));
+  }
+
+  private PutResponse<T> restoreEntityInternal(String updatedBy, UUID id) {
     // Confirm the entity exists at all (in any state). If the row is truly gone
     // (e.g., hard-deleted), propagate EntityNotFoundException so the caller surfaces
     // a clean 404 instead of running children / hooks against a non-existent id and
     // potentially surfacing a 500 from a hook side-effect.
-    find(id, ALL);
+    T restoredEntity = find(id, ALL);
 
     // If an entity being restored contains other **deleted** children entities, restore them
     restoreChildren(id, updatedBy);
@@ -6685,6 +6791,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Restore moves the row from deleted=true to deleted=false, changing the listing total.
       ListCountCache.invalidate(entityType);
       response = new PutResponse<>(Status.OK, updated, ENTITY_RESTORED);
+      restoredEntity = updated;
     } catch (EntityNotFoundException e) {
       // Entity exists (verified above) but is not in DELETED state — already restored.
       LOG.info("Entity already restored or not in deleted state {} {}", entityType, id);
@@ -6693,6 +6800,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // that). A re-entered cascade where this level is already restored must still
     // reconcile HAS-related children (e.g., dashboard charts) of nested descendants.
     restoreAdditionalChildren(id, updatedBy);
+    postRestore(restoredEntity);
     return response;
   }
 
@@ -6793,6 +6901,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // a re-entered cascade may still have HAS-related children attached to nested
     // descendants that require reconciliation.
     runRestoreAdditionalChildren(entities, updatedBy);
+    for (T entity : entities) {
+      postRestore(entity);
+    }
   }
 
   private void runRestoreAdditionalChildren(List<T> entities, String updatedBy) {
@@ -6940,17 +7051,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
         allEntities.stream().filter(e -> !Boolean.TRUE.equals(e.getDeleted())).toList();
     for (T entity : entities) {
       checkSystemEntityDeletion(entity);
-      preDelete(entity, updatedBy);
     }
-    dispatchToContainedChildren(
-        allEntities,
-        "bulkSoftDeleteFindChildren",
-        (childRepo, childIds) -> childRepo.bulkSoftDeleteSubtree(childIds, updatedBy));
-    applyBulkSoftDelete(entities, updatedBy);
-    // Always run per-entity hooks even when nothing at THIS level needed flipping —
-    // descendants restored independently before the cascade still need to be re-deleted
-    // by the per-entity hook.
-    runSoftDeleteAdditionalChildren(allEntities, updatedBy);
+    try (DeleteLifecycle ignored = beginDeleteLifecycles(entities, updatedBy)) {
+      dispatchToContainedChildren(
+          allEntities,
+          "bulkSoftDeleteFindChildren",
+          (childRepo, childIds) -> childRepo.bulkSoftDeleteSubtree(childIds, updatedBy));
+      applyBulkSoftDelete(entities, updatedBy);
+      // Always run per-entity hooks even when nothing at THIS level needed flipping —
+      // descendants restored independently before the cascade still need to be re-deleted
+      // by the per-entity hook.
+      runSoftDeleteAdditionalChildren(allEntities, updatedBy);
+    }
   }
 
   // This type can't be soft-deleted, so each entity at this level must be hard
@@ -7069,40 +7181,41 @@ public abstract class EntityRepository<T extends EntityInterface> {
       populateRelationFields(entities);
       for (T entity : entities) {
         checkSystemEntityDeletion(entity);
-        preDelete(entity, updatedBy);
       }
-      dispatchToContainedChildren(
-          entities,
-          "bulkHardDeleteFindChildren",
-          (childRepo, childIds) -> childRepo.bulkHardDeleteSubtree(childIds, updatedBy),
-          true,
-          updatedBy);
-      bulkEntitySpecificCleanup(entities, updatedBy);
-      // Run BEFORE bulkCleanupReferences: hooks like DashboardRepository.cascadeChartCleanup
-      // walk HAS relationships to discover linked entities, and bulkCleanupReferences wipes
-      // those relationship rows.
-      runHardDeleteAdditionalChildren(entities, updatedBy);
-      // This chunk's reference wipes (entity_relationship, extensions, tag_usage, usage,
-      // field_relationship, feed) and its entity-row delete commit together in one transaction.
-      // bulkCleanupReferences skips the FQN-keyed satellite deletes for cascade-covered types
-      // (see descendantsCoveredByAncestorCascade) and batches usage by id-set. Children were
-      // already deleted by the recursion above, so this transaction is bounded to this chunk.
-      bulkDeleteReferencesAndRows(entities);
-      bulkInvalidate(entities);
-      // When an ancestor's deleteFromSearch cascade already removes these docs in a single
-      // delete-by-query (SearchRepository.deleteOrUpdateChildren wipes child indexes by
-      // service.id / parent.id — see the DATABASE_SERVICE / default cases), firing one
-      // onEntityDeleted per descendant is pure overhead: it serializes a snapshot of every
-      // entity and submits a lane task each, which dominated the wall-clock of large recursive
-      // hard deletes (≈ N search dispatches for an N-entity subtree). Repos whose descendants are
-      // covered by that ancestor cascade override descendantsCoveredByAncestorCascade() to
-      // skip the per-entity dispatch; the root entity's own deleteFromSearch (fired by the
-      // top-level delete()) still runs and triggers the covering cascade.
-      boolean skipPerEntitySearch = descendantsCoveredByAncestorCascade;
-      for (T entity : entities) {
-        postDelete(entity, true);
-        if (!skipPerEntitySearch) {
-          deleteFromSearch(entity, true);
+      try (DeleteLifecycle ignored = beginDeleteLifecycles(entities, updatedBy)) {
+        dispatchToContainedChildren(
+            entities,
+            "bulkHardDeleteFindChildren",
+            (childRepo, childIds) -> childRepo.bulkHardDeleteSubtree(childIds, updatedBy),
+            true,
+            updatedBy);
+        bulkEntitySpecificCleanup(entities, updatedBy);
+        // Run BEFORE bulkCleanupReferences: hooks like DashboardRepository.cascadeChartCleanup
+        // walk HAS relationships to discover linked entities, and bulkCleanupReferences wipes
+        // those relationship rows.
+        runHardDeleteAdditionalChildren(entities, updatedBy);
+        // This chunk's reference wipes (entity_relationship, extensions, tag_usage, usage,
+        // field_relationship, feed) and its entity-row delete commit together in one transaction.
+        // bulkCleanupReferences skips the FQN-keyed satellite deletes for cascade-covered types
+        // (see descendantsCoveredByAncestorCascade) and batches usage by id-set. Children were
+        // already deleted by the recursion above, so this transaction is bounded to this chunk.
+        bulkDeleteReferencesAndRows(entities);
+        bulkInvalidate(entities);
+        // When an ancestor's deleteFromSearch cascade already removes these docs in a single
+        // delete-by-query (SearchRepository.deleteOrUpdateChildren wipes child indexes by
+        // service.id / parent.id — see the DATABASE_SERVICE / default cases), firing one
+        // onEntityDeleted per descendant is pure overhead: it serializes a snapshot of every
+        // entity and submits a lane task each, which dominated the wall-clock of large recursive
+        // hard deletes (≈ N search dispatches for an N-entity subtree). Repos whose descendants are
+        // covered by that ancestor cascade override descendantsCoveredByAncestorCascade() to
+        // skip the per-entity dispatch; the root entity's own deleteFromSearch (fired by the
+        // top-level delete()) still runs and triggers the covering cascade.
+        boolean skipPerEntitySearch = descendantsCoveredByAncestorCascade;
+        for (T entity : entities) {
+          postDelete(entity, true);
+          if (!skipPerEntitySearch) {
+            deleteFromSearch(entity, true);
+          }
         }
       }
     } finally {

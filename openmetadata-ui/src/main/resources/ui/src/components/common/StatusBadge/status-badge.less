@@ -25,6 +25,20 @@
   white-space: nowrap;
   border: 1px solid;
 
+  // Dark: the white pill rings (var(--om-color-white) borders below) become the
+  // doc's subtle border (white @ 8%) so pills don't get a hard bright outline.
+  // Light keeps the white ring (frozen).
+  .dark-mode & {
+    &.success,
+    &.stopped,
+    &.failure,
+    &.failed,
+    &.aborted,
+    &.no-data {
+      border-color: var(--om-color-border-secondary);
+    }
+  }
+
   &.success {
     color: @green-10;
     background-color: @green-9;

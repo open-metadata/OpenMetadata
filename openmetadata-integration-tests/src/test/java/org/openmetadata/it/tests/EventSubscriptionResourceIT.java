@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -20,10 +21,17 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -46,6 +54,7 @@ import org.openmetadata.schema.type.NotificationFilterOperation;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -63,6 +72,9 @@ import org.openmetadata.service.resources.events.subscription.EventSubscriptionR
 public class EventSubscriptionResourceIT
     extends BaseEntityIT<EventSubscription, CreateEventSubscription> {
 
+  private static final URI LOOPBACK_ENDPOINT =
+      URI.create("http://127.0.0.1:8585/api/v1/test/webhook/blocked");
+
   // EventSubscription has special requirements
   {
     supportsFieldsQueryParam = false;
@@ -76,6 +88,11 @@ public class EventSubscriptionResourceIT
     supportsSearchIndex = false; // EventSubscription doesn't have a search index
     supportsListHistoryByTimestamp = false; // History endpoint not supported for EventSubscription
   }
+
+  // Enough opposing rounds that the unordered scheduler loses the race at least once; with the
+  // reconcile in place every round settles, so this only costs wall-clock when it is broken.
+  private static final int TOGGLE_ORDERING_ROUNDS = 20;
+  private static final int TOGGLE_CONFLICT_ATTEMPTS = 5;
 
   @Override
   protected String getResourcePath() {
@@ -106,6 +123,52 @@ public class EventSubscriptionResourceIT
         .withResources(List.of("all"))
         .withEnabled(false)
         .withDestinations(getWebhookDestination(ns));
+  }
+
+  @Test
+  void test_webhookEndpointAsLoopbackAddress_400(TestNamespace ns) {
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_loopback"))
+            .withDescription("Endpoint written as a loopback address")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(
+                List.of(
+                    new SubscriptionDestination()
+                        .withId(UUID.randomUUID())
+                        .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
+                        .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+                        .withConfig(new Webhook().withEndpoint(LOOPBACK_ENDPOINT))));
+
+    InvalidRequestException rejected =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> createEntity(request),
+            "A webhook endpoint written as a loopback address should be rejected");
+    assertEquals(400, rejected.getStatusCode());
+  }
+
+  @Test
+  void test_patchWebhookEndpointToLoopbackAddress_400(TestNamespace ns) {
+    // PATCH never reaches the resource's own checks, so this is what proves the policy also runs
+    // on the persistence path.
+    EventSubscription subscription =
+        createEntity(createRequest(ns.prefix("sub_patch_loopback"), ns));
+    SubscriptionDestination destination = subscription.getDestinations().get(0);
+    Webhook webhook = JsonUtils.convertValue(destination.getConfig(), Webhook.class);
+    destination.withConfig(webhook.withEndpoint(LOOPBACK_ENDPOINT));
+
+    // The SDK wraps a patch failure, so the server's status is on the cause.
+    OpenMetadataException rejected =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> patchEntity(subscription.getId().toString(), subscription),
+            "Patching an endpoint to a loopback address should be rejected");
+    InvalidRequestException cause =
+        assertInstanceOf(InvalidRequestException.class, rejected.getCause());
+    assertEquals(400, cause.getStatusCode());
   }
 
   private List<SubscriptionDestination> getWebhookDestination(TestNamespace ns) {
@@ -795,6 +858,185 @@ public class EventSubscriptionResourceIT
     enabled.setEnabled(false);
     EventSubscription disabled = patchEntity(enabled.getId().toString(), enabled);
     assertFalse(disabled.getEnabled());
+  }
+
+  /**
+   * Toggling a subscription rewrites one Quartz (job, trigger) pair, and several writers reach that
+   * pair at once: concurrent requests on one node, and {@code initializeEventSubscriptions()} on
+   * every peer that starts up against the same clustered job store. While the pair was removed and
+   * re-added as two transactions, a toggle could list a trigger another writer had already dropped
+   * and fail the request with "Unable to unschedule trigger [...] while deleting job [...]".
+   */
+  @Test
+  void test_concurrentEnableDisableSubscription(TestNamespace ns) throws Exception {
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("concurrent_toggle_sub"))
+            .withDescription("Subscription toggled from several threads at once")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    String subscriptionId = subscription.getId().toString();
+
+    int writers = 4;
+    int togglesPerWriter = 5;
+    ExecutorService pool = Executors.newFixedThreadPool(writers);
+    CountDownLatch startLine = new CountDownLatch(1);
+    AtomicInteger completed = new AtomicInteger();
+    List<Future<?>> toggles = new ArrayList<>();
+    try {
+      for (int writer = 0; writer < writers; writer++) {
+        boolean startEnabled = writer % 2 == 0;
+        toggles.add(
+            pool.submit(
+                () -> {
+                  startLine.await();
+                  for (int i = 0; i < togglesPerWriter; i++) {
+                    toggleEnabled(subscriptionId, startEnabled == (i % 2 == 0));
+                    completed.incrementAndGet();
+                  }
+                  return null;
+                }));
+      }
+      startLine.countDown();
+      for (Future<?> toggle : toggles) {
+        // Everything propagates. A version conflict is the one collision this workload expects and
+        // toggleEnabled retries it, so any failure that reaches here -- a 5xx, an SDK fault, an
+        // unexpected runtime error -- is a real defect rather than contention.
+        toggle.get(2, TimeUnit.MINUTES);
+      }
+    } finally {
+      pool.shutdownNow();
+    }
+
+    assertEquals(
+        writers * togglesPerWriter,
+        completed.get(),
+        "Every worker must finish its toggles, otherwise the race was never exercised");
+    assertNotNull(getEntity(subscriptionId), "Subscription must survive concurrent enable/disable");
+    deleteEntity(subscriptionId);
+  }
+
+  /**
+   * However the requests interleave, the schedule has to end up agreeing with the committed row.
+   * Before the scheduler reconciled from committed state, a disable that committed first but reached
+   * the scheduler second deleted the job a later enable had just installed: the row read enabled
+   * while no Quartz job remained, so the subscription looked active and silently never fired again.
+   *
+   * <p>The status endpoint is the observable. It reports the scheduled job's own snapshot when one
+   * exists and falls back to DISABLED when the row is disabled, so an empty body means exactly the
+   * broken state -- enabled, with nothing scheduled.
+   */
+  @Test
+  void test_concurrentEnableDisableLeavesScheduleMatchingCommittedState(TestNamespace ns)
+      throws Exception {
+    EventSubscription subscription =
+        createEntity(
+            new CreateEventSubscription()
+                .withName(ns.prefix("toggle_ordering_sub"))
+                .withDescription("Subscription toggled from both directions at once")
+                .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+                .withResources(List.of("all"))
+                .withEnabled(true)
+                .withDestinations(getWebhookDestination(ns)));
+    String subscriptionId = subscription.getId().toString();
+
+    ExecutorService pool = Executors.newFixedThreadPool(2);
+    try {
+      for (int round = 1; round <= TOGGLE_ORDERING_ROUNDS; round++) {
+        CountDownLatch startLine = new CountDownLatch(1);
+        Future<?> enabling = pool.submit(() -> toggleAfter(startLine, subscriptionId, true));
+        Future<?> disabling = pool.submit(() -> toggleAfter(startLine, subscriptionId, false));
+        startLine.countDown();
+        enabling.get(1, TimeUnit.MINUTES);
+        disabling.get(1, TimeUnit.MINUTES);
+
+        EventSubscription settled = getEntity(subscriptionId);
+        String destinationId = settled.getDestinations().get(0).getId().toString();
+        String scheduled = readScheduledStatus(subscriptionId, destinationId);
+        if (Boolean.TRUE.equals(settled.getEnabled())) {
+          // An empty body is the broken state exactly: no job, and the row is not disabled either.
+          assertFalse(
+              scheduled.isBlank(),
+              "Round " + round + ": the row reads enabled but nothing is scheduled for it");
+        } else {
+          // Disabled with no job falls back to the row and reports "disabled"; a job left behind
+          // would answer from its own snapshot instead, which is the same bug the other way round.
+          assertTrue(
+              scheduled.contains("\"disabled\""),
+              "Round "
+                  + round
+                  + ": the row reads disabled but the scheduler still reports "
+                  + scheduled);
+        }
+      }
+    } finally {
+      pool.shutdownNow();
+    }
+
+    deleteEntity(subscriptionId);
+  }
+
+  private Void toggleAfter(CountDownLatch startLine, String subscriptionId, boolean enabled)
+      throws InterruptedException {
+    startLine.await();
+    toggleEnabled(subscriptionId, enabled);
+    return null;
+  }
+
+  /**
+   * Two toggles racing on one subscription can legitimately collide on the entity's version, which
+   * the server answers with 409. That is the only failure this workload absorbs, and retrying it
+   * keeps every worker doing its full share so a test cannot pass by aborting early.
+   */
+  private void toggleEnabled(String subscriptionId, boolean enabled) {
+    for (int attempt = 1; ; attempt++) {
+      try {
+        EventSubscription current = getEntity(subscriptionId);
+        current.setEnabled(enabled);
+        patchEntity(subscriptionId, current);
+        return;
+      } catch (RuntimeException failure) {
+        if (attempt == TOGGLE_CONFLICT_ATTEMPTS || statusCodeOf(failure) != 409) {
+          throw failure;
+        }
+      }
+    }
+  }
+
+  /** The SDK wraps the transport failure, so the real status sits on a cause rather than the top. */
+  private static int statusCodeOf(Throwable failure) {
+    for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+      if (cause instanceof OpenMetadataException reported && reported.getStatusCode() > 0) {
+        return reported.getStatusCode();
+      }
+    }
+    return -1;
+  }
+
+  /** Empty body means the scheduler holds no job and the row is not disabled either. */
+  private String readScheduledStatus(String subscriptionId, String destinationId) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    SdkClients.getServerUrl()
+                        + "/v1/events/subscriptions/"
+                        + subscriptionId
+                        + "/status/"
+                        + destinationId))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .GET()
+            .build();
+    HttpResponse<String> response =
+        HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+    assertTrue(
+        response.statusCode() < 300,
+        "Subscription status endpoint failed: " + response.statusCode() + " " + response.body());
+    return response.body() == null ? "" : response.body().trim();
   }
 
   @Test

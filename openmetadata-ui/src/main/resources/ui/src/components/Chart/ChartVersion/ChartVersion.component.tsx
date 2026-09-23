@@ -18,7 +18,6 @@ import { useNavigate } from 'react-router-dom';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription, Chart } from '../../../generated/entity/data/chart';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityHistory } from '../../../generated/type/entityHistory';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { VersionData } from '../../../pages/EntityVersionPage/EntityVersionPage.component';
@@ -27,7 +26,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtilsPure';
-import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
@@ -129,10 +128,7 @@ const ChartVersion: FC<ChartVersionProp> = ({
   }, [currentVersionData, changeDescription]);
 
   const viewCustomPropertiesPermission = useMemo(() => {
-    return getPrioritizedViewPermission(
-      entityPermissions,
-      Operation.ViewCustomFields
-    );
+    return getDerivedPermissionFlags(entityPermissions).canViewCustomFields;
   }, [entityPermissions]);
 
   const tabItems: TabsProps['items'] = useMemo(
