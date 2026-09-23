@@ -2157,7 +2157,7 @@ test.describe('Glossary tests', () => {
 
         // NavBar calls navigate(0) after language change — hoist the load listener
         // before the click so the full-page reload is properly awaited.
-        const reloadPromise = page.waitForEvent('load');
+        const reloadPromise = page.waitForEvent('domcontentloaded');
         await germanOption.click();
         await reloadPromise;
         await waitForAllLoadersToDisappear(page);
@@ -2199,7 +2199,7 @@ test.describe('Glossary tests', () => {
 
         // NavBar calls navigate(0) after language change — hoist the load listener
         // before the click so the full-page reload is properly awaited.
-        const reloadPromise = page.waitForEvent('load');
+        const reloadPromise = page.waitForEvent('domcontentloaded');
         await englishOption.click();
         await reloadPromise;
         await waitForAllLoadersToDisappear(page);
