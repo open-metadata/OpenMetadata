@@ -17,6 +17,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@untitledui/icons';
@@ -47,6 +48,13 @@ const stopAnd = (handler?: () => void) => (e: MouseEvent) => {
 /**
  * The title doubles as the banner's click target — a real `<button>` so the
  * whole surface doesn't have to fake one with `role` + `tabIndex`.
+ *
+ * The tooltip is applied here rather than through Typography's own
+ * `ellipsis.tooltip`: Typography renders that tooltip *inside* this button, and
+ * because its trigger is not natively focusable, Tooltip wraps it in an
+ * AriaButton — a button inside a button, which is invalid and rendered the
+ * title off-centre from the rest of the row. Wrapping from outside gives
+ * Tooltip a focusable child, so it uses this button as the trigger directly.
  */
 const AnnouncementTitle = ({
   className,
@@ -59,9 +67,9 @@ const AnnouncementTitle = ({
 }) => {
   const text = (
     <Typography
+      ellipsis
       as="span"
       className={className}
-      ellipsis={{ rows: 1, tooltip: true }}
       size="text-sm"
       weight="medium">
       {title}
@@ -69,17 +77,19 @@ const AnnouncementTitle = ({
   );
 
   if (!onClick) {
-    return text;
+    return <Tooltip title={title}>{text}</Tooltip>;
   }
 
   return (
-    <button
-      className="tw:min-w-0 tw:cursor-pointer tw:border-none tw:bg-transparent tw:p-0 tw:text-left"
-      data-testid="announcement-title-btn"
-      type="button"
-      onClick={onClick}>
-      {text}
-    </button>
+    <Tooltip title={title}>
+      <button
+        className="tw:flex tw:min-w-0 tw:cursor-pointer tw:items-center tw:border-none tw:bg-transparent tw:p-0 tw:text-left"
+        data-testid="announcement-title-btn"
+        type="button"
+        onClick={onClick}>
+        {text}
+      </button>
+    </Tooltip>
   );
 };
 

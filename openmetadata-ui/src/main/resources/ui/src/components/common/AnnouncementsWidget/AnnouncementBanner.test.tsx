@@ -183,4 +183,16 @@ describe('AnnouncementBanner', () => {
     // descendant of the column the chip opens — that nesting is what indented it.
     expect(chip?.parentElement?.contains(title)).toBe(false);
   });
+
+  it('should not nest the title button inside the tooltip trigger button', () => {
+    renderBanner({ onClick: jest.fn() });
+
+    const titleButton = screen.getByTestId('announcement-title-btn');
+
+    // Typography's own ellipsis tooltip wraps a non-focusable node in an
+    // AriaButton; applied inside this button it produced button-in-button,
+    // which is invalid and threw the row's vertical alignment out.
+    expect(titleButton.querySelector('button')).toBeNull();
+    expect(titleButton.closest('button')).toBe(titleButton);
+  });
 });
