@@ -1453,12 +1453,14 @@ test.describe('Glossary tests', () => {
       await expectGlossaryVisible(page, glossaryB.data.displayName);
       await expectGlossaryVisible(page, glossaryC.data.displayName);
 
-      // Delete A (succeeds - not mocked, real deletion)
-      await selectActiveGlossary(page, glossaryA.data.displayName);
-      await initiateDelete(page);
+      // Delete A via API — the WS is mocked so UI-initiated async delete cannot
+      // be confirmed without emitting a WS event; the synchronous API delete
+      // guarantees A is gone before we navigate and verify.
+      await glossaryA.delete(apiContext);
       await page.goto(GLOSSARY_ROUTE, { waitUntil: 'commit' });
-      await expectGlossaryVisible(page, glossaryC.data.displayName);
       await expectGlossaryNotVisible(page, glossaryA.data.displayName);
+      await expectGlossaryVisible(page, glossaryB.data.displayName);
+      await expectGlossaryVisible(page, glossaryC.data.displayName);
 
       // Delete B (fails via mocked WebSocket event)
       await selectActiveGlossary(page, glossaryB.data.displayName);
