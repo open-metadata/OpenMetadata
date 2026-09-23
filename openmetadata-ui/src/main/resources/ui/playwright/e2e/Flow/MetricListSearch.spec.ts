@@ -124,14 +124,9 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
 
       await waitForAllLoadersToDisappear(page);
 
-      // otherName not-visible is asserted first — it retries until React
-      // Query's keepPreviousData clears and the filtered list is live.
-      // matchName was already in the pre-search list so its visibility check
-      // must come after, once the stale list is confirmed gone.
+      // Wait for keepPreviousData to clear; matchName check must follow after.
       await expect(page.getByText(otherName)).not.toBeVisible();
-      // Confirm at least one result row is rendered. Parallel specs may
-      // create metrics that partially match, so >= 1 is correct here.
-      // List is already settled at this point so a direct count() is reliable.
+      // List is settled here — parallel specs may match partially, so >= 1.
       const count = await page.getByTestId('metric-name').count();
       expect(count).toBeGreaterThanOrEqual(1);
       await expect(
