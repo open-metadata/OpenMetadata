@@ -83,6 +83,7 @@ import {
   editAnnouncement,
   escapeESReservedCharacters,
   followEntity,
+  openClassificationTagPicker,
   getEncodedFqn,
   unFollowEntity,
   validateFollowedEntityToWidget,
@@ -3313,13 +3314,10 @@ test.describe('Domain Tree View Functionality', () => {
         state: 'visible',
       });
 
-      await page
-        .locator('[data-testid="tags-container"] [data-testid="add-tag"]')
-        .click();
-
-      await expect(
-        page.getByTestId('classification-tag-picker-search')
-      ).toBeVisible();
+      await openClassificationTagPicker(
+        page,
+        page.getByTestId('tags-container').getByTestId('add-tag')
+      );
 
       const searchTagResponse = page.waitForResponse(
         (response) =>
