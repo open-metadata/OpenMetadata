@@ -444,9 +444,7 @@ test.describe('Data Contracts', () => {
           await tagSearch.fill(testTag.data.name);
           await page
             .getByTestId('drop-down-menu')
-            .getByTestId(
-              testTag.responseData.fullyQualifiedName ?? ''
-            )
+            .getByTestId(testTag.responseData.fullyQualifiedName ?? '')
             .click();
 
           await page.keyboard.press('Escape');
