@@ -12,7 +12,6 @@
  */
 import { capitalize, isNaN, isNil, toInteger, toNumber } from 'lodash';
 import { DateTime, Duration } from 'luxon';
-import { useShallow } from 'zustand/react/shallow';
 import {
   DAY_SECONDS,
   HOUR_SECONDS,
@@ -21,10 +20,6 @@ import {
   YEAR_SECONDS,
 } from '../../constants/Date.constants';
 import { DATE_TIME_SHORT_UNITS } from '../../enums/common.enum';
-import {
-  useCurrentUserPreferences,
-  usePersistentStorage,
-} from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getCurrentLocaleForConstrue } from '../i18next/i18nextUtil';
 import i18next from '../i18next/LocalUtil';
@@ -42,11 +37,9 @@ const loadCronstrue = (): Promise<CronstrueModule> => {
   if (!cronstruePromise) {
     cronstruePromise = import('cronstrue').then((m) => {
       cronstrueModule = m;
-
       return m;
     });
   }
-
   return cronstruePromise;
 };
 
@@ -59,60 +52,38 @@ export const DATE_TIME_WEEKDAY_WITH_ORDINAL = "ccc d'th' MMMM, yyyy, hh:mm a"; /
 export const DATE_TIME_WITH_OFFSET_SHORT = "MMM dd, yyyy, hh:mm a '(UTC'ZZ')'"; // e.g. Jan 01, 2025, 12:00 AM (UTC+05:30)
 
 /**
- * Resolves the time format to use, in precedence order:
- * 1. The logged-in user's on-device preference (`timeFormat` in UserPreferences).
- * 2. The tenant-wide default fetched at boot (server `timeFormat` config).
- * 3. `12h` fallback.
+ * Resolves the time format to use:
+ * The tenant-wide default fetched at boot (server `defaultTimeFormat` config).
+ * `12h` fallback if not configured.
  *
- * NOTE: This function reads the time format non-reactively via .getState().
- * Components using utility formatters directly will not automatically re-render
- * when the user toggles the time format preference. They will reflect the new
- * format on their next render cycle (e.g., via navigation or unrelated state changes).
- * For fully reactive time formatting, use the {@link useActiveTimeFormat} hook
- * and pass its result to customFormatDateTime / formatDateTime.
+ * NOTE: Per-user override was removed from the UI. All users now see the
+ * tenant-wide default configured by admins in Settings > Preferences.
  */
 export const getActiveTimeFormat = (): '12h' | '24h' => {
-  const { currentUser, timeFormat: globalTimeFormat } =
-    useApplicationStore.getState();
-  const userTimeFormat = currentUser?.name
-    ? usePersistentStorage.getState().preferences[currentUser.name]?.timeFormat
-    : undefined;
-
-  return userTimeFormat ?? globalTimeFormat ?? '12h';
+  const { timeFormat: globalTimeFormat } = useApplicationStore.getState();
+  return globalTimeFormat ?? '12h';
 };
 
 /**
  * Reactive hook that returns the active time format, re-evaluating whenever
- * the user preference or global default changes. Use this in components that
- * render timestamps and need to update live when the user toggles 12h/24h.
+ * the tenant-wide default changes. Use this in components that render
+ * timestamps and need to update live when the admin changes the setting.
  *
- * Precedence: user preference -> global/tenant preference -> '12h' default.
- *
+ * Precedence: global/tenant preference -> '12h' default.
  * Example:
  *   const timeFormat = useActiveTimeFormat();
  *   const formatted = formatDateTime(timestamp, timeFormat);
  */
 export const useActiveTimeFormat = (): '12h' | '24h' => {
-  const { currentUser, timeFormat: globalTimeFormat } = useApplicationStore(
-    useShallow((s) => ({
-      currentUser: s.currentUser,
-      timeFormat: s.timeFormat,
-    }))
-  );
-  const { preferences } = useCurrentUserPreferences();
-  const userTimeFormat = currentUser?.name
-    ? preferences[currentUser.name]?.timeFormat
-    : undefined;
-
-  return userTimeFormat ?? globalTimeFormat ?? '12h';
+  const timeFormat = useApplicationStore((state) => state.timeFormat);
+  return timeFormat ?? '12h';
 };
 
 /**
  * Maps the time tokens of a luxon format string to the requested
  * 12h/24h representation; date tokens are left untouched.
- *
  * e.g. getMappedTimeFormat("MMM dd, yyyy, hh:mm a '(UTC'ZZ')'", '24h')
- *      => "MMM dd, yyyy, HH:mm '(UTC'ZZ')'"
+ *  => "MMM dd, yyyy, HH:mm '(UTC'ZZ')'"
  */
 export const getMappedTimeFormat = (
   format: string,
@@ -136,7 +107,6 @@ export const formatDateTime = (date?: number, timeFormat?: '12h' | '24h') => {
   }
   const activeFormat = timeFormat ?? getActiveTimeFormat();
   const dateTime = DateTime.fromMillis(date, { locale: i18next.language });
-
   return dateTime.toFormat(
     getMappedTimeFormat(DATE_TIME_WITH_OFFSET_SHORT, activeFormat)
   );
@@ -151,7 +121,6 @@ export const formatDate = (date?: number, supportUTC = false) => {
     return '';
   }
   const dateTime = DateTime.fromMillis(date, { locale: i18next.language });
-
   return supportUTC
     ? dateTime.toUTC().toLocaleString(DateTime.DATE_MED)
     : dateTime.setLocale(i18next.language).toLocaleString(DateTime.DATE_MED);
@@ -169,7 +138,6 @@ export const formatMonth = (date?: number) => {
   if (!dateTime.isValid) {
     return '';
   }
-
   return dateTime.toFormat('MMM');
 };
 
@@ -186,7 +154,6 @@ export const formatDateTimeLong = (
     return '';
   }
   const activeFormat = timeFormat ?? getActiveTimeFormat();
-
   return DateTime.fromMillis(toNumber(timestamp), {
     locale: i18next.language,
   }).toFormat(
@@ -205,7 +172,6 @@ export const getTimeZone = (): string => {
     })
     .slice(4);
   const abbreviation = timeZoneToString.match(/\b[A-Z]+/g)?.join('') || '';
-
   return abbreviation;
 };
 
@@ -230,7 +196,6 @@ export const formatDateTimeWithTimezone = (
   const dateTime = DateTime.fromMillis(timeStamp, {
     locale: i18next.language,
   });
-
   return dateTime.toLocaleString({
     ...DateTime.DATETIME_FULL,
     hour12: activeFormat === '12h',
@@ -261,7 +226,6 @@ export const customFormatDateTime = (
     return formatDateTime(milliseconds, timeFormat);
   }
   const activeFormat = timeFormat ?? getActiveTimeFormat();
-
   return DateTime.fromMillis(milliseconds, {
     locale: i18next.language,
   }).toFormat(getMappedTimeFormat(format, activeFormat));
@@ -300,7 +264,6 @@ export const getShortRelativeTime = (timeStamp?: number): string => {
         ] || word
     )
     .join(' ');
-
   return shortForm;
 };
 
@@ -338,15 +301,16 @@ export const getDaysRemaining = (timestamp: number) =>
   toInteger(
     -DateTime.now().diff(DateTime.fromMillis(timestamp), ['days']).days
   );
+
 export const isValidDateFormat = (format: string) => {
   try {
     const dt = DateTime.fromFormat(DateTime.now().toFormat(format), format);
-
     return dt.isValid;
   } catch {
     return false;
   }
 };
+
 export const getIntervalInMilliseconds = (
   startTime: number,
   endTime: number
@@ -354,9 +318,9 @@ export const getIntervalInMilliseconds = (
   const startDateTime = DateTime.fromMillis(startTime);
   const endDateTime = DateTime.fromMillis(endTime);
   const interval = endDateTime.diff(startDateTime);
-
   return interval.milliseconds;
 };
+
 export const calculateInterval = (
   startTime: number,
   endTime: number
@@ -369,7 +333,6 @@ export const calculateInterval = (
     const duration = Duration.fromMillis(intervalInMilliseconds);
     const days = Math.floor(duration.as('days'));
     const hours = Math.floor(duration.as('hours')) % 24;
-
     return `${days} Days, ${hours} Hours`;
   } catch {
     return 'Invalid interval';
@@ -392,7 +355,6 @@ const buildHumanReadableResult = (
   const limitedParts =
     length && parts.length > length ? parts.slice(0, length) : parts;
   const formattedResult = limitedParts.join(' ');
-
   return isNegative
     ? `${prependForNegativeValue}${formattedResult}`
     : formattedResult;
@@ -435,7 +397,6 @@ export const convertMillisecondsToHumanReadableFormat = (
   const result = units
     .filter((unit) => unit.value > 0)
     .map((unit) => `${unit.value}${unit.suffix}`);
-
   return buildHumanReadableResult(
     result,
     length,
@@ -482,7 +443,6 @@ export const convertSecondsToHumanReadableFormat = (
   if (secs > 0) {
     result.push(`${secs}s`);
   }
-
   return buildHumanReadableResult(
     result,
     length,
@@ -511,7 +471,6 @@ export const formatIsoDuration = (iso: string): string => {
   if (!d.isValid) {
     return iso;
   }
-
   return d.toHuman() || iso;
 };
 
@@ -519,7 +478,6 @@ export const formatDurationToHHMMSS = (ms: number) => {
   if (ms > 0 && ms < 1000) {
     return `${Math.floor(ms)} ms`;
   }
-
   return Duration.fromMillis(ms).toFormat('hh:mm:ss');
 };
 
@@ -538,14 +496,12 @@ export const getSevenDaysStartGMTArrayInMillis = () => {
   for (let i = 6; i >= 0; i--) {
     sevenDaysStartGMTArrayInMillis.push(getDayAgoStartGMTinMillis(i));
   }
-
   return sevenDaysStartGMTArrayInMillis;
 };
 
 export const getScheduleDescriptionTexts = (scheduleInterval: string) => {
   if (!cronstrueModule) {
     loadCronstrue();
-
     return { descriptionFirstPart: '', descriptionSecondPart: '' };
   }
   try {
@@ -564,7 +520,6 @@ export const getScheduleDescriptionTexts = (scheduleInterval: string) => {
     const descriptionSecondPart = capitalize(
       scheduleDescription.slice(firstSentenceEndIndex + 1).trim()
     );
-
     return { descriptionFirstPart, descriptionSecondPart };
   } catch {
     return { descriptionFirstPart: '', descriptionSecondPart: '' };
