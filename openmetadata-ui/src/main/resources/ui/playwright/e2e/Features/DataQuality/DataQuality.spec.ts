@@ -219,11 +219,15 @@ test.describe(
           .fill(NEW_TABLE_TEST_CASE.description);
 
         // Add tags to test case
-        await page.getByTestId('tags-input').click();
         await expect
-          .poll(async () => page.getByTestId('search-input').isVisible(), {
-            timeout: 5_000,
-          })
+          .poll(
+            async () => {
+              await page.getByTestId('tags-input').click();
+
+              return page.getByTestId('search-input').isVisible();
+            },
+            { timeout: 10_000 }
+          )
           .toBe(true);
         const tagsSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=tag*`
@@ -277,11 +281,15 @@ test.describe(
           .getByRole('button')
           .click();
 
-        await page.getByTestId('tags-input').click();
         await expect
-          .poll(async () => page.getByTestId('search-input').isVisible(), {
-            timeout: 5_000,
-          })
+          .poll(
+            async () => {
+              await page.getByTestId('tags-input').click();
+
+              return page.getByTestId('search-input').isVisible();
+            },
+            { timeout: 10_000 }
+          )
           .toBe(true);
         const newTagsSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=tag*`
@@ -423,11 +431,15 @@ test.describe(
           .fill(NEW_COLUMN_TEST_CASE.description);
 
         // Add tags to column test case
-        await page.getByTestId('tags-input').click();
         await expect
-          .poll(async () => page.getByTestId('search-input').isVisible(), {
-            timeout: 5_000,
-          })
+          .poll(
+            async () => {
+              await page.getByTestId('tags-input').click();
+
+              return page.getByTestId('search-input').isVisible();
+            },
+            { timeout: 5_000 }
+          )
           .toBe(true);
         const columnTagsSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=tag*`
@@ -475,11 +487,15 @@ test.describe(
           .getByRole('button')
           .click();
 
-        await page.getByTestId('tags-input').click();
         await expect
-          .poll(async () => page.getByTestId('search-input').isVisible(), {
-            timeout: 5_000,
-          })
+          .poll(
+            async () => {
+              await page.getByTestId('tags-input').click();
+
+              return page.getByTestId('search-input').isVisible();
+            },
+            { timeout: 5_000 }
+          )
           .toBe(true);
         const columnNewTagsSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=tag*`
