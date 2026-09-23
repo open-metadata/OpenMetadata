@@ -285,12 +285,12 @@ test.describe('Column Level Lineage', () => {
   });
 
   Object.entries(columnLevelEntities).forEach(([key, EntityClassSource]) => {
-    const sourceEntity = new EntityClassSource();
     const entityKeys = Object.keys(columnLevelEntities);
 
     entityKeys.forEach((targetKey) => {
       test(`Column lineage for ${key} -> ${targetKey}`, async ({ page }) => {
         test.slow();
+        const sourceEntity = new EntityClassSource();
         const targetEntity = entities.get(targetKey) as EntityClassUnion;
         const { apiContext, afterAction } = await getApiContext(page);
 
