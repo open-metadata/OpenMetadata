@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AnnouncementForm from './AnnouncementForm.component';
+import { toAnnouncementTypeFields } from './announcementFormUtils';
 import {
   AnnouncementFormValues,
   EditableAnnouncement,
@@ -46,23 +47,17 @@ const EditAnnouncementModal: FC<Props> = ({
       announcementType:
         announcement.announcementType ?? AnnouncementType.Notice,
       color: announcement.color,
+      customTypeName: announcement.customTypeName,
+      systemWide: Boolean(announcement.systemWide),
       startTime: announcement.startTime,
       endTime: announcement.endTime,
     },
   });
 
-  const handleConfirm = ({
-    title,
-    description,
-    startTime,
-    endTime,
-    announcementType,
-    color,
-  }: AnnouncementFormValues) => {
-    const startTimeMs = startTime;
-    const endTimeMs = endTime;
+  const handleConfirm = (values: AnnouncementFormValues) => {
+    const { title, description, startTime, endTime } = values;
 
-    if (startTimeMs >= endTimeMs) {
+    if (startTime >= endTime) {
       showErrorToast(t('message.announcement-invalid-start-time'));
 
       return;
@@ -71,20 +66,20 @@ const EditAnnouncementModal: FC<Props> = ({
     onConfirm(title, {
       ...announcement,
       description,
-      startTime: startTimeMs,
-      endTime: endTimeMs,
-      announcementType,
-      color: announcementType === AnnouncementType.Custom ? color : undefined,
+      startTime,
+      endTime,
+      ...toAnnouncementTypeFields(values),
     });
   };
 
   return (
     <AnnouncementForm
+      description={t('message.edit-announcement-description')}
       form={form}
       open={open}
       submitLabel={t('label.save')}
       testId="edit-announcement-dialog"
-      title={t('label.edit-an-announcement')}
+      title={t('label.edit-entity', { entity: t('label.announcement') })}
       onCancel={onCancel}
       onSubmit={handleConfirm}
     />

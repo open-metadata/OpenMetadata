@@ -12,44 +12,17 @@
  */
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import {
-  AnnouncementColor,
-  AnnouncementStatus,
-  AnnouncementType,
-} from '../generated/entity/feed/announcement';
+import { CreateAnnouncement } from '../generated/api/feed/createAnnouncement';
+import { Announcement } from '../generated/entity/feed/announcement';
 import APIClient from './axiosClient';
 
 const BASE_URL = '/announcements';
 
-export interface AnnouncementEntity {
-  id: string;
-  name: string;
-  displayName?: string;
-  description: string;
-  entityLink?: string;
-  startTime: number;
-  endTime: number;
-  announcementType?: AnnouncementType;
-  color?: AnnouncementColor;
-  status?: AnnouncementStatus;
-  createdBy?: string;
-  updatedBy?: string;
-  createdAt?: number;
-  updatedAt?: number;
-  href?: string;
-  deleted?: boolean;
-}
+// Aliases of the generated types rather than copies of them: a hand-kept copy
+// silently lags the schema, which is how a new field ends up unreadable here.
+export type AnnouncementEntity = Announcement;
 
-export interface CreateAnnouncementRequest {
-  name?: string;
-  displayName?: string;
-  description: string;
-  entityLink?: string;
-  startTime: number;
-  endTime: number;
-  announcementType?: AnnouncementType;
-  color?: AnnouncementColor;
-}
+export type CreateAnnouncementRequest = CreateAnnouncement;
 
 export interface ListAnnouncementsParams {
   fields?: string;

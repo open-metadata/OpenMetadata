@@ -30,6 +30,10 @@ export interface Announcement {
      */
     createdBy?: string;
     /**
+     * Label shown in place of the type name when announcementType is `Custom`.
+     */
+    customTypeName?: string;
+    /**
      * When true indicates the entity has been soft deleted.
      */
     deleted?: boolean;
@@ -76,6 +80,12 @@ export interface Announcement {
      */
     startTime: number;
     status?:   AnnouncementStatus;
+    /**
+     * When true, the announcement is shown as a banner on the home page to the entire
+     * organization. Only the predefined types can be system-wide; a `Custom` announcement
+     * cannot.
+     */
+    systemWide?: boolean;
     /**
      * Last update timestamp.
      */

@@ -17,9 +17,8 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Calendar } from '@untitledui/icons';
-import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
+import { isEmpty, pick } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -28,11 +27,16 @@ import {
   ANNOUNCEMENT_SURFACE_CLASSES,
   getAnnouncementStatus,
   getAnnouncementTypeConfig,
+  getAnnouncementTypeLabel,
 } from '../../utils/AnnouncementsUtils';
 import { formatDate } from '../../utils/date-time/DateTimeUtils';
+import AnnouncementTypeChip from '../common/AnnouncementsWidget/AnnouncementTypeChip.component';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../common/RichTextEditor/RichTextEditorPreviewerV1';
-import { EditableAnnouncement } from '../Modals/AnnouncementModal/AnnouncementModal.interface';
+import {
+  EditableAnnouncement,
+  EDITABLE_ANNOUNCEMENT_KEYS,
+} from '../Modals/AnnouncementModal/AnnouncementModal.interface';
 import EditAnnouncementModal from '../Modals/AnnouncementModal/EditAnnouncementModal';
 import { AnnouncementFeedCardBodyProp } from './Announcement.interface';
 
@@ -46,20 +50,14 @@ const AnnouncementFeedCardBody = ({
   const [isEditAnnouncement, setIsEditAnnouncement] = useState(false);
 
   const announcementTitle = announcement.displayName ?? announcement.name;
-  const {
-    color,
-    icon: TypeIcon,
-    labelKey,
-  } = getAnnouncementTypeConfig(announcement);
+  const typeConfig = getAnnouncementTypeConfig(announcement);
+  const { color, icon: TypeIcon } = typeConfig;
   const status = getAnnouncementStatus(announcement);
 
-  const details: EditableAnnouncement = {
-    description: announcement.description,
-    startTime: announcement.startTime,
-    endTime: announcement.endTime,
-    announcementType: announcement.announcementType,
-    color: announcement.color,
-  };
+  const details: EditableAnnouncement = pick(
+    announcement,
+    EDITABLE_ANNOUNCEMENT_KEYS
+  );
 
   const dropdownItems = useMemo(
     () =>
@@ -95,21 +93,10 @@ const AnnouncementFeedCardBody = ({
     const normalizedDisplayName =
       title === announcement.name ? undefined : title.trim();
     const patch = compare(
-      {
-        displayName: announcement.displayName,
-        description: announcement.description,
-        startTime: announcement.startTime,
-        endTime: announcement.endTime,
-        announcementType: announcement.announcementType,
-        color: announcement.color,
-      },
+      { displayName: announcement.displayName, ...details },
       {
         displayName: normalizedDisplayName,
-        description: updatedDetails.description,
-        startTime: updatedDetails.startTime,
-        endTime: updatedDetails.endTime,
-        announcementType: updatedDetails.announcementType,
-        color: updatedDetails.color,
+        ...pick(updatedDetails, EDITABLE_ANNOUNCEMENT_KEYS),
       }
     );
 
@@ -123,25 +110,17 @@ const AnnouncementFeedCardBody = ({
     <Box className="tw:gap-3" data-testid="main-message" direction="col">
       <Box align="center" className="tw:gap-2" justify="between">
         <Box align="center" className="tw:min-w-0 tw:gap-2">
-          <span
-            className={classNames(
-              'tw:flex tw:size-7 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border tw:bg-primary',
-              ANNOUNCEMENT_SURFACE_CLASSES[color].border
-            )}>
-            <TypeIcon
-              className={classNames(
-                'tw:size-4',
-                ANNOUNCEMENT_SURFACE_CLASSES[color].icon
-              )}
-            />
-          </span>
+          <AnnouncementTypeChip
+            icon={TypeIcon}
+            surface={ANNOUNCEMENT_SURFACE_CLASSES[color]}
+          />
           <Badge
             className="tw:bg-primary!"
             color={color}
             data-testid="announcement-type-badge"
             size="sm"
             type="color">
-            {t(labelKey)}
+            {getAnnouncementTypeLabel(typeConfig, t)}
           </Badge>
         </Box>
 

@@ -108,6 +108,17 @@
     "status": {
       "$ref": "#/definitions/announcementStatus"
     },
+    "customTypeName": {
+      "description": "Label shown in place of the type name when announcementType is `Custom`.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "systemWide": {
+      "description": "When true, the announcement is shown as a banner on the home page to the entire organization. Only the predefined types can be system-wide; a `Custom` announcement cannot.",
+      "type": "boolean",
+      "default": false
+    },
     "createdBy": {
       "description": "User who created the announcement.",
       "type": "string"

@@ -31,7 +31,9 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.type.AnnouncementColor;
 import org.openmetadata.schema.type.AnnouncementStatus;
+import org.openmetadata.schema.type.AnnouncementType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
@@ -210,6 +212,75 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
 
     Announcement created = createEntity(request);
     assertEquals("Important Maintenance Window", created.getDisplayName());
+  }
+
+  @Test
+  void testCustomAnnouncementKeepsItsTypeName(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    CreateAnnouncement request =
+        new CreateAnnouncement()
+            .withName(ns.prefix("custom-name-ann"))
+            .withDescription("Custom announcement")
+            .withAnnouncementType(AnnouncementType.Custom)
+            .withColor(AnnouncementColor.Pink)
+            .withCustomTypeName("Release")
+            .withStartTime(now)
+            .withEndTime(now + 86400000L);
+
+    Announcement created = getEntity(createEntity(request).getId().toString());
+    assertEquals("Release", created.getCustomTypeName());
+    assertFalse(created.getSystemWide());
+  }
+
+  @Test
+  void testSystemWideAnnouncementRoundTrips(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    CreateAnnouncement request =
+        new CreateAnnouncement()
+            .withName(ns.prefix("system-wide-ann"))
+            .withDescription("Org-wide maintenance")
+            .withAnnouncementType(AnnouncementType.Warning)
+            .withSystemWide(true)
+            .withStartTime(now)
+            .withEndTime(now + 86400000L);
+
+    Announcement created = getEntity(createEntity(request).getId().toString());
+    assertTrue(created.getSystemWide());
+  }
+
+  @Test
+  void testCustomAnnouncementCannotBeCreatedSystemWide(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    CreateAnnouncement request =
+        new CreateAnnouncement()
+            .withName(ns.prefix("custom-system-wide-ann"))
+            .withDescription("Should be rejected")
+            .withAnnouncementType(AnnouncementType.Custom)
+            .withColor(AnnouncementColor.Blue)
+            .withSystemWide(true)
+            .withStartTime(now)
+            .withEndTime(now + 86400000L);
+
+    assertThrows(Exception.class, () -> createEntity(request));
+  }
+
+  @Test
+  void testCustomAnnouncementCannotBePatchedSystemWide(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    CreateAnnouncement request =
+        new CreateAnnouncement()
+            .withName(ns.prefix("custom-patch-ann"))
+            .withDescription("Custom announcement")
+            .withAnnouncementType(AnnouncementType.Custom)
+            .withColor(AnnouncementColor.Blue)
+            .withStartTime(now)
+            .withEndTime(now + 86400000L);
+
+    Announcement created = createEntity(request);
+    created.setSystemWide(true);
+
+    assertThrows(Exception.class, () -> patchEntity(created.getId().toString(), created));
+    assertFalse(getEntity(created.getId().toString()).getSystemWide());
   }
 
   @Test

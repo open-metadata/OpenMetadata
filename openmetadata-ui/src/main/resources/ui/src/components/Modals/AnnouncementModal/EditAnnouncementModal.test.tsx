@@ -84,6 +84,7 @@ const baseValues: AnnouncementFormValues = {
   title: 'Updated title',
   description: 'Updated description',
   announcementType: AnnouncementType.Warning,
+  systemWide: false,
   startTime: START,
   endTime: END,
 };
@@ -98,7 +99,7 @@ describe('EditAnnouncementModal', () => {
     render(<EditAnnouncementModal {...defaultProps} />);
 
     expect(screen.getByTestId('announcement-form')).toBeInTheDocument();
-    expect(screen.getByText('label.edit-an-announcement')).toBeInTheDocument();
+    expect(screen.getByText('label.edit-entity')).toBeInTheDocument();
   });
 
   it('should not render the form when closed', () => {
@@ -135,6 +136,8 @@ describe('EditAnnouncementModal', () => {
       endTime: END,
       announcementType: AnnouncementType.Warning,
       color: undefined,
+      customTypeName: undefined,
+      systemWide: false,
     });
   });
 

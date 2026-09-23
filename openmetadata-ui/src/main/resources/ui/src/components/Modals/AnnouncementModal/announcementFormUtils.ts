@@ -12,6 +12,11 @@
  */
 
 import { DateTime } from 'luxon';
+import { AnnouncementType } from '../../../generated/entity/feed/announcement';
+import {
+  AnnouncementFormValues,
+  EditableAnnouncement,
+} from './AnnouncementModal.interface';
 
 /** The value format a native `<input type="date">` reads and writes. */
 const DATE_INPUT_FORMAT = 'yyyy-MM-dd';
@@ -29,4 +34,32 @@ export const fromDateInputValue = (value: string, fallback: number): number => {
   const parsed = DateTime.fromFormat(value, DATE_INPUT_FORMAT);
 
   return parsed.isValid ? parsed.toMillis() : fallback;
+};
+
+/**
+ * The type-dependent fields, as both the create request and the edit patch send
+ * them. Colour and name only mean something on a Custom announcement, and a
+ * Custom one can never be system-wide, so each is dropped outside its case.
+ *
+ * `systemWide` is always a boolean, never omitted: the server returns `false`
+ * for an unset flag, so an omitted one would diff as a removal and turn every
+ * untouched edit into a patch.
+ */
+export const toAnnouncementTypeFields = ({
+  announcementType,
+  color,
+  customTypeName,
+  systemWide,
+}: AnnouncementFormValues): Pick<
+  EditableAnnouncement,
+  'announcementType' | 'color' | 'customTypeName' | 'systemWide'
+> => {
+  const isCustom = announcementType === AnnouncementType.Custom;
+
+  return {
+    announcementType,
+    color: isCustom ? color : undefined,
+    customTypeName: isCustom ? customTypeName?.trim() || undefined : undefined,
+    systemWide: systemWide && !isCustom,
+  };
 };

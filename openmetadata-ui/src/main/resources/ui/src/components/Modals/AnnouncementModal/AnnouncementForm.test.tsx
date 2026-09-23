@@ -26,15 +26,22 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
-  getTimeZone: () => 'UTC',
-}));
-
 // The block editor is heavy and irrelevant to what this form owns.
 jest.mock('../../common/RichTextEditor/RichTextEditor', () => ({
   __esModule: true,
-  default: ({ initialValue }: { initialValue?: string }) => (
-    <div data-testid="description">{initialValue}</div>
+  default: ({
+    initialValue,
+    onTextChange,
+  }: {
+    initialValue?: string;
+    onTextChange: (value: string) => void;
+  }) => (
+    <textarea
+      aria-label="description"
+      data-testid="description"
+      value={initialValue}
+      onChange={(e) => onTextChange(e.target.value)}
+    />
   ),
 }));
 
@@ -51,8 +58,9 @@ const Harness = ({
   const form = useForm<AnnouncementFormValues>({
     defaultValues: {
       title: 'A title',
-      description: '',
+      description: 'Scheduled downtime',
       announcementType: AnnouncementType.Notice,
+      systemWide: false,
       startTime: START,
       endTime: END,
       ...defaultValues,
@@ -62,10 +70,11 @@ const Harness = ({
   return (
     <AnnouncementForm
       open
+      description="message.add-announcement-description"
       form={form}
       submitLabel="label.submit"
       testId="add-announcement-dialog"
-      title="message.make-an-announcement"
+      title="label.add-entity"
       onCancel={jest.fn()}
       onSubmit={onSubmit}
     />
@@ -130,6 +139,9 @@ describe('AnnouncementForm', () => {
       fireEvent.click(
         screen.getByTestId(`announcement-color-${AnnouncementColor.Pink}`)
       );
+      fireEvent.change(screen.getByLabelText(/label\.custom-name/), {
+        target: { value: 'Release' },
+      });
     });
     await act(async () => {
       fireEvent.click(screen.getByTestId('announcement-submit'));
@@ -139,6 +151,7 @@ describe('AnnouncementForm', () => {
       expect.objectContaining({
         announcementType: AnnouncementType.Custom,
         color: AnnouncementColor.Pink,
+        customTypeName: 'Release',
       })
     );
   });
@@ -166,5 +179,108 @@ describe('AnnouncementForm', () => {
     expect(onSubmit.mock.calls[0][0]).toEqual(
       expect.objectContaining({ announcementType: AnnouncementType.Warning })
     );
+  });
+
+  it('should offer the types in severity order, not alphabetically', () => {
+    render(<Harness onSubmit={jest.fn()} />);
+
+    const rendered = Array.from(
+      screen
+        .getByTestId('announcement-type-select')
+        .querySelectorAll('[data-testid^="announcement-type-"]'),
+      (el) => el.getAttribute('data-testid')
+    );
+
+    expect(rendered).toEqual(
+      [
+        AnnouncementType.Critical,
+        AnnouncementType.Notice,
+        AnnouncementType.Warning,
+        AnnouncementType.Deprecation,
+        AnnouncementType.Custom,
+      ].map((type) => `announcement-type-${type}`)
+    );
+  });
+
+  it('should reject a Custom name made only of spaces', async () => {
+    const onSubmit = jest.fn();
+    render(<Harness onSubmit={onSubmit} />);
+
+    fireEvent.click(
+      screen.getByTestId(`announcement-type-${AnnouncementType.Custom}`)
+    );
+    await act(async () => {
+      fireEvent.click(
+        screen.getByTestId(`announcement-color-${AnnouncementColor.Blue}`)
+      );
+      fireEvent.change(screen.getByLabelText(/label\.custom-name/), {
+        target: { value: '   ' },
+      });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('announcement-submit'));
+    });
+
+    expect(screen.getByTestId('custom-type-name-error')).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('should require a description, judged on content rather than markup', async () => {
+    const onSubmit = jest.fn();
+    render(
+      <Harness defaultValues={{ description: '<p></p>' }} onSubmit={onSubmit} />
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('announcement-submit'));
+    });
+
+    expect(screen.getByTestId('description-error')).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('should disable and clear the system-wide flag for a Custom announcement', async () => {
+    render(
+      <Harness defaultValues={{ systemWide: true }} onSubmit={jest.fn()} />
+    );
+
+    const checkbox = () =>
+      screen.getByRole('checkbox', {
+        name: /label\.make-announcement-system-wide/,
+      });
+
+    expect(checkbox()).toBeChecked();
+    expect(checkbox()).toBeEnabled();
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByTestId(`announcement-type-${AnnouncementType.Custom}`)
+      );
+    });
+
+    expect(checkbox()).not.toBeChecked();
+    expect(checkbox()).toBeDisabled();
+  });
+
+  it('should offer the five Custom colours, plus a stored one it no longer offers', () => {
+    render(
+      <Harness
+        defaultValues={{
+          announcementType: AnnouncementType.Custom,
+          color: AnnouncementColor.Purple,
+        }}
+        onSubmit={jest.fn()}
+      />
+    );
+
+    const swatches = screen
+      .getByTestId('announcement-color-select')
+      .querySelectorAll('button');
+
+    // The five the frame offers, then the stored colour kept selectable on edit.
+    expect(swatches).toHaveLength(6);
+    expect(
+      screen.getByTestId(`announcement-color-${AnnouncementColor.Purple}`)
+    ).toHaveAttribute('aria-pressed', 'true');
   });
 });

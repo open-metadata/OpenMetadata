@@ -105,6 +105,8 @@ export const ANNOUNCEMENT_COLORS: Record<AnnouncementColor, BadgeColors> = {
 
 export interface AnnouncementTypeConfig {
   color: BadgeColors;
+  /** A Custom announcement's own name, shown in place of `labelKey`. */
+  customLabel?: string;
   icon: IconComponentType;
   labelKey: string;
 }
@@ -143,24 +145,67 @@ export const ANNOUNCEMENT_TYPE_CONFIG: Record<
 export const DEFAULT_ANNOUNCEMENT_TYPE = AnnouncementType.Notice;
 
 /**
+ * Severity order, as the form offers them. The generated enum is alphabetical,
+ * which would put Custom second.
+ */
+export const ANNOUNCEMENT_TYPE_ORDER: AnnouncementType[] = [
+  AnnouncementType.Critical,
+  AnnouncementType.Notice,
+  AnnouncementType.Warning,
+  AnnouncementType.Deprecation,
+  AnnouncementType.Custom,
+];
+
+/**
+ * The colours the form offers a Custom announcement. The schema accepts every
+ * palette family, so an announcement stored with another one still renders —
+ * the form just does not offer it for new ones.
+ */
+export const CUSTOM_ANNOUNCEMENT_COLORS: AnnouncementColor[] = [
+  AnnouncementColor.Pink,
+  AnnouncementColor.Success,
+  AnnouncementColor.Orange,
+  AnnouncementColor.Blue,
+  AnnouncementColor.Error,
+];
+
+/** Mirrors `customTypeName.maxLength` in the announcement schema. */
+export const CUSTOM_TYPE_NAME_MAX_LENGTH = 64;
+
+/**
  * Resolves the icon, badge label and palette family an announcement renders with.
  * Only `Custom` honours the stored `color`; every other type derives it from the type
  * so the severity stays readable at a glance.
  */
 export const getAnnouncementTypeConfig = (
-  announcement: Pick<AnnouncementEntity, 'announcementType' | 'color'>
+  announcement: Pick<
+    AnnouncementEntity,
+    'announcementType' | 'color' | 'customTypeName'
+  >
 ): AnnouncementTypeConfig => {
   const type = announcement.announcementType ?? DEFAULT_ANNOUNCEMENT_TYPE;
   const config =
     ANNOUNCEMENT_TYPE_CONFIG[type] ??
     ANNOUNCEMENT_TYPE_CONFIG[DEFAULT_ANNOUNCEMENT_TYPE];
 
-  if (type !== AnnouncementType.Custom || !announcement.color) {
+  if (type !== AnnouncementType.Custom) {
     return config;
   }
 
-  return { ...config, color: ANNOUNCEMENT_COLORS[announcement.color] };
+  return {
+    ...config,
+    color: announcement.color
+      ? ANNOUNCEMENT_COLORS[announcement.color]
+      : config.color,
+    customLabel: announcement.customTypeName?.trim() || undefined,
+  };
 };
+
+/** The badge text: a Custom announcement's own name, else the type's label. */
+export const getAnnouncementTypeLabel = (
+  { customLabel, labelKey }: AnnouncementTypeConfig,
+  t: (key: string) => string
+): string => customLabel ?? t(labelKey);
 
 /**
  * Banner surface classes per palette family. Written out in full because Tailwind

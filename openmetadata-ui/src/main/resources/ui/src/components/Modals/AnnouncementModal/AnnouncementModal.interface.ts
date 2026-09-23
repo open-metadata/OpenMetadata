@@ -25,10 +25,26 @@ export interface AnnouncementFormValues {
   endTime: number;
   announcementType: AnnouncementType;
   color?: AnnouncementColor;
+  customTypeName?: string;
+  systemWide: boolean;
 }
 
-/** The subset of an announcement the edit modal round-trips. */
+/**
+ * The subset of an announcement the edit modal round-trips — also the keys its
+ * patch compares, so a field added here is diffed without a second list to keep
+ * in step.
+ */
+export const EDITABLE_ANNOUNCEMENT_KEYS = [
+  'description',
+  'startTime',
+  'endTime',
+  'announcementType',
+  'color',
+  'customTypeName',
+  'systemWide',
+] as const;
+
 export type EditableAnnouncement = Pick<
   AnnouncementEntity,
-  'description' | 'startTime' | 'endTime' | 'announcementType' | 'color'
+  (typeof EDITABLE_ANNOUNCEMENT_KEYS)[number]
 >;

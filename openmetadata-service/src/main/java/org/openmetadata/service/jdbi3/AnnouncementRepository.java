@@ -43,6 +43,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class AnnouncementRepository extends EntityRepository<Announcement> {
 
   public static final String COLLECTION_PATH = "/v1/announcements";
+  static final String SYSTEM_WIDE_CUSTOM_NOT_ALLOWED =
+      "A Custom announcement cannot be system-wide; only the predefined types can.";
 
   public AnnouncementRepository() {
     super(
@@ -77,6 +79,7 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
     if (announcement.getAnnouncementType() == null) {
       announcement.setAnnouncementType(AnnouncementType.Notice);
     }
+    validateSystemWide(announcement);
     if (announcement.getStatus() == null) {
       long now = System.currentTimeMillis();
       if (announcement.getEndTime() < now) {
@@ -86,6 +89,18 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
       } else {
         announcement.setStatus(AnnouncementStatus.Active);
       }
+    }
+  }
+
+  /**
+   * A system-wide announcement is a home-page banner for the whole organization, so it is limited
+   * to the predefined types everyone reads the same way. Enforced here as well as in the UI:
+   * {@code prepare} runs on create and on every update, so a PATCH cannot slip one through.
+   */
+  private void validateSystemWide(Announcement announcement) {
+    boolean isCustom = announcement.getAnnouncementType() == AnnouncementType.Custom;
+    if (isCustom && Boolean.TRUE.equals(announcement.getSystemWide())) {
+      throw new IllegalArgumentException(SYSTEM_WIDE_CUSTOM_NOT_ALLOWED);
     }
   }
 
@@ -215,6 +230,8 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
       recordChange(
           "announcementType", original.getAnnouncementType(), updated.getAnnouncementType());
       recordChange("color", original.getColor(), updated.getColor());
+      recordChange("customTypeName", original.getCustomTypeName(), updated.getCustomTypeName());
+      recordChange("systemWide", original.getSystemWide(), updated.getSystemWide());
     }
   }
 

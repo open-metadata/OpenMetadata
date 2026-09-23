@@ -17,6 +17,10 @@ export interface CreateAnnouncement {
     announcementType?: AnnouncementType;
     color?:            AnnouncementColor;
     /**
+     * Label shown in place of the type name when announcementType is `Custom`.
+     */
+    customTypeName?: string;
+    /**
      * Announcement content in Markdown format.
      */
     description: string;
@@ -44,6 +48,12 @@ export interface CreateAnnouncement {
      * Start time from when the announcement should be shown.
      */
     startTime: number;
+    /**
+     * When true, the announcement is shown as a banner on the home page to the entire
+     * organization. Only the predefined types can be system-wide; a `Custom` announcement
+     * cannot.
+     */
+    systemWide?: boolean;
 }
 
 /**

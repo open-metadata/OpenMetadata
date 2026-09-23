@@ -12,7 +12,10 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { AnnouncementType } from '../../../generated/entity/feed/announcement';
+import {
+  AnnouncementColor,
+  AnnouncementType,
+} from '../../../generated/entity/feed/announcement';
 import { createAnnouncement } from '../../../rest/announcementsAPI';
 import * as ToastUtils from '../../../utils/ToastUtils';
 import AddAnnouncementModal from './AddAnnouncementModal';
@@ -96,6 +99,15 @@ const baseValues: AnnouncementFormValues = {
   title: 'Test Announcement',
   description: 'Test description',
   announcementType: AnnouncementType.Notice,
+  systemWide: false,
+  startTime: START,
+  endTime: END,
+};
+
+const CREATED = {
+  id: '1',
+  name: 'announcement-1',
+  description: 'Test description',
   startTime: START,
   endTime: END,
 };
@@ -110,9 +122,7 @@ describe('AddAnnouncementModal', () => {
     render(<AddAnnouncementModal {...defaultProps} />);
 
     expect(screen.getByTestId('announcement-form')).toBeInTheDocument();
-    expect(
-      screen.getByText('message.make-an-announcement')
-    ).toBeInTheDocument();
+    expect(screen.getByText('label.add-entity')).toBeInTheDocument();
   });
 
   it('should not render the form when closed', () => {
@@ -159,8 +169,52 @@ describe('AddAnnouncementModal', () => {
       endTime: END,
       announcementType: AnnouncementType.Notice,
       color: undefined,
+      customTypeName: undefined,
+      systemWide: false,
     });
     expect(defaultProps.onSave).toHaveBeenCalledTimes(1);
+  });
+
+  it('should send the system-wide flag for a predefined type', async () => {
+    mockCreateAnnouncement.mockResolvedValue(CREATED);
+    submittedValues = { ...baseValues, systemWide: true };
+
+    render(<AddAnnouncementModal {...defaultProps} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit'));
+    });
+
+    expect(mockCreateAnnouncement).toHaveBeenCalledWith(
+      expect.objectContaining({ systemWide: true })
+    );
+  });
+
+  it('should send a trimmed name, and never the system-wide flag, for a Custom announcement', async () => {
+    mockCreateAnnouncement.mockResolvedValue(CREATED);
+    // The form clears the flag on switching to Custom; the payload does not
+    // rely on that, since the server rejects the combination outright.
+    submittedValues = {
+      ...baseValues,
+      announcementType: AnnouncementType.Custom,
+      color: AnnouncementColor.Pink,
+      customTypeName: '  Release  ',
+      systemWide: true,
+    };
+
+    render(<AddAnnouncementModal {...defaultProps} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit'));
+    });
+
+    expect(mockCreateAnnouncement).toHaveBeenCalledWith(
+      expect.objectContaining({
+        color: AnnouncementColor.Pink,
+        customTypeName: 'Release',
+        systemWide: false,
+      })
+    );
   });
 
   it('should only send a colour for a Custom announcement', async () => {

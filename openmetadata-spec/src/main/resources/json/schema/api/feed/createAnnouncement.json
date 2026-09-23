@@ -36,6 +36,17 @@
     "color": {
       "$ref": "../../entity/feed/announcement.json#/definitions/announcementColor"
     },
+    "customTypeName": {
+      "description": "Label shown in place of the type name when announcementType is `Custom`.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "systemWide": {
+      "description": "When true, the announcement is shown as a banner on the home page to the entire organization. Only the predefined types can be system-wide; a `Custom` announcement cannot.",
+      "type": "boolean",
+      "default": false
+    },
     "owners": {
       "description": "Owners of this announcement.",
       "type": "array",

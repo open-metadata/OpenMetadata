@@ -1586,7 +1586,7 @@ export const createAnnouncement = async (
   await page.getByTestId('add-announcement').click();
 
   await expect(page.getByTestId('add-announcement-dialog')).toContainText(
-    'Make an announcement'
+    'Add Announcement'
   );
 
   await announcementForm(page, { ...data, startDate, endDate }, hideAlert);
@@ -1751,7 +1751,7 @@ export const editAnnouncement = async (
 
   // Wait for the edit announcement modal to open
   await expect(page.getByTestId('edit-announcement-dialog')).toContainText(
-    'Edit an Announcement'
+    'Edit Announcement'
   );
 
   // Clear and fill the title field
@@ -1820,7 +1820,7 @@ export const createInactiveAnnouncement = async (
   await page.getByTestId('add-announcement').click();
 
   await expect(page.getByTestId('add-announcement-dialog')).toContainText(
-    'Make an announcement'
+    'Add Announcement'
   );
 
   const announcementId = await announcementForm(

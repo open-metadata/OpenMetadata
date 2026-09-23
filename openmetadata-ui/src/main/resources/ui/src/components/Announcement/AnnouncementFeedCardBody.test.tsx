@@ -23,9 +23,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { AnnouncementType } from '../../generated/entity/feed/announcement';
 import { MOCK_ANNOUNCEMENT_DATA } from '../../mocks/Announcement.mock';
+import { toAnnouncementTypeFields } from '../Modals/AnnouncementModal/announcementFormUtils';
 import AnnouncementFeedCardBody from './AnnouncementFeedCardBody.component';
 
 jest.mock('../../utils/date-time/DateTimeUtils', () => ({
@@ -53,19 +55,25 @@ jest.mock('../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)
 );
 
+// What the dialog hands back on save; a case can swap it for an untouched edit.
+let mockConfirmed: { title: string; details: object } = {
+  title: 'Updated title',
+  details: {
+    description: 'Updated description',
+    startTime: 10,
+    endTime: 20,
+  },
+};
+
 jest.mock('../Modals/AnnouncementModal/EditAnnouncementModal', () =>
-  jest.fn().mockImplementation(({ onConfirm }) => (
-    <button
-      onClick={() =>
-        onConfirm('Updated title', {
-          description: 'Updated description',
-          startTime: 10,
-          endTime: 20,
-        })
-      }>
-      SaveAnnouncement
-    </button>
-  ))
+  jest
+    .fn()
+    .mockImplementation(({ onConfirm }) => (
+      <button
+        onClick={() => onConfirm(mockConfirmed.title, mockConfirmed.details)}>
+        SaveAnnouncement
+      </button>
+    ))
 );
 
 const mockProps = {
@@ -115,6 +123,73 @@ describe('AnnouncementFeedCardBody', () => {
         threadId: MOCK_ANNOUNCEMENT_DATA.data[0].id,
         isThread: true,
       })
+    );
+  });
+
+  it('does not patch when an edit is saved untouched', async () => {
+    // As the server returns it: an unset flag comes back as `false`.
+    const announcement = {
+      id: 'untouched-id',
+      name: 'untouched',
+      displayName: 'Untouched announcement',
+      description: 'Body',
+      startTime: 10,
+      endTime: 20,
+      announcementType: AnnouncementType.Notice,
+      systemWide: false,
+    };
+    mockConfirmed = {
+      title: announcement.displayName,
+      details: {
+        description: announcement.description,
+        startTime: announcement.startTime,
+        endTime: announcement.endTime,
+        // Built the way the edit dialog builds it, so a drift there shows here.
+        ...toAnnouncementTypeFields({
+          title: announcement.displayName,
+          description: announcement.description,
+          startTime: announcement.startTime,
+          endTime: announcement.endTime,
+          announcementType: announcement.announcementType,
+          systemWide: announcement.systemWide,
+        }),
+      },
+    };
+    const updateAnnouncementHandler = jest.fn();
+
+    render(
+      <AnnouncementFeedCardBody
+        {...mockProps}
+        announcement={announcement}
+        updateAnnouncementHandler={updateAnnouncementHandler}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    fireEvent.click(screen.getByTestId('announcement-actions'));
+    fireEvent.click(screen.getByText('label.edit'));
+    await act(async () => {
+      fireEvent.click(screen.getByText('SaveAnnouncement'));
+    });
+
+    expect(updateAnnouncementHandler).not.toHaveBeenCalled();
+  });
+
+  it('shows a Custom announcement by its own name', () => {
+    render(
+      <AnnouncementFeedCardBody
+        {...mockProps}
+        announcement={{
+          ...MOCK_ANNOUNCEMENT_DATA.data[0],
+          announcementType: AnnouncementType.Custom,
+          customTypeName: 'Release',
+        }}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(screen.getByTestId('announcement-type-badge')).toHaveTextContent(
+      'Release'
     );
   });
 });

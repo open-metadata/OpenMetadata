@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import type { IconComponentType } from '@openmetadata/ui-core-components';
 import {
   Badge,
   BadgeColors,
@@ -31,6 +30,7 @@ import { AnnouncementEntity } from '../../../rest/announcementsAPI';
 import {
   ANNOUNCEMENT_SURFACE_CLASSES,
   getAnnouncementTypeConfig,
+  getAnnouncementTypeLabel,
 } from '../../../utils/AnnouncementsUtils';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -40,6 +40,7 @@ import { stripMarkdown } from '../../../utils/StringUtils';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import { AnnouncementBannerProps } from './AnnouncementBanner.interface';
+import AnnouncementTypeChip from './AnnouncementTypeChip.component';
 
 const stopAnd = (handler?: () => void) => (e: MouseEvent) => {
   e.stopPropagation();
@@ -199,7 +200,7 @@ interface AnnouncementBodyProps {
   announcement: AnnouncementEntity;
   badgeColor: BadgeColors;
   hasDescription: boolean;
-  labelKey: string;
+  label: string;
   plainDescription: string;
   showEntity: boolean;
   title: string;
@@ -210,30 +211,26 @@ interface AnnouncementBodyProps {
 
 const TypeBadge = ({
   badgeColor,
-  labelKey,
+  label,
 }: {
   badgeColor: BadgeColors;
-  labelKey: string;
-}) => {
-  const { t } = useTranslation();
-
-  return (
-    <Badge
-      className="tw:bg-primary!"
-      color={badgeColor}
-      data-testid="announcement-type-badge"
-      size="sm"
-      type="color">
-      {t(labelKey)}
-    </Badge>
-  );
-};
+  label: string;
+}) => (
+  <Badge
+    className="tw:bg-primary!"
+    color={badgeColor}
+    data-testid="announcement-type-badge"
+    size="sm"
+    type="color">
+    {label}
+  </Badge>
+);
 
 /** One line: chip, badge, title and a flattened description, then the actions. */
 const CollapsedBody = ({
   badgeColor,
   hasDescription,
-  labelKey,
+  label,
   plainDescription,
   title,
   titleClassName,
@@ -242,7 +239,7 @@ const CollapsedBody = ({
 }: Omit<AnnouncementBodyProps, 'announcement' | 'showEntity'>) => (
   <>
     {typeChip}
-    <TypeBadge badgeColor={badgeColor} labelKey={labelKey} />
+    <TypeBadge badgeColor={badgeColor} label={label} />
     {/* Typography's ellipsis tooltip wraps the title in a `w-full min-w-0`
         trigger, which would make it a second flexible item and split the row
         with the description. Bounding it here keeps the title at its natural
@@ -281,7 +278,7 @@ const ExpandedBody = ({
   announcement,
   badgeColor,
   hasDescription,
-  labelKey,
+  label,
   showEntity,
   title,
   titleClassName,
@@ -294,7 +291,7 @@ const ExpandedBody = ({
   <Box className="tw:min-w-0 tw:flex-1 tw:gap-2" direction="col">
     <Box align="center" className="tw:min-w-0 tw:gap-2">
       {typeChip}
-      <TypeBadge badgeColor={badgeColor} labelKey={labelKey} />
+      <TypeBadge badgeColor={badgeColor} label={label} />
       {actions}
     </Box>
 
@@ -328,7 +325,7 @@ const FullBody = ({
   announcement,
   badgeColor,
   hasDescription,
-  labelKey,
+  label,
   title,
   titleClassName,
   typeChip,
@@ -348,7 +345,7 @@ const FullBody = ({
           title={title}
           onClick={onClick}
         />
-        <TypeBadge badgeColor={badgeColor} labelKey={labelKey} />
+        <TypeBadge badgeColor={badgeColor} label={label} />
       </Box>
 
       {hasDescription && (
@@ -368,35 +365,64 @@ const FullBody = ({
   </Box>
 );
 
-/**
- * The type icon inside a hairline circle, in the type's own palette family.
- * Exported because the landing-page widget draws the same chip beside a card it
- * lays out itself — `FeaturedIcon` cannot stand in, it only covers five colour
- * families and announcements span thirteen.
- */
-export const AnnouncementTypeChip = ({
-  icon: TypeIcon,
-  size = 'sm',
-  surface,
+type BannerLayout = 'full' | 'expanded' | 'collapsed';
+
+// The full variant is the landing-page banner and is always laid out expanded;
+// the others expand only when asked to.
+const getBannerLayout = (isFull: boolean, expanded: boolean): BannerLayout => {
+  if (isFull) {
+    return 'full';
+  }
+
+  return expanded ? 'expanded' : 'collapsed';
+};
+
+const BANNER_PADDING: Record<BannerLayout, string> = {
+  full: 'tw:px-4 tw:py-3.5',
+  expanded: 'tw:px-4 tw:py-3.5',
+  collapsed: 'tw:px-3 tw:py-2',
+};
+
+const BannerBody = ({
+  actions,
+  announcement,
+  layout,
+  plainDescription,
+  shared,
 }: {
-  icon: IconComponentType;
-  size?: 'sm' | 'lg';
-  surface: { border: string; icon: string };
-}) => (
-  <span
-    className={classNames(
-      'tw:flex tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border tw:bg-primary',
-      size === 'lg' ? 'tw:size-10' : 'tw:size-7',
-      surface.border
-    )}>
-    <TypeIcon
-      className={classNames(
-        size === 'lg' ? 'tw:size-5' : 'tw:size-4',
-        surface.icon
-      )}
-    />
-  </span>
-);
+  actions: ReactNode;
+  announcement: AnnouncementEntity;
+  layout: BannerLayout;
+  plainDescription: string;
+  shared: Omit<
+    AnnouncementBodyProps,
+    'announcement' | 'plainDescription' | 'showEntity'
+  >;
+}) => {
+  if (layout === 'full') {
+    return (
+      <FullBody {...shared} actions={actions} announcement={announcement} />
+    );
+  }
+
+  if (layout === 'expanded') {
+    return (
+      <ExpandedBody
+        {...shared}
+        actions={actions}
+        announcement={announcement}
+        showEntity={false}
+      />
+    );
+  }
+
+  return (
+    <Box align="center" className="tw:gap-2">
+      <CollapsedBody {...shared} plainDescription={plainDescription} />
+      {actions}
+    </Box>
+  );
+};
 
 const AnnouncementBanner = ({
   announcement,
@@ -408,11 +434,12 @@ const AnnouncementBanner = ({
   className,
   testId = 'announcement-banner',
 }: AnnouncementBannerProps) => {
-  const {
-    color,
-    icon: TypeIcon,
-    labelKey,
-  } = useMemo(() => getAnnouncementTypeConfig(announcement), [announcement]);
+  const { t } = useTranslation();
+  const typeConfig = useMemo(
+    () => getAnnouncementTypeConfig(announcement),
+    [announcement]
+  );
+  const { color, icon: TypeIcon } = typeConfig;
   const surface = ANNOUNCEMENT_SURFACE_CLASSES[color];
 
   // The collapsed strip has one line for everything, so the markdown is flattened
@@ -422,10 +449,9 @@ const AnnouncementBanner = ({
     [announcement.description]
   );
 
-  // The full variant is the landing-page banner: always laid out expanded, and
-  // the only one that tints its title with the announcement type.
+  // The full variant is also the only one that tints its title with the type.
   const isFull = variant === 'full';
-  const isExpanded = isFull || expanded;
+  const layout = getBannerLayout(isFull, expanded);
 
   const typeChip = (
     <AnnouncementTypeChip
@@ -448,7 +474,7 @@ const AnnouncementBanner = ({
   const shared = {
     badgeColor: color,
     hasDescription: !isDescriptionContentEmpty(announcement.description),
-    labelKey,
+    label: getAnnouncementTypeLabel(typeConfig, t),
     title: announcement.displayName ?? announcement.name,
     titleClassName: isFull ? surface.title : 'tw:text-primary',
     typeChip,
@@ -460,30 +486,18 @@ const AnnouncementBanner = ({
       className={classNames(
         'tw:rounded-[10px] tw:outline-1 tw:-outline-offset-1',
         surface.surface,
-        isExpanded ? 'tw:px-4 tw:py-3.5' : 'tw:px-3 tw:py-2',
+        BANNER_PADDING[layout],
         className
       )}
       data-testid={testId}
       role="status">
-      {isFull && (
-        <FullBody {...shared} actions={actions} announcement={announcement} />
-      )}
-
-      {!isFull && isExpanded && (
-        <ExpandedBody
-          {...shared}
-          actions={actions}
-          announcement={announcement}
-          showEntity={false}
-        />
-      )}
-
-      {!isExpanded && (
-        <Box align="center" className="tw:gap-2">
-          <CollapsedBody {...shared} plainDescription={plainDescription} />
-          {actions}
-        </Box>
-      )}
+      <BannerBody
+        actions={actions}
+        announcement={announcement}
+        layout={layout}
+        plainDescription={plainDescription}
+        shared={shared}
+      />
     </div>
   );
 };

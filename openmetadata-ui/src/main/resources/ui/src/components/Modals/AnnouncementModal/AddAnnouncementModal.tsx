@@ -20,6 +20,7 @@ import { createAnnouncement } from '../../../rest/announcementsAPI';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AnnouncementForm from './AnnouncementForm.component';
+import { toAnnouncementTypeFields } from './announcementFormUtils';
 import { AnnouncementFormValues } from './AnnouncementModal.interface';
 
 const DEFAULT_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -47,6 +48,7 @@ const AddAnnouncementModal: FC<Props> = ({
       title: '',
       description: '',
       announcementType: AnnouncementType.Notice,
+      systemWide: false,
       startTime: Date.now(),
       // A day's window by default: an end equal to the start fails the
       // start-before-end check, so the first submit would always toast.
@@ -54,18 +56,10 @@ const AddAnnouncementModal: FC<Props> = ({
     },
   });
 
-  const handleCreateAnnouncement = async ({
-    title,
-    startTime,
-    endTime,
-    description,
-    announcementType,
-    color,
-  }: AnnouncementFormValues) => {
-    const startTimeMs = startTime;
-    const endTimeMs = endTime;
+  const handleCreateAnnouncement = async (values: AnnouncementFormValues) => {
+    const { title, startTime, endTime, description } = values;
 
-    if (startTimeMs >= endTimeMs) {
+    if (startTime >= endTime) {
       showErrorToast(t('message.announcement-invalid-start-time'));
 
       return;
@@ -77,10 +71,9 @@ const AddAnnouncementModal: FC<Props> = ({
         displayName: title,
         description,
         entityLink: getEntityFeedLink(entityType, entityFQN),
-        startTime: startTimeMs,
-        endTime: endTimeMs,
-        announcementType,
-        color: announcementType === AnnouncementType.Custom ? color : undefined,
+        startTime,
+        endTime,
+        ...toAnnouncementTypeFields(values),
       });
       if (data) {
         showSuccessToast(t('message.announcement-created-successfully'));
@@ -95,12 +88,13 @@ const AddAnnouncementModal: FC<Props> = ({
 
   return (
     <AnnouncementForm
+      description={t('message.add-announcement-description')}
       form={form}
       isSaving={isLoading}
       open={open}
-      submitLabel={t('label.submit')}
+      submitLabel={t('label.add-entity', { entity: t('label.announcement') })}
       testId="add-announcement-dialog"
-      title={t('message.make-an-announcement')}
+      title={t('label.add-entity', { entity: t('label.announcement') })}
       onCancel={onCancel}
       onSubmit={handleCreateAnnouncement}
     />

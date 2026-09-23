@@ -19,6 +19,7 @@ import {
   ANNOUNCEMENT_COLORS,
   getAnnouncementStatus,
   getAnnouncementTypeConfig,
+  getAnnouncementTypeLabel,
   isActiveAnnouncement,
 } from './AnnouncementsUtils';
 
@@ -110,5 +111,36 @@ describe('getAnnouncementStatus', () => {
         endTime: new Date('2024-02-04').getTime(),
       })
     ).toBe(AnnouncementStatus.Expired);
+  });
+});
+
+describe('getAnnouncementTypeLabel', () => {
+  const t = (key: string) => `t:${key}`;
+
+  it("should use a Custom announcement's own name", () => {
+    const config = getAnnouncementTypeConfig({
+      announcementType: AnnouncementType.Custom,
+      customTypeName: '  Release  ',
+    });
+
+    expect(getAnnouncementTypeLabel(config, t)).toBe('Release');
+  });
+
+  it('should fall back to the type label for a blank Custom name', () => {
+    const config = getAnnouncementTypeConfig({
+      announcementType: AnnouncementType.Custom,
+      customTypeName: '   ',
+    });
+
+    expect(getAnnouncementTypeLabel(config, t)).toBe('t:label.custom');
+  });
+
+  it('should ignore a name stored on a predefined type', () => {
+    const config = getAnnouncementTypeConfig({
+      announcementType: AnnouncementType.Warning,
+      customTypeName: 'Ignored',
+    });
+
+    expect(getAnnouncementTypeLabel(config, t)).toBe('t:label.warning');
   });
 });
