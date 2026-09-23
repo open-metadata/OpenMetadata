@@ -576,6 +576,8 @@ jobs:
             *)       header=':fast_forward: SSO Login Nightly — **SKIPPED**';;
           esac
 
+          # Uses table.md (real Markdown table → GitHub renders it as an
+          # HTML table with borders). Slack keeps consuming table.txt.
           marker='<!-- sso-login-nightly-summary -->'
           {
             echo "$marker"
@@ -583,9 +585,7 @@ jobs:
             echo
             echo "[View workflow run]($RUN_URL) · Commit \`${GITHUB_SHA::7}\`"
             echo
-            echo '```'
-            cat /tmp/sso-summary/table.txt
-            echo '```'
+            cat /tmp/sso-summary/table.md
             echo
             echo "**$totals**"
           } > /tmp/pr-comment.md
