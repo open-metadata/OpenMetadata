@@ -28,7 +28,7 @@ import {
   Tag01,
   Type01,
 } from '@untitledui/icons';
-import Select, { DefaultOptionType } from 'antd/lib/select';
+import Select from 'antd/lib/select';
 import { isEmpty, startCase, toString } from 'lodash';
 import {
   CSSProperties,
@@ -47,12 +47,13 @@ import type { RenderEditCellProps } from 'react-data-grid';
 import { createPortal } from 'react-dom';
 import { withSuspenseFallback } from '../../components/AppRouter/withSuspenseFallback';
 import Certification from '../../components/Certification/Certification.component';
-import TreeAsyncSelectList from '../../components/common/AsyncSelectList/TreeAsyncSelectList';
 import { lazyTextEditor } from '../../components/common/DataGrid/LazyDataGrid';
 import DomainSelectableList from '../../components/common/DomainSelectableList/DomainSelectableList.component';
 import CsvCellPreview from '../../components/common/EntityImport/CsvCellPreview/CsvCellPreview.component';
 import ExpressionCodeCell from '../../components/common/EntityImport/ExpressionCodeCell/ExpressionCodeCell.component';
 import { useMultiContainerFocusTrap } from '../../components/common/FocusTrap/FocusTrapWithContainer';
+import { fqnsToGlossaryTags } from '../../components/common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import GlossaryTermPicker from '../../components/common/GlossaryTermPicker/GlossaryTermPicker';
 import InlineEdit from '../../components/common/InlineEdit/InlineEdit.component';
 import { KeyDownStopPropagationWrapper } from '../../components/common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import TierCard from '../../components/common/TierCard/TierCard';
@@ -2206,6 +2207,12 @@ const getCsvTagsEditor: CSVEditorFactory = ({ entityType, options }) => {
   };
 };
 
+const CSV_GLOSSARY_PICKER_TESTID = 'csv-glossary-terms-picker';
+
+// CSV stores glossary terms as a `;`-joined list of FQNs.
+const csvValueToGlossaryTags = (value: string): TagLabel[] =>
+  fqnsToGlossaryTags(value ? value.split(';') : []);
+
 const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
   column,
   entityType,
@@ -2227,11 +2234,31 @@ const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
-    const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
+    const [popoverEl, setPopoverEl] = useState<HTMLElement | null>(null);
+
+    // The popover is portaled and mounts a frame late, so poll until it is there.
+    useEffect(() => {
+      let frame = 0;
+      const findPopover = () => {
+        const el = document.querySelector<HTMLElement>(
+          `[data-testid="${CSV_GLOSSARY_PICKER_TESTID}-popover"]`
+        );
+        if (el) {
+          setPopoverEl(el);
+        } else {
+          frame = requestAnimationFrame(findPopover);
+        }
+      };
+      findPopover();
+
+      return () => cancelAnimationFrame(frame);
+    }, []);
+
     useMultiContainerFocusTrap({
-      containers: [containerRef.current, dropdownContainerRef.current],
+      containers: [containerRef.current, popoverEl],
       active: true,
     });
+
     useEditCellHeightReporter(
       containerRef,
       rowIdx,
@@ -2239,36 +2266,38 @@ const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
     );
 
     const value = row[column.key];
-    const tags = value ? value?.split(';') : [];
+    const terms = useMemo(
+      () => csvValueToGlossaryTags(toString(value ?? '')),
+      [value]
+    );
 
-    const handleChange = (option: DefaultOptionType | DefaultOptionType[]) => {
-      if (Array.isArray(option)) {
-        onRowChange({
-          ...row,
-          [column.key]: option.map((tag) => toString(tag.value)).join(';'),
-        });
-      } else {
-        onRowChange({
-          ...row,
-          [column.key]: toString(option.value),
-        });
-      }
+    const handleChange = (selected: TagLabel[]) => {
+      onRowChange({
+        ...row,
+        [column.key]: selected.map((term) => term.tagFQN).join(';'),
+      });
     };
 
     return (
-      <div ref={containerRef}>
-        <TreeAsyncSelectList
-          defaultValue={tags}
-          dropdownContainerRef={dropdownContainerRef}
-          dropdownMatchSelectWidth={false}
-          optionClassName="tag-select-box"
-          onCancel={() => {
-            onClose(false);
-          }}
-          onChange={handleChange}
-          onSubmit={() => onClose(true)}
-        />
-      </div>
+      <KeyDownStopPropagationWrapper>
+        <div ref={containerRef}>
+          <InlineEdit
+            onCancel={() => onClose(false)}
+            onSave={() => onClose(true)}>
+            {/* Pinned open: in a cell the picker is the editor, so a stray
+                dismissal would leave an editor with no way back — its own
+                `skipNextFocusOpen` then swallows the next focus. */}
+            <GlossaryTermPicker
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search input when the picker opens
+              autoFocus
+              isOpen
+              data-testid={CSV_GLOSSARY_PICKER_TESTID}
+              value={terms}
+              onChange={handleChange}
+            />
+          </InlineEdit>
+        </div>
+      </KeyDownStopPropagationWrapper>
     );
   };
 };

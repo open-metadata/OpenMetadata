@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MetadataWorkflow",
   "description": "OpenMetadata Ingestion Framework definition.",
   "type": "object",
@@ -12,7 +11,6 @@
         "config": {
           "oneOf": [
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "DatabaseServiceMetadataPipeline",
               "description": "DatabaseService Metadata Pipeline Configuration.",
               "type": "object",
@@ -119,7 +117,6 @@
                 "ownerConfig": {
                   "title": "Hierarchical Owner Configuration",
                   "description": "Advanced configuration for managing owners at multiple hierarchy levels (Service, Database, Schema, Table) with custom mappings and inheritance rules.",
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "javaType": "org.openmetadata.schema.type.OwnerConfig",
                   "type": "object",
                   "definitions": {
@@ -356,7 +353,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "DatabaseServiceQueryUsagePipeline",
               "description": "DatabaseService Query Usage Pipeline Configuration.",
               "type": "object",
@@ -414,7 +410,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "DatabaseServiceQueryLineagePipeline",
               "description": "DatabaseService Query Lineage Pipeline Configuration.",
               "type": "object",
@@ -460,7 +455,6 @@
                 "queryParserConfig": {
                   "title": "Query Parser Configuration",
                   "description": "Configuration for SQL query parser selection for lineage extraction.",
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "type": "object",
                   "javaType": "org.openmetadata.schema.metadataIngestion.parserconfig.QueryParserConfig",
                   "definitions": {
@@ -571,7 +565,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "DashboardServiceMetadataPipeline",
               "type": "object",
               "description": "DashboardService Metadata Pipeline Configuration.",
@@ -695,7 +688,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "MessagingServiceMetadataPipeline",
               "description": "MessagingService Metadata Pipeline Configuration.",
               "type": "object",
@@ -742,7 +734,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "MessagingServiceAutoClassificationPipeline",
               "description": "MessagingService AutoClassification Pipeline Configuration.",
               "type": "object",
@@ -805,7 +796,6 @@
                 "classificationLanguage": {
                   "description": "Language used for classification. Supported languages include: en (English).",
                   "default": "en",
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "ClassificationLanguage",
                   "type": "string",
                   "javaType": "org.openmetadata.schema.type.ClassificationLanguage",
@@ -898,7 +888,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "DatabaseServiceProfilerPipeline",
               "description": "DatabaseService Profiler Pipeline Configuration.",
               "type": "object",
@@ -916,7 +905,6 @@
                   "description": "Processing Engine Configuration. If not provided, the Native Engine will be used by default.",
                   "oneOf": [
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "Native Engine Configuration",
                       "description": "Configuration for the native metadata ingestion engine",
                       "type": "object",
@@ -936,7 +924,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "Spark Engine Configuration",
                       "description": "This schema defines the configuration for a Spark Engine runner.",
                       "type": "object",
@@ -1061,7 +1048,6 @@
                     "config": {
                       "oneOf": [
                         {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "title": "DynamicSamplingConfig",
                           "javaType": "org.openmetadata.schema.type.DynamicSamplingConfig",
                           "description": "Configuration for dynamic sampling based on table row count.",
@@ -1111,7 +1097,6 @@
                           "additionalProperties": false
                         },
                         {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "title": "StaticSamplingConfig",
                           "javaType": "org.openmetadata.schema.type.StaticSamplingConfig",
                           "description": "Configuration for static sampling based on table row count.",
@@ -1243,7 +1228,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "DatabaseServiceAutoClassificationPipeline",
               "description": "DatabaseService AutoClassification & Auto Classification Pipeline Configuration.",
               "type": "object",
@@ -1332,7 +1316,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "PipelineServiceMetadataPipeline",
               "description": "PipelineService Metadata Pipeline Configuration.",
               "type": "object",
@@ -1466,7 +1449,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "MlModelServiceMetadataPipeline",
               "description": "MlModelService Metadata Pipeline Configuration.",
               "type": "object",
@@ -1528,7 +1510,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "StorageServiceMetadataPipeline",
               "description": "StorageService Metadata Pipeline Configuration.",
               "type": "object",
@@ -1567,7 +1548,6 @@
                       "$ref": "#/definitions/sourceConfig/properties/config/oneOf/10/definitions/noMetadataConfigurationSource"
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "Storage Metadata Local Config",
                       "description": "Storage Metadata Manifest file path config.",
                       "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataLocalConfig",
@@ -1585,7 +1565,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "Storage Metadata Http Config",
                       "description": "Storage Metadata Manifest file HTTP path config.",
                       "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataHttpConfig",
@@ -1603,7 +1582,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "Storage Metadata S3 Config",
                       "description": "Storage Metadata Manifest file S3 path config.",
                       "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataS3Config",
@@ -1615,7 +1593,6 @@
                         },
                         "prefixConfig": {
                           "title": "Storage Metadata Prefix Config",
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "description": "Details of the bucket where the storage metadata manifest file is stored",
                           "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataBucketDetails",
                           "type": "object",
@@ -1643,7 +1620,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "Storage Metadata ADLS Config",
                       "description": "Storage Metadata Manifest file ADLS path config.",
                       "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataADLSConfig",
@@ -1664,7 +1640,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "Storage Metadata GCS Config",
                       "description": "Storage Metadata Manifest file GCS path config.",
                       "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataGCSConfig",
@@ -1716,7 +1691,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "StorageServiceAutoClassificationPipeline",
               "description": "StorageService AutoClassification Pipeline Configuration.",
               "type": "object",
@@ -1794,7 +1768,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "DriveServiceMetadataPipeline",
               "description": "DriveService Metadata Pipeline Configuration.",
               "type": "object",
@@ -1917,7 +1890,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "SearchServiceMetadataPipeline",
               "description": "SearchService Metadata Pipeline Configuration.",
               "type": "object",
@@ -1976,7 +1948,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "TestSuitePipeline",
               "description": "TestSuite Pipeline Configuration.",
               "type": "object",
@@ -2047,7 +2018,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "MetadataToElasticSearchPipeline",
               "description": "Data Insight Pipeline Configuration.",
               "type": "object",
@@ -2132,7 +2102,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "DataInsightPipeline",
               "description": "Data Insight Pipeline Configuration.",
               "type": "object",
@@ -2159,7 +2128,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "dbtPipeline",
               "description": "DBT Pipeline Configuration.",
               "type": "object",
@@ -2185,7 +2153,6 @@
                   "description": "Available sources to fetch DBT catalog and manifest files.",
                   "oneOf": [
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "DBT Cloud Config",
                       "description": "dbt Cloud configuration.",
                       "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtCloudConfig",
@@ -2236,7 +2203,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "DBT Local Config",
                       "description": "DBT Catalog, Manifest and Run Results file path config.",
                       "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtLocalConfig",
@@ -2278,7 +2244,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "DBT HTTP Config",
                       "description": "DBT Catalog, Manifest and Run Results HTTP path configuration.",
                       "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpConfig",
@@ -2339,7 +2304,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "DBT S3 Config",
                       "description": "DBT Catalog, Manifest and Run Results files in S3 bucket. We will search for catalog.json, manifest.json and run_results.json.",
                       "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config",
@@ -2383,7 +2347,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "DBT GCS Config",
                       "type": "object",
                       "description": "DBT Catalog, Manifest and Run Results files in GCS storage. We will search for catalog.json, manifest.json and run_results.json.",
@@ -2399,7 +2362,6 @@
                         },
                         "dbtSecurityConfig": {
                           "title": "DBT GCS Security Config",
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "description": "GCP credentials configs.",
                           "type": "object",
                           "javaType": "org.openmetadata.schema.security.credentials.GCPCredentials",
@@ -2488,7 +2450,6 @@
                               "description": "We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP Credentials Path",
                               "oneOf": [
                                 {
-                                  "$schema": "http://json-schema.org/draft-07/schema#",
                                   "type": "object",
                                   "javaType": "org.openmetadata.schema.security.credentials.GCPValues",
                                   "title": "GCP Credentials Values",
@@ -2529,7 +2490,8 @@
                                     "privateKeyId": {
                                       "title": "Private Key ID",
                                       "description": "Google Cloud private key id.",
-                                      "type": "string"
+                                      "type": "string",
+                                      "format": "password"
                                     },
                                     "privateKey": {
                                       "title": "Private Key",
@@ -2582,7 +2544,6 @@
                                   "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/17/properties/dbtConfigSource/oneOf/4/properties/dbtSecurityConfig/definitions/gcpCredentialsPath"
                                 },
                                 {
-                                  "$schema": "http://json-schema.org/draft-07/schema#",
                                   "type": "object",
                                   "javaType": "org.openmetadata.schema.security.credentials.GCPExternalAccount",
                                   "title": "GCP External Account",
@@ -2671,7 +2632,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "DBT Azure Config",
                       "type": "object",
                       "description": "DBT Catalog, Manifest and Run Results files in Azure bucket. We will search for catalog.json, manifest.json and run_results.json.",
@@ -2687,7 +2647,6 @@
                         },
                         "dbtSecurityConfig": {
                           "title": "DBT Azure Security Config",
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "description": "Azure Cloud Credentials",
                           "type": "object",
                           "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",
@@ -2828,7 +2787,6 @@
               ]
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "ApplicationPipeline",
               "description": "Application Pipeline Configuration.",
               "type": "object",
@@ -2856,7 +2814,6 @@
                   "description": "Application configuration",
                   "oneOf": [
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "CollateAIAppConfig",
                       "description": "Configuration for the CollateAI External Application.",
                       "type": "object",
@@ -2896,7 +2853,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "AutomatorAppConfig",
                       "description": "Configuration for the Automator External Application.",
                       "type": "object",
@@ -2935,7 +2891,6 @@
                           "description": "Action to take on those entities. E.g., propagate description through lineage, auto tagging, etc.",
                           "oneOf": [
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "AddTagsAction",
                               "description": "Apply Classification Tags to the selected assets.",
                               "type": "object",
@@ -2990,7 +2945,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "RemoveTagsAction",
                               "description": "Remove Classification Tags Action Type",
                               "type": "object",
@@ -3057,7 +3011,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "AddTermsAction",
                               "description": "Apply Glossary Terms to the selected assets.",
                               "type": "object",
@@ -3108,7 +3061,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "RemoveTermsAction",
                               "description": "Remove Glossary Terms Action Type",
                               "type": "object",
@@ -3175,7 +3127,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "AddDomainAction",
                               "description": "Add domains to the selected assets.",
                               "type": "object",
@@ -3214,7 +3165,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "RemoveDomainAction",
                               "description": "Remove domains from the selected assets.",
                               "type": "object",
@@ -3242,7 +3192,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "AddDescriptionAction",
                               "description": "Apply Tags to the selected assets.",
                               "type": "object",
@@ -3290,7 +3239,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "AddCustomPropertiesAction",
                               "description": "Add a Custom Property to the selected assets.",
                               "type": "object",
@@ -3329,7 +3277,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "RemoveDescriptionAction",
                               "description": "Remove Owner Action Type",
                               "type": "object",
@@ -3372,7 +3319,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "AddTierAction",
                               "description": "Add an owner to the selected assets.",
                               "type": "object",
@@ -3411,7 +3357,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "RemoveTierAction",
                               "description": "Remove Owner Action Type",
                               "type": "object",
@@ -3439,7 +3384,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "AddTestCaseAction",
                               "description": "Add Test Cases to the selected assets.",
                               "type": "object",
@@ -3536,7 +3480,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "RemoveTestCaseAction",
                               "description": "Remove Test Cases Action Type",
                               "type": "object",
@@ -3589,7 +3532,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "AddOwnerAction",
                               "description": "Add owners to the selected assets.",
                               "type": "object",
@@ -3629,7 +3571,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "RemoveOwnerAction",
                               "description": "Remove Owner Action Type",
                               "type": "object",
@@ -3657,7 +3598,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "RemoveCustomPropertiesAction",
                               "description": "Remove Custom Properties Action Type",
                               "type": "object",
@@ -3693,7 +3633,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "AddDataProductAction",
                               "description": "Add a Data Product to the selected assets.",
                               "type": "object",
@@ -3736,7 +3675,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "RemoveDataProductAction",
                               "description": "Remove a Data Product to the selected assets.",
                               "type": "object",
@@ -3773,7 +3711,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "LineagePropagationAction",
                               "description": "Propagate description, tags and glossary terms via lineage",
                               "type": "object",
@@ -3880,7 +3817,6 @@
                                   "type": "array",
                                   "default": null,
                                   "items": {
-                                    "$schema": "http://json-schema.org/draft-07/schema#",
                                     "title": "PropagationStopConfig",
                                     "description": "Configuration to stop lineage propagation based on conditions",
                                     "type": "object",
@@ -3937,7 +3873,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "MLTaggingAction",
                               "description": "ML Tagging action configuration for external automator.",
                               "type": "object",
@@ -3994,7 +3929,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SlackAppConfiguration",
                       "description": "This schema defines the Slack App Information",
                       "type": "object",
@@ -4033,7 +3967,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "DataInsightsAppConfig",
                       "description": "No configuration needed to instantiate the Data Insights Pipeline. The logic is handled in the backend.",
                       "type": "object",
@@ -4203,7 +4136,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "DataInsightsReportAppConfig",
                       "description": "This schema defines configuration for Data Insights Report Application.",
                       "definitions": {
@@ -4237,7 +4169,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SearchIndexingApp",
                       "type": "object",
                       "description": "Search Indexing App.",
@@ -4433,7 +4364,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "CacheWarmupApp",
                       "type": "object",
                       "description": "Cache Warmup Application Configuration.",
@@ -4502,7 +4432,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "RdfIndexingApp",
                       "type": "object",
                       "description": "RDF indexing application configuration.",
@@ -4677,7 +4606,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "RdfInferenceAppConfig",
                       "description": "Scheduled RDF inference materialization configuration.",
                       "type": "object",
@@ -4697,7 +4625,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "Retention Configuration",
                       "description": "Configure retention policies for each entity.",
                       "properties": {
@@ -4766,7 +4693,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "AutoPilotAppConfig",
                       "description": "Configuration for the AutoPilot Application.",
                       "type": "object",
@@ -4815,7 +4741,6 @@
                   "description": "Application private configuration",
                   "oneOf": [
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "CollateAIAppPrivateConfig",
                       "description": "Private Configuration for the CollateAI External Application.",
                       "type": "object",
@@ -4843,7 +4768,6 @@
                         "limits": {
                           "title": "Limits",
                           "description": "Limits for the CollateAI Application.",
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "type": "object",
                           "javaType": "io.collate.schema.entity.app.Limits",
                           "definitions": {
@@ -4896,7 +4820,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "ApiServiceMetadataPipeline",
               "description": "ApiService Metadata Pipeline Configuration.",
               "type": "object",
@@ -4942,7 +4865,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "reverseIngestionPipeline",
               "javaType": "org.openmetadata.schema.metadataIngestion.ReverseIngestionPipeline",
               "description": "Apply a set of operations on a service",
@@ -4987,7 +4909,6 @@
                       "description": "The configuration for the operation to be applied",
                       "oneOf": [
                         {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "title": "Reverse Ingestion Description Config",
                           "type": "object",
                           "description": "Configuration for updating descriptions",
@@ -5005,7 +4926,6 @@
                           "additionalProperties": false
                         },
                         {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "title": "Reverse Ingestion Owner Config",
                           "type": "object",
                           "description": "Configuration for updating owners",
@@ -5017,11 +4937,9 @@
                             },
                             "addedOwners": {
                               "description": "Added owners to be applied",
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "Entity Reference List",
                               "type": "array",
                               "items": {
-                                "$schema": "http://json-schema.org/draft-07/schema#",
                                 "title": "Entity Reference",
                                 "description": "This schema defines the EntityReference type used for referencing an entity. EntityReference is used for capturing relationships from one entity to another. For example, a table has an attribute called database of type EntityReference that captures the relationship of a table `belongs to a` database.",
                                 "type": "object",
@@ -5078,7 +4996,6 @@
                           "additionalProperties": false
                         },
                         {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "title": "Reverse Ingestion Tags Config",
                           "type": "object",
                           "description": "Configuration for updating tags",
@@ -5095,7 +5012,6 @@
                               "description": "Added tags to be applied",
                               "type": "array",
                               "items": {
-                                "$schema": "http://json-schema.org/draft-07/schema#",
                                 "title": "TagLabel",
                                 "description": "This schema defines the type for labeling an entity with a Tag.",
                                 "type": "object",
@@ -5207,14 +5123,12 @@
                                   },
                                   "metadata": {
                                     "description": "Additional metadata associated with this tag label, such as recognizer information for automatically applied tags.",
-                                    "$schema": "http://json-schema.org/draft-07/schema#",
                                     "title": "TagLabelMetadata",
                                     "type": "object",
                                     "javaType": "org.openmetadata.schema.type.TagLabelMetadata",
                                     "properties": {
                                       "recognizer": {
                                         "description": "Metadata about the recognizer that automatically applied this tag",
-                                        "$schema": "http://json-schema.org/draft-07/schema#",
                                         "title": "TagLabelRecognizerMetadata",
                                         "type": "object",
                                         "javaType": "org.openmetadata.schema.type.TagLabelRecognizerMetadata",
@@ -5346,7 +5260,6 @@
               ]
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "McpServiceMetadataPipeline",
               "description": "McpService Metadata Pipeline Configuration.",
               "type": "object",
@@ -5381,7 +5294,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "PolicyAgentPipeline",
               "description": "Policy Agent Pipeline Configuration. Applies access grants against the source system.",
               "type": "object",
@@ -5408,7 +5320,6 @@
                       "description": "Per-service-type policy configuration.",
                       "oneOf": [
                         {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "title": "DatabasePolicyConfig",
                           "description": "Policy config for database service connectors (snowflake, postgres, etc.).",
                           "type": "object",
@@ -5572,7 +5483,6 @@
                   "mask": true,
                   "oneOf": [
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "RestConnection",
                       "description": "REST Connection Config",
                       "type": "object",
@@ -5599,7 +5509,6 @@
                           "description": "OpenAPI Schema source config. Either a URL or a file path must be provided.",
                           "oneOf": [
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "OpenAPISchemaURL",
                               "description": "Open API Schema URL Connection Config",
                               "type": "object",
@@ -5619,7 +5528,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "OpenAPISchemaFilePath",
                               "description": "Open API Schema File Path Connection Config",
                               "type": "object",
@@ -5638,7 +5546,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "OpenAPISchemaS3",
                               "description": "Open API Schema S3 Connection Config",
                               "type": "object",
@@ -5700,7 +5607,6 @@
                           "mask": true,
                           "oneOf": [
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "Validate SSL Client Config",
                               "description": "OpenMetadata Client configured to validate SSL certificates.",
                               "type": "object",
@@ -5776,7 +5682,6 @@
                   "mask": true,
                   "oneOf": [
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "LookerConnection",
                       "description": "Looker Connection Config",
                       "type": "object",
@@ -5846,7 +5751,6 @@
                               "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/definitions/localRepositoryPath"
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "GitHubCredentials",
                               "description": "Credentials for a GitHub repository",
                               "type": "object",
@@ -5899,7 +5803,6 @@
                               ]
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "BitBucketCredentials",
                               "description": "Credentials for a BitBucket repository",
                               "type": "object",
@@ -5951,7 +5854,6 @@
                               ]
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "GitlabCredentials",
                               "description": "Credentials for a Gitlab repository",
                               "type": "object",
@@ -6031,7 +5933,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "MetabaseConnection",
                       "description": "Metabase Connection Config",
                       "type": "object",
@@ -6108,7 +6009,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "PowerBIConnection",
                       "description": "PowerBI Connection Config",
                       "type": "object",
@@ -6230,7 +6130,6 @@
                               "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/2/definitions/localConfig"
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "AzureConfig",
                               "description": "Azure storage config for pbit files",
                               "type": "object",
@@ -6250,7 +6149,6 @@
                                 },
                                 "prefixConfig": {
                                   "title": "Prefix Config",
-                                  "$schema": "http://json-schema.org/draft-07/schema#",
                                   "description": "Details of the bucket where the .pbit files are stored",
                                   "javaType": "org.openmetadata.schema.services.connections.dashboard.powerbi.bucketDetails",
                                   "type": "object",
@@ -6281,7 +6179,6 @@
                               ]
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "GCSConfig",
                               "description": "GCS storage config for pbit files",
                               "type": "object",
@@ -6316,7 +6213,6 @@
                               ]
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "S3Config",
                               "description": "S3 storage config for pbit files",
                               "type": "object",
@@ -6385,7 +6281,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "PowerBIReportServerConnection",
                       "description": "PowerBIReportServer Connection Config",
                       "type": "object",
@@ -6464,7 +6359,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "RedashConnection",
                       "description": "Redash Connection Config",
                       "type": "object",
@@ -6544,7 +6438,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SupersetConnection",
                       "description": "Superset Connection Config",
                       "type": "object",
@@ -6579,7 +6472,6 @@
                           "description": "Choose between API or database connection fetch metadata from superset.",
                           "oneOf": [
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "SupersetApiConnection",
                               "description": "Superset API Connection Config",
                               "type": "object",
@@ -6668,7 +6560,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "TableauConnection",
                       "description": "Tableau Connection Config",
                       "type": "object",
@@ -6703,7 +6594,6 @@
                           "description": "Types of methods used to authenticate to the tableau instance",
                           "oneOf": [
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "BasicAuth",
                               "description": "Basic Auth Credentials",
                               "type": "object",
@@ -6728,7 +6618,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "AccessTokenAuth",
                               "description": "Access Token Auth Credentials",
                               "type": "object",
@@ -6818,7 +6707,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "ModeConnection",
                       "description": "Mode Connection Config",
                       "type": "object",
@@ -6902,7 +6790,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "CustomDashboardConnection",
                       "description": "Custom Dashboard Service connection to build a source that is not supported by OpenMetadata yet.",
                       "type": "object",
@@ -6965,7 +6852,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "DomoDashboardConnection",
                       "description": "Domo Dashboard Connection Config",
                       "type": "object",
@@ -7051,7 +6937,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "QuickSightConnection",
                       "description": "QuickSight Connection Config",
                       "type": "object",
@@ -7129,7 +7014,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "QlikSenseConnection",
                       "description": "Qlik Sense Connection Config",
                       "type": "object",
@@ -7263,7 +7147,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "LightdashConnection",
                       "description": "Lightdash Connection Config",
                       "type": "object",
@@ -7349,7 +7232,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "MicroStrategyConnection",
                       "description": "MicroStrategy Connection Config",
                       "type": "object",
@@ -7433,7 +7315,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "QlikCloudConnection",
                       "description": "Qlik Cloud Connection Config",
                       "type": "object",
@@ -7522,7 +7403,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SigmaConnection",
                       "description": "Sigma Connection Config",
                       "type": "object",
@@ -7602,7 +7482,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "ThoughtSpotConnection",
                       "description": "ThoughtSpot Connection Config",
                       "type": "object",
@@ -7672,7 +7551,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "GrafanaConnection",
                       "description": "Grafana Connection Config",
                       "type": "object",
@@ -7742,7 +7620,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "HexConnection",
                       "description": "Hex Connection Config",
                       "type": "object",
@@ -7810,7 +7687,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SsrsConnection",
                       "description": "SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to create, deploy, and manage paginated reports",
                       "type": "object",
@@ -7889,7 +7765,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "RillConnection",
                       "description": "Rill Connection Config",
                       "type": "object",
@@ -7941,7 +7816,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SapS4HanaConnection",
                       "description": "SAP S/4HANA Connection Config for Embedded Analytics",
                       "type": "object",
@@ -8103,7 +7977,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "OmniConnection",
                       "description": "Omni BI connector: models, topics, workbooks/dashboards and lineage",
                       "type": "object",
@@ -8193,7 +8066,6 @@
                   "mask": true,
                   "oneOf": [
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "BigQueryConnection",
                       "description": "Google BigQuery Connection Config",
                       "type": "object",
@@ -8431,7 +8303,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "BigTableConnection",
                       "description": "Google BigTable Connection Config",
                       "type": "object",
@@ -8496,7 +8367,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "AthenaConnection",
                       "description": "AWS Athena Connection Config",
                       "type": "object",
@@ -8622,7 +8492,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "AzureSQLConnection",
                       "description": "Azure SQL Connection Config",
                       "type": "object",
@@ -8781,7 +8650,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "ClickhouseConnection",
                       "description": "Clickhouse Connection Config",
                       "type": "object",
@@ -8919,7 +8787,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "ClickzettaConnection",
                       "description": "ClickZetta Database Connection Config",
                       "type": "object",
@@ -8971,7 +8838,6 @@
                           "mask": true,
                           "oneOf": [
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "Basic Auth",
                               "description": "Common Database Connection Config",
                               "javaType": "org.openmetadata.schema.services.connections.database.common.basicAuth",
@@ -9065,7 +8931,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "DatabricksConnection",
                       "description": "Databricks Connection Config",
                       "type": "object",
@@ -9112,7 +8977,6 @@
                           "oneOf": [
                             {
                               "title": "Personal Access Token",
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "description": "Personal Access Token authentication for Databricks.",
                               "javaType": "org.openmetadata.schema.services.connections.database.databricks.PersonalAccessToken",
                               "type": "object",
@@ -9131,7 +8995,6 @@
                             },
                             {
                               "title": "Databricks OAuth",
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "description": "OAuth2 Machine-to-Machine authentication using Service Principal credentials for Databricks.",
                               "javaType": "org.openmetadata.schema.services.connections.database.databricks.DatabricksOAuth",
                               "type": "object",
@@ -9156,7 +9019,6 @@
                             },
                             {
                               "title": "Azure AD Setup",
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "description": "Azure Active Directory authentication for Azure Databricks workspaces using Service Principal.",
                               "javaType": "org.openmetadata.schema.services.connections.database.databricks.AzureADSetup",
                               "type": "object",
@@ -9322,7 +9184,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "Db2Connection",
                       "description": "Db2 Connection Config",
                       "type": "object",
@@ -9474,7 +9335,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "DeltaLakeConnection",
                       "description": "DeltaLake Database Connection Config",
                       "type": "object",
@@ -9501,7 +9361,6 @@
                           "description": "Available sources to fetch the metadata.",
                           "oneOf": [
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "MetastoreConfig",
                               "description": "Deltalake Metastore configuration.",
                               "type": "object",
@@ -9594,7 +9453,6 @@
                               ]
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "StorageConfig",
                               "description": "DeltaLake Storage Connection Config",
                               "type": "object",
@@ -9676,7 +9534,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "DruidConnection",
                       "description": "Druid Connection Config",
                       "type": "object",
@@ -9787,7 +9644,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "DynamoDBConnection",
                       "description": "DynamoDB Connection Config",
                       "type": "object",
@@ -9856,7 +9712,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "GlueConnection",
                       "description": "Glue Connection Config",
                       "type": "object",
@@ -9924,7 +9779,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "HiveConnection",
                       "description": "Hive SQL Connection Config",
                       "type": "object",
@@ -10091,7 +9945,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "ImpalaConnection",
                       "description": "Impala SQL Connection Config",
                       "type": "object",
@@ -10230,7 +10083,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "MariaDBConnection",
                       "description": "MariaDB Database Connection Config",
                       "type": "object",
@@ -10350,7 +10202,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "MssqlConnection",
                       "description": "Mssql Database Connection Config",
                       "type": "object",
@@ -10537,7 +10388,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "MicrosoftAccessConnection",
                       "description": "Microsoft Access Database Connection Config",
                       "type": "object",
@@ -10607,7 +10457,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "MysqlConnection",
                       "description": "Mysql Database Connection Config",
                       "type": "object",
@@ -10657,7 +10506,6 @@
                               "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/5/properties/authType/oneOf/0"
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "IAM Auth Configuration Source",
                               "description": "IAM Auth Database Connection Config",
                               "type": "object",
@@ -10671,7 +10519,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "Azure Configuration Source",
                               "description": "Azure Database Connection Config",
                               "type": "object",
@@ -10685,7 +10532,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "GCP CloudSQL Configuration Source",
                               "description": "GCP CloudSQL Database Connection Config. Uses the Google Cloud SQL Python Connector.",
                               "type": "object",
@@ -10816,7 +10662,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SQLiteConnection",
                       "description": "SQLite Database Connection Config",
                       "type": "object",
@@ -10928,7 +10773,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "OracleConnection",
                       "description": "Oracle Database Connection Config",
                       "type": "object",
@@ -11136,7 +10980,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "PostgresConnection",
                       "description": "Postgres Database Connection Config",
                       "type": "object",
@@ -11311,7 +11154,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "TimescaleConnection",
                       "description": "TimescaleDB Database Connection Config",
                       "type": "object",
@@ -11481,7 +11323,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "PrestoConnection",
                       "description": "Presto Database Connection Config",
                       "type": "object",
@@ -11607,7 +11448,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "RedshiftConnection",
                       "description": "Redshift  Connection Config",
                       "type": "object",
@@ -11789,7 +11629,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SalesforceConnection",
                       "description": "Salesforce Connection Config",
                       "type": "object",
@@ -11906,7 +11745,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SapSuccessFactorsConnection",
                       "description": "SAP SuccessFactors Connection Config",
                       "type": "object",
@@ -12035,7 +11873,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SingleStoreConnection",
                       "description": "SingleStore Database Connection Config",
                       "type": "object",
@@ -12150,7 +11987,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SnowflakeConnection",
                       "description": "Snowflake Connection Config",
                       "type": "object",
@@ -12403,7 +12239,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "TrinoConnection",
                       "description": "Trino Connection Config",
                       "type": "object",
@@ -12452,7 +12287,6 @@
                               "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/5/properties/authType/oneOf/0"
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "JWT Auth",
                               "description": "Common Database Connection Config",
                               "javaType": "org.openmetadata.schema.services.connections.database.common.jwtAuth",
@@ -12471,7 +12305,6 @@
                               "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/17/properties/authType/oneOf/2"
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "No Config Authentication Types",
                               "javaType": "org.openmetadata.schema.services.connections.database.common.NoConfigAuthenticationTypes",
                               "description": "Database Authentication types not requiring config.",
@@ -12583,7 +12416,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "VerticaConnection",
                       "description": "Vertica Connection Config",
                       "type": "object",
@@ -12700,7 +12532,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "PinotDBConnection",
                       "description": "PinotDB Database Connection Config",
                       "type": "object",
@@ -12817,7 +12648,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "DatalakeConnection",
                       "description": "Datalake Connection Config",
                       "type": "object",
@@ -12853,7 +12683,6 @@
                               "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/31/definitions/localConfig"
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "AzureConfig",
                               "description": "Azure Datalake Storage will ingest files in container",
                               "type": "object",
@@ -12867,7 +12696,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "GCSConfig",
                               "description": "DataLake GCS storage will ingest metadata of files",
                               "type": "object",
@@ -12881,7 +12709,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "S3Config",
                               "description": "DataLake S3 bucket will ingest metadata of files in bucket",
                               "type": "object",
@@ -12961,7 +12788,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "DomoDatabaseConnection",
                       "description": "Domo Database Connection Config",
                       "type": "object",
@@ -13047,7 +12873,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "CustomDatabaseConnection",
                       "description": "Custom Database Service connection to build a source that is not supported by OpenMetadata yet.",
                       "type": "object",
@@ -13105,7 +12930,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SapHanaConnection",
                       "description": "Sap Hana Database Connection Config",
                       "type": "object",
@@ -13147,7 +12971,6 @@
                           "description": "Choose between Database connection or HDB User Store connection.",
                           "oneOf": [
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "SapHanaSQLConnection",
                               "description": "Sap Hana Database SQL Connection Config",
                               "type": "object",
@@ -13188,7 +13011,6 @@
                               ]
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "SapHanaHDBConnection",
                               "description": "Sap Hana Database HDB User Store Connection Config",
                               "type": "object",
@@ -13260,7 +13082,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "MongoDBConnection",
                       "description": "MongoDB Connection Config",
                       "type": "object",
@@ -13363,7 +13184,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "CassandraConnection",
                       "description": "Cassandra Connection Config",
                       "type": "object",
@@ -13398,7 +13218,6 @@
                               "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/5/properties/authType/oneOf/0"
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "Cloud Config",
                               "description": "Configuration for connecting to DataStax Astra DB in the cloud.",
                               "javaType": "org.openmetadata.schema.services.connections.database.cassandra.CloudConfig",
@@ -13482,7 +13301,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "Couchbase Connection",
                       "description": "Couchbase Connection Config",
                       "type": "object",
@@ -13567,7 +13385,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "GreenplumConnection",
                       "description": "Greenplum Database Connection Config",
                       "type": "object",
@@ -13700,7 +13517,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "DorisConnection",
                       "description": "Doris Database Connection Config",
                       "type": "object",
@@ -13817,7 +13633,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "StarRocksConnection",
                       "description": "StarRocks Database Connection Config",
                       "type": "object",
@@ -13940,7 +13755,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "UnityCatalogConnection",
                       "description": "UnityCatalog Connection Config",
                       "type": "object",
@@ -14107,7 +13921,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SASConnection",
                       "description": "SAS Connection Config",
                       "type": "object",
@@ -14233,7 +14046,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "TeradataConnection",
                       "description": "Teradata Database Connection Config",
                       "type": "object",
@@ -14375,7 +14187,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SapErpConnection",
                       "description": "Sap ERP Database Connection Config",
                       "type": "object",
@@ -14464,7 +14275,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SynapseConnection",
                       "description": "Synapse Database Connection Config",
                       "type": "object",
@@ -14646,7 +14456,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "ExasolConnection",
                       "description": "Exasol Database Connection Config",
                       "type": "object",
@@ -14752,7 +14561,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "CockroachConnection",
                       "description": "Cockroach Database Connection Config",
                       "type": "object",
@@ -14871,7 +14679,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SSASConnection",
                       "description": "SSAS Metadata Database Connection Config",
                       "type": "object",
@@ -14926,7 +14733,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "EpicConnection",
                       "description": "Epic FHIR Connection Config",
                       "type": "object",
@@ -14990,7 +14796,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "ServiceNowConnection",
                       "description": "ServiceNow Connection Config",
                       "type": "object",
@@ -15071,7 +14876,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "DremioConnection",
                       "description": "Dremio Connection Config supporting both Dremio Cloud (SaaS) and Dremio Software (self-hosted)",
                       "type": "object",
@@ -15099,7 +14903,6 @@
                           "oneOf": [
                             {
                               "title": "Dremio Cloud",
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "description": "Authentication configuration for Dremio Cloud using Personal Access Token (PAT). Dremio Cloud is a fully managed SaaS platform.",
                               "javaType": "org.openmetadata.schema.services.connections.database.dremio.CloudAuth",
                               "type": "object",
@@ -15135,7 +14938,6 @@
                             },
                             {
                               "title": "Dremio Software",
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "description": "Authentication configuration for self-hosted Dremio Software using username and password. Dremio Software is deployed on-premises or in your own cloud infrastructure.",
                               "javaType": "org.openmetadata.schema.services.connections.database.dremio.SoftwareAuth",
                               "type": "object",
@@ -15207,7 +15009,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "MicrosoftFabricConnection",
                       "description": "Microsoft Fabric Warehouse and Lakehouse Connection Config",
                       "type": "object",
@@ -15344,7 +15145,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "BurstIQConnection",
                       "description": "BurstIQ LifeGraph Database Connection Config",
                       "type": "object",
@@ -15425,7 +15225,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "InformixConnection",
                       "description": "IBM Informix Database Connection Config",
                       "type": "object",
@@ -15586,7 +15385,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "IometeConnection",
                       "description": "IOMETE Connection Config",
                       "type": "object",
@@ -15683,7 +15481,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "QuestDBConnection",
                       "description": "QuestDB Connection Config",
                       "type": "object",
@@ -15768,7 +15565,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "Data360Connection",
                       "description": "Salesforce Data 360 (formerly DataCloud) Connection Config",
                       "type": "object",
@@ -15834,7 +15630,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SapBw4HanaConnection",
                       "description": "SAP BW/4HANA Database Connection Config",
                       "type": "object",
@@ -15930,7 +15725,6 @@
                   "mask": true,
                   "oneOf": [
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "KafkaConnection",
                       "description": "Kafka Connection Config",
                       "type": "object",
@@ -15990,7 +15784,6 @@
                           "title": "SASL Mechanism",
                           "description": "sasl.mechanism Consumer Config property",
                           "default": "PLAIN",
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "javaType": "org.openmetadata.schema.services.connections.messaging.SaslMechanismType",
                           "type": "string",
                           "enum": [
@@ -16065,7 +15858,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "RedpandaConnection",
                       "description": "Redpanda Connection Config",
                       "type": "object",
@@ -16181,7 +15973,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "KinesisConnection",
                       "description": "Kinesis Connection Config",
                       "type": "object",
@@ -16227,7 +16018,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "NatsConnection",
                       "description": "NATS Connection Config",
                       "type": "object",
@@ -16375,7 +16165,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "PubSubConnection",
                       "description": "Google Cloud Pub/Sub Connection Config",
                       "type": "object",
@@ -16454,7 +16243,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "CustomMessagingConnection",
                       "description": "Custom Messaging Service Connection to build a source that is not supported by OpenMetadata yet.",
                       "type": "object",
@@ -16518,7 +16306,6 @@
                   "mask": true,
                   "oneOf": [
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "AmundsenConnection",
                       "description": "Amundsen Connection Config",
                       "type": "object",
@@ -16599,7 +16386,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "MetadataESConnection",
                       "description": "Metadata to ElasticSearch Connection Config",
                       "type": "object",
@@ -16693,7 +16479,6 @@
                       "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig"
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "AtlasConnection",
                       "description": "Atlas Connection Config",
                       "type": "object",
@@ -16794,7 +16579,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "AlationConnection",
                       "description": "Alation Connection Config",
                       "type": "object",
@@ -16831,7 +16615,6 @@
                               "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/6/properties/authType/oneOf/0"
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "ApiAccessTokenAuth",
                               "description": "API Access Token Auth Credentials",
                               "type": "object",
@@ -16960,7 +16743,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "AlationSinkConnection",
                       "description": "Alation Sink Connection Config",
                       "type": "object",
@@ -17063,7 +16845,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "CollibraConnection",
                       "description": "Collibra Connection Config",
                       "type": "object",
@@ -17150,7 +16931,6 @@
                   "mask": true,
                   "oneOf": [
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "AirflowConnection",
                       "description": "Airflow Metadata Database Connection Config",
                       "type": "object",
@@ -17189,7 +16969,6 @@
                           "description": "Choose between database connection or REST API connection to fetch metadata from Airflow.",
                           "oneOf": [
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "AirflowRestApiConnection",
                               "description": "Airflow REST API Connection Config for connecting via REST API.",
                               "type": "object",
@@ -17221,7 +17000,6 @@
                                   "description": "Choose an authentication method: Basic Auth (username/password), Access Token, GCP Service Account (for Cloud Composer), or AWS Credentials (for MWAA).",
                                   "oneOf": [
                                     {
-                                      "$schema": "http://json-schema.org/draft-07/schema#",
                                       "title": "Basic Auth",
                                       "description": "Username and password for Airflow API authentication.",
                                       "type": "object",
@@ -17246,7 +17024,6 @@
                                       "additionalProperties": false
                                     },
                                     {
-                                      "$schema": "http://json-schema.org/draft-07/schema#",
                                       "title": "Access Token",
                                       "description": "Static access token for Airflow API authentication.",
                                       "type": "object",
@@ -17265,7 +17042,6 @@
                                       "additionalProperties": false
                                     },
                                     {
-                                      "$schema": "http://json-schema.org/draft-07/schema#",
                                       "title": "GCP Service Account",
                                       "description": "GCP credentials for Google Cloud Composer. Supports service account values, credentials path, workload identity (external account), and ADC. Tokens are auto-refreshed at runtime.",
                                       "type": "object",
@@ -17283,7 +17059,6 @@
                                       "additionalProperties": false
                                     },
                                     {
-                                      "$schema": "http://json-schema.org/draft-07/schema#",
                                       "title": "MWAA Authentication",
                                       "description": "AWS MWAA (Managed Workflows for Apache Airflow) authentication configuration.",
                                       "type": "object",
@@ -17339,7 +17114,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "BackendConnection",
                               "description": "Lineage Backend Connection Config",
                               "type": "object",
@@ -17397,7 +17171,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "WherescapeConnection",
                       "description": "Wherescape Metadata Database Connection Config",
                       "type": "object",
@@ -17446,7 +17219,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SSISConnection",
                       "description": "SSIS Metadata Database Connection Config",
                       "type": "object",
@@ -17501,7 +17273,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "GluePipelineConnection",
                       "description": "Glue Pipeline Connection Config",
                       "type": "object",
@@ -17543,7 +17314,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "KinesisFirehoseConnection",
                       "description": "AWS Kinesis Firehose Pipeline Connection Config",
                       "type": "object",
@@ -17590,7 +17360,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "AirbyteConnection",
                       "description": "Airbyte Metadata Database Connection Config",
                       "type": "object",
@@ -17624,7 +17393,6 @@
                           "oneOf": [
                             {
                               "title": "Basic Authentication",
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "description": "Username and password authentication",
                               "type": "object",
                               "javaType": "org.openmetadata.schema.services.connections.pipeline.airbyte.BasicAuth",
@@ -17645,7 +17413,6 @@
                             },
                             {
                               "title": "OAuth 2.0 Client Credentials Authentication",
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "description": "OAuth 2.0 client credentials authentication for Airbyte Cloud",
                               "type": "object",
                               "javaType": "org.openmetadata.schema.services.connections.pipeline.airbyte.OAuthClientAuth",
@@ -17692,7 +17459,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "FivetranConnection",
                       "description": "Fivetran Metadata Database Connection Config",
                       "type": "object",
@@ -17717,7 +17483,8 @@
                         "apiKey": {
                           "title": "Fivetran API Key",
                           "description": "Fivetran API Key.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "hostPort": {
                           "expose": true,
@@ -17763,7 +17530,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "FlinkConnection",
                       "description": "Flink Metadata Connection Config",
                       "type": "object",
@@ -17816,7 +17582,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "DagsterConnection",
                       "description": "Dagster Metadata Database Connection Config",
                       "type": "object",
@@ -17879,7 +17644,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "NifiConnection",
                       "description": "Nifi Metadata Pipeline Connection Config",
                       "type": "object",
@@ -17963,7 +17727,6 @@
                           "description": "We support username/password or client certificate authentication",
                           "oneOf": [
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "Nifi Basic Auth",
                               "description": "Configuration for connecting to Nifi Basic Auth.",
                               "javaType": "org.openmetadata.schema.services.connections.pipeline.nifi.BasicAuth",
@@ -17990,7 +17753,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "Nifi Client Certificate Auth",
                               "description": "Configuration for connecting to Nifi Client Certificate Auth.",
                               "javaType": "org.openmetadata.schema.services.connections.pipeline.nifi.ClientCertificateAuth",
@@ -18033,7 +17795,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "DomoPipelineConnection",
                       "description": "Domo Pipeline Connection Config",
                       "type": "object",
@@ -18104,7 +17865,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "CustomPipelineConnection",
                       "description": "Custom Pipeline Service connection to build a source that is not supported by OpenMetadata yet.",
                       "type": "object",
@@ -18152,7 +17912,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "DatabricksPipelineConnection",
                       "description": "Databricks Connection Config",
                       "type": "object",
@@ -18237,7 +17996,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SplineConnection",
                       "description": "Spline Metadata Database Connection Config",
                       "type": "object",
@@ -18289,7 +18047,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SparkConnection",
                       "description": "Spark Metadata Pipeline Connection Config",
                       "type": "object",
@@ -18326,7 +18083,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "OpenLineageConnection",
                       "description": "OpenLineage Connection Config",
                       "type": "object",
@@ -18352,7 +18108,6 @@
                           "description": "Event broker configuration. Choose between Kafka and Kinesis.",
                           "oneOf": [
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "Kafka",
                               "description": "Kafka broker configuration for OpenLineage events.",
                               "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.KafkaBrokerConfig",
@@ -18438,7 +18193,6 @@
                                 "saslConfig": {
                                   "title": "SASL",
                                   "description": "SASL Configuration details.",
-                                  "$schema": "http://json-schema.org/draft-07/schema#",
                                   "type": "object",
                                   "javaType": "org.openmetadata.schema.security.sasl.SASLClientConfig",
                                   "additionalProperties": false,
@@ -18469,7 +18223,6 @@
                               ]
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "Kinesis",
                               "description": "AWS Kinesis Data Streams configuration for OpenLineage events.",
                               "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.KinesisBrokerConfig",
@@ -18547,7 +18300,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "PrefectConnection",
                       "description": "Prefect Metadata Database Connection Config",
                       "javaType": "org.openmetadata.schema.services.connections.pipeline.PrefectConnection",
@@ -18579,7 +18331,6 @@
                           "oneOf": [
                             {
                               "title": "Prefect Cloud",
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "description": "Authentication configuration for Prefect Cloud.",
                               "javaType": "org.openmetadata.schema.services.connections.pipeline.prefect.CloudAuth",
                               "type": "object",
@@ -18610,7 +18361,6 @@
                             },
                             {
                               "title": "Prefect Server",
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "description": "Authentication configuration for a self-hosted Prefect Server. Leave Basic Auth String empty if the server has no auth enabled.",
                               "javaType": "org.openmetadata.schema.services.connections.pipeline.prefect.ServerAuth",
                               "type": "object",
@@ -18664,7 +18414,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "KafkaConnectConnection",
                       "description": "KafkaConnect Connection Config",
                       "type": "object",
@@ -18744,7 +18493,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "DBTCloudConnection",
                       "description": "DBTCloud Connection Config",
                       "type": "object",
@@ -18840,7 +18588,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "MatillionConnection",
                       "description": "Matillion Connection",
                       "type": "object",
@@ -18867,7 +18614,6 @@
                           "description": "Matillion Auth Configuration",
                           "oneOf": [
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "Matillion ETL Auth Config",
                               "description": "Matillion ETL Auth Config.",
                               "javaType": "org.openmetadata.schema.services.connections.pipeline.matillion.MatillionETLAuth",
@@ -18909,7 +18655,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "Matillion DPC Auth Config",
                               "description": "Matillion Data Productivity Cloud Auth Config.",
                               "javaType": "org.openmetadata.schema.services.connections.pipeline.matillion.MatillionDPCAuth",
@@ -18976,7 +18721,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "DataFactoryConnection",
                       "description": "Azure Data Factory Connection Config",
                       "type": "object",
@@ -19042,7 +18786,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "StitchConnection",
                       "description": "Stitch Connection",
                       "type": "object",
@@ -19093,7 +18836,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SnowplowConnection",
                       "description": "Snowplow Pipeline Connection Config",
                       "type": "object",
@@ -19213,7 +18955,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "MulesoftConnection",
                       "description": "MuleSoft Anypoint Platform Connection Config",
                       "type": "object",
@@ -19283,7 +19024,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "MicrosoftFabricPipelineConnection",
                       "description": "Microsoft Fabric Data Factory Pipeline Connection Config",
                       "type": "object",
@@ -19351,7 +19091,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "Data360PipelineConnection",
                       "description": "Salesforce Data 360 Pipeline Connection Config",
                       "type": "object",
@@ -19442,7 +19181,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SapBw4HanaPipelineConnection",
                       "description": "SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.",
                       "type": "object",
@@ -19521,7 +19259,6 @@
                   "mask": true,
                   "oneOf": [
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "MlflowConnection",
                       "description": "MlFlow Connection Config",
                       "type": "object",
@@ -19570,7 +19307,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SklearnConnection",
                       "description": "Sklearn Connection Config",
                       "type": "object",
@@ -19605,7 +19341,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "CustomMlModelConnection",
                       "description": "Custom MlModel Service connection to build a source that is not supported by OpenMetadata yet.",
                       "type": "object",
@@ -19653,7 +19388,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SageMakerConnection",
                       "description": "SageMaker Connection Config",
                       "type": "object",
@@ -19695,7 +19429,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "VertexAIConnection",
                       "description": "Google VertexAI Connection Config",
                       "type": "object",
@@ -19760,7 +19493,6 @@
                   "mask": true,
                   "oneOf": [
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "S3 Connection",
                       "description": "S3 Connection.",
                       "type": "object",
@@ -19835,7 +19567,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "ADLS Connection",
                       "description": "ADLS Connection.",
                       "type": "object",
@@ -19896,7 +19627,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "GCS Connection",
                       "description": "GCS Connection.",
                       "type": "object",
@@ -19960,7 +19690,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "CustomStorageConnection",
                       "description": "Custom Storage Service connection to build a source that is not supported by OpenMetadata yet.",
                       "type": "object",
@@ -20028,7 +19757,6 @@
                   "mask": true,
                   "oneOf": [
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "ElasticSearch Connection",
                       "description": "ElasticSearch Connection.",
                       "type": "object",
@@ -20061,7 +19789,6 @@
                           "description": "Choose Auth Config Type.",
                           "oneOf": [
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "Basic Authentication",
                               "description": "Basic Auth Configuration for ElasticSearch",
                               "javaType": "org.openmetadata.schema.services.connections.search.elasticSearch.ESBasicAuth",
@@ -20082,7 +19809,6 @@
                               "additionalProperties": false
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "API Key Authentication",
                               "description": "API Key Authentication for ElasticSearch",
                               "javaType": "org.openmetadata.schema.services.connections.search.elasticSearch.ESAPIAuth",
@@ -20106,7 +19832,6 @@
                         },
                         "sslConfig": {
                           "title": "SSL Config",
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "description": "SSL Config",
                           "javaType": "org.openmetadata.schema.services.common.SSLConfig",
                           "type": "object",
@@ -20117,7 +19842,6 @@
                               "description": "SSL Certificates",
                               "oneOf": [
                                 {
-                                  "$schema": "http://json-schema.org/draft-07/schema#",
                                   "title": "SSL Certificates By Path",
                                   "description": "SSL Certificates By Path",
                                   "javaType": "org.openmetadata.schema.services.common.SSLCertPaths",
@@ -20142,7 +19866,6 @@
                                   "additionalProperties": false
                                 },
                                 {
-                                  "$schema": "http://json-schema.org/draft-07/schema#",
                                   "title": "SSL Certificates By Values",
                                   "description": "SSL Certificates By Values",
                                   "javaType": "org.openmetadata.schema.services.common.SSLCertValues",
@@ -20219,7 +19942,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "OpenSearchConnection",
                       "description": "OpenSearch Connection Config",
                       "type": "object",
@@ -20255,7 +19977,6 @@
                               "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/8/properties/config/oneOf/0/properties/authType/oneOf/0"
                             },
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "AWSCredentials",
                               "description": "AWS credentials configs.",
                               "type": "object",
@@ -20286,7 +20007,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -20354,7 +20076,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "CustomSearchConnection",
                       "description": "Custom Search Service connection to build a source that is not supported by OpenMetadata yet.",
                       "type": "object",
@@ -20418,7 +20139,6 @@
                   "mask": true,
                   "oneOf": [
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "RangerConnection",
                       "description": "Apache Ranger Connection Config",
                       "type": "object",
@@ -20453,7 +20173,6 @@
                           "description": "Authentication type to connect to Apache Ranger.",
                           "oneOf": [
                             {
-                              "$schema": "http://json-schema.org/draft-07/schema#",
                               "title": "Ranger Basic Auth",
                               "description": "Configuration for connecting to Ranger Basic Auth.",
                               "javaType": "org.openmetadata.schema.services.connections.security.ranger.RangerBasicAuth",
@@ -20503,7 +20222,6 @@
                   "mask": true,
                   "oneOf": [
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "GoogleDriveConnection",
                       "description": "Google Drive Connection Config",
                       "type": "object",
@@ -20591,7 +20309,6 @@
                       ]
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SharePointConnection",
                       "description": "SharePoint Connection Config",
                       "type": "object",
@@ -20688,7 +20405,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SftpConnection",
                       "description": "SFTP Connection Config for secure file transfer protocol servers.",
                       "type": "object",
@@ -20839,7 +20555,6 @@
                       "additionalProperties": false
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "CustomDriveConnection",
                       "description": "Custom Drive Connection to build a source that is not supported.",
                       "type": "object",
@@ -20913,7 +20628,6 @@
                   "mask": true,
                   "oneOf": [
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "McpConnection",
                       "description": "MCP (Model Context Protocol) Service Connection for discovering and cataloging MCP servers, their tools, resources, and prompts.",
                       "type": "object",
@@ -21221,7 +20935,6 @@
           "maximum": 100
         },
         "openMetadataServerConfig": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "OpenMetadataConnection",
           "description": "OpenMetadata Connection Config",
           "type": "object",
@@ -21300,7 +21013,6 @@
             "securityConfig": {
               "mask": true,
               "description": "OpenMetadata Client security configuration.",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "openMetadataJWTClientConfig",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig",
@@ -21319,7 +21031,6 @@
             "secretsManagerProvider": {
               "description": "Secrets Manager Provider for OpenMetadata Server.",
               "default": "db",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "Secrets Manager Provider",
               "type": "string",
               "javaType": "org.openmetadata.schema.security.secrets.SecretsManagerProvider",
@@ -21340,7 +21051,6 @@
             "secretsManagerLoader": {
               "description": "Secrets Manager Loader for the Pipeline Service Client.",
               "default": "noop",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "Secrets Manager Client Loader",
               "type": "string",
               "javaType": "org.openmetadata.schema.security.secrets.SecretsManagerClientLoader",

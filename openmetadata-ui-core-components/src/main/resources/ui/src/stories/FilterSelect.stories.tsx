@@ -232,13 +232,6 @@ export const InputForms: Story = {
         triggerDisplay="chips"
         triggerVariant="input"
       />
-      <ControlledFilter
-        className="tw:w-full"
-        initialSelected={['snowflake', 'mssql']}
-        label="Services"
-        placeholder="Choose services"
-        triggerVariant="input"
-      />
     </div>
   ),
 };
