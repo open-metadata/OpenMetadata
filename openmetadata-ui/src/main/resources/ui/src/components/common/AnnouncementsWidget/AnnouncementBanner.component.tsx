@@ -77,7 +77,13 @@ const AnnouncementTitle = ({
   );
 
   if (!onClick) {
-    return <Tooltip title={title}>{text}</Tooltip>;
+    return (
+      <Tooltip
+        title={title}
+        triggerClassName="tw:block tw:min-w-0 tw:cursor-[inherit] tw:text-left">
+        {text}
+      </Tooltip>
+    );
   }
 
   return (
@@ -127,13 +133,17 @@ const AnnouncementFooter = ({
       {showEntity && entityFQN && (
         <>
           <span className="tw:text-text-tertiary">&middot;</span>
-          <Typography
-            as="span"
-            className="tw:text-text-secondary"
-            ellipsis={{ rows: 1, tooltip: true }}
-            size="text-xs">
-            {entityFQN}
-          </Typography>
+          <Tooltip
+            title={entityFQN}
+            triggerClassName="tw:block tw:min-w-0 tw:cursor-[inherit] tw:text-left">
+            <Typography
+              ellipsis
+              as="span"
+              className="tw:text-text-secondary"
+              size="text-xs">
+              {entityFQN}
+            </Typography>
+          </Tooltip>
         </>
       )}
     </Box>
@@ -243,14 +253,18 @@ const CollapsedBody = ({
       />
     </span>
     {hasDescription && (
-      <Typography
-        as="span"
-        className="tw:min-w-0 tw:flex-1 tw:text-text-secondary"
-        data-testid="announcement-description"
-        ellipsis={{ rows: 1, tooltip: true }}
-        size="text-sm">
-        {plainDescription}
-      </Typography>
+      <Tooltip
+        title={plainDescription}
+        triggerClassName="tw:block tw:w-auto tw:min-w-0 tw:flex-1 tw:cursor-[inherit] tw:text-left">
+        <Typography
+          ellipsis
+          as="span"
+          className="tw:text-text-secondary"
+          data-testid="announcement-description"
+          size="text-sm">
+          {plainDescription}
+        </Typography>
+      </Tooltip>
     )}
   </>
 );
