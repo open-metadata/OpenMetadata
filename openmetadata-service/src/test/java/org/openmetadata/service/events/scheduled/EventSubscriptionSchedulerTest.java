@@ -108,7 +108,7 @@ class EventSubscriptionSchedulerTest {
   void testEnsureAuditLogConsumerSchedulesWhenAbsent() throws SchedulerException {
     Scheduler scheduler = newStandbyScheduler("audit-absent");
     try {
-      EventSubscriptionScheduler.ensureAuditLogConsumerScheduled(scheduler);
+      AuditLogSchedule.ensureScheduled(scheduler);
 
       assertTrue(scheduler.checkExists(auditJobKey()), "Audit log consumer job should exist");
       assertEquals(
@@ -132,7 +132,7 @@ class EventSubscriptionSchedulerTest {
           scheduler.getTriggerState(auditTriggerKey()),
           "Precondition: an abandoned trigger still reports as NORMAL/WAITING");
 
-      EventSubscriptionScheduler.ensureAuditLogConsumerScheduled(scheduler);
+      AuditLogSchedule.ensureScheduled(scheduler);
 
       Date freshNextFire = scheduler.getTrigger(auditTriggerKey()).getNextFireTime();
       assertTrue(
@@ -148,14 +148,14 @@ class EventSubscriptionSchedulerTest {
   void testEnsureAuditLogConsumerRecoversPausedTrigger() throws SchedulerException {
     Scheduler scheduler = newStandbyScheduler("audit-paused");
     try {
-      EventSubscriptionScheduler.ensureAuditLogConsumerScheduled(scheduler);
+      AuditLogSchedule.ensureScheduled(scheduler);
       scheduler.pauseTrigger(auditTriggerKey());
       assertEquals(
           Trigger.TriggerState.PAUSED,
           scheduler.getTriggerState(auditTriggerKey()),
           "Precondition: trigger is paused");
 
-      EventSubscriptionScheduler.ensureAuditLogConsumerScheduled(scheduler);
+      AuditLogSchedule.ensureScheduled(scheduler);
 
       assertEquals(
           Trigger.TriggerState.NORMAL,
@@ -171,8 +171,8 @@ class EventSubscriptionSchedulerTest {
   void testEnsureAuditLogConsumerIsIdempotent() throws SchedulerException {
     Scheduler scheduler = newStandbyScheduler("audit-idempotent");
     try {
-      EventSubscriptionScheduler.ensureAuditLogConsumerScheduled(scheduler);
-      EventSubscriptionScheduler.ensureAuditLogConsumerScheduled(scheduler);
+      AuditLogSchedule.ensureScheduled(scheduler);
+      AuditLogSchedule.ensureScheduled(scheduler);
 
       assertEquals(
           1,
@@ -203,15 +203,11 @@ class EventSubscriptionSchedulerTest {
   }
 
   private static JobKey auditJobKey() {
-    return new JobKey(
-        EventSubscriptionScheduler.AUDIT_LOG_JOB_ID,
-        EventSubscriptionScheduler.AUDIT_LOG_JOB_GROUP);
+    return new JobKey(AuditLogSchedule.AUDIT_LOG_JOB_ID, AuditLogSchedule.AUDIT_LOG_JOB_GROUP);
   }
 
   private static TriggerKey auditTriggerKey() {
-    return new TriggerKey(
-        EventSubscriptionScheduler.AUDIT_LOG_JOB_ID,
-        EventSubscriptionScheduler.AUDIT_LOG_JOB_GROUP);
+    return new TriggerKey(AuditLogSchedule.AUDIT_LOG_JOB_ID, AuditLogSchedule.AUDIT_LOG_JOB_GROUP);
   }
 
   private static Scheduler newStandbyScheduler(String instanceName) throws SchedulerException {

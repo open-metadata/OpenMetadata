@@ -1,8 +1,5 @@
 package org.openmetadata.service.events.scheduled;
 
-import static org.openmetadata.service.events.scheduled.EventSubscriptionScheduler.ALERT_JOB_GROUP;
-import static org.openmetadata.service.events.scheduled.EventSubscriptionScheduler.ALERT_TRIGGER_GROUP;
-
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.micrometer.core.instrument.Metrics;
@@ -18,18 +15,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.openmetadata.service.events.subscription.AlertRows;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 import org.openmetadata.service.util.PerRequestContextCleaner;
-import org.quartz.JobDetail;
-import org.quartz.JobKey;
-import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.SimpleTrigger;
 import org.quartz.Trigger;
-import org.quartz.TriggerKey;
-import org.quartz.impl.matchers.GroupMatcher;
 
 /**
  * Repairs what can go wrong between restarts: a save whose scheduler call failed, a trigger stuck
@@ -53,7 +44,7 @@ final class AlertReconciler {
   private final Cache<UUID, Verdict> lastVerdicts =
       Caffeine.newBuilder().maximumSize(REMEMBERED_VERDICTS).build();
 
-  private final Scheduler scheduler;
+  private final AlertJobView jobs;
   private int repairsThisRound;
   private final long misfireThresholdMs;
   private final ScheduledExecutorService executor =
@@ -64,8 +55,8 @@ final class AlertReconciler {
             return thread;
           });
 
-  AlertReconciler(Scheduler scheduler, long misfireThresholdMs) {
-    this.scheduler = scheduler;
+  AlertReconciler(AlertJobView jobs, long misfireThresholdMs) {
+    this.jobs = jobs;
     this.misfireThresholdMs = misfireThresholdMs;
   }
 
@@ -92,7 +83,7 @@ final class AlertReconciler {
   }
 
   void reconcile() throws SchedulerException {
-    if (scheduler.isStarted() && !scheduler.isInStandbyMode()) {
+    if (jobs.isRunning()) {
       long now = Entity.getCollectionDAO().eventSubscriptionDAO().databaseTimeMillis();
       repairsThisRound = 0;
       for (String id : everyKnownId()) {
@@ -107,9 +98,7 @@ final class AlertReconciler {
     Entity.getCollectionDAO().eventSubscriptionDAO().listAllEventsSubscriptions().stream()
         .map(json -> JsonUtils.readTree(json).get("id").asText())
         .forEach(ids::add);
-    scheduler.getJobKeys(GroupMatcher.jobGroupEquals(ALERT_JOB_GROUP)).stream()
-        .map(JobKey::getName)
-        .forEach(ids::add);
+    jobs.ids().stream().map(UUID::toString).forEach(ids::add);
     ids.addAll(AlertRecord.alertIdsWithRows());
     return ids;
   }
@@ -137,9 +126,8 @@ final class AlertReconciler {
 
   private void removeLeftovers(UUID id, long now) throws SchedulerException {
     if (olderThanMinimumAge(id, now)) {
-      JobKey jobKey = jobKey(id);
-      if (scheduler.checkExists(jobKey)) {
-        EventSubscriptionScheduler.syncWithStoredRow(id);
+      if (jobs.exists(id)) {
+        AlertJobs.converge(id);
         count("job without an alert");
       }
       if (AlertRecord.alertIdsWithRows().contains(id.toString())) {
@@ -150,16 +138,15 @@ final class AlertReconciler {
   }
 
   private boolean olderThanMinimumAge(UUID id, long now) throws SchedulerException {
-    Trigger trigger = scheduler.getTrigger(triggerKey(id));
-    long jobSince = trigger == null ? 0L : trigger.getStartTime().getTime();
+    long jobSince = jobs.trigger(id).map(trigger -> trigger.getStartTime().getTime()).orElse(0L);
     Long rowsWrittenAt = AlertRecord.positionOrLatest(id).getTimestamp();
     long rowsSince = rowsWrittenAt == null ? 0L : rowsWrittenAt;
     return now - Math.max(jobSince, rowsSince) > ORPHAN_MIN_AGE_MS;
   }
 
   private void removeJobOfDisabled(UUID id) throws SchedulerException {
-    if (scheduler.checkExists(jobKey(id))) {
-      EventSubscriptionScheduler.syncWithStoredRow(id);
+    if (jobs.exists(id)) {
+      AlertJobs.converge(id);
       count("job of a disabled alert");
     }
   }
@@ -172,21 +159,20 @@ final class AlertReconciler {
     Optional<String> unhealthy = whyUnhealthy(alert, now);
     lastVerdicts.put(alert.getId(), new Verdict(now, unhealthy.orElse(HEALTHY)));
     if (unhealthy.isPresent()) {
-      EventSubscriptionScheduler.ensureScheduled(alert);
+      AlertJobs.converge(alert.getId());
       count(unhealthy.get());
     }
   }
 
   private Optional<String> whyUnhealthy(EventSubscription alert, long now)
       throws SchedulerException {
-    JobDetail job = scheduler.getJobDetail(jobKey(alert.getId()));
-    Trigger trigger = scheduler.getTrigger(triggerKey(alert.getId()));
+    Trigger trigger = jobs.trigger(alert.getId()).orElse(null);
     String reason = null;
-    if (job == null || !hasAcceptedClass(job)) {
+    if (!jobs.hasCurrentJobClass(alert.getId())) {
       reason = "missing job";
     } else if (trigger == null || !repeatsEvery(trigger, alert.getPollInterval())) {
       reason = "missing trigger";
-    } else if (scheduler.getTriggerState(trigger.getKey()) == Trigger.TriggerState.ERROR) {
+    } else if (jobs.triggerState(alert.getId()) == Trigger.TriggerState.ERROR) {
       reason = "trigger in ERROR";
     } else if (isFrozen(trigger, alert, now)) {
       reason = "frozen trigger";
@@ -194,11 +180,6 @@ final class AlertReconciler {
       reason = "missing position row";
     }
     return Optional.ofNullable(reason);
-  }
-
-  // Jobs stored before this release carry the class their alert names; they are stored again.
-  private static boolean hasAcceptedClass(JobDetail job) {
-    return AlertPublisher.class.equals(job.getJobClass());
   }
 
   private static boolean repeatsEvery(Trigger trigger, Integer pollIntervalSeconds) {
@@ -210,21 +191,13 @@ final class AlertReconciler {
   // A trigger whose own tick is running is healthy however old its fire time looks.
   private boolean isFrozen(Trigger trigger, EventSubscription alert, long now)
       throws SchedulerException {
-    boolean running = scheduler.getTriggerState(trigger.getKey()) == Trigger.TriggerState.BLOCKED;
+    boolean running = jobs.triggerState(alert.getId()) == Trigger.TriggerState.BLOCKED;
     long oldestHealthyFireTime =
         now - TimeUnit.SECONDS.toMillis(alert.getPollInterval()) - misfireThresholdMs;
     boolean late =
         trigger.getNextFireTime() == null
             || trigger.getNextFireTime().getTime() < oldestHealthyFireTime;
     return !running && late;
-  }
-
-  private static JobKey jobKey(UUID id) {
-    return new JobKey(id.toString(), ALERT_JOB_GROUP);
-  }
-
-  private static TriggerKey triggerKey(UUID id) {
-    return new TriggerKey(id.toString(), ALERT_TRIGGER_GROUP);
   }
 
   private void count(String reason) {

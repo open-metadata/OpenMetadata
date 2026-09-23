@@ -37,6 +37,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.scheduled.AlertJobs;
 import org.openmetadata.service.events.subscription.AlertTelemetry;
 import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.events.subscription.channels.ChannelResolution;
@@ -508,7 +509,7 @@ public abstract class AbstractEventConsumer
     if (stoppedEarly && !ServerStopping.isSet()) {
       AlertTelemetry.tickStoppedByBudget();
       try {
-        context.getScheduler().triggerJob(context.getJobDetail().getKey());
+        AlertJobs.runAgainNow(context);
         AlertTelemetry.ranAgainAtOnce();
       } catch (SchedulerException e) {
         LOG.warn(
