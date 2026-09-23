@@ -326,17 +326,23 @@ const toAriaDirection = (order: 'ascend' | 'descend') =>
 // it (jsdom's synthetic click hides both). Owning the press and anchoring the
 // Popover through triggerRef, with propagation stopped at the boundary, keeps
 // the column's press machinery out of the loop.
-// A plain-text header must never overflow its fixed-width cell into the next
-// column, so string titles always truncate — independent of the column's
-// `ellipsis` flag, which only governs body cells. Custom (non-string) titles
-// are left untouched: wrapping arbitrary header JSX (icons, sort affordances)
-// in `truncate` would clip it. Kept out of the header render so it does not add
-// to that function's cyclomatic complexity.
+// AntD truncates an `ellipsis` column's header along with its cells, so a long
+// plain-text title clips instead of overflowing its fixed-width cell into the
+// next column. Only string titles qualify: wrapping arbitrary header JSX
+// (icons, sort affordances) in `truncate` would clip it. Type guard so the
+// render can hand `title` straight to the span.
+const hasTruncatingHeader = <T,>(
+  col: ColumnType<T>
+): col is ColumnType<T> & { title: string } =>
+  Boolean(col.ellipsis) && typeof col.title === 'string';
+
+// Kept out of the header render so it does not add to that function's
+// cyclomatic complexity.
 const renderColumnHeaderTitle = <T,>(
   col: ColumnType<T>,
   propsColumns: ColumnsType<T>
 ): ReactNode =>
-  typeof col.title === 'string' ? (
+  hasTruncatingHeader(col) ? (
     <span className="tw:min-w-0 tw:truncate">{col.title}</span>
   ) : (
     resolveColumnTitle(col, propsColumns)
@@ -1891,8 +1897,8 @@ const TableV2 = <T extends object>(
                         // truncating title has no shrinkable ancestor and a long
                         // header still overflows the fixed-width cell.
                         {
-                          'tw:[&>div]:min-w-0':
-                            typeof colType.title === 'string',
+                          'tw:[&>div]:min-w-0 tw:[&>div>div]:min-w-0':
+                            hasTruncatingHeader(colType),
                         },
                         getAlignClass(colType.align),
                         getHeaderAlignClass(colType.align),
@@ -1929,7 +1935,7 @@ const TableV2 = <T extends object>(
                           'tw:flex tw:items-center tw:gap-1',
                           // min-w-0 lets the truncating title shrink instead of
                           // overflowing the fixed-width cell into its neighbour.
-                          { 'tw:min-w-0': typeof colType.title === 'string' }
+                          { 'tw:min-w-0': hasTruncatingHeader(colType) }
                         )}
                         data-testid="column-header-content">
                         {renderColumnHeaderTitle(colType, propsColumns)}

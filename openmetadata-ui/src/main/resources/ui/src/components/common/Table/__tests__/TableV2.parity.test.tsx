@@ -316,15 +316,13 @@ describe('TableV2 — ellipsis columns', () => {
     expect(valueDiv().className).toContain('tw:min-w-0');
   });
 
-  it('truncates a plain-text header even without ellipsis on the body', () => {
+  const LONG_TITLE = 'A_VERY_LONG_COLUMN_HEADER_THAT_SHOULD_CLIP';
+
+  it('truncates the plain-text header of an ellipsis column', () => {
     render(
       <TableV2
         columns={[
-          {
-            dataIndex: 'name',
-            key: 'name',
-            title: 'A_VERY_LONG_COLUMN_HEADER_THAT_SHOULD_CLIP',
-          },
+          { dataIndex: 'name', ellipsis: true, key: 'name', title: LONG_TITLE },
         ]}
         dataSource={[longRow]}
         pagination={false}
@@ -336,9 +334,7 @@ describe('TableV2 — ellipsis columns', () => {
     const titleSpan = header.querySelector('span.tw\\:truncate') as HTMLElement;
 
     expect(titleSpan).toBeInTheDocument();
-    expect(titleSpan).toHaveTextContent(
-      'A_VERY_LONG_COLUMN_HEADER_THAT_SHOULD_CLIP'
-    );
+    expect(titleSpan).toHaveTextContent(LONG_TITLE);
     // Both the flex container and the truncating span need min-w-0, or the span
     // (a flex item, min-width:auto by default) refuses to shrink and the header
     // overflows anyway.
@@ -346,7 +342,25 @@ describe('TableV2 — ellipsis columns', () => {
     expect(titleSpan.className).toContain('tw:min-w-0');
     // The core Table.Head flex wrapper (`& > div`) also has to shrink, or the
     // chain from the fixed-width `th` down to the span is never constrained.
-    expect(header.closest('th')?.className).toContain('tw:[&>div]:min-w-0');
+    expect(header.closest('th')?.className).toContain('tw:[&>div>div]:min-w-0');
+  });
+
+  it('leaves a non-ellipsis header free to wrap, as before', () => {
+    render(
+      <TableV2
+        columns={[{ dataIndex: 'name', key: 'name', title: LONG_TITLE }]}
+        dataSource={[longRow]}
+        pagination={false}
+        rowKey="name"
+      />
+    );
+
+    const header = screen.getByTestId('column-header-content');
+
+    expect(header.querySelector('span.tw\\:truncate')).not.toBeInTheDocument();
+    expect(header).toHaveTextContent(LONG_TITLE);
+    expect(header.className).not.toContain('tw:min-w-0');
+    expect(header.closest('th')?.className).not.toContain('min-w-0');
   });
 
   it('leaves a custom (non-string) header node untouched', () => {
@@ -355,6 +369,7 @@ describe('TableV2 — ellipsis columns', () => {
         columns={[
           {
             dataIndex: 'name',
+            ellipsis: true,
             key: 'name',
             title: <span data-testid="custom-header-node">Custom</span>,
           },
