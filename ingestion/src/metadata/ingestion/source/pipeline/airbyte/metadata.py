@@ -74,6 +74,10 @@ logger = ingestion_logger()
 # this many entries; the cap only stops the map from being unbounded by construction.
 DB_SERVICE_CLASS_CACHE_SIZE = 100
 
+# Stands in for "every service" when no dbServiceNames are configured. `fqn.build` reads it as a
+# wildcard; it is never the name of a real service.
+WILDCARD_SERVICE = "*"
+
 STATUS_MAP = {
     "cancelled": StatusType.Failed,
     "succeeded": StatusType.Successful,
@@ -320,6 +324,9 @@ class AirbyteSource(PipelineServiceSource):
         single-database one has no single right answer, and collapsing it would send every
         stream through one shape.
         """
+        if service_name == WILDCARD_SERVICE:
+            # A search placeholder, not a service name; looking it up is a certain 404.
+            return None
         if service_name not in self._db_service_classes:
             self._db_service_classes[service_name] = service_supports_database(self.metadata, service_name)
         return self._db_service_classes[service_name]
@@ -359,7 +366,7 @@ class AirbyteSource(PipelineServiceSource):
             return None
 
         by_rank: dict[int, list[tuple[str, TableDetails]]] = defaultdict(list)
-        for service_name in self.get_db_service_names() or ["*"]:
+        for service_name in self.get_db_service_names() or [WILDCARD_SERVICE]:
             for candidate in table_fqn_candidates(table_details, self.db_service_class(service_name)):
                 by_rank[_shape_rank(candidate)].append((service_name, candidate))
 
@@ -521,7 +528,9 @@ class AirbyteSource(PipelineServiceSource):
             # every case where either side stays None after the anchoring step. The type
             # checker follows that for `from_reference` (the if/elif/else narrows it) but not
             # for `to_reference`, whose non-Noneness comes from the `and` in the second guard.
-            assert to_reference is not None
+            # An explicit guard rather than an assert, which `python -O` strips out.
+            if to_reference is None:
+                continue
 
             yield Either(
                 right=AddLineageRequest(

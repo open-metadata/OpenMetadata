@@ -28,7 +28,7 @@ in 1465ab330af, not a rule about apiCollection.
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from metadata.generated.schema.entity.data.apiCollection import APICollection
 from metadata.generated.schema.entity.data.searchIndex import SearchIndex
@@ -190,12 +190,30 @@ class _ServiceScopedResolver(EntityResolver):
             return None
 
         entity_names = self._entity_names(stream, connection, direction)
+        matches: dict[str, Any] = {}
         for service_name in service_names:
             for entity_name in entity_names:
                 entity_fqn = self._build_fqn(source, service_name, entity_name)
                 entity = source.metadata.get_by_name(entity=self._entity_type(), fqn=entity_fqn) if entity_fqn else None
                 if entity:
-                    return EntityReference(id=entity.id, type=self.om_type)
+                    matches[model_str(entity.fullyQualifiedName)] = entity
+
+        if len(matches) > 1:
+            # The same rule the table and container guards apply: several services hold the
+            # name and nothing in the stream separates them, so emit no edge rather than let
+            # the order of the configured list decide.
+            logger.warning(
+                "Airbyte lineage [%s]: %s %s matches %s; skipping. Narrow the configured"
+                " service names to disambiguate.",
+                pipeline_name,
+                self.om_type,
+                entity_names,
+                sorted(matches),
+            )
+            return None
+        if matches:
+            entity = next(iter(matches.values()))
+            return EntityReference(id=entity.id, type=self.om_type)
 
         logger.warning(
             "Airbyte lineage [%s]: %s %s not found in services %s",
