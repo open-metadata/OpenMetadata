@@ -29,7 +29,6 @@ import { ServiceCategory } from '../../../enums/service.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { File } from '../../../generated/entity/data/file';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
@@ -53,10 +52,7 @@ import {
 } from '../../../utils/FeedUtilsPure';
 import fileClassBase from '../../../utils/FileClassBase';
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
-import {
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
@@ -286,40 +282,14 @@ function FileDetails({
   // listed, unused, in the tabs useMemo's dependency array) — dead-code precedent
   // (Task 7/8, e.g. CommonWidgets).
   const {
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
-    editCustomAttributePermission,
-    editLineagePermission,
-    viewCustomPropertiesPermission,
+    canEditTags: editTagsPermission,
+    canEditGlossaryTerms: editGlossaryTermsPermission,
+    canEditDescription: editDescriptionPermission,
+    canEditCustomFields: editCustomAttributePermission,
+    canEditLineage: editLineagePermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
   } = useMemo(
-    () => ({
-      editTagsPermission:
-        getPrioritizedEditPermission(filePermissions, Operation.EditTags) &&
-        !deleted,
-      editGlossaryTermsPermission:
-        getPrioritizedEditPermission(
-          filePermissions,
-          Operation.EditGlossaryTerms
-        ) && !deleted,
-      editDescriptionPermission:
-        getPrioritizedEditPermission(
-          filePermissions,
-          Operation.EditDescription
-        ) && !deleted,
-      editCustomAttributePermission:
-        getPrioritizedEditPermission(
-          filePermissions,
-          Operation.EditCustomFields
-        ) && !deleted,
-      editLineagePermission:
-        getPrioritizedEditPermission(filePermissions, Operation.EditLineage) &&
-        !deleted,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        filePermissions,
-        Operation.ViewCustomFields
-      ),
-    }),
+    () => getDerivedPermissionFlags(filePermissions, deleted),
     [filePermissions, deleted]
   );
 

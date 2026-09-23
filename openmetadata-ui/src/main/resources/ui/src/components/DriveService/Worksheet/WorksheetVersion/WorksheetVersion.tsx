@@ -25,7 +25,6 @@ import {
   ChangeDescription,
   Column,
 } from '../../../../generated/entity/data/worksheet';
-import { Operation } from '../../../../generated/entity/policies/policy';
 import { TagSource } from '../../../../generated/type/tagLabel';
 import {
   getColumnsDataWithVersionChanges,
@@ -35,7 +34,7 @@ import {
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtilsPure';
 import { getPartialNameFromTableFQN } from '../../../../utils/FqnUtils';
-import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getVersionPath } from '../../../../utils/RouterUtils';
 import { pruneEmptyChildren } from '../../../../utils/TablePureUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
@@ -140,11 +139,7 @@ const WorksheetVersion = ({
   );
 
   const viewCustomPropertiesPermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        entityPermissions,
-        Operation.ViewCustomFields
-      ),
+    () => getDerivedPermissionFlags(entityPermissions).canViewCustomFields,
     [entityPermissions]
   );
 
