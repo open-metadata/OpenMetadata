@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { AlertCapabilities } from '../../../generated/events/api/alertCapabilities';
 import AlertSourcePicker from './AlertSourcePicker';
 
@@ -37,6 +38,7 @@ const TABLE_AND_TOPIC = {
       selected: true,
       warning: 'No chosen trigger applies to this source.',
     },
+    { name: 'dashboard', kind: 'entity', canJoin: true },
     {
       name: 'conversation',
       kind: 'activity',
@@ -46,17 +48,18 @@ const TABLE_AND_TOPIC = {
   ],
 } as unknown as AlertCapabilities;
 
-const NAMES = ['table', 'topic', 'conversation'];
+const NAMES = ['table', 'topic', 'dashboard', 'conversation'];
 
-const open = () =>
-  fireEvent.mouseDown(
-    screen
-      .getByTestId('source-select')
-      .querySelector('.ant-select-selector') as Element
-  );
+// Timers are fake in every test, so the user moves only as fast as they advance.
+const user = () => userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+const open = () => user().click(screen.getByRole('combobox'));
+
+const optionOf = async (source: string) =>
+  (await screen.findByTestId(`${source}-option`)).closest('[role="option"]');
 
 describe('AlertSourcePicker', () => {
-  it('shows a source that cannot join as disabled, with the reason', () => {
+  it('shows a source that cannot join as disabled, with the reason', async () => {
     render(
       <AlertSourcePicker
         selection={TABLE_AND_TOPIC}
@@ -64,24 +67,28 @@ describe('AlertSourcePicker', () => {
         value={['table', 'topic']}
       />
     );
-    open();
+    await open();
 
-    expect(screen.getByTestId('conversation-reason')).toHaveTextContent(
+    const conversation = await optionOf('conversation');
+
+    expect(conversation).toHaveAttribute('aria-disabled', 'true');
+    expect(conversation).toHaveTextContent(
       'Sources of different kinds cannot be combined.'
     );
-    expect(
-      screen.getByTestId('conversation-option').closest('.ant-select-item')
-    ).toHaveClass('ant-select-item-option-disabled');
-    expect(
-      screen.getByTestId('topic-option').closest('.ant-select-item')
-    ).not.toHaveClass('ant-select-item-option-disabled');
+    expect(await optionOf('dashboard')).not.toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
   });
 
-  it('offers every source until the server has answered about the selection', () => {
+  it('offers every source until the server has answered about the selection', async () => {
     render(<AlertSourcePicker sources={NAMES} value={['table']} />);
-    open();
+    await open();
 
-    expect(screen.queryByTestId('conversation-reason')).not.toBeInTheDocument();
+    expect(await optionOf('conversation')).not.toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
   });
 
   it('warns beside a selected source that can never match', () => {
@@ -94,28 +101,29 @@ describe('AlertSourcePicker', () => {
     );
 
     expect(screen.getByTestId('topic-warning')).toHaveTextContent(
-      'topic: No chosen trigger applies to this source.'
+      'Label of topic: No chosen trigger applies to this source.'
     );
     expect(screen.queryByTestId('table-warning')).not.toBeInTheDocument();
   });
 
   it('names a selected source the way the list does, not by its raw name', () => {
-    render(
-      <AlertSourcePicker
-        sources={NAMES}
-        value={['table']}
-        onChange={jest.fn()}
-      />
+    render(<AlertSourcePicker sources={NAMES} value={['table']} />);
+
+    expect(screen.getByTestId('source-select')).toHaveTextContent(
+      'Label of table'
     );
-
-    const selected = screen
-      .getByTestId('source-select')
-      .querySelector('.ant-select-selection-item-content');
-
-    expect(selected).toHaveTextContent('Label of table');
   });
 
-  it('hands the whole selection to the form', () => {
+  // The view of a saved alert passes no list of sources.
+  it('shows a saved source the list does not offer', () => {
+    render(<AlertSourcePicker isDisabled sources={[]} value={['location']} />);
+
+    expect(screen.getByTestId('source-select')).toHaveTextContent(
+      'Label of location'
+    );
+  });
+
+  it('hands the whole selection to the form', async () => {
     const onChange = jest.fn();
     render(
       <AlertSourcePicker
@@ -124,9 +132,26 @@ describe('AlertSourcePicker', () => {
         onChange={onChange}
       />
     );
-    open();
-    fireEvent.click(screen.getByTestId('topic-option'));
+    await open();
+    await user().click(await screen.findByTestId('topic-option'));
 
     expect(onChange).toHaveBeenCalledWith(['table', 'topic'], ['table']);
+  });
+
+  it('hands what is left to the form when a source is taken away', async () => {
+    const onChange = jest.fn();
+    render(
+      <AlertSourcePicker
+        sources={NAMES}
+        value={['table', 'topic']}
+        onChange={onChange}
+      />
+    );
+    const [removeTable] = within(
+      screen.getByTestId('source-select')
+    ).getAllByRole('button');
+    await user().click(removeTable);
+
+    expect(onChange).toHaveBeenCalledWith(['topic'], ['table', 'topic']);
   });
 });

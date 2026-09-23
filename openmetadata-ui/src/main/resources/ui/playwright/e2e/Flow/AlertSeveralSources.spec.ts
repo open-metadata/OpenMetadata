@@ -36,11 +36,8 @@ const addSource = async (page: Page, sourceName: string) => {
   const capabilities = page.waitForResponse(
     '/api/v1/events/subscriptions/capabilities'
   );
-  await page.getByTestId('source-select').click();
-  await page
-    .locator('.ant-select-dropdown:visible')
-    .getByTestId(`${sourceName}-option`)
-    .click();
+  await page.getByTestId('source-select').getByRole('combobox').click();
+  await page.getByRole('listbox').getByTestId(`${sourceName}-option`).click();
   await capabilities;
   await page.keyboard.press('Escape');
 };
@@ -73,27 +70,17 @@ test.describe('Alerts with several sources', () => {
     await addSource(page, 'dashboard');
 
     await test.step('A source of another kind cannot join, and says why', async () => {
-      // The list is virtual, so an option far down exists only once it is searched for.
-      await page.getByTestId('source-select').click();
-      await page.getByTestId('source-select').locator('input').fill('conv');
+      const input = page.getByTestId('source-select').getByRole('combobox');
+      await input.fill('conv');
       const conversation = page
-        .locator('.ant-select-dropdown:visible')
-        .getByTestId('conversation-option');
+        .getByRole('listbox')
+        .getByRole('option')
+        .filter({ has: page.getByTestId('conversation-option') });
 
-      await expect(conversation).toBeVisible();
-      await expect(
-        page
-          .locator('.ant-select-dropdown:visible')
-          .getByTestId('conversation-reason')
-      ).toBeVisible();
+      await expect(conversation).toHaveAttribute('aria-disabled', 'true');
+      await expect(conversation).toContainText('different kinds');
 
-      await expect(
-        page
-          .locator('.ant-select-dropdown:visible')
-          .locator('.ant-select-item-option-disabled')
-      ).toHaveCount(1);
-
-      await page.getByTestId('source-select').locator('input').fill('');
+      await input.fill('');
       await page.keyboard.press('Escape');
     });
 

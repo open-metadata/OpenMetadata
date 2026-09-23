@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Alert, Select, Space, Typography } from 'antd';
+import {
+  Alert,
+  Autocomplete,
+  SelectItemType,
+} from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getSourceOptions } from '../../../utils/Alerts/AlertSelectionUtil';
@@ -28,8 +32,8 @@ function AlertSourcePicker({
   sources,
   value = [],
   onChange,
-  loading,
   selection,
+  isDisabled = false,
 }: Readonly<AlertSourcePickerProps>) {
   const { t } = useTranslation();
 
@@ -38,36 +42,32 @@ function AlertSourcePicker({
     [sources, value, selection]
   );
 
-  const options = useMemo(
+  const items = useMemo<SelectItemType[]>(
     () =>
       sourceOptions.map((option) => ({
-        value: option.name,
-        displayName: getEntityNameLabel(option.name),
-        disabled: option.disabled,
-        title: option.reason,
-        label: (
-          <div
-            className="d-flex items-center gap-2"
-            data-testid={`${option.name}-option`}>
-            {searchClassBase.getEntityIconWithBg(
-              option.name,
-              EntityIconSize.Size14
-            )}
-            <Space direction="vertical" size={0}>
-              <span>{getEntityNameLabel(option.name)}</span>
-              {option.reason && (
-                <Typography.Text
-                  className="text-xs"
-                  data-testid={`${option.name}-reason`}
-                  type="secondary">
-                  {option.reason}
-                </Typography.Text>
-              )}
-            </Space>
-          </div>
+        id: option.name,
+        label: getEntityNameLabel(option.name),
+        isDisabled: option.disabled,
+        supportingText: option.reason,
+        icon: searchClassBase.getEntityIconWithBg(
+          option.name,
+          EntityIconSize.Size14
         ),
       })),
     [sourceOptions]
+  );
+
+  // A saved source the list does not offer is still shown, by the name the list would give it.
+  const selectedItems = useMemo(
+    () =>
+      value.map(
+        (name) =>
+          items.find((item) => item.id === name) ?? {
+            id: name,
+            label: getEntityNameLabel(name),
+          }
+      ),
+    [items, value]
   );
 
   const warnings = useMemo(
@@ -76,30 +76,44 @@ function AlertSourcePicker({
   );
 
   return (
-    <Space className="w-full" direction="vertical" size={8}>
-      <Select
-        className="w-full"
+    <div className="tw:flex tw:w-full tw:flex-col tw:gap-2">
+      <Autocomplete
+        multiple
         data-testid="source-select"
-        loading={loading}
-        mode="multiple"
-        optionLabelProp="displayName"
-        options={options}
+        isDisabled={isDisabled}
+        items={items}
         placeholder={t('label.select-field', {
           field: t('label.data-asset-plural'),
         })}
-        value={value}
-        onChange={(chosen: string[]) => onChange?.(chosen, value)}
-      />
+        selectedItems={selectedItems}
+        onItemCleared={(key) =>
+          onChange?.(
+            value.filter((name) => name !== String(key)),
+            value
+          )
+        }
+        onItemInserted={(key) => onChange?.([...value, String(key)], value)}>
+        {(item) => (
+          <Autocomplete.Item
+            data-testid={`${item.id}-option`}
+            icon={item.icon}
+            id={item.id}
+            isDisabled={item.isDisabled}
+            key={item.id}
+            label={item.label}
+            supportingText={item.supportingText}
+          />
+        )}
+      </Autocomplete>
       {warnings.map((option) => (
         <Alert
-          showIcon
           data-testid={`${option.name}-warning`}
           key={option.name}
-          message={`${getEntityNameLabel(option.name)}: ${option.warning}`}
-          type="warning"
-        />
+          variant="warning">
+          {`${getEntityNameLabel(option.name)}: ${option.warning}`}
+        </Alert>
       ))}
-    </Space>
+    </div>
   );
 }
 

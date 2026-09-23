@@ -737,7 +737,9 @@ export const verifyAlertDetails = async ({
   }
 
   // Check trigger name
-  await expect(page.getByTestId('source-select')).toContainText(triggerName);
+  await expect(page.getByTestId('source-select')).toContainText(
+    sourceLabelOf(triggerName)
+  );
 
   // Check filter details
   await checkActionOrFilterDetails({ page, filters });
@@ -1043,6 +1045,10 @@ export const inputBasicAlertInformation = async ({
   await expect(sourceSelect).toHaveText(sourceDisplayName);
 };
 
+// A source is shown by the name the list gives it: "ingestionPipeline" reads "Ingestion Pipeline".
+export const sourceLabelOf = (sourceName: string) =>
+  new RegExp(sourceName.replace(/([a-z])([A-Z])/g, '$1\\s*$2'), 'i');
+
 // The source picker holds several sources, so choosing another one adds it. Replacing the
 // source means removing what is selected first: some sources, such as All, cannot be combined.
 export const replaceAlertSource = async ({
@@ -1055,30 +1061,26 @@ export const replaceAlertSource = async ({
   sourceDisplayName: string;
 }) => {
   const sourceSelect = page.getByTestId('source-select');
-  const selected = sourceSelect.locator('.ant-select-selection-item-remove');
+  const input = sourceSelect.getByRole('combobox');
+  // The only buttons in the control are the chosen sources' remove buttons.
+  const chosen = sourceSelect.getByRole('button');
 
+  // Backspace in the empty input moves to the last chosen source; Backspace there removes it.
   await expect(async () => {
-    if ((await selected.count()) > 0) {
-      await sourceSelect.locator('input').press('Backspace');
+    if ((await chosen.count()) > 0) {
+      await input.click();
+      await input.press('Backspace');
+      await page.keyboard.press('Backspace');
     }
 
-    await expect(selected).toHaveCount(0, { timeout: 2_000 });
+    await expect(chosen).toHaveCount(0, { timeout: 2_000 });
   }).toPass({ timeout: 30_000 });
 
-  await sourceSelect.click();
-  await sourceSelect.locator('input').fill(sourceDisplayName);
-  await page
-    .locator('.ant-select-dropdown:visible')
-    .getByTestId(`${sourceName}-option`)
-    .click();
-  await sourceSelect.locator('input').fill('');
+  await input.fill(sourceDisplayName);
+  await page.getByRole('listbox').getByTestId(`${sourceName}-option`).click();
   await page.keyboard.press('Escape');
 
-  // While the control has focus it also announces its selection to screen readers, so the
-  // control's own text would hold the name twice. The chosen tags are what the user sees.
-  await expect(
-    sourceSelect.locator('.ant-select-selection-item-content')
-  ).toHaveText([sourceDisplayName]);
+  await expect(sourceSelect).toHaveText(sourceDisplayName);
 };
 
 export const saveAlertAndVerifyResponse = async (page: Page) => {

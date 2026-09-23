@@ -28,6 +28,7 @@ import {
   inputBasicAlertInformation,
   replaceAlertSource,
   saveAlertAndVerifyResponse,
+  sourceLabelOf,
   visitAlertDetailsPage,
   visitEditAlertPage,
   waitForRecentEventsToFinishExecution,
@@ -454,7 +455,9 @@ export const checkAlertConfigDetails = async ({
   sourceName: string;
 }) => {
   // Verify alert configs
-  await expect(page.getByTestId('source-select')).toHaveText(sourceName);
+  await expect(page.getByTestId('source-select')).toHaveText(
+    sourceLabelOf(sourceName)
+  );
 
   await expect(page.getByTestId('filter-select-0')).toHaveText('Event Type');
   await expect(

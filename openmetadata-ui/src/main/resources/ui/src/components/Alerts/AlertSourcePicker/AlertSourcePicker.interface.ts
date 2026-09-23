@@ -18,8 +18,8 @@ export interface AlertSourcePickerProps {
   value?: string[];
   /** The form item has already stored the new selection by the time this runs, so it also gets the one before. */
   onChange?: (sources: string[], previousSources: string[]) => void;
-  /** True while the server is being asked about the current selection. */
-  loading?: boolean;
   /** What the server said about the current selection. */
   selection?: AlertCapabilities;
+  /** Shows the sources without letting them change, as the alert's view does. */
+  isDisabled?: boolean;
 }

@@ -173,7 +173,7 @@ function AlertConfigDetails({
         }}>
         <Row justify="center">
           <Col span={24}>
-            <AlertFormSourceItem />
+            <AlertFormSourceItem isViewMode />
           </Col>
           {!isEmpty(modifiedAlertData.input?.filters) && (
             <>

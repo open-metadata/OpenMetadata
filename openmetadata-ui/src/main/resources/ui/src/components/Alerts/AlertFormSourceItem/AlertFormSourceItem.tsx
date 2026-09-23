@@ -33,6 +33,7 @@ import { AlertFormSourceItemProps } from './AlertFormSourceItem.interface';
 
 function AlertFormSourceItem({
   filterResources,
+  isViewMode = false,
 }: Readonly<AlertFormSourceItemProps>) {
   const { t } = useTranslation();
   const { capabilities } = useAlertSelectionContext();
@@ -103,7 +104,7 @@ function AlertFormSourceItem({
 
   const sourceControl = (
     <AlertSourcePicker
-      loading={capabilities.loading}
+      isDisabled={isViewMode}
       selection={capabilities.selection}
       sources={sourceNames}
       onChange={handleSourcesChange}
