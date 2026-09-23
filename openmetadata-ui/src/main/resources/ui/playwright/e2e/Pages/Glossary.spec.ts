@@ -2171,7 +2171,6 @@ test.describe('Glossary tests', () => {
       });
 
       await test.step('Open delete modal and verify delete confirmation', async () => {
-
         await page.getByTestId('manage-button').click();
         await page.getByTestId('delete-button').click();
 
