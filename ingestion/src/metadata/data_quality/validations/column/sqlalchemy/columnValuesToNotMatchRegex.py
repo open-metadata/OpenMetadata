@@ -13,6 +13,8 @@
 Validator for column values to not match regex test case
 """
 
+from typing import cast
+
 from sqlalchemy import Column
 from sqlalchemy.exc import CompileError, SQLAlchemyError
 
@@ -36,6 +38,7 @@ from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -72,10 +75,12 @@ class ColumnValuesToNotMatchRegexValidator(
             metric: metric
             column: column
         """
+        self.runner = cast(QueryRunner, self.runner)  # noqa: TC006
+
         try:
             return self.run_query_results_with_row_count(self.runner, metric, column, **kwargs)
         except (CompileError, SQLAlchemyError) as err:
-            logger.warning(f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`")
+            logger.warning("Could not use `REGEXP` due to - %s. Falling back to `LIKE`", err)
             results = self.run_query_results_with_row_count(self.runner, Metrics.notLikeCount, column, **kwargs)
             return {
                 metric.name: results[Metrics.notLikeCount.name],

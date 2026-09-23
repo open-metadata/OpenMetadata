@@ -13,6 +13,8 @@
 Validator for column values to be not null test case
 """
 
+from typing import cast
+
 from sqlalchemy import Column
 
 from metadata.data_quality.validations.base_test_handler import (
@@ -34,6 +36,7 @@ from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -63,6 +66,8 @@ class ColumnValuesToBeNotNullValidator(
             metric: metric
             column: column
         """
+        self.runner = cast(QueryRunner, self.runner)  # noqa: TC006
+
         return self.run_query_results_with_row_count(self.runner, metric, column, **kwargs)
 
     def _execute_dimensional_validation(

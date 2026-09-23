@@ -183,9 +183,12 @@ class SQAValidatorMixin:
         """Run the metric expressions against the dataset in a single query"""
         try:
             row = runner.dispatch_query_select_first(*metric_fns)  # type: ignore
-            return dict(row._mapping)
         except Exception as exc:
             raise SQLAlchemyError(exc)  # noqa: B904
+
+        # An empty dataset yields no row; `_read_metric` turns the missing value into
+        # the "your table might be empty" error that names the metric that came back void.
+        return dict(row._mapping) if row is not None else {}
 
     @staticmethod
     def _read_metric(values: dict[str, Any], metric: Metrics, column: Column | None) -> int | None:

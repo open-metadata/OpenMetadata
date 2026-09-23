@@ -50,13 +50,14 @@ from metadata.generated.schema.tests.basic import (
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue  # noqa: TC001
 from metadata.generated.schema.type.basic import Timestamp  # noqa: TC001
-from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.runner import PandasRunner, QueryRunner  # noqa: TC001
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_like_column import SQALikeColumn  # noqa: TC001
 
 if TYPE_CHECKING:
     from sqlalchemy import Column
+
+    from metadata.profiler.metrics.registry import Metrics
 
 logger = test_suite_logger()
 
@@ -460,9 +461,13 @@ class BaseTestValidator(ABC):
         Returns:
             dict: metric values keyed by `Metrics` enum name
         """
+        # Local import: the registry reaches back into this module through
+        # `metadata.utils.importer`, so importing it at module level is a cycle.
+        from metadata.profiler.metrics.registry import Metrics as MetricsRegistry
+
         return {
             metric.name: self._run_results(metric, column, **kwargs),  # type: ignore
-            Metrics.rowCount.name: self.get_row_count(),  # type: ignore
+            MetricsRegistry.rowCount.name: self.get_row_count(),  # type: ignore
         }
 
     def _apply_row_threshold(self, violations: int | None, denominator: int | None) -> bool:
