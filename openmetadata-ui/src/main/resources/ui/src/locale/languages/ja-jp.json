@@ -3542,6 +3542,7 @@
     "classification-empty-state-description": "分類を使えば、一貫したラベル付けの仕組みを構築できます — 一度カテゴリを定義すれば、あらゆる場所でアセットにタグを付けられます。",
     "classification-empty-state-title": "タグでデータに秩序をもたらす",
     "classification-tag-assets-description": "検索、ポリシー、自動化に活用できます。",
+    "click-a-point-for-run-details": "ポイントをクリックすると実行の詳細が表示されます",
     "click-another-term-to-draw-connection": "別の用語をクリックして「{{term}}」から接続を描画します",
     "click-here-to-view-assets-on-explore": "（クリックして Explore ページでアセットを表示）",
     "click-text-to-view-details": "<0>{{text}}</0> をクリックして詳細を表示",

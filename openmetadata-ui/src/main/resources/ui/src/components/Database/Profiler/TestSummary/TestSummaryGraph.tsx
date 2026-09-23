@@ -13,7 +13,7 @@
 
 import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { useQueries } from '@tanstack/react-query';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import {
   KeyboardEvent,
   ReactElement,
@@ -45,6 +45,7 @@ import { ReactComponent as FilterOffIcon } from '../../../../assets/svg/ic-filte
 import {
   GREEN_3,
   GREEN_3_OPACITY,
+  RED_3,
 } from '../../../../constants/Color.constants';
 import {
   DEFAULT_CHART_OPACITY,
@@ -174,7 +175,11 @@ function TestSummaryGraph({
 }: Readonly<TestSummaryGraphProps>) {
   const { t } = useTranslation();
   const { axis, grid } = useChartColors();
-  const { setShowAILearningBanner } = useTestCaseStore();
+  const {
+    setShowAILearningBanner,
+    selectedRunTimestamp,
+    setSelectedRunTimestamp,
+  } = useTestCaseStore();
   const tooltipCloseTimer = useRef<ReturnType<typeof setTimeout>>();
   const [activeTooltip, setActiveTooltip] = useState<ActiveTooltip>();
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
@@ -321,6 +326,19 @@ function TestSummaryGraph({
     [useFreshnessFormat]
   );
 
+  // Nothing is selected until the user picks a run, so the card beside the
+  // chart opens on the newest one. A point's `name` is typed as the union of
+  // every field the tooltip reads, so it is narrowed back to its timestamp.
+  const latestPointName = chartData.data[chartData.data.length - 1]?.name;
+  const activeRunTimestamp =
+    selectedRunTimestamp ??
+    (typeof latestPointName === 'number' ? latestPointName : undefined);
+
+  const handleRunSelect = useCallback(
+    (timestamp: number) => setSelectedRunTimestamp(timestamp),
+    [setSelectedRunTimestamp]
+  );
+
   const renderStatusDot: LineProps['dot'] = (
     props
   ): ReactElement<SVGElement> => {
@@ -353,6 +371,7 @@ function TestSummaryGraph({
           role="img"
           tabIndex={0}
           onBlur={handleTooltipClose}
+          onClick={() => handleRunSelect(payload.name)}
           onFocus={() => handleTooltipOpen(cx, cy, payload)}
           onKeyDown={handleTooltipKeyDown}
           onMouseEnter={() => handleTooltipOpen(cx, cy, payload)}
@@ -408,96 +427,111 @@ function TestSummaryGraph({
   }
 
   return (
-    <ResponsiveContainer
-      className="tw:bg-primary custom-test-summary-graph"
-      id={`${testCaseName}_graph`}
-      minHeight={minHeight ?? 400}>
-      <ComposedChart data={chartData.data} margin={TEST_SUMMARY_CHART_MARGIN}>
-        <CartesianGrid stroke={grid} />
-        <XAxis
-          dataKey="name"
-          domain={['auto', 'auto']}
-          padding={{ left: 8, right: 8 }}
-          scale="time"
-          tick={{ fill: axis, fontSize: 12 }}
-          tickFormatter={formatTestSummaryXAxis}
-          type="number"
-        />
-        <YAxis
-          allowDataOverflow
-          domain={['min', 'max']}
-          padding={{ top: 8, bottom: 8 }}
-          tick={{ fill: axis, fontSize: 12 }}
-          tickFormatter={formatYAxis}
-          width={80}
-        />
-        <Tooltip
-          active={Boolean(activeTooltip)}
-          content={
-            <TestSummaryTooltipContent
-              activeTooltip={activeTooltip}
-              onMeasure={handleTooltipMeasure}
-              onMouseEnter={cancelTooltipClose}
-              onMouseLeave={handleTooltipClose}
+    <Box className="tw:bg-primary">
+      <ResponsiveContainer
+        className="custom-test-summary-graph"
+        id={`${testCaseName}_graph`}
+        minHeight={minHeight ?? 400}>
+        <ComposedChart data={chartData.data} margin={TEST_SUMMARY_CHART_MARGIN}>
+          <CartesianGrid stroke={grid} />
+          <XAxis
+            dataKey="name"
+            domain={['auto', 'auto']}
+            padding={{ left: 8, right: 8 }}
+            scale="time"
+            tick={{ fill: axis, fontSize: 12 }}
+            tickFormatter={formatTestSummaryXAxis}
+            type="number"
+          />
+          <YAxis
+            allowDataOverflow
+            domain={['min', 'max']}
+            padding={{ top: 8, bottom: 8 }}
+            tick={{ fill: axis, fontSize: 12 }}
+            tickFormatter={formatYAxis}
+            width={80}
+          />
+          <Tooltip
+            active={Boolean(activeTooltip)}
+            content={
+              <TestSummaryTooltipContent
+                activeTooltip={activeTooltip}
+                onMeasure={handleTooltipMeasure}
+                onMouseEnter={cancelTooltipClose}
+                onMouseLeave={handleTooltipClose}
+              />
+            }
+            cursor={false}
+            isAnimationActive={false}
+            // Recharts otherwise flips the tooltip after measuring its content,
+            // moving the incident link away from a pointer already over it.
+            // ComposedChart replaces Tooltip.coordinate with the live pointer;
+            // position keeps interactive content anchored to its triggering dot.
+            position={activeTooltip?.position}
+            wrapperStyle={{
+              pointerEvents: 'auto',
+              visibility: activeTooltip ? 'visible' : 'hidden',
+              // Recharts exposes the active wrapper before measuring its content.
+              // Seed its transform so the first frame does not render at the origin.
+              transform: activeTooltip
+                ? `translate(${activeTooltip.position.x}px, ${activeTooltip.position.y}px)`
+                : undefined,
+            }}
+          />
+          {referenceArea}
+          {!isUndefined(activeRunTimestamp) && (
+            <ReferenceLine
+              data-testid="run-selection-guide"
+              stroke={RED_3}
+              x={activeRunTimestamp}
             />
-          }
-          cursor={false}
-          isAnimationActive={false}
-          // Recharts otherwise flips the tooltip after measuring its content,
-          // moving the incident link away from a pointer already over it.
-          // ComposedChart replaces Tooltip.coordinate with the live pointer;
-          // position keeps interactive content anchored to its triggering dot.
-          position={activeTooltip?.position}
-          wrapperStyle={{
-            pointerEvents: 'auto',
-            visibility: activeTooltip ? 'visible' : 'hidden',
-            // Recharts exposes the active wrapper before measuring its content.
-            // Seed its transform so the first frame does not render at the origin.
-            transform: activeTooltip
-              ? `translate(${activeTooltip.position.x}px, ${activeTooltip.position.y}px)`
-              : undefined,
-          }}
-        />
-        {referenceArea}
-        <Legend
-          payload={customLegendPayLoad}
-          wrapperStyle={{ bottom: 2 }}
-          onClick={handleLegendClick}
-          onMouseEnter={handleLegendMouseEnter}
-          onMouseLeave={handleLegendMouseLeave}
-        />
-        <Area
-          connectNulls
-          activeDot={false}
-          dataKey="boundArea"
-          dot={false}
-          fill={GREEN_3_OPACITY}
-          stroke={GREEN_3}
-          strokeDasharray="4"
-          type="monotone"
-        />
-        {chartData?.information?.map((info) => (
-          <Line
+          )}
+          <Legend
+            payload={customLegendPayLoad}
+            wrapperStyle={{ bottom: 2 }}
+            onClick={handleLegendClick}
+            onMouseEnter={handleLegendMouseEnter}
+            onMouseLeave={handleLegendMouseLeave}
+          />
+          <Area
+            connectNulls
             activeDot={false}
-            dataKey={info.label}
-            dot={renderStatusDot}
-            hide={
-              activeKeys.length && info.label !== activeMouseHoverKey
-                ? !activeKeys.includes(info.label)
-                : false
-            }
-            key={info.label}
-            stroke={info.color}
-            strokeOpacity={
-              isEmpty(activeMouseHoverKey) || info.label === activeMouseHoverKey
-                ? DEFAULT_CHART_OPACITY
-                : HOVER_CHART_OPACITY
-            }
+            dataKey="boundArea"
+            dot={false}
+            fill={GREEN_3_OPACITY}
+            stroke={GREEN_3}
+            strokeDasharray="4"
             type="monotone"
           />
-        ))}
-      </ComposedChart>
-    </ResponsiveContainer>
+          {chartData?.information?.map((info) => (
+            <Line
+              activeDot={false}
+              dataKey={info.label}
+              dot={renderStatusDot}
+              hide={
+                activeKeys.length && info.label !== activeMouseHoverKey
+                  ? !activeKeys.includes(info.label)
+                  : false
+              }
+              key={info.label}
+              stroke={info.color}
+              strokeOpacity={
+                isEmpty(activeMouseHoverKey) ||
+                info.label === activeMouseHoverKey
+                  ? DEFAULT_CHART_OPACITY
+                  : HOVER_CHART_OPACITY
+              }
+              type="monotone"
+            />
+          ))}
+        </ComposedChart>
+      </ResponsiveContainer>
+      <div
+        className="tw:px-4 tw:pb-2 tw:text-right tw:text-xs tw:text-tertiary"
+        data-testid="run-selection-hint">
+        {t('message.click-a-point-for-run-details')}
+      </div>
+    </Box>
   );
 }
 

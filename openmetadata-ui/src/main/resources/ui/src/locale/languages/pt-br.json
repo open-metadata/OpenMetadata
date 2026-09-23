@@ -3542,6 +3542,7 @@
     "classification-empty-state-description": "As classificações permitem criar um sistema de rotulagem consistente — defina as categorias uma vez e marque ativos em todos os lugares.",
     "classification-empty-state-title": "Traga ordem aos seus dados com marcações",
     "classification-tag-assets-description": "Use-as para buscas, políticas e automações.",
+    "click-a-point-for-run-details": "Clique em um ponto para ver os detalhes da execução",
     "click-another-term-to-draw-connection": "Clique em outro termo para desenhar uma conexão a partir de “{{term}}”",
     "click-here-to-view-assets-on-explore": "(Clique para ver os ativos filtrados na página Explorar.)",
     "click-text-to-view-details": "Clique em <0>{{text}}</0> para ver detalhes.",

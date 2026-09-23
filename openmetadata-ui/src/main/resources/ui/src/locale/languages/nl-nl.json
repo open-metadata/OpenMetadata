@@ -3542,6 +3542,7 @@
     "classification-empty-state-description": "Met classificaties bouwt u een consistent labelsysteem — definieer categorieën één keer en label assets overal.",
     "classification-empty-state-title": "Breng orde in uw data met labels",
     "classification-tag-assets-description": "Gebruik ze voor zoeken, beleid en automatiseringen.",
+    "click-a-point-for-run-details": "Klik op een punt voor de uitvoeringsdetails",
     "click-another-term-to-draw-connection": "Klik op een andere term om een verbinding te tekenen vanaf ‘{{term}}’",
     "click-here-to-view-assets-on-explore": "(Klik om de gefilterde assets op de Verkennen-pagina te bekijken.)",
     "click-text-to-view-details": "Klik op <0>{{text}}</0> om details te bekijken.",

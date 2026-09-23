@@ -3542,6 +3542,7 @@
     "classification-empty-state-description": "Классификации позволяют выстроить единую систему меток: определите категории один раз и проставляйте теги на ресурсы повсюду.",
     "classification-empty-state-title": "Наведите порядок в данных с помощью тегов",
     "classification-tag-assets-description": "Используйте их для поиска, политик и автоматизаций.",
+    "click-a-point-for-run-details": "Нажмите на точку, чтобы увидеть детали запуска",
     "click-another-term-to-draw-connection": "Нажмите другой термин, чтобы провести связь от «{{term}}»",
     "click-here-to-view-assets-on-explore": "(Нажмите, чтобы просмотреть отфильтрованные объекты в каталоге.)",
     "click-text-to-view-details": "Нажмите <0>{{text}}</0>, чтобы просмотреть подробности.",

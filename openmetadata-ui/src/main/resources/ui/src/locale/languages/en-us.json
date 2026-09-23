@@ -3542,6 +3542,7 @@
     "classification-empty-state-description": "Classifications let you build a consistent labeling system — define categories once, and tag assets everywhere.",
     "classification-empty-state-title": "Bring order to your data with tags",
     "classification-tag-assets-description": "Use them for search, policies, and automations.",
+    "click-a-point-for-run-details": "Click a point for run details",
     "click-another-term-to-draw-connection": "Click another term to draw a connection from “{{term}}”",
     "click-here-to-view-assets-on-explore": "(Click to view the filtered assets on Explore page.)",
     "click-text-to-view-details": "Click <0>{{text}}</0> to view details.",

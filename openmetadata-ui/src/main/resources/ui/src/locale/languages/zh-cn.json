@@ -3542,6 +3542,7 @@
     "classification-empty-state-description": "分类可帮助您构建一致的标记体系——只需定义一次类别，即可随处为资产添加标签。",
     "classification-empty-state-title": "用标签让数据井然有序",
     "classification-tag-assets-description": "可用于搜索、策略和自动化。",
+    "click-a-point-for-run-details": "点击数据点查看运行详情",
     "click-another-term-to-draw-connection": "单击另一个术语以绘制从“{{term}}”开始的连接",
     "click-here-to-view-assets-on-explore": "(点击在探索页面查看筛选后的资产。)",
     "click-text-to-view-details": "点击<0>{{text}}</0>查看详情",

@@ -135,11 +135,16 @@ jest.mock('recharts', () => ({
       </div>
     );
   }),
-  ReferenceLine: jest.fn().mockImplementation(({ label, y }) => (
-    <div data-testid="reference-line" data-y={y}>
-      {label?.value}
-    </div>
-  )),
+  ReferenceLine: jest
+    .fn()
+    .mockImplementation(({ label, x, y, ...rest }) => (
+      <div
+        data-testid={rest['data-testid'] ?? 'reference-line'}
+        data-x={x}
+        data-y={y}>
+        {label?.value}
+      </div>
+    )),
   ResponsiveContainer: jest
     .fn()
     .mockImplementation(({ children, className, id }) => (
@@ -205,17 +210,22 @@ jest.mock(
       ))
 );
 const mockSetShowAILearningBanner = jest.fn();
+const mockSetSelectedRunTimestamp = jest.fn();
+let mockSelectedRunTimestamp: number | undefined;
 jest.mock(
   '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store',
   () => ({
     useTestCaseStore: jest.fn().mockImplementation(() => ({
       setShowAILearningBanner: mockSetShowAILearningBanner,
+      selectedRunTimestamp: mockSelectedRunTimestamp,
+      setSelectedRunTimestamp: mockSetSelectedRunTimestamp,
     })),
   })
 );
 
 describe('TestSummaryGraph', () => {
   beforeEach(() => {
+    mockSelectedRunTimestamp = undefined;
     mockPointCoordinate = { x: 320, y: 120 };
     jest.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
       bottom: 280,
@@ -378,6 +388,46 @@ describe('TestSummaryGraph', () => {
     );
 
     expect(screen.queryByTestId('reference-line')).not.toBeInTheDocument();
+  });
+
+  // The run-details card is a sibling of the chart, so the selection has to
+  // leave the chart to reach it.
+  it('should guide to the newest run until one is selected', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(screen.getByTestId('run-selection-guide')).toHaveAttribute(
+      'data-x',
+      String(mockProps.testCaseResults[0].timestamp)
+    );
+  });
+
+  it('should guide to the selected run once the store holds one', () => {
+    mockSelectedRunTimestamp = 1700000000000;
+
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(screen.getByTestId('run-selection-guide')).toHaveAttribute(
+      'data-x',
+      '1700000000000'
+    );
+  });
+
+  it('should publish the clicked run to the store', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    fireEvent.click(screen.getByTestId(POINT_TEST_ID));
+
+    expect(mockSetSelectedRunTimestamp).toHaveBeenCalledWith(
+      mockProps.testCaseResults[0].timestamp
+    );
+  });
+
+  it('should tell the user the points are clickable', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(screen.getByTestId('run-selection-hint')).toHaveTextContent(
+      'message.click-a-point-for-run-details'
+    );
   });
 
   it('should render incident areas when entity threads exist', () => {

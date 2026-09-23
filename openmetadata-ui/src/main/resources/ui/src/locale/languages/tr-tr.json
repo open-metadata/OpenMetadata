@@ -3542,6 +3542,7 @@
     "classification-empty-state-description": "Sınıflandırmalar tutarlı bir etiketleme sistemi oluşturmanızı sağlar — kategorileri bir kez tanımlayın, varlıkları her yerde etiketleyin.",
     "classification-empty-state-title": "Etiketlerle verilerinize düzen getirin",
     "classification-tag-assets-description": "Bunları arama, politikalar ve otomasyonlar için kullanın.",
+    "click-a-point-for-run-details": "Çalıştırma ayrıntıları için bir noktaya tıklayın",
     "click-another-term-to-draw-connection": "“{{term}}” teriminden bir bağlantı çizmek için başka bir terime tıklayın",
     "click-here-to-view-assets-on-explore": "(Filtrelenmiş varlıkları Keşfet sayfasında görüntülemek için tıklayın.)",
     "click-text-to-view-details": "Detayları görüntülemek için <0>{{text}}</0> tıklayın.",

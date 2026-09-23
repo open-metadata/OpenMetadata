@@ -3542,6 +3542,7 @@
     "classification-empty-state-description": "वर्गीकरणे तुम्हाला सुसंगत लेबलिंग प्रणाली तयार करू देतात — श्रेणी एकदाच परिभाषित करा, आणि सर्वत्र मालमत्तांना टॅग करा.",
     "classification-empty-state-title": "टॅगसह तुमच्या डेटामध्ये सुव्यवस्था आणा",
     "classification-tag-assets-description": "त्यांचा वापर शोध, धोरणे आणि स्वयंचलनांसाठी करा.",
+    "click-a-point-for-run-details": "रन तपशिलांसाठी एका बिंदूवर क्लिक करा",
     "click-another-term-to-draw-connection": "“{{term}}” पासून जोडणी काढण्यासाठी दुसऱ्या संज्ञेवर क्लिक करा",
     "click-here-to-view-assets-on-explore": "(फिल्टर केलेल्या ॲसेट्स एक्सप्लोर पृष्ठावर पाहण्यासाठी क्लिक करा.)",
     "click-text-to-view-details": "तपशील पाहण्यासाठी <0>{{text}}</0> क्लिक करा.",

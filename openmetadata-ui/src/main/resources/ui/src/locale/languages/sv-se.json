@@ -3542,6 +3542,7 @@
     "classification-empty-state-description": "Med klassificeringar bygger du ett konsekvent etikettsystem — definiera kategorier en gång och tagga tillgångar överallt.",
     "classification-empty-state-title": "Skapa ordning i dina data med taggar",
     "classification-tag-assets-description": "Använd dem för sökning, policyer och automatiseringar.",
+    "click-a-point-for-run-details": "Klicka på en punkt för körningsdetaljer",
     "click-another-term-to-draw-connection": "Klicka på en annan term för att rita en koppling från ”{{term}}”",
     "click-here-to-view-assets-on-explore": "(Klicka för att visa de filtrerade tillgångarna på sidan Utforska.)",
     "click-text-to-view-details": "Klicka på <0>{{text}}</0> för att visa detaljer.",

@@ -3542,6 +3542,7 @@
     "classification-empty-state-description": "分類可協助您建立一致的標記體系——只需定義一次類別，即可隨處為資產加上標籤。",
     "classification-empty-state-title": "用標籤讓資料井然有序",
     "classification-tag-assets-description": "可用於搜尋、政策與自動化。",
+    "click-a-point-for-run-details": "點擊資料點查看執行詳情",
     "click-another-term-to-draw-connection": "按一下另一個術語，從「{{term}}」繪製連線",
     "click-here-to-view-assets-on-explore": "（點擊以在探索頁面上檢視篩選後的資產。）",
     "click-text-to-view-details": "點擊 <0>{{text}}</0> 查看詳情。",
