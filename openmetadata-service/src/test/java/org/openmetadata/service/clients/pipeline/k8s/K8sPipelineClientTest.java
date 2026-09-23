@@ -1111,6 +1111,27 @@ class K8sPipelineClientTest {
   }
 
   @Test
+  void testGetServiceStatusRetriesThrottledPermissionProbe() throws Exception {
+    when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
+    when(listPodRequest.limit(1)).thenReturn(listPodRequest);
+    when(listPodRequest.execute()).thenReturn(new V1PodList());
+
+    when(batchApi.listNamespacedJob(eq(NAMESPACE))).thenReturn(listJobRequest);
+    when(listJobRequest.limit(1)).thenReturn(listJobRequest);
+    when(listJobRequest.execute()).thenReturn(new V1JobList());
+
+    when(coreApi.listNamespacedConfigMap(eq(NAMESPACE))).thenReturn(listConfigMapRequest);
+    when(listConfigMapRequest.limit(1)).thenReturn(listConfigMapRequest);
+    when(listConfigMapRequest.execute()).thenThrow(new ApiException(429, "too many requests"));
+
+    PipelineServiceClientResponse response = client.getServiceStatus();
+
+    // Throttling clears on its own, unlike the 403 an RBAC gap produces, so it stays retryable.
+    assertEquals(500, response.getCode());
+    verify(listConfigMapRequest, times(3)).execute();
+  }
+
+  @Test
   void testGetServiceStatusKeepsApiServerOutageRetryable() throws Exception {
     when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
     when(listPodRequest.limit(1)).thenReturn(listPodRequest);

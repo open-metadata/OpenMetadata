@@ -999,14 +999,19 @@ public class K8sPipelineClient extends PipelineServiceClient {
   }
 
   /**
-   * A 4xx from the API server is a standing RBAC or configuration problem that outlives a retry, so
-   * it keeps the API server's own code. Everything else stays on 500 for {@link
-   * #getServiceStatus()} to retry.
+   * A standing API error keeps the API server's own code; anything transient stays on 500 for
+   * {@link #getServiceStatus()} to retry.
    */
   private PipelineServiceClientResponse apiFailureStatus(ApiException e, String reason) {
-    return e.getCode() >= 400 && e.getCode() < 500
-        ? buildStatus(e.getCode(), reason)
-        : buildUnhealthyStatus(reason);
+    return isStandingApiError(e) ? buildStatus(e.getCode(), reason) : buildUnhealthyStatus(reason);
+  }
+
+  /**
+   * A 4xx is an RBAC or configuration problem that outlives a retry — except the ones {@link
+   * #isRetryableException} already treats as transient, such as 429 throttling.
+   */
+  private static boolean isStandingApiError(ApiException e) {
+    return e.getCode() >= 400 && e.getCode() < 500 && !isRetryableException(e);
   }
 
   @Override
