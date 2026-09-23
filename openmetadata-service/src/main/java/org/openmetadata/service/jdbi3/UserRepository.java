@@ -1662,6 +1662,15 @@ public class UserRepository extends EntityRepository<User> {
     // by-name reader pinned to a stale entry.
     List<EntityDAO.EntityIdFqnPair> tasksToInvalidate =
         daoCollection.taskDAO().listIdAndFqnByCreatorAndCategory(creatorId, category);
+    if (!tasksToInvalidate.isEmpty()) {
+      // Another bulk SQL delete that never reaches EntityRepository.cleanup, so name the rows here.
+      LOG.info(
+          "Deleting {} {} task(s) created by user {}: {}",
+          tasksToInvalidate.size(),
+          category,
+          entity.getFullyQualifiedName(),
+          tasksToInvalidate.stream().map(task -> task.id).toList());
+    }
     retry.executeRunnable(
         () -> daoCollection.taskDAO().deleteByCreatorAndCategory(creatorId, category));
     if (!tasksToInvalidate.isEmpty()) {

@@ -5084,6 +5084,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * would re-issue them.
    */
   protected final void cleanup(String deletedBy, T entityInterface) {
+    // Mirrors the "Created" log in createNewEntity. Without it a hard delete leaves no trace at
+    // all, so an entity that disappears can only be investigated by reproducing it.
+    LOG.info(
+        "Deleting {}:{}:{} by {}",
+        entityType,
+        entityInterface.getId(),
+        entityInterface.getFullyQualifiedName(),
+        deletedBy);
     flushInOneTransaction(() -> cleanupFlushBody(deletedBy, entityInterface));
     // Flowable uses a separate transaction. Cancelling only after this one commits prevents a
     // rolled-back entity delete from leaving a live entity without its workflow, and keeps the
@@ -7368,6 +7376,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
               .relationshipDAO()
               .findTo(entityId, entityType, Relationship.MENTIONED_IN.ordinal(), artifactType);
       for (EntityRelationshipRecord artifact : artifacts) {
+        // These rows go straight through the DAO, bypassing cleanup() and its delete log, so an
+        // artifact removed by cascade would otherwise vanish with no trace of what caused it.
+        LOG.info(
+            "Deleting {}:{} as an artifact about {}:{}",
+            artifactType,
+            artifact.getId(),
+            entityType,
+            entityId);
         daoCollection.relationshipDAO().deleteAll(artifact.getId(), artifactType);
         artifactDao.delete(artifact.getId());
       }
@@ -7398,6 +7414,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (!artifacts.isEmpty()) {
         List<UUID> artifactIds =
             artifacts.stream().map(artifact -> UUID.fromString(artifact.getToId())).toList();
+        LOG.info(
+            "Deleting {} {}(s) as artifacts about {} {}(s): {}",
+            artifactIds.size(),
+            artifactType,
+            entityIds.size(),
+            entityType,
+            artifactIds);
         daoCollection.relationshipDAO().batchDeleteRelationships(artifactIds, artifactType);
         artifactDao.deleteByIds(artifactIds);
       }
