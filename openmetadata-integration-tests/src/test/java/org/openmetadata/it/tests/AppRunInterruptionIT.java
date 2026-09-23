@@ -4,15 +4,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.rdf.RdfProjectionStateResolver.RDF_INDEX_APP;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
@@ -21,6 +24,7 @@ import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AppRunInterruption;
+import org.openmetadata.service.apps.bundles.rdf.distributed.DistributedRdfIndexCoordinator;
 import org.openmetadata.service.apps.bundles.rdf.distributed.RdfAbandonedRunRecorder;
 import org.openmetadata.service.apps.bundles.rdf.distributed.RdfIndexJob;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
@@ -28,8 +32,8 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
  * A run that ends without reporting its own status must still say why, on MySQL and Postgres. Every
- * record here belongs to an app name no real app uses, so the concurrent tests sharing this
- * database never see them.
+ * record here belongs to an app name no real app uses, or is an RDF run dated 1970 so it is never
+ * the latest one, so the concurrent tests sharing this database never see them.
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class AppRunInterruptionIT {
@@ -122,6 +126,65 @@ public class AppRunInterruptionIT {
     assertNull(recorded.getSuccessContext());
   }
 
+  @Test
+  void recoverySweepGivesAnRdfRunTheOutcomeOfTheJobOtherServersFinished() {
+    final long runStarted = ThreadLocalRandom.current().nextLong(1_000_000L, 1_000_000_000L);
+    insert(
+        run(runStarted, AppRunRecord.Status.FAILED)
+            .withAppName(RDF_INDEX_APP)
+            .withEndTime(runStarted + 1_000L)
+            .withFailureContext(
+                new FailureContext()
+                    .withFailure(new IndexingError().withMessage("Still running at startup"))
+                    .withAdditionalProperty(AppRunInterruption.INTERRUPTED, true)));
+    final CollectionDAO daos = Entity.getCollectionDAO();
+    final String jobId = UUID.randomUUID().toString();
+    final long now = System.currentTimeMillis();
+    daos.rdfIndexJobDAO()
+        .insert(
+            jobId,
+            IndexJobStatus.COMPLETED.name(),
+            JsonUtils.pojoToJson(new EventPublisherJob().withTimestamp(runStarted)),
+            TABLES,
+            TABLES,
+            TABLES,
+            0,
+            "{}",
+            RDF_INDEX_APP,
+            now,
+            now);
+    daos.rdfIndexJobDAO()
+        .update(
+            jobId,
+            IndexJobStatus.COMPLETED.name(),
+            TABLES,
+            TABLES,
+            0,
+            "{}",
+            runStarted,
+            runStarted + 5_000L,
+            now,
+            null);
+    try {
+      new DistributedRdfIndexCoordinator(daos).performStartupRecovery();
+
+      final AppRunRecord recorded = read(RDF_INDEX_APP, runStarted);
+      assertEquals(AppRunRecord.Status.SUCCESS, recorded.getStatus());
+      assertEquals(runStarted + 5_000L, recorded.getEndTime());
+      assertNull(recorded.getFailureContext());
+      assertEquals(
+          TABLES, recorded.getSuccessContext().getStats().getJobStats().getSuccessRecords());
+    } finally {
+      TestSuiteBootstrap.getJdbi()
+          .useHandle(
+              handle ->
+                  handle
+                      .createUpdate("DELETE FROM rdf_index_job WHERE id = :jobId")
+                      .bind("jobId", jobId)
+                      .execute());
+    }
+  }
+
   private AppRunRecord run(final long timestamp, final AppRunRecord.Status status) {
     return new AppRunRecord()
         .withAppId(appId)
@@ -136,9 +199,13 @@ public class AppRunInterruptionIT {
   }
 
   private AppRunRecord read(final long timestamp) {
+    return read(appName, timestamp);
+  }
+
+  private AppRunRecord read(final String name, final long timestamp) {
     final List<String> found =
-        runs.listAppExtensionInWindowByName(appName, 1, 0, timestamp, timestamp + 1, STATUS);
-    assertEquals(1, found.size(), "run at " + timestamp);
+        runs.listAppExtensionInWindowByName(name, 1, 0, timestamp, timestamp + 1, STATUS);
+    assertEquals(1, found.size(), name + " run at " + timestamp);
     return JsonUtils.readValue(found.getFirst(), AppRunRecord.class);
   }
 

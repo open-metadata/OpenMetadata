@@ -34,14 +34,16 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
  * Records how a distributed RDF run ended when the server coordinating it stopped before writing
  * the run record. Other servers finish its partitions and the job still reaches a terminal state,
  * but only the coordinator records the run, so the run would otherwise keep whatever status it had
- * when that server stopped. The run record itself shows this: a restarting server marks it
- * interrupted, and a coordinator that stopped without a restart leaves it unfinished.
+ * when that server stopped. The run record shows which runs never got an outcome: a restarting
+ * server marks them interrupted, and a coordinator that stopped without a restart leaves them
+ * unfinished. Neither proves the coordinator is gone, because a server can start while the
+ * coordinator is still promoting or compacting, so only time since the job ended does.
  */
 @Slf4j
 public final class RdfAbandonedRunRecorder {
   /**
    * Longer than anything a live coordinator still does after its job finishes (promotion, and
-   * compaction's 10-minute wait), so a run still unfinished after it has no coordinator left.
+   * compaction's 10-minute wait), so a run without an outcome by then has no coordinator left.
    */
   static final long COORDINATOR_GRACE_MS = TimeUnit.HOURS.toMillis(1);
 
@@ -100,13 +102,13 @@ public final class RdfAbandonedRunRecorder {
   }
 
   /**
-   * Whether the run never got its outcome: marked interrupted, or still unfinished well after its
-   * job ended. A run its coordinator recorded, or one this recorder wrote, is neither.
+   * Whether the run never got its outcome, marked interrupted or still unfinished, and its job
+   * ended long enough ago that no live coordinator can still be writing it. A run its coordinator
+   * recorded, or one this recorder wrote, is neither.
    */
   static boolean isLeftUnfinished(final AppRunRecord run, final RdfIndexJob job, final long now) {
-    return AppRunInterruption.isInterrupted(run)
-        || (!FINISHED.contains(run.getStatus())
-            && now - job.getCompletedAt() > COORDINATOR_GRACE_MS);
+    return (AppRunInterruption.isInterrupted(run) || !FINISHED.contains(run.getStatus()))
+        && now - job.getCompletedAt() > COORDINATOR_GRACE_MS;
   }
 
   /** The run record as its finished job leaves it; any interruption failure is dropped. */

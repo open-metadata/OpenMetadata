@@ -47,7 +47,17 @@ class RdfAbandonedRunRecorderTest {
         isLeftUnfinished(
             interruptedRun(RESTARTED_AFTER_COMPLETION),
             job(IndexJobStatus.COMPLETED),
-            RESTARTED_AFTER_COMPLETION));
+            JOB_COMPLETED + COORDINATOR_GRACE_MS + 1));
+  }
+
+  @Test
+  void runMarkedInterruptedWhileItsCoordinatorMayStillBePromotingIsLeftToIt() {
+    final RdfIndexJob job = job(IndexJobStatus.COMPLETED);
+    job.getJobConfiguration().setRdfBuildDataset("openmetadata_b");
+
+    assertFalse(
+        isLeftUnfinished(
+            interruptedRun(RESTARTED_AFTER_COMPLETION), job, RESTARTED_AFTER_COMPLETION + 60_000L));
   }
 
   @Test
