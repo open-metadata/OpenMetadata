@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.events.scheduled;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mockStatic;
@@ -58,6 +59,13 @@ class AlertJobsTest {
 
       jobs.verify(() -> AlertJobs.converge(alertId), never());
     }
+  }
+
+  // Jobs stored by earlier releases live under these names, and must still be found.
+  @Test
+  void jobsLiveWhereEarlierReleasesStoredThem() {
+    assertEquals("OMAlertJobGroup", AlertJobs.JOB_GROUP);
+    assertEquals("OMAlertJobGroup", AlertJobs.TRIGGER_GROUP);
   }
 
   // With no unit of work open, the row is already committed.

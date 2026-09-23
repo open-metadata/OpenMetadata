@@ -46,6 +46,27 @@ class AlertJobsOwnershipTest {
           "\\.(scheduleJob|deleteJob|unscheduleJob|triggerJob|rescheduleJob|addJob|pauseJob"
               + "|resumeJob|pauseTrigger|resumeTrigger)\\(|(?<!factory)\\.getScheduler\\(\\)");
 
+  private static final List<String> READERS =
+      List.of("events/scheduled/AlertJobs.java", "events/scheduled/AlertJobView.java");
+  private static final Pattern NAMES_THE_ALERT_GROUP =
+      Pattern.compile("AlertJobs\\.(JOB_GROUP|TRIGGER_GROUP)|\"OMAlertJobGroup\"");
+
+  @Test
+  void onlyAlertJobsAndItsViewNameTheAlertGroup() throws IOException {
+    try (Stream<Path> sources = Files.walk(MAIN_SOURCES)) {
+      List<String> offenders =
+          sources
+              .filter(path -> path.toString().endsWith(".java"))
+              .map(path -> MAIN_SOURCES.relativize(path).toString().replace('\\', '/'))
+              .filter(relative -> !READERS.contains(relative))
+              .filter(relative -> matches(NAMES_THE_ALERT_GROUP, relative))
+              .sorted()
+              .toList();
+
+      assertEquals(List.of(), offenders, "Reach alert jobs through AlertJobs or AlertJobView");
+    }
+  }
+
   @Test
   void onlyAlertJobsWritesAlertJobs() throws IOException {
     try (Stream<Path> sources = Files.walk(MAIN_SOURCES)) {
@@ -55,7 +76,7 @@ class AlertJobsOwnershipTest {
               .map(path -> MAIN_SOURCES.relativize(path).toString().replace('\\', '/'))
               .filter(relative -> SCANNED.stream().anyMatch(relative::startsWith))
               .filter(relative -> !WRITERS.contains(relative))
-              .filter(AlertJobsOwnershipTest::writesAJob)
+              .filter(relative -> matches(WRITES_A_JOB, relative))
               .sorted()
               .toList();
 
@@ -63,9 +84,9 @@ class AlertJobsOwnershipTest {
     }
   }
 
-  private static boolean writesAJob(String relative) {
+  private static boolean matches(Pattern pattern, String relative) {
     try {
-      return WRITES_A_JOB.matcher(Files.readString(MAIN_SOURCES.resolve(relative))).find();
+      return pattern.matcher(Files.readString(MAIN_SOURCES.resolve(relative))).find();
     } catch (IOException e) {
       throw new IllegalStateException(e);
     }

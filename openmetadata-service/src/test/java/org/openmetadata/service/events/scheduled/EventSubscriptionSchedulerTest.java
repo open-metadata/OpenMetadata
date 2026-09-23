@@ -14,7 +14,6 @@
 package org.openmetadata.service.events.scheduled;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.dropwizard.db.DataSourceFactory;
@@ -75,32 +74,6 @@ class EventSubscriptionSchedulerTest {
         quartz.stringPropertyNames().stream()
             .noneMatch(name -> name.startsWith("org.quartz.dataSource.")),
         "the pool is the server's own, so Quartz is given no data source of its own to build");
-  }
-
-  @Test
-  @DisplayName("Scheduler should use ALERT_JOB_GROUP for job grouping")
-  void testAlertJobGroupConstant() {
-    assertEquals(
-        "OMAlertJobGroup",
-        EventSubscriptionScheduler.ALERT_JOB_GROUP,
-        "Job group should be OMAlertJobGroup");
-  }
-
-  @Test
-  @DisplayName("Scheduler should use ALERT_TRIGGER_GROUP for trigger grouping")
-  void testAlertTriggerGroupConstant() {
-    assertEquals(
-        "OMAlertJobGroup",
-        EventSubscriptionScheduler.ALERT_TRIGGER_GROUP,
-        "Trigger group should be OMAlertJobGroup");
-  }
-
-  @Test
-  @DisplayName("Scheduler constants should be defined")
-  void testSchedulerConstantsExist() {
-    assertNotNull(EventSubscriptionScheduler.ALERT_JOB_GROUP, "ALERT_JOB_GROUP should be defined");
-    assertNotNull(
-        EventSubscriptionScheduler.ALERT_TRIGGER_GROUP, "ALERT_TRIGGER_GROUP should be defined");
   }
 
   @Test

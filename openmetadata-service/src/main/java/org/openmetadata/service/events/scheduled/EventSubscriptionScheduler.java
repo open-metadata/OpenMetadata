@@ -16,7 +16,6 @@ package org.openmetadata.service.events.scheduled;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.dropwizard.db.DataSourceFactory;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -27,7 +26,6 @@ import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
@@ -47,7 +45,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.apps.bundles.changeEvent.ServerStopping;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.events.subscription.AlertUtil;
@@ -66,7 +63,6 @@ import org.openmetadata.service.util.DIContainer;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.Job;
 import org.quartz.JobDetail;
-import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.Trigger;
@@ -77,13 +73,11 @@ import org.quartz.utils.DBConnectionManager;
 
 @Slf4j
 public class EventSubscriptionScheduler {
-  public static final String ALERT_JOB_GROUP = AlertJobs.JOB_GROUP;
-  public static final String ALERT_TRIGGER_GROUP = AlertJobs.TRIGGER_GROUP;
   private static EventSubscriptionScheduler instance;
   private static volatile boolean initialized = false;
-  @Getter private final Scheduler alertsScheduler;
+  private final Scheduler alertsScheduler;
   private final AlertReconciler reconciler;
-  private static final String SCHEDULER_NAME = "OMEventSubScheduler";
+  public static final String SCHEDULER_NAME = "OMEventSubScheduler";
   private static final int SCHEDULER_THREAD_COUNT = 10;
   // Quartz cannot acquire a trigger that is later than this, and a tick may hold a thread for a
   // time budget plus one slow event. Ticks are polls, so misfire handling protects nothing here.
@@ -203,48 +197,6 @@ public class EventSubscriptionScheduler {
     }
   }
 
-  /**
-   * @deprecated the schedule is reconciled from the committed row, so {@code reinstall} no longer
-   *     changes anything. Use {@link #addSubscriptionPublisher(EventSubscription)}.
-   */
-  @Deprecated(forRemoval = true)
-  public void addSubscriptionPublisher(EventSubscription eventSubscription, boolean reinstall)
-      throws SchedulerException,
-          ClassNotFoundException,
-          NoSuchMethodException,
-          InvocationTargetException,
-          InstantiationException,
-          IllegalAccessException {
-    addSubscriptionPublisher(eventSubscription);
-  }
-
-  public void addSubscriptionPublisher(EventSubscription eventSubscription)
-      throws SchedulerException,
-          ClassNotFoundException,
-          NoSuchMethodException,
-          InvocationTargetException,
-          InstantiationException,
-          IllegalAccessException {
-    requireConsumerClass(eventSubscription);
-    AlertJobs.converge(eventSubscription.getId());
-  }
-
-  /**
-   * Brings an alert's job in step with its stored row, from any save path. Saving must never fail
-   * because of scheduling: when the scheduler is not running, for example during a migration, this
-   * does nothing, and when the call fails the reconciler repairs the job.
-   */
-  public static void ensureScheduled(EventSubscription alert) {
-    if (initialized) {
-      try {
-        instance.addSubscriptionPublisher(alert);
-      } catch (SchedulerException | ReflectiveOperationException | RuntimeException e) {
-        LOG.warn(
-            "Alert {} saved but not scheduled; the reconciler will repair it", alert.getId(), e);
-      }
-    }
-  }
-
   /** How one alert is scheduled right now, so "why is it not firing" is one request. */
   public AlertSchedulingInfo getSchedulingInfo(UUID alertId) throws SchedulerException {
     EventSubscription alert = storedAlert(alertId);
@@ -276,49 +228,8 @@ public class EventSubscriptionScheduler {
     reconciler.reconcile();
   }
 
-  public boolean isSubscriptionRegistered(EventSubscription eventSubscription) {
-    try {
-      return AlertJobs.view().exists(eventSubscription.getId());
-    } catch (SchedulerException e) {
-      LOG.error("Failed to check if subscription is registered: {}", eventSubscription.getId(), e);
-      return false;
-    }
-  }
-
-  // A save naming a consumer this server cannot load fails here, not at the first tick.
-  private static void requireConsumerClass(EventSubscription alert) throws ClassNotFoundException {
-    if (alert.getClassName() != null) {
-      Class.forName(alert.getClassName()).asSubclass(AbstractEventConsumer.class);
-    }
-  }
-
   private SubscriptionStatus getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status status) {
     return new SubscriptionStatus().withStatus(status).withTimestamp(System.currentTimeMillis());
-  }
-
-  @SneakyThrows
-  public void updateEventSubscription(EventSubscription eventSubscription) {
-    addSubscriptionPublisher(eventSubscription);
-  }
-
-  /**
-   * The repository retires an alert's job once its row is deleted; this only converges once more.
-   */
-  public void deleteEventSubscriptionPublisher(EventSubscription deletedEntity)
-      throws SchedulerException {
-    AlertJobs.convergeAfterCommit(deletedEntity.getId());
-  }
-
-  public void deleteSuccessfulAndFailedEventsRecordByAlert(UUID id) {
-    Entity.getCollectionDAO()
-        .eventSubscriptionDAO()
-        .deleteSuccessfulChangeEventBySubscriptionId(id.toString());
-
-    Entity.getCollectionDAO()
-        .eventSubscriptionDAO()
-        .deleteFailedRecordsBySubscriptionId(id.toString());
-
-    Entity.getCollectionDAO().eventSubscriptionDAO().deleteAlertMetrics(id.toString());
   }
 
   public SubscriptionStatus getStatusForEventSubscription(UUID subscriptionId, UUID destinationId) {
@@ -633,14 +544,6 @@ public class EventSubscriptionScheduler {
 
   public boolean doesRecordExist(UUID id) {
     return Entity.getCollectionDAO().changeEventDAO().recordExists(id.toString()) > 0;
-  }
-
-  public static JobKey getJobKey(EventSubscription eventSubscription) {
-    return getJobKey(eventSubscription.getId());
-  }
-
-  private static JobKey getJobKey(UUID subscriptionId) {
-    return AlertJobs.jobKey(subscriptionId);
   }
 
   /**

@@ -418,7 +418,7 @@ class AlertStateIT {
   }
 
   private static JobKey jobKey(EventSubscription alert) {
-    return new JobKey(alert.getId().toString(), EventSubscriptionScheduler.ALERT_JOB_GROUP);
+    return new JobKey(alert.getId().toString(), AlertJobs.JOB_GROUP);
   }
 
   private static String position(EventSubscription alert) {
@@ -430,7 +430,7 @@ class AlertStateIT {
   }
 
   private static Scheduler scheduler() {
-    return EventSubscriptionScheduler.getInstance().getAlertsScheduler();
+    return AlertFixtures.scheduler();
   }
 
   private static EventSubscriptionDAO dao() {
