@@ -35,10 +35,6 @@ public interface Channel {
     return Optional.empty();
   }
 
-  default boolean carriesFiles() {
-    return false;
-  }
-
   /**
    * A renderer of its own for the caller, because one may read what it needs when it is built, as
    * the email renderer reads its envelope. Empty for a channel that sends the event as it is.
