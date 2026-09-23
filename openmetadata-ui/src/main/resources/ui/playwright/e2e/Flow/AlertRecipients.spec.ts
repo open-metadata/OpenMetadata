@@ -15,16 +15,29 @@ import { AlertDetails } from '../../constant/alert.interface';
 import { expect, test } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  addAlertSource,
   generateAlertName,
   inputBasicAlertInformation,
   visitAlertDetailsPage,
   visitEditAlertPage,
+  waitForCapabilitiesOf,
 } from '../../utils/alert';
 import { visitNotificationAlertPage } from '../../utils/notificationAlert';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-// The recipient categories the server says each selection reaches, in the order the form lists them.
+// Recipient categories inside the platform; the form names each by its value.
+const INSIDE_THE_PLATFORM = [
+  'Admins',
+  'Assignees',
+  'Followers',
+  'Mentions',
+  'Owners',
+  'Teams',
+  'Users',
+];
+
+// What the server says each selection reaches.
 const OFFERED: Array<{ sources: string[]; recipients: string[] }> = [
   { sources: ['task'], recipients: ['Assignees', 'Mentions', 'Owners'] },
   { sources: ['conversation'], recipients: ['Mentions', 'Owners'] },
@@ -44,37 +57,17 @@ const DISPLAY_NAMES: Record<string, string> = {
   table: 'Table',
 };
 
-const addSource = async (page: Page, sourceName: string) => {
-  const capabilities = page.waitForResponse(
-    '/api/v1/events/subscriptions/capabilities'
-  );
-  await page.getByTestId('source-select').getByRole('combobox').click();
-  await page.getByRole('listbox').getByTestId(`${sourceName}-option`).click();
-  await capabilities;
-  await page.keyboard.press('Escape');
-};
-
-// The options between the "Internal" and "External" headers of the first destination.
-const offeredInsideThePlatform = async (page: Page) => {
+// Opens the first destination's category list and returns it.
+const openRecipientList = async (page: Page) => {
   const input = page
     .getByTestId('destination-category-select-0')
     .getByRole('combobox');
-  if ((await input.getAttribute('aria-expanded')) !== 'true') {
-    await input.fill('');
-    await input.press('ArrowDown');
-  }
+  await input.fill('');
+  await input.press('ArrowDown');
+  await expect(input).toHaveAttribute('aria-expanded', 'true');
   const listboxId = await input.getAttribute('aria-controls');
-  const names = await page
-    .locator(`[role="listbox"][id="${listboxId}"]`)
-    .getByRole('option')
-    .allTextContents();
-  await input.press('Escape');
-  const trimmed = names.map((name) => name.trim());
 
-  return trimmed.slice(
-    trimmed.indexOf('Internal') + 1,
-    trimmed.indexOf('External')
-  );
+  return page.locator(`[role="listbox"][id="${listboxId}"]`);
 };
 
 test.describe('Recipients inside the platform', () => {
@@ -82,20 +75,33 @@ test.describe('Recipients inside the platform', () => {
     test(`follow what ${sources.join(' and ')} reach`, async ({ page }) => {
       const [first, ...others] = sources;
       await visitNotificationAlertPage(page);
+      const firstAnswered = waitForCapabilitiesOf(page, [first]);
       await inputBasicAlertInformation({
         page,
         name: generateAlertName(),
         sourceName: first,
         sourceDisplayName: DISPLAY_NAMES[first],
       });
+      await firstAnswered;
+      const chosen = [first];
       for (const source of others) {
-        await addSource(page, source);
+        await addAlertSource(page, source, chosen);
+        chosen.push(source);
       }
       await page.getByTestId('add-destination-button').click();
+      const list = await openRecipientList(page);
 
-      await expect
-        .poll(() => offeredInsideThePlatform(page))
-        .toEqual(recipients);
+      for (const category of INSIDE_THE_PLATFORM) {
+        const option = list.getByRole('option', {
+          exact: true,
+          name: category,
+        });
+        if (recipients.includes(category)) {
+          await expect(option).toBeVisible();
+        } else {
+          await expect(option).toHaveCount(0);
+        }
+      }
     });
   }
 

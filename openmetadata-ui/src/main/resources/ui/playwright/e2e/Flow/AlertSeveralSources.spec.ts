@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Page } from '@playwright/test';
 import { DataContract } from '../../../src/generated/entity/data/dataContract';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  addAlertSource,
   addOwnerFilter,
   deleteAlert,
   generateAlertName,
@@ -29,20 +29,11 @@ import {
   visitNotificationAlertPage,
 } from '../../utils/notificationAlert';
 import { visitObservabilityAlertPage } from '../../utils/observabilityAlert';
+import { waitForSearchIndexed } from '../../utils/polling';
 
 const owner = new UserClass();
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
-
-const addSource = async (page: Page, sourceName: string) => {
-  const capabilities = page.waitForResponse(
-    '/api/v1/events/subscriptions/capabilities'
-  );
-  await page.getByTestId('source-select').getByRole('combobox').click();
-  await page.getByRole('listbox').getByTestId(`${sourceName}-option`).click();
-  await capabilities;
-  await page.keyboard.press('Escape');
-};
 
 test.beforeAll(async ({ browser }) => {
   const { afterAction, apiContext } = await performAdminLogin(browser);
@@ -69,7 +60,7 @@ test.describe('Alerts with several sources', () => {
       sourceName: 'table',
       sourceDisplayName: 'Table',
     });
-    await addSource(page, 'dashboard');
+    await addAlertSource(page, 'dashboard', ['table']);
 
     await test.step('A source of another kind cannot join, and says why', async () => {
       const input = page.getByTestId('source-select').getByRole('combobox');
@@ -81,6 +72,10 @@ test.describe('Alerts with several sources', () => {
 
       await expect(conversation).toHaveAttribute('aria-disabled', 'true');
       await expect(conversation).toContainText('different kinds');
+      // Sources are listed under the kind they belong to.
+      await expect(
+        page.getByRole('listbox').getByTestId('header-activity-option')
+      ).toBeVisible();
 
       await input.fill('');
       await page.keyboard.press('Escape');
@@ -123,7 +118,7 @@ test.describe('Alerts with several sources', () => {
       sourceDisplayName: 'Table',
       createButtonId: 'create-observability',
     });
-    await addSource(page, 'topic');
+    await addAlertSource(page, 'topic', ['table']);
 
     await page.click('[data-testid="add-trigger"]');
     const capabilities = page.waitForResponse(
@@ -157,6 +152,12 @@ test.describe('Alerts with several sources', () => {
     });
     expect(created.ok()).toBeTruthy();
     const contract: DataContract = await created.json();
+    // Contract names are read from the database; table names from the search index.
+    await waitForSearchIndexed(
+      apiContext,
+      table.entityResponseData.fullyQualifiedName,
+      'table'
+    );
 
     try {
       await visitObservabilityAlertPage(page);
@@ -167,7 +168,7 @@ test.describe('Alerts with several sources', () => {
         sourceDisplayName: 'Table',
         createButtonId: 'create-observability',
       });
-      await addSource(page, 'dataContract');
+      await addAlertSource(page, 'dataContract', ['table']);
 
       await page.getByTestId('add-filters').click();
       await page.getByTestId('filter-select-0').click();
@@ -178,20 +179,17 @@ test.describe('Alerts with several sources', () => {
 
       const names = page.getByTestId('fqn-list-select').getByRole('combobox');
       const found = page.locator('.ant-select-dropdown:visible');
+      await names.click();
+      await names.fill(tableName);
 
-      // Both are found by one search; the search index may take a moment to hold them.
-      await expect(async () => {
-        await names.click();
-        await names.fill(tableName);
-        await expect(
-          found.getByTitle(table.entityResponseData.fullyQualifiedName ?? '', {
-            exact: true,
-          })
-        ).toBeVisible({ timeout: 3_000 });
-        await expect(
-          found.getByTitle(contract.fullyQualifiedName ?? '', { exact: true })
-        ).toBeVisible({ timeout: 3_000 });
-      }).toPass({ timeout: 60_000 });
+      await expect(
+        found.getByTitle(table.entityResponseData.fullyQualifiedName ?? '', {
+          exact: true,
+        })
+      ).toBeVisible();
+      await expect(
+        found.getByTitle(contract.fullyQualifiedName ?? '', { exact: true })
+      ).toBeVisible();
     } finally {
       await apiContext.delete(
         `/api/v1/dataContracts/${contract.id}?hardDelete=true&recursive=true`
