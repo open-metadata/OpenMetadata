@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import isEmpty from 'lodash/isEmpty';
 import isUndefined from 'lodash/isUndefined';
 import omitBy from 'lodash/omitBy';
 import round from 'lodash/round';
@@ -207,6 +208,45 @@ export const getThresholdReference = (
   return isUndefined(latestResult?.maxBound)
     ? undefined
     : { y: latestResult.maxBound, labelKey: 'label.learned-baseline' };
+};
+
+export const ABORTED_PLACEMENT_KEY = 'abortedValue';
+export const QUEUED_PLACEMENT_KEY = 'queuedValue';
+
+/**
+ * A run that produced no value carries no key for any series, so recharts drew
+ * nothing at all for it and the run was simply missing from the chart. Aborted
+ * runs get pinned to the lowest value on the plot and queued runs to the
+ * expectation line, both under their own keys so neither joins the line path.
+ */
+export const applyStatusPlacements = (
+  data: TestCaseChartDataType['data'],
+  seriesLabels: string[],
+  thresholdY?: number
+): TestCaseChartDataType['data'] => {
+  const plotted = data.flatMap((point) =>
+    seriesLabels
+      .map((label) => point[label])
+      .filter((value): value is number => typeof value === 'number')
+  );
+
+  if (isEmpty(plotted) && isUndefined(thresholdY)) {
+    return data;
+  }
+
+  const baseline = isEmpty(plotted) ? thresholdY : Math.min(...plotted);
+
+  return data.map((point) => {
+    if (point.status === TestCaseStatus.Aborted) {
+      return { ...point, [ABORTED_PLACEMENT_KEY]: baseline };
+    }
+
+    if (point.status === TestCaseStatus.Queued) {
+      return { ...point, [QUEUED_PLACEMENT_KEY]: thresholdY ?? baseline };
+    }
+
+    return point;
+  });
 };
 
 export const getStatusDotColor = (status: TestCaseStatus): string => {

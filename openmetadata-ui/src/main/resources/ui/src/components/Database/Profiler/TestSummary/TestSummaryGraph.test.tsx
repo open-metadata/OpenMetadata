@@ -135,16 +135,14 @@ jest.mock('recharts', () => ({
       </div>
     );
   }),
-  ReferenceLine: jest
-    .fn()
-    .mockImplementation(({ label, x, y, ...rest }) => (
-      <div
-        data-testid={rest['data-testid'] ?? 'reference-line'}
-        data-x={x}
-        data-y={y}>
-        {label?.value}
-      </div>
-    )),
+  ReferenceLine: jest.fn().mockImplementation(({ label, x, y, ...rest }) => (
+    <div
+      data-testid={rest['data-testid'] ?? 'reference-line'}
+      data-x={x}
+      data-y={y}>
+      {label?.value}
+    </div>
+  )),
   ResponsiveContainer: jest
     .fn()
     .mockImplementation(({ children, className, id }) => (

@@ -61,14 +61,17 @@ import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentMana
 import { getTaskById } from '../../../../rest/tasksAPI';
 import { updateActiveChartFilter } from '../../../../utils/ChartUtils';
 import {
-  formatTestSummaryYAxis,
+  ABORTED_PLACEMENT_KEY,
+  applyStatusPlacements,
   formatTestSummaryXAxis,
+  formatTestSummaryYAxis,
   getStatusDotColor,
-  getThresholdReference,
   getTestSummaryTooltipPosition,
+  getThresholdReference,
   isSameTooltipPosition,
   isTestSummaryTooltipBoundary,
   prepareChartData,
+  QUEUED_PLACEMENT_KEY,
   TooltipBoundary,
   TooltipSize,
 } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
@@ -384,13 +387,29 @@ function TestSummaryGraph({
   // A ReferenceLine with no `y` draws nothing, so the expectation line was
   // absent for every test: the parameter name was passed as its label and the
   // value it should sit at was never supplied.
+  const thresholdReference = useMemo(
+    () =>
+      getThresholdReference(
+        testCaseParameterValue ?? [],
+        // Dimension results carry no learned bound, so the fallback simply
+        // finds nothing for them.
+        testCaseResults[0] as Pick<TestCaseResult, 'maxBound'> | undefined
+      ),
+    [testCaseParameterValue, testCaseResults]
+  );
+
+  const plottedData = useMemo(
+    () =>
+      applyStatusPlacements(
+        chartData.data,
+        chartData.information.map((info) => info.label),
+        thresholdReference?.y
+      ),
+    [chartData, thresholdReference]
+  );
+
   const referenceArea = useMemo(() => {
-    const reference = getThresholdReference(
-      testCaseParameterValue ?? [],
-      // Dimension results carry no learned bound, so the fallback simply
-      // finds nothing for them.
-      testCaseResults[0] as Pick<TestCaseResult, 'maxBound'> | undefined
-    );
+    const reference = thresholdReference;
 
     if (!reference) {
       return <></>;
@@ -409,7 +428,7 @@ function TestSummaryGraph({
         y={reference.y}
       />
     );
-  }, [testCaseParameterValue, testCaseResults, axis, t]);
+  }, [thresholdReference, axis, t]);
 
   if (isEmpty(testCaseResults)) {
     return (
@@ -432,7 +451,7 @@ function TestSummaryGraph({
         className="custom-test-summary-graph"
         id={`${testCaseName}_graph`}
         minHeight={minHeight ?? 400}>
-        <ComposedChart data={chartData.data} margin={TEST_SUMMARY_CHART_MARGIN}>
+        <ComposedChart data={plottedData} margin={TEST_SUMMARY_CHART_MARGIN}>
           <CartesianGrid stroke={grid} />
           <XAxis
             dataKey="name"
@@ -503,6 +522,16 @@ function TestSummaryGraph({
             strokeDasharray="4"
             type="monotone"
           />
+          {[ABORTED_PLACEMENT_KEY, QUEUED_PLACEMENT_KEY].map((placementKey) => (
+            <Line
+              activeDot={false}
+              dataKey={placementKey}
+              dot={renderStatusDot}
+              key={placementKey}
+              legendType="none"
+              stroke="none"
+            />
+          ))}
           {chartData?.information?.map((info) => (
             <Line
               activeDot={false}

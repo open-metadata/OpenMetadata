@@ -19,6 +19,7 @@ import {
 import { Task } from '../../generated/entity/tasks/task';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import {
+  applyStatusPlacements,
   formatTestSummaryXAxis,
   formatTestSummaryYAxis,
   getStatusDotColor,
@@ -676,5 +677,60 @@ describe('getThresholdReference', () => {
   it('should return undefined when there is nothing to draw', () => {
     expect(getThresholdReference([])).toBeUndefined();
     expect(getThresholdReference(params({ strategy: 'ROWS' }))).toBeUndefined();
+  });
+});
+
+describe('applyStatusPlacements', () => {
+  const series = ['rowCount'];
+
+  // A run that produced no value has no key for the series, so recharts drew
+  // nothing at all for it: the run was simply missing from the chart.
+  it('should pin an aborted run to the lowest plotted value', () => {
+    const data = applyStatusPlacements(
+      [
+        { name: 1, status: TestCaseStatus.Success, rowCount: 120 },
+        { name: 2, status: TestCaseStatus.Success, rowCount: 90 },
+        { name: 3, status: TestCaseStatus.Aborted },
+      ],
+      series
+    );
+
+    expect(data[2]).toEqual({
+      name: 3,
+      status: TestCaseStatus.Aborted,
+      abortedValue: 90,
+    });
+  });
+
+  it('should pin a queued run to the expectation line', () => {
+    const data = applyStatusPlacements(
+      [
+        { name: 1, status: TestCaseStatus.Success, rowCount: 120 },
+        { name: 2, status: TestCaseStatus.Queued },
+      ],
+      series,
+      10000
+    );
+
+    expect(data[1]).toEqual({
+      name: 2,
+      status: TestCaseStatus.Queued,
+      queuedValue: 10000,
+    });
+  });
+
+  it('should leave a run that plotted a value untouched', () => {
+    const point = { name: 1, status: TestCaseStatus.Failed, rowCount: 5 };
+
+    expect(applyStatusPlacements([point], series)).toEqual([point]);
+  });
+
+  it('should place nothing when no run plotted a value and no line exists', () => {
+    const data = applyStatusPlacements(
+      [{ name: 1, status: TestCaseStatus.Aborted }],
+      series
+    );
+
+    expect(data[0]).toEqual({ name: 1, status: TestCaseStatus.Aborted });
   });
 });
