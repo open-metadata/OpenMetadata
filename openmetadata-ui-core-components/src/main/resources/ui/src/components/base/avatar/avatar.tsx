@@ -122,6 +122,11 @@ export const Avatar = ({
 }: AvatarProps) => {
   const [isFailed, setIsFailed] = useState(false);
 
+  // Guard against an unknown `size` (e.g. a stray numeric value from an
+  // untyped caller) so a bad size degrades to `md` rather than crashing on
+  // `sizeStyles.root`.
+  const sizeStyles = styles[size] ?? styles.md;
+
   // Color the initials only when we actually fall back to them (no usable
   // image). `auto`/`solid` derive a theme-adapting utility color from the name;
   // `neutral` keeps the plain gray surface.
@@ -151,7 +156,7 @@ export const Avatar = ({
       return (
         // Color is inherited from the root (see className above) so a caller can
         // override it; the span only carries sizing.
-        <span className={cx('tw:text-current', styles[size].initials)}>
+        <span className={cx('tw:text-current', sizeStyles.initials)}>
           {initials}
         </span>
       );
@@ -159,13 +164,13 @@ export const Avatar = ({
 
     if (PlaceholderIcon) {
       return (
-        <PlaceholderIcon className={cx('tw:text-current', styles[size].icon)} />
+        <PlaceholderIcon className={cx('tw:text-current', sizeStyles.icon)} />
       );
     }
 
     return (
       placeholder || (
-        <User01 className={cx('tw:text-fg-quaternary', styles[size].icon)} />
+        <User01 className={cx('tw:text-fg-quaternary', sizeStyles.icon)} />
       )
     );
   };
@@ -212,7 +217,7 @@ export const Avatar = ({
         // Honor the contrast outline regardless of the initials color treatment
         // — AvatarGroup relies on it to separate negatively-overlapped avatars.
         contrastBorder && 'tw:outline tw:outline-avatar-contrast-border',
-        styles[size].root,
+        sizeStyles.root,
         className
       )}
       data-testid={dataTestId}
