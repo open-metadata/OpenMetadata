@@ -30,7 +30,7 @@ import {
 import { EntityClass } from './EntityClass';
 import { SharedInfra } from './SharedInfra';
 
-/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false. */
+/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to true; pass false to route parents through SharedInfra (see LineageDataClass for the consumer). */
 export type MlModelClassOptions = {
   createFullHierarchy?: boolean;
 };
@@ -70,7 +70,7 @@ export class MlModelClass extends EntityClass {
     this.childrenTabId = 'features';
     this.serviceCategory = SERVICE_TYPE.MLModels;
     this.serviceType = ServiceTypes.ML_MODEL_SERVICES;
-    this.createFullHierarchy = options?.createFullHierarchy ?? false;
+    this.createFullHierarchy = options?.createFullHierarchy ?? true;
 
     const serviceName = name ?? `pw-ml-model-service-${uuid()}`;
     this.mlModelName = `pw-mlmodel-${uuid()}`;

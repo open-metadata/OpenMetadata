@@ -41,11 +41,13 @@ import { SharedInfra } from './SharedInfra';
 /**
  * Options for TableClass construction.
  *
- * `createFullHierarchy` defaults to `false` — a new Table shares the
- * per-worker database/service/schema created by SharedInfra so that N tables
- * in one worker cost 1 service + 1 database + 1 schema + N tables, instead
- * of 4×N. Pass `true` for tests that assert on unique service names,
- * navigate the service page, or exercise service-level cascade delete.
+ * `createFullHierarchy` defaults to `true` — every existing caller keeps
+ * the historical isolation model (own service + database + schema, cascade
+ * delete on the service). Pass `false` to route parents through
+ * SharedInfra so N tables in one shard cost 1 service + 1 database +
+ * 1 schema + N tables instead of 4×N. LineageDataClass is the intended
+ * consumer of the shared mode; opt in for new suites that don't assert
+ * on service-page or per-fixture-service isolation.
  */
 export type TableClassOptions = {
   createFullHierarchy?: boolean;
@@ -104,13 +106,13 @@ export class TableClass extends EntityClass {
     this.serviceType = ServiceTypes.DATABASE_SERVICES;
     this.type = 'Table';
     this.childrenTabId = 'schema';
-    this.createFullHierarchy = options?.createFullHierarchy ?? false;
+    this.createFullHierarchy = options?.createFullHierarchy ?? true;
 
-    // Names are still generated eagerly so full-hierarchy mode (opt-in via
-    // createFullHierarchy: true, plus every existing caller that constructs
-    // without options) keeps its current shape. In shared mode create()
-    // overwrites this.service, this.database, this.schema with the
-    // SharedInfra parents' actual names before POSTing the table.
+    // Names are always generated eagerly so full-hierarchy mode (the
+    // default) keeps its current shape. In shared mode (opt-in via
+    // createFullHierarchy: false) create() overwrites this.service,
+    // this.database, this.schema with the SharedInfra parents' actual
+    // names before POSTing the table.
     const serviceName = service?.name ?? `pw-database-service-${uuid()}`;
     const databaseName = `pw-database-${uuid()}`;
     const schemaName = `pw-database-schema-${uuid()}`;

@@ -31,7 +31,7 @@ import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 import { SharedInfra } from './SharedInfra';
 
-/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false. */
+/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to true; pass false to route parents through SharedInfra (see LineageDataClass for the consumer). */
 export type SearchIndexClassOptions = {
   createFullHierarchy?: boolean;
 };
@@ -72,7 +72,7 @@ export class SearchIndexClass extends EntityClass {
 
   constructor(name?: string, options?: SearchIndexClassOptions) {
     super(EntityTypeEndpoint.SearchIndex);
-    this.createFullHierarchy = options?.createFullHierarchy ?? false;
+    this.createFullHierarchy = options?.createFullHierarchy ?? true;
 
     this.service = {
       name: name ?? `pw-search-service-${uuid()}`,

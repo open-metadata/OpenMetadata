@@ -30,7 +30,7 @@ import {
 import { EntityClass } from './EntityClass';
 import { SharedInfra } from './SharedInfra';
 
-/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false. */
+/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to true; pass false to route parents through SharedInfra (see LineageDataClass for the consumer). */
 export type DashboardClassOptions = {
   createFullHierarchy?: boolean;
 };
@@ -86,7 +86,7 @@ export class DashboardClass extends EntityClass {
     this.type = 'Dashboard';
     this.serviceCategory = SERVICE_TYPE.Dashboard;
     this.serviceType = ServiceTypes.DASHBOARD_SERVICES;
-    this.createFullHierarchy = options?.createFullHierarchy ?? false;
+    this.createFullHierarchy = options?.createFullHierarchy ?? true;
 
     const serviceName = service?.name ?? `pw-dashboard-service-${uuid()}`;
     this.dashboardName = `pw-dashboard-${uuid()}`;

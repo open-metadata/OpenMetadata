@@ -42,7 +42,7 @@ import {
 import { EntityClass } from './EntityClass';
 import { SharedInfra } from './SharedInfra';
 
-/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false. */
+/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to true; pass false to route parents through SharedInfra (see LineageDataClass for the consumer). */
 export type SpreadsheetClassOptions = {
   createFullHierarchy?: boolean;
 };
@@ -97,7 +97,7 @@ export class SpreadsheetClass extends EntityClass {
     this.type = 'Spreadsheet';
     this.serviceCategory = SERVICE_TYPE.DriveService;
     this.serviceType = ServiceTypes.DRIVE_SERVICES;
-    this.createFullHierarchy = options?.createFullHierarchy ?? false;
+    this.createFullHierarchy = options?.createFullHierarchy ?? true;
     this.childrenSelectorId = `${this.service.name}.${this.spreadsheetName}`;
   }
 

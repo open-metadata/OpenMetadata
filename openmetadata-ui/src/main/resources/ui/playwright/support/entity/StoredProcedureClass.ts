@@ -30,7 +30,7 @@ import {
 import { EntityClass } from './EntityClass';
 import { SharedInfra } from './SharedInfra';
 
-/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false. */
+/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to true; pass false to route parents through SharedInfra (see LineageDataClass for the consumer). */
 export type StoredProcedureClassOptions = {
   createFullHierarchy?: boolean;
 };
@@ -83,7 +83,7 @@ export class StoredProcedureClass extends EntityClass {
 
   constructor(name?: string, options?: StoredProcedureClassOptions) {
     super(EntityTypeEndpoint.StoreProcedure);
-    this.createFullHierarchy = options?.createFullHierarchy ?? false;
+    this.createFullHierarchy = options?.createFullHierarchy ?? true;
 
     this.service = {
       name: name ?? `pw-database-service-${uuid()}`,

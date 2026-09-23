@@ -33,7 +33,7 @@ import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 import { SharedInfra } from './SharedInfra';
 
-/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false. */
+/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to true; pass false to route parents through SharedInfra (see LineageDataClass for the consumer). */
 export type ContainerClassOptions = {
   createFullHierarchy?: boolean;
 };
@@ -81,7 +81,7 @@ export class ContainerClass extends EntityClass {
 
   constructor(name?: string, options?: ContainerClassOptions) {
     super(EntityTypeEndpoint.Container);
-    this.createFullHierarchy = options?.createFullHierarchy ?? false;
+    this.createFullHierarchy = options?.createFullHierarchy ?? true;
 
     this.containerName = `pw-container-${uuid()}`;
     this.childContainerName = `pw-container-${uuid()}`;

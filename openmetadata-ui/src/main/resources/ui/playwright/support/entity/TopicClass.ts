@@ -81,7 +81,7 @@ export class TopicClass extends EntityClass {
     this.childrenTabId = 'schema';
     this.serviceCategory = SERVICE_TYPE.Messaging;
     this.serviceType = ServiceTypes.MESSAGING_SERVICES;
-    this.createFullHierarchy = options?.createFullHierarchy ?? false;
+    this.createFullHierarchy = options?.createFullHierarchy ?? true;
 
     // Names are still generated eagerly so full-hierarchy mode keeps its
     // current shape. In shared mode create() rebinds this.service.name to

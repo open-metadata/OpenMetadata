@@ -31,7 +31,7 @@ import {
 import { EntityClass } from './EntityClass';
 import { SharedInfra } from './SharedInfra';
 
-/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false. */
+/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to true; pass false to route parents through SharedInfra (see LineageDataClass for the consumer). */
 export type PipelineClassOptions = {
   createFullHierarchy?: boolean;
 };
@@ -78,7 +78,7 @@ export class PipelineClass extends EntityClass {
     this.childrenTabId = 'tasks';
     this.serviceCategory = SERVICE_TYPE.Pipeline;
     this.serviceType = ServiceTypes.PIPELINE_SERVICES;
-    this.createFullHierarchy = options?.createFullHierarchy ?? false;
+    this.createFullHierarchy = options?.createFullHierarchy ?? true;
 
     const serviceName = name ?? `pw-pipeline-service-${uuid()}`;
     this.pipelineName = `pw-pipeline-${uuid()}`;
