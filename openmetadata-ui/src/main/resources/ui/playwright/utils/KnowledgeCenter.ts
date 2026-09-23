@@ -12,8 +12,8 @@
  */
 import { expect, Locator, Page } from '@playwright/test';
 import {
-  SHORTCUTS,
-  SLASH_COMMANDS,
+    SHORTCUTS,
+    SLASH_COMMANDS
 } from '../constant/KnowledgeCenter.constant';
 import { SidebarItem } from '../constant/sidebar';
 import { TopicClass } from '../support/entity/TopicClass';
@@ -327,11 +327,6 @@ export const updateQuickLink = async (
     '[data-testid="tags-container"] input[role="combobox"]'
   );
 
-  const searchTagResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.request().method() === 'GET'
-  );
   await tagInput.click();
   // Same react-aria combobox as the data-asset one above; same reason.
   await tagInput.pressSequentially(knowledgePageQuickLink.tag);
