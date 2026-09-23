@@ -15,8 +15,10 @@ import jakarta.ws.rs.core.Response;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -2247,6 +2249,33 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     assertEquals(0, withoutAssets.get("paging").get("total").asInt());
     assertTrue(
         withoutAssets.get("data").isEmpty(), "Assets should be unlinked after a bulk remove");
+  }
+
+  @Test
+  void put_existingMetricLinksRequestedAssetsWithoutUnlinkingOthers(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table firstSource = ShortStackFactory.table(ns);
+    Table laterSource = ShortStackFactory.table(ns);
+    String name = ns.prefix("reingested_assets_metric");
+    Metric metric =
+        createEntity(
+            createRequest(name, ns)
+                .withAssets(List.of(firstSource.getEntityReference().withType(Entity.TABLE))));
+
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/metrics",
+            createRequest(name, ns)
+                .withAssets(List.of(laterSource.getEntityReference().withType(Entity.TABLE))),
+            Metric.class);
+
+    Set<String> linkedIds = new HashSet<>();
+    getMetricAssets(client, metric)
+        .get("data")
+        .forEach(link -> linkedIds.add(link.get("asset").get("id").asText()));
+    assertEquals(Set.of(firstSource.getId().toString(), laterSource.getId().toString()), linkedIds);
   }
 
   @Test

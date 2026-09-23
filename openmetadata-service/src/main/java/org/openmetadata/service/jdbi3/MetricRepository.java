@@ -869,6 +869,44 @@ public class MetricRepository extends EntityRepository<Metric> {
       compareAndUpdate(FIELD_PARENT, () -> updateParent(original, updated));
       compareAndUpdateAny(
           () -> updateMetricGroup(original, updated), FIELD_PARENT, FIELD_METRIC_GROUP);
+      if (operation.isPut()) {
+        linkRequestedAssets(updated);
+      }
+    }
+
+    /**
+     * PUT links requested assets that are not linked yet and never unlinks any. Assets are otherwise
+     * managed through the bounded /assets APIs, but ingestion creates and re-ingests metrics through
+     * PUT, and a re-run must still link a metric whose source was not linked the first time.
+     */
+    private void linkRequestedAssets(Metric updated) {
+      List<EntityReference> requested = new ArrayList<>(listOrEmpty(updated.getAssets()));
+      List<EntityReference> alreadyLinked =
+          new ArrayList<>(requested.stream().filter(asset -> isLinked(updated, asset)).toList());
+      List<EntityReference> newlyLinked = new ArrayList<>();
+      recordListChange(
+          FIELD_ASSETS,
+          alreadyLinked,
+          requested,
+          newlyLinked,
+          new ArrayList<>(),
+          MetricRepository::sameReferenceById);
+      for (EntityReference asset : newlyLinked) {
+        addRelationship(
+            updated.getId(), asset.getId(), METRIC, asset.getType(), Relationship.APPLIED_TO);
+      }
+    }
+
+    private boolean isLinked(Metric metric, EntityReference asset) {
+      return daoCollection
+              .relationshipDAO()
+              .existsRelationship(
+                  metric.getId(),
+                  asset.getId(),
+                  METRIC,
+                  asset.getType(),
+                  Relationship.APPLIED_TO.ordinal())
+          > 0;
     }
 
     private void updateMetricGroup(Metric original, Metric updated) {
