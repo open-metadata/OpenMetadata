@@ -93,19 +93,28 @@ export const getAppConfiguration = async (): Promise<AppConfiguration> => {
 };
 
 /**
- * Admin-only. Writes through the generic `/system/settings` PUT, matching
- * the `config_type`/`config_value` shape the backend's `createOrUpdateSetting`
- * expects (see how `updateGlossaryTermRelationSettings` above writes).
+ * Admin-only. Patches the AppConfiguration using RFC 6902 JSON Patch format.
+ * This prevents overwriting other configuration fields and avoids race conditions
+ * by targeting only the specific setting being updated.
  */
 export const patchAppConfiguration = async (
   patch: Partial<AppConfiguration>
-): Promise<AppConfiguration> => {
-  const response = await axiosClient.put<Settings>(`/system/settings`, {
-    config_type: SettingType.AppConfiguration,
-    config_value: patch,
-  });
+): Promise<void> => {
+  const ops = Object.entries(patch).map(([key, value]) => ({
+    op: 'add',
+    path: `/${key}`,
+    value,
+  }));
 
-  return (response.data.config_value as AppConfiguration) ?? {};
+  await axiosClient.patch(
+    `/system/settings/${SettingType.AppConfiguration}`,
+    ops,
+    {
+      headers: {
+        'Content-Type': 'application/json-patch+json',
+      },
+    }
+  );
 };
 
 export const testEmailConnection = async (data: { email: string }) => {
