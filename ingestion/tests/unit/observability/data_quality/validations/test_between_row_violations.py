@@ -31,6 +31,9 @@ from metadata.data_quality.builders.validator_builder import ValidatorBuilder
 from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (
     SQATestSuiteInterface,
 )
+from metadata.data_quality.validations.checkers.between_bounds_checker import (
+    BetweenBoundsChecker,
+)
 from metadata.data_quality.validations.column.pandas.columnValueLengthsToBeBetween import (
     ColumnValueLengthsToBeBetweenValidator as PandasLengthsValidator,
 )
@@ -151,7 +154,7 @@ def pandas_runner():
     return PandasRunner(dataset=lambda: iter(frames), raw_dataset=None)
 
 
-def values_test_case(threshold=None, unit=None) -> TestCase:
+def values_test_case(threshold=None, unit=None, compute_row_count=False) -> TestCase:
     """A values-to-be-between test case on the fixture window"""
     return _test_case(
         ENTITY_LINK_VALUE,
@@ -161,10 +164,11 @@ def values_test_case(threshold=None, unit=None) -> TestCase:
         ],
         threshold,
         unit,
+        compute_row_count,
     )
 
 
-def lengths_test_case(threshold=None, unit=None) -> TestCase:
+def lengths_test_case(threshold=None, unit=None, compute_row_count=False) -> TestCase:
     """A lengths-to-be-between test case on the fixture window"""
     return _test_case(
         ENTITY_LINK_LABEL,
@@ -174,10 +178,11 @@ def lengths_test_case(threshold=None, unit=None) -> TestCase:
         ],
         threshold,
         unit,
+        compute_row_count,
     )
 
 
-def _test_case(entity_link, parameter_values, threshold, unit) -> TestCase:
+def _test_case(entity_link, parameter_values, threshold, unit, compute_row_count=False) -> TestCase:
     if threshold is not None:
         parameter_values = [*parameter_values, TestCaseParameterValue(name="threshold", value=str(threshold))]
     if unit is not None:
@@ -188,6 +193,7 @@ def _test_case(entity_link, parameter_values, threshold, unit) -> TestCase:
         testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=parameter_values,
+        computePassedFailedRowCount=compute_row_count,
     )  # type: ignore
 
 
@@ -302,6 +308,52 @@ def test_no_tolerance_keeps_the_min_max_verdict(sqa_runner):
     counted.assert_not_called()
     assert result.testCaseStatus == TestCaseStatus.Failed
     assert result.failedRows is None
+
+
+@pytest.mark.parametrize(
+    "validator_class,test_case_builder",
+    [
+        (SQAValuesValidator, values_test_case),
+        (SQALengthsValidator, lengths_test_case),
+    ],
+)
+def test_row_reporting_reuses_the_counted_violations(sqa_runner, validator_class, test_case_builder):
+    """The reported rows are the ones the verdict was taken on, not a second scan's
+
+    A table can change between two scans, and a percentage sample draws different rows each
+    time, so counting again could report rows that contradict the status.
+    """
+    test_case = test_case_builder(threshold=EXPECTED_VIOLATIONS, unit="ABSOLUTE", compute_row_count=True)
+    validator = validator_class(sqa_runner, test_case, EXECUTION_DATE.timestamp())
+
+    with patch.object(validator_class, "compute_row_count") as counted_again:
+        result = validator.run_validation()
+
+    counted_again.assert_not_called()
+    assert result.testCaseStatus == TestCaseStatus.Success
+    assert result.failedRows == EXPECTED_VIOLATIONS
+    assert result.passedRows == EXPECTED_ROWS - EXPECTED_VIOLATIONS
+
+
+@pytest.mark.parametrize(
+    "min_bound,max_bound,violations",
+    [
+        (None, None, 0),  # a window with neither side set excludes nothing
+        (MIN_BOUND, None, 1),  # only the 1 is below 3
+        (None, MAX_BOUND, 2),  # only the 9 and the 12 are above 8
+    ],
+)
+def test_an_unset_bound_excludes_nothing(pandas_runner, min_bound, max_bound, violations):
+    """A bound a validator resolved to None is a side of the window that lets everything through
+
+    Both engines have to read it that way: the SQL half builds no condition for it, so the
+    pandas half must not compare against it either.
+    """
+    checker = BetweenBoundsChecker(min_bound=min_bound, max_bound=max_bound)
+
+    counted = sum(int(checker.get_violations_mask(df["value"]).sum()) for df in pandas_runner)
+
+    assert counted == violations
 
 
 def test_the_window_is_never_widened_by_the_threshold(sqa_runner):

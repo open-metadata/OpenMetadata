@@ -82,6 +82,9 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
             }
 
             if self._needs_violation_count():
+                # The counts go under the same two keys a dimension row carries its own under:
+                # the verdict and the message are read off `metric_values` by code shared with
+                # the dimensional path, which only finds them by those names.
                 total_rows, violating_rows = self._run_violation_count(column, test_params)
                 metric_values[DIMENSION_TOTAL_COUNT_KEY] = total_rows
                 metric_values[DIMENSION_FAILED_COUNT_KEY] = violating_rows
@@ -99,14 +102,16 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
                 ],
             )
 
-        if self.test_case.computePassedFailedRowCount:
+        # A row tolerance already counted both, so report the counts the verdict was taken on
+        # rather than counting twice: a second scan reads the table again -- or, on a percentage
+        # sample, a different set of rows -- and could report rows that contradict the status.
+        row_count = metric_values.get(DIMENSION_TOTAL_COUNT_KEY)
+        failed_rows = metric_values.get(DIMENSION_FAILED_COUNT_KEY)
+
+        if failed_rows is None and self.test_case.computePassedFailedRowCount:
             row_count, failed_rows = self.compute_row_count(
                 column, test_params[self.MIN_BOUND], test_params[self.MAX_BOUND]
             )
-        else:
-            # A row tolerance already counted both, so report them rather than counting twice.
-            row_count = metric_values.get(DIMENSION_TOTAL_COUNT_KEY)
-            failed_rows = metric_values.get(DIMENSION_FAILED_COUNT_KEY)
 
         evaluation = self._evaluate_test_condition(metric_values, test_params)
         result_message = self._format_result_message(metric_values, test_params=test_params)
