@@ -209,9 +209,9 @@ class DbtSource(DbtServiceSource):
             for prop in (response or {}).get("customProperties") or []:
                 definitions[prop["name"]] = prop
 
-            logger.debug(f"Loaded {len(definitions)} custom properties for {entity_type}")
+            logger.debug("Loaded %d custom properties for %s", len(definitions), entity_type)
         except Exception as exc:
-            logger.warning(f"Error loading custom properties for {entity_type}: {exc}")
+            logger.warning("Error loading custom properties for %s: %s", entity_type, exc)
         return definitions
 
     def get_dbt_domain(self, manifest_node: Any) -> EntityReference | None:
@@ -548,7 +548,7 @@ class DbtSource(DbtServiceSource):
         valid_custom_properties = {}
         validation_errors = []
 
-        logger.debug(f"Validating {len(custom_properties)} custom properties for {entity_label}")
+        logger.debug("Validating %d custom properties for %s", len(custom_properties), entity_label)
 
         for field_name, field_value in custom_properties.items():
             # Step 1: Check if property exists in OpenMetadata
@@ -557,7 +557,7 @@ class DbtSource(DbtServiceSource):
                     f"Custom property '{field_name}' not found in OpenMetadata. "
                     f"Please create it in the OpenMetadata UI before ingesting."
                 )
-                logger.warning(f"{entity_label}: {error_msg}")
+                logger.warning("%s: %s", entity_label, error_msg)
                 validation_errors.append(f"{field_name}: Property not defined")
                 continue
 
@@ -587,7 +587,7 @@ class DbtSource(DbtServiceSource):
                     value=field_value,
                     error_detail=error_detail,
                 )
-                logger.warning(f"{entity_label}: {error_msg}")
+                logger.warning("%s: %s", entity_label, error_msg)
                 validation_errors.append(f"{field_name}: {error_detail}")
                 continue
 
@@ -596,37 +596,52 @@ class DbtSource(DbtServiceSource):
                 error_msg = (
                     f"Failed to convert custom property '{field_name}' (type: {property_type}, value: {field_value})"
                 )
-                logger.warning(f"{entity_label}: {error_msg}")
+                logger.warning("%s: %s", entity_label, error_msg)
                 validation_errors.append(f"{field_name}: Conversion failed")
                 continue
 
             # Log if enum values were filtered
             if property_type == "enum" and converted_value != field_value:
                 logger.debug(
-                    f"{entity_label}: Filtered enum property '{field_name}' from {field_value} to {converted_value}"
+                    "%s: Filtered enum property '%s' from %s to %s",
+                    entity_label,
+                    field_name,
+                    field_value,
+                    converted_value,
                 )
 
             # Successfully validated and converted
             valid_custom_properties[field_name] = converted_value
             logger.debug(
-                f"✓ Validated custom property '{field_name}' for {entity_label}: "
-                f"{field_value} → {converted_value} (type: {property_type})"
+                "✓ Validated custom property '%s' for %s: %s → %s (type: %s)",
+                field_name,
+                entity_label,
+                field_value,
+                converted_value,
+                property_type,
             )
 
         # Log validation summary
         if validation_errors:
             logger.warning(
-                f"Custom property validation errors for {entity_label}:\n"
-                + "\n".join(f"  • {err}" for err in validation_errors)
+                "Custom property validation errors for %s:\n%s",
+                entity_label,
+                "\n".join(f"  • {err}" for err in validation_errors),
             )
 
         if valid_custom_properties:
             logger.debug(
-                f"Successfully validated {len(valid_custom_properties)}/{len(custom_properties)} "
-                f"custom properties for {entity_label}"
+                "Successfully validated %d/%d custom properties for %s",
+                len(valid_custom_properties),
+                len(custom_properties),
+                entity_label,
             )
         else:
-            logger.warning(f"No valid custom properties found for {entity_label} (attempted: {len(custom_properties)})")
+            logger.warning(
+                "No valid custom properties found for %s (attempted: %d)",
+                entity_label,
+                len(custom_properties),
+            )
 
         return valid_custom_properties if valid_custom_properties else None
 
