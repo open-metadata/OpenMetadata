@@ -33,6 +33,7 @@ from sqlalchemy.dialects import registry
 from sqlalchemy.engine.default import DefaultDialect
 from sqlalchemy.engine.url import URL
 from sqlalchemy.sql.compiler import SQLCompiler
+from sqlalchemy.sql.elements import Null
 from sqlalchemy_jdbcapi.dialects.base import JDBCDriverConfig
 from sqlalchemy_jdbcapi.dialects.gbase import GBase8sDialect
 from sqlalchemy_jdbcapi.jdbc.driver_manager import (
@@ -107,6 +108,30 @@ class InformixSQLCompiler(SQLCompiler):
     parameter in this position through prepareStatement, the same way it rejects
     one in a projection.
     """
+
+    def visit_label(self, label, within_columns_clause: bool = False, **kw) -> str:
+        """Give a NULL that is itself a SELECT-list item a type.
+
+        Informix rejects a bare NULL there -- "201: A syntax error has occurred"
+        -- and the profiler sends one per metric that does not apply to a column,
+        so a single date column costs its table every metric in the statement.
+
+        Only a label wrapping the NULL itself qualifies. within_columns_clause
+        alone does not: it stays true all the way down, so keying off it rewrites
+        the NULL inside "x IS NULL" too, which Informix likes even less.
+        """
+        if within_columns_clause and isinstance(label.element, Null):
+            self._informix_typed_null = True
+            try:
+                return super().visit_label(label, within_columns_clause=within_columns_clause, **kw)
+            finally:
+                self._informix_typed_null = False
+        return super().visit_label(label, within_columns_clause=within_columns_clause, **kw)
+
+    def visit_null(self, expr, **kw) -> str:
+        if getattr(self, "_informix_typed_null", False):
+            return "CAST(NULL AS INTEGER)"
+        return super().visit_null(expr, **kw)
 
     def get_select_precolumns(self, select, **kw) -> str:
         limits = ""

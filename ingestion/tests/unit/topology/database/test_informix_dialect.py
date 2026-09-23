@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy import Column, Integer, MetaData, Table, case, create_engine, func, select
+from sqlalchemy import Column, Integer, MetaData, String, Table, case, create_engine, func, null, select
 from sqlalchemy.engine.url import make_url
 
 from metadata.ingestion.source.database.informix.dialect import (
@@ -222,3 +222,34 @@ class TestProjectionParameters:
         sql = self._sql(select(table.c.id).where(table.c.id == 1))
         assert "POSTCOMPILE" not in sql
         assert ":id_1" in sql
+
+
+class TestNullInSelectList:
+    """Informix rejects a bare NULL in a SELECT list.
+
+    "201: A syntax error has occurred", verified against 14.10.FC9W1DE, and the
+    profiler sends one per metric that does not apply to a column -- so one such
+    metric costs the statement every other metric in it.
+    """
+
+    @pytest.fixture
+    def probe(self):
+        return Table("t", MetaData(), Column("a", String(10)))
+
+    def _sql(self, query):
+        return str(query.compile(dialect=InformixDialect())).replace("\n", " ")
+
+    def test_a_null_column_is_given_a_type(self, probe):
+        sql = self._sql(select(null().label("anon_1")).select_from(probe))
+        assert "CAST(NULL AS INTEGER) AS anon_1" in sql
+
+    def test_is_null_is_left_alone(self, probe):
+        """The guard has to be narrower than within_columns_clause.
+
+        That flag stays true all the way down a SELECT-list expression, so
+        keying off it rewrites the NULL inside "x IS NULL" as well, and Informix
+        rejects that too.
+        """
+        sql = self._sql(select(func.sum(case((probe.c.a.is_(None), 1), else_=0)).label("nullCount")).select_from(probe))
+        assert "IS NULL" in sql
+        assert "IS CAST" not in sql

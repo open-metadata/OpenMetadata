@@ -86,6 +86,10 @@ ANSI_DATABASE = "itest_ansi"
 # them apart, but built over the opaque type rather than LVARCHAR, so the driver
 # fails on it exactly as on d_opaque. Only following sysxtdtypes.source separates
 # the two.
+#
+# d_date is unrelated to the driver: no standard deviation applies to a date, so
+# the profiler asks for that metric as a bare NULL in the SELECT list, which
+# Informix rejects outright.
 SEED_SQL = """
 CREATE TABLE lob_types (
     id        INTEGER PRIMARY KEY,
@@ -141,11 +145,12 @@ CREATE TABLE driver_types (
     d_dist_opq distinct_opaque_probe,
     d_row      row_probe,
     d_set      SET(INTEGER NOT NULL),
-    d_plain    VARCHAR(20)
+    d_plain    VARCHAR(20),
+    d_date     DATE
 );
-INSERT INTO driver_types (id, d_distinct, d_row, d_set, d_plain)
+INSERT INTO driver_types (id, d_distinct, d_row, d_set, d_plain, d_date)
     VALUES (1, CAST(CAST('tagged' AS LVARCHAR) AS distinct_probe),
-            ROW('Main St', 'Brussels')::row_probe, SET{1,2}, 'ok');
+            ROW('Main St', 'Brussels')::row_probe, SET{1,2}, 'ok', MDY(1,31,2026));
 """
 
 

@@ -90,6 +90,18 @@ def sampled_profiler_config(profiler_config):
         "config": {"profileSample": 50, "profileSampleType": "PERCENTAGE"},
     }
     config["source"]["sourceConfig"]["config"]["randomizedSample"] = True
+    # Asking for these by name is what the UI's profiler agent does, and what
+    # forces a metric that does not apply to a column to be sent as a bare NULL.
+    config["source"]["sourceConfig"]["config"]["metrics"] = [
+        "mean",
+        "stddev",
+        "sum",
+        "min",
+        "max",
+        "nullCount",
+        "valuesCount",
+        "distinctCount",
+    ]
     return config
 
 
@@ -172,3 +184,18 @@ class TestProfilerSkipsUnaggregatableTypes:
 
     def test_the_table_itself_is_profiled(self, opaque_profiled_table):
         assert opaque_profiled_table.profile is not None
+
+
+class TestProfilerHandlesInapplicableMetrics:
+    """A metric that does not apply to a column is asked for as a bare NULL.
+
+    Informix rejects that in a SELECT list -- "201: A syntax error has occurred"
+    -- and the statement carries every other metric for the column with it, so a
+    single date column costs its table the whole profile.
+    """
+
+    def test_a_date_column_is_profiled(self, opaque_profiled_table):
+        assert _profile_of(opaque_profiled_table, "d_date") is not None
+
+    def test_the_table_still_profiles_around_it(self, opaque_profiled_table):
+        assert _profile_of(opaque_profiled_table, "id") is not None
