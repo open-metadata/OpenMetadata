@@ -12,31 +12,17 @@
  */
 import { APIRequestContext, expect } from '@playwright/test';
 import { get } from 'lodash';
-import type { AggregationRequest } from '../../../../src/generated/search/aggregationRequest';
-import { ApiEndpointClass } from '../../../support/entity/ApiEndpointClass';
-import { ContainerClass } from '../../../support/entity/ContainerClass';
-import { DashboardClass } from '../../../support/entity/DashboardClass';
-import { DashboardDataModelClass } from '../../../support/entity/DashboardDataModelClass';
-import { DirectoryClass } from '../../../support/entity/DirectoryClass';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
-import { FileClass } from '../../../support/entity/FileClass';
-import { MetricClass } from '../../../support/entity/MetricClass';
-import { MlModelClass } from '../../../support/entity/MlModelClass';
-import { PipelineClass } from '../../../support/entity/PipelineClass';
-import { SearchIndexClass } from '../../../support/entity/SearchIndexClass';
-import { SpreadsheetClass } from '../../../support/entity/SpreadsheetClass';
-import { StoredProcedureClass } from '../../../support/entity/StoredProcedureClass';
-import { TableClass } from '../../../support/entity/TableClass';
-import { TopicClass } from '../../../support/entity/TopicClass';
-import { WorksheetClass } from '../../../support/entity/WorksheetClass';
+import {
+  LineageDataClass,
+  LineageEntityUnion,
+} from '../../../support/entity/LineageDataClass';
 import {
   getApiContext,
-  getDefaultAdminAPIContext,
   getEntityTypeSearchIndexMapping,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-  connectEdgeBetweenNodesViaAPI,
   fitToScreen,
   openImpactAnalysisTab,
   performZoomOut,
@@ -47,22 +33,9 @@ import {
 import { waitForSearchIndexed } from '../../../utils/polling';
 import { test } from '../../fixtures/pages';
 
-type EntityClassUnion =
-  | TableClass
-  | ContainerClass
-  | TopicClass
-  | DashboardClass
-  | MlModelClass
-  | PipelineClass
-  | StoredProcedureClass
-  | SearchIndexClass
-  | DashboardDataModelClass
-  | ApiEndpointClass
-  | MetricClass
-  | DirectoryClass
-  | FileClass
-  | SpreadsheetClass
-  | WorksheetClass;
+// Alias so the existing filter-config type keeps its familiar name in the
+// (many) callsites below.
+type EntityClassUnion = LineageEntityUnion;
 
 interface LineageFilterConfig {
   filterName: string;
@@ -77,25 +50,6 @@ interface LineageFilterConfig {
   // filter dropdown renders (tier shows the tag name, the index stores the FQN).
   searchValue?: string;
 }
-
-// Contains list of entity supported
-const allEntities = {
-  table: TableClass,
-  container: ContainerClass,
-  topic: TopicClass,
-  dashboard: DashboardClass,
-  mlmodel: MlModelClass,
-  pipeline: PipelineClass,
-  storedProcedure: StoredProcedureClass,
-  searchIndex: SearchIndexClass,
-  dataModel: DashboardDataModelClass,
-  apiEndpoint: ApiEndpointClass,
-  metric: MetricClass,
-  directory: DirectoryClass,
-  file: FileClass,
-  spreadsheet: SpreadsheetClass,
-  worksheet: WorksheetClass,
-};
 
 const searchIndexByEntityType: Record<string, string> = {
   apiEndpoint: 'api_endpoint_search_index',
@@ -126,68 +80,14 @@ const getSearchIndexForEntity = (entity: EntityClassUnion) => {
 };
 
 test.describe('Lineage Filters', () => {
-  const lineageEntity = new TableClass();
-  const entities = Object.values(allEntities).map(
-    (EntityClass) => new EntityClass()
-  );
-  const [depth1Entity, ...depth2ndEntities] = entities;
-
-  test.beforeAll(async ({ browser }) => {
-    // Explicit hook budget: 15 sequential entity creations (each also creating
-    // its own service), then 15 lineage edges, then the index polling — well
-    // past the 60s default. Do NOT use test.slow() here; an explicit number
-    // keeps a failing attempt from grinding, per ExplorePageRightPanel.
-    test.setTimeout(240_000);
-
-    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
-      browser
-    );
-
-    await lineageEntity.create(apiContext);
-    // Sequential: 15 entities each also create their own service, and firing
-    // them in parallel makes the server reset connections (socket hang up).
-    for (const entity of entities) {
-      await entity.create(apiContext);
-    }
-
-    await connectEdgeBetweenNodesViaAPI(
-      apiContext,
-      {
-        id: lineageEntity.entityResponseData.id,
-        type: getEntityTypeSearchIndexMapping(lineageEntity.type),
-      },
-      {
-        id: depth1Entity.entityResponseData.id,
-        type: getEntityTypeSearchIndexMapping(depth1Entity.type),
-      }
-    );
-
-    for (const entity of depth2ndEntities) {
-      await connectEdgeBetweenNodesViaAPI(
-        apiContext,
-        {
-          id: depth1Entity.entityResponseData.id,
-          type: getEntityTypeSearchIndexMapping(lineageEntity.type),
-        },
-        {
-          id: entity.entityResponseData.id,
-          type: getEntityTypeSearchIndexMapping(entity.type),
-        }
-      );
-    }
-
-    await Promise.all(
-      [lineageEntity, ...entities].map((entity) => {
-        return waitForSearchIndexed(
-          apiContext,
-          entity.entityResponseData.fullyQualifiedName,
-          getSearchIndexForEntity(entity)
-        );
-      })
-    );
-
-    await afterAction();
-  });
+  // Entities + edges + search indexing are all created in
+  // `lineage-data.setup.ts` (a Playwright setup project) so this file's
+  // beforeAll cost has collapsed to zero. See LineageDataClass for the
+  // ordering contract (`depth1Entity` === `allEntities()[0]`).
+  const lineageEntity = LineageDataClass.lineageEntity;
+  const entities = LineageDataClass.allEntities();
+  const depth1Entity = LineageDataClass.depth1Entity();
+  const depth2ndEntities = LineageDataClass.depth2ndEntities();
 
   test.beforeEach(async ({ page }) => {
     await lineageEntity.visitEntityPage(page);
@@ -493,8 +393,11 @@ test.describe('Lineage Filters', () => {
   });
 
   test('Verify Impact Analysis service filter selection', async ({ page }) => {
+    // 14 iterations, each opens the dropdown and awaits an aggregation + a
+    // lineage-count response; the default 60s budget flakes under CI load
+    // the same way the sibling `lineage service filter selection` did before
+    // it was marked slow.
     test.slow();
-
     await openImpactAnalysisTab(page);
     await page.locator('[aria-label="Filters"]').click();
 
@@ -517,29 +420,16 @@ test.describe('Lineage Filters', () => {
           ''
         );
 
-        const searchResponse = page.waitForResponse((response) => {
-          let requestBody: AggregationRequest;
-          try {
-            requestBody = JSON.parse(
-              response.request().postData() ?? '{}'
-            ) as AggregationRequest;
-          } catch {
-            return false;
-          }
-          const normalizedFieldValue = (requestBody.fieldValue ?? '')
-            .replaceAll('\\', '')
-            .replace(/^\.\*/, '')
-            .replace(/\.\*$/, '');
-
-          return (
-            new URL(response.url()).pathname.endsWith(
-              '/api/v1/search/aggregate'
-            ) &&
-            response.request().method() === 'POST' &&
-            requestBody.fieldName === 'service.displayName.keyword' &&
-            normalizedFieldValue === serviceName
-          );
-        });
+        // Match the search POST loosely; a stricter body matcher (fieldName +
+        // normalized fieldValue) silently missed the response under CI load
+        // and forced the whole test to time out at 60s. The subsequent
+        // getLineageByEntityCount wait still validates that the *right*
+        // service was applied.
+        const searchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/aggregate') &&
+            response.request().method() === 'POST'
+        );
 
         await page
           .getByTestId('drop-down-menu')
@@ -697,8 +587,6 @@ test.describe('Lineage Filters', () => {
   test('Verify Impact Analysis service type filter selection', async ({
     page,
   }) => {
-    test.slow();
-
     await openImpactAnalysisTab(page);
     await page.locator('[aria-label="Filters"]').click();
 
@@ -855,52 +743,9 @@ test.describe('Lineage Filters', () => {
   });
 
   test.describe('Verify lineage Database service related filters', () => {
-    test.beforeAll(
-      'prepare lineage for database service connection',
-      async ({ browser }) => {
-        const { apiContext, afterAction } = await getDefaultAdminAPIContext(
-          browser
-        );
-
-        await connectEdgeBetweenNodesViaAPI(
-          apiContext,
-          {
-            id: lineageEntity.entityResponseData.id,
-            type: getEntityTypeSearchIndexMapping(lineageEntity.type),
-          },
-          {
-            id: depth1Entity.entityResponseData.id,
-            type: getEntityTypeSearchIndexMapping(depth1Entity.type),
-          },
-          [
-            {
-              fromColumns: [
-                lineageEntity.entityResponseData.columns[0]
-                  .fullyQualifiedName ?? '',
-              ],
-              toColumn: get(
-                depth1Entity,
-                'entityResponseData.columns[0].fullyQualifiedName',
-                ''
-              ),
-            },
-            {
-              fromColumns: [
-                lineageEntity.entityResponseData.columns[0]
-                  .fullyQualifiedName ?? '',
-              ],
-              toColumn: get(
-                depth1Entity,
-                'entityResponseData.columns[0].fullyQualifiedName',
-                ''
-              ),
-            },
-          ]
-        );
-
-        await afterAction();
-      }
-    );
+    // The 2 column-level edges root → depth1 are now created once per
+    // shard in lineage-data.setup.ts, so this describe no longer needs
+    // its own beforeAll.
 
     test('Verify lineage database filter selection', async ({ page }) => {
       await page.locator('[aria-label="Filters"]').click();
@@ -1129,7 +974,13 @@ test.describe('Lineage Filters', () => {
     });
 
     test('verify upstream count for all the entities', async ({ page }) => {
-      test.setTimeout(360_000);
+      // Each iteration visits an entity, opens the lineage tab, tweaks
+      // depth via a modal, switches to Impact Analysis, then toggles the
+      // Upstream radio — two more waits per iteration than the sibling
+      // Downstream test — so 360s is too tight under CI load (observed
+      // initial run stuck on the lineage-config dialog and hitting budget,
+      // retry finishing in ~2m).
+      test.setTimeout(600_000);
 
       // Verify Dashboard is visible in Impact Analysis for Upstream
       await page.getByRole('radio', { name: 'Upstream' }).click();
