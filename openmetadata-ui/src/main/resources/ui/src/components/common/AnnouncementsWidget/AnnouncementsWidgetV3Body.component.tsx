@@ -19,6 +19,12 @@ import { useTranslation } from 'react-i18next';
 import AnnouncementBanner from './AnnouncementBanner.component';
 import { AnnouncementsWidgetV3BodyProps } from './AnnouncementsWidgetV3Body.interface';
 
+// The frame draws the carousel arrows as circular white buttons. `secondary`
+// carries the white fill and the border, but that border is painted on ::after,
+// so the radius has to be set there too or the button rounds and its edge stays
+// square.
+const ARROW_CLASS = 'tw:size-7 tw:rounded-full tw:after:rounded-full';
+
 const AnnouncementsWidgetV3Body = ({
   announcements,
   onItemClick,
@@ -86,7 +92,8 @@ const AnnouncementsWidgetV3Body = ({
       {total > 1 && (
         <ButtonUtility
           aria-label={t('label.previous')}
-          color="tertiary"
+          className={ARROW_CLASS}
+          color="secondary"
           data-testid="announcement-prev-btn"
           icon={ChevronLeft}
           isDisabled={index === 0}
@@ -108,7 +115,8 @@ const AnnouncementsWidgetV3Body = ({
       {total > 1 && (
         <ButtonUtility
           aria-label={t('label.next')}
-          color="tertiary"
+          className={ARROW_CLASS}
+          color="secondary"
           data-testid="announcement-next-btn"
           icon={ChevronRight}
           isDisabled={index === total - 1}
