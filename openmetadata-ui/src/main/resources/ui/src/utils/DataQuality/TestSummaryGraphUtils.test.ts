@@ -10,10 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { GREEN_3, RED_3, YELLOW_2 } from '../../constants/Color.constants';
+import {
+  BLUE_500,
+  GREEN_3,
+  RED_3,
+  YELLOW_3,
+} from '../../constants/Color.constants';
 import { Task } from '../../generated/entity/tasks/task';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import {
+  formatTestSummaryXAxis,
   formatTestSummaryYAxis,
   getStatusDotColor,
   getTestSummaryTooltipPosition,
@@ -496,8 +502,28 @@ describe('getStatusDotColor', () => {
     expect(getStatusDotColor(TestCaseStatus.Failed)).toBe(RED_3);
   });
 
-  it('should return YELLOW_2 for non success/failure status', () => {
-    expect(getStatusDotColor(TestCaseStatus.Aborted)).toBe(YELLOW_2);
+  it('should return YELLOW_3 for Aborted', () => {
+    expect(getStatusDotColor(TestCaseStatus.Aborted)).toBe(YELLOW_3);
+  });
+
+  // Aborted and Queued read as the same run to a colour-blind eye when they
+  // share a dot: one produced no result, the other has not run yet.
+  it('should return BLUE_500 for Queued', () => {
+    expect(getStatusDotColor(TestCaseStatus.Queued)).toBe(BLUE_500);
+  });
+});
+
+describe('formatTestSummaryXAxis', () => {
+  // The mock labels the axis with a bare month and day; the full datetime is
+  // what forced the old axis to be angled.
+  it('should format a timestamp as a short month and day', () => {
+    expect(formatTestSummaryXAxis(Date.UTC(2026, 5, 15, 12))).toMatch(
+      /^Jun 1[45]$/
+    );
+  });
+
+  it('should return an empty string for a missing timestamp', () => {
+    expect(formatTestSummaryXAxis(undefined)).toBe('');
   });
 });
 

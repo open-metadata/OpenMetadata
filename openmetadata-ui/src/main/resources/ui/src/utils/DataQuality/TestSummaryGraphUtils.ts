@@ -15,7 +15,12 @@ import omitBy from 'lodash/omitBy';
 import round from 'lodash/round';
 import { CartesianViewBox } from 'recharts/types/util/types';
 import { TestCaseChartDataType } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
-import { GREEN_3, RED_3, YELLOW_2 } from '../../constants/Color.constants';
+import {
+  BLUE_500,
+  GREEN_3,
+  RED_3,
+  YELLOW_3,
+} from '../../constants/Color.constants';
 import { COLORS } from '../../constants/profiler.constant';
 import { Task } from '../../generated/entity/tasks/task';
 import {
@@ -25,7 +30,10 @@ import {
 } from '../../generated/tests/testCase';
 import { axisTickFormatter } from '../ChartUtils';
 import { getRandomHexColor } from '../DataInsightPureUtils';
-import { convertSecondsToHumanReadableFormat } from '../date-time/DateTimeUtils';
+import {
+  convertSecondsToHumanReadableFormat,
+  formatDateTimeLong,
+} from '../date-time/DateTimeUtils';
 import {
   getTaskDetailPathFromTask,
   getTaskDisplayId,
@@ -135,6 +143,8 @@ export const prepareChartData = ({
   };
 };
 
+// Aborted and Queued used to share one colour, which read as a single state:
+// a run that produced no result and a run that has not happened yet.
 export const getStatusDotColor = (status: TestCaseStatus): string => {
   if (status === TestCaseStatus.Success) {
     return GREEN_3;
@@ -144,8 +154,19 @@ export const getStatusDotColor = (status: TestCaseStatus): string => {
     return RED_3;
   }
 
-  return YELLOW_2;
+  if (status === TestCaseStatus.Queued) {
+    return BLUE_500;
+  }
+
+  return YELLOW_3;
 };
+
+/**
+ * The axis carries a date only. Spelling out the time is what made the old
+ * labels too wide to sit horizontally.
+ */
+export const formatTestSummaryXAxis = (timestamp?: number): string =>
+  formatDateTimeLong(timestamp, 'MMM d');
 
 export const formatTestSummaryYAxis = (
   value: number,

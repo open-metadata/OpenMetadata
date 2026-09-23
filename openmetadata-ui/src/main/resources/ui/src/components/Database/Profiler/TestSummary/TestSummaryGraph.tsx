@@ -60,6 +60,7 @@ import { getTaskById } from '../../../../rest/tasksAPI';
 import { updateActiveChartFilter } from '../../../../utils/ChartUtils';
 import {
   formatTestSummaryYAxis,
+  formatTestSummaryXAxis,
   getStatusDotColor,
   getTestSummaryTooltipPosition,
   isSameTooltipPosition,
@@ -398,16 +399,12 @@ function TestSummaryGraph({
       <ComposedChart data={chartData.data} margin={TEST_SUMMARY_CHART_MARGIN}>
         <CartesianGrid stroke={grid} />
         <XAxis
-          angle={-45}
           dataKey="name"
           domain={['auto', 'auto']}
           padding={{ left: 8, right: 8 }}
           scale="time"
-          textAnchor="end"
           tick={{ fill: axis, fontSize: 12 }}
-          tickFormatter={(date) =>
-            formatDateTimeLong(date, DATE_TIME_12_HOUR_FORMAT)
-          }
+          tickFormatter={formatTestSummaryXAxis}
           type="number"
         />
         <YAxis
