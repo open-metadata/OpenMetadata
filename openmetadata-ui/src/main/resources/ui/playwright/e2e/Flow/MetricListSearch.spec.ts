@@ -103,11 +103,6 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
     await expect(page.getByTestId('metric-name').first()).toBeVisible();
 
     await test.step('search fires a scoped metric query and narrows the results', async () => {
-      // Capture the pre-search row count so we can poll until the list
-      // actually narrows — a non-retrying count() >= 1 would pass immediately
-      // against the stale keepPreviousData list and miss the race entirely.
-      const initialCount = await page.getByTestId('metric-name').count();
-
       // The debounced search must actually reach the API. Regression #29538
       // cancelled this request on the re-render that typing triggered, so the
       // list never filtered — this waitForResponse would then time out.
@@ -129,16 +124,14 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
 
       await waitForAllLoadersToDisappear(page);
 
-      // Poll until the list has narrowed below the pre-search count. This
-      // waits out React Query's keepPreviousData without requiring exactly 1
-      // result — parallel specs may produce legitimate extra matches.
-      await expect
-        .poll(() => page.getByTestId('metric-name').count())
-        .toBeLessThan(initialCount);
+      // otherName not-visible is asserted first — it retries until React
+      // Query's keepPreviousData clears and the filtered list is live.
+      // matchName was already in the pre-search list so its visibility check
+      // must come after, once the stale list is confirmed gone.
+      await expect(page.getByText(otherName)).not.toBeVisible();
       await expect(
         page.getByTestId('metric-name').filter({ hasText: matchName })
       ).toBeVisible();
-      await expect(page.getByText(otherName)).not.toBeVisible();
     });
 
     await test.step('clearing the search restores the full list', async () => {
