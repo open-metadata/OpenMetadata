@@ -39,6 +39,11 @@ export interface AlertCatalogSource {
      */
     parameters?: { [key: string]: any };
     /**
+     * Who inside the platform alerts on this source can be sent to, when not the catalog's
+     * default. Offered in the form, never enforced on save.
+     */
+    recipientCategories?: SubscriptionCategory[];
+    /**
      * A source of an earlier release. Never offered; kept so alerts saved then still build.
      */
     removed?: boolean;
@@ -66,4 +71,18 @@ export enum SourceKind {
     Activity = "activity",
     All = "all",
     Entity = "entity",
+}
+
+/**
+ * Subscription Endpoint Type.
+ */
+export enum SubscriptionCategory {
+    Admins = "Admins",
+    Assignees = "Assignees",
+    External = "External",
+    Followers = "Followers",
+    Mentions = "Mentions",
+    Owners = "Owners",
+    Teams = "Teams",
+    Users = "Users",
 }

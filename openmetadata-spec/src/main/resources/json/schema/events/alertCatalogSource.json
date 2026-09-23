@@ -56,6 +56,13 @@
         "type": "string"
       }
     },
+    "recipientCategories": {
+      "description": "Who inside the platform alerts on this source can be sent to, when not the catalog's default. Offered in the form, never enforced on save.",
+      "type": "array",
+      "items": {
+        "$ref": "./eventSubscription.json#/definitions/subscriptionCategory"
+      }
+    },
     "labels": {
       "description": "Labels by filter or trigger name, where this source calls one differently from its definition.",
       "type": "object",

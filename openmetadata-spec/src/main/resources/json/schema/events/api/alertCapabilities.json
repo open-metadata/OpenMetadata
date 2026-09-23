@@ -43,6 +43,13 @@
       "items": {
         "type": "string"
       }
+    },
+    "recipientCategories": {
+      "description": "Who inside the platform alerts on the selected sources can be sent to: a category any of them offers. Offered in the form, never enforced on save.",
+      "type": "array",
+      "items": {
+        "$ref": "../eventSubscription.json#/definitions/subscriptionCategory"
+      }
     }
   },
   "required": ["alertType", "sources", "filters", "triggers"],

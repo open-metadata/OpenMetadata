@@ -8,7 +8,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
+import org.openmetadata.schema.entity.events.AlertCatalogSource;
 import org.openmetadata.schema.entity.events.AlertSourceKind;
+import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 
@@ -22,6 +24,8 @@ public class EventsSubscriptionRegistry {
   private static final List<FilterResourceDescriptor> BUILDABLE_OBSERVABILITY = new ArrayList<>();
 
   private static final Map<String, AlertSourceKind> KINDS = new HashMap<>();
+  private static final Map<String, List<SubscriptionCategory>> RECIPIENTS = new HashMap<>();
+  private static final List<SubscriptionCategory> DEFAULT_RECIPIENTS = new ArrayList<>();
 
   private EventsSubscriptionRegistry() {}
 
@@ -31,11 +35,29 @@ public class EventsSubscriptionRegistry {
     replace(BUILDABLE_NOTIFICATION, catalog.buildable(AlertType.NOTIFICATION));
     replace(BUILDABLE_OBSERVABILITY, catalog.buildable(AlertType.OBSERVABILITY));
     KINDS.clear();
+    RECIPIENTS.clear();
     for (AlertType alertType : List.of(AlertType.NOTIFICATION, AlertType.OBSERVABILITY)) {
-      catalog
-          .sourcesOf(alertType)
-          .forEach(source -> KINDS.put(kindKey(alertType, source.getName()), source.getKind()));
+      for (AlertCatalogSource source : catalog.sourcesOf(alertType)) {
+        KINDS.put(kindKey(alertType, source.getName()), source.getKind());
+        RECIPIENTS.put(kindKey(alertType, source.getName()), catalog.recipientCategoriesOf(source));
+      }
     }
+    DEFAULT_RECIPIENTS.clear();
+    DEFAULT_RECIPIENTS.addAll(catalog.defaultRecipientCategories());
+  }
+
+  /**
+   * Who alerts on the source can be sent to inside the platform, removed sources included, so an
+   * alert saved with one still shows its recipients. Offered in the form, never enforced on save.
+   */
+  public static List<SubscriptionCategory> recipientCategoriesOf(
+      AlertType alertType, String source) {
+    return Collections.unmodifiableList(
+        RECIPIENTS.getOrDefault(kindKey(alertType, source), DEFAULT_RECIPIENTS));
+  }
+
+  public static List<SubscriptionCategory> defaultRecipientCategories() {
+    return Collections.unmodifiableList(DEFAULT_RECIPIENTS);
   }
 
   /** Source names look alike and mean different things; null for a name the catalog lacks. */

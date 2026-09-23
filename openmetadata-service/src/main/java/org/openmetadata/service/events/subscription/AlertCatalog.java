@@ -16,6 +16,7 @@ import org.openmetadata.schema.entity.events.AlertCatalogFile;
 import org.openmetadata.schema.entity.events.AlertCatalogLabels;
 import org.openmetadata.schema.entity.events.AlertCatalogSource;
 import org.openmetadata.schema.entity.events.EventFilterRule;
+import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.EntityUtil;
@@ -51,6 +52,7 @@ public final class AlertCatalog {
     sourcesOf(AlertType.OBSERVABILITY).forEach(source -> validate(AlertType.OBSERVABILITY, source));
     rejectDuplicateSources(AlertType.NOTIFICATION);
     rejectDuplicateSources(AlertType.OBSERVABILITY);
+    requireRecipientsInsideThePlatform();
   }
 
   /** The catalog this server ships with. Throws when it cannot be read or does not hold together. */
@@ -113,6 +115,18 @@ public final class AlertCatalog {
     return alertType == AlertType.NOTIFICATION
         ? listOrEmpty(content.getNotificationSources())
         : listOrEmpty(content.getObservabilitySources());
+  }
+
+  /** Who alerts can be sent to inside the platform, for a source that does not say. */
+  public List<SubscriptionCategory> defaultRecipientCategories() {
+    return listOrEmpty(content.getRecipientCategories());
+  }
+
+  // A source that lists no one takes the default: every source reaches someone.
+  public List<SubscriptionCategory> recipientCategoriesOf(AlertCatalogSource source) {
+    return listOrEmpty(source.getRecipientCategories()).isEmpty()
+        ? defaultRecipientCategories()
+        : source.getRecipientCategories();
   }
 
   public Set<String> definitionNames() {
@@ -220,6 +234,30 @@ public final class AlertCatalog {
           entry,
           "names the " + what + " " + name + ", which is not defined");
     }
+  }
+
+  // Recipients outside the platform are what a destination configures, never a source's offer.
+  private void requireRecipientsInsideThePlatform() {
+    require(
+        !defaultRecipientCategories().isEmpty(),
+        "recipientCategories",
+        "offers no one to send alerts to");
+    requireInsideThePlatform("recipientCategories", content.getRecipientCategories());
+    for (AlertType alertType : List.of(AlertType.NOTIFICATION, AlertType.OBSERVABILITY)) {
+      sourcesOf(alertType)
+          .forEach(
+              source ->
+                  requireInsideThePlatform(
+                      alertType.value() + " source " + source.getName(),
+                      source.getRecipientCategories()));
+    }
+  }
+
+  private void requireInsideThePlatform(String entry, List<SubscriptionCategory> categories) {
+    require(
+        !listOrEmpty(categories).contains(SubscriptionCategory.EXTERNAL),
+        entry,
+        "offers External recipients, which only a destination configures");
   }
 
   private void rejectDuplicateSources(AlertType alertType) {

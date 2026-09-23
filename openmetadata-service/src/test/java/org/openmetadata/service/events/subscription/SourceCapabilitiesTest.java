@@ -7,7 +7,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import jakarta.ws.rs.BadRequestException;
+import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.events.AlertCapabilities;
@@ -19,9 +23,31 @@ import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
 import org.openmetadata.schema.entity.events.AlertSourceKind;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
 
 /** What the form is told about a selection: the same rules the save applies, before the save. */
 class SourceCapabilitiesTest {
+
+  // The table the form held before the catalog said it: what each source left out.
+  private static final Set<SubscriptionCategory> FORMER_DEFAULT_EXCLUDES =
+      EnumSet.of(SubscriptionCategory.ASSIGNEES, SubscriptionCategory.MENTIONS);
+  private static final Map<String, Set<SubscriptionCategory>> FORMER_EXCLUDES =
+      Map.of(
+          "task",
+          EnumSet.of(
+              SubscriptionCategory.FOLLOWERS,
+              SubscriptionCategory.ADMINS,
+              SubscriptionCategory.USERS,
+              SubscriptionCategory.TEAMS),
+          "conversation",
+          EnumSet.of(
+              SubscriptionCategory.FOLLOWERS,
+              SubscriptionCategory.ADMINS,
+              SubscriptionCategory.USERS,
+              SubscriptionCategory.TEAMS,
+              SubscriptionCategory.ASSIGNEES),
+          "announcement",
+          EnumSet.of(SubscriptionCategory.ASSIGNEES));
 
   @BeforeAll
   static void loadCatalog() {
@@ -114,6 +140,40 @@ class SourceCapabilitiesTest {
     assertEquals(
         "This source never emits any of the chosen event types.",
         source(capabilities, "table").getWarning());
+  }
+
+  @Test
+  void recipientCategoriesMatchTheFormerUiTable() {
+    for (AlertType alertType : List.of(AlertType.NOTIFICATION, AlertType.OBSERVABILITY)) {
+      List<List<String>> selections = new ArrayList<>();
+      selections.add(List.of());
+      of(alertType, List.of(), null)
+          .getSources()
+          .forEach(source -> selections.add(List.of(source.getName())));
+      if (alertType == AlertType.NOTIFICATION) {
+        selections.add(List.of("task", "conversation"));
+        selections.add(List.of("announcement", "task", "conversation"));
+      }
+      for (List<String> selected : selections) {
+        assertEquals(
+            formerlyOffered(selected),
+            Set.copyOf(of(alertType, selected, null).getRecipientCategories()),
+            alertType + " " + selected);
+      }
+    }
+  }
+
+  // A category was offered unless every selected source left it out.
+  private static Set<SubscriptionCategory> formerlyOffered(List<String> selected) {
+    List<Set<SubscriptionCategory>> excludes =
+        (selected.isEmpty() ? List.of("") : selected)
+            .stream()
+                .map(source -> FORMER_EXCLUDES.getOrDefault(source, FORMER_DEFAULT_EXCLUDES))
+                .toList();
+    Set<SubscriptionCategory> offered =
+        EnumSet.complementOf(EnumSet.of(SubscriptionCategory.EXTERNAL));
+    offered.removeIf(category -> excludes.stream().allMatch(left -> left.contains(category)));
+    return offered;
   }
 
   private static AlertCapabilities of(

@@ -30,6 +30,11 @@ export interface AlertCapabilities {
      */
     filters: AlertConditionCapability[];
     /**
+     * Who inside the platform alerts on the selected sources can be sent to: a category any of
+     * them offers. Offered in the form, never enforced on save.
+     */
+    recipientCategories?: SubscriptionCategory[];
+    /**
      * Every source of the alert type.
      */
     sources: AlertSourceCapability[];
@@ -116,6 +121,20 @@ export enum InputType {
 export enum PrefixCondition {
     And = "AND",
     Or = "OR",
+}
+
+/**
+ * Subscription Endpoint Type.
+ */
+export enum SubscriptionCategory {
+    Admins = "Admins",
+    Assignees = "Assignees",
+    External = "External",
+    Followers = "Followers",
+    Mentions = "Mentions",
+    Owners = "Owners",
+    Teams = "Teams",
+    Users = "Users",
 }
 
 /**

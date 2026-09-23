@@ -27,6 +27,13 @@
         "$ref": "./eventFilterRule.json"
       }
     },
+    "recipientCategories": {
+      "description": "Who inside the platform alerts can be sent to, for a source that does not say. Offered in the form, never enforced on save.",
+      "type": "array",
+      "items": {
+        "$ref": "./eventSubscription.json#/definitions/subscriptionCategory"
+      }
+    },
     "notificationSources": {
       "description": "Sources of Notification alerts.",
       "type": "array",
@@ -42,6 +49,12 @@
       }
     }
   },
-  "required": ["filters", "triggers", "notificationSources", "observabilitySources"],
+  "required": [
+    "filters",
+    "triggers",
+    "recipientCategories",
+    "notificationSources",
+    "observabilitySources"
+  ],
   "additionalProperties": false
 }

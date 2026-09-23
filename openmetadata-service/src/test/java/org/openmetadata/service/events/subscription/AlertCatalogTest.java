@@ -175,6 +175,22 @@ class AlertCatalogTest {
         refused.getMessage());
   }
 
+  @Test
+  void sourceOfferingRecipientsOutsideThePlatformIsRefused() {
+    String source =
+        "[{\"name\":\"table\",\"kind\":\"entity\",\"recipientCategories\":[\"External\"]}]";
+
+    AlertCatalogException refused =
+        assertThrows(
+            AlertCatalogException.class,
+            () -> AlertCatalog.parse("broken.json", catalogWith(TWICE, null, source)));
+
+    assertEquals(
+        "Alert catalog broken.json, Notification source table: offers External recipients, which"
+            + " only a destination configures",
+        refused.getMessage());
+  }
+
   // A source of this kind stands for the change events of one entity type, so a name no entity
   // type has can never fire.
   @Test
@@ -248,7 +264,7 @@ class AlertCatalogTest {
     String filters = secondFilter == null ? firstFilter : firstFilter + "," + secondFilter;
     return "{\"filters\":["
         + filters
-        + "],\"triggers\":[],\"notificationSources\":"
+        + "],\"triggers\":[],\"recipientCategories\":[\"Owners\"],\"notificationSources\":"
         + sources
         + ",\"observabilitySources\":[]}";
   }

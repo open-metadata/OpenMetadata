@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -14,6 +15,7 @@ import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.AlertSourceCapability;
 import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
 import org.openmetadata.schema.entity.events.EventFilterRule;
+import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 
 /**
@@ -51,7 +53,21 @@ public final class SourceCapabilities {
                 source ->
                     ResourceEventTypes.forResource(source.getName()).stream()
                         .map(eventType -> eventType.value())
-                        .toList()));
+                        .toList()))
+        .withRecipientCategories(recipientCategoriesAnySourceOffers(alertType, selected));
+  }
+
+  // Offered, never enforced on save. With no source chosen yet, the catalog's default.
+  private static List<SubscriptionCategory> recipientCategoriesAnySourceOffers(
+      AlertType alertType, List<String> selected) {
+    Set<SubscriptionCategory> offered = EnumSet.noneOf(SubscriptionCategory.class);
+    if (selected.isEmpty()) {
+      offered.addAll(EventsSubscriptionRegistry.defaultRecipientCategories());
+    }
+    selected.forEach(
+        source ->
+            offered.addAll(EventsSubscriptionRegistry.recipientCategoriesOf(alertType, source)));
+    return new ArrayList<>(offered);
   }
 
   private static List<AlertSourceCapability> everySource(

@@ -294,6 +294,13 @@
       "inputType": "none"
     }
   ],
+  "recipientCategories": [
+    "Users",
+    "Teams",
+    "Admins",
+    "Owners",
+    "Followers"
+  ],
   "notificationSources": [
     {
       "name": "all",
@@ -621,13 +628,26 @@
     {
       "name": "announcement",
       "kind": "activity",
-      "filters": []
+      "filters": [],
+      "recipientCategories": [
+        "Users",
+        "Teams",
+        "Admins",
+        "Owners",
+        "Mentions",
+        "Followers"
+      ]
     },
     {
       "name": "task",
       "kind": "activity",
       "filters": [
         "filterByMentionedName"
+      ],
+      "recipientCategories": [
+        "Assignees",
+        "Owners",
+        "Mentions"
       ]
     },
     {
@@ -635,6 +655,10 @@
       "kind": "activity",
       "filters": [
         "filterByMentionedName"
+      ],
+      "recipientCategories": [
+        "Owners",
+        "Mentions"
       ]
     },
     {

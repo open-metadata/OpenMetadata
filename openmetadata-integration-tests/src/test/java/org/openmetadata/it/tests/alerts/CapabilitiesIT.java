@@ -17,6 +17,7 @@ import org.openmetadata.schema.api.events.AlertCapabilitiesRequest;
 import org.openmetadata.schema.api.events.AlertSourceCapability;
 import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
 import org.openmetadata.schema.entity.events.AlertSourceKind;
+import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -37,6 +38,19 @@ class CapabilitiesIT {
     assertTrue(selected(capabilities, "table"));
     assertFalse(selected(capabilities, "topic"));
     assertFalse(capabilities.getTriggers().isEmpty());
+  }
+
+  // Offered in the form, never enforced on save.
+  @Test
+  void offersTheRecipientsInsideThePlatformTheSourcesReach() {
+    AlertCapabilities capabilities = ask(AlertType.NOTIFICATION, List.of("task"));
+
+    assertEquals(
+        List.of(
+            SubscriptionCategory.ASSIGNEES,
+            SubscriptionCategory.OWNERS,
+            SubscriptionCategory.MENTIONS),
+        capabilities.getRecipientCategories());
   }
 
   @Test
