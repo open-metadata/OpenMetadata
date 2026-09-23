@@ -39,24 +39,22 @@ from .conftest import (  # noqa: TID252
     SECOND_PROCEDURE_DESCRIPTION,
     SECOND_SCHEMA,
     SECOND_SCHEMA_DESCRIPTION,
+    SECOND_TABLE_DESCRIPTION,
 )
 
 FIRST_SCHEMA = "SalesLT"
 
 
-@pytest.fixture(scope="module")
-def source(mssql_container, db_name):
-    """
-    A source connected to master, so nothing it reads per database can come from
-    the database it happened to connect to.
-    """
+def _source_on_master(mssql_container, db_name, scheme: str, service_name: str):
+    """A source connected to master, so nothing it reads per database can come
+    from the database it happened to connect to."""
     config = {
         "type": "mssql",
-        "serviceName": "local_mssql_reflection",
+        "serviceName": service_name,
         "serviceConnection": {
             "config": {
                 "type": "Mssql",
-                "scheme": "mssql+pytds",
+                "scheme": scheme,
                 "username": mssql_container.username,
                 "password": mssql_container.password,
                 "hostPort": f"localhost:{mssql_container.get_exposed_port(mssql_container.port)}",
@@ -90,6 +88,12 @@ def source(mssql_container, db_name):
         mssql_source = MssqlSource.create(config, workflow_config.workflowConfig.openMetadataServerConfig)
     # The framework puts the service in the context before walking the databases.
     mssql_source.context.get().__dict__["database_service"] = config["serviceName"]
+    return mssql_source
+
+
+@pytest.fixture(scope="module")
+def source(mssql_container, db_name):
+    mssql_source = _source_on_master(mssql_container, db_name, "mssql+pytds", "local_mssql_reflection")
     yield mssql_source
     mssql_source.close()
 
@@ -103,6 +107,30 @@ def _ingest_database(source, database: str, schema: str) -> None:
             source.context.get().__dict__["database_schema"] = schema
             return
     raise AssertionError(f"{database} was never yielded")
+
+
+@pytest.fixture(scope="module")
+def pymssql_source(mssql_container, db_name):
+    """A second source on the FreeTDS driver.
+
+    Only the driver differs, and only because the drivers disagree about types:
+    sys.extended_properties.value is sql_variant, which FreeTDS hands back as
+    bytes where the others return text.
+    """
+    source = _source_on_master(mssql_container, db_name, "mssql+pymssql", "local_mssql_pymssql")
+    yield source
+    source.close()
+
+
+def test_a_table_description_is_text_on_every_driver(pymssql_source):
+    """Bytes here do not read as a missing description: they reach the catalogue
+    as the repr of a bytes object, or fail validation outright."""
+    _ingest_database(pymssql_source, SECOND_DATABASE, SECOND_SCHEMA)
+
+    description = pymssql_source.get_table_description(SECOND_SCHEMA, "orders", pymssql_source.inspector)
+
+    assert description == SECOND_TABLE_DESCRIPTION
+    assert isinstance(description, str)
 
 
 def test_descriptions_are_read_from_the_database_being_ingested(source, db_name):

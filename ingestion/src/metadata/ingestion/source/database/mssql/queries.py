@@ -120,7 +120,9 @@ MSSQL_SQL_STATEMENT_FROM_QUERY_STORE = textwrap.dedent(
 MSSQL_GET_TABLE_COMMENTS = textwrap.dedent(
     """
 SELECT obj.name AS table_name,
-        ep.value AS table_comment,
+        /* sql_variant, which FreeTDS hands back as bytes: the cast the other
+           comment queries already carry is what keeps pymssql returning text. */
+        CAST(ep.value AS NVARCHAR(MAX)) AS table_comment,
         s.name AS "schema"
 FROM sys.objects AS obj
 LEFT JOIN sys.extended_properties AS ep
