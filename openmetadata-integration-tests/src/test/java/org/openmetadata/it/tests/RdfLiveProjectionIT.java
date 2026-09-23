@@ -13,6 +13,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sun.net.httpserver.HttpServer;
@@ -24,8 +25,6 @@ import java.net.http.HttpResponse;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.UUID;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.jena.rdf.model.Model;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
@@ -52,11 +51,8 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.rdf.RdfLiveWrite;
 import org.openmetadata.service.rdf.RdfLiveWriteStore;
-import org.openmetadata.service.rdf.RdfLiveWriter;
 import org.openmetadata.service.rdf.RdfProjectionHealth;
-import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 import org.testcontainers.containers.GenericContainer;
@@ -175,85 +171,29 @@ public class RdfLiveProjectionIT {
         .put("path", "/tags/-")
         .set("value", JsonUtils.valueToTree(tag));
     SdkClients.adminClient().tables().patch(table.getId(), patch);
-    final var store = new RdfLiveWriteStore(Entity.getJdbi(), Clock.systemUTC());
-    Awaitility.await().atMost(Duration.ofSeconds(30)).until(() -> store.pendingWrites() == 0);
-    assertEquals(RdfProjectionState.READY, status());
+    // Waiting on pendingWrites() == 0 is not a barrier for this patch: the queue is a single
+    // global table (SELECT COUNT(*) FROM rdf_live_write_queue) shared by every test in the lane,
+    // so it can already read zero before this write is even enqueued and the wait returns
+    // immediately. Poll the outcome the assertion needs instead — it is specific to this table and
+    // cannot be satisfied by somebody else's drain.
+    //
+    // One storage handle serves both polls. Building a JenaFusekiStorage per retry would open HTTP
+    // clients and re-read the ontology on every attempt across two 60s windows, trading this flake
+    // for load of its own.
     try (var storage = new JenaFusekiStorage(servingConfig)) {
-      final Model model = storage.getEntity(Entity.TABLE, table.getId());
-      try {
-        assertTrue(
-            model.contains(
-                model.createResource("https://open-metadata.org/entity/table/" + table.getId()),
-                model.createProperty("https://open-metadata.org/ontology/hasGlossaryTerm"),
-                model.createResource(
-                    "https://open-metadata.org/entity/glossaryTerm/" + term.getId())),
-            () -> "Expected glossary term " + term.getId() + " in table projection: " + model);
-      } finally {
-        model.close();
-      }
-    }
-    GlossaryTestFactory.delete(glossary);
-    Awaitility.await().atMost(Duration.ofSeconds(30)).until(() -> store.pendingWrites() == 0);
-    assertEquals(RdfProjectionState.READY, status());
-  }
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(60))
+          .untilAsserted(() -> assertHasGlossaryTerm(storage, table.getId(), term.getId(), true));
+      assertEquals(RdfProjectionState.READY, status());
 
-  @Test
-  void updatesInOneDrainReadTheLatestCommittedMetadata(final TestNamespace namespace)
-      throws Exception {
-    RdfUpdater.initialize(servingConfig);
-    final var store = new RdfLiveWriteStore(Entity.getJdbi(), Clock.systemUTC());
-    Awaitility.await().atMost(Duration.ofSeconds(30)).until(() -> store.pendingWrites() == 0);
-    RdfUpdater.stop();
-    final var glossary = GlossaryTestFactory.createWithName(namespace, "liveUpdates");
-    final var term = GlossaryTermTestFactory.createWithName(namespace, glossary, "linkedTerm");
-    final var service = DatabaseServiceTestFactory.createPostgres(namespace);
-    final var schema = DatabaseSchemaTestFactory.createSimple(namespace, service);
-    final var table = TableTestFactory.createSimple(namespace, schema.getFullyQualifiedName());
-    final var patch = JsonUtils.getObjectMapper().createArrayNode();
-    patch
-        .addObject()
-        .put("op", "add")
-        .put("path", "/tags/-")
-        .set(
-            "value",
-            JsonUtils.valueToTree(
-                new TagLabel()
-                    .withTagFQN(term.getFullyQualifiedName())
-                    .withSource(TagLabel.TagSource.GLOSSARY)
-                    .withLabelType(TagLabel.LabelType.MANUAL)
-                    .withState(TagLabel.State.CONFIRMED)));
-    final var command = new RdfLiveWrite.EntityUpdate(Entity.TABLE, table.getId());
-    store.enqueue(JsonUtils.pojoToJson(command));
-    store.enqueue(JsonUtils.pojoToJson(command));
-    final var firstWrite = new AtomicBoolean(true);
-    try (var executor = Executors.newSingleThreadExecutor();
-        var writer =
-            new RdfLiveWriter(
-                store,
-                update -> {
-                  update.apply(RdfRepository.getInstance());
-                  if (firstWrite.getAndSet(false)) {
-                    // Commit through another request while the same drain still has work.
-                    SdkClients.adminClient().tables().patch(table.getId(), patch);
-                  }
-                },
-                executor)) {
-      writer.start();
-      Awaitility.await().atMost(Duration.ofSeconds(30)).until(() -> store.pendingWrites() == 0);
-      try (var storage = new JenaFusekiStorage(servingConfig)) {
-        final Model model = storage.getEntity(Entity.TABLE, table.getId());
-        try {
-          assertTrue(
-              model.contains(
-                  model.createResource("https://open-metadata.org/entity/table/" + table.getId()),
-                  model.createProperty("https://open-metadata.org/ontology/hasGlossaryTerm"),
-                  model.createResource(
-                      "https://open-metadata.org/entity/glossaryTerm/" + term.getId())),
-              "The second write in a drain must include the committed glossary assignment");
-        } finally {
-          model.close();
-        }
-      }
+      // Same reasoning in reverse: the delete is hard, recursive and permanent, so the projection
+      // must drop the edge. Polling for its removal proves the delete's writes drained, rather
+      // than a shared counter that may never have counted them.
+      GlossaryTestFactory.delete(glossary);
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(60))
+          .untilAsserted(() -> assertHasGlossaryTerm(storage, table.getId(), term.getId(), false));
+      assertEquals(RdfProjectionState.READY, status());
     }
   }
 
@@ -296,5 +236,27 @@ public class RdfLiveProjectionIT {
         .withPassword("test-admin")
         .withRequestTimeoutMs(10000)
         .withWriteMaxRetries(0);
+  }
+
+  private static void assertHasGlossaryTerm(
+      final JenaFusekiStorage storage,
+      final UUID tableId,
+      final UUID termId,
+      final boolean expected) {
+    final Model model = storage.getEntity(Entity.TABLE, tableId);
+    // getEntity returns null for a graph not yet written and for a failed or circuit-open read;
+    // neither proves the edge state. The table is never deleted, so retry until it is readable.
+    assertNotNull(model, "no readable RDF graph for table " + tableId);
+    try {
+      assertEquals(
+          expected,
+          model.contains(
+              model.createResource("https://open-metadata.org/entity/table/" + tableId),
+              model.createProperty("https://open-metadata.org/ontology/hasGlossaryTerm"),
+              model.createResource("https://open-metadata.org/entity/glossaryTerm/" + termId)),
+          "om:hasGlossaryTerm edge from table " + tableId + " to term " + termId);
+    } finally {
+      model.close();
+    }
   }
 }

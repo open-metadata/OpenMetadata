@@ -153,6 +153,25 @@ export class CrossTabLock {
     this.channel.postMessage({ type: 'done', payload } as LockDoneMessage);
   }
 
+  // Global (non-scoped) subscription to `done` broadcasts on the shared
+  // channel — lets a passive tab observe sibling refreshes without
+  // running its own runExclusive cycle. Used by AuthCoordinator to
+  // keep its sync `lastMintedToken` in sync with tokens minted by
+  // sibling tabs so the cycle circuit-breaker can distinguish
+  // "still-rejected current token" (real refresh loop) from
+  // "in-flight straggler carrying a pre-refresh token" across tabs.
+  onDoneBroadcast(cb: (payload: unknown) => void): () => void {
+    const handler = (event: MessageEvent) => {
+      const data = event.data as LockMessage | undefined;
+      if (data?.type === 'done') {
+        cb(data.payload);
+      }
+    };
+    this.channel.addEventListener('message', handler);
+
+    return () => this.channel.removeEventListener('message', handler);
+  }
+
   notifyFailed(reason?: string): void {
     this.channel.postMessage({ type: 'failed', reason } as LockFailedMessage);
   }
