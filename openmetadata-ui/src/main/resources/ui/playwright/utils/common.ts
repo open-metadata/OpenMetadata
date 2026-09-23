@@ -28,6 +28,10 @@ import { Domain } from '../support/domain/Domain';
 import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
+import {
+  recoverLostStorageStateToken,
+  watchAuthBoot,
+} from './storageStateRecovery';
 import { getToken as getTokenFromStorage } from './tokenStorage';
 
 export const uuid = () => randomUUID().split('-')[0];
@@ -293,12 +297,22 @@ export const redirectToHomePage = async (
   // is the only hook that reaches all of them; the call is idempotent.
   await installServerLoadReducers(page.context());
   await disableEtagConditionalReads(page);
+  // Started before goto so it cannot miss the boot's auth decision. The
+  // waitForURL below resolves before a signed-out boot redirects to /signin,
+  // and the loader check passes on the login page too, so without this a lost
+  // storageState token surfaces 60s later as an unrelated-looking failure.
+  const bootedSignedOut = watchAuthBoot(page);
   await page.goto('/my-data', {
     waitUntil: 'domcontentloaded',
   });
   await page.waitForURL('**/my-data', {
     waitUntil: 'domcontentloaded',
   });
+
+  if (await recoverLostStorageStateToken(page, bootedSignedOut)) {
+    await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
+    await page.waitForURL('**/my-data', { waitUntil: 'domcontentloaded' });
+  }
 
   if (_waitForLoaders) {
     await waitForAllLoadersToDisappear(page);
