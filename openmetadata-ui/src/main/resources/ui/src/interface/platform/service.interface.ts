@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-
 import { APICollection } from '../../generated/entity/data/apiCollection';
 import { Container } from '../../generated/entity/data/container';
 import { Dashboard } from '../../generated/entity/data/dashboard';

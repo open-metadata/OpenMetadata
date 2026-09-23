@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-
 export interface MoveGlossaryTermWebsocketResponse {
   jobId: string;
   status: 'COMPLETED' | 'FAILED';
