@@ -319,6 +319,9 @@
                 <include>testcontainers.properties</include>
                 <include>docker-java.properties</include>
                 <include>META-INF/services/**</include>
+                <!-- SearchTestImages (org/openmetadata/it/server/**) copies this archive into the
+                     Docker build context, so it has to travel with the published harness. -->
+                <include>opensearch-plugins/**</include>
               </includes>
             </configuration>
           </execution>
