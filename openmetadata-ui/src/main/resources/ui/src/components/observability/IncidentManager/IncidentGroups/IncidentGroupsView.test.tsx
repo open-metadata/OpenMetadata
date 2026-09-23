@@ -116,12 +116,16 @@ const mockGroups = [
   },
 ];
 
+const viewTree = (refreshKey?: number) => (
+  <>
+    <IncidentGroupsView refreshKey={refreshKey} />
+    <LocationSearch />
+  </>
+);
+
 const renderView = (initialEntry = '/observability/incident-manager') =>
   render(
-    <MemoryRouter initialEntries={[initialEntry]}>
-      <IncidentGroupsView />
-      <LocationSearch />
-    </MemoryRouter>
+    <MemoryRouter initialEntries={[initialEntry]}>{viewTree()}</MemoryRouter>
   );
 
 describe('IncidentGroupsView', () => {
@@ -301,6 +305,52 @@ describe('IncidentGroupsView', () => {
       limit: 10,
       sortType: 'desc',
     });
+  });
+
+  it('should re-read the groups when the page reports an incident change', async () => {
+    let rendered: ReturnType<typeof render> | undefined;
+
+    await act(async () => {
+      rendered = render(
+        <MemoryRouter initialEntries={['/observability/incident-manager']}>
+          {viewTree(0)}
+        </MemoryRouter>
+      );
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      rendered?.rerender(
+        <MemoryRouter initialEntries={['/observability/incident-manager']}>
+          {viewTree(1)}
+        </MemoryRouter>
+      );
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenCalledTimes(2);
+  });
+
+  it('should not re-read the groups while the reported change stands', async () => {
+    let rendered: ReturnType<typeof render> | undefined;
+
+    await act(async () => {
+      rendered = render(
+        <MemoryRouter initialEntries={['/observability/incident-manager']}>
+          {viewTree(1)}
+        </MemoryRouter>
+      );
+    });
+
+    await act(async () => {
+      rendered?.rerender(
+        <MemoryRouter initialEntries={['/observability/incident-manager']}>
+          {viewTree(1)}
+        </MemoryRouter>
+      );
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenCalledTimes(1);
   });
 
   it('should not refire the fetch when the selected dimension is picked again', async () => {

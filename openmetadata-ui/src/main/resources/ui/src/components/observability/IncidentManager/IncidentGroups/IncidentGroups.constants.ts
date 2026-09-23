@@ -82,6 +82,19 @@ export const INCIDENT_GROUP_STATUS_ORDER: TestCaseResolutionStatusTypes[] = [
 ];
 
 /**
+ * Fill of each status' slice. A status chip names itself, so it can carry its
+ * hue in the 700 shade over a light fill; a slice is colour alone, and at 700
+ * assigned reads brown and ack reads navy rather than as the amber and the blue
+ * those statuses are known by. Same hue per status as the chip, at the mid
+ * shade the design bars them in.
+ */
+export const INCIDENT_GROUP_STATUS_COLORS: Record<string, string> = {
+  [TestCaseResolutionStatusTypes.Assigned]: 'var(--om-color-warning-500)',
+  [TestCaseResolutionStatusTypes.ACK]: 'var(--om-color-blue-light-500)',
+  [TestCaseResolutionStatusTypes.New]: 'var(--om-color-purple-500)',
+};
+
+/**
  * Wording of the count line under the bar, which reads as a sentence fragment
  * (`3 assigned · 1 ack`) rather than as the title-case chips elsewhere.
  */

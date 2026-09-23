@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 import { Box, PageLayout } from '@openmetadata/ui-core-components';
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -64,6 +65,23 @@ const IncidentManagerPage = () => {
     commonTestCasePermission ?? DEFAULT_ENTITY_PERMISSION
   ).hasViewAccess;
 
+  /**
+   * The group rows above the table aggregate the very incidents it lists, so a
+   * status changed in the table leaves their breakdown bar showing the old
+   * split until the page is reloaded. Bumping the key on a status that went
+   * through re-reads the groups — one fetch per change, and none while the user
+   * is only looking.
+   */
+  const [groupsRefreshKey, setGroupsRefreshKey] = useState(0);
+
+  const handleStatusSubmitAndRefreshGroups = useCallback(
+    (value: TestCaseResolutionStatus) => {
+      handleStatusSubmit(value);
+      setGroupsRefreshKey((key) => key + 1);
+    },
+    [handleStatusSubmit]
+  );
+
   // Attached to the test case links so the detail page breadcrumb reflects
   // the incidents page as the origin.
   const incidentBreadcrumb = useMemo(
@@ -111,7 +129,7 @@ const IncidentManagerPage = () => {
       </div>
       {hasViewPermission ? (
         <Box className="tw:gap-4" direction="col">
-          <IncidentGroupsView />
+          <IncidentGroupsView refreshKey={groupsRefreshKey} />
           <Box
             className="tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:outline-secondary"
             direction="col">
@@ -127,7 +145,7 @@ const IncidentManagerPage = () => {
               breadcrumbData={incidentBreadcrumb}
               handleAssigneeUpdate={handleAssigneeUpdate}
               handleSeveritySubmit={handleSeveritySubmit}
-              handleStatusSubmit={handleStatusSubmit}
+              handleStatusSubmit={handleStatusSubmitAndRefreshGroups}
               isIncidentPage={isIncidentPage}
               isPermissionLoading={isPermissionLoading}
               pagingData={pagingData}

@@ -39,8 +39,14 @@ import { parseIncidentGroupBy } from './IncidentGroups.utils';
  * written to the URL, and every change to it refires the fetch. The cursors the
  * server hands back are kept untouched so the pagination added on top of this
  * can pass them straight back as `offset`.
+ *
+ * `refreshKey` is the caller's way of saying the groups it is showing are out
+ * of date — a new value refires the fetch once, which is how a status changed
+ * elsewhere on the page reaches these rows without a reload.
  */
-export const useIncidentGroups = () => {
+export const useIncidentGroups = ({
+  refreshKey,
+}: { refreshKey?: number } = {}) => {
   const { t } = useTranslation();
   const location = useCustomLocation();
   const navigate = useNavigate();
@@ -121,6 +127,20 @@ export const useIncidentGroups = () => {
       latestRequest.current += 1;
     };
   }, [fetchIncidentGroups]);
+
+  // Compared against the last value seen rather than watched on its own, so the
+  // refetch happens for a new key alone — the effect also reruns whenever the
+  // fetch is rebuilt, which the effect above already covers.
+  const lastRefreshKey = useRef(refreshKey);
+
+  useEffect(() => {
+    if (refreshKey === lastRefreshKey.current) {
+      return;
+    }
+
+    lastRefreshKey.current = refreshKey;
+    fetchIncidentGroups();
+  }, [refreshKey, fetchIncidentGroups]);
 
   const handleGroupByChange = useCallback(
     (updatedGroupBy: IncidentGroupBy) => {

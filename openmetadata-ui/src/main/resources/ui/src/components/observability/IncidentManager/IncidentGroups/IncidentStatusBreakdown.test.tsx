@@ -12,8 +12,8 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { STATUS_COLORS } from '../../../../constants/Color.constants';
 import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseIncidentGroup';
+import { INCIDENT_GROUP_STATUS_COLORS } from './IncidentGroups.constants';
 import IncidentStatusBreakdown from './IncidentStatusBreakdown';
 
 describe('IncidentStatusBreakdown', () => {
@@ -29,11 +29,13 @@ describe('IncidentStatusBreakdown', () => {
 
     expect(screen.getByTestId('group-status-segment-Assigned')).toHaveStyle({
       width: '75%',
-      backgroundColor: STATUS_COLORS.Assigned.border,
+      backgroundColor:
+        INCIDENT_GROUP_STATUS_COLORS[TestCaseResolutionStatusTypes.Assigned],
     });
     expect(screen.getByTestId('group-status-segment-Ack')).toHaveStyle({
       width: '25%',
-      backgroundColor: STATUS_COLORS.Ack.border,
+      backgroundColor:
+        INCIDENT_GROUP_STATUS_COLORS[TestCaseResolutionStatusTypes.ACK],
     });
   });
 

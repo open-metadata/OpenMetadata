@@ -28,6 +28,7 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
 import IncidentGroupByDropdown from './IncidentGroupByDropdown';
+import { IncidentGroupsViewProps } from './IncidentGroups.types';
 import { countRecurringIncidentGroups } from './IncidentGroups.utils';
 import IncidentGroupsTable from './IncidentGroupsTable';
 import { useIncidentGroups } from './useIncidentGroups';
@@ -37,7 +38,7 @@ import { useIncidentGroups } from './useIncidentGroups';
  * over the fetched groups, and the group table itself — plus the
  * loading/empty/error states of the fetch that feeds all three.
  */
-const IncidentGroupsView = () => {
+const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
   const { t } = useTranslation();
   const {
     groupBy,
@@ -48,7 +49,7 @@ const IncidentGroupsView = () => {
     isError,
     handleGroupByChange,
     handleSortTypeChange,
-  } = useIncidentGroups();
+  } = useIncidentGroups({ refreshKey });
 
   /**
    * Only the loaded page can be counted: the endpoint reports the group total

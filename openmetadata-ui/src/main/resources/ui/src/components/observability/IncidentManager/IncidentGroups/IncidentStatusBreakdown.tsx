@@ -14,10 +14,10 @@
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { STATUS_COLORS } from '../../../../constants/Color.constants';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import {
   INCIDENT_GROUP_SEPARATOR,
+  INCIDENT_GROUP_STATUS_COLORS,
   INCIDENT_GROUP_STATUS_LABELS,
 } from './IncidentGroups.constants';
 import { IncidentStatusBreakdownProps } from './IncidentGroups.types';
@@ -55,7 +55,7 @@ const IncidentStatusBreakdown = ({
             key={status}
             style={{
               width: `${share}%`,
-              backgroundColor: STATUS_COLORS[status].border,
+              backgroundColor: INCIDENT_GROUP_STATUS_COLORS[status],
             }}
           />
         ))}
