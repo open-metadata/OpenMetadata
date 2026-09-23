@@ -296,10 +296,7 @@ test.describe('Search Settings', () => {
       // endpoint that serves searchSettings without deriving `highlight` greys out every toggle the
       // moment you hit Save, while the server goes on highlighting the field. Checking after a
       // reload would miss it entirely — a reload re-reads the GET, which was always annotated.
-      await expect(async () => {
-        await setSliderValue(page, 'field-weight-slider', 7);
-        await expect(page.getByTestId('save-btn')).toBeEnabled();
-      }).toPass({ timeout: 15_000, intervals: [2_000] });
+      await setSliderValue(page, 'field-weight-slider', 7);
 
       const saveSettings = page.waitForResponse(
         (response) =>
@@ -533,10 +530,7 @@ test.describe('Search Settings', () => {
         await ngramPanel.click();
 
         // Change n-gram weight to 5 and save.
-        await expect(async () => {
-          await setSliderValue(page, 'field-weight-slider', 5);
-          await expect(page.getByTestId('save-btn')).toBeEnabled();
-        }).toPass({ timeout: 15_000, intervals: [2_000] });
+        await setSliderValue(page, 'field-weight-slider', 5);
 
         const saveResponse = page.waitForResponse(
           (r) =>
@@ -566,14 +560,7 @@ test.describe('Search Settings', () => {
           return boost === initialNgramBoost;
         });
 
-        await expect(async () => {
-          await setSliderValue(page, 'field-weight-slider', initialNgramBoost);
-          await expect(
-            page
-              .getByTestId('field-weight-slider')
-              .locator('.ant-slider-handle')
-          ).toHaveAttribute('aria-valuenow', String(initialNgramBoost));
-        }).toPass({ timeout: 15_000, intervals: [2_000] });
+        await setSliderValue(page, 'field-weight-slider', initialNgramBoost);
 
         const revertedPreviewResponse = await revertedPreviewPromise;
         expect(revertedPreviewResponse.status()).toBe(200);

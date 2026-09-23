@@ -237,7 +237,7 @@ export default defineConfig({
     reducedMotion: 'reduce',
 
     /* Collect trace and video on every failure (not just retries) for debugging */
-    trace: 'retain-on-failure',
+    trace: 'on-first-retry',
     screenshot: 'only-on-failure',
 
     /* Add navigation timeout to prevent infinite hangs on networkidle waits.
