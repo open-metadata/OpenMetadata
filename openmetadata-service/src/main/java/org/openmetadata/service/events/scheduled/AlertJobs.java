@@ -14,6 +14,7 @@
 package org.openmetadata.service.events.scheduled;
 
 import com.google.common.util.concurrent.Striped;
+import java.util.Collection;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -23,6 +24,7 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.openmetadata.service.events.subscription.AlertRows;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
@@ -90,18 +92,18 @@ public final class AlertJobs {
     }
   }
 
-  /** Removes the alert's job without reading its row, for a delete that has not committed yet. */
-  static void removeNow(UUID alertId) throws SchedulerException {
-    AlertJobs jobs = started;
-    if (jobs != null) {
-      Lock lock = LOCKS.get(alertId);
-      lock.lock();
-      try {
-        jobs.remove(alertId);
-      } finally {
-        lock.unlock();
-      }
-    }
+  /**
+   * Converges once the unit of work that changed the row has committed, and not at all when it
+   * rolls back. A save or a delete nested in an outer one, such as an owned alert saved with its
+   * owner, waits for the outer commit. With no unit of work open, the row is already committed and
+   * it converges at once.
+   */
+  public static void convergeAfterCommit(UUID alertId) {
+    PostCommitActionQueue.runOrDefer(() -> converge(alertId));
+  }
+
+  public static void convergeAll(Collection<UUID> alertIds) {
+    alertIds.forEach(AlertJobs::converge);
   }
 
   /** Runs a tick that stopped for its time budget again at once, from the scheduler that ran it. */

@@ -41,6 +41,8 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
+import org.openmetadata.service.events.scheduled.AlertJobs;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertDefinition;
 import org.openmetadata.service.events.subscription.AlertUtil;
@@ -80,37 +82,48 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   @Override
   public void clearFields(EventSubscription entity, Fields fields) {}
 
-  // Every save path schedules through these hooks, so a saved alert and its job cannot drift
-  // apart, whoever saved it. The scheduler call is an idempotent replace.
+  // Every save path converges through these hooks, after its commit, so a saved alert and its
+  // job cannot drift apart, whoever saved it.
   @Override
   protected void postCreate(EventSubscription entity) {
     super.postCreate(entity);
-    EventSubscriptionScheduler.ensureScheduled(entity);
+    AlertJobs.convergeAfterCommit(entity.getId());
   }
 
   @Override
   protected void postCreate(List<EventSubscription> entities) {
     super.postCreate(entities);
-    entities.forEach(EventSubscriptionScheduler::ensureScheduled);
+    entities.forEach(entity -> AlertJobs.convergeAfterCommit(entity.getId()));
   }
 
   @Override
   protected void postUpdate(EventSubscription original, EventSubscription updated) {
     super.postUpdate(original, updated);
-    EventSubscriptionScheduler.ensureScheduled(updated);
+    AlertJobs.convergeAfterCommit(updated.getId());
   }
 
-  @Override
-  protected void postUpdateMany(List<EventSubscription> entities) {
-    super.postUpdateMany(entities);
-    listOrEmpty(entities).forEach(EventSubscriptionScheduler::ensureScheduled);
-  }
-
-  // Every hard delete reaches this, including deleteInternal, which skips postDelete.
+  // Every hard delete reaches this, inside the delete's own transaction, including deleteInternal,
+  // which skips postDelete. The job goes once the row is gone.
   @Override
   protected void entitySpecificCleanup(EventSubscription entity) {
-    EventSubscriptionScheduler.removeScheduled(entity.getId());
-    AlertRecord.forget(entity.getId());
+    retire(entity.getId());
+  }
+
+  // A cascade from a parent calls this outside any transaction and before the rows are deleted,
+  // and postDelete once they are gone, so the alert is retired there.
+  @Override
+  protected void bulkEntitySpecificCleanup(List<EventSubscription> entities, String deletedBy) {}
+
+  // An alert cannot be soft deleted, so every delete that reaches here removed the row.
+  @Override
+  protected void postDelete(EventSubscription entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
+    retire(entity.getId());
+  }
+
+  private static void retire(UUID alertId) {
+    AlertRecord.forget(alertId);
+    AlertJobs.convergeAfterCommit(alertId);
   }
 
   @Override
@@ -151,6 +164,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
     // An update is validated by the updater, which knows what the alert looked like before.
     if (!update) {
+      requireLoadableConsumer(entity);
       DestinationValidation.ofANewAlert(entity);
       compileNewDefinition(entity);
     }
@@ -165,6 +179,17 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       if (template.getProvider() == ProviderType.SYSTEM) {
         throw new IllegalArgumentException(
             "System templates cannot be assigned to EventSubscriptions. Please use a USER template or create a custom one.");
+      }
+    }
+  }
+
+  // A save naming a consumer this server cannot load fails here, not at every tick.
+  private static void requireLoadableConsumer(EventSubscription alert) {
+    if (alert.getClassName() != null) {
+      try {
+        Class.forName(alert.getClassName()).asSubclass(AbstractEventConsumer.class);
+      } catch (ClassNotFoundException | ClassCastException e) {
+        throw new BadRequestException("Consumer class cannot be loaded: " + alert.getClassName());
       }
     }
   }

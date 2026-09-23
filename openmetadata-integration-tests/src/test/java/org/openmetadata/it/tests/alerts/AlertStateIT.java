@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory.EXTERNAL;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
@@ -20,7 +21,9 @@ import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.events.AlertHealth;
 import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.EventSubscription;
@@ -28,6 +31,7 @@ import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -35,6 +39,7 @@ import org.openmetadata.sdk.services.events.EventSubscriptionService;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
+import org.openmetadata.service.events.scheduled.AlertJobs;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertRows;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
@@ -131,8 +136,9 @@ class AlertStateIT {
     }
   }
 
+  // An alert switched off behind the server sends nothing, and its own tick removes its job.
   @Test
-  void disabledAlertTickWritesNothing(TestNamespace ns) throws Exception {
+  void disabledAlertTickWritesNothingAndRemovesItsJob(TestNamespace ns) throws Exception {
     EventSubscription alert = create(ns, "disabled_tick", true);
     QuietAlert.settle(alert);
     String positionBefore = position(alert);
@@ -142,7 +148,7 @@ class AlertStateIT {
     DirectTick.run(alert, job);
 
     assertEquals(positionBefore, position(alert));
-    assertTrue(jobExists(alert), "the job is left for the hook or the reconciler");
+    assertFalse(jobExists(alert));
   }
 
   @Test
@@ -189,12 +195,97 @@ class AlertStateIT {
             JsonUtils.pojoToJson(failing));
 
     repository().createOrUpdate(null, alert.withDescription("edited"), "admin");
-    EventSubscriptionScheduler.ensureScheduled(alert);
+    AlertJobs.converge(alert.getId());
 
     SubscriptionStatus afterwards =
         EventSubscriptionScheduler.getInstance()
             .getStatusForEventSubscription(alert.getId(), UUID.fromString(destinationId));
     assertEquals(SubscriptionStatus.Status.FAILED, afterwards.getStatus());
+  }
+
+  // Scheduling follows the commit: nothing while the unit of work is open, nothing if it rolls
+  // back.
+  @Test
+  void saveInsideAnOuterTransactionSchedulesOnlyAfterCommit(TestNamespace ns) throws Exception {
+    EventSubscription alert =
+        new EventSubscriptionMapper().createToEntity(request(ns, "outer_commit", true), "admin");
+
+    boolean scheduledBeforeCommit =
+        repository()
+            .executeInTransaction(
+                () -> {
+                  repository().create(null, alert);
+                  return uncheckedJobExists(alert);
+                });
+
+    assertFalse(scheduledBeforeCommit);
+    assertTrue(jobExists(alert));
+  }
+
+  @Test
+  void saveThatRollsBackSchedulesNothing(TestNamespace ns) throws Exception {
+    EventSubscription alert =
+        new EventSubscriptionMapper().createToEntity(request(ns, "outer_rollback", true), "admin");
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            repository()
+                .executeInTransaction(
+                    () -> {
+                      repository().create(null, alert);
+                      throw new IllegalStateException("the outer work failed");
+                    }));
+
+    assertFalse(jobExists(alert));
+    assertNull(AlertRows.readOrNull(alert.getId()));
+  }
+
+  @Test
+  void deleteThatRollsBackKeepsTheJobAndRows(TestNamespace ns) throws Exception {
+    EventSubscription alert = create(ns, "delete_rollback", true);
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            repository()
+                .executeInTransaction(
+                    () -> {
+                      repository().delete("admin", alert.getId(), false, true);
+                      throw new IllegalStateException("the outer work failed");
+                    }));
+
+    assertNotNull(AlertRows.readOrNull(alert.getId()));
+    assertTrue(jobExists(alert));
+    assertNotNull(position(alert));
+  }
+
+  // An alert another entity contains is deleted with it, through the cascade.
+  @Test
+  void cascadeDeleteRemovesTheJobAndRows(TestNamespace ns) throws Exception {
+    for (boolean hardDelete : List.of(true, false)) {
+      EventSubscription alert = create(ns, "cascade_" + hardDelete, true);
+      Glossary parent =
+          SdkClients.adminClient()
+              .glossaries()
+              .create(
+                  new CreateGlossary()
+                      .withName(ns.shortPrefix("owner_" + hardDelete))
+                      .withDescription("contains an alert"));
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .insert(
+              parent.getId(),
+              alert.getId(),
+              Entity.GLOSSARY,
+              Entity.EVENT_SUBSCRIPTION,
+              Relationship.CONTAINS.ordinal());
+
+      Entity.getEntityRepository(Entity.GLOSSARY).delete("admin", parent.getId(), true, hardDelete);
+
+      assertNull(AlertRows.readOrNull(alert.getId()));
+      awaitJobAndRowsGone(alert);
+    }
   }
 
   // A test send is a question about an endpoint, not something that happened to the alert.
@@ -316,6 +407,14 @@ class AlertStateIT {
 
   private static boolean jobExists(EventSubscription alert) throws SchedulerException {
     return scheduler().checkExists(jobKey(alert));
+  }
+
+  private static boolean uncheckedJobExists(EventSubscription alert) {
+    try {
+      return jobExists(alert);
+    } catch (SchedulerException e) {
+      throw new IllegalStateException(e);
+    }
   }
 
   private static JobKey jobKey(EventSubscription alert) {

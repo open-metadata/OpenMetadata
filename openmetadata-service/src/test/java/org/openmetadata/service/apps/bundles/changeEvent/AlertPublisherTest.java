@@ -33,7 +33,6 @@ import org.openmetadata.service.util.PerRequestContextCleaner;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobKey;
-import org.quartz.Scheduler;
 
 @ExtendWith(MockitoExtension.class)
 class AlertPublisherTest {
@@ -227,7 +226,6 @@ class AlertPublisherTest {
     when(job.getKey()).thenReturn(new JobKey(alertId.toString(), "OMAlertJobGroup"));
     JobExecutionContext context = mock(JobExecutionContext.class);
     when(context.getJobDetail()).thenReturn(job);
-    when(context.getScheduler()).thenReturn(mock(Scheduler.class));
 
     try (MockedStatic<PerRequestContextCleaner> cleaner =
             mockStatic(PerRequestContextCleaner.class);

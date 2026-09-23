@@ -65,6 +65,21 @@ class AlertReconcilerIT {
     assertEquals(AlertPublisher.class, AlertFixtures.scheduler().getJobDetail(key).getJobClass());
   }
 
+  // After an upgrade, a job can name a consumer class this release no longer has.
+  @Test
+  void jobWhoseClassNoLongerLoadsIsReplaced(TestNamespace ns) throws Exception {
+    EventSubscription alert = alert(ns, "class_gone", null);
+    QuietAlert.settle(alert);
+    AlertFixtures.updateJob(
+        "JOB_CLASS_NAME = 'org.openmetadata.service.removed.OldConsumer'", alert.getId());
+
+    EventSubscriptionScheduler.getInstance().reconcileNow();
+
+    assertEquals(
+        AlertPublisher.class,
+        AlertFixtures.scheduler().getJobDetail(AlertFixtures.jobKey(alert.getId())).getJobClass());
+  }
+
   // While its own tick runs, a trigger is BLOCKED and its fire time can look arbitrarily old.
   @Test
   void reconcilerLeavesARunningTickAlone(TestNamespace ns) throws Exception {

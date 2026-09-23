@@ -47,7 +47,6 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -77,6 +76,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertFactory;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.scheduled.AlertJobs;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertCatalog;
 import org.openmetadata.service.events.subscription.AlertUtil;
@@ -84,7 +84,6 @@ import org.openmetadata.service.events.subscription.DestinationValidation;
 import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
 import org.openmetadata.service.events.subscription.SourceCapabilities;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -165,18 +164,13 @@ public class EventSubscriptionResource
     }
   }
 
+  // Every alert, including rows a migration wrote, gets the job its stored row asks for.
   private void initializeEventSubscriptions() {
-    CollectionDAO daoCollection = repository.getDaoCollection();
-    daoCollection.eventSubscriptionDAO().listAllEventsSubscriptions().stream()
-        .map(obj -> JsonUtils.readValue(obj, EventSubscription.class))
-        .forEach(
-            subscription -> {
-              try {
-                EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(subscription);
-              } catch (Exception ex) {
-                LOG.error("Failed to initialize subscription: {}", subscription.getId(), ex);
-              }
-            });
+    List<UUID> alertIds =
+        repository.getDaoCollection().eventSubscriptionDAO().listAllEventsSubscriptions().stream()
+            .map(json -> UUID.fromString(JsonUtils.readTree(json).get("id").asText()))
+            .toList();
+    AlertJobs.convergeAll(alertIds);
   }
 
   @GET
@@ -323,18 +317,10 @@ public class EventSubscriptionResource
   public Response createEventSubscription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid CreateEventSubscription request)
-      throws SchedulerException,
-          ClassNotFoundException,
-          InvocationTargetException,
-          NoSuchMethodException,
-          InstantiationException,
-          IllegalAccessException {
+      @Valid CreateEventSubscription request) {
     EventSubscription eventSub =
         mapper.createToEntity(request, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, eventSub);
-    EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub);
-    return response;
+    return create(uriInfo, securityContext, eventSub);
   }
 
   @PUT
@@ -358,10 +344,7 @@ public class EventSubscriptionResource
       @Valid CreateEventSubscription create) {
     EventSubscription eventSub =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, eventSub);
-    EventSubscriptionScheduler.getInstance()
-        .updateEventSubscription((EventSubscription) response.getEntity());
-    return response;
+    return createOrUpdate(uriInfo, securityContext, eventSub);
   }
 
   @PATCH
@@ -390,10 +373,7 @@ public class EventSubscriptionResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    Response response = patchInternal(uriInfo, securityContext, id, patch);
-    EventSubscriptionScheduler.getInstance()
-        .updateEventSubscription((EventSubscription) response.getEntity());
-    return response;
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -422,10 +402,7 @@ public class EventSubscriptionResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    Response response = patchInternal(uriInfo, securityContext, fqn, patch);
-    EventSubscriptionScheduler.getInstance()
-        .updateEventSubscription((EventSubscription) response.getEntity());
-    return response;
+    return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @GET
@@ -506,13 +483,9 @@ public class EventSubscriptionResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID id)
-      throws SchedulerException {
+          UUID id) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    EventSubscription eventSubscription = repository.get(null, id, repository.getFields("id"));
-    EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSubscription);
-    EventSubscriptionScheduler.getInstance().deleteSuccessfulAndFailedEventsRecordByAlert(id);
     return delete(uriInfo, securityContext, id, true, true);
   }
 
@@ -538,13 +511,9 @@ public class EventSubscriptionResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID id)
-      throws SchedulerException {
+          UUID id) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    EventSubscription eventSubscription = repository.get(null, id, repository.getFields("id"));
-    EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSubscription);
-    EventSubscriptionScheduler.getInstance().deleteSuccessfulAndFailedEventsRecordByAlert(id);
     return deleteByIdAsync(uriInfo, securityContext, id, true, true);
   }
 
@@ -563,15 +532,9 @@ public class EventSubscriptionResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string"))
           @PathParam("name")
-          String name)
-      throws SchedulerException {
+          String name) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    EventSubscription eventSubscription =
-        repository.getByName(null, name, repository.getFields("id"));
-    EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSubscription);
-    EventSubscriptionScheduler.getInstance()
-        .deleteSuccessfulAndFailedEventsRecordByAlert(eventSubscription.getId());
     return deleteByName(uriInfo, securityContext, name, true, true);
   }
 

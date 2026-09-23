@@ -101,6 +101,15 @@ final class AlertFixtures {
                     alertId.toString()));
   }
 
+  static void updateJob(String assignment, UUID alertId) {
+    Entity.getJdbi()
+        .useHandle(
+            handle ->
+                handle.execute(
+                    "UPDATE QRTZ_JOB_DETAILS SET " + assignment + " WHERE JOB_NAME = ?",
+                    alertId.toString()));
+  }
+
   static Scheduler scheduler() {
     return EventSubscriptionScheduler.getInstance().getAlertsScheduler();
   }

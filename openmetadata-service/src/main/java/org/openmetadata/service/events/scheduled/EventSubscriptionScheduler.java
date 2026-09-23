@@ -245,16 +245,6 @@ public class EventSubscriptionScheduler {
     }
   }
 
-  public static void removeScheduled(UUID alertId) {
-    if (initialized) {
-      try {
-        AlertJobs.removeNow(alertId);
-      } catch (SchedulerException e) {
-        LOG.warn("Job of deleted alert {} not removed; the reconciler will remove it", alertId, e);
-      }
-    }
-  }
-
   /** How one alert is scheduled right now, so "why is it not firing" is one request. */
   public AlertSchedulingInfo getSchedulingInfo(UUID alertId) throws SchedulerException {
     EventSubscription alert = storedAlert(alertId);
@@ -312,15 +302,11 @@ public class EventSubscriptionScheduler {
   }
 
   /**
-   * Remove the scheduled alert. Unlike an update this does not reconcile from the committed row:
-   * every caller runs it before the row is deleted, so the row still reads enabled and reconciling
-   * would reinstall the job being torn down. The per-subscription lock is still taken so a delete
-   * cannot interleave with an update's read-modify-write.
+   * The repository retires an alert's job once its row is deleted; this only converges once more.
    */
   public void deleteEventSubscriptionPublisher(EventSubscription deletedEntity)
       throws SchedulerException {
-    AlertJobs.removeNow(deletedEntity.getId());
-    LOG.info("Alert publisher deleted for {}", deletedEntity.getName());
+    AlertJobs.convergeAfterCommit(deletedEntity.getId());
   }
 
   public void deleteSuccessfulAndFailedEventsRecordByAlert(UUID id) {
