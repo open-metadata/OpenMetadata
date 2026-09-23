@@ -15,15 +15,14 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import org.openmetadata.service.security.SelectedDomainContext;
-
 /**
- * Applies the global (navbar) domain filter to a paginated list, from the caller's persisted
- * selected domain ({@link SelectedDomainContext}).
+ * Applies the global (navbar) domain filter to a list from the caller's persisted selected domain.
  *
- * <p>The decision is {@code supportsDomains && !isExcluded(entityType)} and only fires for a
- * user-facing list that has not already been scoped explicitly via {@code ?domain=}. Internal bulk
- * reads (reindex, {@code listAll}) never route through here, so they always see every domain.
+ * <p>A view preference, not access control: it narrows what a list shows and never blocks a direct
+ * read. The decision is {@code supportsDomains && !isExcluded(entityType)} and only fires for a
+ * user-facing list that has not already been scoped explicitly via {@code ?domain=}. It is invoked
+ * from the single list hook ({@code EntityUtil.addDomainQueryParam}), so internal bulk reads such as
+ * reindex never route through it.
  */
 public final class DomainNavFilter {
   private DomainNavFilter() {}
@@ -46,9 +45,9 @@ public final class DomainNavFilter {
         && !DomainFilterExclusions.isExcluded(entityType);
   }
 
-  /** Stamps the selected domain onto {@code filter} when {@link #shouldApply} allows it. */
-  public static void apply(ListFilter filter, String entityType, boolean supportsDomains) {
-    String selectedDomainIds = SelectedDomainContext.getSelectedDomainIds();
+  /** Stamps {@code selectedDomainIds} onto {@code filter} when {@link #shouldApply} allows it. */
+  public static void apply(
+      ListFilter filter, String entityType, boolean supportsDomains, String selectedDomainIds) {
     boolean hasExplicitDomain = filter.getQueryParams().get("domainId") != null;
     if (shouldApply(entityType, supportsDomains, hasExplicitDomain, selectedDomainIds)) {
       filter.addQueryParam("domainId", selectedDomainIds);

@@ -856,6 +856,90 @@ class EntityUtilTest {
     }
   }
 
+  @Test
+  void addDomainQueryParam_appliesNavbarDomainAsViewFilter() {
+    EntityReference selected =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Sales");
+    EntityReference domainRole =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("role")
+            .withName(DOMAIN_ONLY_ACCESS_ROLE);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    // Raw type: the repository lookup is only consulted for supportsDomains.
+    EntityRepository domainAwareRepository = mock(EntityRepository.class);
+    when(domainAwareRepository.isSupportsDomains()).thenReturn(true);
+
+    org.openmetadata.schema.entity.teams.User plain =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("viewer")
+            .withDefaultDomain(selected);
+    org.openmetadata.schema.entity.teams.User admin =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("admin")
+            .withIsAdmin(true)
+            .withDefaultDomain(selected);
+    org.openmetadata.schema.entity.teams.User bot =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("ingestion-bot")
+            .withIsBot(true)
+            .withDefaultDomain(selected);
+    org.openmetadata.schema.entity.teams.User restricted =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("analyst")
+            .withRoles(List.of(domainRole))
+            .withDomains(List.of(selected))
+            .withDefaultDomain(selected);
+
+    try (MockedStatic<DefaultAuthorizer> authorizer =
+            org.mockito.Mockito.mockStatic(DefaultAuthorizer.class);
+        MockedStatic<Entity> entity =
+            org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      // Unit tests register no repositories; stand in for the intrinsic supportsDomains lookup.
+      entity.when(() -> Entity.hasEntityRepository("table")).thenReturn(true);
+      entity.when(() -> Entity.getEntityRepository("table")).thenReturn(domainAwareRepository);
+      entity.when(() -> Entity.hasEntityRepository("user")).thenReturn(true);
+      entity.when(() -> Entity.getEntityRepository("user")).thenReturn(domainAwareRepository);
+
+      ListFilter viewFilter = new ListFilter(); // plain user with a selected domain -> narrowed
+      ListFilter adminFilter = new ListFilter(); // view preference applies to admins too
+      ListFilter excludedFilter = new ListFilter(); // excluded type stays untouched
+      ListFilter explicitFilter = new ListFilter(); // explicit ?domain= keeps control
+      explicitFilter.addQueryParam("domainId", "'explicit'");
+      ListFilter botFilter = new ListFilter(); // bots are never scoped
+      ListFilter restrictedFilter = new ListFilter(); // domain-only role -> enforcement only
+
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(plain, null))
+          .thenReturn(new SubjectContext(admin, null))
+          .thenReturn(new SubjectContext(plain, null))
+          .thenReturn(new SubjectContext(plain, null))
+          .thenReturn(new SubjectContext(bot, null))
+          .thenReturn(new SubjectContext(restricted, null));
+
+      EntityUtil.addDomainQueryParam(securityContext, viewFilter, "table");
+      EntityUtil.addDomainQueryParam(securityContext, adminFilter, "table");
+      EntityUtil.addDomainQueryParam(securityContext, excludedFilter, "user");
+      EntityUtil.addDomainQueryParam(securityContext, explicitFilter, "table");
+      EntityUtil.addDomainQueryParam(securityContext, botFilter, "table");
+      EntityUtil.addDomainQueryParam(securityContext, restrictedFilter, "table");
+
+      String id = selected.getId().toString();
+      assertEquals(id, viewFilter.getQueryParam("domainId"));
+      assertNull(viewFilter.getQueryParam("domainAccessControl")); // a filter, never enforcement
+      assertEquals(id, adminFilter.getQueryParam("domainId"));
+      assertTrue(excludedFilter.getQueryParams().isEmpty());
+      assertEquals("'explicit'", explicitFilter.getQueryParam("domainId"));
+      assertTrue(botFilter.getQueryParams().isEmpty());
+      assertEquals("'" + id + "'", restrictedFilter.getQueryParam("domainId"));
+      assertEquals("true", restrictedFilter.getQueryParam("domainAccessControl"));
+    }
+  }
+
   private static class NoDescriptionEntity {}
 
   private static class ThrowingFieldTable extends Table {

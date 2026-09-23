@@ -63,6 +63,7 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -71,6 +72,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.UsageDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
+import org.openmetadata.service.jdbi3.DomainNavFilter;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -1086,11 +1088,13 @@ public final class EntityUtil {
   public static void addDomainQueryParam(
       SecurityContext securityContext, ListFilter filter, String entityType) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    // If the User is admin then no need to add domainId in the query param
-    // Also if there are domain restriction on the subject context via role
-    if (!subjectContext.isAdmin()
-        && !subjectContext.isBot()
-        && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)) {
+    if (subjectContext.isBot()) {
+      return;
+    }
+    // Domain-only role: admins are exempt; everyone else is restricted to their assigned domains.
+    boolean domainRestricted =
+        !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE);
+    if (domainRestricted) {
       if (!nullOrEmpty(subjectContext.getUserDomains())) {
         filter.addQueryParam(
             "domainId", getCommaSeparatedIdsFromRefs(subjectContext.getUserDomains()));
@@ -1099,7 +1103,21 @@ public final class EntityUtil {
         filter.addQueryParam("domainId", NULL_PARAM);
         filter.addQueryParam("entityType", entityType);
       }
+      return;
     }
+    // Global (navbar) domain filter: a view preference that narrows lists to the selected domain
+    // and never restricts access, so it applies to admins too.
+    EntityReference selected = subjectContext.getDefaultDomain();
+    DomainNavFilter.apply(
+        filter,
+        entityType,
+        supportsDomains(entityType),
+        selected == null ? null : selected.getId().toString());
+  }
+
+  private static boolean supportsDomains(String entityType) {
+    return Entity.hasEntityRepository(entityType)
+        && Entity.getEntityRepository(entityType).isSupportsDomains();
   }
 
   /**
