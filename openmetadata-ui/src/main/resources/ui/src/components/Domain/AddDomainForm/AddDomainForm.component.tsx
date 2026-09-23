@@ -1020,17 +1020,26 @@ const AddDomainForm = ({
             return msg && !v?.length ? msg : true;
           },
         }}>
-        {({ field }) => (
-          <TagSelector
-            className="tw:w-full"
-            data-testid="tags-input"
-            label={t('label.tag-plural')}
-            placeholder={t('label.select-field', {
-              field: t('label.tag-plural'),
-            })}
-            value={field.value ?? []}
-            onChange={field.onChange}
-          />
+        {({ field, fieldState }) => (
+          <Box
+            aria-invalid={fieldState.invalid || undefined}
+            className="tw:gap-1.5"
+            direction="col">
+            <TagSelector
+              className="tw:w-full"
+              data-testid="tags-input"
+              label={t('label.tag-plural')}
+              placeholder={t('label.select-field', {
+                field: t('label.tag-plural'),
+              })}
+              required={Boolean(intakeFormRequiredMessage('tags'))}
+              value={field.value ?? []}
+              onChange={field.onChange}
+            />
+            {fieldState.error?.message && (
+              <HintText isInvalid>{fieldState.error.message}</HintText>
+            )}
+          </Box>
         )}
       </FormField>
       <FormField
