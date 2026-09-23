@@ -3193,6 +3193,127 @@ const core = {{
     assert rendered["failure"] is None, rendered["failure"]
 
 
+def test_playwright_summary_prefers_current_attempt_over_stale_retry(tmp_path):
+    # Workflow re-run scenario: attempt 1's `-retry` upload carried a
+    # `downloadDistribution: failure` status (real symptom from run
+    # 35650435023, when the artifact service 403'd during download).
+    # Attempt 2 re-ran the shard, the primary upload succeeded, but the
+    # attempt-1 `-retry` artifact remains visible to the summary job's
+    # `actions/download-artifact` step. Without attempt-awareness the
+    # renderer's "retry beats primary" tiebreaker would keep counting the
+    # stale failure — 8 phantom CI/reporting issues (4 shards × 2 messages)
+    # permanently reddened an otherwise-green required check.
+    helper = SCRIPTS / "render_playwright_summary.cjs"
+
+    def write_shard(dirname, statuses, ci_status_steps):
+        d = tmp_path / "results" / f"playwright-results-json-{dirname}"
+        d.mkdir(parents=True)
+        (d / "results.json").write_text(
+            json.dumps(
+                {
+                    "suites": [
+                        {
+                            "file": "playwright/e2e/example.spec.ts",
+                            "specs": [
+                                {
+                                    "title": f"case-{i}",
+                                    "tests": [{"status": status, "results": [{}]}],
+                                }
+                                for i, status in enumerate(statuses)
+                            ],
+                        }
+                    ]
+                }
+            )
+        )
+        (d / "ci-status.json").write_text(
+            json.dumps({"steps": ci_status_steps})
+        )
+
+    # Attempt 1 -retry: `downloadDistribution` 403'd, tests never ran.
+    write_shard(
+        "chromium-01-a1-retry",
+        ["skipped"],
+        {"downloadDistribution": "failure", "tests": "skipped"},
+    )
+    # Attempt 2 primary: green run, five tests passing.
+    write_shard(
+        "chromium-01-a2",
+        ["expected"] * 5,
+        {"downloadDistribution": "success", "tests": "success"},
+    )
+
+    payload_path = tmp_path / "playwright-pr-comment/summary.json"
+    harness = f"""
+const {{ renderPlaywrightSummary }} = require({json.dumps(str(helper))});
+let failure = null;
+let summaryBody = '';
+const summary = {{
+  addRaw(body) {{ summaryBody = body; return summary; }},
+  async write() {{}},
+}};
+const core = {{
+  summary,
+  warning() {{}},
+  setFailed(message) {{ failure = message; }},
+}};
+(async () => {{
+  await renderPlaywrightSummary({{
+    github: {{}},
+    context: {{
+      eventName: 'pull_request',
+      payload: {{}},
+      repo: {{ owner: 'open-metadata', repo: 'OpenMetadata' }},
+    }},
+    core,
+  }});
+  process.stdout.write(JSON.stringify({{ failure, summaryBody }}));
+}})().catch(e => {{ console.error(e.stack || e.message); process.exitCode = 1; }});
+"""
+    env = os.environ.copy()
+    env.update(
+        {
+            "CHECK_CHANGES_RESULT": "success",
+            "CACHE_KEYS_RESULT": "success",
+            "BUILD_RESULT": "success",
+            "DETECT_CHANGES_RESULT": "success",
+            "PLAN_RESULT": "success",
+            "FIXTURE_RESTORE_RESULT": "success",
+            "FIXTURE_RESULT": "success",
+            "PLAYWRIGHT_RESULT": "success",
+            "EXPECTED_MATRIX": json.dumps({"include": [{"shardId": "chromium-01"}]}),
+            "RUNNER_TEMP": str(tmp_path),
+            "COMMENT_PAYLOAD_PATH": str(payload_path),
+            "GITHUB_RUN_ID": "12345",
+        }
+    )
+    completed = subprocess.run(
+        ["node", "-e", harness],
+        cwd=tmp_path,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr
+    rendered = json.loads(completed.stdout)
+    payload = json.loads(payload_path.read_text())
+
+    # Attempt 2's green primary wins: totals reflect the 5 passing tests,
+    # not the attempt-1 stub with a skipped test.
+    assert payload["totals"]["passed"] == 5, payload["totals"]
+    assert payload["totals"]["skipped"] == 0, payload["totals"]
+
+    # Canonical shard id — no `-a1`, `-a2`, or `-retry` leakage.
+    shard_ids = [s["id"] for s in payload["shards"] if s["present"]]
+    assert shard_ids == ["chromium-01"], shard_ids
+
+    # No stale-status CI/reporting failures leaked through.
+    assert payload["infrastructureIssueCount"] == 0, payload["infrastructureIssues"]
+    assert rendered["failure"] is None, rendered["failure"]
+    assert "downloadDistribution" not in rendered["summaryBody"]
+
+
 def test_normal_vite_build_keeps_hashed_entry_assets():
     vite_config = (
         SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui/vite.config.ts"

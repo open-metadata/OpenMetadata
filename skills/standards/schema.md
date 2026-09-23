@@ -9,7 +9,7 @@ Location: `openmetadata-spec/src/main/resources/json/schema/entity/services/conn
 ```json
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/database/myDbConnection.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "MyDbConnection",
   "description": "MyDb Connection Config",
   "type": "object",
@@ -60,7 +60,7 @@ Non-database schemas follow the same structure but without `scheme`:
 ```json
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/myDashConnection.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "MyDashConnection",
   "description": "MyDash Connection Config",
   "type": "object",

@@ -85,6 +85,10 @@ import {
   assignTier,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import {
+  glossaryFieldTrigger,
+  pickGlossaryTermInField,
+} from '../../utils/glossaryPicker';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { selectOnDemandSchedule } from '../../utils/scheduleInterval';
 import { settingClick } from '../../utils/sidebar';
@@ -445,19 +449,21 @@ test.describe('Data Contracts', () => {
 
           await page.keyboard.press('Escape');
 
-          await page.click('[data-testid="glossary-terms-selector"] input');
-          await page.fill(
-            '[data-testid="glossary-terms-selector"] input',
-            testGlossaryTerm.data.name
+          // The glossary field is a TreeSelect popover picker, not a flat tag
+          // autocomplete, so drive it through the tree picker helper.
+          await pickGlossaryTermInField(
+            page,
+            glossaryFieldTrigger(
+              page.getByTestId('glossary-terms-selector'),
+              'tag-suggestion'
+            ),
+            {
+              name: testGlossaryTerm.data.name,
+              displayName: testGlossaryTerm.responseData.displayName,
+              fullyQualifiedName:
+                testGlossaryTerm.responseData.fullyQualifiedName ?? '',
+            }
           );
-
-          await page
-            .getByTestId(
-              `tag-option-${testGlossaryTerm.responseData.fullyQualifiedName}`
-            )
-            .click();
-
-          await page.keyboard.press('Escape');
 
           await page
             .getByTestId('pipeline-name')
