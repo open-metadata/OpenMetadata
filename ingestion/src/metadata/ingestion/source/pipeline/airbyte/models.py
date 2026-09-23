@@ -16,7 +16,7 @@ Airbyte Source Model module
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from .constants import (  # noqa: TID252
-    NAMESPACE_CUSTOM_FORMAT,
+    NAMESPACE_CUSTOM_FORMATS,
     NAMESPACE_DESTINATION,
     NAMESPACE_SOURCE,
     SOURCE_NAMESPACE_TOKEN,
@@ -112,7 +112,7 @@ class AirbyteConnectionModel(BaseModel):
         definition = self.namespaceDefinition or NAMESPACE_DESTINATION
         if definition == NAMESPACE_SOURCE:
             return stream.namespace
-        if definition == NAMESPACE_CUSTOM_FORMAT:
+        if definition in NAMESPACE_CUSTOM_FORMATS:
             # Per the public API schema: a blank format behaves like ``destination``, and
             # ``${SOURCE_NAMESPACE}`` like ``source``.
             if not self.namespaceFormat:

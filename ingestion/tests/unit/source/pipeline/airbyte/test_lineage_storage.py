@@ -1406,6 +1406,10 @@ class TestConnectionResolvedDestinationStream:
             ("custom_format", None, None),
             ("custom_format", "${SOURCE_NAMESPACE}", "shopdb"),
             ("custom_format", "warehouse", "warehouse"),
+            # The internal config API spells the same value without the underscore.
+            ("customformat", None, None),
+            ("customformat", "${SOURCE_NAMESPACE}", "shopdb"),
+            ("customformat", "warehouse", "warehouse"),
         ],
     )
     def test_destination_namespace(self, namespace_definition, namespace_format, expected):

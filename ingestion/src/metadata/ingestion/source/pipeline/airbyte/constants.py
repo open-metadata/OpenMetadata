@@ -130,9 +130,11 @@ SEARCH_CONNECTOR_TYPES = frozenset({"Elasticsearch", "ElasticSearch", "elasticse
 # treat a full page as proof the answer cannot be trusted.
 ES_MATCH_LIMIT = 100
 
-# Connection-level destination naming, from the public API's NamespaceDefinitionEnum
-# (["source", "destination", "custom_format"], default "destination").
+# Connection-level destination naming. `source` and `destination` are spelled the same on both
+# APIs; the custom-format value is not -- the public API's NamespaceDefinitionEnum calls it
+# `custom_format` while the internal config API's NamespaceDefinitionType calls it
+# `customformat`, so both are accepted. `destination` is the default on both.
 NAMESPACE_SOURCE = "source"
 NAMESPACE_DESTINATION = "destination"
-NAMESPACE_CUSTOM_FORMAT = "custom_format"
+NAMESPACE_CUSTOM_FORMATS = frozenset({"custom_format", "customformat"})
 SOURCE_NAMESPACE_TOKEN = "${SOURCE_NAMESPACE}"
