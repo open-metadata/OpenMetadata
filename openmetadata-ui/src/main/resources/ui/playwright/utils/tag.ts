@@ -78,11 +78,9 @@ export const visitClassificationPage = async (
     tagsContainer.locator('.table-container').getByTestId('loader')
   ).toHaveCount(0, { timeout: 30000 });
 
-  await expect(
-    tagsContainer
-      .getByTestId('entity-header-display-name')
-      .or(tagsContainer.getByTestId('entity-header-name'))
-  ).toContainText(classificationDisplayName);
+  await expect(tagsContainer.getByTestId('header')).toContainText(
+    classificationDisplayName
+  );
 };
 
 // Other asset type that should not get from the search in explore, they are not added to the tag
