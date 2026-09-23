@@ -30,7 +30,6 @@ import { ServiceCategory } from '../../../enums/service.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Directory } from '../../../generated/entity/data/directory';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
@@ -54,10 +53,7 @@ import {
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
-import {
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
@@ -312,44 +308,14 @@ function DirectoryDetails({
   // ever listed, unused, in the tabs useMemo's dependency array) — dead-code precedent
   // (Task 7/8, e.g. CommonWidgets).
   const {
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
-    editCustomAttributePermission,
-    editLineagePermission,
-    viewCustomPropertiesPermission,
+    canEditTags: editTagsPermission,
+    canEditGlossaryTerms: editGlossaryTermsPermission,
+    canEditDescription: editDescriptionPermission,
+    canEditCustomFields: editCustomAttributePermission,
+    canEditLineage: editLineagePermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
   } = useMemo(
-    () => ({
-      editTagsPermission:
-        getPrioritizedEditPermission(
-          directoryPermissions,
-          Operation.EditTags
-        ) && !deleted,
-      editGlossaryTermsPermission:
-        getPrioritizedEditPermission(
-          directoryPermissions,
-          Operation.EditGlossaryTerms
-        ) && !deleted,
-      editDescriptionPermission:
-        getPrioritizedEditPermission(
-          directoryPermissions,
-          Operation.EditDescription
-        ) && !deleted,
-      editCustomAttributePermission:
-        getPrioritizedEditPermission(
-          directoryPermissions,
-          Operation.EditCustomFields
-        ) && !deleted,
-      editLineagePermission:
-        getPrioritizedEditPermission(
-          directoryPermissions,
-          Operation.EditLineage
-        ) && !deleted,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        directoryPermissions,
-        Operation.ViewCustomFields
-      ),
-    }),
+    () => getDerivedPermissionFlags(directoryPermissions, deleted),
     [directoryPermissions, deleted]
   );
 

@@ -26,7 +26,6 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { ChangeDescription } from '../../generated/entity/data/searchIndex';
-import { Operation } from '../../generated/entity/policies/policy';
 import { TagSource } from '../../generated/type/tagLabel';
 import {
   getCommonExtraInfoForVersionDetails,
@@ -34,7 +33,7 @@ import {
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtilsPure';
 import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
-import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { getUpdatedSearchIndexFields } from '../../utils/SearchIndexVersionUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -125,11 +124,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
   }, [currentVersionData, changeDescription]);
 
   const viewCustomPropertiesPermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        entityPermissions,
-        Operation.ViewCustomFields
-      ),
+    () => getDerivedPermissionFlags(entityPermissions).canViewCustomFields,
     [entityPermissions]
   );
 
