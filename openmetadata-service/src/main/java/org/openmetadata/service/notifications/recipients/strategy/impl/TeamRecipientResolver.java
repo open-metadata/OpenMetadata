@@ -76,7 +76,7 @@ public class TeamRecipientResolver implements RecipientResolutionStrategy {
       Team team = Entity.getEntityByName(Entity.TEAM, teamName, TEAM_FIELDS, Include.NON_DELETED);
       return Recipient.fromTeam(team, destination);
     } catch (Exception e) {
-      RecipientLookups.rethrowUnlessAbsent(e);
+      RecipientLookups.reportUnlessAbsent(e);
       LOG.error("Failed to resolve team recipient for team {}", teamName, e);
       return null;
     }
@@ -112,7 +112,7 @@ public class TeamRecipientResolver implements RecipientResolutionStrategy {
       Team team = Entity.getEntity(Entity.TEAM, teamId, TEAM_FIELDS, Include.NON_DELETED);
       return Recipient.fromTeam(team, destination);
     } catch (Exception e) {
-      RecipientLookups.rethrowUnlessAbsent(e);
+      RecipientLookups.reportUnlessAbsent(e);
       LOG.error("Failed to resolve team recipient for team {}", teamId, e);
       return null;
     }

@@ -77,7 +77,7 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
       }
       return resolveOwnersFromEntity(entity, destination);
     } catch (Exception e) {
-      RecipientLookups.rethrowUnlessAbsent(e);
+      RecipientLookups.reportUnlessAbsent(e);
       LOG.warn(
           "Failed to resolve owners for event entity {} {}",
           event.getEntityType(),
@@ -110,7 +110,7 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
       return resolveOwnersFromEntity(entity, destination);
 
     } catch (Exception e) {
-      RecipientLookups.rethrowUnlessAbsent(e);
+      RecipientLookups.reportUnlessAbsent(e);
       LOG.warn("Failed to resolve owners for entity {} {}", entityType, entityId, e);
       return Collections.emptySet();
     }
@@ -140,7 +140,7 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
           recipients.addAll(resolveEntityReferences(parentEntity.getOwners(), destination));
         }
       } catch (Exception e) {
-        RecipientLookups.rethrowUnlessAbsent(e);
+        RecipientLookups.reportUnlessAbsent(e);
         LOG.debug("Failed to resolve parent entity owners for conversation", e);
       }
     }

@@ -63,6 +63,14 @@ class SourceCapabilitiesTest {
     assertTrue(capabilities.getContainerEntities().contains("databaseService"));
   }
 
+  // An alert saved with a source the catalog retired still opens and shows what it holds.
+  @Test
+  void retiredSourceOfASavedAlertIsDescribed() {
+    AlertCapabilities capabilities = of(AlertType.NOTIFICATION, List.of("location"), null);
+
+    assertTrue(names(capabilities.getFilters()).contains("filterByOwnerName"));
+  }
+
   @Test
   void invalidSelectionIsRefusedByTheRuleItBreaks() {
     assertThrows(

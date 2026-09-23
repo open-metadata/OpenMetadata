@@ -63,7 +63,7 @@ public class AssigneeRecipientResolver implements RecipientResolutionStrategy {
       return Collections.emptySet();
 
     } catch (Exception e) {
-      RecipientLookups.rethrowUnlessAbsent(e);
+      RecipientLookups.reportUnlessAbsent(e);
       LOG.error("Failed to resolve assignees for {}", event.getEntityId(), e);
       return Collections.emptySet();
     }
@@ -85,7 +85,7 @@ public class AssigneeRecipientResolver implements RecipientResolutionStrategy {
       return Collections.emptySet();
 
     } catch (Exception e) {
-      RecipientLookups.rethrowUnlessAbsent(e);
+      RecipientLookups.reportUnlessAbsent(e);
       LOG.error("Failed to resolve assignees for {}", entityId, e);
       return Collections.emptySet();
     }

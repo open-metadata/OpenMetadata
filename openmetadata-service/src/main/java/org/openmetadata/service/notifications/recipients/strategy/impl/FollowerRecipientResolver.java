@@ -70,7 +70,7 @@ public class FollowerRecipientResolver implements RecipientResolutionStrategy {
       EntityInterface entity = AlertsRuleEvaluator.getEntity(event);
       return resolveFollowersFromEntity(entity, destination);
     } catch (Exception e) {
-      RecipientLookups.rethrowUnlessAbsent(e);
+      RecipientLookups.reportUnlessAbsent(e);
       LOG.warn(
           "Failed to resolve followers for event entity {} {}",
           event.getEntityType(),
@@ -99,7 +99,7 @@ public class FollowerRecipientResolver implements RecipientResolutionStrategy {
       return resolveFollowersFromEntity(entity, destination);
 
     } catch (Exception e) {
-      RecipientLookups.rethrowUnlessAbsent(e);
+      RecipientLookups.reportUnlessAbsent(e);
       LOG.warn("Failed to resolve followers for {} {}", entityType, entityId, e);
       return Collections.emptySet();
     }

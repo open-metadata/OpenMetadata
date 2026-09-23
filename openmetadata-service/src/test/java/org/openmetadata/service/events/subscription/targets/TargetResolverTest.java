@@ -14,10 +14,12 @@
 package org.openmetadata.service.events.subscription.targets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,6 +32,7 @@ import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.service.events.subscription.channels.Channels;
+import org.openmetadata.service.notifications.recipients.RecipientLookups;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
@@ -168,6 +171,35 @@ class TargetResolverTest {
 
     assertEquals(Map.of(owners.getId(), "the database did not answer"), resolved.failedLookups());
     assertEquals(1, resolved.targets().size(), "the other destination still sends");
+  }
+
+  // A resolver skips a recipient it cannot look up; the others still get the message.
+  @Test
+  void oneRecipientWhoseLookupFailsCostsOnlyItself() {
+    TargetResolver resolver =
+        new TargetResolver(
+            (event, destination) -> {
+              Set<Recipient> found = new HashSet<>();
+              try {
+                throw new IllegalStateException("team A could not be read");
+              } catch (IllegalStateException e) {
+                RecipientLookups.reportUnlessAbsent(e);
+              }
+              found.add(hook(HOOK));
+              return found;
+            });
+
+    TargetResolver.Resolved resolved = resolver.resolve(EVENT, List.of(teams));
+
+    assertEquals(1, resolved.targets().size(), "team B still gets the message");
+    assertEquals(Map.of(teams.getId(), "team A could not be read"), resolved.failedLookups());
+  }
+
+  @Test
+  void lookupOutsideAResolutionStillThrows() {
+    assertThrows(
+        RecipientLookups.LookupFailedException.class,
+        () -> RecipientLookups.reportUnlessAbsent(new IllegalStateException("no answer")));
   }
 
   private static TargetResolver.Resolved resolve(

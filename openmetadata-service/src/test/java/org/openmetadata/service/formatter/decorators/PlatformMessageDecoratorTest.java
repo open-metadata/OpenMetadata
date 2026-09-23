@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatMessage;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackMessage;
 
@@ -43,6 +44,16 @@ class PlatformMessageDecoratorTest {
         "application/vnd.microsoft.card.adaptive",
         message.getAttachments().getFirst().getContentType());
     assertFalse(message.getAttachments().getFirst().getContent().getBody().isEmpty());
+  }
+
+  // A test send to Google Chat still uses this message.
+  @Test
+  void gchatBuildTestMessageCreatesConnectionCard() {
+    GChatMessage testMessage = new GChatMessageDecorator().buildTestMessage();
+
+    assertEquals(1, testMessage.getCards().size());
+    assertEquals(
+        "Connection Successful ✅", testMessage.getCards().getFirst().getHeader().getTitle());
   }
 
   @Test

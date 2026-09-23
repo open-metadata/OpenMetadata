@@ -76,7 +76,7 @@ public class UserRecipientResolver implements RecipientResolutionStrategy {
       User user = Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, Include.NON_DELETED);
       return Recipient.fromUser(user, destination);
     } catch (Exception e) {
-      RecipientLookups.rethrowUnlessAbsent(e);
+      RecipientLookups.reportUnlessAbsent(e);
       LOG.error("Failed to resolve user recipient for user {}", userName, e);
       return null;
     }
@@ -111,7 +111,7 @@ public class UserRecipientResolver implements RecipientResolutionStrategy {
       User user = Entity.getEntity(Entity.USER, userId, USER_FIELDS, Include.NON_DELETED);
       return Recipient.fromUser(user, destination);
     } catch (Exception e) {
-      RecipientLookups.rethrowUnlessAbsent(e);
+      RecipientLookups.reportUnlessAbsent(e);
       LOG.error("Failed to resolve user recipient for user {}", userId, e);
       return null;
     }

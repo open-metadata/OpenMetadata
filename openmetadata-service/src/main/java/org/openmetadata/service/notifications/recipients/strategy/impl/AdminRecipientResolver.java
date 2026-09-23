@@ -71,7 +71,7 @@ public class AdminRecipientResolver implements RecipientResolutionStrategy {
           .collect(Collectors.toSet());
 
     } catch (Exception e) {
-      RecipientLookups.rethrowUnlessAbsent(e);
+      RecipientLookups.reportUnlessAbsent(e);
       LOG.error("Failed to resolve admin recipients", e);
       return Collections.emptySet();
     }
@@ -95,7 +95,7 @@ public class AdminRecipientResolver implements RecipientResolutionStrategy {
         after = result.getPaging().getAfter();
       } while (after != null);
     } catch (Exception e) {
-      RecipientLookups.rethrowUnlessAbsent(e);
+      RecipientLookups.reportUnlessAbsent(e);
       LOG.error("Failed to query admin users", e);
     }
 

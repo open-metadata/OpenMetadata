@@ -18,10 +18,12 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
+import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -170,6 +172,8 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   private void compileNewDefinition(EventSubscription entity) {
     if (AlertDefinition.isCompiledFromSelections(entity, entity.getFilteringRules())) {
       entity.setFilteringRules(AlertDefinition.compileStrictly(entity));
+    } else {
+      requireOneResource(entity.getFilteringRules());
     }
     fillAbsentRuleLists(entity);
     validateFilterRules(entity);
@@ -268,6 +272,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       EventSubscription stored, EventSubscription updated, Operation operation) {
     FilteringRules storedRules = stored.getFilteringRules();
     if (!AlertDefinition.isCompiledFromSelections(updated, storedRules)) {
+      requireOneResourceWhenChanged(storedRules, updated.getFilteringRules());
       keepRulesWrittenByHand(storedRules, updated, operation);
     } else if (AlertDefinition.isSameDefinition(stored, updated)) {
       updated.setFilteringRules(AlertDefinition.compileOrKeep(updated, storedRules));
@@ -276,6 +281,22 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       validateFilterRules(updated);
     }
     fillAbsentRuleLists(updated);
+  }
+
+  // Rules written by hand name the one resource they were written for.
+  private static void requireOneResource(FilteringRules rules) {
+    if (rules == null || listOrEmpty(rules.getResources()).size() != 1) {
+      throw new BadRequestException(
+          "One resource can be specified. Zero or Multiple resources are not supported.");
+    }
+  }
+
+  private static void requireOneResourceWhenChanged(FilteringRules stored, FilteringRules sent) {
+    List<String> storedResources = stored == null ? null : stored.getResources();
+    List<String> sentResources = sent == null ? null : sent.getResources();
+    if (!Objects.equals(storedResources, sentResources)) {
+      requireOneResource(sent);
+    }
   }
 
   // The body of a PUT has no place for rules, so it says nothing about them and they stay. A

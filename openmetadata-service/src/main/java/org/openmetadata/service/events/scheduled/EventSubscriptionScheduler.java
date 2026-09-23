@@ -327,6 +327,14 @@ public class EventSubscriptionScheduler {
     }
   }
 
+  /**
+   * Brings one alert's job in step with its stored row under the alert's lock, so a repair can
+   * never undo an edit that committed while it was deciding.
+   */
+  static void syncWithStoredRow(UUID alertId) throws SchedulerException {
+    instance.syncScheduledState(alertId);
+  }
+
   public static void removeScheduled(UUID alertId) {
     if (initialized) {
       try {

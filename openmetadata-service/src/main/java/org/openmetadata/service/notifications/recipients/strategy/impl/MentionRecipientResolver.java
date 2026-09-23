@@ -76,7 +76,7 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
       return Collections.emptySet();
 
     } catch (Exception e) {
-      RecipientLookups.rethrowUnlessAbsent(e);
+      RecipientLookups.reportUnlessAbsent(e);
       LOG.error("Failed to resolve mentions for entity {}", event.getEntityId(), e);
       return Collections.emptySet();
     }
@@ -113,7 +113,7 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
       return Collections.emptySet();
 
     } catch (Exception e) {
-      RecipientLookups.rethrowUnlessAbsent(e);
+      RecipientLookups.reportUnlessAbsent(e);
       LOG.error("Failed to resolve mentions for entity {}", entityId, e);
       return Collections.emptySet();
     }
@@ -171,7 +171,7 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
           }
         }
       } catch (Exception e) {
-        RecipientLookups.rethrowUnlessAbsent(e);
+        RecipientLookups.reportUnlessAbsent(e);
         LOG.warn("Failed to resolve entity link: {}", link.getEntityFQN(), e);
       }
     }

@@ -18,6 +18,7 @@ import static org.mockito.Mockito.when;
 import static org.openmetadata.service.Entity.USER;
 
 import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
@@ -28,6 +29,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import org.glassfish.jersey.client.ClientProperties;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -220,6 +223,27 @@ class SubscriptionUtilTest {
         (TestDestinationStatus) destination.getSubscriptionDestination().getStatusDetails();
     assertEquals(TestDestinationStatus.Status.SUCCESS, status.getStatus());
     assertEquals(204, status.getStatusCode());
+  }
+
+  @Test
+  void getClientClampsTimeoutsAndCarriesTheOutboundPolicy() {
+    ClientBuilder builder = mock(ClientBuilder.class);
+    Client client = mock(Client.class);
+    when(builder.connectTimeout(5, TimeUnit.SECONDS)).thenReturn(builder);
+    when(builder.readTimeout(120, TimeUnit.SECONDS)).thenReturn(builder);
+    when(builder.build()).thenReturn(client);
+
+    try (MockedStatic<ClientBuilder> mockedClientBuilder = mockStatic(ClientBuilder.class)) {
+      mockedClientBuilder.when(ClientBuilder::newBuilder).thenReturn(builder);
+
+      Client createdClient = SubscriptionUtil.getClient(1, 999);
+
+      assertSame(client, createdClient);
+      verify(builder).connectTimeout(5, TimeUnit.SECONDS);
+      verify(builder).readTimeout(120, TimeUnit.SECONDS);
+      verify(builder).property(ClientProperties.FOLLOW_REDIRECTS, false);
+      verify(builder).register(any(OutboundUrlPolicyFilter.class));
+    }
   }
 
   @Test

@@ -96,7 +96,7 @@ final class AlertReconciler {
       long now = Entity.getCollectionDAO().eventSubscriptionDAO().databaseTimeMillis();
       repairsThisRound = 0;
       for (String id : everyKnownId()) {
-        reconcileOne(UUID.fromString(id), now);
+        reconcileQuietly(UUID.fromString(id), now);
       }
       LOG.info("Alert reconcile finished with {} repairs", repairsThisRound);
     }
@@ -112,6 +112,15 @@ final class AlertReconciler {
         .forEach(ids::add);
     ids.addAll(AlertRecord.alertIdsWithRows());
     return ids;
+  }
+
+  // One alert that cannot be repaired must not cost the rest of the round.
+  private void reconcileQuietly(UUID id, long now) {
+    try {
+      reconcileOne(id, now);
+    } catch (SchedulerException | RuntimeException e) {
+      LOG.warn("Alert {} not reconciled this round", id, e);
+    }
   }
 
   private void reconcileOne(UUID id, long now) throws SchedulerException {
@@ -130,7 +139,7 @@ final class AlertReconciler {
     if (olderThanMinimumAge(id, now)) {
       JobKey jobKey = jobKey(id);
       if (scheduler.checkExists(jobKey)) {
-        scheduler.deleteJob(jobKey);
+        EventSubscriptionScheduler.syncWithStoredRow(id);
         count("job without an alert");
       }
       if (AlertRecord.alertIdsWithRows().contains(id.toString())) {
@@ -150,7 +159,7 @@ final class AlertReconciler {
 
   private void removeJobOfDisabled(UUID id) throws SchedulerException {
     if (scheduler.checkExists(jobKey(id))) {
-      scheduler.deleteJob(jobKey(id));
+      EventSubscriptionScheduler.syncWithStoredRow(id);
       count("job of a disabled alert");
     }
   }

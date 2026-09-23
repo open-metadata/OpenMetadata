@@ -92,6 +92,30 @@ class AlertDefinitionIT {
         List.of(written), AlertFixtures.stored(alert.getId()).getFilteringRules().getRules());
   }
 
+  // Rules written by hand name the one resource they were written for.
+  @Test
+  void customAlertNeedsExactlyOneResource(TestNamespace ns) {
+    CreateEventSubscription none =
+        tableAlert(ns, "custom_no_resource")
+            .withAlertType(AlertType.CUSTOM)
+            .withResources(List.of());
+    CreateEventSubscription two =
+        tableAlert(ns, "custom_two_resources")
+            .withAlertType(AlertType.CUSTOM)
+            .withResources(List.of("table", "topic"));
+    CreateEventSubscription one =
+        tableAlert(ns, "custom_one_resource").withAlertType(AlertType.CUSTOM);
+    EventSubscription created = create(one);
+
+    assertTrue(messageOfTheRefusal(() -> create(none)).contains("One resource can be specified"));
+    assertTrue(messageOfTheRefusal(() -> create(two)).contains("One resource can be specified"));
+    assertRejected(
+        () ->
+            patch(
+                created,
+                "[{\"op\":\"add\",\"path\":\"/filteringRules/resources/-\",\"value\":\"topic\"}]"));
+  }
+
   @Test
   void definitionChangeIsValidated(TestNamespace ns) {
     CreateEventSubscription request = tableAlert(ns, "validated_change");

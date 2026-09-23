@@ -148,9 +148,18 @@ public final class SourceCapabilities {
     return new ArrayList<>(all);
   }
 
+  // A source the catalog no longer offers is still described for an alert that already has it, so
+  // opening that alert shows what it holds; changing its definition is refused on save.
   private static FilterResourceDescriptor offered(AlertType alertType, String source) {
-    return alertType == AlertType.OBSERVABILITY
-        ? EventsSubscriptionRegistry.getObservabilityDescriptor(source)
-        : EventsSubscriptionRegistry.getEntityNotificationDescriptor(source);
+    FilterResourceDescriptor descriptor;
+    try {
+      descriptor =
+          alertType == AlertType.OBSERVABILITY
+              ? EventsSubscriptionRegistry.getObservabilityDescriptor(source)
+              : EventsSubscriptionRegistry.getEntityNotificationDescriptor(source);
+    } catch (IllegalArgumentException notOffered) {
+      descriptor = EventsSubscriptionRegistry.getBuildableDescriptor(alertType, source);
+    }
+    return descriptor;
   }
 }
