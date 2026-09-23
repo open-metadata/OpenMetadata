@@ -12,24 +12,23 @@
  */
 package org.openmetadata.service.jdbi3;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
-import java.time.Duration;
-import java.util.Optional;
-import java.util.Set;
+import com.google.common.cache.CacheLoader;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.awaitility.Awaitility;
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,7 +37,10 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheConfig;
+import org.openmetadata.service.cache.CacheKeys;
 import org.openmetadata.service.cache.CachedEntityDao;
+import org.openmetadata.service.cache.InMemoryCacheProvider;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -49,11 +51,18 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
  */
 class EntityCacheLoadRaceTest {
   private static final long TIMEOUT_SECONDS = 10;
-  private static final Set<Thread.State> STOPPED_STATES =
-      Set.of(Thread.State.BLOCKED, Thread.State.WAITING, Thread.State.TERMINATED);
 
-  private CollectionDAO.PipelineDAO pipelineDAO;
+  private final UUID id = UUID.randomUUID();
+  private final Pair<String, UUID> key = new ImmutablePair<>(Entity.PIPELINE, id);
+  private final Pipeline softDeleted = pipeline(true);
+  private final String softDeletedJson = JsonUtils.pojoToJson(softDeleted);
+  private final Pair<String, String> nameKey =
+      EntityRepository.cacheNameKey(Entity.PIPELINE, softDeleted.getFullyQualifiedName());
+  private final ReadBeforeFirstDelete redis = new ReadBeforeFirstDelete();
+  private final CachedEntityDao cachedEntityDao =
+      new CachedEntityDao(redis, new CacheKeys("om-test"), new CacheConfig());
   private PipelineRepository repository;
+  private MockedStatic<CacheBundle> cacheBundle;
 
   private static class PipelineRepository extends EntityRepository<Pipeline> {
     PipelineRepository(CollectionDAO.PipelineDAO dao) {
@@ -76,80 +85,146 @@ class EntityCacheLoadRaceTest {
     protected void storeRelationships(Pipeline entity) {}
   }
 
+  /** Stands in for a read that reaches Redis just before the refresh deletes the old copy. */
+  private static final class ReadBeforeFirstDelete extends InMemoryCacheProvider {
+    private Runnable read = () -> {};
+    private boolean readDone;
+
+    void beforeFirstDelete(Runnable read) {
+      this.read = read;
+    }
+
+    @Override
+    public void del(String... keys) {
+      if (!readDone) {
+        readDone = true;
+        read.run();
+      }
+      super.del(keys);
+    }
+  }
+
+  /**
+   * A cache miss on its own thread, loading the way {@code find} does. It fetches the Redis copy as
+   * soon as it starts, but puts it into L1 only once the racing write has returned.
+   */
+  private final class SlowMiss {
+    private final CountDownLatch fetched = new CountDownLatch(1);
+    private final CountDownLatch writeReturned = new CountDownLatch(1);
+    private final FutureTask<String> load =
+        new FutureTask<>(
+            () ->
+                EntityRepository.loadOutsideCacheLock(
+                    EntityRepository.CACHE_WITH_ID,
+                    key,
+                    new CacheLoader<>() {
+                      @Override
+                      public String load(Pair<String, UUID> ignored) throws InterruptedException {
+                        String json = cachedEntityDao.getBase(id, Entity.PIPELINE).orElseThrow();
+                        fetched.countDown();
+                        writeReturned.await(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                        return json;
+                      }
+                    },
+                    k -> EntityRepository.readEpochById(k.getLeft(), k.getRight())));
+
+    void startAndAwaitFetch() {
+      new Thread(load).start();
+      try {
+        assertTrue(fetched.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IllegalStateException(e);
+      }
+    }
+
+    /** Lets the miss put what it fetched, and returns why {@code loadOutsideCacheLock} failed. */
+    Throwable finishAfterWrite() {
+      writeReturned.countDown();
+      ExecutionException taskFailure =
+          assertThrows(ExecutionException.class, () -> load.get(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+      return taskFailure.getCause().getCause();
+    }
+  }
+
   @BeforeEach
   void setUp() {
+    // The database is the only boundary mocked; no test here reaches it.
     CollectionDAO daoCollection = mock(CollectionDAO.class);
     when(daoCollection.relationshipDAO())
         .thenReturn(mock(CollectionDAO.EntityRelationshipDAO.class));
     Entity.setCollectionDAO(daoCollection);
-    pipelineDAO = mock(CollectionDAO.PipelineDAO.class);
-    repository = new PipelineRepository(pipelineDAO);
+    repository = new PipelineRepository(mock(CollectionDAO.PipelineDAO.class));
+    cacheBundle = mockStatic(CacheBundle.class);
+    cacheBundle.when(CacheBundle::getCachedEntityDao).thenReturn(cachedEntityDao);
+    EntityRepository.clearCacheInvalidations();
+    cachedEntityDao.putBase(Entity.PIPELINE, id, softDeletedJson);
+    cachedEntityDao.putByName(Entity.PIPELINE, nameKey.getRight(), softDeletedJson);
   }
 
   @AfterEach
   void tearDown() {
+    EntityRepository.clearCacheInvalidations();
+    EntityRepository.CACHE_WITH_ID.invalidate(key);
+    EntityRepository.CACHE_WITH_NAME.invalidate(nameKey);
+    cacheBundle.close();
     Entity.setCollectionDAO(null);
   }
 
   @Test
-  void evictionDuringAnInFlightLoadDiscardsWhatTheLoadRead() throws Exception {
-    UUID id = UUID.randomUUID();
-    ImmutablePair<String, UUID> key = new ImmutablePair<>(Entity.PIPELINE, id);
-    CountDownLatch loadReadTheRow = new CountDownLatch(1);
-    CountDownLatch finishLoad = new CountDownLatch(1);
-    when(pipelineDAO.findById(any(), eq(id), any()))
-        .thenAnswer(
-            invocation -> {
-              loadReadTheRow.countDown();
-              finishLoad.await();
-              return JsonUtils.pojoToJson(pipeline(id, true));
-            });
-
-    FutureTask<String> reader = new FutureTask<>(() -> EntityRepository.CACHE_WITH_ID.get(key));
-    new Thread(reader).start();
-    assertTrue(loadReadTheRow.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
-    // A bare eviction with no epoch bump: what EntityCacheRepair and several repositories issue,
-    // and what the post-commit refresh amounts to once the loader is past its last epoch check.
-    Thread writer = new Thread(() -> EntityRepository.CACHE_WITH_ID.invalidate(key));
-    writer.start();
-    Awaitility.await()
-        .atMost(Duration.ofSeconds(TIMEOUT_SECONDS))
-        .until(() -> STOPPED_STATES.contains(writer.getState()));
-    finishLoad.countDown();
-    reader.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
-    writer.join(TimeUnit.SECONDS.toMillis(TIMEOUT_SECONDS));
-
-    assertNull(
-        EntityRepository.CACHE_WITH_ID.getIfPresent(key),
-        "the eviction must win over the load that was in flight when it was issued");
-  }
-
-  @Test
   void postCommitRefreshDoesNotLetARacingReadRestoreThePreCommitCopy() {
-    UUID id = UUID.randomUUID();
-    ImmutablePair<String, UUID> key = new ImmutablePair<>(Entity.PIPELINE, id);
-    Pipeline softDeleted = pipeline(id, true);
-    String softDeletedJson = JsonUtils.pojoToJson(softDeleted);
+    redis.beforeFirstDelete(
+        () -> {
+          assertEquals(softDeletedJson, EntityRepository.CACHE_WITH_ID.getUnchecked(key));
+          assertEquals(softDeletedJson, EntityRepository.CACHE_WITH_NAME.getUnchecked(nameKey));
+        });
     EntityRepository.CACHE_WITH_ID.put(key, softDeletedJson);
-    CachedEntityDao redis = mock(CachedEntityDao.class);
-    when(redis.getBase(id, Entity.PIPELINE)).thenReturn(Optional.of(softDeletedJson));
-    // A read that reaches Redis just before the refresh deletes the pre-commit copy there.
-    doAnswer(invocation -> EntityRepository.CACHE_WITH_ID.get(key))
-        .when(redis)
-        .invalidateBase(Entity.PIPELINE, id);
+    EntityRepository.CACHE_WITH_NAME.put(nameKey, softDeletedJson);
 
-    try (MockedStatic<CacheBundle> cacheBundle = mockStatic(CacheBundle.class)) {
-      cacheBundle.when(CacheBundle::getCachedEntityDao).thenReturn(redis);
-      repository.new EntityUpdater(softDeleted, pipeline(id, false), EntityRepository.Operation.PUT)
-          .invalidateCachesAfterStore();
-    }
+    refreshAfterRestore();
 
     assertNull(
         EntityRepository.CACHE_WITH_ID.getIfPresent(key),
         "a read racing the refresh must not leave the soft-deleted copy in the cache");
+    assertNull(EntityRepository.CACHE_WITH_NAME.getIfPresent(nameKey));
+    assertTrue(cachedEntityDao.getBase(id, Entity.PIPELINE).isEmpty());
+    assertTrue(cachedEntityDao.getByName(Entity.PIPELINE, nameKey.getRight()).isEmpty());
   }
 
-  private static Pipeline pipeline(UUID id, boolean deleted) {
+  @Test
+  void aMissThatFetchedThePreCommitCopyBeforeTheRefreshCannotCacheItAfterward() {
+    SlowMiss miss = new SlowMiss();
+    redis.beforeFirstDelete(miss::startAndAwaitFetch);
+
+    refreshAfterRestore();
+
+    assertInstanceOf(EntityRepository.LoaderRaceException.class, miss.finishAfterWrite());
+    assertNull(
+        EntityRepository.CACHE_WITH_ID.getIfPresent(key),
+        "the miss must not leave the soft-deleted copy in L1 after the refresh returned");
+  }
+
+  @Test
+  void aMissThatFetchedThePreCommitCopyBeforeTheDrainCannotCacheItAfterward() {
+    SlowMiss miss = new SlowMiss();
+    EntityRepository.beginCacheInvalidationDeferral();
+    repository.invalidate(softDeleted);
+    redis.beforeFirstDelete(miss::startAndAwaitFetch);
+
+    EntityRepository.drainCacheInvalidations();
+
+    assertInstanceOf(EntityRepository.LoaderRaceException.class, miss.finishAfterWrite());
+    assertNull(
+        EntityRepository.CACHE_WITH_ID.getIfPresent(key),
+        "the miss must not leave the soft-deleted copy in L1 after the drain returned");
+  }
+
+  private void refreshAfterRestore() {
+    repository.new EntityUpdater(softDeleted, pipeline(false), EntityRepository.Operation.PUT)
+        .invalidateCachesAfterStore();
+  }
+
+  private Pipeline pipeline(boolean deleted) {
     return new Pipeline()
         .withId(id)
         .withName("pipeline")

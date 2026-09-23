@@ -91,7 +91,7 @@ class RedisCacheProviderUnconfirmedWritesTest {
       provider.get("om-test:probe");
     }
     assertFalse(provider.available());
-    provider.hset("om-test:e:table:1", Map.of("base", "during-outage"), TTL);
+    assertFalse(provider.tryHset("om-test:e:table:1", Map.of("base", "during-outage"), TTL));
     unpauseRedisIfPaused();
 
     recover();
@@ -109,6 +109,15 @@ class RedisCacheProviderUnconfirmedWritesTest {
     provider.healthCheck();
 
     assertEquals(0L, redis.exists("om-test:e:table:2"));
+  }
+
+  @Test
+  void writeReportsWhetherRedisAppliedIt() {
+    redis.set("om-test:e:table:4", "not-a-hash");
+
+    assertTrue(provider.tryHset("om-test:e:table:3", Map.of("base", "fresh"), TTL));
+    assertTrue(provider.trySet("om-test:en:table:3", "fresh", TTL));
+    assertFalse(provider.tryHset("om-test:e:table:4", Map.of("base", "fresh"), TTL));
   }
 
   private void recover() {
