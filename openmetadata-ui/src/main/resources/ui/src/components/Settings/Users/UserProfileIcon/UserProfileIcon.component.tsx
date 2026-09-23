@@ -33,7 +33,6 @@ import { ReactComponent as LogoutIcon } from '../../../../assets/svg/logout.svg'
 import { ReactComponent as TeamIcon } from '../../../../assets/svg/teams-grey.svg';
 import { TERM_ADMIN } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/entity/type';
-import { useCurrentUserPreferences } from '../../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import navbarUtilClassBase from '../../../../utils/NavbarUtilClassBase';
@@ -114,27 +113,23 @@ const renderListSection = ({
 };
 
 export const UserProfileIcon = () => {
-  const {
-    currentUser,
-    selectedPersona,
-    setSelectedPersona,
-    timeFormat: globalTimeFormat,
-  } = useApplicationStore();
-  const { preferences, setPreference } = useCurrentUserPreferences();
-  const activeTimeFormat = preferences.timeFormat ?? globalTimeFormat;
+  const { currentUser, selectedPersona, setSelectedPersona } =
+    useApplicationStore();
+
   const defaultPersona = currentUser?.defaultPersona;
   const { onLogoutHandler } = useAuthProvider();
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
   const { t } = useTranslation();
+
   const profilePicture = getImageWithResolutionAndFallback(
     ImageQuality['6x'],
     currentUser?.profile?.images
   );
+
   const [showAllPersona, setShowAllPersona] = useState<boolean>(false);
 
   const handleOnImageError = useCallback(() => {
     setIsImgUrlValid(false);
-
     return false;
   }, []);
 
@@ -165,7 +160,6 @@ export const UserProfileIcon = () => {
         }
         const uniquePersonasMap = new Map();
         allPersonas.forEach((p) => uniquePersonasMap.set(p.id, p));
-
         return Array.from(uniquePersonasMap.values());
       })(),
     };
@@ -227,6 +221,7 @@ export const UserProfileIcon = () => {
     const others: typeof personas = [];
     let defaultMatch: typeof defaultPersona | undefined;
     let selectedMatch: typeof selectedPersona | undefined;
+
     for (const p of personas) {
       if (p.id === defaultId) {
         defaultMatch = p;
@@ -236,8 +231,8 @@ export const UserProfileIcon = () => {
         others.push(p);
       }
     }
-    const sortedOthers = orderBy(others, (p) => getEntityName(p), 'asc');
 
+    const sortedOthers = orderBy(others, (p) => getEntityName(p), 'asc');
     return [
       ...(defaultMatch ? [defaultMatch] : []),
       ...(selectedMatch ? [selectedMatch] : []),
