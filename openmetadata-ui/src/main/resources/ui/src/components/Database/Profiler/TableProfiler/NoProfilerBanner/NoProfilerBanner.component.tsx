@@ -45,7 +45,7 @@ const NoProfilerBanner = () => {
       <div className="tw:flex tw:shrink-0 tw:items-center tw:justify-end">
         <Tooltip title={t('label.learn-more')}>
           <a
-            className="tw:font-semibold tw:text-brand-600 tw:dark:text-brand-300 tw:flex tw:items-center tw:gap-1"
+            className="tw:font-semibold tw:text-brand-600 tw:flex tw:items-center tw:gap-1"
             data-testid="documentation-link"
             href={profilerDocsLink}
             rel="noreferrer"

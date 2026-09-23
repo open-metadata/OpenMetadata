@@ -233,9 +233,7 @@ const LineageTimeFilter: FC<LineageTimeFilterProps> = ({
             {presetItems.map((item) => (
               <Dropdown.Item
                 className={
-                  activeKey === item.key
-                    ? 'tw:text-brand-600 tw:dark:text-brand-300'
-                    : undefined
+                  activeKey === item.key ? 'tw:text-brand-600' : undefined
                 }
                 id={item.key}
                 key={item.key}>

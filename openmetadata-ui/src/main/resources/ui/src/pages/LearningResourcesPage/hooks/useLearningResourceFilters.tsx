@@ -270,7 +270,7 @@ export const useLearningResourceFilters = (
                   <Typography
                     ellipsis
                     as="p"
-                    className="tw:text-brand-600 tw:dark:text-brand-300"
+                    className="tw:text-brand-600"
                     title={filter.value}
                     weight="medium">
                     {filter.value}
