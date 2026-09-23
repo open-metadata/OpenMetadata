@@ -67,13 +67,15 @@ export const visitClassificationPage = async (
 
   await waitForAllLoadersToDisappear(page);
 
+  const tagsContainer = page.getByTestId('tags-container');
   await expect(
-    page.getByTestId('tags-container').getByTestId('table')
+    tagsContainer
+      .getByTestId('table')
+      .or(tagsContainer.getByText('Add the first tag'))
   ).toBeVisible();
 
   await expect(
-    page
-      .getByTestId('tags-container')
+    tagsContainer
       .locator('.table-container')
       .getByTestId('loader')
   ).toHaveCount(0, { timeout: 30000 });
