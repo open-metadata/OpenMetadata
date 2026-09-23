@@ -10,3 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+export interface EntityRule {
+  name: string;
+  description: string;
+  rule: string;
+  enabled: boolean;
+  ignoredEntities: string[];
+  provider: 'system' | 'custom';
+}

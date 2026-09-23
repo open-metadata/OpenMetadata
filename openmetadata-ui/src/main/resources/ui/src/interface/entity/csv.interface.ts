@@ -10,3 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+export type CSVExportResponse = {
+  jobId: string;
+  message: string;
+};
+
+export type CSVImportAsyncResponse = {
+  jobId: string;
+  message: string;
+};

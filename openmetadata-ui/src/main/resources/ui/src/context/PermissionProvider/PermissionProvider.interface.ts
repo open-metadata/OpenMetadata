@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { ResourceEntity } from '../../enums/permissions.enum';
+
 import { ReactNode } from 'react';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 
@@ -28,75 +30,6 @@ export type IngestionServicePermission = {
 
 export interface PermissionProviderProps {
   children: ReactNode;
-}
-
-export enum ResourceEntity {
-  ALL = 'all',
-  BOT = 'bot',
-  CHART = 'chart',
-  DASHBOARD = 'dashboard',
-  DASHBOARD_SERVICE = 'dashboardService',
-  DATABASE = 'database',
-  DATABASE_SCHEMA = 'databaseSchema',
-  DATABASE_SERVICE = 'databaseService',
-  SEARCH_SERVICE = 'searchService',
-  SECURITY_SERVICE = 'securityService',
-  DATA_INSIGHT_CHART = 'dataInsightChart',
-  KPI = 'kpi',
-  FEED = 'feed',
-  GLOSSARY = 'glossary',
-  GLOSSARY_TERM = 'glossaryTerm',
-  INGESTION_PIPELINE = 'ingestionPipeline',
-  LOCATION = 'location',
-  MESSAGING_SERVICE = 'messagingService',
-  METADATA_SERVICE = 'metadataService',
-  METRIC = 'metric',
-  ML_MODEL = 'mlmodel',
-  ML_MODEL_SERVICE = 'mlmodelService',
-  PIPELINE = 'pipeline',
-  PIPELINE_SERVICE = 'pipelineService',
-  POLICY = 'policy',
-  REPORT = 'report',
-  ROLE = 'role',
-  TABLE = 'table',
-  TAG = 'tag',
-  CLASSIFICATION = 'classification',
-  TEAM = 'team',
-  TEST_CASE = 'testCase',
-  TEST_CASE_RESOLUTION_STATUS = 'testCaseResolutionStatus',
-  TEST_DEFINITION = 'testDefinition',
-  TEST_SUITE = 'testSuite',
-  TOPIC = 'topic',
-  TYPE = 'type',
-  USER = 'user',
-  WEBHOOK = 'webhook',
-  STORAGE_SERVICE = 'storageService',
-  CONTAINER = 'container',
-  KNOWLEDGE_PAGE = 'page',
-  QUERY = 'query',
-  DASHBOARD_DATA_MODEL = 'dashboardDataModel',
-  EVENT_SUBSCRIPTION = 'eventsubscription',
-  SEARCH_INDEX = 'searchIndex',
-  DOMAIN = 'domain',
-  DATA_PRODUCT = 'dataProduct',
-  STORED_PROCEDURE = 'storedProcedure',
-  APPLICATION = 'app',
-  PERSONA = 'persona',
-  API_SERVICE = 'apiService',
-  API_COLLECTION = 'apiCollection',
-  API_ENDPOINT = 'apiEndpoint',
-  INGESTION_RUNNER = 'ingestionRunner',
-  DRIVE_SERVICE = 'driveService',
-  DIRECTORY = 'directory',
-  FILE = 'file',
-  SPREADSHEET = 'spreadsheet',
-  WORKSHEET = 'worksheet',
-  NOTIFICATION_TEMPLATE = 'notificationTemplate',
-  AUDIT_LOG = 'auditLog',
-  TABLE_COLUMN = 'tableColumn',
-  DATA_CONTRACT = 'dataContract',
-  TASK = 'task',
-  CONTEXT_MEMORY = 'contextMemory',
 }
 
 export interface PermissionContextType {

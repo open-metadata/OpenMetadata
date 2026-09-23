@@ -17,15 +17,12 @@ import { AxiosError } from 'axios';
 import { debounce, isObject } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Paging } from '../../../generated/type/paging';
+import { PagingResponse } from '../../../interface/common/paging.interface';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
 import { AsyncSelectListProps } from './AsyncSelectList.interface';
 
 // Interface for paginated API response
-export interface PagingResponse<T> {
-  data: T;
-  paging: Paging;
-}
 
 /**
  * AsyncSelect to work with options provided from API directly

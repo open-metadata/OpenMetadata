@@ -12,6 +12,10 @@
  */
 import { ReactNode } from 'react';
 import { DeleteType } from '../../components/common/DeleteWidget/DeleteWidget.interface';
+import {
+  AsyncDeleteJob,
+  AsyncDeleteWebsocketResponse,
+} from '../../interface/entity/asyncDelete.interface';
 
 export interface AsyncDeleteProviderProps {
   children: ReactNode;
@@ -37,20 +41,3 @@ export interface AsyncDeleteContextType {
     response: AsyncDeleteWebsocketResponse
   ) => void;
 }
-
-export type AsyncDeleteResponse = {
-  message: string;
-};
-
-export type AsyncDeleteWebsocketResponse = {
-  jobId: string;
-  status: 'COMPLETED' | 'FAILED';
-  entityName: string;
-  error: string | null;
-};
-
-export type AsyncDeleteJob = {
-  hardDelete: boolean;
-  recursive: boolean;
-} & Partial<AsyncDeleteWebsocketResponse> &
-  AsyncDeleteResponse;

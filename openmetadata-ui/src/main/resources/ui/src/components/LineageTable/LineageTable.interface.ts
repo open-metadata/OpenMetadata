@@ -1,5 +1,5 @@
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
-import { SearchSourceAlias } from '../../interface/search.interface';
+import { LineagePagingInfo } from '../../interface/lineage.interface';
 import {
   ColumnLevelLineageNode,
   LineageNode,
@@ -20,15 +20,6 @@ import {
 export enum EImpactLevel {
   TableLevel = 'table',
   ColumnLevel = 'column',
-}
-
-export interface LineageNodeData {
-  entity: SearchSourceAlias;
-  nodeDepth?: number;
-  paging?: {
-    entityDownstreamCount?: number;
-    entityUpstreamCount?: number;
-  };
 }
 
 export interface LineageTableState {
@@ -72,12 +63,3 @@ export type LineageTableAction =
   | { type: 'TOGGLE_FILTER_SELECTION' }
   | { type: 'SET_LINEAGE_PAGING_INFO'; payload: LineagePagingInfo | null }
   | { type: 'UPDATE_NODE_DEPTH'; payload: number };
-
-export interface LineagePagingInfo {
-  downstreamDepthInfo: { depth: number; entityCount: number }[];
-  upstreamDepthInfo: { depth: number; entityCount: number }[];
-  maxDownstreamDepth: number;
-  maxUpstreamDepth: number;
-  totalDownstreamEntities: number;
-  totalUpstreamEntities: number;
-}

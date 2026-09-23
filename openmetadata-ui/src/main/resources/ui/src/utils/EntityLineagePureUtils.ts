@@ -275,10 +275,7 @@ const handleNodePagination = (
 };
 
 const processNodeArray = (
-  nodes: Record<
-    string,
-    import('../components/Lineage/Lineage.interface').NodeData
-  >,
+  nodes: Record<string, import('../interface/lineage.interface').NodeData>,
   entityFqn: string
 ): LineageNodeType[] => {
   return Object.values(nodes).map(

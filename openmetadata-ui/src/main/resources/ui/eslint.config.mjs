@@ -434,7 +434,7 @@ export default [
       'openmetadata-imports/no-internal-barrel-imports': 'error',
       'openmetadata-imports/no-lodash-default-import': 'error',
       'openmetadata-imports/no-lower-layer-page-imports': 'warn',
-      'openmetadata-imports/no-rest-ui-imports': 'warn',
+      'openmetadata-imports/no-rest-ui-imports': 'error',
       'openmetadata-imports/review-sequential-api-calls': 'warn',
 
       // Repository-specific performance invariants. These rules have no

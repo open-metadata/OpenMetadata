@@ -10,3 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+
+export interface MoveGlossaryTermWebsocketResponse {
+  jobId: string;
+  status: 'COMPLETED' | 'FAILED';
+  data?: string;
+  error?: string;
+  message: string;
+  fullyQualifiedName?: string;
+}

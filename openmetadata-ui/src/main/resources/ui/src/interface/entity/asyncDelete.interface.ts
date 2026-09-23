@@ -10,3 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+export type AsyncDeleteResponse = {
+  message: string;
+};
+
+export type AsyncDeleteWebsocketResponse = {
+  jobId: string;
+  status: 'COMPLETED' | 'FAILED';
+  entityName: string;
+  error: string | null;
+};
+
+export type AsyncDeleteJob = {
+  hardDelete: boolean;
+  recursive: boolean;
+} & Partial<AsyncDeleteWebsocketResponse> &
+  AsyncDeleteResponse;
