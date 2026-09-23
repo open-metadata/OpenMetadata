@@ -343,9 +343,18 @@ test.describe(
       });
 
       await test.step('The new order lands once the response arrives', async () => {
-        releaseListing();
-        await page.unroute(`**${TEST_DEFINITION_API}?*`);
+        const listResponse = page.waitForResponse((response) =>
+          response.url().includes(TEST_DEFINITION_API)
+        );
 
+        // The handler stays installed for the rest of the test. With the gate
+        // resolved it passes every request straight through, and unrouting here
+        // would race the request it is still holding: dropping an interceptor
+        // makes Playwright auto-continue the route that handler owns, so the
+        // handler's own continue() then fails with "Route is already handled!".
+        releaseListing();
+
+        expect((await listResponse).status()).toBe(200);
         await waitForAllLoadersToDisappear(page);
 
         await expect(ruleNameCells(page)).toHaveText(BY_DISPLAY_NAME_DESC);
