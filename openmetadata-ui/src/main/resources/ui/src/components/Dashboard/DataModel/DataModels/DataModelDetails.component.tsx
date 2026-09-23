@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -308,12 +309,25 @@ const DataModelDetails = ({
           onUpdate={onUpdateDataModel}>
           <Col className="entity-details-page-tabs" span={24}>
             <Tabs
-              activeKey={activeTab}
-              className="tabs-new"
+              className="page-tabs"
               data-testid="tabs"
-              items={tabs}
-              tabBarExtraContent={
-                isExpandViewSupported && (
+              selectedKey={activeTab}
+              onSelectionChange={(key) =>
+                handleTabChange(String(key) as EntityTabs)
+              }>
+              <Box
+                align="center"
+                className="page-tabs-bar"
+                gap={4}
+                justify="between">
+                <Tabs.List size="sm" type="underline">
+                  {tabs.map(({ key, label }) => (
+                    <Tabs.Item id={key} key={key}>
+                      {label}
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
+                {isExpandViewSupported && (
                   <AlignRightIconButton
                     className={isTabExpanded ? 'rotate-180' : ''}
                     title={
@@ -321,12 +335,14 @@ const DataModelDetails = ({
                     }
                     onClick={toggleTabExpanded}
                   />
-                )
-              }
-              onChange={(activeKey: string) =>
-                handleTabChange(activeKey as EntityTabs)
-              }
-            />
+                )}
+              </Box>
+              {tabs.map(({ key, children }) => (
+                <Tabs.Panel id={key} key={key}>
+                  {children}
+                </Tabs.Panel>
+              ))}
+            </Tabs>
           </Col>
         </GenericProvider>
       </Row>

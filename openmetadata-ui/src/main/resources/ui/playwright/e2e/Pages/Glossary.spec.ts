@@ -755,7 +755,9 @@ test.describe('Glossary tests', () => {
         await page.getByTestId('assets').click();
         await queryRes;
         await waitForAllLoadersToDisappear(page);
-        await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
+        await page
+          .locator('[role="tab"][aria-selected="true"]:has-text("Assets")')
+          .waitFor();
 
         await expect(
           page.getByTestId('assets').getByTestId('filter-count')
@@ -821,7 +823,9 @@ test.describe('Glossary tests', () => {
         );
         await page.getByTestId('assets').click();
         await queryRes;
-        await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
+        await page
+          .locator('[role="tab"][aria-selected="true"]:has-text("Assets")')
+          .waitFor();
 
         await expect(
           page.getByTestId('assets').getByTestId('filter-count')
@@ -1145,7 +1149,9 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossary(page, glossary1.data.displayName);
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
       await page.getByTestId('assets').click();
-      await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
+      await page
+        .locator('[role="tab"][aria-selected="true"]:has-text("Assets")')
+        .waitFor();
       await expect
         .poll(async () =>
           Number(

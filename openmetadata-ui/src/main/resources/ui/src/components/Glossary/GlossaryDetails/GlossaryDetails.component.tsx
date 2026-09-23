@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { isEmpty, noop } from 'lodash';
 import type { ComponentType } from 'react';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
@@ -25,6 +26,7 @@ import type { FeedCounts } from '../../../interface/feed.interface';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import {
@@ -241,21 +243,36 @@ const GlossaryDetails = ({
       </Col>
       <Col className="glossary-page-tabs" span={24}>
         <Tabs
-          activeKey={activeTab}
-          className="tabs-new"
+          className="page-tabs"
           data-testid="tabs"
-          items={tabs}
-          tabBarExtraContent={
-            isExpandViewSupported && (
+          selectedKey={getRenderedActiveTab(tabs, activeTab, EntityTabs.TERMS)}
+          onSelectionChange={(key) => handleTabChange(String(key))}>
+          <Box
+            align="center"
+            className="page-tabs-bar"
+            gap={4}
+            justify="between">
+            <Tabs.List size="sm" type="underline">
+              {tabs.map(({ key, label }) => (
+                <Tabs.Item id={key} key={key}>
+                  {label}
+                </Tabs.Item>
+              ))}
+            </Tabs.List>
+            {isExpandViewSupported && (
               <AlignRightIconButton
                 className={isTabExpanded ? 'rotate-180' : ''}
                 title={isTabExpanded ? t('label.collapse') : t('label.expand')}
                 onClick={toggleTabExpanded}
               />
-            )
-          }
-          onChange={handleTabChange}
-        />
+            )}
+          </Box>
+          {tabs.map(({ key, children }) => (
+            <Tabs.Panel id={key} key={key}>
+              {children}
+            </Tabs.Panel>
+          ))}
+        </Tabs>
       </Col>
     </Row>
   );

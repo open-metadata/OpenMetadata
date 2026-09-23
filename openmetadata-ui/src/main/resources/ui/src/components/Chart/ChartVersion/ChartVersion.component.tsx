@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs, TabsProps } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Col, Row, Space } from 'antd';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -33,6 +34,7 @@ import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomProp
 import Description from '../../common/EntityDescription/Description';
 import Loader from '../../common/Loader/Loader';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { TabProps } from '../../common/TabsLabel/TabsLabel.interface';
 import { TitleLink } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
@@ -131,7 +133,7 @@ const ChartVersion: FC<ChartVersionProp> = ({
     return getDerivedPermissionFlags(entityPermissions).canViewCustomFields;
   }, [entityPermissions]);
 
-  const tabItems: TabsProps['items'] = useMemo(
+  const tabItems: TabProps[] = useMemo(
     () => [
       {
         key: EntityTabs.DETAILS,
@@ -240,12 +242,25 @@ const ChartVersion: FC<ChartVersionProp> = ({
                 onUpdate={() => Promise.resolve()}>
                 <Col className="entity-version-page-tabs" span={24}>
                   <Tabs
-                    className="tabs-new"
+                    className="page-tabs"
                     data-testid="tabs"
-                    defaultActiveKey={tab}
-                    items={tabItems}
-                    onChange={handleTabChange}
-                  />
+                    defaultSelectedKey={tab}
+                    onSelectionChange={(key) => handleTabChange(String(key))}>
+                    <Box align="center" className="page-tabs-bar">
+                      <Tabs.List size="sm" type="underline">
+                        {tabItems.map(({ key, label }) => (
+                          <Tabs.Item id={key} key={key}>
+                            {label}
+                          </Tabs.Item>
+                        ))}
+                      </Tabs.List>
+                    </Box>
+                    {tabItems.map(({ key, children }) => (
+                      <Tabs.Panel id={key} key={key}>
+                        {children}
+                      </Tabs.Panel>
+                    ))}
+                  </Tabs>
                 </Col>
               </GenericProvider>
             </Col>

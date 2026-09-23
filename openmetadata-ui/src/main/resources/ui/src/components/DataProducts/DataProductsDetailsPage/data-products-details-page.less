@@ -14,7 +14,7 @@
 @import '../../Domain/domain.less';
 
 .data-product-details {
-  .ant-tabs-tabpane {
+  .page-tabs > [role='tabpanel'] {
     min-height: 70vh;
   }
 
@@ -58,10 +58,8 @@
 }
 
 .data-product-details-page-tabs {
-  .ant-tabs.tabs-new {
-    .ant-tabs-tabpane {
-      height: @domain-page-height;
-      overflow-y: auto;
-    }
+  .page-tabs > [role='tabpanel'] {
+    height: @domain-page-height;
+    overflow-y: auto;
   }
 }

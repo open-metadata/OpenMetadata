@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Col, Row, Tabs, Tooltip } from 'antd';
+import { Col, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -965,21 +966,32 @@ const TableDetailsPageV1: React.FC = () => {
 
   const renderTabs = () => (
     <Tabs
-      activeKey={isTourOpen ? activeTabForTourDatasetPage : activeTab}
-      className="tabs-new"
+      className="page-tabs"
       data-testid="tabs"
-      items={tabs}
-      tabBarExtraContent={
-        isExpandViewSupported && (
+      selectedKey={isTourOpen ? activeTabForTourDatasetPage : activeTab}
+      onSelectionChange={(key) => handleTabChange(String(key))}>
+      <Box align="center" className="page-tabs-bar" gap={4} justify="between">
+        <Tabs.List size="sm" type="underline">
+          {tabs.map(({ key, label }) => (
+            <Tabs.Item id={key} key={key}>
+              {label}
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+        {isExpandViewSupported && (
           <AlignRightIconButton
             className={isTabExpanded ? 'rotate-180' : ''}
             title={isTabExpanded ? t('label.collapse') : t('label.expand')}
             onClick={toggleTabExpanded}
           />
-        )
-      }
-      onChange={handleTabChange}
-    />
+        )}
+      </Box>
+      {tabs.map(({ key, children }) => (
+        <Tabs.Panel id={key} key={key}>
+          {children}
+        </Tabs.Panel>
+      ))}
+    </Tabs>
   );
 
   return (

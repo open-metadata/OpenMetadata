@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { useQuery } from '@tanstack/react-query';
 import { RefreshCcw01 } from '@untitledui/icons';
-import { Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import { useCallback, useMemo } from 'react';
@@ -39,6 +38,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { DetailsTabItem } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import Fqn from '../../../utils/Fqn';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
@@ -119,7 +119,7 @@ const IncidentManagerDetailPage = ({
     }),
   });
 
-  const tabItems: TabsProps['items'] = useMemo(
+  const tabItems: DetailsTabItem[] = useMemo(
     () =>
       tabs.map(({ LabelComponent, labelProps, key, Tab, isBeta }) => ({
         key,
@@ -379,20 +379,34 @@ const IncidentManagerDetailPage = ({
         </Box>
         <div className="incident-manager-details-tabs">
           <Tabs
-            destroyInactiveTabPane
-            activeKey={activeTab}
-            className="tabs-new"
+            className="page-tabs"
             data-testid="tabs"
-            items={tabItems}
-            tabBarExtraContent={
+            selectedKey={activeTab}
+            onSelectionChange={(key) => handleTabChange(String(key))}>
+            <Box
+              align="center"
+              className="page-tabs-bar"
+              gap={4}
+              justify="between">
+              <Tabs.List size="sm" type="underline">
+                {tabItems.map(({ key, label }) => (
+                  <Tabs.Item id={key} key={key}>
+                    {label}
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
               <TestCaseTabBarExtraContent
                 isExpandViewSupported={isExpandViewSupported}
                 isTabExpanded={isTabExpanded}
                 toggleTabExpanded={toggleTabExpanded}
               />
-            }
-            onChange={handleTabChange}
-          />
+            </Box>
+            {tabItems.map(({ key, children }) => (
+              <Tabs.Panel id={key} key={key}>
+                {children}
+              </Tabs.Panel>
+            ))}
+          </Tabs>
         </div>
       </Box>
       {isVersionPage && (

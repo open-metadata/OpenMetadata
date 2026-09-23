@@ -235,7 +235,9 @@ export const goToAssetsTab = async (
 ) => {
   await selectActiveGlossaryTerm(page, displayName);
   await page.getByTestId('assets').click();
-  await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
+  await page
+    .locator('[role="tab"][aria-selected="true"]:has-text("Assets")')
+    .waitFor();
 
   await expect(
     page.getByTestId('assets').getByTestId('filter-count')

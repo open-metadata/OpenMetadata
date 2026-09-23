@@ -102,17 +102,14 @@
     margin-top: var(--om-space-4);
   }
 
-  .ant-tabs.tabs-new {
-    .ant-tabs-tabpane {
+  .page-tabs {
+    > [role='tabpanel'] {
       height: @domain-page-height;
       overflow-y: auto;
     }
-    .ant-tabs-nav {
-      .ant-tabs-nav-list {
-        > div.ant-tabs-tab:nth-last-of-type(2) {
-          margin-right: var(--om-space-36);
-        }
-      }
+
+    > .page-tabs-bar > [role='tablist'] > [role='tab']:last-child {
+      margin-right: var(--om-space-36);
     }
   }
 }

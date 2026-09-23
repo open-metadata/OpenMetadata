@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Col, Row, Skeleton, Tabs, TabsProps } from 'antd';
+import { Col, Row, Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -80,6 +81,7 @@ import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { getTableList } from '../../rest/tableAPI';
 import {
   checkIfExpandViewSupported,
+  DetailsTabItem,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
@@ -594,7 +596,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     }
   };
 
-  const tabs: TabsProps['items'] = useMemo(() => {
+  const tabs: DetailsTabItem[] = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabs = databaseSchemaClassBase.getDatabaseSchemaPageTabs({
@@ -865,13 +867,30 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             onUpdate={handleUpdateDatabaseSchema}>
             <Col className="entity-details-page-tabs" span={24}>
               <Tabs
-                activeKey={activeTab}
-                className="tabs-new"
+                className="page-tabs"
                 data-testid="tabs"
-                items={tabs}
-                tabBarExtraContent={expandButton}
-                onChange={activeTabHandler}
-              />
+                selectedKey={activeTab}
+                onSelectionChange={(key) => activeTabHandler(String(key))}>
+                <Box
+                  align="center"
+                  className="page-tabs-bar"
+                  gap={4}
+                  justify="between">
+                  <Tabs.List size="sm" type="underline">
+                    {tabs.map(({ key, label }) => (
+                      <Tabs.Item id={key} key={key}>
+                        {label}
+                      </Tabs.Item>
+                    ))}
+                  </Tabs.List>
+                  {expandButton}
+                </Box>
+                {tabs.map(({ key, children }) => (
+                  <Tabs.Panel id={key} key={key}>
+                    {children}
+                  </Tabs.Panel>
+                ))}
+              </Tabs>
             </Col>
           </GenericProvider>
           {updateProfilerSetting && (

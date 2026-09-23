@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Avatar } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Tabs, Tooltip, Typography } from 'antd';
+import { Avatar, Box, Tabs } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -1075,13 +1075,23 @@ const DataProductsDetailsPage = ({
           <div className="data-product-details-page-tabs tw:w-full">
             <div className="tw:p-5">
               <Tabs
-                destroyInactiveTabPane
-                activeKey={currentTab}
-                className="tabs-new"
+                className="page-tabs"
                 data-testid="tabs"
-                items={tabs}
-                tabBarExtraContent={
-                  isExpandViewSupported && (
+                selectedKey={currentTab}
+                onSelectionChange={(key) => handleTabChange(String(key))}>
+                <Box
+                  align="center"
+                  className="page-tabs-bar"
+                  gap={4}
+                  justify="between">
+                  <Tabs.List size="sm" type="underline">
+                    {tabs.map(({ key, label }) => (
+                      <Tabs.Item id={key} key={key}>
+                        {label}
+                      </Tabs.Item>
+                    ))}
+                  </Tabs.List>
+                  {isExpandViewSupported && (
                     <AlignRightIconButton
                       className={isTabExpanded ? 'rotate-180' : ''}
                       title={
@@ -1089,10 +1099,14 @@ const DataProductsDetailsPage = ({
                       }
                       onClick={toggleTabExpanded}
                     />
-                  )
-                }
-                onChange={handleTabChange}
-              />
+                  )}
+                </Box>
+                {tabs.map(({ key, children }) => (
+                  <Tabs.Panel id={key} key={key}>
+                    {children}
+                  </Tabs.Panel>
+                ))}
+              </Tabs>
             </div>
           </div>
         </GenericProvider>

@@ -150,16 +150,12 @@
   flex-direction: column;
   min-height: 0;
 
-  .tabs-new,
-  .tabs-new > .ant-tabs-content-holder,
-  .tabs-new > .ant-tabs-content-holder > .ant-tabs-content {
+  .page-tabs {
     flex: 1 1 auto;
     min-height: 0;
-    display: flex;
-    flex-direction: column;
   }
 
-  .ant-tabs-tabpane {
+  .page-tabs > [role='tabpanel'] {
     height: @glossary-page-height;
     flex: 1 1 auto;
     min-height: @glossary-page-height;
@@ -178,10 +174,6 @@
     }
   }
 
-  .ant-tabs-tabpane-hidden {
-    display: none;
-  }
-
   .grid-container {
     flex: 1 1 auto;
     min-height: 0;
@@ -189,7 +181,7 @@
     margin-bottom: 0;
   }
 
-  .ant-tabs.ant-tabs-top.tabs-new .grid-container > #KnowledgePanel\.LeftPanel {
+  .page-tabs > [role='tabpanel'] .grid-container > #KnowledgePanel\.LeftPanel {
     height: 100% !important;
 
     > .dynamic-height-widget {
@@ -238,12 +230,12 @@
 }
 
 .glossary-term-page-tabs {
-  .ant-tabs-tabpane {
+  .page-tabs > [role='tabpanel'] {
     height: @glossary-term-page-height;
     overflow-y: auto;
   }
 
-  .ant-tabs-tabpane:has(.glossary-terms-empty-container) {
+  .page-tabs > [role='tabpanel']:has(.glossary-terms-empty-container) {
     display: flex;
     flex-direction: column;
   }

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { toString } from 'lodash';
@@ -312,12 +313,25 @@ function DatabaseVersionPage() {
                 onUpdate={() => Promise.resolve()}>
                 <Col className="entity-version-page-tabs" span={24}>
                   <Tabs
-                    className="tabs-new"
+                    className="page-tabs"
                     data-testid="tabs"
-                    defaultActiveKey={tab}
-                    items={tabs}
-                    onChange={handleTabChange}
-                  />
+                    defaultSelectedKey={tab}
+                    onSelectionChange={(key) => handleTabChange(String(key))}>
+                    <Box align="center" className="page-tabs-bar">
+                      <Tabs.List size="sm" type="underline">
+                        {tabs.map(({ key, label }) => (
+                          <Tabs.Item id={key} key={key}>
+                            {label}
+                          </Tabs.Item>
+                        ))}
+                      </Tabs.List>
+                    </Box>
+                    {tabs.map(({ key, children }) => (
+                      <Tabs.Panel id={key} key={key}>
+                        {children}
+                      </Tabs.Panel>
+                    ))}
+                  </Tabs>
                 </Col>
               </GenericProvider>
             </Row>

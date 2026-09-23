@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs, TabsProps } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
@@ -24,6 +25,7 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import DataProductsContainer from '../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
@@ -244,7 +246,7 @@ function DatabaseSchemaVersionPage() {
     );
   };
 
-  const tabs: TabsProps['items'] = useMemo(
+  const tabs: TabProps[] = useMemo(
     () => [
       {
         label: (
@@ -375,12 +377,25 @@ function DatabaseSchemaVersionPage() {
                 onUpdate={() => Promise.resolve()}>
                 <Col className="entity-version-page-tabs" span={24}>
                   <Tabs
-                    className="tabs-new"
+                    className="page-tabs"
                     data-testid="tabs"
-                    defaultActiveKey={tab}
-                    items={tabs}
-                    onChange={handleTabChange}
-                  />
+                    defaultSelectedKey={tab}
+                    onSelectionChange={(key) => handleTabChange(String(key))}>
+                    <Box align="center" className="page-tabs-bar">
+                      <Tabs.List size="sm" type="underline">
+                        {tabs.map(({ key, label }) => (
+                          <Tabs.Item id={key} key={key}>
+                            {label}
+                          </Tabs.Item>
+                        ))}
+                      </Tabs.List>
+                    </Box>
+                    {tabs.map(({ key, children }) => (
+                      <Tabs.Panel id={key} key={key}>
+                        {children}
+                      </Tabs.Panel>
+                    ))}
+                  </Tabs>
                 </Col>
               </GenericProvider>
             </Row>

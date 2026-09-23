@@ -11,14 +11,24 @@
  *  limitations under the License.
  */
 
-import type { TabsProps } from 'antd';
+import type { ReactNode } from 'react';
 import { EntityTabs } from '../../enums/entity.enum';
 import type { Tab } from '../../generated/system/ui/page';
 import { PageType } from '../../generated/system/ui/page';
 import customizeDetailPageClassBase from '../CustomizeDetailPage/CustomizeDetailPageClassBase';
 import { getEntityName } from '../EntityNameUtils';
 
-export const sortTabs = (tabs: TabsProps['items'], order: string[]) => {
+export interface DetailsTabItem {
+  key: string;
+  label: ReactNode;
+  children?: ReactNode;
+  isHidden?: boolean;
+}
+
+export const sortTabs = <T extends Pick<DetailsTabItem, 'key'>>(
+  tabs: T[] | undefined,
+  order: string[]
+) => {
   return [...(tabs ?? [])].sort((a, b) => {
     const orderA = order.indexOf(a.key);
     const orderB = order.indexOf(b.key);
@@ -41,13 +51,11 @@ export const sortTabs = (tabs: TabsProps['items'], order: string[]) => {
 };
 
 export const getDetailsTabWithNewLabel = (
-  defaultTabs: Array<
-    NonNullable<TabsProps['items']>[number] & { isHidden?: boolean }
-  >,
+  defaultTabs: DetailsTabItem[],
   customizedTabs?: Tab[],
   defaultTabId: EntityTabs = EntityTabs.OVERVIEW,
   isVersionView = false
-) => {
+): DetailsTabItem[] => {
   if (!customizedTabs || isVersionView) {
     return defaultTabs.filter((data) => !data.isHidden);
   }
@@ -72,7 +80,7 @@ export const getDetailsTabWithNewLabel = (
 // Resolve the tab actually on screen: the selected tab only when it is in the rendered
 // list, else the first rendered tab (persona order, hidden dropped), else the default.
 export const getRenderedActiveTab = (
-  tabs: TabsProps['items'],
+  tabs: DetailsTabItem[] | undefined,
   selectedTab?: EntityTabs,
   defaultTab: EntityTabs = EntityTabs.OVERVIEW
 ): EntityTabs =>
@@ -125,7 +133,7 @@ const EXPAND_VIEW_SUPPORTED_TAB: Partial<Record<PageType, EntityTabs>> = {
 };
 
 export const checkIfExpandViewSupported = (
-  firstTab: NonNullable<TabsProps['items']>[number],
+  firstTab: DetailsTabItem,
   activeTab: EntityTabs,
   pageType: PageType
 ) => {

@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Col, Row, Tabs } from 'antd';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, omitBy, toString } from 'lodash';
@@ -879,13 +880,30 @@ const ContainerPage = () => {
           <ContainerChildrenCountContext.Provider value={setChildrenCount}>
             <Col className="entity-details-page-tabs" span={24}>
               <Tabs
-                activeKey={tab}
-                className="tabs-new"
+                className="page-tabs"
                 data-testid="tabs"
-                items={tabs}
-                tabBarExtraContent={renderTabBarExtraContent()}
-                onChange={handleTabChange}
-              />
+                selectedKey={tab}
+                onSelectionChange={(key) => handleTabChange(String(key))}>
+                <Box
+                  align="center"
+                  className="page-tabs-bar"
+                  gap={4}
+                  justify="between">
+                  <Tabs.List size="sm" type="underline">
+                    {tabs.map(({ key, label }) => (
+                      <Tabs.Item id={key} key={key}>
+                        {label}
+                      </Tabs.Item>
+                    ))}
+                  </Tabs.List>
+                  {renderTabBarExtraContent()}
+                </Box>
+                {tabs.map(({ key, children }) => (
+                  <Tabs.Panel id={key} key={key}>
+                    {children}
+                  </Tabs.Panel>
+                ))}
+              </Tabs>
             </Col>
           </ContainerChildrenCountContext.Provider>
         </GenericProvider>

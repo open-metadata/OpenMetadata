@@ -99,22 +99,69 @@
   }
 }
 
+// Chrome for the core-components Tabs used on entity details and version pages.
+// Child combinators keep these rules off tabs nested inside a tab panel.
+.page-tabs {
+  .ant-btn.ant-btn-icon-only.tab-expand-icon {
+    padding: 0;
+    height: 20px;
+    width: 20px;
+    vertical-align: middle;
+    * {
+      font-size: var(--om-font-size-xl) !important;
+    }
+  }
+
+  > .page-tabs-bar {
+    height: 48px;
+    padding: 0 var(--om-space-20);
+    background: var(--tw-color-bg-primary);
+    border-radius: var(--om-radius-xl);
+    border: 1px solid @grey-15;
+
+    > [role='tablist'] {
+      gap: var(--om-space-24);
+      min-width: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+
+      &::before {
+        display: none;
+      }
+
+      > [role='tab'] {
+        padding: var(--om-space-8) 0;
+
+        &[data-selected] [data-testid='count'] > span {
+          background-color: @primary-color;
+          border-color: @primary-color;
+          color: var(--tw-color-text-white);
+        }
+      }
+    }
+  }
+
+  > [role='tabpanel'] {
+    margin-top: @padding-sm;
+    border-radius: @border-rad-sm;
+    background-color: var(--tw-color-bg-primary);
+  }
+}
+
 .glossary-details,
 .entity-details-page-tabs {
-  .ant-tabs.tabs-new {
-    .ant-tabs-tabpane {
-      background-color: @grey-9;
-      &:has([data-testid='ontology-explorer']) {
-        background-color: transparent;
-      }
+  .ant-tabs.tabs-new .ant-tabs-tabpane,
+  .page-tabs > [role='tabpanel'] {
+    background-color: @grey-9;
+    &:has([data-testid='ontology-explorer']) {
+      background-color: transparent;
     }
   }
 }
 
 .entity-details-page-tabs {
-  .ant-tabs.tabs-new {
-    .ant-tabs-tabpane {
-      margin-bottom: @margin-md;
-    }
+  .ant-tabs.tabs-new .ant-tabs-tabpane,
+  .page-tabs > [role='tabpanel'] {
+    margin-bottom: @margin-md;
   }
 }

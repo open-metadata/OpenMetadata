@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Col, Row, Tabs } from 'antd';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import type { TFunction } from 'i18next';
@@ -79,6 +80,7 @@ import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
@@ -781,19 +783,38 @@ const DatabaseDetails: FunctionComponent = () => {
             onUpdate={settingsUpdateHandler}>
             <Col className="entity-details-page-tabs" span={24}>
               <Tabs
-                activeKey={activeTab}
-                className="tabs-new"
+                className="page-tabs"
                 data-testid="tabs"
-                items={tabs}
-                tabBarExtraContent={
+                selectedKey={getRenderedActiveTab(
+                  tabs,
+                  activeTab,
+                  EntityTabs.SCHEMAS
+                )}
+                onSelectionChange={(key) => activeTabHandler(String(key))}>
+                <Box
+                  align="center"
+                  className="page-tabs-bar"
+                  gap={4}
+                  justify="between">
+                  <Tabs.List size="sm" type="underline">
+                    {tabs.map(({ key, label }) => (
+                      <Tabs.Item id={key} key={key}>
+                        {label}
+                      </Tabs.Item>
+                    ))}
+                  </Tabs.List>
                   <TabExpandToggle
                     isExpandViewSupported={isExpandViewSupported}
                     isTabExpanded={isTabExpanded}
                     onToggle={toggleTabExpanded}
                   />
-                }
-                onChange={activeTabHandler}
-              />
+                </Box>
+                {tabs.map(({ key, children }) => (
+                  <Tabs.Panel id={key} key={key}>
+                    {children}
+                  </Tabs.Panel>
+                ))}
+              </Tabs>
             </Col>
           </GenericProvider>
 

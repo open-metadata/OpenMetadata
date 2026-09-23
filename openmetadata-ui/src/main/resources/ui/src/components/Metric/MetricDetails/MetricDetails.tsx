@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -322,12 +323,23 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
           onUpdate={onMetricUpdate}>
           <Col className="metric-page-tabs" span={24}>
             <Tabs
-              activeKey={activeTab}
-              className="tabs-new"
+              className="page-tabs"
               data-testid="tabs"
-              items={tabs}
-              tabBarExtraContent={
-                isExpandViewSupported && (
+              selectedKey={activeTab}
+              onSelectionChange={(key) => handleTabChange(String(key))}>
+              <Box
+                align="center"
+                className="page-tabs-bar"
+                gap={4}
+                justify="between">
+                <Tabs.List size="sm" type="underline">
+                  {tabs.map(({ key, label }) => (
+                    <Tabs.Item id={key} key={key}>
+                      {label}
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
+                {isExpandViewSupported && (
                   <AlignRightIconButton
                     className={isTabExpanded ? 'rotate-180' : ''}
                     title={
@@ -335,10 +347,14 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                     }
                     onClick={toggleTabExpanded}
                   />
-                )
-              }
-              onChange={handleTabChange}
-            />
+                )}
+              </Box>
+              {tabs.map(({ key, children }) => (
+                <Tabs.Panel id={key} key={key}>
+                  {children}
+                </Tabs.Panel>
+              ))}
+            </Tabs>
           </Col>
         </GenericProvider>
       </Row>

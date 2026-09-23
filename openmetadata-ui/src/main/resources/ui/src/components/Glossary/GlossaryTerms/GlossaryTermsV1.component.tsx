@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -35,6 +36,7 @@ import { searchQuery } from '../../../rest/searchAPI';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
@@ -303,12 +305,22 @@ const GlossaryTermsV1 = ({
 
         <Col className="glossary-term-page-tabs" span={24}>
           <Tabs
-            destroyInactiveTabPane
-            activeKey={activeTab}
-            className="tabs-new"
-            items={tabItems}
-            tabBarExtraContent={
-              isExpandViewSupported && (
+            className="page-tabs"
+            selectedKey={getRenderedActiveTab(tabItems, activeTab)}
+            onSelectionChange={(key) => activeTabHandler(String(key))}>
+            <Box
+              align="center"
+              className="page-tabs-bar"
+              gap={4}
+              justify="between">
+              <Tabs.List size="sm" type="underline">
+                {tabItems.map(({ key, label }) => (
+                  <Tabs.Item id={key} key={key}>
+                    {label}
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
+              {isExpandViewSupported && (
                 <AlignRightIconButton
                   className={isTabExpanded ? 'rotate-180' : ''}
                   title={
@@ -316,10 +328,14 @@ const GlossaryTermsV1 = ({
                   }
                   onClick={toggleTabExpanded}
                 />
-              )
-            }
-            onChange={activeTabHandler}
-          />
+              )}
+            </Box>
+            {tabItems.map(({ key, children }) => (
+              <Tabs.Panel id={key} key={key}>
+                {children}
+              </Tabs.Panel>
+            ))}
+          </Tabs>
         </Col>
       </Row>
       {glossaryTerm.fullyQualifiedName && assetModalVisible && (

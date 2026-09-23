@@ -40,7 +40,7 @@ export const nestedChildrenTestData: Record<
   },
   Container: {
     CreationClass: ContainerClass,
-    tabSelector: '.ant-tabs-nav-list [data-node-key="schema"]',
+    tabSelector: '[role="tab"]:has([data-testid="schema"])',
   },
   'Data Model': {
     CreationClass: DashboardDataModelClass,
@@ -48,7 +48,7 @@ export const nestedChildrenTestData: Record<
   },
   File: {
     CreationClass: FileClass,
-    tabSelector: '.ant-tabs-nav-list [data-node-key="schema"]',
+    tabSelector: '[role="tab"]:has([data-testid="schema"])',
   },
   'Search Index': {
     CreationClass: SearchIndexClass,
