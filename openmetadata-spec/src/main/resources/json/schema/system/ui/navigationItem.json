@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/system/ui/navigationItem.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "NavigationItem",
   "description": "Defines a navigation item in the UI navigation menu.",
   "type": "object",

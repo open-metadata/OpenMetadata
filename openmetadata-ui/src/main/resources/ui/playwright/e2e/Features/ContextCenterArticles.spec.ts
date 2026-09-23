@@ -572,6 +572,7 @@ test.describe('Context Center Articles', () => {
     await updateBody(page, description);
 
     await navigateToArticles(page);
+    await verifyArticleSearch(page, title);
     let card = page.getByTestId(`knowledge-card-${title}`);
     await expect(card).toBeVisible();
     await expect(card.getByTestId('knowledge-card-description')).toContainText(
@@ -647,6 +648,8 @@ test.describe('Context Center Articles', () => {
     await followAfterAction();
 
     await navigateToArticles(page);
+    await verifyArticleSearch(page, title);
+
     card = page.getByTestId(`knowledge-card-${title}`);
     await expect(card).toBeVisible();
     await expect(card).toContainText(domain.responseData.displayName);
@@ -659,9 +662,6 @@ test.describe('Context Center Articles', () => {
     await expect(
       page.getByTestId(`tag-category-KnowledgeCenter.HowToGuide-${title}`)
     ).toBeVisible();
-
-    await verifyArticleSearch(page, title);
-    await expect(card).toBeVisible();
 
     const { apiContext, afterAction } = await getApiContext(page);
     await deleteArticleByFqn(apiContext, title);
@@ -976,6 +976,11 @@ test.describe('Context Center Articles', () => {
     });
     await expect(ExpandIcon).toBeVisible();
     await ExpandIcon.click();
+    // Scroll to the child as well, not just the parent. The hierarchy is an
+    // infinite-scroll list, so expanding a node does not guarantee its child
+    // is inside the rendered window -- and the more articles the Context
+    // Center holds, the further down it lands.
+    await scrollHierarchyToNode(page, child.displayName);
     await expect(
       page.getByTestId(`page-node-${child.displayName}`)
     ).toBeVisible();
@@ -1745,6 +1750,7 @@ test.describe('Context Center Articles', () => {
       await test.step('Navigate to draft article A and type new content without saving', async () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await page.fill('.om-block-editor', newDescription);
+        await waitForDraftPersisted(page, draftArticleA.id, newDescription);
       });
 
       await test.step('Navigate to draft article B via left hierarchy', async () => {

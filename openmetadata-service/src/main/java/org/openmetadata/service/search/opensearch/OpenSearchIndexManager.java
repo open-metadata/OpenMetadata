@@ -509,16 +509,23 @@ public class OpenSearchIndexManager implements IndexManagementClient {
       return indices;
     }
     try {
-      boolean isAliasExist = client.indices().existsAlias(b -> b.name(aliasName)).value();
-      if (!isAliasExist) {
-        LOG.warn("Alias '{}' does not exist. Returning empty index set.", aliasName);
-        return indices;
-      }
-
-      GetAliasRequest request = GetAliasRequest.of(g -> g.name(aliasName));
+      // Index-scoped (GET /{aliasName}/_alias), not alias-scoped (HEAD|GET /_alias/{aliasName}):
+      // the latter names no index, so the cluster resolves it against _all and a search role
+      // granting only this deployment's <clusterAlias>* prefix is denied with a 403. The 404 below
+      // already covers "no such alias", so the existence pre-probe is redundant as well as
+      // unauthorized. Reads resolve the name as index-or-alias, so filter back to indices that
+      // actually carry the alias to keep the pre-existing contract.
+      GetAliasRequest request = GetAliasRequest.of(g -> g.index(aliasName));
       GetAliasResponse response = client.indices().getAlias(request);
 
-      indices.addAll(response.result().keySet());
+      response
+          .result()
+          .forEach(
+              (index, aliasMetadata) -> {
+                if (aliasMetadata.aliases().containsKey(aliasName)) {
+                  indices.add(index);
+                }
+              });
 
       LOG.info("Retrieved indices for alias {}: {}", aliasName, indices);
     } catch (OpenSearchException osEx) {

@@ -12,6 +12,7 @@
  */
 import { CheckboxBase } from '@/components/base/checkbox/checkbox';
 import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
+import { Typography } from '@/components/foundations/typography';
 import { cx } from '@/utils/cx';
 import { RefreshCw01 } from '@untitledui/icons';
 import { Tree } from '../tree/tree';
@@ -20,6 +21,7 @@ import type { TreeSelectNode } from './tree-select.types';
 export interface TreeSelectTreeItemContentProps<T> {
   node: TreeSelectNode<T>;
   isSelected: boolean;
+  isIndeterminate: boolean;
   isLoading: boolean;
   showCheckbox: boolean;
   showIcon: boolean;
@@ -51,6 +53,7 @@ export const TreeSelectEmptyItemContent = ({
 export const TreeSelectTreeItemContent = <T,>({
   node,
   isSelected,
+  isIndeterminate,
   isLoading,
   showCheckbox,
   showIcon,
@@ -64,10 +67,7 @@ export const TreeSelectTreeItemContent = <T,>({
 
   return (
     <Tree.ItemContent
-      className={cx(
-        'tw:!text-xs tw:!font-normal',
-        isSelected ? 'tw:!text-primary' : 'tw:!text-secondary'
-      )}
+      className="tw:text-sm tw:font-normal tw:text-primary"
       hasChildItems={hasChildItems}
       indentPerLevel={28}
       maxIndentLevel={2}>
@@ -99,6 +99,7 @@ export const TreeSelectTreeItemContent = <T,>({
               ) : (
                 <CheckboxBase
                   isDisabled={isRowDisabled}
+                  isIndeterminate={isIndeterminate}
                   isSelected={isSelected}
                   size="xs"
                 />
@@ -114,22 +115,26 @@ export const TreeSelectTreeItemContent = <T,>({
             </span>
           )}
 
-          <span
+          <Typography
             className={cx(
-              'tw:grow tw:truncate',
+              'not-prose tw:grow tw:truncate',
               node.disabled && 'tw:text-disabled'
-            )}>
+            )}
+            title={node.label}>
             {node.label}
-          </span>
+          </Typography>
 
           {node.count !== undefined && node.count > 0 && (
-            <span
+            <Typography
               className={cx(
-                'tw:shrink-0 tw:rounded-md tw:border tw:border-secondary tw:px-1.5 tw:text-xs tw:font-normal tw:tabular-nums',
+                'not-prose tw:shrink-0 tw:rounded-md tw:border tw:border-secondary tw:px-1.5 tw:tabular-nums',
                 isSelected ? 'tw:text-tertiary' : 'tw:text-placeholder'
-              )}>
+              )}
+              data-testid="filter-count"
+              size="text-xs"
+              weight="regular">
               {node.count.toLocaleString()}
-            </span>
+            </Typography>
           )}
 
           {isLoading && (

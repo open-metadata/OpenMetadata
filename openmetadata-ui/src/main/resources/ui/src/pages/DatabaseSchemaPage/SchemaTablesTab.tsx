@@ -42,7 +42,6 @@ import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
-import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
@@ -64,10 +63,6 @@ import {
 import { getColumnSorter } from '../../utils/EntitySortUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
-import {
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
 import {
   certificationTableObject,
   dataProductTableObject,
@@ -115,7 +110,7 @@ function SchemaTablesTab({
   const allowEditDisplayNamePermission = useMemo(() => {
     return (
       !isVersionView &&
-      getPrioritizedEditPermission(permissions.table, Operation.EditDisplayName)
+      getDerivedPermissionFlags(permissions.table).canEditDisplayName
     );
   }, [permissions, isVersionView]);
 
@@ -144,10 +139,9 @@ function SchemaTablesTab({
 
   const { viewDatabaseSchemaPermission } = useMemo(
     () => ({
-      viewDatabaseSchemaPermission: getPrioritizedViewPermission(
-        databaseSchemaPermission,
-        Operation.ViewBasic
-      ),
+      viewDatabaseSchemaPermission: getDerivedPermissionFlags(
+        databaseSchemaPermission
+      ).canViewBasic,
     }),
     [databaseSchemaPermission]
   );

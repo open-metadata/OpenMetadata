@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Avatar } from '@openmetadata/ui-core-components';
 import { findByTestId, render } from '@testing-library/react';
 import ProfilePicture from './ProfilePicture';
 
@@ -67,5 +68,27 @@ describe('Test ProfilePicture component', () => {
     const profileImage = await findByTestId(container, 'profile-image');
 
     expect(profileImage).toBeInTheDocument();
+  });
+
+  it('forwards a defined size straight to the Avatar', () => {
+    mockUseUserProfile.mockReturnValue(['', false, {}]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} size="sm" />);
+
+    expect((Avatar as jest.Mock).mock.calls[0][0]).toEqual(
+      expect.objectContaining({ size: 'sm' })
+    );
+  });
+
+  it('maps the legacy numeric width to the nearest defined size', () => {
+    mockUseUserProfile.mockReturnValue(['', false, {}]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} width="40" />);
+
+    expect((Avatar as jest.Mock).mock.calls[0][0]).toEqual(
+      expect.objectContaining({ size: 'md' })
+    );
   });
 });
