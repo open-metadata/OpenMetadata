@@ -1695,9 +1695,9 @@ export const deleteAnnouncement = async (page: Page) => {
     await deleteAction.click({ timeout: 2000 });
   }).toPass({ timeout: 30000 });
 
-  const modalText = await page.textContent('.ant-modal-body');
+  const deleteConfirm = page.getByTestId('announcement-delete-confirm');
 
-  expect(modalText).toContain(
+  await expect(deleteConfirm).toContainText(
     'Are you sure you want to permanently delete this message?'
   );
 
@@ -1706,7 +1706,7 @@ export const deleteAnnouncement = async (page: Page) => {
       response.url().includes('/api/v1/announcements/') &&
       response.request().method() === 'DELETE'
   );
-  await page.click('[data-testid="save-button"]');
+  await deleteConfirm.getByTestId('save-button').click();
   await deleteAnnouncementResponse;
 
   await page.reload();

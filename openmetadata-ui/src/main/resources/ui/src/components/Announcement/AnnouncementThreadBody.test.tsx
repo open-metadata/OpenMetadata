@@ -63,16 +63,6 @@ jest.mock('./AnnouncementThreads', () =>
     )
 );
 
-jest.mock('../Modals/ConfirmationModal/ConfirmationModal', () =>
-  jest.fn().mockImplementation(({ visible, onConfirm, onCancel }) => (
-    <>
-      {visible ? 'Confirmation Modal is open' : 'Confirmation Modal is close'}
-      <button onClick={onConfirm}>Confirm Confirmation Modal</button>
-      <button onClick={onCancel}>Cancel Confirmation Modal</button>
-    </>
-  ))
-);
-
 jest.mock('../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>)
 );
@@ -125,7 +115,10 @@ describe('AnnouncementThreadBody', () => {
 
     expect(screen.getByTestId('announcement-thread-body')).toBeInTheDocument();
     expect(screen.getByText('AnnouncementThreads')).toBeInTheDocument();
-    expect(screen.getByText('Confirmation Modal is close')).toBeInTheDocument();
+    // The delete confirmation only mounts once a card asks for it.
+    expect(
+      screen.queryByTestId('announcement-delete-confirm')
+    ).not.toBeInTheDocument();
   });
 
   it('should confirm delete with announcement id', async () => {
@@ -138,7 +131,12 @@ describe('AnnouncementThreadBody', () => {
     });
 
     fireEvent.click(screen.getByText('ConfirmationButton'));
-    fireEvent.click(screen.getByText('Confirm Confirmation Modal'));
+
+    expect(
+      await screen.findByTestId('announcement-delete-confirm')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('save-button'));
 
     expect(mockProps.deleteAnnouncementHandler).toHaveBeenCalledWith(
       'threadId'

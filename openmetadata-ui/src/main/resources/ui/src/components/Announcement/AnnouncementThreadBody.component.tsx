@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -24,7 +30,6 @@ import {
 } from '../../rest/announcementsAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import {
   AnnouncementThreadBodyProp,
   ConfirmState,
@@ -158,15 +163,38 @@ const AnnouncementThreadBody = ({
         onConfirmation={onConfirmation}
       />
 
-      <ConfirmationModal
-        bodyText={t('message.confirm-delete-message')}
-        cancelText={t('label.cancel')}
-        confirmText={t('label.delete')}
-        header={t('message.delete-message-question-mark')}
-        visible={confirmationState.state}
-        onCancel={onDiscard}
-        onConfirm={onPostDelete}
-      />
+      {/* A core Dialog rather than the shared antd ConfirmationModal: this
+          renders inside the drawer's react-aria overlay, and two scroll-lock
+          implementations on `document.body` fight each other every frame, so
+          the antd confirm never settles and its buttons stay unclickable. */}
+      <ModalOverlay
+        isOpen={confirmationState.state}
+        onOpenChange={(isOpen) => !isOpen && onDiscard()}>
+        <Modal>
+          <Dialog
+            data-testid="announcement-delete-confirm"
+            width={480}
+            onClose={onDiscard}>
+            <Dialog.Header title={t('message.delete-message-question-mark')} />
+            <Dialog.Content>
+              <Typography as="p" className="tw:text-text-secondary">
+                {t('message.confirm-delete-message')}
+              </Typography>
+            </Dialog.Content>
+            <Dialog.Footer>
+              <Button color="secondary" data-testid="cancel" onClick={onDiscard}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary-destructive"
+                data-testid="save-button"
+                onClick={onPostDelete}>
+                {t('label.delete')}
+              </Button>
+            </Dialog.Footer>
+          </Dialog>
+        </Modal>
+      </ModalOverlay>
     </div>
   );
 };
