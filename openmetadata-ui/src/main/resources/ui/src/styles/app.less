@@ -892,6 +892,67 @@ a[href].link-text-grey,
   --om-warning-400: var(--tw-color-utility-warning-400);
 }
 
+// AI dark-mode brand ACCENTS -> blue-300 (#84caff).
+// UntitledUIThemeProvider + AntDConfigProvider inject the configured brand
+// primary (#1570ef) as theme-agnostic inline custom properties on <html> — the
+// same element that carries `.dark-mode` — so the token layer's dark flip can't
+// override them (inline wins on that element). Re-point the brand *accent* vars
+// (text / fg / icon / border / outline / ring) to brand-300 on `body`, a
+// descendant of <html>, which wins over the html-inline value for the whole app
+// subtree (incl. antd portals). Solid-fill vars (*-solid, bg-brand-*, the raw
+// ramp) are intentionally left so buttons/badges keep the brand-600 fill. Light
+// is untouched, so a white-label custom brand still tints accents in light.
+.dark-mode body {
+  --tw-color-text-brand-secondary: var(--om-color-brand-300);
+  --tw-text-color-brand-secondary: var(--om-color-brand-300);
+  --tw-color-text-brand-tertiary: var(--om-color-brand-300);
+  --tw-text-color-brand-tertiary: var(--om-color-brand-300);
+  --tw-color-text-brand-tertiary_alt: var(--om-color-brand-300);
+  --tw-text-color-brand-tertiary_alt: var(--om-color-brand-300);
+  --tw-color-fg-brand-primary: var(--om-color-brand-300);
+  --tw-color-fg-brand-primary_alt: var(--om-color-brand-300);
+  --tw-color-fg-brand-secondary: var(--om-color-brand-300);
+  --tw-color-fg-brand-secondary_alt: var(--om-color-brand-300);
+  --tw-color-fg-brand-secondary_hover: var(--om-color-brand-300);
+  --tw-color-icon-fg-brand: var(--om-color-brand-300);
+  --tw-color-featured-icon-light-fg-brand: var(--om-color-brand-300);
+  --tw-color-border-brand: var(--om-color-brand-300);
+  --tw-color-border-brand_alt: var(--om-color-brand-300);
+  --tw-border-color-brand: var(--om-color-brand-300);
+  --tw-border-color-brand_alt: var(--om-color-brand-300);
+  --tw-background-color-border-brand: var(--om-color-brand-300);
+  --tw-background-color-border-brand_alt: var(--om-color-brand-300);
+  --tw-outline-color-brand: var(--om-color-brand-300);
+  --tw-outline-color-brand_alt: var(--om-color-brand-300);
+  --tw-ring-color-brand: var(--om-color-brand-300);
+  --tw-ring-color-brand_alt: var(--om-color-brand-300);
+}
+
+// Legacy Ant links: `.text-link-color` uses `@primary-color`
+// (= var(--ant-primary-color)), injected by AntDConfigProvider as #1570ef and
+// never flipped. Point it at the flipping link token in dark (blue-300).
+.dark-mode .text-link-color,
+.dark-mode a.text-link-color {
+  color: var(--om-color-link);
+}
+
+// (Bare-anchor dark link color is handled in tailwind.css via `:where(.dark-mode) a`
+// so it keeps base specificity and doesn't override nav/chrome anchors.)
+
+// Ant Typography links (a.ant-typography / .ant-typography a, colored @blue-9 in
+// fonts.less at 0,1,1) aren't caught by the base-specificity `:where(.dark-mode) a`.
+// Retint them in dark at a higher specificity that wins regardless of load order.
+.dark-mode a.ant-typography,
+.dark-mode .ant-typography a {
+  color: var(--om-color-link);
+}
+
+// Carousel active dot draws with --ant-primary-color (#1570ef) via a `!important`
+// rule in temp.css; match !important to win and re-tint in dark.
+.dark-mode .slick-dots li.slick-active button:before {
+  color: var(--om-color-brand-300) !important;
+}
+
 // Dark-mode canvas chrome for every reactflow surface (lineage, workflow,
 // ontology, ports). Themes the shared chrome — background dots, minimap,
 // zoom controls, default edges/handles, attribution — via semantic tokens so

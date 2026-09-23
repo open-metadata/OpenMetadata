@@ -1295,8 +1295,14 @@ export const verifyPlatformLineageForEntity = async (
   const fromNode = page.getByTestId(`lineage-node-${fromFqn}`);
   await expect(fromNode).toBeVisible();
 
-  // ensure node will be visible in the viewport
-  await performZoomOut(page);
+  // Fit rather than zoom out. Zooming is not just framing here: LineageMap's
+  // `handleMove` reads the new zoom, and when it crosses into a shallower
+  // semantic band it calls `getParentSceneRequest` and navigates to the parent
+  // scene -- so the entity this function is about to assert on gets folded into
+  // its service node ("pw-ml-model-service-… · 1 model" in the screenshot for
+  // this failure) and is genuinely absent from the DOM. `fit-screen` goes
+  // through `fitViewWithoutSemanticZoom`, which suppresses that.
+  await fitToScreen(page);
 
   await expect(fromNode).toBeVisible();
 
