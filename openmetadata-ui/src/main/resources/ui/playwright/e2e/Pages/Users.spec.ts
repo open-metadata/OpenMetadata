@@ -857,6 +857,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
 
       // Verify the selected persona is checked
       const checkedRadio = adminPage.locator('input[type="radio"]:checked');
+
       await expect(checkedRadio).toBeVisible();
     }
   });

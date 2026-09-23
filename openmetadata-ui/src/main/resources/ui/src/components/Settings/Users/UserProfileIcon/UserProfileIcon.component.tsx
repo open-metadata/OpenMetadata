@@ -9,7 +9,7 @@
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
-*/
+ */
 import { Button, Dropdown, Radio, Tag, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty, orderBy } from 'lodash';
@@ -66,10 +66,12 @@ const renderLimitedListMenuItem = ({
   itemKey,
 }: ListMenuItemProps) => {
   const remainingCount =
-    (listItems.length ?? 0) > sizeLimit
+    listItems.length ?? 0 > sizeLimit
       ? (listItems.length ?? sizeLimit) - sizeLimit
       : 0;
+
   const items = listItems.slice(0, sizeLimit);
+
   return isEmpty(items)
     ? [
         {
@@ -84,36 +86,35 @@ const renderLimitedListMenuItem = ({
           key: item.id,
           disabled: ['roles', 'inheritedRoles'].includes(itemKey),
         })) ?? []),
-        ...(remainingCount > 0
-          ? [
-              {
+        ...[
+          remainingCount > 0
+            ? {
                 label: readMoreLabelRenderer(remainingCount),
                 key: readMoreKey ?? 'more-item',
-              },
-            ]
-          : []),
+              }
+            : null,
+        ],
       ];
 };
 
 export const UserProfileIcon = () => {
   const { currentUser, selectedPersona, setSelectedPersona } =
     useApplicationStore();
-
   const defaultPersona = currentUser?.defaultPersona;
   const { onLogoutHandler } = useAuthProvider();
+
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
   const { t } = useTranslation();
-
   const profilePicture = getImageWithResolutionAndFallback(
     ImageQuality['6x'],
     currentUser?.profile?.images
   );
-
   const [showAllPersona, setShowAllPersona] = useState<boolean>(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
 
   const handleOnImageError = useCallback(() => {
     setIsImgUrlValid(false);
+
     return false;
   }, []);
 
@@ -131,6 +132,7 @@ export const UserProfileIcon = () => {
 
   const { userName, teams, roles, inheritedRoles, personas } = useMemo(() => {
     const userName = getEntityName(currentUser) || TERM_USER;
+
     return {
       userName,
       roles: currentUser?.isAdmin
@@ -145,11 +147,15 @@ export const UserProfileIcon = () => {
         const directPersonas = currentUser?.personas ?? [];
         const inheritedPersonas = currentUser?.inheritedPersonas ?? [];
         const allPersonas = [...directPersonas, ...inheritedPersonas];
+
         if (currentUser?.defaultPersona) {
           allPersonas.push(currentUser.defaultPersona);
         }
+
+        // Deduplicate by id
         const uniquePersonasMap = new Map();
         allPersonas.forEach((p) => uniquePersonasMap.set(p.id, p));
+
         return Array.from(uniquePersonasMap.values());
       })(),
     };
@@ -158,6 +164,7 @@ export const UserProfileIcon = () => {
   const personaLabelRenderer = useCallback(
     (item: EntityReference) => {
       const isDefaultPersona = defaultPersona?.id === item.id;
+
       return (
         <div
           className="w-full d-flex items-center persona-label cursor-pointer d-flex justify-between"
@@ -173,6 +180,7 @@ export const UserProfileIcon = () => {
             <Typography.Text ellipsis={{ tooltip: true }}>
               {getEntityName(item)}
             </Typography.Text>
+
             {isDefaultPersona && (
               <Tag
                 className="m-l-xs default-persona-tag"
@@ -181,6 +189,7 @@ export const UserProfileIcon = () => {
               </Tag>
             )}
           </div>
+
           <Radio checked={selectedPersona?.id === item.id} />
         </div>
       );
@@ -228,8 +237,10 @@ export const UserProfileIcon = () => {
     if (!personas?.length) {
       return [];
     }
+
     const defaultId = defaultPersona?.id;
     const selectedId = selectedPersona?.id;
+
     const others: typeof personas = [];
     let defaultMatch: typeof defaultPersona | undefined;
     let selectedMatch: typeof selectedPersona | undefined;
@@ -244,7 +255,9 @@ export const UserProfileIcon = () => {
       }
     }
 
+    // Sort remaining personas alphabetically
     const sortedOthers = orderBy(others, (p) => getEntityName(p), 'asc');
+
     return [
       ...(defaultMatch ? [defaultMatch] : []),
       ...(selectedMatch ? [selectedMatch] : []),
@@ -377,6 +390,8 @@ export const UserProfileIcon = () => {
       {
         type: 'divider',
       },
+      // A group label keeps the embedded switch non-selectable so Ant Design
+      // does not close the dropdown while the user previews the new theme.
       {
         key: 'theme-mode',
         icon: '',
@@ -458,6 +473,7 @@ export const UserProfileIcon = () => {
               {getEntityName(currentUser)}
             </Typography.Text>
           </Tooltip>
+
           <Typography.Text
             data-testid="default-persona"
             ellipsis={{ tooltip: true }}>
@@ -470,4 +486,4 @@ export const UserProfileIcon = () => {
       </Button>
     </Dropdown>
   );
-};
+ };
