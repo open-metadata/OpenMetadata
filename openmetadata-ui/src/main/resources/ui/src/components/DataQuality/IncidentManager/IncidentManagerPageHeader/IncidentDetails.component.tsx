@@ -79,7 +79,7 @@ const IncidentDetails = ({
         {statusConfig && (
           <span className="tw:shrink-0" data-testid="test-case-incident-status">
             <BadgeWithDot
-              className="tw:bg-white"
+              className="tw:bg-primary"
               color={statusConfig.color}
               size="sm"
               type="pill-color">
@@ -93,15 +93,13 @@ const IncidentDetails = ({
         data-testid="test-case-incident-actions">
         {canAcknowledge && (
           <Button
-            className={classNames('tw:shrink-0', config.actionBorderClassName)}
-            color="secondary"
+            className="tw:shrink-0"
+            color={config.actionButtonColor}
             data-testid="acknowledge-incident-button"
             isLoading={isAcknowledging}
             size="xs"
             onClick={handleAcknowledge}>
-            <span className={config.statusClassName}>
-              {t('label.acknowledge')}
-            </span>
+            {t('label.acknowledge')}
           </Button>
         )}
         <Button

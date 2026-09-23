@@ -31,6 +31,8 @@ import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentMana
 import {
   getIncidentTaskByStateId,
   getListTestCaseIncidentByStateId,
+  IncidentTransitionId,
+  INCIDENT_TRANSITION_ID,
   Task,
   transitionIncident,
   updateTestCaseIncidentById,
@@ -97,10 +99,16 @@ export interface UseTestCaseIncidentHeaderResult {
  * type, whereas `assign` also sets an assignee that lives on the status the
  * read-back would have returned.
  */
-const TRANSITION_RESULT_STATUS: Record<string, TestCaseResolutionStatusTypes> =
-  {
-    ack: TestCaseResolutionStatusTypes.ACK,
-  };
+/** A transition this hook drives always names its edge. */
+type IncidentTransitionRequest = Omit<ResolveTask, 'transitionId'> & {
+  transitionId: IncidentTransitionId;
+};
+
+const TRANSITION_RESULT_STATUS: Partial<
+  Record<IncidentTransitionId, TestCaseResolutionStatusTypes>
+> = {
+  [INCIDENT_TRANSITION_ID.Ack]: TestCaseResolutionStatusTypes.ACK,
+};
 
 /**
  * Incident-context data + handlers for the test-case details strip
@@ -192,7 +200,7 @@ export const useTestCaseIncidentHeader = ({
   // The task transition returns the task, not the resolution status the header
   // renders, so the new status is read back before it is published.
   const applyIncidentTransition = useCallback(
-    async (request: ResolveTask) => {
+    async (request: IncidentTransitionRequest) => {
       if (isDeleted || isUndefined(testCaseStatusData)) {
         return;
       }
@@ -221,8 +229,7 @@ export const useTestCaseIncidentHeader = ({
         showErrorToast(error as AxiosError);
       }
 
-      const transitionResult =
-        TRANSITION_RESULT_STATUS[request.transitionId ?? ''];
+      const transitionResult = TRANSITION_RESULT_STATUS[request.transitionId];
 
       if (latest) {
         onIncidentStatusUpdate(latest);
@@ -236,35 +243,38 @@ export const useTestCaseIncidentHeader = ({
     [isDeleted, testCaseStatusData, onIncidentStatusUpdate]
   );
 
-  const handleAssigneeUpdate = async (assignee?: EntityReference[]) => {
-    const assigneeData = assignee?.[0];
-    const transitionId =
-      testCaseStatusData?.testCaseResolutionStatusType ===
-      TestCaseResolutionStatusTypes.Assigned
-        ? 'reassign'
-        : 'assign';
+  const handleAssigneeUpdate = useCallback(
+    async (assignee?: EntityReference[]) => {
+      const assigneeData = assignee?.[0];
+      const transitionId =
+        testCaseStatusData?.testCaseResolutionStatusType ===
+        TestCaseResolutionStatusTypes.Assigned
+          ? INCIDENT_TRANSITION_ID.Reassign
+          : INCIDENT_TRANSITION_ID.Assign;
 
-    await applyIncidentTransition({
-      transitionId,
-      payload: assigneeData
-        ? {
-            assignees: [
-              {
-                id: assigneeData.id,
-                type: assigneeData.type ?? 'user',
-                name: assigneeData.name,
-                fullyQualifiedName:
-                  assigneeData.fullyQualifiedName ?? assigneeData.name,
-                displayName: assigneeData.displayName,
-              },
-            ],
-          }
-        : undefined,
-    });
-  };
+      await applyIncidentTransition({
+        transitionId,
+        payload: assigneeData
+          ? {
+              assignees: [
+                {
+                  id: assigneeData.id,
+                  type: assigneeData.type ?? 'user',
+                  name: assigneeData.name,
+                  fullyQualifiedName:
+                    assigneeData.fullyQualifiedName ?? assigneeData.name,
+                  displayName: assigneeData.displayName,
+                },
+              ],
+            }
+          : undefined,
+      });
+    },
+    [testCaseStatusData?.testCaseResolutionStatusType, applyIncidentTransition]
+  );
 
   const handleAcknowledgeIncident = useCallback(
-    () => applyIncidentTransition({ transitionId: 'ack' }),
+    () => applyIncidentTransition({ transitionId: INCIDENT_TRANSITION_ID.Ack }),
     [applyIncidentTransition]
   );
 

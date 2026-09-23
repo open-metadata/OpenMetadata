@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { ButtonProps } from '@openmetadata/ui-core-components';
 import { Check, Clock, Minus, SlashCircle01, XClose } from '@untitledui/icons';
 import {
   TestCaseResolutionStatusTypes,
@@ -33,9 +34,34 @@ export const NO_RUN_CONFIG = {
   testId: NO_RUN_BANNER_TEST_ID,
 } as const;
 
-export const STATUS_CONFIG = {
+// Typed against the core Button so a status can only name a variant the
+// button actually ships; its own colours then carry border, text, hover,
+// loading and disabled states without an override here.
+type ActionButtonColor = NonNullable<ButtonProps['color']>;
+
+/**
+ * FeaturedIcon's colour set. It is not exported from core-components, and
+ * widening it to `string` here would push the error onto every consumer.
+ */
+type StatusIconColor = 'brand' | 'gray' | 'success' | 'warning' | 'error';
+
+export const STATUS_CONFIG: Record<
+  TestCaseStatus,
+  {
+    actionButtonColor: ActionButtonColor;
+    containerClassName: string;
+    dividerClassName: string;
+    icon: typeof Check;
+    iconColor: StatusIconColor;
+    incidentClassName: string;
+    resultClassName: string;
+    statusClassName: string;
+    statusLabel: string;
+    testId: string;
+  }
+> = {
   [TestCaseStatus.Aborted]: {
-    actionBorderClassName: 'tw:after:outline-utility-warning-200!',
+    actionButtonColor: 'secondary-warning',
     containerClassName:
       'tw:border-utility-warning-200 tw:border-l-utility-warning-600 tw:bg-warning-primary',
     dividerClassName: 'tw:border-utility-warning-200',
@@ -48,7 +74,7 @@ export const STATUS_CONFIG = {
     testId: 'test-case-last-run-banner-aborted',
   },
   [TestCaseStatus.Failed]: {
-    actionBorderClassName: 'tw:after:outline-utility-error-200!',
+    actionButtonColor: 'secondary-destructive',
     containerClassName:
       'tw:border-utility-error-200 tw:border-l-utility-error-600 tw:bg-error-primary',
     dividerClassName: 'tw:border-utility-error-200',
@@ -61,7 +87,7 @@ export const STATUS_CONFIG = {
     testId: 'test-case-last-run-banner-failed',
   },
   [TestCaseStatus.Queued]: {
-    actionBorderClassName: 'tw:after:outline-utility-brand-200!',
+    actionButtonColor: 'secondary-brand',
     containerClassName:
       'tw:border-utility-brand-200 tw:border-l-utility-brand-600 tw:bg-brand-primary',
     dividerClassName: 'tw:border-utility-brand-200',
@@ -74,7 +100,7 @@ export const STATUS_CONFIG = {
     testId: 'test-case-last-run-banner-queued',
   },
   [TestCaseStatus.Success]: {
-    actionBorderClassName: 'tw:after:outline-utility-success-200!',
+    actionButtonColor: 'secondary-success',
     containerClassName:
       'tw:border-utility-success-200 tw:border-l-utility-success-600 tw:bg-success-primary',
     dividerClassName: 'tw:border-utility-success-200',

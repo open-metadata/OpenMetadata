@@ -205,7 +205,7 @@ describe('TestCaseLastRunBanner', () => {
         ).not.toContainElement(screen.getByTestId(INCIDENT_ID_TEST_ID));
         expect(
           screen.getByTestId(INCIDENT_STATUS_TEST_ID).firstElementChild
-        ).toHaveClass('tw:bg-white');
+        ).toHaveClass('tw:bg-primary');
 
         const viewIncidentButton = screen.getByTestId('view-incident-button');
 
