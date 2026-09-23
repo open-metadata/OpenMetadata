@@ -32,6 +32,15 @@ class BetweenBoundsChecker(BaseValidationChecker):
         self.min_bound = min_bound
         self.max_bound = max_bound
 
+    def _is_unbounded(self, bound: Any) -> bool:
+        """Whether that side of the window lets everything through
+
+        An unset bound resolves to ∓inf and needs no condition at all. Only a float can be
+        infinite: a datetime window -- what a between test on a date column resolves to --
+        compares fine and must not be handed to `math.isinf`, which only takes a number.
+        """
+        return isinstance(bound, float) and math.isinf(bound)
+
     def _check_violations(self, values):
         """Core violation check logic - works for both scalar and Series.
 
@@ -85,9 +94,9 @@ class BetweenBoundsChecker(BaseValidationChecker):
         for expr in metrics:
             expr_conditions = []
 
-            if not math.isinf(self.min_bound):
+            if not self._is_unbounded(self.min_bound):
                 expr_conditions.append(and_(expr.isnot(None), expr < self.min_bound))
-            if not math.isinf(self.max_bound):
+            if not self._is_unbounded(self.max_bound):
                 expr_conditions.append(and_(expr.isnot(None), expr > self.max_bound))
 
             if expr_conditions:
@@ -115,9 +124,9 @@ class BetweenBoundsChecker(BaseValidationChecker):
         # Build condition: value NOT NULL AND (value < min OR value > max)
         conditions = []
 
-        if not math.isinf(self.min_bound):
+        if not self._is_unbounded(self.min_bound):
             conditions.append(and_(column.isnot(None), column < self.min_bound))
-        if not math.isinf(self.max_bound):
+        if not self._is_unbounded(self.max_bound):
             conditions.append(and_(column.isnot(None), column > self.max_bound))
 
         if not conditions:
@@ -125,5 +134,6 @@ class BetweenBoundsChecker(BaseValidationChecker):
 
         violation_condition = or_(*conditions) if len(conditions) > 1 else conditions[0]
 
-        # Return SUM(CASE WHEN violation THEN 1 ELSE 0 END)
-        return func.sum(case((violation_condition, literal(1)), else_=literal(0)))
+        # Return SUM(CASE WHEN violation THEN 1 ELSE 0 END). SUM over no row at all is NULL,
+        # which is not a count: a table with nothing in it has zero violations.
+        return func.coalesce(func.sum(case((violation_condition, literal(1)), else_=literal(0))), literal(0))
