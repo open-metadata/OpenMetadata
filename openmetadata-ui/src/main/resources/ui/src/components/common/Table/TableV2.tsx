@@ -1758,7 +1758,7 @@ const TableV2 = <T extends object>(
         // overlay's `inset-0` resolves against the viewport instead of the
         // table, so it dims the whole page and centres the spinner wherever
         // the viewport happens to be rather than over the rows it is masking.
-        className="tw:relative tw:flex tw:flex-col tw:w-full"
+        className="tw:relative tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:w-full"
         data-testid={dataTestId}
         ref={scrollWrapRef}
         style={scrollStyle}>
@@ -1802,6 +1802,7 @@ const TableV2 = <T extends object>(
                 'tw:table-fixed': tableLayoutClasses.fixed,
                 'tw:table-auto': tableLayoutClasses.auto,
               })}
+              containerClassName={rest.scrollContainerClassName}
               containerStyle={getTableContainerStyle(
                 scroll?.y as string | number | undefined
               )}
