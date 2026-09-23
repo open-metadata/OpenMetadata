@@ -10,10 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AlertCapabilities } from '../../generated/events/api/alertCapabilities';
+import {
+  AlertCapabilities,
+  SourceKind,
+} from '../../generated/events/api/alertCapabilities';
 import {
   getSelectionSupport,
+  getSourceKindLabel,
   getSourceOptions,
+  groupSourcesByKind,
   SourceOfTheCatalog,
 } from './AlertSelectionUtil';
 
@@ -149,5 +154,43 @@ describe('getSourceOptions', () => {
       'No chosen trigger applies to this source.'
     );
     expect(options.find((o) => o.name === 'topic')?.disabled).toBe(false);
+    expect(options.find((o) => o.name === 'conversation')?.kind).toBe(
+      'activity'
+    );
+  });
+});
+
+describe('groupSourcesByKind', () => {
+  it('groups by the kind the server gives, all events first and collaboration last', () => {
+    const groups = groupSourcesByKind([
+      { name: 'conversation', kind: SourceKind.Activity },
+      { name: 'table', kind: SourceKind.Entity },
+      { name: 'all', kind: SourceKind.All },
+      { name: 'topic', kind: SourceKind.Entity },
+    ]);
+
+    expect(
+      groups.map(({ kind, sources }) => [kind, sources.map((s) => s.name)])
+    ).toEqual([
+      [SourceKind.All, ['all']],
+      [SourceKind.Entity, ['table', 'topic']],
+      [SourceKind.Activity, ['conversation']],
+    ]);
+  });
+
+  it('keeps sources whose kind is not known yet in one group with no kind', () => {
+    expect(groupSourcesByKind([{ name: 'table' }, { name: 'topic' }])).toEqual([
+      { kind: undefined, sources: [{ name: 'table' }, { name: 'topic' }] },
+    ]);
+  });
+
+  it('names each kind', () => {
+    expect(getSourceKindLabel(SourceKind.Entity)).toBe(
+      'label.data-asset-plural'
+    );
+    expect(getSourceKindLabel(SourceKind.Activity)).toBe(
+      'label.data-collaboration'
+    );
+    expect(getSourceKindLabel(SourceKind.All)).toBe('label.all-entity');
   });
 });

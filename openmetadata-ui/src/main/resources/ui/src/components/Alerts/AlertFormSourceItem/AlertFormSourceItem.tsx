@@ -11,21 +11,18 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Card,
-  Dropdown,
-  Form,
-  MenuItemProps,
-  MenuProps,
-  Typography,
-} from 'antd';
+import { Button, Card, Dropdown, Form, MenuItemProps, MenuProps } from 'antd';
 import type { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
 import { useAlertSelectionContext } from '../../../hooks/useAlertSelection';
 import { useFqn } from '../../../hooks/useFqn';
+import {
+  getSourceKindLabel,
+  getSourceOptions,
+  groupSourcesByKind,
+} from '../../../utils/Alerts/AlertSelectionUtil';
 import { getSourceOptionsFromResourceList } from '../../../utils/Alerts/AlertsUtil';
 import AlertSourcePicker from '../AlertSourcePicker/AlertSourcePicker';
 import './alert-form-source-item.less';
@@ -77,22 +74,37 @@ function AlertFormSourceItem({
         bodyStyle={{ padding: 0 }}
         className="source-dropdown-card"
         data-testid="drop-down-menu">
-        <Typography.Text className="p-l-md text-grey-muted">
-          {t('label.data-asset-plural')}
-        </Typography.Text>
         <div className="p-t-xss">{menuNode}</div>
       </Card>
     );
   }, []);
 
-  const dropdownMenuItems: MenuProps['items'] = useMemo(
-    () =>
-      resourcesOptions.map((option) => ({
-        label: option.label,
-        key: option.value,
-      })),
-    [resourcesOptions]
-  );
+  // Grouped by kind, as the picker groups them, once the server has said each source's kind.
+  const dropdownMenuItems: MenuProps['items'] = useMemo(() => {
+    const labelOf = new Map(
+      resourcesOptions.map((option) => [option.value, option.label])
+    );
+
+    return groupSourcesByKind(
+      getSourceOptions(sourceNames, [], capabilities.selection)
+    ).flatMap(({ kind, sources }): NonNullable<MenuProps['items']> => {
+      const items = sources.map((source) => ({
+        key: source.name,
+        label: labelOf.get(source.name),
+      }));
+
+      return kind
+        ? [
+            {
+              type: 'group' as const,
+              key: kind,
+              label: getSourceKindLabel(kind),
+              children: items,
+            },
+          ]
+        : items;
+    });
+  }, [resourcesOptions, sourceNames, capabilities.selection]);
 
   const handleMenuItemClick: MenuItemProps['onClick'] = useCallback(
     (info: MenuInfo) => {

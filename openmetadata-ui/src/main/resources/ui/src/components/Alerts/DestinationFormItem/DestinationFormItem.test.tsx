@@ -22,13 +22,13 @@ import { ReactNode } from 'react';
 import { FormProvider, useForm, UseFormReturn } from 'react-hook-form';
 import { DEFAULT_READ_TIMEOUT } from '../../../constants/Alerts.constants';
 import {
-  AlertSelection,
-  AlertSelectionProvider,
-} from '../../../hooks/useAlertSelection';
-import {
   SubscriptionCategory,
   SubscriptionType,
 } from '../../../generated/events/eventSubscription';
+import {
+  AlertSelection,
+  AlertSelectionProvider,
+} from '../../../hooks/useAlertSelection';
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DestinationFormItem from './DestinationFormItem.component';

@@ -15,11 +15,13 @@ import {
   AlertCapabilities,
   AlertConditionCapability,
   AlertSourceCapability,
+  SourceKind,
 } from '../../generated/events/api/alertCapabilities';
 import { AlertFilteringInput } from '../../generated/events/api/alertCapabilitiesRequest';
 import { EventFilterRule } from '../../generated/events/eventSubscription';
 import { EventType } from '../../generated/type/changeEvent';
 import { getEntityNameLabel } from '../EntityNameUtils';
+import { t } from '../i18next/LocalUtil';
 
 export interface SourceOfTheCatalog {
   name?: string;
@@ -97,6 +99,8 @@ export interface SourceOption {
   disabled: boolean;
   reason?: string;
   warning?: string;
+  /** Unknown until the server has answered. */
+  kind?: SourceKind;
 }
 
 /**
@@ -123,8 +127,36 @@ export const getSourceOptions = (
       disabled: !isSelected && !canJoin,
       reason: isSelected || canJoin ? undefined : about?.reason,
       warning: isSelected ? about?.warning : undefined,
+      kind: about?.kind,
     };
   });
+};
+
+const KINDS_IN_ORDER = [SourceKind.All, SourceKind.Entity, SourceKind.Activity];
+
+/**
+ * Sources grouped by the kind the server gives them, in the order the kinds are offered. A source
+ * whose kind is not known yet goes last, in a group with no kind.
+ */
+export const groupSourcesByKind = <T extends { kind?: SourceKind }>(
+  sources: T[]
+) =>
+  [...KINDS_IN_ORDER, undefined]
+    .map((kind) => ({
+      kind,
+      sources: sources.filter((source) => source.kind === kind),
+    }))
+    .filter((group) => group.sources.length > 0);
+
+export const getSourceKindLabel = (kind: SourceKind) => {
+  switch (kind) {
+    case SourceKind.All:
+      return t('label.all-entity', { entity: t('label.event-plural') });
+    case SourceKind.Activity:
+      return t('label.data-collaboration');
+    default:
+      return t('label.data-asset-plural');
+  }
 };
 
 interface ChosenInTheForm {

@@ -154,4 +154,77 @@ describe('AlertSourcePicker', () => {
 
     expect(onChange).toHaveBeenCalledWith(['topic'], ['table', 'topic']);
   });
+
+  it('groups the sources by kind, each under its header', async () => {
+    render(
+      <AlertSourcePicker
+        selection={TABLE_AND_TOPIC}
+        sources={NAMES}
+        value={['table']}
+      />
+    );
+    await open();
+
+    const options = await screen.findAllByRole('option');
+
+    expect(
+      options.map((option) => option.textContent?.split('Sources')[0])
+    ).toEqual([
+      'label.data-asset-plural',
+      'Label of topic',
+      'Label of dashboard',
+      'label.data-collaboration',
+      'Label of conversation',
+    ]);
+    expect(await optionOf('header-entity')).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
+  });
+
+  it('shows no headers until the server has said the kinds', async () => {
+    render(<AlertSourcePicker sources={NAMES} value={['table']} />);
+    await open();
+
+    await screen.findByTestId('topic-option');
+
+    expect(
+      screen.queryByTestId('header-entity-option')
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps a header only while one of its sources matches the search', async () => {
+    render(
+      <AlertSourcePicker
+        selection={TABLE_AND_TOPIC}
+        sources={NAMES}
+        value={['table']}
+      />
+    );
+    await user().type(screen.getByRole('combobox'), 'dash');
+
+    expect(
+      await screen.findByTestId('header-entity-option')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('header-activity-option')
+    ).not.toBeInTheDocument();
+  });
+
+  it('drops a header once every source under it is chosen', async () => {
+    render(
+      <AlertSourcePicker
+        selection={TABLE_AND_TOPIC}
+        sources={NAMES}
+        value={['table', 'topic', 'dashboard']}
+      />
+    );
+    await open();
+
+    await screen.findByTestId('conversation-option');
+
+    expect(
+      screen.queryByTestId('header-entity-option')
+    ).not.toBeInTheDocument();
+  });
 });
