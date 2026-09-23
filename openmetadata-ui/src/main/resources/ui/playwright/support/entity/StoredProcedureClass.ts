@@ -158,7 +158,10 @@ export class StoredProcedureClass extends EntityClass {
     } else {
       const hierarchy = await SharedInfra.databaseHierarchy(apiContext);
       service = hierarchy.service;
-      database = { ...hierarchy.database, service } as ResponseDataWithServiceType;
+      database = {
+        ...hierarchy.database,
+        service,
+      } as ResponseDataWithServiceType;
       schema = { ...hierarchy.schema, service } as ResponseDataWithServiceType;
 
       this.service = { ...this.service, name: service.name };

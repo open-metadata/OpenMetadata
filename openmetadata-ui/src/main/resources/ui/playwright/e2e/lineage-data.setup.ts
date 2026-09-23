@@ -28,10 +28,10 @@
 import { expect, test as setup } from '@playwright/test';
 import { LineageDataClass } from '../support/entity/LineageDataClass';
 import { SharedInfra } from '../support/entity/SharedInfra';
+import { performAdminLogin } from '../utils/admin';
 import { getEntityTypeSearchIndexMapping } from '../utils/common';
 import { connectEdgeBetweenNodesViaAPI } from '../utils/lineage';
 import { waitForSearchIndexed } from '../utils/polling';
-import { performAdminLogin } from '../utils/admin';
 
 setup('create lineage data prerequisites', async ({ browser }) => {
   // 15 entity creates + 15 edges + 16 search-index waits — the full setup
@@ -87,11 +87,13 @@ setup('create lineage data prerequisites', async ({ browser }) => {
     const depth1FirstColumnFqn =
       // depth1 is TableClass — its columns are known typed. Cast down for
       // the helper's untyped shape.
-      ((depth1 as unknown) as {
-        entityResponseData?: {
-          columns?: Array<{ fullyQualifiedName?: string }>;
-        };
-      }).entityResponseData?.columns?.[0]?.fullyQualifiedName ?? '';
+      (
+        depth1 as unknown as {
+          entityResponseData?: {
+            columns?: Array<{ fullyQualifiedName?: string }>;
+          };
+        }
+      ).entityResponseData?.columns?.[0]?.fullyQualifiedName ?? '';
 
     if (rootFirstColumnFqn && depth1FirstColumnFqn) {
       await connectEdgeBetweenNodesViaAPI(

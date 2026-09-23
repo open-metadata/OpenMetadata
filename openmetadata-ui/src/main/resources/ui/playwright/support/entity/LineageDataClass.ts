@@ -89,9 +89,14 @@ const OUTPUT_FILENAME = 'lineage-data.json';
 
 export class LineageDataClass {
   // Root entity — lineageEntity in the spec.
-  static readonly lineageEntity = new TableClass(undefined, undefined, undefined, {
-    createFullHierarchy: false,
-  });
+  static readonly lineageEntity = new TableClass(
+    undefined,
+    undefined,
+    undefined,
+    {
+      createFullHierarchy: false,
+    }
+  );
 
   // depth-1 entity + 14 depth-2 entities. Order MUST match the spec's
   // `Object.values(allEntities).map(E => new E())` iteration, because the
@@ -106,9 +111,14 @@ export class LineageDataClass {
   static readonly topic = new TopicClass(undefined, {
     createFullHierarchy: false,
   });
-  static readonly dashboard = new DashboardClass(undefined, undefined, undefined, {
-    createFullHierarchy: false,
-  });
+  static readonly dashboard = new DashboardClass(
+    undefined,
+    undefined,
+    undefined,
+    {
+      createFullHierarchy: false,
+    }
+  );
   static readonly mlmodel = new MlModelClass(undefined, {
     createFullHierarchy: false,
   });
@@ -193,9 +203,7 @@ export class LineageDataClass {
    */
   static async delete(apiContext: APIRequestContext): Promise<void> {
     const leaves = [this.lineageEntity, ...this.allEntities()].reverse();
-    await Promise.allSettled(
-      leaves.map((entity) => entity.delete(apiContext))
-    );
+    await Promise.allSettled(leaves.map((entity) => entity.delete(apiContext)));
 
     // Collect unique service FQNs across every entity. Different entity
     // types point at different service paths; group them so we DELETE
@@ -218,7 +226,10 @@ export class LineageDataClass {
       this.lineageEntity.serviceResponseData?.fullyQualifiedName,
       'databaseServices'
     );
-    push(this.table.serviceResponseData?.fullyQualifiedName, 'databaseServices');
+    push(
+      this.table.serviceResponseData?.fullyQualifiedName,
+      'databaseServices'
+    );
     push(
       this.storedProcedure.serviceResponseData?.fullyQualifiedName,
       'databaseServices'

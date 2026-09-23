@@ -132,7 +132,8 @@ export class SharedInfra {
   private static _storageService: Promise<ResponseDataType> | null = null;
   private static _apiCollection: Promise<ApiCollectionHierarchy> | null = null;
   private static _driveService: Promise<ResponseDataType> | null = null;
-  private static _driveDirectory: Promise<DriveDirectoryHierarchy> | null = null;
+  private static _driveDirectory: Promise<DriveDirectoryHierarchy> | null =
+    null;
   private static _driveSpreadsheet: Promise<DriveSpreadsheetHierarchy> | null =
     null;
 
@@ -447,7 +448,8 @@ export class SharedInfra {
       >;
 
       if (data.databaseHierarchy) {
-        this._databaseHierarchyData = data.databaseHierarchy as DatabaseHierarchy;
+        this._databaseHierarchyData =
+          data.databaseHierarchy as DatabaseHierarchy;
       }
       if (data.messagingService) {
         this._messagingServiceData = data.messagingService as ResponseDataType;
@@ -522,7 +524,9 @@ export class SharedInfra {
           return;
         }
         await apiContext.delete(
-          `/api/v1/services/${SERVICE_DELETE_PATHS[path]}/name/${encodeURIComponent(
+          `/api/v1/services/${
+            SERVICE_DELETE_PATHS[path]
+          }/name/${encodeURIComponent(
             service.fullyQualifiedName
           )}?recursive=true&hardDelete=true`
         );

@@ -114,34 +114,94 @@ export class EntityDataClass {
   static readonly tag1 = new TagClass({
     classification: this.classification1.data.name,
   });
-  static readonly table1 = new TableClass();
-  static readonly table2 = new TableClass(undefined, 'MaterializedView');
-  static readonly topic1 = new TopicClass();
-  static readonly topic2 = new TopicClass();
-  static readonly dashboard1 = new DashboardClass();
-  static readonly dashboard2 = new DashboardClass(undefined, 'LookMlExplore');
-  static readonly mlModel1 = new MlModelClass();
-  static readonly mlModel2 = new MlModelClass();
-  static readonly pipeline1 = new PipelineClass(undefined, [
-    { name: 'snowflake_task', displayName: 'Snowflake Task' },
-    { name: 'bigquery_task', displayName: 'BigQuery Task' },
-  ]);
-  static readonly pipeline2 = new PipelineClass(undefined, [
-    { name: 'presto_task', displayName: 'Presto Task' },
-    { name: 'databricks_task', displayName: 'Databricks Task' },
-  ]);
-  static readonly dashboardDataModel1 = new DashboardDataModelClass();
-  static readonly dashboardDataModel2 = new DashboardDataModelClass();
+  // EntityDataClass leaf fixtures must own their own service chain: they
+  // are created before `lineage-data-setup` writes the SharedInfra JSON,
+  // so a shared-mode create here would build parents that never get
+  // registered, orphaning them on teardown. table1/table2 (and every
+  // paired fixture) also need distinct services so specs that assume
+  // per-fixture isolation keep working. Opt every leaf into full
+  // hierarchy explicitly.
+  static readonly table1 = new TableClass(undefined, undefined, undefined, {
+    createFullHierarchy: true,
+  });
+  static readonly table2 = new TableClass(
+    undefined,
+    'MaterializedView',
+    undefined,
+    { createFullHierarchy: true }
+  );
+  static readonly topic1 = new TopicClass(undefined, {
+    createFullHierarchy: true,
+  });
+  static readonly topic2 = new TopicClass(undefined, {
+    createFullHierarchy: true,
+  });
+  static readonly dashboard1 = new DashboardClass(
+    undefined,
+    undefined,
+    undefined,
+    { createFullHierarchy: true }
+  );
+  static readonly dashboard2 = new DashboardClass(
+    undefined,
+    'LookMlExplore',
+    undefined,
+    { createFullHierarchy: true }
+  );
+  static readonly mlModel1 = new MlModelClass(undefined, {
+    createFullHierarchy: true,
+  });
+  static readonly mlModel2 = new MlModelClass(undefined, {
+    createFullHierarchy: true,
+  });
+  static readonly pipeline1 = new PipelineClass(
+    undefined,
+    [
+      { name: 'snowflake_task', displayName: 'Snowflake Task' },
+      { name: 'bigquery_task', displayName: 'BigQuery Task' },
+    ],
+    { createFullHierarchy: true }
+  );
+  static readonly pipeline2 = new PipelineClass(
+    undefined,
+    [
+      { name: 'presto_task', displayName: 'Presto Task' },
+      { name: 'databricks_task', displayName: 'Databricks Task' },
+    ],
+    { createFullHierarchy: true }
+  );
+  static readonly dashboardDataModel1 = new DashboardDataModelClass(undefined, {
+    createFullHierarchy: true,
+  });
+  static readonly dashboardDataModel2 = new DashboardDataModelClass(undefined, {
+    createFullHierarchy: true,
+  });
   static readonly apiCollection1 = new ApiCollectionClass();
   static readonly apiCollection2 = new ApiCollectionClass();
-  static readonly apiEndpoint1 = new ApiEndpointClass();
-  static readonly apiEndpoint2 = new ApiEndpointClass();
-  static readonly storedProcedure1 = new StoredProcedureClass();
-  static readonly storedProcedure2 = new StoredProcedureClass();
-  static readonly searchIndex1 = new SearchIndexClass();
-  static readonly searchIndex2 = new SearchIndexClass();
-  static readonly container1 = new ContainerClass();
-  static readonly container2 = new ContainerClass();
+  static readonly apiEndpoint1 = new ApiEndpointClass(undefined, undefined, {
+    createFullHierarchy: true,
+  });
+  static readonly apiEndpoint2 = new ApiEndpointClass(undefined, undefined, {
+    createFullHierarchy: true,
+  });
+  static readonly storedProcedure1 = new StoredProcedureClass(undefined, {
+    createFullHierarchy: true,
+  });
+  static readonly storedProcedure2 = new StoredProcedureClass(undefined, {
+    createFullHierarchy: true,
+  });
+  static readonly searchIndex1 = new SearchIndexClass(undefined, {
+    createFullHierarchy: true,
+  });
+  static readonly searchIndex2 = new SearchIndexClass(undefined, {
+    createFullHierarchy: true,
+  });
+  static readonly container1 = new ContainerClass(undefined, {
+    createFullHierarchy: true,
+  });
+  static readonly container2 = new ContainerClass(undefined, {
+    createFullHierarchy: true,
+  });
   static readonly databaseService = new DatabaseServiceClass();
   static readonly database = new DatabaseClass();
   static readonly databaseSchema = new DatabaseSchemaClass();
@@ -158,14 +218,30 @@ export class EntityDataClass {
   static readonly dataProduct3 = new DataProduct([this.domain2]);
   static readonly metric1 = new MetricClass();
   static readonly chart1 = new ChartClass();
-  static readonly directory1 = new DirectoryClass();
-  static readonly directory2 = new DirectoryClass();
-  static readonly file1 = new FileClass();
-  static readonly file2 = new FileClass();
-  static readonly spreadsheet1 = new SpreadsheetClass();
-  static readonly spreadsheet2 = new SpreadsheetClass();
-  static readonly worksheet1 = new WorksheetClass();
-  static readonly worksheet2 = new WorksheetClass();
+  static readonly directory1 = new DirectoryClass(undefined, {
+    createFullHierarchy: true,
+  });
+  static readonly directory2 = new DirectoryClass(undefined, {
+    createFullHierarchy: true,
+  });
+  static readonly file1 = new FileClass(undefined, {
+    createFullHierarchy: true,
+  });
+  static readonly file2 = new FileClass(undefined, {
+    createFullHierarchy: true,
+  });
+  static readonly spreadsheet1 = new SpreadsheetClass(undefined, {
+    createFullHierarchy: true,
+  });
+  static readonly spreadsheet2 = new SpreadsheetClass(undefined, {
+    createFullHierarchy: true,
+  });
+  static readonly worksheet1 = new WorksheetClass(undefined, {
+    createFullHierarchy: true,
+  });
+  static readonly worksheet2 = new WorksheetClass(undefined, {
+    createFullHierarchy: true,
+  });
   static readonly customProperties: Record<
     string,
     Record<string, string | number | boolean | object>

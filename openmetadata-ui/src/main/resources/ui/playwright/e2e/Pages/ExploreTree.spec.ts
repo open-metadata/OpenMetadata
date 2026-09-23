@@ -417,10 +417,9 @@ test.describe('Explore page', () => {
       undefined,
       { createFullHierarchy: true }
     );
-    searchIndex = new SearchIndexClass(
-      `0-pw-search-index-service-${uuid()}`,
-      { createFullHierarchy: true }
-    );
+    searchIndex = new SearchIndexClass(`0-pw-search-index-service-${uuid()}`, {
+      createFullHierarchy: true,
+    });
 
     await table.create(apiContext);
     await dashboard.create(apiContext);

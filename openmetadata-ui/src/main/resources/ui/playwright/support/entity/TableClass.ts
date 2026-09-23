@@ -399,12 +399,7 @@ export class TableClass extends EntityClass {
       apiContext,
       '/api/v1/tables',
       '/api/v1/tables/name',
-      buildFqn(
-        service.name,
-        database.name,
-        schema.name,
-        this.entity.name
-      ),
+      buildFqn(service.name, database.name, schema.name, this.entity.name),
       'table',
       {
         ...this.entity,
