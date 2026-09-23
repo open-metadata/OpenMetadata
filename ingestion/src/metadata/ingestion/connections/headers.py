@@ -65,6 +65,23 @@ def _(_, conn, cursor, statement, parameters, context, executemany):
     return statement_with_header, parameters
 
 
+def _past_block_comment(statement: str, index: int) -> int | None:
+    """Index just past the block comment opening at ``index``, or None if unclosed.
+
+    T-SQL nests block comments, so stopping at the first ``*/`` would leave the
+    caller inside the outer one: ``/* a /* b */ AND c */ SELECT ...``.
+    """
+    depth, index, length = 1, index + 2, len(statement)
+    while index < length and depth:
+        if statement.startswith("/*", index):
+            depth, index = depth + 1, index + 2
+        elif statement.startswith("*/", index):
+            depth, index = depth - 1, index + 2
+        else:
+            index += 1
+    return None if depth else index
+
+
 def _executable_start(statement: str) -> int | None:
     """Index of the first character outside any leading comment.
 
@@ -80,18 +97,10 @@ def _executable_start(statement: str) -> int | None:
             line_end = statement.find("\n", index)
             index = length if line_end == -1 else line_end + 1
         elif statement.startswith("/*", index):
-            # T-SQL nests block comments. Scanning to the first */ would leave the
-            # anchor inside the outer comment, e.g. /* a /* b */ AND c */ SELECT ...
-            depth, index = 1, index + 2
-            while index < length and depth:
-                if statement.startswith("/*", index):
-                    depth, index = depth + 1, index + 2
-                elif statement.startswith("*/", index):
-                    depth, index = depth - 1, index + 2
-                else:
-                    index += 1
-            if depth:
+            past_comment = _past_block_comment(statement, index)
+            if past_comment is None:
                 return None
+            index = past_comment
         else:
             return index
     return None
