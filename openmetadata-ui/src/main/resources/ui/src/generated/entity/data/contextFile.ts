@@ -1,15 +1,3 @@
-/*
- *  Copyright 2026 Collate.
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
 /**
  * An uploaded file (PDF, spreadsheet, document) stored in the Context Center Drive.
  */
@@ -115,6 +103,13 @@ export interface ContextFile {
      * Current processing state after upload.
      */
     processingStatus?: ProcessingStatus;
+    /**
+     * Who can see this file, beyond its owners. Absent means the file follows ordinary policy,
+     * which is how every file added before this field behaved; Private restricts it to its
+     * owners and the principals it names. A file uploaded to a chat is created Private, because
+     * the person who attached it to a conversation did not thereby publish it.
+     */
+    shareConfig?: ShareConfig;
     /**
      * ID of the file in the external source system.
      */
@@ -230,6 +225,8 @@ export interface FieldChange {
  * the relationship of a table `belongs to a` database.
  *
  * Parent folder containing this file.
+ *
+ * Principal receiving access. Supported principal types are user, team, and domain.
  */
 export interface EntityReference {
     /**
@@ -330,6 +327,55 @@ export enum ProcessingStatus {
     Processed = "Processed",
     Unsupported = "Unsupported",
     Uploaded = "Uploaded",
+}
+
+/**
+ * Who can see this file, beyond its owners. Absent means the file follows ordinary policy,
+ * which is how every file added before this field behaved; Private restricts it to its
+ * owners and the principals it names. A file uploaded to a chat is created Private, because
+ * the person who attached it to a conversation did not thereby publish it.
+ *
+ * Visibility and sharing configuration for the memory.
+ */
+export interface ShareConfig {
+    /**
+     * Explicit principals the memory is shared with.
+     */
+    sharedWith?: SharedPrincipal[];
+    visibility?: ShareVisibility;
+}
+
+/**
+ * A principal granted access to the memory.
+ */
+export interface SharedPrincipal {
+    /**
+     * Principal receiving access. Supported principal types are user, team, and domain.
+     */
+    principal?: EntityReference;
+    /**
+     * Role granted to the principal.
+     */
+    role?: ShareRole;
+}
+
+/**
+ * Role granted to the principal.
+ *
+ * Role granted to a shared principal.
+ */
+export enum ShareRole {
+    Editor = "Editor",
+    Viewer = "Viewer",
+}
+
+/**
+ * Visibility level for the memory.
+ */
+export enum ShareVisibility {
+    Entity = "Entity",
+    Private = "Private",
+    Shared = "Shared",
 }
 
 /**

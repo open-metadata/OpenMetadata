@@ -182,21 +182,38 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
                       + "include=deleted to scope the archive page to files archived by that user - "
                       + "an archived file cannot be edited, so updatedBy stays the user who archived it.")
           @QueryParam("updatedBy")
-          String updatedBy) {
+          String updatedBy,
+      @Parameter(
+              description =
+                  "Filter files by the stored asset they are a view of. A file uploaded to a chat "
+                      + "keeps its asset id, which is how a link from that chat finds the document.")
+          @QueryParam("assetId")
+          String assetId) {
     ListFilter filter = new ListFilter(include);
     if (folderId != null && !folderId.isBlank()) {
       filter.addQueryParam("folderId", folderId);
+    }
+    if (assetId != null && !assetId.isBlank()) {
+      filter.addQueryParam("assetId", assetId);
     }
     if (updatedBy != null && !updatedBy.isBlank()) {
       filter.addQueryParam("updatedBy", updatedBy);
     }
     if (orderBy == null || orderBy.isBlank()) {
-      return super.listInternal(
-          uriInfo, securityContext, fieldsParam, filter, limit, before, after);
+      return visibleOnly(
+          super.listInternal(
+              uriInfo,
+              securityContext,
+              ContextFileVisibility.guardFields(fieldsParam),
+              filter,
+              limit,
+              before,
+              after),
+          securityContext);
     }
 
     RestUtil.validateCursors(before, after);
-    Fields fields = getFields(fieldsParam);
+    Fields fields = getFields(ContextFileVisibility.guardFields(fieldsParam));
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
     ResourceContextInterface resourceContext = filter.getResourceContext(entityType);
     authorizer.authorize(securityContext, operationContext, resourceContext);
@@ -204,7 +221,17 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     ResultList<ContextFile> resultList =
         repository.listByUpdatedAt(
             uriInfo, fields, filter, limit, before, after, resolveOrderBy(orderBy));
-    return addHref(uriInfo, resultList);
+    return visibleOnly(addHref(uriInfo, resultList), securityContext);
+  }
+
+  /**
+   * Drops the files this caller may not see. A page is filtered after it is read, so it can come
+   * back shorter than {@code limit} — the paging cursors still walk every file, which is what keeps
+   * the next page from skipping any.
+   */
+  private ResultList<ContextFile> visibleOnly(
+      ResultList<ContextFile> files, SecurityContext securityContext) {
+    return ContextFileVisibility.filterByVisibility(files, securityContext);
   }
 
   @GET
@@ -216,7 +243,11 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       @PathParam("id") UUID id,
       @QueryParam("fields") String fieldsParam,
       @QueryParam("include") @DefaultValue("non-deleted") Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    ContextFile file =
+        getInternal(
+            uriInfo, securityContext, id, ContextFileVisibility.guardFields(fieldsParam), include);
+    ContextFileVisibility.enforceVisibility(file, securityContext);
+    return file;
   }
 
   @GET
@@ -228,7 +259,11 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       @PathParam("fqn") String fqn,
       @QueryParam("fields") String fieldsParam,
       @QueryParam("include") @DefaultValue("non-deleted") Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    ContextFile file =
+        getByNameInternal(
+            uriInfo, securityContext, fqn, ContextFileVisibility.guardFields(fieldsParam), include);
+    ContextFileVisibility.enforceVisibility(file, securityContext);
+    return file;
   }
 
   @POST
@@ -262,6 +297,16 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
       @Valid jakarta.json.JsonPatch patch) {
+    // Sharing is edited through this endpoint, so the guard runs here too: a caller who cannot see
+    // a document must not be able to change who else can.
+    ContextFileVisibility.enforceVisibility(
+        getInternal(
+            uriInfo,
+            securityContext,
+            id,
+            ContextFileVisibility.guardFields(""),
+            Include.NON_DELETED),
+        securityContext);
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -415,7 +460,9 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       @QueryParam("include") @DefaultValue("non-deleted") Include include,
       @QueryParam("redirect") @DefaultValue("true") boolean redirect,
       @QueryParam("expiry") @DefaultValue("300") int expirySeconds) {
-    ContextFile file = getInternal(uriInfo, securityContext, id, "", include);
+    ContextFile file =
+        getInternal(uriInfo, securityContext, id, ContextFileVisibility.guardFields(""), include);
+    ContextFileVisibility.enforceVisibility(file, securityContext);
     Asset asset = resolveAsset(file);
     if (asset == null) {
       return Response.status(Response.Status.NOT_FOUND)
@@ -656,6 +703,10 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete) {
+    ContextFileVisibility.enforceVisibility(
+        getInternal(
+            uriInfo, securityContext, id, ContextFileVisibility.guardFields(""), Include.ALL),
+        securityContext);
     if (hardDelete) {
       ContextFile file = getInternal(uriInfo, securityContext, id, "", Include.ALL);
       if (!Boolean.TRUE.equals(file.getDeleted())) {

@@ -162,5 +162,21 @@ public interface CollectionDAO
 
     @SqlUpdate("DELETE FROM asset_entity WHERE id = :id")
     void delete(@Bind("id") String id);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM asset_entity WHERE LOWER(assetType) = LOWER(:assetType) "
+                + "AND updatedBy = :updatedBy "
+                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.checksum')) = :checksum",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM asset_entity WHERE LOWER(assetType) = LOWER(:assetType) "
+                + "AND updatedBy = :updatedBy AND json ->> 'checksum' = :checksum",
+        connectionType = POSTGRES)
+    List<String> getByChecksum(
+        @Bind("assetType") String assetType,
+        @Bind("updatedBy") String updatedBy,
+        @Bind("checksum") String checksum);
   }
 }

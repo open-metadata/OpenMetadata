@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Set;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -166,11 +167,21 @@ public final class ContextMemoryVisibility {
   }
 
   private static boolean isInSharedWithList(ContextMemory memory, String userName) {
-    if (memory.getShareConfig() == null || memory.getShareConfig().getSharedWith() == null) {
+    return memory.getShareConfig() != null
+        && isSharedWith(memory.getShareConfig().getSharedWith(), userName);
+  }
+
+  /**
+   * Whether {@code userName} is named by a sharing list, directly or through a team or domain they
+   * belong to. Public because Context Center shares files by the same vocabulary, and one matcher
+   * is what keeps the two from drifting apart.
+   */
+  public static boolean isSharedWith(List<MemorySharedPrincipal> sharedWith, String userName) {
+    if (nullOrEmpty(sharedWith)) {
       return false;
     }
     Set<String> principalIds = resolvePrincipalIdentifiers(userName);
-    return memory.getShareConfig().getSharedWith().stream()
+    return sharedWith.stream()
         .anyMatch(
             sp ->
                 sp.getPrincipal() != null
@@ -178,7 +189,7 @@ public final class ContextMemoryVisibility {
                         || principalIds.contains(sp.getPrincipal().getFullyQualifiedName())));
   }
 
-  private static Set<String> resolvePrincipalIdentifiers(String userName) {
+  static Set<String> resolvePrincipalIdentifiers(String userName) {
     Set<String> ids = new HashSet<>();
     ids.add(userName);
     try {

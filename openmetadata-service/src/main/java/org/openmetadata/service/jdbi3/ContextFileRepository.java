@@ -329,6 +329,15 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     return contentId == null ? null : contentRepository.getById(contentId);
   }
 
+  /**
+   * Whether any live document is a view of this stored asset. A file can reach the Context Center
+   * from somewhere that has its own copy of the blob — a chat attachment — and that owner needs to
+   * know whether deleting its copy would take a document's content with it.
+   */
+  public boolean existsForAsset(String assetId) {
+    return assetId != null && contextFileDAO.countByAssetId(assetId) > 0;
+  }
+
   public void validateNoDuplicateFileName(String fileName, EntityReference folder, UUID excludeId) {
     if (fileName == null || fileName.isBlank()) {
       return;

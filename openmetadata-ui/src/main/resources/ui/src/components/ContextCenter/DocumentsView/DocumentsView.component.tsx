@@ -24,8 +24,9 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Check, ChevronRight } from '@untitledui/icons';
+import { Check, ChevronRight, Share07 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
 import classNames from 'classnames';
 import { FC, UIEvent, useMemo, useState } from 'react';
 import { SubmenuTrigger } from 'react-aria-components';
@@ -38,12 +39,23 @@ import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/tr
 import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
-import { moveFileToFolder, moveFileToRoot } from '../../../rest/assetAPI';
+import {
+  ShareConfig,
+  ShareRole,
+  ShareVisibility,
+} from '../../../generated/entity/context/contextMemory';
+import { EntityReference } from '../../../generated/entity/type';
+import {
+  moveFileToFolder,
+  moveFileToRoot,
+  updateContextFile,
+} from '../../../rest/assetAPI';
 import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
+import { UserSelectableList } from '../../common/UserSelectableList/UserSelectableList.component';
 import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
 import {
   DocumentsViewProps,
@@ -149,6 +161,22 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
    Per-row actions dropdown (Share / Move to Folder / Delete)
 --------------------------------------------------------------- */
 
+const VisibilityOption: FC<{ label: string; description: string }> = ({
+  description,
+  label,
+}) => (
+  <Box direction="col">
+    <Typography size="text-sm" weight="medium">
+      {label}
+    </Typography>
+    <Typography
+      className="tw:whitespace-normal tw:text-tertiary"
+      size="text-xs">
+      {description}
+    </Typography>
+  </Box>
+);
+
 const FileActions: FC<FileActionsProps> = ({
   canDelete,
   canEdit,
@@ -158,10 +186,49 @@ const FileActions: FC<FileActionsProps> = ({
   isLoadingMoreFolders = false,
   onDeleteFile,
   onFileMoved,
+  onFileUpdated,
   onLoadMoreFolders,
 }) => {
   const { t } = useTranslation();
   const [isMoving, setIsMoving] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+
+  const applyShareConfig = async (shareConfig: ShareConfig) => {
+    try {
+      setIsSharing(true);
+      const patch = compare(file, { ...file, shareConfig });
+      onFileUpdated?.(await updateContextFile(file.id, patch));
+      showSuccessToast(
+        t('message.entity-updated-successfully', {
+          entity: t('label.visibility'),
+        })
+      );
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  /**
+   * Shared without anybody named is indistinguishable from Private, so the two are set together:
+   * picking people IS the act of sharing.
+   */
+  const handleShareWithPeople = async (people: EntityReference[]) =>
+    applyShareConfig({
+      visibility: ShareVisibility.Shared,
+      sharedWith: people.map((principal) => ({
+        principal,
+        role: ShareRole.Viewer,
+      })),
+    });
+
+  const sharedPrincipals =
+    file.shareConfig?.sharedWith
+      ?.map((shared) => shared.principal)
+      .filter((principal): principal is EntityReference =>
+        Boolean(principal)
+      ) ?? [];
 
   const handleMoveToFolder = async (folderId: string) => {
     try {
@@ -210,6 +277,87 @@ const FileActions: FC<FileActionsProps> = ({
               onDeleteFile?.(file);
             }
           }}>
+          {canEdit && (
+            <SubmenuTrigger>
+              <Dropdown.Item
+                data-testid="visibility-btn"
+                isDisabled={isSharing}>
+                {() => (
+                  <Box align="center" justify="between">
+                    <Box align="center" gap={2}>
+                      <Share07
+                        className="tw:text-secondary"
+                        height={20}
+                        width={20}
+                      />
+                      <Typography
+                        ellipsis
+                        className="tw:grow tw:text-secondary">
+                        {t('label.visibility')}
+                      </Typography>
+                    </Box>
+                    <ChevronRight
+                      aria-hidden="true"
+                      className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                      strokeWidth={2}
+                    />
+                  </Box>
+                )}
+              </Dropdown.Item>
+              <Dropdown.Popover
+                className="tw:w-80"
+                offset={-6}
+                placement="right top">
+                <Dropdown.Menu
+                  aria-label={t('label.visibility')}
+                  onAction={(key) =>
+                    applyShareConfig({ visibility: key as ShareVisibility })
+                  }>
+                  <Dropdown.Item
+                    data-testid="visibility-Private"
+                    id={ShareVisibility.Private}>
+                    <VisibilityOption
+                      description={t('message.visible-only-to-you')}
+                      label={t('label.private')}
+                    />
+                  </Dropdown.Item>
+                  <Dropdown.Item
+                    data-testid="visibility-Entity"
+                    id={ShareVisibility.Entity}>
+                    <VisibilityOption
+                      description={t(
+                        'message.visible-to-everyone-in-workspace'
+                      )}
+                      label={t('label.workspace')}
+                    />
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+                {/* Outside the menu: choosing people is a second step, and a menu item that
+                    closes on click cannot host a picker. */}
+                <UserSelectableList
+                  multiSelect
+                  hasPermission={!isSharing}
+                  selectedUsers={sharedPrincipals}
+                  onUpdate={handleShareWithPeople}>
+                  {/* Mirrors Dropdown.Item's own padding so this row lines up with the two above
+                      it — it sits outside the menu because a menu item closes on click and cannot
+                      host a picker. */}
+                  <button
+                    className="tw:block tw:w-full tw:cursor-pointer tw:px-1.5 tw:py-px tw:text-left"
+                    data-testid="visibility-Shared"
+                    type="button">
+                    <span className="tw:flex tw:rounded-md tw:px-2.5 tw:py-2 tw:transition tw:duration-100 tw:ease-linear hover:tw:bg-secondary">
+                      <VisibilityOption
+                        description={t('message.visible-to-specific-people')}
+                        label={t('label.shared')}
+                      />
+                    </span>
+                  </button>
+                </UserSelectableList>
+              </Dropdown.Popover>
+            </SubmenuTrigger>
+          )}
+
           {canEdit && (
             <SubmenuTrigger>
               <Dropdown.Item
@@ -444,6 +592,7 @@ const FileRow: FC<FileRowProps> = ({
   onDeleteFile,
   onDownload,
   onFileMoved,
+  onFileUpdated,
   onPreview,
   onSelectFile,
   onLoadMoreFolders,
@@ -593,6 +742,7 @@ const FileRow: FC<FileRowProps> = ({
           isLoadingMoreFolders={isLoadingMoreFolders}
           onDeleteFile={onDeleteFile}
           onFileMoved={onFileMoved}
+          onFileUpdated={onFileUpdated}
           onLoadMoreFolders={onLoadMoreFolders}
         />
       </Box>
@@ -630,6 +780,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   onDeleteFile,
   onDownload,
   onFileMoved,
+  onFileUpdated,
   onPreview,
   onSelectFile,
   onScrollEnd,
@@ -737,6 +888,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
                     onDeleteFile={onDeleteFile}
                     onDownload={onDownload}
                     onFileMoved={onFileMoved}
+                    onFileUpdated={onFileUpdated}
                     onLoadMoreFolders={onLoadMoreFolders}
                     onPreview={onPreview}
                     onSelectFile={onSelectFile}

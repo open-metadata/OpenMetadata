@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import axios, { AxiosError, AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { FOLDER_PAGE_SIZE } from '../constants/ContextCenter.constants';
 import { Asset, AssetType } from '../generated/attachments/asset';
@@ -109,7 +110,10 @@ export const deleteFolder = async (
   });
 };
 
-type ListContextFilesParams = ListParams & { folderId?: string };
+type ListContextFilesParams = ListParams & {
+  folderId?: string;
+  assetId?: string;
+};
 
 export const listContextFiles = async (params: ListContextFilesParams = {}) => {
   const response = await APIClient.get<PagingResponse<ContextFile[]>>(
@@ -132,6 +136,20 @@ export const getContextFileById = async (id: string): Promise<ContextFile> => {
     `/contextCenter/drive/files/${id}`,
     { params: { fields: 'folder,memoryCount' } }
   );
+
+  return response.data;
+};
+
+export const updateContextFile = async (
+  id: string,
+  patch: Operation[]
+): Promise<ContextFile> => {
+  const response = await APIClient.patch<
+    Operation[],
+    AxiosResponse<ContextFile>
+  >(`/contextCenter/drive/files/${id}`, patch, {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  });
 
   return response.data;
 };

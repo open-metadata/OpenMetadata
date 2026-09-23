@@ -24,6 +24,80 @@
       ],
       "default": "Inline",
       "additionalProperties": false
+    },
+    "tabularColumn": {
+      "javaType": "org.openmetadata.schema.attachments.TabularColumn",
+      "description": "One column of a tabular file with the statistics the Query Runner read for it, kept as the worker wrote them.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "dataType": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "approxUnique": {
+          "type": "string"
+        },
+        "avg": {
+          "type": "string"
+        },
+        "nullPercentage": {
+          "type": "string"
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "tabularRelation": {
+      "javaType": "org.openmetadata.schema.attachments.TabularRelation",
+      "description": "One relation the Query Runner registers from a tabular file: the file itself for a CSV, one per sheet for a workbook.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Relation name, as registered for a file uploaded under its own name."
+        },
+        "rowCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/tabularColumn"
+          }
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "tabularProfile": {
+      "javaType": "org.openmetadata.schema.attachments.TabularProfile",
+      "description": "How the Query Runner reads a tabular file, taken once after the upload by the worker that later queries it.",
+      "type": "object",
+      "properties": {
+        "readAt": {
+          "$ref": "../type/basic.json#/definitions/timestamp"
+        },
+        "relations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/tabularRelation"
+          }
+        },
+        "error": {
+          "type": "string",
+          "description": "Why the file could not be read, when the read failed. A profile with an error has no relations."
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -52,6 +126,14 @@
       "format": "int64",
       "minimum": 0,
       "description": "File size in bytes."
+    },
+    "checksum": {
+      "type": "string",
+      "description": "SHA-256 of the file's bytes, hex-encoded. Two uploads with the same checksum hold the same file."
+    },
+    "dataProfile": {
+      "description": "Structure and statistics of a tabular file, absent until the Query Runner has read it.",
+      "$ref": "#/definitions/tabularProfile"
     },
     "extension": {
       "type": "string",

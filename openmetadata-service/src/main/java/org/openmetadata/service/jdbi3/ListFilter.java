@@ -131,6 +131,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getSourceEntityCondition());
     conditions.add(getPrimaryEntityCondition());
     conditions.add(getFolderCondition());
+    conditions.add(getAssetCondition());
     conditions.add(getGlossaryIdCondition(tableName));
     conditions.add(getOntologyChangeSetStateCondition(tableName));
     String condition = addCondition(conditions);
@@ -251,6 +252,22 @@ public class ListFilter extends Filter<ListFilter> {
               Relationship.APPLIED_TO.ordinal());
     }
     return result;
+  }
+
+  /**
+   * Documents by the stored asset they are a view of. A chat attachment is one such asset, and this
+   * is how a link to it finds the document to open.
+   */
+  public String getAssetCondition() {
+    String assetId = queryParams.get("assetId");
+    if (nullOrEmpty(assetId)) {
+      return "";
+    }
+    queryParams.put("assetIdParam", assetId);
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return "JSON_UNQUOTE(JSON_EXTRACT(json, '$.assetId')) = :assetIdParam";
+    }
+    return "json->>'assetId' = :assetIdParam";
   }
 
   public String getFolderCondition() {

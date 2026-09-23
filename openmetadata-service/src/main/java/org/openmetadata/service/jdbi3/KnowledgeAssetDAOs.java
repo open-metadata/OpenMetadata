@@ -111,6 +111,20 @@ public interface KnowledgeAssetDAOs {
         @Bind("excludeId") String excludeId,
         @Bind("containsRelation") int containsRelation);
 
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(*) FROM context_file "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.assetId')) = :assetId "
+                + "AND (deleted = false OR deleted IS NULL)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(*) FROM context_file "
+                + "WHERE json ->> 'assetId' = :assetId "
+                + "AND (deleted = false OR deleted IS NULL)",
+        connectionType = POSTGRES)
+    int countByAssetId(@Bind("assetId") String assetId);
+
     @SqlQuery("SELECT json FROM context_file <cond> ORDER BY updatedAt ASC, id ASC LIMIT :limit")
     List<String> listByUpdatedAtAsc(
         @BindMap Map<String, ?> params, @Define("cond") String cond, @Bind("limit") int limit);

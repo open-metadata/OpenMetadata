@@ -11,11 +11,18 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
 import EntityMarkdownLink from './EntityMarkdownLink';
+
+const mockListContextFiles = jest.fn();
+
+jest.mock('../../../../rest/assetAPI', () => ({
+  listContextFiles: (...args: unknown[]) => mockListContextFiles(...args),
+}));
 
 // Mock EntityPopOverCard to prevent complex dependencies in tests
 jest.mock('../../PopOverCard/EntityPopOverCard', () => ({
@@ -89,8 +96,54 @@ jest.mock('../../../../utils/EntityUtilClassBase', () => ({
 
 describe('EntityMarkdownLink', () => {
   const renderWithRouter = (component: React.ReactElement) => {
-    return render(<BrowserRouter>{component}</BrowserRouter>);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>{component}</BrowserRouter>
+      </QueryClientProvider>
+    );
   };
+
+  describe('document links', () => {
+    const assetId = 'a0fe2d87-bd0d-4d6c-982e-a3dfc025aa1b';
+
+    it('opens the Context Center document that is a view of the asset', async () => {
+      // The chat knows an upload only by its asset id; the document that shows it is looked up.
+      mockListContextFiles.mockResolvedValue({ data: [{ id: 'doc-1' }] });
+
+      renderWithRouter(
+        <EntityMarkdownLink href={`#document/${assetId}`}>
+          campaign_contacts.csv
+        </EntityMarkdownLink>
+      );
+
+      await waitFor(() =>
+        expect(screen.getByText('campaign_contacts.csv')).toHaveAttribute(
+          'href',
+          '/context-center/documents?document=doc-1'
+        )
+      );
+      expect(mockListContextFiles).toHaveBeenCalledWith({ assetId, limit: 1 });
+    });
+
+    it('renders plain text when no document shows the asset', async () => {
+      // An upload never sent, or a document since deleted: a link that goes nowhere is worse
+      // than none.
+      mockListContextFiles.mockResolvedValue({ data: [] });
+
+      renderWithRouter(
+        <EntityMarkdownLink href={`#document/${assetId}`}>
+          orphan.csv
+        </EntityMarkdownLink>
+      );
+
+      await waitFor(() => expect(mockListContextFiles).toHaveBeenCalled());
+      expect(screen.getByText('orphan.csv').closest('a')).toBeNull();
+    });
+  });
 
   it('should render regular link for non-entity URLs', () => {
     renderWithRouter(

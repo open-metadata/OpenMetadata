@@ -327,6 +327,13 @@
       "sourceType": {
         "type": "keyword"
       },
+      "visibility": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "sharedWithIds": {
+        "type": "keyword"
+      },
       "extractedText": {
         "type": "text",
         "analyzer": "om_analyzer",
