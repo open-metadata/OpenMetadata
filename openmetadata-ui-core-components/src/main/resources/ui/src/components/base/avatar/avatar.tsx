@@ -122,10 +122,12 @@ export const Avatar = ({
 }: AvatarProps) => {
   const [isFailed, setIsFailed] = useState(false);
 
-  // Guard against an unknown `size` (e.g. a stray numeric value from an
-  // untyped caller) so a bad size degrades to `md` rather than crashing on
-  // `sizeStyles.root`.
-  const sizeStyles = styles[size] ?? styles.md;
+  // Normalize an unknown `size` (e.g. a stray numeric value from an untyped
+  // caller) to `md` once, so every size-keyed consumer below — the styles
+  // lookup and the badge sub-components — degrades safely instead of crashing
+  // on `.root`.
+  const resolvedSize: AvatarSize = size in styles ? size : 'md';
+  const sizeStyles = styles[resolvedSize];
 
   // Color the initials only when we actually fall back to them (no usable
   // image). `auto`/`solid` derive a theme-adapting utility color from the name;
@@ -179,7 +181,7 @@ export const Avatar = ({
     if (status) {
       return (
         <AvatarOnlineIndicator
-          size={size === 'xxs' ? 'xs' : size}
+          size={resolvedSize === 'xxs' ? 'xs' : resolvedSize}
           status={status}
         />
       );
@@ -190,9 +192,10 @@ export const Avatar = ({
         <VerifiedTick
           className={cx(
             'tw:absolute tw:right-0 tw:bottom-0',
-            (size === 'xxs' || size === 'xs') && 'tw:-right-px tw:-bottom-px'
+            (resolvedSize === 'xxs' || resolvedSize === 'xs') &&
+              'tw:-right-px tw:-bottom-px'
           )}
-          size={size === 'xxs' ? 'xs' : size}
+          size={resolvedSize === 'xxs' ? 'xs' : resolvedSize}
         />
       );
     }
