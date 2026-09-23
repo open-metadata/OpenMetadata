@@ -43,10 +43,22 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericCo
 import { AssetsUnion } from '../AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../DataAssetsHeader/DataAssetsHeader.interface';
 
-// Stable identity key for a domain list, used to skip no-op state updates that
-// would otherwise remount the picker on every context re-render.
+// Content key for a domain list, used to skip no-op state updates that would
+// otherwise remount the picker on every context re-render. Keyed on every
+// render-relevant field (not just identity) so refreshed metadata — a renamed
+// domain, a flipped `inherited`, a changed link — still updates the chip, while
+// unchanged data stays reference-stable. JSON encoding keeps it collision-safe.
 const domainsRefKey = (list: EntityReference[]): string =>
-  list.map((d) => d.id ?? d.fullyQualifiedName ?? d.name).join(',');
+  JSON.stringify(
+    list.map((d) => [
+      d.id,
+      d.fullyQualifiedName,
+      d.name,
+      d.displayName,
+      d.inherited,
+      d.href,
+    ])
+  );
 
 const resolveDomainsForPatch = (
   selectedDomain: EntityReference | EntityReference[]
