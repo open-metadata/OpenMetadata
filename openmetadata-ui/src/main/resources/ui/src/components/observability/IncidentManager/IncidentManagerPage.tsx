@@ -106,7 +106,7 @@ const IncidentManagerPage = () => {
         />
       }
       pageTitle={t(PAGE_HEADERS.INCIDENT_MANAGER.header)}>
-      <div className="tw:mb-4 tw:[&_.incident-page-widgets]:border-0 tw:[&_.incident-page-widgets]:p-0 tw:[&_.custom-chart-background]:border-0 tw:[&_.custom-chart-background]:bg-gray-blue-25">
+      <div className="tw:mb-4 tw:[&_.incident-page-widgets]:border-0 tw:[&_.incident-page-widgets]:p-0 tw:[&_.custom-chart-background]:border-0 tw:[&_.custom-chart-background]:bg-gray-blue-25 tw:[&_.custom-chart-background]:dark:bg-surface">
         <IncidentManagerPageWidgets />
       </div>
       {hasViewPermission ? (
