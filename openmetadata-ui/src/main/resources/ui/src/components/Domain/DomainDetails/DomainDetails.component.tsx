@@ -1149,27 +1149,33 @@ const DomainDetails = ({
           <div className="domain-details-page-tabs tw:w-full">
             <div className={isTreeView ? 'tw:p-0' : 'tw:p-5'}>
               <Tabs
+                className="tw:gap-3"
                 data-testid="tabs"
-                selectedKey={activeTab}
+                selectedKey={getRenderedActiveTab(tabs, activeTab)}
                 onSelectionChange={(key) => handleTabChange(String(key))}>
-                <Box align="center" gap={4} justify="between">
-                  <Tabs.List size="sm" type="underline">
-                    {tabs.map(({ key, label }) => (
-                      <Tabs.Item id={key} key={key}>
-                        {label}
-                      </Tabs.Item>
-                    ))}
-                  </Tabs.List>
-                  {isExpandViewSupported && (
-                    <AlignRightIconButton
-                      className={isTabExpanded ? 'rotate-180' : ''}
-                      title={
-                        isTabExpanded ? t('label.collapse') : t('label.expand')
-                      }
-                      onClick={toggleTabExpanded}
-                    />
-                  )}
-                </Box>
+                <Tabs.List
+                  actions={
+                    isExpandViewSupported && (
+                      <AlignRightIconButton
+                        className={isTabExpanded ? 'rotate-180' : ''}
+                        title={
+                          isTabExpanded
+                            ? t('label.collapse')
+                            : t('label.expand')
+                        }
+                        onClick={toggleTabExpanded}
+                      />
+                    )
+                  }
+                  size="sm"
+                  type="underline"
+                  variant="card">
+                  {tabs.map(({ key, label }) => (
+                    <Tabs.Item id={key} key={key}>
+                      {label}
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
                 {tabs.map(({ key, children }) => (
                   <Tabs.Panel id={key} key={key}>
                     {children}

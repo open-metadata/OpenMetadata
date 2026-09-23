@@ -27,6 +27,7 @@ import {
   Column,
 } from '../../../../generated/entity/data/worksheet';
 import { TagSource } from '../../../../generated/type/tagLabel';
+import { getRenderedActiveTab } from '../../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import {
   getColumnsDataWithVersionChanges,
   getCommonExtraInfoForVersionDetails,
@@ -263,9 +264,10 @@ const WorksheetVersion = ({
               onUpdate={() => Promise.resolve()}>
               <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
-                  defaultSelectedKey={tab}
+                  className="tw:gap-3"
+                  defaultSelectedKey={getRenderedActiveTab(tabItems, tab)}
                   onSelectionChange={(key) => handleTabChange(String(key))}>
-                  <Tabs.List size="sm" type="underline">
+                  <Tabs.List size="sm" type="underline" variant="card">
                     {tabItems.map(({ key, label }) => (
                       <Tabs.Item id={key} key={key}>
                         {label}

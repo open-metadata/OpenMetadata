@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Tabs } from '@openmetadata/ui-core-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
@@ -72,6 +72,7 @@ import containerDetailsClassBase from '../../utils/ContainerDetailsClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
@@ -880,19 +881,21 @@ const ContainerPage = () => {
           <ContainerChildrenCountContext.Provider value={setChildrenCount}>
             <Col className="entity-details-page-tabs" span={24}>
               <Tabs
+                className="tw:gap-3"
                 data-testid="tabs"
-                selectedKey={tab}
+                selectedKey={getRenderedActiveTab(tabs, tab)}
                 onSelectionChange={(key) => handleTabChange(String(key))}>
-                <Box align="center" gap={4} justify="between">
-                  <Tabs.List size="sm" type="underline">
-                    {tabs.map(({ key, label }) => (
-                      <Tabs.Item id={key} key={key}>
-                        {label}
-                      </Tabs.Item>
-                    ))}
-                  </Tabs.List>
-                  {renderTabBarExtraContent()}
-                </Box>
+                <Tabs.List
+                  actions={renderTabBarExtraContent()}
+                  size="sm"
+                  type="underline"
+                  variant="card">
+                  {tabs.map(({ key, label }) => (
+                    <Tabs.Item id={key} key={key}>
+                      {label}
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
                 {tabs.map(({ key, children }) => (
                   <Tabs.Panel id={key} key={key}>
                     {children}

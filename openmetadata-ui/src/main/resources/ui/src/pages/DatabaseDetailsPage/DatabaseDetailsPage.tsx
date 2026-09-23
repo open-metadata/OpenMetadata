@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Tabs } from '@openmetadata/ui-core-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
@@ -783,6 +783,7 @@ const DatabaseDetails: FunctionComponent = () => {
             onUpdate={settingsUpdateHandler}>
             <Col className="entity-details-page-tabs" span={24}>
               <Tabs
+                className="tw:gap-3"
                 data-testid="tabs"
                 selectedKey={getRenderedActiveTab(
                   tabs,
@@ -790,20 +791,23 @@ const DatabaseDetails: FunctionComponent = () => {
                   EntityTabs.SCHEMAS
                 )}
                 onSelectionChange={(key) => activeTabHandler(String(key))}>
-                <Box align="center" gap={4} justify="between">
-                  <Tabs.List size="sm" type="underline">
-                    {tabs.map(({ key, label }) => (
-                      <Tabs.Item id={key} key={key}>
-                        {label}
-                      </Tabs.Item>
-                    ))}
-                  </Tabs.List>
-                  <TabExpandToggle
-                    isExpandViewSupported={isExpandViewSupported}
-                    isTabExpanded={isTabExpanded}
-                    onToggle={toggleTabExpanded}
-                  />
-                </Box>
+                <Tabs.List
+                  actions={
+                    <TabExpandToggle
+                      isExpandViewSupported={isExpandViewSupported}
+                      isTabExpanded={isTabExpanded}
+                      onToggle={toggleTabExpanded}
+                    />
+                  }
+                  size="sm"
+                  type="underline"
+                  variant="card">
+                  {tabs.map(({ key, label }) => (
+                    <Tabs.Item id={key} key={key}>
+                      {label}
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
                 {tabs.map(({ key, children }) => (
                   <Tabs.Panel id={key} key={key}>
                     {children}

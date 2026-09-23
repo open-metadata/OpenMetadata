@@ -27,6 +27,7 @@ import {
   EntityReference,
 } from '../../../generated/entity/data/dashboard';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { getRenderedActiveTab } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getCommonExtraInfoForVersionDetails,
@@ -283,10 +284,11 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               onUpdate={() => Promise.resolve()}>
               <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
+                  className="tw:gap-3"
                   data-testid="tabs"
-                  defaultSelectedKey={tab}
+                  defaultSelectedKey={getRenderedActiveTab(tabItems, tab)}
                   onSelectionChange={(key) => handleTabChange(String(key))}>
-                  <Tabs.List size="sm" type="underline">
+                  <Tabs.List size="sm" type="underline" variant="card">
                     {tabItems.map(({ key, label }) => (
                       <Tabs.Item id={key} key={key}>
                         {label}

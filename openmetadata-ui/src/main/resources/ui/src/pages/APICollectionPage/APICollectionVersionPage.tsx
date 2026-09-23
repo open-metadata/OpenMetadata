@@ -57,6 +57,7 @@ import {
   getApiEndPoints,
   GetApiEndPointsType,
 } from '../../rest/apiEndpointsAPI';
+import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   getBasicEntityInfoFromVersionData,
@@ -404,10 +405,11 @@ const APICollectionVersionPage = () => {
                 onUpdate={() => Promise.resolve()}>
                 <Col className="entity-version-page-tabs" span={24}>
                   <Tabs
+                    className="tw:gap-3"
                     data-testid="tabs"
-                    defaultSelectedKey={tab}
+                    defaultSelectedKey={getRenderedActiveTab(tabs, tab)}
                     onSelectionChange={(key) => handleTabChange(String(key))}>
-                    <Tabs.List size="sm" type="underline">
+                    <Tabs.List size="sm" type="underline" variant="card">
                       {tabs.map(({ key, label }) => (
                         <Tabs.Item id={key} key={key}>
                           {label}

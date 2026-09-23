@@ -24,6 +24,7 @@ import {
   Task,
 } from '../../../generated/entity/data/pipeline';
 import { TagSource } from '../../../generated/type/schema';
+import { getRenderedActiveTab } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getCommonExtraInfoForVersionDetails,
@@ -294,9 +295,10 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
               onUpdate={() => Promise.resolve()}>
               <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
-                  defaultSelectedKey={tab}
+                  className="tw:gap-3"
+                  defaultSelectedKey={getRenderedActiveTab(tabItems, tab)}
                   onSelectionChange={(key) => handleTabChange(String(key))}>
-                  <Tabs.List size="sm" type="underline">
+                  <Tabs.List size="sm" type="underline" variant="card">
                     {tabItems.map(({ key, label }) => (
                       <Tabs.Item id={key} key={key}>
                         {label}

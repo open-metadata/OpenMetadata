@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Tabs } from '@openmetadata/ui-core-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Col, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
@@ -80,6 +80,7 @@ import { Suggestion, SuggestionType } from '../../types/taskSuggestion';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { defaultFieldsWithColumns } from '../../utils/DatasetDetailsUtils';
@@ -966,25 +967,32 @@ const TableDetailsPageV1: React.FC = () => {
 
   const renderTabs = () => (
     <Tabs
+      className="tw:gap-3"
       data-testid="tabs"
-      selectedKey={isTourOpen ? activeTabForTourDatasetPage : activeTab}
+      selectedKey={getRenderedActiveTab(
+        tabs,
+        isTourOpen ? activeTabForTourDatasetPage : activeTab
+      )}
       onSelectionChange={(key) => handleTabChange(String(key))}>
-      <Box align="center" gap={4} justify="between">
-        <Tabs.List size="sm" type="underline">
-          {tabs.map(({ key, label }) => (
-            <Tabs.Item id={key} key={key}>
-              {label}
-            </Tabs.Item>
-          ))}
-        </Tabs.List>
-        {isExpandViewSupported && (
-          <AlignRightIconButton
-            className={isTabExpanded ? 'rotate-180' : ''}
-            title={isTabExpanded ? t('label.collapse') : t('label.expand')}
-            onClick={toggleTabExpanded}
-          />
-        )}
-      </Box>
+      <Tabs.List
+        actions={
+          isExpandViewSupported && (
+            <AlignRightIconButton
+              className={isTabExpanded ? 'rotate-180' : ''}
+              title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+              onClick={toggleTabExpanded}
+            />
+          )
+        }
+        size="sm"
+        type="underline"
+        variant="card">
+        {tabs.map(({ key, label }) => (
+          <Tabs.Item id={key} key={key}>
+            {label}
+          </Tabs.Item>
+        ))}
+      </Tabs.List>
       {tabs.map(({ key, children }) => (
         <Tabs.Panel id={key} key={key}>
           {children}

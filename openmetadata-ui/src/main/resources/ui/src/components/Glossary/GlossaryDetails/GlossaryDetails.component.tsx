@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Tabs } from '@openmetadata/ui-core-components';
 import { Col, Row } from 'antd';
 import { isEmpty, noop } from 'lodash';
 import type { ComponentType } from 'react';
@@ -243,25 +243,31 @@ const GlossaryDetails = ({
       </Col>
       <Col className="glossary-page-tabs" span={24}>
         <Tabs
+          className="tw:gap-3"
           data-testid="tabs"
           selectedKey={getRenderedActiveTab(tabs, activeTab, EntityTabs.TERMS)}
           onSelectionChange={(key) => handleTabChange(String(key))}>
-          <Box align="center" gap={4} justify="between">
-            <Tabs.List size="sm" type="underline">
-              {tabs.map(({ key, label }) => (
-                <Tabs.Item id={key} key={key}>
-                  {label}
-                </Tabs.Item>
-              ))}
-            </Tabs.List>
-            {isExpandViewSupported && (
-              <AlignRightIconButton
-                className={isTabExpanded ? 'rotate-180' : ''}
-                title={isTabExpanded ? t('label.collapse') : t('label.expand')}
-                onClick={toggleTabExpanded}
-              />
-            )}
-          </Box>
+          <Tabs.List
+            actions={
+              isExpandViewSupported && (
+                <AlignRightIconButton
+                  className={isTabExpanded ? 'rotate-180' : ''}
+                  title={
+                    isTabExpanded ? t('label.collapse') : t('label.expand')
+                  }
+                  onClick={toggleTabExpanded}
+                />
+              )
+            }
+            size="sm"
+            type="underline"
+            variant="card">
+            {tabs.map(({ key, label }) => (
+              <Tabs.Item id={key} key={key}>
+                {label}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
           {tabs.map(({ key, children }) => (
             <Tabs.Panel id={key} key={key}>
               {children}

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Tabs } from '@openmetadata/ui-core-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Col, Row, Skeleton } from 'antd';
 import { AxiosError } from 'axios';
@@ -83,6 +83,7 @@ import {
   checkIfExpandViewSupported,
   DetailsTabItem,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import databaseSchemaClassBase from '../../utils/DatabaseSchemaClassBase';
@@ -867,19 +868,21 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             onUpdate={handleUpdateDatabaseSchema}>
             <Col className="entity-details-page-tabs" span={24}>
               <Tabs
+                className="tw:gap-3"
                 data-testid="tabs"
-                selectedKey={activeTab}
+                selectedKey={getRenderedActiveTab(tabs, activeTab)}
                 onSelectionChange={(key) => activeTabHandler(String(key))}>
-                <Box align="center" gap={4} justify="between">
-                  <Tabs.List size="sm" type="underline">
-                    {tabs.map(({ key, label }) => (
-                      <Tabs.Item id={key} key={key}>
-                        {label}
-                      </Tabs.Item>
-                    ))}
-                  </Tabs.List>
-                  {expandButton}
-                </Box>
+                <Tabs.List
+                  actions={expandButton}
+                  size="sm"
+                  type="underline"
+                  variant="card">
+                  {tabs.map(({ key, label }) => (
+                    <Tabs.Item id={key} key={key}>
+                      {label}
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
                 {tabs.map(({ key, children }) => (
                   <Tabs.Panel id={key} key={key}>
                     {children}

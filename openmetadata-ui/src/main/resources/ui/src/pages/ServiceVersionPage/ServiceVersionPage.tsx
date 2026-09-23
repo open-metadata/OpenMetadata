@@ -560,8 +560,8 @@ function ServiceVersionPage() {
                 />
               </Col>
               <Col className="entity-version-page-tabs" span={24}>
-                <Tabs data-testid="tabs">
-                  <Tabs.List size="sm" type="underline">
+                <Tabs className="tw:gap-3" data-testid="tabs">
+                  <Tabs.List size="sm" type="underline" variant="card">
                     {tabs.map(({ key, label }) => (
                       <Tabs.Item id={key} key={key}>
                         {label}

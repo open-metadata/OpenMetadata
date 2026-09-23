@@ -38,7 +38,10 @@ import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
-import { DetailsTabItem } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import {
+  DetailsTabItem,
+  getRenderedActiveTab,
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import Fqn from '../../../utils/Fqn';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
@@ -378,23 +381,27 @@ const IncidentManagerDetailPage = ({
         </Box>
         <div className="incident-manager-details-tabs">
           <Tabs
+            className="tw:gap-3"
             data-testid="tabs"
-            selectedKey={activeTab}
+            selectedKey={getRenderedActiveTab(tabItems, activeTab)}
             onSelectionChange={(key) => handleTabChange(String(key))}>
-            <Box align="center" gap={4} justify="between">
-              <Tabs.List size="sm" type="underline">
-                {tabItems.map(({ key, label }) => (
-                  <Tabs.Item id={key} key={key}>
-                    {label}
-                  </Tabs.Item>
-                ))}
-              </Tabs.List>
-              <TestCaseTabBarExtraContent
-                isExpandViewSupported={isExpandViewSupported}
-                isTabExpanded={isTabExpanded}
-                toggleTabExpanded={toggleTabExpanded}
-              />
-            </Box>
+            <Tabs.List
+              actions={
+                <TestCaseTabBarExtraContent
+                  isExpandViewSupported={isExpandViewSupported}
+                  isTabExpanded={isTabExpanded}
+                  toggleTabExpanded={toggleTabExpanded}
+                />
+              }
+              size="sm"
+              type="underline"
+              variant="card">
+              {tabItems.map(({ key, label }) => (
+                <Tabs.Item id={key} key={key}>
+                  {label}
+                </Tabs.Item>
+              ))}
+            </Tabs.List>
             {tabItems.map(({ key, children }) => (
               <Tabs.Panel id={key} key={key}>
                 {children}
