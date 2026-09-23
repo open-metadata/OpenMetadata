@@ -11,12 +11,8 @@
  *  limitations under the License.
  */
 
-import { UseAlertCapabilitiesReturn } from '../../../hooks/useAlertCapabilities';
-
 export interface AlertFormSourceItemProps {
   filterResources?: {
     name?: string;
   }[];
-  /** What the server said about the sources and about the current selection. */
-  capabilities?: UseAlertCapabilitiesReturn;
 }

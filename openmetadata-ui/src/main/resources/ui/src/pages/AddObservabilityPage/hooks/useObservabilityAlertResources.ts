@@ -18,12 +18,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
 import { AlertType } from '../../../generated/events/api/alertCapabilitiesRequest';
-import { useAlertCapabilities } from '../../../hooks/useAlertCapabilities';
+import { useAlertSelection } from '../../../hooks/useAlertSelection';
 import { getResourceFunctions } from '../../../rest/observabilityAPI';
-import {
-  getSelectionSupport,
-  toCapabilitiesInput,
-} from '../../../utils/Alerts/AlertSelectionUtil';
+import { toCapabilitiesInput } from '../../../utils/Alerts/AlertSelectionUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   ModifiedCreateEventSubscription,
@@ -52,11 +49,6 @@ export function useObservabilityAlertResources(
     () => toCapabilitiesInput(chosenSoFar),
     [chosenSoFar]
   );
-  const capabilities = useAlertCapabilities({
-    alertType: AlertType.Observability,
-    sources: resources,
-    input: capabilitiesInput,
-  });
 
   const fetchFunctions = async () => {
     try {
@@ -79,11 +71,13 @@ export function useObservabilityAlertResources(
     fetchFunctions();
   }, []);
 
-  const { supportedFilters, supportedTriggers, containerEntities } = useMemo(
-    () =>
-      getSelectionSupport(filterResources, resources, capabilities.selection),
-    [filterResources, resources, capabilities.selection]
-  );
+  const selection = useAlertSelection({
+    alertType: AlertType.Observability,
+    sources: resources,
+    input: capabilitiesInput,
+    catalog: filterResources,
+  });
+  const { supportedFilters, supportedTriggers } = selection.support;
 
   const shouldShowFiltersSection = useMemo(
     () => (isEmpty(resources) ? true : !isEmpty(supportedFilters)),
@@ -96,13 +90,10 @@ export function useObservabilityAlertResources(
   );
 
   return {
-    capabilities,
-    containerEntities,
     filterResources,
     loading,
+    selection,
     shouldShowActionsSection,
     shouldShowFiltersSection,
-    supportedFilters,
-    supportedTriggers,
   };
 }

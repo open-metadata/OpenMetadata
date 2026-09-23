@@ -16,6 +16,7 @@ import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, trim } from 'lodash';
 import { DEFAULT_READ_TIMEOUT } from '../constants/Alerts.constants';
 import type { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import { PAGE_SIZE_LARGE } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import type { NotificationTemplate } from '../generated/entity/events/notificationTemplate';
 import type { User } from '../generated/entity/teams/user';
@@ -35,11 +36,13 @@ import {
   getConfigQueryParamsObjectFromArray,
   getRandomizedAlertName,
 } from './Alerts/AlertsUtilPure';
+import type { NameSearch } from './Alerts/AlertSourceSearch';
 import type { HandleAlertSaveProps } from './AlertsClassBase.interface';
 import { getEntityName } from './EntityNameUtils';
 import { handleEntityCreationError } from './formUtils';
 import { t } from './i18next/LocalUtil';
-import { showSuccessToast } from './ToastUtils';
+import { searchContracts } from '../rest/contractAPI';
+import { showErrorToast, showSuccessToast } from './ToastUtils';
 
 export interface AddAlertFormWidgetProps {
   formRef: FormInstance<ModifiedCreateEventSubscription>;
@@ -50,7 +53,34 @@ export interface AddAlertFormWidgetProps {
   templateResourcePermission?: OperationPermission;
 }
 
+// Data contracts are not in the search indexes, so their names come from the contract API.
+const searchDataContractNames: NameSearch = async (searchText) => {
+  try {
+    const contracts = await searchContracts(searchText, PAGE_SIZE_LARGE);
+
+    return contracts
+      .map((contract) => contract.fullyQualifiedName ?? '')
+      .filter(Boolean)
+      .map((fullyQualifiedName) => ({
+        label: fullyQualifiedName,
+        value: fullyQualifiedName,
+      }));
+  } catch (error) {
+    showErrorToast(
+      error as AxiosError,
+      t('server.entity-fetch-error', { entity: t('label.data-contract') })
+    );
+
+    return [];
+  }
+};
+
 class AlertsClassBase {
+  /** Sources whose names are not in the search indexes, with the search that finds them. */
+  public getSourceNameSearch(): Record<string, NameSearch> {
+    return { [EntityType.DATA_CONTRACT]: searchDataContractNames };
+  }
+
   public getAddAlertFormExtraWidgets() {
     const widgets: Record<
       string,

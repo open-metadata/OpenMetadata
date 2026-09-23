@@ -112,7 +112,8 @@ describe('AlertConfigDetails', () => {
     ).toBeInTheDocument();
   });
 
-  it('asks the server what several saved sources support, and nothing for one', async () => {
+  // Asked for one saved source as for several, and quietly: showing an alert asks nothing of the user.
+  it('asks the server what the saved sources support', async () => {
     await act(async () => {
       render(
         <AlertConfigDetails
@@ -129,20 +130,26 @@ describe('AlertConfigDetails', () => {
     });
 
     expect(useAlertCapabilities).toHaveBeenLastCalledWith(
-      expect.objectContaining({ sources: ['table', 'topic'] })
+      expect.objectContaining({ sources: ['table', 'topic'], quiet: true })
     );
 
     await act(async () => {
       render(
         <AlertConfigDetails
-          alertDetails={mockAlertDetails}
+          alertDetails={{
+            ...mockAlertDetails,
+            filteringRules: {
+              ...mockAlertDetails.filteringRules,
+              resources: ['table'],
+            },
+          }}
           isNotificationAlert={false}
         />
       );
     });
 
     expect(useAlertCapabilities).toHaveBeenLastCalledWith(
-      expect.objectContaining({ sources: [] })
+      expect.objectContaining({ sources: ['table'], quiet: true })
     );
   });
 

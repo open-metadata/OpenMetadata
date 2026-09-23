@@ -13,15 +13,13 @@
 
 import { CloseOutlined } from '@ant-design/icons';
 import { Button, Col, Form, Row, Select, Switch, Typography } from 'antd';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
-import {
-  CreateEventSubscription,
-  Effect,
-} from '../../../generated/events/api/createEventSubscription';
+import { Effect } from '../../../generated/events/api/createEventSubscription';
 import { EventFilterRule } from '../../../generated/events/eventSubscription';
+import { useAlertSelectionContext } from '../../../hooks/useAlertSelection';
 import {
   getConditionalField,
   getSupportedFilterOptions,
@@ -29,12 +27,11 @@ import {
 import { ObservabilityFormFiltersItemProps } from './ObservabilityFormFiltersItem.interface';
 
 function ObservabilityFormFiltersItem({
-  supportedFilters,
-  containerEntities,
-  supportedEventTypes,
   isViewMode = false,
 }: Readonly<ObservabilityFormFiltersItemProps>) {
   const { t } = useTranslation();
+  const { sources, support, search } = useAlertSelectionContext();
+  const { supportedFilters, supportedEventTypes } = support;
 
   const form = Form.useFormInstance();
 
@@ -43,11 +40,6 @@ function ObservabilityFormFiltersItem({
     ['input', 'filters'],
     form
   );
-  const selectedSources =
-    Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
-    [];
-  const [selectedTrigger] = selectedSources;
-
   // Run time values needed for conditional rendering
   const filterOptions = useMemo(() => {
     return getSupportedFilterOptions(selectedFilters, supportedFilters);
@@ -111,11 +103,8 @@ function ObservabilityFormFiltersItem({
                             getConditionalField(
                               selectedFilters[name].name ?? '',
                               name,
-                              selectedSources.length > 1
-                                ? selectedSources
-                                : selectedTrigger,
+                              search,
                               supportedFilters,
-                              containerEntities,
                               supportedEventTypes
                             )}
                         </Row>
@@ -149,9 +138,7 @@ function ObservabilityFormFiltersItem({
                 <Col span={24}>
                   <Button
                     data-testid="add-filters"
-                    disabled={
-                      isEmpty(selectedTrigger) || isNil(selectedTrigger)
-                    }
+                    disabled={isEmpty(sources)}
                     type="primary"
                     onClick={() =>
                       add({

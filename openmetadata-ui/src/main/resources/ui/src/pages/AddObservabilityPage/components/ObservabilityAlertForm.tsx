@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
+import { AlertSelectionProvider } from '../../../hooks/useAlertSelection';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   ModifiedCreateEventSubscription,
@@ -27,8 +28,6 @@ import ObservabilityAlertFormFields from './ObservabilityAlertFormFields';
 function ObservabilityAlertForm({
   alert,
   breadcrumb,
-  capabilities,
-  containerEntities,
   extraFormButtons,
   extraFormWidgets,
   filterResources,
@@ -39,10 +38,9 @@ function ObservabilityAlertForm({
   isEditMode,
   isLoading,
   saving,
+  selection,
   shouldShowActionsSection,
   shouldShowFiltersSection,
-  supportedFilters,
-  supportedTriggers,
   templateResourcePermission,
   templates,
 }: Readonly<ObservabilityAlertFormProps>) {
@@ -74,21 +72,19 @@ function ObservabilityAlertForm({
           validateMessages={VALIDATION_MESSAGES}
           onFinish={handleSave}>
           <Row gutter={[20, 20]}>
-            <ObservabilityAlertFormFields
-              alert={alert}
-              capabilities={capabilities}
-              containerEntities={containerEntities}
-              extraFormWidgets={extraFormWidgets}
-              filterResources={filterResources}
-              form={form}
-              isLoading={isLoading}
-              shouldShowActionsSection={shouldShowActionsSection}
-              shouldShowFiltersSection={shouldShowFiltersSection}
-              supportedFilters={supportedFilters}
-              supportedTriggers={supportedTriggers}
-              templateResourcePermission={templateResourcePermission}
-              templates={templates}
-            />
+            <AlertSelectionProvider value={selection}>
+              <ObservabilityAlertFormFields
+                alert={alert}
+                extraFormWidgets={extraFormWidgets}
+                filterResources={filterResources}
+                form={form}
+                isLoading={isLoading}
+                shouldShowActionsSection={shouldShowActionsSection}
+                shouldShowFiltersSection={shouldShowFiltersSection}
+                templateResourcePermission={templateResourcePermission}
+                templates={templates}
+              />
+            </AlertSelectionProvider>
 
             {!isUndefined(inlineAlertDetails) && (
               <Col span={24}>

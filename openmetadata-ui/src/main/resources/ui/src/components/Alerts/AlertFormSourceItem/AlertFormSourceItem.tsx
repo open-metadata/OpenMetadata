@@ -24,6 +24,7 @@ import type { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
+import { useAlertSelectionContext } from '../../../hooks/useAlertSelection';
 import { useFqn } from '../../../hooks/useFqn';
 import { getSourceOptionsFromResourceList } from '../../../utils/Alerts/AlertsUtil';
 import './alert-form-source-item.less';
@@ -32,9 +33,9 @@ import { AlertFormSourceItemProps } from './AlertFormSourceItem.interface';
 
 function AlertFormSourceItem({
   filterResources,
-  capabilities,
 }: Readonly<AlertFormSourceItemProps>) {
   const { t } = useTranslation();
+  const { capabilities } = useAlertSelectionContext();
   const newRef = useRef(null);
   const form = Form.useFormInstance();
   const { fqn } = useFqn();
@@ -102,8 +103,8 @@ function AlertFormSourceItem({
 
   const sourceControl = (
     <AlertSourcePicker
-      loading={capabilities?.loading}
-      selection={capabilities?.selection}
+      loading={capabilities.loading}
+      selection={capabilities.selection}
       sources={sourceNames}
       onChange={handleSourcesChange}
     />

@@ -100,6 +100,24 @@ describe('getSelectionSupport', () => {
 
     expect(support.supportedTriggers?.[0].displayName).toBe('Schema changed');
   });
+
+  // The recipients are the server's to say, before any source is chosen as after.
+  it('says who alerts can be sent to only as the server said it', () => {
+    const offered = {
+      ...TABLE_AND_TOPIC,
+      recipientCategories: ['Owners', 'Followers'],
+    } as AlertCapabilities;
+
+    expect(
+      getSelectionSupport(CATALOG, [], offered).recipientCategories
+    ).toEqual(['Owners', 'Followers']);
+    expect(
+      getSelectionSupport(CATALOG, ['table'], offered).recipientCategories
+    ).toEqual(['Owners', 'Followers']);
+    expect(
+      getSelectionSupport(CATALOG, ['table']).recipientCategories
+    ).toBeUndefined();
+  });
 });
 
 describe('getSourceOptions', () => {

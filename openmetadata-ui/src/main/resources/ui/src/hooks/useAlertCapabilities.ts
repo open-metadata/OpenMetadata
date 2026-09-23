@@ -25,6 +25,8 @@ export interface UseAlertCapabilitiesProps {
   alertType: AlertType;
   sources?: string[];
   input?: AlertFilteringInput;
+  /** Says nothing when the server cannot answer, for a view that only shows the alert. */
+  quiet?: boolean;
 }
 
 export interface UseAlertCapabilitiesReturn {
@@ -33,23 +35,29 @@ export interface UseAlertCapabilitiesReturn {
   loading: boolean;
 }
 
-const keyOf = (sources: string[], input?: AlertFilteringInput) =>
-  JSON.stringify([[...sources].sort(), input ?? {}]);
+const keyOf = (
+  alertType: AlertType,
+  sources: string[],
+  input?: AlertFilteringInput
+) => JSON.stringify([alertType, [...sources].sort(), input ?? {}]);
 
 /**
  * Asks the server what a selection of sources supports. The rules for combining sources live on
  * the server, where the save applies them too, so the form never decides them itself. It asks
- * once per distinct selection. With nothing selected there is nothing to ask: every source the
- * catalog lists can be chosen.
+ * once per distinct selection, the empty one included, since that one says who alerts can be
+ * sent to before any source is chosen. While it asks, the previous answer stays, so what the form
+ * offers does not blink.
  */
 export const useAlertCapabilities = ({
   alertType,
   sources = [],
   input,
+  quiet = false,
 }: UseAlertCapabilitiesProps): UseAlertCapabilitiesReturn => {
   const [selection, setSelection] = useState<AlertCapabilities>();
   const [loading, setLoading] = useState(false);
   const answered = useRef<Record<string, AlertCapabilities>>({});
+  const latestKey = useRef<string>();
   // Callers often hand over a new array on every render. The names in it are what matters.
   const selectedNames = uniq(sources).join('\n');
   const selected = useMemo(
@@ -71,32 +79,37 @@ export const useAlertCapabilities = ({
           input: chosen,
         });
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        if (!quiet) {
+          showErrorToast(error as AxiosError);
+        }
 
         return undefined;
       }
     },
-    [alertType]
+    [alertType, quiet]
   );
 
   useEffect(() => {
-    const key = keyOf(selected, stableInput);
-    if (selected.length === 0 || answered.current[key]) {
+    const key = keyOf(alertType, selected, stableInput);
+    latestKey.current = key;
+    if (answered.current[key]) {
       setSelection(answered.current[key]);
+      setLoading(false);
 
       return;
     }
-    // What was said about another selection says nothing about this one.
-    setSelection(undefined);
     setLoading(true);
     ask(selected, stableInput).then((capabilities) => {
       if (capabilities) {
         answered.current[key] = capabilities;
       }
-      setSelection(capabilities);
-      setLoading(false);
+      // An answer to a selection the user has already changed is kept, but not shown.
+      if (latestKey.current === key) {
+        setSelection(capabilities);
+        setLoading(false);
+      }
     });
-  }, [selected, stableInput, ask]);
+  }, [alertType, selected, stableInput, ask]);
 
-  return { selection, loading };
+  return useMemo(() => ({ selection, loading }), [selection, loading]);
 };

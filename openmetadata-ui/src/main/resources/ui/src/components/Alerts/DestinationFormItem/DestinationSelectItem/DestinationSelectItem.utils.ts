@@ -13,23 +13,32 @@
 
 import type { SelectItemType } from '@openmetadata/ui-core-components';
 import { startCase } from 'lodash';
-import { DESTINATION_DROPDOWN_TABS } from '../../../../constants/Alerts.constants';
-import { getFilteredDestinationOptions } from '../../../../utils/Alerts/AlertsUtilPure';
+import {
+  DESTINATION_DROPDOWN_TABS,
+  DESTINATION_SOURCE_ITEMS,
+} from '../../../../constants/Alerts.constants';
 import { getAlertDestinationCategoryIcons } from '../../../../utils/ObservabilityUtils';
 
+/**
+ * The recipients inside the platform the selected sources can reach, as the server offers them,
+ * and the one this destination already has, so an alert saved with another stays editable. Until
+ * the server has answered, only that one.
+ */
 export const buildGroupedOptions = (
   internalLabel: string,
   externalLabel: string,
-  selectedSources: string | string[]
+  offeredCategories: string[] = [],
+  currentCategory?: string
 ): SelectItemType[] => {
-  const internalOptions = getFilteredDestinationOptions(
-    DESTINATION_DROPDOWN_TABS.internal,
-    selectedSources
-  );
-  const externalOptions = getFilteredDestinationOptions(
-    DESTINATION_DROPDOWN_TABS.external,
-    selectedSources
-  );
+  const shown = new Set(offeredCategories);
+  if (currentCategory) {
+    shown.add(currentCategory);
+  }
+  const internalOptions = DESTINATION_SOURCE_ITEMS[
+    DESTINATION_DROPDOWN_TABS.internal
+  ].filter(({ value }) => shown.has(value));
+  const externalOptions =
+    DESTINATION_SOURCE_ITEMS[DESTINATION_DROPDOWN_TABS.external];
 
   return [
     { id: 'header-internal', label: internalLabel, isDisabled: true },

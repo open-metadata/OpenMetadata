@@ -193,8 +193,6 @@ export function useObservabilityAlertForm({
   return {
     alert,
     breadcrumb,
-    capabilities: alertResources.capabilities,
-    containerEntities: alertResources.containerEntities,
     extraFormButtons,
     extraFormWidgets,
     filterResources: alertResources.filterResources,
@@ -210,10 +208,9 @@ export function useObservabilityAlertForm({
       templates: alertTemplates.loading,
     },
     saving,
+    selection: alertResources.selection,
     shouldShowActionsSection: alertResources.shouldShowActionsSection,
     shouldShowFiltersSection: alertResources.shouldShowFiltersSection,
-    supportedFilters: alertResources.supportedFilters,
-    supportedTriggers: alertResources.supportedTriggers,
     templateResourcePermission: alertTemplates.templateResourcePermission,
     templates: alertTemplates.templates,
   };

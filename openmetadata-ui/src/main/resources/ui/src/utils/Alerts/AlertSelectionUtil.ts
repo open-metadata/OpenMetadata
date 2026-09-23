@@ -34,6 +34,8 @@ export interface SelectionSupport {
   supportedTriggers?: EventFilterRule[];
   containerEntities?: string[];
   supportedEventTypes?: EventType[];
+  /** Who inside the platform the alert can be sent to. Unknown until the server has answered. */
+  recipientCategories?: string[];
 }
 
 // A trigger applies only to the sources that support it, so with several sources it says which.
@@ -50,10 +52,10 @@ const labelledWithItsSources = (
 };
 
 /**
- * What the selected sources support: the one place the filters section, the triggers section and
- * the pickers inside them get it from. The server answers, with the rules the save applies, so the
- * form cannot offer what the save would reject. Until it has answered, the catalog the form
- * already has says what the first source supports.
+ * What the selected sources support: the one place the filters section, the triggers section, the
+ * recipients and the pickers inside them get it from. The server answers, with the rules the save
+ * applies, so the form cannot offer what the save would reject. Until it has answered, the catalog
+ * the form already has says what the first source supports.
  */
 export const getSelectionSupport = (
   catalog: SourceOfTheCatalog[],
@@ -61,8 +63,10 @@ export const getSelectionSupport = (
   selection?: AlertCapabilities
 ): SelectionSupport => {
   const selected = uniq(sources);
+  const recipientCategories = selection?.recipientCategories;
   if (selected.length > 0 && selection) {
     return {
+      recipientCategories,
       supportedFilters: selection.filters.map(
         (filter) => filter.condition as EventFilterRule
       ),
@@ -84,6 +88,7 @@ export const getSelectionSupport = (
     supportedTriggers: only?.supportedActions,
     containerEntities: only?.containerEntities,
     supportedEventTypes: only?.supportedEventTypes,
+    recipientCategories,
   };
 };
 

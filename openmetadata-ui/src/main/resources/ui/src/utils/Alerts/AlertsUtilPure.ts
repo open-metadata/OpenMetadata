@@ -15,11 +15,7 @@ import type { RuleObject } from 'antd/lib/form';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isEmpty, isEqual, isUndefined, map, omitBy, startCase } from 'lodash';
 import type { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
-import {
-  DESTINATION_DROPDOWN_TABS,
-  DESTINATION_SOURCE_ITEMS,
-  EXTERNAL_CATEGORY_OPTIONS,
-} from '../../constants/Alerts.constants';
+import { EXTERNAL_CATEGORY_OPTIONS } from '../../constants/Alerts.constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
 import type { EventSubscriptionDiagnosticInfo } from '../../generated/events/api/eventSubscriptionDiagnosticInfo';
@@ -265,56 +261,6 @@ export const getFormattedDestinations = (
   });
 
   return formattedDestinations;
-};
-
-// Destination category exclusions by entity type
-const DESTINATION_CATEGORY_EXCLUDES: Record<string, SubscriptionCategory[]> = {
-  // Most entity events have neither participants nor mention recipients.
-  __default__: [SubscriptionCategory.Assignees, SubscriptionCategory.Mentions],
-  task: [
-    SubscriptionCategory.Followers,
-    SubscriptionCategory.Admins,
-    SubscriptionCategory.Users,
-    SubscriptionCategory.Teams,
-  ],
-  conversation: [
-    SubscriptionCategory.Followers,
-    SubscriptionCategory.Admins,
-    SubscriptionCategory.Users,
-    SubscriptionCategory.Teams,
-    SubscriptionCategory.Assignees,
-  ],
-  announcement: [SubscriptionCategory.Assignees],
-};
-
-// With several sources, a category is offered when any of them allows it.
-export const getFilteredDestinationOptions = (
-  key: keyof typeof DESTINATION_SOURCE_ITEMS,
-  selectedSources: string | string[]
-) => {
-  const options = DESTINATION_SOURCE_ITEMS[key];
-  const isExternalDestination = !isEqual(
-    key,
-    DESTINATION_DROPDOWN_TABS.internal
-  );
-
-  if (isExternalDestination) {
-    return options;
-  }
-
-  const sources = [selectedSources].flat();
-  const excludedBySource = (isEmpty(sources) ? [''] : sources).map(
-    (source) =>
-      DESTINATION_CATEGORY_EXCLUDES[source] ||
-      DESTINATION_CATEGORY_EXCLUDES.__default__
-  );
-
-  return options.filter(
-    (option) =>
-      !excludedBySource.every((excluded) =>
-        excluded.includes(option.value as SubscriptionCategory)
-      )
-  );
 };
 
 export const getAlertEventsFilterLabels = (status: AlertRecentEventFilters) => {

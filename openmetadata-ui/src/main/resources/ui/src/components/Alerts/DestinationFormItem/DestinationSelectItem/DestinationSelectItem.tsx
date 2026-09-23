@@ -42,6 +42,7 @@ import {
 import DestinationConfigField from './DestinationConfigField/DestinationConfigField';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 import { buildGroupedOptions } from './DestinationSelectItem.utils';
+import { useAlertSelectionContext } from '../../../../hooks/useAlertSelection';
 
 function DestinationSelectItem({
   selectorKey,
@@ -58,8 +59,7 @@ function DestinationSelectItem({
 
   const destinationItem =
     useWatch({ name: `destinations.${id}`, control }) ?? {};
-  const selectedSources: string[] =
-    useWatch({ name: 'resources', control }) ?? [];
+  const { support } = useAlertSelectionContext();
   const [isSelectionWarningDismissed, setIsSelectionWarningDismissed] =
     useState(false);
 
@@ -77,9 +77,15 @@ function DestinationSelectItem({
       buildGroupedOptions(
         t('label.internal'),
         t('label.external'),
-        selectedSources
+        support.recipientCategories,
+        isInternalDestinationSelected ? destinationType : undefined
       ),
-    [selectedSources, t]
+    [
+      support.recipientCategories,
+      isInternalDestinationSelected,
+      destinationType,
+      t,
+    ]
   );
 
   const destinationStatusDetails = useMemo(() => {

@@ -29,12 +29,14 @@ import {
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { AlertType as CapabilitiesAlertType } from '../../../../generated/events/api/alertCapabilitiesRequest';
 import { FilterResourceDescriptor } from '../../../../generated/events/filterResourceDescriptor';
-import { useAlertCapabilities } from '../../../../hooks/useAlertCapabilities';
+import {
+  AlertSelectionProvider,
+  useAlertSelection,
+} from '../../../../hooks/useAlertSelection';
 import { ModifiedCreateEventSubscription } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { getResourceFunctions as getNotificationResourceFunctions } from '../../../../rest/alertsAPI';
 import { getAllNotificationTemplates } from '../../../../rest/notificationtemplateAPI';
 import { getResourceFunctions } from '../../../../rest/observabilityAPI';
-import { getSelectionSupport } from '../../../../utils/Alerts/AlertSelectionUtil';
 import alertsClassBase from '../../../../utils/AlertsClassBase';
 import Fqn from '../../../../utils/Fqn';
 import {
@@ -61,7 +63,6 @@ function AlertConfigDetails({
 }: AlertConfigDetailsProps) {
   const { t } = useTranslation();
   const [form] = useForm<ModifiedCreateEventSubscription>();
-  const resources = Form.useWatch('resources', form);
   const destinations = Form.useWatch('destinations', form);
   const timeout = Form.useWatch('timeout', form);
   const readTimeout = Form.useWatch('readTimeout', form);
@@ -83,28 +84,15 @@ function AlertConfigDetails({
     () => alertDetails.filteringRules?.resources ?? [],
     [alertDetails]
   );
-  // With one source the catalog already says what it supports; with several the server does.
-  const capabilities = useAlertCapabilities({
+  // Showing an alert asks nothing of the user, so a server that cannot answer is not reported.
+  const selection = useAlertSelection({
     alertType: isNotificationAlert
       ? CapabilitiesAlertType.Notification
       : CapabilitiesAlertType.Observability,
-    sources: savedSources.length > 1 ? savedSources : [],
+    sources: savedSources,
+    catalog: filterResources,
+    quiet: true,
   });
-
-  const {
-    supportedFilters,
-    supportedTriggers,
-    containerEntities,
-    supportedEventTypes,
-  } = useMemo(
-    () =>
-      getSelectionSupport(
-        filterResources,
-        savedSources,
-        capabilities.selection
-      ),
-    [filterResources, savedSources, capabilities.selection]
-  );
 
   const fetchFunctions = useCallback(async () => {
     try {
@@ -174,93 +162,87 @@ function AlertConfigDetails({
   }
 
   return (
-    <Form<ModifiedCreateEventSubscription>
-      disabled
-      className="alert-config-details"
-      form={form}
-      initialValues={{
-        ...modifiedAlertData,
-        resources: modifiedAlertData?.filteringRules?.resources,
-      }}>
-      <Row justify="center">
-        <Col span={24}>
-          <AlertFormSourceItem />
-        </Col>
-        {!isEmpty(modifiedAlertData.input?.filters) && (
-          <>
-            <Col>
-              <Divider dashed type="vertical" />
-            </Col>
-            <Col span={24}>
-              <ObservabilityFormFiltersItem
-                isViewMode
-                containerEntities={containerEntities}
-                supportedEventTypes={supportedEventTypes}
-                supportedFilters={supportedFilters}
-              />
-            </Col>
-          </>
-        )}
-        {!isEmpty(modifiedAlertData.input?.actions) && (
-          <>
-            <Col>
-              <Divider dashed type="vertical" />
-            </Col>
-            <Col span={24}>
-              <ObservabilityFormTriggerItem
-                isViewMode
-                supportedTriggers={supportedTriggers}
-              />
-            </Col>
-          </>
-        )}
-        <Col>
-          <Divider dashed type="vertical" />
-        </Col>
-        <Col span={24}>
-          <DestinationFormItemFormBridge
-            isViewMode
-            renderValidationField={(validate) => (
-              <Form.Item
-                hidden
-                name="destinations"
-                rules={[{ validator: validate }]}>
-                <DestinationFormFieldRegistrar />
-              </Form.Item>
-            )}
-            values={{ destinations, readTimeout, resources, timeout }}
-            onChange={(values) => {
-              // Keep this adapter replacement-based even in view mode so the
-              // core form cannot be rehydrated with stale nested config.
-              Object.entries(values).forEach(([name, value]) =>
-                form.setFieldValue(name, value)
-              );
-            }}
-          />
-        </Col>
-        {!isEmpty(extraFormWidgets) && (
-          <>
-            {Object.entries(extraFormWidgets).map(([name, Widget]) => (
-              <Fragment key={name}>
-                <Col>
-                  <Divider dashed type="vertical" />
-                </Col>
-                <Col span={24}>
-                  <Widget
-                    isViewMode
-                    alertDetails={modifiedAlertData}
-                    formRef={form}
-                    loading={isLoading}
-                    templateResourcePermission={templateResourcePermission}
-                    templates={templates}
-                  />
-                </Col>
-              </Fragment>
-            ))}
-          </>
-        )}
-      </Row>
-    </Form>
+    <AlertSelectionProvider value={selection}>
+      <Form<ModifiedCreateEventSubscription>
+        disabled
+        className="alert-config-details"
+        form={form}
+        initialValues={{
+          ...modifiedAlertData,
+          resources: modifiedAlertData?.filteringRules?.resources,
+        }}>
+        <Row justify="center">
+          <Col span={24}>
+            <AlertFormSourceItem />
+          </Col>
+          {!isEmpty(modifiedAlertData.input?.filters) && (
+            <>
+              <Col>
+                <Divider dashed type="vertical" />
+              </Col>
+              <Col span={24}>
+                <ObservabilityFormFiltersItem isViewMode />
+              </Col>
+            </>
+          )}
+          {!isEmpty(modifiedAlertData.input?.actions) && (
+            <>
+              <Col>
+                <Divider dashed type="vertical" />
+              </Col>
+              <Col span={24}>
+                <ObservabilityFormTriggerItem isViewMode />
+              </Col>
+            </>
+          )}
+          <Col>
+            <Divider dashed type="vertical" />
+          </Col>
+          <Col span={24}>
+            <DestinationFormItemFormBridge
+              isViewMode
+              renderValidationField={(validate) => (
+                <Form.Item
+                  hidden
+                  name="destinations"
+                  rules={[{ validator: validate }]}>
+                  <DestinationFormFieldRegistrar />
+                </Form.Item>
+              )}
+              values={{ destinations, readTimeout, timeout }}
+              onChange={(values) => {
+                // Keep this adapter replacement-based even in view mode so the
+                // core form cannot be rehydrated with stale nested config.
+                Object.entries(values).forEach(([name, value]) =>
+                  form.setFieldValue(name, value)
+                );
+              }}
+            />
+          </Col>
+          {!isEmpty(extraFormWidgets) && (
+            <>
+              {Object.entries(extraFormWidgets).map(([name, Widget]) => (
+                <Fragment key={name}>
+                  <Col>
+                    <Divider dashed type="vertical" />
+                  </Col>
+                  <Col span={24}>
+                    <Widget
+                      isViewMode
+                      alertDetails={modifiedAlertData}
+                      formRef={form}
+                      loading={isLoading}
+                      templateResourcePermission={templateResourcePermission}
+                      templates={templates}
+                    />
+                  </Col>
+                </Fragment>
+              ))}
+            </>
+          )}
+        </Row>
+      </Form>
+    </AlertSelectionProvider>
   );
 }
 

@@ -30,7 +30,7 @@ import {
 } from '../../generated/events/eventSubscription';
 import type { AddAlertFormWidgetProps } from '../../utils/AlertsClassBase';
 import { AddAlertPageLoadingState } from '../AddNotificationPage/AddNotificationPage.interface';
-import { UseAlertCapabilitiesReturn } from '../../hooks/useAlertCapabilities';
+import type { AlertSelection } from '../../hooks/useAlertSelection';
 
 export interface ObservabilityFilterResourceDescriptor {
   containerEntities?: string[];
@@ -47,14 +47,11 @@ export interface UseObservabilityAlertFormOptions {
 }
 
 export interface UseObservabilityAlertResourcesReturn {
-  capabilities: UseAlertCapabilitiesReturn;
-  containerEntities?: string[];
   filterResources: ObservabilityFilterResourceDescriptor[];
   loading: boolean;
+  selection: AlertSelection;
   shouldShowActionsSection: boolean;
   shouldShowFiltersSection: boolean;
-  supportedFilters?: EventFilterRule[];
-  supportedTriggers?: EventFilterRule[];
 }
 
 export interface UseObservabilityAlertTemplatesReturn {
@@ -100,13 +97,11 @@ export interface ModifiedCreateEventSubscription
 }
 
 export interface UseObservabilityAlertFormReturn {
-  capabilities: UseAlertCapabilitiesReturn;
   alert?: ModifiedEventSubscription;
   breadcrumb: {
     name: string;
     url: string;
   }[];
-  containerEntities?: string[];
   extraFormButtons: Record<string, ComponentType<AddAlertFormWidgetProps>>;
   extraFormWidgets: Record<string, ComponentType<AddAlertFormWidgetProps>>;
   filterResources: ObservabilityFilterResourceDescriptor[];
@@ -118,10 +113,9 @@ export interface UseObservabilityAlertFormReturn {
   isLoading: boolean;
   loadingState: AddAlertPageLoadingState;
   saving: boolean;
+  selection: AlertSelection;
   shouldShowActionsSection: boolean;
   shouldShowFiltersSection: boolean;
-  supportedFilters?: EventFilterRule[];
-  supportedTriggers?: EventFilterRule[];
   templateResourcePermission: OperationPermission;
   templates: NotificationTemplate[];
 }
@@ -131,16 +125,12 @@ export type ObservabilityAlertFormProps = UseObservabilityAlertFormReturn;
 export type ObservabilityAlertFormFieldsProps = Pick<
   ObservabilityAlertFormProps,
   | 'alert'
-  | 'capabilities'
-  | 'containerEntities'
   | 'extraFormWidgets'
   | 'filterResources'
   | 'form'
   | 'isLoading'
   | 'shouldShowActionsSection'
   | 'shouldShowFiltersSection'
-  | 'supportedFilters'
-  | 'supportedTriggers'
   | 'templateResourcePermission'
   | 'templates'
 >;

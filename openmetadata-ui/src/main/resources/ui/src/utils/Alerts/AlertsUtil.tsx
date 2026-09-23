@@ -42,9 +42,7 @@ import FQNListSelect from '../../components/Alerts/FQNListSelect/FQNListSelect.c
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import { DATA_CONTRACT_STATUS_OPTIONS } from '../../constants/Alerts.constants';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
-import { UUID_REGEX } from '../../constants/regex.constants';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
-import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { StatusType } from '../../generated/entity/data/pipeline';
 import { PipelineState } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -58,7 +56,6 @@ import {
 import { Status as DestinationStatus } from '../../generated/events/testDestinationStatus';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { EventType } from '../../generated/type/changeEvent';
-import { searchContracts } from '../../rest/contractAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
 import { EntityIconSize } from '../EntityIconUtils';
@@ -68,6 +65,7 @@ import searchClassBase from '../SearchClassBase';
 import { getTermQuery } from '../SearchPureUtils';
 import { showErrorToast } from '../ToastUtils';
 import './alerts-util.less';
+import type { AlertSourceSearch } from './AlertSourceSearch';
 import {
   getAlertEventsFilterLabels,
   getMessageFromArgumentName,
@@ -182,40 +180,12 @@ export const getFqnSearchIndexes = (
   );
 };
 
-// What a field that can only follow one source follows: the first, which is the only one for an
-// alert with a single source.
-const firstOf = (selectedTrigger: string | string[]) =>
-  [selectedTrigger].flat()[0];
-
 const getTableSuggestions = async (searchText: string) => {
   return searchEntity({
     searchText,
     searchIndex: SearchIndex.TABLE,
     showDisplayNameAsLabel: false,
   });
-};
-
-const getDataContractSuggestions = async (searchText = '') => {
-  try {
-    const contracts = await searchContracts(searchText, PAGE_SIZE_LARGE);
-
-    return contracts
-      .map((contract) => contract.fullyQualifiedName ?? '')
-      .filter(Boolean)
-      .map((fullyQualifiedName) => ({
-        label: fullyQualifiedName,
-        value: fullyQualifiedName,
-      }));
-  } catch (error) {
-    showErrorToast(
-      error as AxiosError,
-      t('server.entity-fetch-error', {
-        entity: t('label.data-contract'),
-      })
-    );
-
-    return [];
-  }
 };
 
 const getTestSuiteSuggestions = async (searchText: string) => {
@@ -273,65 +243,24 @@ export const getFieldByArgumentType = (
   fieldName: number,
   argument: string,
   index: number,
-  selectedTrigger: string | string[],
-  containerEntities: string[] = [],
+  search: AlertSourceSearch,
   supportedEventTypes: EventType[] = []
 ) => {
-  // Data contract names come from the contract API, every other source from the search indexes,
-  // and an alert that watches both searches both.
-  const getEntityByFQN = async (searchText: string) => {
-    const sources = [selectedTrigger].flat();
-    const indexedSources = sources.filter(
-      (source) => source !== EntityType.DATA_CONTRACT
-    );
-    const [contracts, entities] = await Promise.all([
-      sources.includes(EntityType.DATA_CONTRACT)
-        ? getDataContractSuggestions(searchText)
-        : [],
-      isEmpty(indexedSources)
-        ? []
-        : searchEntity({
-            searchText,
-            searchIndex: getFqnSearchIndexes(indexedSources, containerEntities),
-            showDisplayNameAsLabel: false,
-            wildcardEntityTypes: containerEntities,
-          }),
-    ]);
-
-    return [...contracts, ...entities];
-  };
-
   const getEntityByIdSuggestions = async (searchText?: string) => {
-    const searchIndexMapping =
-      searchClassBase.getEntityTypeSearchIndexMapping();
-    const trimmed = (searchText ?? '').trim();
-    const isUuidInput = UUID_REGEX.test(trimmed);
-
     try {
-      const response = await searchQuery({
-        query: trimmed,
-        pageNumber: 1,
-        pageSize: PAGE_SIZE_LARGE,
-        queryFilter: isUuidInput ? getTermQuery({ id: trimmed }) : undefined,
-        searchIndex: searchIndexMapping[firstOf(selectedTrigger)],
-      });
+      const found = await search.byId(searchText);
 
       return uniqBy(
-        response.hits.hits.map((d) => {
-          const id = d._source.id ?? '';
-          const fqn = d._source.fullyQualifiedName ?? '';
-
-          return {
-            uuid: id,
-            value: id,
-            label: (
-              <div className="entity-id-option">
-                <div>{id}</div>
-                <div className="entity-id-option-fqn">{fqn}</div>
-              </div>
-            ),
-          };
-        }),
+        found.map(({ id, fullyQualifiedName }) => ({
+          uuid: id,
+          value: id,
+          label: (
+            <div className="entity-id-option">
+              <div>{id}</div>
+              <div className="entity-id-option-fqn">{fullyQualifiedName}</div>
+            </div>
+          ),
+        })),
         'value'
       );
     } catch (error) {
@@ -353,16 +282,16 @@ export const getFieldByArgumentType = (
   const fieldRenderers: Record<string, () => JSX.Element> = {
     fqnList: () => (
       <FQNListSelect
-        api={getEntityByFQN}
+        api={search.byName}
         className="w-full"
-        containerEntities={containerEntities}
+        containerEntities={search.containerEntities}
         data-testid="fqn-list-select"
         mode="multiple"
         optionFilterProp="label"
         placeholder={t('label.search-by-type', {
           type: t('label.fqn-uppercase'),
         })}
-        searchIndex={getFqnSearchIndexes(selectedTrigger, containerEntities)}
+        searchIndex={search.indexes}
       />
     ),
     domainList: () => (
@@ -565,9 +494,8 @@ export const getFieldByArgumentType = (
 export const getConditionalField = (
   condition: string,
   name: number,
-  selectedTrigger: string | string[],
+  search: AlertSourceSearch,
   supportedActions?: EventFilterRule[],
-  containerEntities?: string[],
   supportedEventTypes?: EventType[]
 ) => {
   const selectedAction = supportedActions?.find(
@@ -587,8 +515,7 @@ export const getConditionalField = (
           name,
           argument,
           index,
-          selectedTrigger,
-          containerEntities,
+          search,
           supportedEventTypes
         );
       })}

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { renderHook } from '@testing-library/react-hooks';
+import { act, renderHook } from '@testing-library/react-hooks';
 import { AlertType } from '../generated/events/api/alertCapabilitiesRequest';
 import { getAlertCapabilities } from '../rest/alertsAPI';
 import { showErrorToast } from '../utils/ToastUtils';
@@ -29,12 +29,13 @@ const answer = (sources: string[]) => ({
   triggers: [],
 });
 
-const renderWith = (sources: string[]) =>
+const renderWith = (sources: string[], quiet = false) =>
   renderHook(
     (props: { sources: string[] }) =>
       useAlertCapabilities({
         alertType: AlertType.Notification,
         sources: props.sources,
+        quiet,
       }),
     { initialProps: { sources } }
   );
@@ -52,12 +53,14 @@ describe('useAlertCapabilities', () => {
     );
   });
 
-  it('asks nothing while nothing is selected', () => {
-    const { result } = renderWith([]);
+  // The empty selection says who alerts can be sent to before any source is chosen.
+  it('asks about the empty selection too', async () => {
+    const { result, waitFor } = renderWith([]);
+    await waitFor(() => expect(result.current.selection).toBeDefined());
 
-    expect(mockGetAlertCapabilities).not.toHaveBeenCalled();
-    expect(result.current.selection).toBeUndefined();
-    expect(result.current.loading).toBe(false);
+    expect(mockGetAlertCapabilities).toHaveBeenCalledWith(
+      expect.objectContaining({ sources: [] })
+    );
   });
 
   it('asks once per distinct selection, whatever its order', async () => {
@@ -73,22 +76,40 @@ describe('useAlertCapabilities', () => {
     rerender({ sources: ['table'] });
     rerender({ sources: ['table', 'topic'] });
 
-    expect(mockGetAlertCapabilities).toHaveBeenCalledTimes(2);
+    expect(mockGetAlertCapabilities).toHaveBeenCalledTimes(3);
     expect(result.current.selection?.sources).toHaveLength(2);
   });
 
-  it('forgets what was said about another selection while it asks', async () => {
+  it('keeps the last answer while it asks about another selection', async () => {
     const { result, rerender, waitFor } = renderWith(['table']);
     await waitFor(() => expect(result.current.selection).toBeDefined());
 
     rerender({ sources: ['table', 'topic'] });
 
-    expect(result.current.selection).toBeUndefined();
+    expect(result.current.selection?.sources).toHaveLength(1);
     expect(result.current.loading).toBe(true);
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(result.current.selection?.sources).toHaveLength(2);
+  });
+
+  it('never shows an answer to a selection the user has left', async () => {
+    let answerTheFirst: (value: unknown) => void = jest.fn();
+    mockGetAlertCapabilities
+      .mockImplementationOnce(
+        () => new Promise((resolve) => (answerTheFirst = resolve))
+      )
+      .mockImplementation(({ sources }) => Promise.resolve(answer(sources)));
+    const { result, rerender, waitFor } = renderWith(['table']);
+
+    rerender({ sources: ['topic'] });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(async () => {
+      answerTheFirst(answer(['table']));
+    });
+
+    expect(result.current.selection?.sources[0].name).toBe('topic');
   });
 
   it('shows the error when the server cannot answer', async () => {
@@ -97,5 +118,13 @@ describe('useAlertCapabilities', () => {
     await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
 
     expect(result.current.selection).toBeUndefined();
+  });
+
+  it('says nothing when asked to be quiet', async () => {
+    mockGetAlertCapabilities.mockRejectedValue(new Error('boom'));
+    const { result, waitFor } = renderWith(['table'], true);
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(showErrorToast).not.toHaveBeenCalled();
   });
 });
