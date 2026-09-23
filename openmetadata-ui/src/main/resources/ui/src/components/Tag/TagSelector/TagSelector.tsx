@@ -166,6 +166,15 @@ const TagSelector: FC<TagSelectorProps> = ({
     [onChange, value]
   );
 
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      debouncedSearch.cancel();
+      void fetchTags('');
+      onOpenChange?.(open);
+    },
+    [debouncedSearch, fetchTags, onOpenChange]
+  );
+
   const handleResolveMissingLabel = useCallback(
     (fqn: string) => {
       const fromValue = value.find((tag) => tag.tagFQN === fqn);
@@ -210,7 +219,7 @@ const TagSelector: FC<TagSelectorProps> = ({
         triggerDisplay={triggerDisplay}
         triggerVariant={triggerVariant}
         onChange={handleChange}
-        onOpenChange={onOpenChange}
+        onOpenChange={handleOpenChange}
         onSearch={debouncedSearch}
       />
     </div>
