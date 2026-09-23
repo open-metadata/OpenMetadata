@@ -220,11 +220,18 @@ const CollapsedBody = ({
   <>
     {typeChip}
     <TypeBadge badgeColor={badgeColor} labelKey={labelKey} />
-    <AnnouncementTitle
-      className={titleClassName}
-      title={title}
-      onClick={onClick}
-    />
+    {/* Typography's ellipsis tooltip wraps the title in a `w-full min-w-0`
+        trigger, which would make it a second flexible item and split the row
+        with the description. Bounding it here keeps the title at its natural
+        width — capped, so a very long one still truncates rather than pushing
+        the description out. */}
+    <span className="tw:min-w-0 tw:max-w-[50%] tw:shrink-0">
+      <AnnouncementTitle
+        className={titleClassName}
+        title={title}
+        onClick={onClick}
+      />
+    </span>
     {hasDescription && (
       <Typography
         as="span"
