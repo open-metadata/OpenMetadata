@@ -31,7 +31,8 @@ export const nestedChildrenTestData: Record<
       | typeof TableClass
       | typeof TopicClass
       | typeof WorksheetClass;
-    tabName?: string;
+    // Anchored: the tab's accessible name also includes its count badge.
+    tabName?: RegExp;
     supportDisplayNameUpdate?: boolean;
   }
 > = {
@@ -40,7 +41,7 @@ export const nestedChildrenTestData: Record<
   },
   Container: {
     CreationClass: ContainerClass,
-    tabName: 'Schema',
+    tabName: /^Schema/,
   },
   'Data Model': {
     CreationClass: DashboardDataModelClass,
@@ -48,7 +49,7 @@ export const nestedChildrenTestData: Record<
   },
   File: {
     CreationClass: FileClass,
-    tabName: 'Schema',
+    tabName: /^Schema/,
   },
   'Search Index': {
     CreationClass: SearchIndexClass,

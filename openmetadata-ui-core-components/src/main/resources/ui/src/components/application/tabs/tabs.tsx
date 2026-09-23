@@ -233,6 +233,10 @@ export const Tab = (props: TabComponentProps) => {
           sizes[size][type],
           // Balances the underline tab inside the fixed-height card bar.
           variant === 'card' && type === 'underline' && 'tw:pt-2.5 tw:pb-2',
+          // z-10 only lifts the underline above the list's separator line, which the card
+          // variant does not draw; keeping it would paint tabs over fixed overlays such as
+          // full-screen lineage.
+          variant === 'card' && 'tw:z-auto',
           getTabStyles(prop)[type],
           typeof props.className === 'function'
             ? props.className(prop)

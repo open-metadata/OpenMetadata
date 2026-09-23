@@ -50,7 +50,7 @@ for (const [
 
         await entity.visitEntityPage(page);
         if (tabName) {
-          const tab = page.getByRole('tab', { name: tabName, exact: true });
+          const tab = page.getByRole('tab', { name: tabName });
           await tab.waitFor({ state: 'visible' });
 
           await tab.click();
@@ -166,7 +166,7 @@ for (const [
 
         await entity.visitEntityPage(page);
         if (tabName) {
-          const tab = page.getByRole('tab', { name: tabName, exact: true });
+          const tab = page.getByRole('tab', { name: tabName });
           await tab.waitFor({ state: 'visible' });
 
           await tab.click();

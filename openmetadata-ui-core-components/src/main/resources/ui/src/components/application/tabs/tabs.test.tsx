@@ -58,12 +58,22 @@ describe('Tabs.List card variant', () => {
     expect(tabList.className).not.toContain('tw:before:bg-border-secondary');
   });
 
+  it('drops the tab stacking context so fixed overlays can cover the bar', () => {
+    renderTabs('card');
+
+    screen.getAllByRole('tab').forEach((tab) => {
+      expect(tab).toHaveClass('tw:z-auto');
+      expect(tab).not.toHaveClass('tw:z-10');
+    });
+  });
+
   it('keeps the underline separator and no card for the default variant', () => {
     renderTabs();
 
     const tabList = screen.getByRole('tablist');
 
     expect(tabList.className).toContain('tw:before:bg-border-secondary');
+    expect(screen.getAllByRole('tab')[0]).toHaveClass('tw:z-10');
     expect(tabList.parentElement).not.toHaveClass('tw:bg-surface');
   });
 
