@@ -59,6 +59,7 @@ import {
   ProviderType,
 } from '../../generated/entity/events/notificationTemplate';
 import { Operation } from '../../generated/entity/policies/policy';
+import { AlertType as CapabilitiesAlertType } from '../../generated/events/api/alertCapabilitiesRequest';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
@@ -66,6 +67,10 @@ import {
 } from '../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import {
+  AlertSelectionProvider,
+  useAlertSelection,
+} from '../../hooks/useAlertSelection';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -75,6 +80,7 @@ import {
   updateNotificationAlert,
 } from '../../rest/alertsAPI';
 import { getAllNotificationTemplates } from '../../rest/notificationtemplateAPI';
+import { toCapabilitiesInput } from '../../utils/Alerts/AlertSelectionUtil';
 import alertsClassBase from '../../utils/AlertsClassBase';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
@@ -91,12 +97,6 @@ import {
   ModifiedEventSubscription,
 } from '../AddObservabilityPage/AddObservabilityPage.interface';
 import { AddAlertPageLoadingState } from './AddNotificationPage.interface';
-import { AlertType as CapabilitiesAlertType } from '../../generated/events/api/alertCapabilitiesRequest';
-import {
-  AlertSelectionProvider,
-  useAlertSelection,
-} from '../../hooks/useAlertSelection';
-import { toCapabilitiesInput } from '../../utils/Alerts/AlertSelectionUtil';
 
 // One array for "nothing selected", so what depends on the selection does not change every render.
 const NO_SOURCES: string[] = [];

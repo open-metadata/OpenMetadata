@@ -30,6 +30,7 @@ import {
   SubscriptionCategory,
   SubscriptionType,
 } from '../../../../generated/events/eventSubscription';
+import { useAlertSelectionContext } from '../../../../hooks/useAlertSelection';
 import { getDestinationStatusAlertData } from '../../../../utils/Alerts/AlertsUtil';
 import {
   getSubscriptionTypeOptions,
@@ -42,7 +43,6 @@ import {
 import DestinationConfigField from './DestinationConfigField/DestinationConfigField';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 import { buildGroupedOptions } from './DestinationSelectItem.utils';
-import { useAlertSelectionContext } from '../../../../hooks/useAlertSelection';
 
 function DestinationSelectItem({
   selectorKey,

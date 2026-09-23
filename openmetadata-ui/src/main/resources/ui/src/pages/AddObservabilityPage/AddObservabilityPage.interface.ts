@@ -28,9 +28,9 @@ import {
   SubscriptionType,
   Webhook,
 } from '../../generated/events/eventSubscription';
+import type { AlertSelection } from '../../hooks/useAlertSelection';
 import type { AddAlertFormWidgetProps } from '../../utils/AlertsClassBase';
 import { AddAlertPageLoadingState } from '../AddNotificationPage/AddNotificationPage.interface';
-import type { AlertSelection } from '../../hooks/useAlertSelection';
 
 export interface ObservabilityFilterResourceDescriptor {
   containerEntities?: string[];

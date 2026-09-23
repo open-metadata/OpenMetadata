@@ -14,14 +14,14 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { AlertCapabilities } from '../generated/events/api/alertCapabilities';
+import { AlertCapabilitiesRequest } from '../generated/events/api/alertCapabilitiesRequest';
 import { CreateEventSubscription } from '../generated/events/api/createEventSubscription';
 import { Destination } from '../generated/events/api/testEventSubscriptionDestination';
 import {
   Status as TypedEventStatus,
   TypedEvent,
 } from '../generated/events/api/typedEvent';
-import { AlertCapabilities } from '../generated/events/api/alertCapabilities';
-import { AlertCapabilitiesRequest } from '../generated/events/api/alertCapabilitiesRequest';
 import {
   AlertType,
   EventSubscription,

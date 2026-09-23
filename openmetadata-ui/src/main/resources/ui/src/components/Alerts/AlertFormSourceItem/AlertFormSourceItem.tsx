@@ -27,8 +27,8 @@ import FormCardSection from '../../../components/common/FormCardSection/FormCard
 import { useAlertSelectionContext } from '../../../hooks/useAlertSelection';
 import { useFqn } from '../../../hooks/useFqn';
 import { getSourceOptionsFromResourceList } from '../../../utils/Alerts/AlertsUtil';
-import './alert-form-source-item.less';
 import AlertSourcePicker from '../AlertSourcePicker/AlertSourcePicker';
+import './alert-form-source-item.less';
 import { AlertFormSourceItemProps } from './AlertFormSourceItem.interface';
 
 function AlertFormSourceItem({

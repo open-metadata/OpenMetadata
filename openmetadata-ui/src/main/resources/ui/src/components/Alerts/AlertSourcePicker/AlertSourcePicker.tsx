@@ -13,8 +13,8 @@
 import { Alert, Select, Space, Typography } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import { getSourceOptions } from '../../../utils/Alerts/AlertSelectionUtil';
+import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import { getEntityNameLabel } from '../../../utils/EntityNameUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { AlertSourcePickerProps } from './AlertSourcePicker.interface';

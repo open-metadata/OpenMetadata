@@ -15,8 +15,8 @@ import type { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, trim } from 'lodash';
 import { DEFAULT_READ_TIMEOUT } from '../constants/Alerts.constants';
-import type { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { PAGE_SIZE_LARGE } from '../constants/constants';
+import type { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import type { NotificationTemplate } from '../generated/entity/events/notificationTemplate';
 import type { User } from '../generated/entity/teams/user';
@@ -29,6 +29,8 @@ import type {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
 } from '../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { searchContracts } from '../rest/contractAPI';
+import type { NameSearch } from './Alerts/AlertSourceSearch';
 import {
   getConfigHeaderArrayFromObject,
   getConfigHeaderObjectFromArray,
@@ -36,12 +38,10 @@ import {
   getConfigQueryParamsObjectFromArray,
   getRandomizedAlertName,
 } from './Alerts/AlertsUtilPure';
-import type { NameSearch } from './Alerts/AlertSourceSearch';
 import type { HandleAlertSaveProps } from './AlertsClassBase.interface';
 import { getEntityName } from './EntityNameUtils';
 import { handleEntityCreationError } from './formUtils';
 import { t } from './i18next/LocalUtil';
-import { searchContracts } from '../rest/contractAPI';
 import { showErrorToast, showSuccessToast } from './ToastUtils';
 
 export interface AddAlertFormWidgetProps {

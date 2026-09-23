@@ -37,6 +37,7 @@ import { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObserva
 import { searchContracts } from '../../rest/contractAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTermQuery } from '../SearchPureUtils';
+import { getAlertSourceSearch } from './AlertSourceSearch';
 import {
   getAlertExtraInfo,
   getAlertRecentEventsFilterOptions,
@@ -61,7 +62,6 @@ import {
   listLengthValidator,
   normalizeDestinationConfig,
 } from './AlertsUtilPure';
-import { getAlertSourceSearch } from './AlertSourceSearch';
 
 const searchOf = (
   sources: string | string[],

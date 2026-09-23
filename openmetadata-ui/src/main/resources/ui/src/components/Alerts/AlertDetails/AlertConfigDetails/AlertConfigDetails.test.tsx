@@ -12,9 +12,9 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
+import { useAlertCapabilities } from '../../../../hooks/useAlertCapabilities';
 import { mockAlertDetails } from '../../../../mocks/Alerts.mock';
 import { MOCK_FILTER_RESOURCES } from '../../../../test/unit/mocks/observability.mock';
-import { useAlertCapabilities } from '../../../../hooks/useAlertCapabilities';
 import AlertConfigDetails from './AlertConfigDetails';
 
 jest.mock('../../../../hooks/useAlertCapabilities', () => ({
