@@ -149,7 +149,8 @@ export const initiateDelete = async (page: Page) => {
 export const waitForGlossaryListRefetch = (page: Page) => {
   return page.waitForResponse(
     (response) =>
-      response.url().includes('/api/v1/glossaries') && response.status() === 200
+      /\/api\/v1\/glossaries(\?|$)/.test(response.url()) &&
+      response.status() === 200
   );
 };
 
