@@ -12,7 +12,7 @@
  */
 import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
-import { escapeRegExp } from 'lodash';
+import { escapeRegExp, isUndefined } from 'lodash';
 import { BundleTestSuiteClass } from '../../../support/entity/BundleTestSuiteClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
@@ -445,6 +445,109 @@ test.describe(
         );
         await expect(acknowledge).toBeHidden();
         await expect(headerStatus).toContainText('Ack');
+      });
+    });
+  }
+);
+
+test.describe(
+  'Test Case Details Page - Result history chart',
+  { tag: ['@Observability'] },
+  () => {
+    let chartTable: TableClass;
+    let chartTestCaseFqn: string;
+
+    test.beforeAll(
+      'Create a test case whose history holds an aborted run',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        chartTable = new TableClass();
+        await chartTable.create(apiContext);
+        const testCase = await chartTable.createTestCase(apiContext, {
+          testDefinition: 'tableRowCountToEqual',
+          parameterValues: [{ name: 'value', value: 10000 }],
+        });
+        chartTestCaseFqn = testCase.fullyQualifiedName as string;
+
+        const now = getCurrentMillis();
+        const hour = 3_600_000;
+
+        // Several plotted runs with an aborted one in the middle: the chart
+        // has to place both a value and a run that produced none, and the
+        // aborted point stays clear of the plot edge, where its own tooltip
+        // would otherwise flip over it.
+        const runs = [9980, 10020, undefined, 9990, 10010];
+
+        for (const [index, value] of runs.entries()) {
+          await chartTable.addTestCaseResult(apiContext, chartTestCaseFqn, {
+            result: isUndefined(value)
+              ? 'The query timed out before a row count could be taken'
+              : `Found rowCount=${value} vs. the expected 10000`,
+            testCaseStatus: isUndefined(value) ? 'Aborted' : 'Success',
+            ...(isUndefined(value)
+              ? {}
+              : { testResultValue: [{ name: 'value', value: String(value) }] }),
+            timestamp: now - (runs.length - index) * hour,
+          });
+        }
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await chartTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('plots the expectation line, the aborted run and the selection', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, chartTestCaseFqn);
+
+      const chart = page.getByTestId('graph-container');
+      const abortedPoint = chart.getByTestId('test-summary-point-abortedValue');
+
+      await test.step('The expectation line carries the asserted value', async () => {
+        await expect(chart.locator('.recharts-reference-line text')).toHaveText(
+          'Expected 10,000'
+        );
+      });
+
+      await test.step('A run that produced no value is still plotted', async () => {
+        await expect(abortedPoint).toBeAttached();
+      });
+
+      await test.step('The legend names only the series', async () => {
+        await expect(chart.locator('.recharts-legend-item-text')).toHaveText([
+          'value',
+        ]);
+      });
+
+      await test.step('Clicking a run moves the selection guide', async () => {
+        const guides = chart.locator('.recharts-reference-line line');
+        const before = await guides.evaluateAll((lines) =>
+          lines.map((line) => line.getAttribute('x1')).join(',')
+        );
+
+        await abortedPoint.click();
+
+        await expect
+          .poll(async () =>
+            guides.evaluateAll((lines) =>
+              lines.map((line) => line.getAttribute('x1')).join(',')
+            )
+          )
+          .not.toBe(before);
+      });
+
+      await test.step('The chart says its points are clickable', async () => {
+        await expect(page.getByTestId('run-selection-hint')).toHaveText(
+          'Click a point for run details'
+        );
       });
     });
   }

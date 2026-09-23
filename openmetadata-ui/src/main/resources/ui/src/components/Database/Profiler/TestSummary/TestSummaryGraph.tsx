@@ -346,6 +346,15 @@ function TestSummaryGraph({
     props
   ): ReactElement<SVGElement> => {
     const { cx = 0, cy = 0, dataKey, payload } = props;
+    const pointValue = payload[String(dataKey)];
+
+    // Recharts calls the dot renderer for every row of the chart, including
+    // the ones this series holds no value for - a run that produced nothing on
+    // the value line, and every ordinary run on the two placement series.
+    if (isUndefined(pointValue)) {
+      return <g />;
+    }
+
     const fill = getStatusDotColor(payload.status);
     const pointKey = String(dataKey);
 
