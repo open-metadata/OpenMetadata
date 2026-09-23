@@ -42,6 +42,7 @@ import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEve
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionDAOs;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
+import org.openmetadata.service.notifications.recipients.Recipients;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.security.ImpersonationContext;
@@ -528,8 +529,9 @@ class AbstractEventConsumerTest {
             mockConstruction(
                 RecipientResolver.class,
                 (mock, ctx) -> {
-                  when(mock.recipientsOf(any(), eq(subA))).thenReturn(Set.of(r1));
-                  when(mock.recipientsOf(any(), eq(subB))).thenReturn(Set.of(r1, r2));
+                  when(mock.recipientsOf(any(), eq(subA))).thenReturn(Recipients.of(Set.of(r1)));
+                  when(mock.recipientsOf(any(), eq(subB)))
+                      .thenReturn(Recipients.of(Set.of(r1, r2)));
                 })) {
       alertUtil
           .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
@@ -567,7 +569,7 @@ class AbstractEventConsumerTest {
             mockConstruction(
                 RecipientResolver.class,
                 (mock, ctx) ->
-                    when(mock.resolveRecipients(any(), anyList())).thenReturn(Set.of()))) {
+                    when(mock.recipientsOf(any(), any())).thenReturn(Recipients.none()))) {
       alertUtil
           .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);

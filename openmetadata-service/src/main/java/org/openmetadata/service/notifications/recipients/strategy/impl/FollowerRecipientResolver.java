@@ -13,13 +13,7 @@
 
 package org.openmetadata.service.notifications.recipients.strategy.impl;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -29,142 +23,71 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
-import org.openmetadata.service.notifications.recipients.RecipientLookups;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
+import org.openmetadata.service.notifications.recipients.Lookup;
+import org.openmetadata.service.notifications.recipients.Recipients;
 import org.openmetadata.service.notifications.recipients.strategy.RecipientResolutionStrategy;
 
 /**
- * Resolves entity followers.
- *
- * This resolver extracts followers from entities that support the followers relationship
- * and converts them to recipients with appropriate contact information.
- *
- * Delegates user and team ID-based resolution to UserRecipientResolver and
- * TeamRecipientResolver to avoid code duplication.
+ * Resolves the followers of an entity, users and teams, as recipients. For a conversation, the
+ * followers of the entity the conversation is about.
  */
-@Slf4j
 public class FollowerRecipientResolver implements RecipientResolutionStrategy {
 
-  private final UserRecipientResolver userResolver;
-  private final TeamRecipientResolver teamResolver;
+  private final UserRecipientResolver users;
+  private final TeamRecipientResolver teams;
 
-  public FollowerRecipientResolver(
-      UserRecipientResolver userResolver, TeamRecipientResolver teamResolver) {
-    this.userResolver = userResolver;
-    this.teamResolver = teamResolver;
+  public FollowerRecipientResolver(UserRecipientResolver users, TeamRecipientResolver teams) {
+    this.users = users;
+    this.teams = teams;
   }
 
   @Override
-  public Set<Recipient> resolve(
+  public Recipients resolve(
       ChangeEvent event, SubscriptionAction action, SubscriptionDestination destination) {
-
-    try {
-      String entityType = event.getEntityType();
-
-      if (Entity.CONVERSATION.equalsIgnoreCase(entityType)) {
-        Conversation conversation = AlertsRuleEvaluator.getConversation(event);
-        return resolveFollowersFromConversation(conversation, destination);
-      }
-
-      // Standard handling for other entities
-      EntityInterface entity = AlertsRuleEvaluator.getEntity(event);
-      return resolveFollowersFromEntity(entity, destination);
-    } catch (Exception e) {
-      RecipientLookups.reportUnlessAbsent(e);
-      LOG.warn(
-          "Failed to resolve followers for event entity {} {}",
-          event.getEntityType(),
-          event.getEntityId(),
-          e);
-      return Collections.emptySet();
-    }
+    return Entity.CONVERSATION.equalsIgnoreCase(event.getEntityType())
+        ? Recipients.from(
+            Lookup.of(
+                "the conversation of event " + event.getId(),
+                () -> AlertsRuleEvaluator.getConversation(event)),
+            conversation -> ofConversation(conversation, destination))
+        : Recipients.from(
+            Lookup.of(
+                "the entity of event " + event.getId(), () -> AlertsRuleEvaluator.getEntity(event)),
+            entity -> of(entity, destination));
   }
 
   @Override
-  public Set<Recipient> resolve(
+  public Recipients resolve(
       UUID entityId,
       String entityType,
       SubscriptionAction action,
       SubscriptionDestination destination) {
-
-    try {
-      if (Entity.CONVERSATION.equalsIgnoreCase(entityType)) {
-        Conversation conversation = Entity.getConversationRepository().getEventPayload(entityId);
-        return resolveFollowersFromConversation(conversation, destination);
-      }
-
-      // Standard handling for other entities
-      EntityInterface entity =
-          Entity.getEntity(entityType, entityId, "followers", Include.NON_DELETED);
-      return resolveFollowersFromEntity(entity, destination);
-
-    } catch (Exception e) {
-      RecipientLookups.reportUnlessAbsent(e);
-      LOG.warn("Failed to resolve followers for {} {}", entityType, entityId, e);
-      return Collections.emptySet();
-    }
+    return Entity.CONVERSATION.equalsIgnoreCase(entityType)
+        ? Recipients.from(
+            Lookup.of(
+                "conversation " + entityId,
+                () -> Entity.getConversationRepository().getEventPayload(entityId)),
+            conversation -> ofConversation(conversation, destination))
+        : Recipients.from(stored(entityType, entityId), entity -> of(entity, destination));
   }
 
-  private @NotNull Set<Recipient> resolveFollowersFromConversation(
+  private Recipients ofConversation(
       Conversation conversation, SubscriptionDestination destination) {
-    if (conversation == null || conversation.getEntityRef() == null) {
-      return Collections.emptySet();
-    }
-
-    EntityInterface referencedEntity =
-        Entity.getEntity(
-            conversation.getEntityRef().getType(),
-            conversation.getEntityRef().getId(),
-            "followers",
-            Include.NON_DELETED);
-    return resolveFollowersFromEntity(referencedEntity, destination);
+    EntityReference subject = conversation.getEntityRef();
+    return subject == null
+        ? Recipients.none()
+        : Recipients.from(
+            stored(subject.getType(), subject.getId()), entity -> of(entity, destination));
   }
 
-  private @NotNull Set<Recipient> resolveFollowersFromEntity(
-      EntityInterface entity, SubscriptionDestination destination) {
-    if (entity == null || entity.getFollowers() == null) {
-      return Collections.emptySet();
-    }
-
-    return resolveEntityReferences(entity.getFollowers(), destination);
+  private Recipients of(EntityInterface entity, SubscriptionDestination destination) {
+    return Principals.of(entity.getFollowers(), users, teams, destination);
   }
 
-  /**
-   * Resolve entity references (users and teams) to recipients.
-   *
-   * Delegates to UserRecipientResolver and TeamRecipientResolver to handle the actual
-   * conversion from IDs to Recipients, avoiding code duplication.
-   *
-   * @param entityReferences list of entity references to resolve
-   * @param destination the subscription destination
-   * @return set of resolved recipients
-   */
-  private Set<Recipient> resolveEntityReferences(
-      List<EntityReference> entityReferences, SubscriptionDestination destination) {
-
-    Set<Recipient> recipients = new HashSet<>();
-
-    // Extract user IDs and resolve via UserRecipientResolver
-    List<UUID> userIds =
-        entityReferences.stream()
-            .filter(e -> Entity.USER.equalsIgnoreCase(e.getType()))
-            .map(EntityReference::getId)
-            .toList();
-    if (!userIds.isEmpty()) {
-      recipients.addAll(userResolver.resolve(userIds, destination));
-    }
-
-    // Extract team IDs and resolve via TeamRecipientResolver
-    List<UUID> teamIds =
-        entityReferences.stream()
-            .filter(e -> Entity.TEAM.equalsIgnoreCase(e.getType()))
-            .map(EntityReference::getId)
-            .toList();
-    if (!teamIds.isEmpty()) {
-      recipients.addAll(teamResolver.resolve(teamIds, destination));
-    }
-
-    return recipients;
+  private static Lookup<EntityInterface> stored(String entityType, UUID entityId) {
+    return Lookup.of(
+        entityType + " " + entityId,
+        () -> Entity.getEntity(entityType, entityId, "followers", Include.NON_DELETED));
   }
 
   @Override

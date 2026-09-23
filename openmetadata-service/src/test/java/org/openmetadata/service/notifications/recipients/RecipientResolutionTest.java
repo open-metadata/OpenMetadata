@@ -15,7 +15,6 @@ package org.openmetadata.service.notifications.recipients;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -28,10 +27,12 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Webhook;
@@ -69,7 +70,8 @@ class RecipientResolutionTest {
           new TeamRecipientResolver()
               .resolve(
                   List.of(TEAM_WITHOUT_CONTACT_ID, TEAM_WITH_CONTACT_ID),
-                  destination(SubscriptionType.EMAIL));
+                  destination(SubscriptionType.EMAIL))
+              .found();
 
       assertEquals(Set.of(TEAM_EMAIL), emailsOf(recipients));
     }
@@ -90,16 +92,19 @@ class RecipientResolutionTest {
           new TeamRecipientResolver()
               .resolve(
                   List.of(TEAM_WITHOUT_CONTACT_ID, TEAM_WITH_CONTACT_ID),
-                  destination(SubscriptionType.EMAIL));
+                  destination(SubscriptionType.EMAIL))
+              .found();
 
       assertEquals(Set.of(TEAM_EMAIL), emailsOf(recipients));
     }
   }
 
-  // A team that does not exist reaches nobody. A database that did not answer is a failure.
+  // A team that does not exist reaches nobody. A database that did not answer is a failure, and
+  // the teams that could be read still get the message.
   @Test
   void lookupThatFailsIsToldApartFromATeamThatDoesNotExist() {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      stubTeamById(entityMock, TEAM_WITH_CONTACT_ID, team("data-platform", TEAM_EMAIL));
       entityMock
           .when(
               () ->
@@ -107,15 +112,38 @@ class RecipientResolutionTest {
                       eq(Entity.TEAM), eq(TEAM_WITHOUT_CONTACT_ID), any(), eq(Include.NON_DELETED)))
           .thenThrow(new IllegalStateException("the database did not answer"));
 
-      RecipientLookups.LookupFailedException failure =
-          assertThrows(
-              RecipientLookups.LookupFailedException.class,
-              () ->
-                  new TeamRecipientResolver()
-                      .resolve(
-                          List.of(TEAM_WITHOUT_CONTACT_ID), destination(SubscriptionType.EMAIL)));
+      Recipients reached =
+          new TeamRecipientResolver()
+              .resolve(
+                  List.of(TEAM_WITHOUT_CONTACT_ID, TEAM_WITH_CONTACT_ID),
+                  destination(SubscriptionType.EMAIL));
 
-      assertEquals("the database did not answer", failure.getMessage());
+      assertEquals(Set.of(TEAM_EMAIL), emailsOf(reached.found()));
+      assertEquals(1, reached.failures().size());
+      assertTrue(reached.failures().getFirst().contains("the database did not answer"));
+    }
+  }
+
+  // What Collate's report senders use: whoever could be found gets the report.
+  @Test
+  void legacyResolveReturnsWhatWasFound() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      stubUserByName(entityMock, "alice", user("alice", USER_EMAIL));
+      entityMock
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      eq(Entity.USER), eq("bob"), any(), eq(Include.NON_DELETED)))
+          .thenThrow(new IllegalStateException("the database did not answer"));
+      SubscriptionDestination users =
+          destination(SubscriptionType.EMAIL)
+              .withCategory(SubscriptionDestination.SubscriptionCategory.USERS)
+              .withConfig(new EmailAlertConfig().withReceivers(Set.of("alice", "bob")));
+
+      Set<Recipient> recipients =
+          new RecipientResolver().resolveRecipients(new ChangeEvent(), List.of(users));
+
+      assertEquals(Set.of(USER_EMAIL), emailsOf(recipients));
     }
   }
 
@@ -135,7 +163,8 @@ class RecipientResolutionTest {
                   UUID.randomUUID(),
                   Entity.TABLE,
                   new Webhook().withReceivers(Set.of("no-webhook", "with-webhook")),
-                  destination(SubscriptionType.SLACK));
+                  destination(SubscriptionType.SLACK))
+              .found();
 
       assertEquals(1, recipients.size());
       assertTrue(recipients.iterator().next() instanceof WebhookRecipient);
@@ -158,7 +187,8 @@ class RecipientResolutionTest {
                   UUID.randomUUID(),
                   Entity.TABLE,
                   new Webhook().withReceivers(Set.of("no-webhook", "with-webhook")),
-                  destination(SubscriptionType.SLACK));
+                  destination(SubscriptionType.SLACK))
+              .found();
 
       assertEquals(1, recipients.size());
       assertTrue(recipients.iterator().next() instanceof WebhookRecipient);
@@ -175,7 +205,8 @@ class RecipientResolutionTest {
 
       Set<Recipient> recipients =
           new UserRecipientResolver()
-              .resolve(List.of(USER_ID), destination(SubscriptionType.EMAIL));
+              .resolve(List.of(USER_ID), destination(SubscriptionType.EMAIL))
+              .found();
 
       assertTrue(recipients.isEmpty());
     }
@@ -189,7 +220,8 @@ class RecipientResolutionTest {
                 UUID.randomUUID(),
                 Entity.TABLE,
                 new Webhook().withReceivers(Set.of(VALID_RECEIVER, "{{SLACK_WEBHOOK_URL}}")),
-                externalDestination());
+                externalDestination())
+            .found();
 
     assertEquals(Set.of(VALID_RECEIVER), endpointsOf(recipients));
   }
@@ -202,7 +234,8 @@ class RecipientResolutionTest {
                 UUID.randomUUID(),
                 Entity.TABLE,
                 new Webhook().withReceivers(Set.of(VALID_RECEIVER, "  ")),
-                externalDestination());
+                externalDestination())
+            .found();
 
     assertEquals(Set.of(VALID_RECEIVER), endpointsOf(recipients));
   }

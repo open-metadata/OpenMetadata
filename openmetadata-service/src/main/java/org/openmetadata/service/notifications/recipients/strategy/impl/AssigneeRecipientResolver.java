@@ -13,113 +13,70 @@
 
 package org.openmetadata.service.notifications.recipients.strategy.impl;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
-import org.openmetadata.service.notifications.recipients.RecipientLookups;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
+import org.openmetadata.service.notifications.recipients.Lookup;
+import org.openmetadata.service.notifications.recipients.Recipients;
 import org.openmetadata.service.notifications.recipients.strategy.RecipientResolutionStrategy;
 
-/**
- * Resolves assignees from task threads.
- * This resolver extracts assignees from task-based notifications and converts them
- * to recipients with appropriate contact information.
- */
+/** Resolves the assignees of a task, users and teams, as recipients. */
 @Slf4j
 public class AssigneeRecipientResolver implements RecipientResolutionStrategy {
 
-  private final UserRecipientResolver userResolver;
-  private final TeamRecipientResolver teamResolver;
+  private final UserRecipientResolver users;
+  private final TeamRecipientResolver teams;
 
-  public AssigneeRecipientResolver(
-      UserRecipientResolver userResolver, TeamRecipientResolver teamResolver) {
-    this.userResolver = userResolver;
-    this.teamResolver = teamResolver;
+  public AssigneeRecipientResolver(UserRecipientResolver users, TeamRecipientResolver teams) {
+    this.users = users;
+    this.teams = teams;
   }
 
   @Override
-  public Set<Recipient> resolve(
+  public Recipients resolve(
       ChangeEvent event, SubscriptionAction action, SubscriptionDestination destination) {
-
-    try {
-      if (Entity.TASK.equalsIgnoreCase(event.getEntityType())) {
-        Task task = AlertsRuleEvaluator.getTask(event);
-        return resolveAssignees(task.getAssignees(), destination);
-      }
-      LOG.warn(
-          "AssigneeRecipientResolver called with unsupported entity: {}", event.getEntityType());
-      return Collections.emptySet();
-
-    } catch (Exception e) {
-      RecipientLookups.reportUnlessAbsent(e);
-      LOG.error("Failed to resolve assignees for {}", event.getEntityId(), e);
-      return Collections.emptySet();
-    }
+    return isTask(event.getEntityType())
+        ? assigneesOf(
+            Lookup.of(
+                "the task of event " + event.getId(), () -> AlertsRuleEvaluator.getTask(event)),
+            destination)
+        : Recipients.none();
   }
 
   @Override
-  public Set<Recipient> resolve(
+  public Recipients resolve(
       UUID entityId,
       String entityType,
       SubscriptionAction action,
       SubscriptionDestination destination) {
-
-    try {
-      if (Entity.TASK.equalsIgnoreCase(entityType)) {
-        Task task = Entity.getEntity(Entity.TASK, entityId, "assignees", Include.NON_DELETED);
-        return resolveAssignees(task.getAssignees(), destination);
-      }
-      LOG.warn("AssigneeRecipientResolver called with unsupported entity: {}", entityType);
-      return Collections.emptySet();
-
-    } catch (Exception e) {
-      RecipientLookups.reportUnlessAbsent(e);
-      LOG.error("Failed to resolve assignees for {}", entityId, e);
-      return Collections.emptySet();
-    }
+    return isTask(entityType)
+        ? assigneesOf(
+            Lookup.of(
+                "task " + entityId,
+                () ->
+                    Entity.<Task>getEntity(
+                        Entity.TASK, entityId, "assignees", Include.NON_DELETED)),
+            destination)
+        : Recipients.none();
   }
 
-  private Set<Recipient> resolveAssignees(
-      List<EntityReference> assignees, SubscriptionDestination destination) {
-    if (assignees == null || assignees.isEmpty()) {
-      return Collections.emptySet();
+  private Recipients assigneesOf(Lookup<Task> task, SubscriptionDestination destination) {
+    return Recipients.from(
+        task, found -> Principals.of(found.getAssignees(), users, teams, destination));
+  }
+
+  private static boolean isTask(String entityType) {
+    boolean task = Entity.TASK.equalsIgnoreCase(entityType);
+    if (!task) {
+      LOG.warn("Assignees asked for an entity that has none: {}", entityType);
     }
-
-    Set<Recipient> recipients = new HashSet<>();
-
-    List<UUID> userIds =
-        assignees.stream()
-            .filter(e -> Entity.USER.equalsIgnoreCase(e.getType()))
-            .map(EntityReference::getId)
-            .collect(Collectors.toList());
-
-    List<UUID> teamIds =
-        assignees.stream()
-            .filter(e -> Entity.TEAM.equalsIgnoreCase(e.getType()))
-            .map(EntityReference::getId)
-            .collect(Collectors.toList());
-
-    if (!userIds.isEmpty()) {
-      recipients.addAll(userResolver.resolve(userIds, destination));
-    }
-
-    if (!teamIds.isEmpty()) {
-      recipients.addAll(teamResolver.resolve(teamIds, destination));
-    }
-
-    return recipients;
+    return task;
   }
 
   @Override

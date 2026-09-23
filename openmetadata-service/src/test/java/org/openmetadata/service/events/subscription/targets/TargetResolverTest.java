@@ -14,12 +14,10 @@
 package org.openmetadata.service.events.subscription.targets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,7 +30,7 @@ import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.service.events.subscription.channels.Channels;
-import org.openmetadata.service.notifications.recipients.RecipientLookups;
+import org.openmetadata.service.notifications.recipients.Recipients;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
@@ -115,7 +113,8 @@ class TargetResolverTest {
   void receiversDoNotLeakAcrossEvents() {
     List<Set<Recipient>> perEvent =
         new ArrayList<>(List.of(Set.of(hook(HOOK + "/first")), Set.of(hook(HOOK + "/second"))));
-    TargetResolver resolver = new TargetResolver((event, destination) -> perEvent.removeFirst());
+    TargetResolver resolver =
+        new TargetResolver((event, destination) -> Recipients.of(perEvent.removeFirst()));
 
     List<Target> first = resolver.resolve(EVENT, List.of(owners)).targets();
     List<Target> second = resolver.resolve(EVENT, List.of(owners)).targets();
@@ -133,7 +132,7 @@ class TargetResolverTest {
         new TargetResolver(
             (event, destination) -> {
               asked.add(destination.getId());
-              return Set.of(hook(HOOK));
+              return Recipients.of(hook(HOOK));
             });
 
     assertTrue(resolver.resolve(EVENT, List.of(switchedOff)).targets().isEmpty());
@@ -164,7 +163,7 @@ class TargetResolverTest {
               if (destination == owners) {
                 throw new IllegalStateException("the database did not answer");
               }
-              return Set.of(hook(HOOK));
+              return Recipients.of(hook(HOOK));
             });
 
     TargetResolver.Resolved resolved = resolver.resolve(EVENT, List.of(owners, teams));
@@ -178,16 +177,8 @@ class TargetResolverTest {
   void oneRecipientWhoseLookupFailsCostsOnlyItself() {
     TargetResolver resolver =
         new TargetResolver(
-            (event, destination) -> {
-              Set<Recipient> found = new HashSet<>();
-              try {
-                throw new IllegalStateException("team A could not be read");
-              } catch (IllegalStateException e) {
-                RecipientLookups.reportUnlessAbsent(e);
-              }
-              found.add(hook(HOOK));
-              return found;
-            });
+            (event, destination) ->
+                Recipients.failed("team A could not be read").and(Recipients.of(hook(HOOK))));
 
     TargetResolver.Resolved resolved = resolver.resolve(EVENT, List.of(teams));
 
@@ -195,16 +186,9 @@ class TargetResolverTest {
     assertEquals(Map.of(teams.getId(), "team A could not be read"), resolved.failedLookups());
   }
 
-  @Test
-  void lookupOutsideAResolutionStillThrows() {
-    assertThrows(
-        RecipientLookups.LookupFailedException.class,
-        () -> RecipientLookups.reportUnlessAbsent(new IllegalStateException("no answer")));
-  }
-
   private static TargetResolver.Resolved resolve(
       Map<UUID, Set<Recipient>> found, SubscriptionDestination... destinations) {
-    return new TargetResolver((event, destination) -> found.get(destination.getId()))
+    return new TargetResolver((event, destination) -> Recipients.of(found.get(destination.getId())))
         .resolve(EVENT, List.of(destinations));
   }
 

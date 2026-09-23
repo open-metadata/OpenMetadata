@@ -13,109 +13,80 @@
 
 package org.openmetadata.service.notifications.recipients.strategy.impl;
 
-import java.util.Collections;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
+import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
+import java.util.function.Supplier;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.notifications.recipients.RecipientLookups;
+import org.openmetadata.service.notifications.recipients.Lookup;
+import org.openmetadata.service.notifications.recipients.Recipients;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.strategy.RecipientResolutionStrategy;
 
 /**
  * Resolves teams by name or ID.
  *
- * This resolver supports two modes:
- * 1. By name: looks up teams from the action's receivers list by their team names
- * 2. By ID: directly resolves teams from a list of UUIDs (useful for relationship-based resolution)
- *
- * In both cases, it converts teams to recipients with appropriate contact information.
+ * <p>By name, it looks up the teams the action's receivers list names. By ID, it resolves the
+ * teams of relationship-based resolvers. A team that does not exist, or has no address on
+ * the destination's channel, reaches nobody; one that could not be read is a failure; neither
+ * costs the other teams their message.
  */
-@Slf4j
 public class TeamRecipientResolver implements RecipientResolutionStrategy {
 
   private static final String TEAM_FIELDS = "id,profile,email";
 
   @Override
-  public Set<Recipient> resolve(
+  public Recipients resolve(
       ChangeEvent event, SubscriptionAction action, SubscriptionDestination destination) {
-    return resolveTeamsByName(action, destination);
+    return byName(action, destination);
   }
 
   @Override
-  public Set<Recipient> resolve(
+  public Recipients resolve(
       UUID entityId,
       String entityType,
       SubscriptionAction action,
       SubscriptionDestination destination) {
-    return resolveTeamsByName(action, destination);
+    return byName(action, destination);
   }
 
-  private Set<Recipient> resolveTeamsByName(
-      SubscriptionAction action, SubscriptionDestination destination) {
-    if (action.getReceivers() == null || action.getReceivers().isEmpty()) {
-      return Collections.emptySet();
-    }
-
-    return action.getReceivers().stream()
-        .map(teamName -> resolveTeamByName(teamName, destination))
-        .filter(Objects::nonNull)
-        .collect(Collectors.toUnmodifiableSet());
+  public Recipients resolve(List<UUID> teamIds, SubscriptionDestination destination) {
+    return listOrEmpty(teamIds).stream()
+        .map(
+            id ->
+                reached(
+                    "team " + id,
+                    () -> Entity.<Team>getEntity(Entity.TEAM, id, TEAM_FIELDS, Include.NON_DELETED),
+                    destination))
+        .collect(Recipients.combined());
   }
 
-  private Recipient resolveTeamByName(String teamName, SubscriptionDestination destination) {
-    try {
-      Team team = Entity.getEntityByName(Entity.TEAM, teamName, TEAM_FIELDS, Include.NON_DELETED);
-      return Recipient.fromTeam(team, destination);
-    } catch (Exception e) {
-      RecipientLookups.reportUnlessAbsent(e);
-      LOG.error("Failed to resolve team recipient for team {}", teamName, e);
-      return null;
-    }
+  private Recipients byName(SubscriptionAction action, SubscriptionDestination destination) {
+    Collection<String> names =
+        action == null || action.getReceivers() == null ? List.of() : action.getReceivers();
+    return names.stream()
+        .map(
+            name ->
+                reached(
+                    "team " + name,
+                    () ->
+                        Entity.<Team>getEntityByName(
+                            Entity.TEAM, name, TEAM_FIELDS, Include.NON_DELETED),
+                    destination))
+        .collect(Recipients.combined());
   }
 
-  /**
-   * Resolve teams by their IDs.
-   *
-   * This method is used by relationship-based resolvers (OwnerRecipientResolver,
-   * FollowerRecipientResolver) to convert EntityReferences (which have IDs) to Recipients.
-   *
-   * Note: Fetches with "id,profile,email" fields to ensure profile is available for webhook
-   * extraction. Teams that cannot be resolved, or that have no contact information for the
-   * destination type, are skipped without discarding the remaining teams.
-   *
-   * @param teamIds list of team IDs to resolve
-   * @param destination the subscription destination
-   * @return set of resolved team recipients
-   */
-  public Set<Recipient> resolve(List<UUID> teamIds, SubscriptionDestination destination) {
-    if (teamIds == null || teamIds.isEmpty()) {
-      return Collections.emptySet();
-    }
-
-    return teamIds.stream()
-        .map(teamId -> resolveTeamById(teamId, destination))
-        .filter(Objects::nonNull)
-        .collect(Collectors.toUnmodifiableSet());
-  }
-
-  private Recipient resolveTeamById(UUID teamId, SubscriptionDestination destination) {
-    try {
-      Team team = Entity.getEntity(Entity.TEAM, teamId, TEAM_FIELDS, Include.NON_DELETED);
-      return Recipient.fromTeam(team, destination);
-    } catch (Exception e) {
-      RecipientLookups.reportUnlessAbsent(e);
-      LOG.error("Failed to resolve team recipient for team {}", teamId, e);
-      return null;
-    }
+  private static Recipients reached(
+      String what, Supplier<Team> read, SubscriptionDestination destination) {
+    return Recipients.from(
+        Lookup.of(what, () -> Recipient.fromTeam(read.get(), destination)), Recipients::of);
   }
 
   @Override

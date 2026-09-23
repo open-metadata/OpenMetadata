@@ -20,7 +20,6 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -43,6 +42,7 @@ import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEve
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
+import org.openmetadata.service.notifications.recipients.Recipients;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.util.DIContainer;
@@ -178,7 +178,7 @@ class DispatchOrderTest {
             mockConstruction(
                 RecipientResolver.class,
                 (resolver, construction) ->
-                    when(resolver.recipientsOf(any(), any())).thenReturn(Set.of(SHARED)))) {
+                    when(resolver.recipientsOf(any(), any())).thenReturn(Recipients.of(SHARED)))) {
       entity.when(Entity::getCollectionDAO).thenReturn(dao);
       rows.when(() -> AlertRows.readOrNull(alert.getId())).thenReturn(alert);
       alertUtil

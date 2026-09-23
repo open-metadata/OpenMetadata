@@ -13,17 +13,16 @@
 
 package org.openmetadata.service.notifications.recipients.strategy.impl;
 
-import java.util.Collections;
-import java.util.HashSet;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.List;
-import java.util.Set;
+import java.util.Locale;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.Conversation;
-import org.openmetadata.schema.entity.feed.ConversationReply;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -31,152 +30,121 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
-import org.openmetadata.service.notifications.recipients.RecipientLookups;
+import org.openmetadata.service.notifications.recipients.Lookup;
+import org.openmetadata.service.notifications.recipients.Recipients;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.strategy.RecipientResolutionStrategy;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 /**
- * Resolves mentioned users/teams from thread content.
- *
- * This resolver extracts entity links and post authors from thread messages and comments,
- * converting them to recipients with appropriate contact information.
+ * Resolves the users and teams mentioned in a conversation's latest message, an announcement's
+ * description, or a task's latest comment. A mentioned user or team that cannot be found is
+ * skipped, and the others are still mentioned.
  */
 @Slf4j
 public class MentionRecipientResolver implements RecipientResolutionStrategy {
-
-  public MentionRecipientResolver() {}
+  private static final String PRINCIPAL_FIELDS = "id,profile,email";
 
   @Override
-  public Set<Recipient> resolve(
+  public Recipients resolve(
       ChangeEvent event, SubscriptionAction action, SubscriptionDestination destination) {
-    try {
-      if (Entity.CONVERSATION.equalsIgnoreCase(event.getEntityType())) {
-        Conversation conversation = AlertsRuleEvaluator.getConversation(event);
-        return conversation == null
-            ? Collections.emptySet()
-            : resolveConversationMentions(conversation, destination);
-      }
-
-      if (Entity.ANNOUNCEMENT.equalsIgnoreCase(event.getEntityType())) {
-        Announcement announcement = (Announcement) AlertsRuleEvaluator.getEntity(event);
-        return announcement == null
-            ? Collections.emptySet()
-            : resolveAnnouncementMentions(announcement, destination);
-      }
-
-      if (Entity.TASK.equalsIgnoreCase(event.getEntityType())) {
-        Task task = AlertsRuleEvaluator.getTask(event);
-        return resolveTaskMentions(task, destination);
-      }
-
-      LOG.warn(
-          "MentionRecipientResolver called with unsupported entity type: {}",
-          event.getEntityType());
-      return Collections.emptySet();
-
-    } catch (Exception e) {
-      RecipientLookups.reportUnlessAbsent(e);
-      LOG.error("Failed to resolve mentions for entity {}", event.getEntityId(), e);
-      return Collections.emptySet();
-    }
+    String what = "the " + event.getEntityType() + " of event " + event.getId();
+    return switch (typeOf(event.getEntityType())) {
+      case Entity.CONVERSATION -> Recipients.from(
+          Lookup.of(what, () -> AlertsRuleEvaluator.getConversation(event)),
+          conversation -> inConversation(conversation, destination));
+      case Entity.ANNOUNCEMENT -> Recipients.from(
+          Lookup.of(what, () -> (Announcement) AlertsRuleEvaluator.getEntity(event)),
+          announcement -> inText(announcement.getDescription(), destination));
+      case Entity.TASK -> Recipients.from(
+          Lookup.of(what, () -> AlertsRuleEvaluator.getTask(event)),
+          task -> inTask(task, destination));
+      default -> unsupported(event.getEntityType());
+    };
   }
 
   @Override
-  public Set<Recipient> resolve(
+  public Recipients resolve(
       UUID entityId,
       String entityType,
       SubscriptionAction action,
       SubscriptionDestination destination) {
-    try {
-      if (Entity.CONVERSATION.equalsIgnoreCase(entityType)) {
-        Conversation conversation = Entity.getConversationRepository().getEventPayload(entityId);
-        return conversation == null
-            ? Collections.emptySet()
-            : resolveConversationMentions(conversation, destination);
-      }
-
-      if (Entity.ANNOUNCEMENT.equalsIgnoreCase(entityType)) {
-        Announcement announcement =
-            Entity.getEntity(Entity.ANNOUNCEMENT, entityId, "description", Include.NON_DELETED);
-        return announcement == null
-            ? Collections.emptySet()
-            : resolveAnnouncementMentions(announcement, destination);
-      }
-
-      if (Entity.TASK.equalsIgnoreCase(entityType)) {
-        Task task = Entity.getEntity(Entity.TASK, entityId, "comments", Include.NON_DELETED);
-        return resolveTaskMentions(task, destination);
-      }
-
-      LOG.warn("MentionRecipientResolver called with unsupported entity type: {}", entityType);
-      return Collections.emptySet();
-
-    } catch (Exception e) {
-      RecipientLookups.reportUnlessAbsent(e);
-      LOG.error("Failed to resolve mentions for entity {}", entityId, e);
-      return Collections.emptySet();
-    }
+    String what = entityType + " " + entityId;
+    return switch (typeOf(entityType)) {
+      case Entity.CONVERSATION -> Recipients.from(
+          Lookup.of(what, () -> Entity.getConversationRepository().getEventPayload(entityId)),
+          conversation -> inConversation(conversation, destination));
+      case Entity.ANNOUNCEMENT -> Recipients.from(
+          Lookup.of(
+              what,
+              () ->
+                  Entity.<Announcement>getEntity(
+                      Entity.ANNOUNCEMENT, entityId, "description", Include.NON_DELETED)),
+          announcement -> inText(announcement.getDescription(), destination));
+      case Entity.TASK -> Recipients.from(
+          Lookup.of(
+              what,
+              () -> Entity.<Task>getEntity(Entity.TASK, entityId, "comments", Include.NON_DELETED)),
+          task -> inTask(task, destination));
+      default -> unsupported(entityType);
+    };
   }
 
-  private Set<Recipient> resolveConversationMentions(
+  private static Recipients inConversation(
       Conversation conversation, SubscriptionDestination destination) {
-    String message = conversation.getMessage();
-    if (conversation.getReplies() != null && !conversation.getReplies().isEmpty()) {
-      ConversationReply latestReply = conversation.getReplies().getLast();
-      message = latestReply.getMessage();
-    }
-    return message == null
-        ? Collections.emptySet()
-        : resolveEntityLinks(MessageParser.getEntityLinks(message), destination);
+    String latest =
+        nullOrEmpty(conversation.getReplies())
+            ? conversation.getMessage()
+            : conversation.getReplies().getLast().getMessage();
+    return inText(latest, destination);
   }
 
-  private Set<Recipient> resolveTaskMentions(Task task, SubscriptionDestination destination) {
-    // Single source of truth with the filter side (AlertsRuleEvaluator.getTaskMentions): resolve
-    // only the latest comment's mentions so earlier comments aren't re-notified on each
-    // comment-add.
-    return resolveEntityLinks(AlertsRuleEvaluator.getTaskMentions(task), destination);
+  // The same mentions the filter matches (AlertsRuleEvaluator.getTaskMentions): the latest
+  // comment's only, so earlier comments are not notified again on every new one.
+  private static Recipients inTask(Task task, SubscriptionDestination destination) {
+    return ofLinks(AlertsRuleEvaluator.getTaskMentions(task), destination);
   }
 
-  private Set<Recipient> resolveAnnouncementMentions(
-      Announcement announcement, SubscriptionDestination destination) {
-    return resolveAnnouncementMentions(announcement.getDescription(), destination);
+  private static Recipients inText(String text, SubscriptionDestination destination) {
+    return text == null
+        ? Recipients.none()
+        : ofLinks(MessageParser.getEntityLinks(text), destination);
   }
 
-  private Set<Recipient> resolveAnnouncementMentions(
-      String description, SubscriptionDestination destination) {
-    if (description == null) {
-      return Collections.emptySet();
-    }
-
-    return resolveEntityLinks(MessageParser.getEntityLinks(description), destination);
+  private static Recipients ofLinks(
+      List<MessageParser.EntityLink> links, SubscriptionDestination destination) {
+    return links.stream().map(link -> ofLink(link, destination)).collect(Recipients.combined());
   }
 
-  private Set<Recipient> resolveEntityLinks(
-      List<MessageParser.EntityLink> entityLinks, SubscriptionDestination destination) {
+  private static Recipients ofLink(
+      MessageParser.EntityLink link, SubscriptionDestination destination) {
+    String what = "mentioned " + link.getEntityType() + " " + link.getEntityFQN();
+    Lookup<Recipient> mentioned =
+        switch (typeOf(link.getEntityType())) {
+          case Entity.USER -> Lookup.of(
+              what,
+              () ->
+                  Recipient.fromUser(
+                      Entity.<User>getEntity(link, PRINCIPAL_FIELDS, Include.NON_DELETED),
+                      destination));
+          case Entity.TEAM -> Lookup.of(
+              what,
+              () ->
+                  Recipient.fromTeam(
+                      Entity.<Team>getEntity(link, PRINCIPAL_FIELDS, Include.NON_DELETED),
+                      destination));
+          default -> new Lookup.Absent<>();
+        };
+    return Recipients.from(mentioned, Recipients::of);
+  }
 
-    Set<Recipient> recipients = new HashSet<>();
+  private static String typeOf(String entityType) {
+    return entityType == null ? "" : entityType.toLowerCase(Locale.ROOT);
+  }
 
-    for (MessageParser.EntityLink link : entityLinks) {
-      try {
-        if (Entity.USER.equalsIgnoreCase(link.getEntityType())) {
-          User user = Entity.getEntity(link, "id,profile,email", Include.NON_DELETED);
-          if (user != null) {
-            addIfResolved(recipients, Recipient.fromUser(user, destination));
-          }
-        } else if (Entity.TEAM.equalsIgnoreCase(link.getEntityType())) {
-          Team team = Entity.getEntity(link, "id,profile,email", Include.NON_DELETED);
-          if (team != null) {
-            addIfResolved(recipients, Recipient.fromTeam(team, destination));
-          }
-        }
-      } catch (Exception e) {
-        RecipientLookups.reportUnlessAbsent(e);
-        LOG.warn("Failed to resolve entity link: {}", link.getEntityFQN(), e);
-      }
-    }
-
-    return recipients;
+  private static Recipients unsupported(String entityType) {
+    LOG.warn("Mentions asked for an entity that has none: {}", entityType);
+    return Recipients.none();
   }
 
   @Override

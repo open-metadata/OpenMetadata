@@ -71,6 +71,23 @@ class HealthAttributionTest {
   }
 
   @Test
+  void lookupFailureIsChargedToItsDestinationOnly() {
+    UUID followers = UUID.randomUUID();
+    TickHealth health = new TickHealth();
+    health.lookupFailed(owners, "team A: no answer");
+    health.delivered(owners, "alice");
+    health.delivered(followers, "bob");
+
+    Map<UUID, SubscriptionStatus> status = reported(health);
+
+    assertEquals(SubscriptionStatus.Status.FAILED, status.get(owners).getStatus());
+    assertEquals(
+        "Recipients could not be looked up: team A: no answer",
+        status.get(owners).getLastFailedReason());
+    assertEquals(SubscriptionStatus.Status.ACTIVE, status.get(followers).getStatus());
+  }
+
+  @Test
   void destinationWithNoTargetSaysNothing() {
     assertTrue(reported(new TickHealth()).isEmpty());
   }

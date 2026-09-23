@@ -98,77 +98,67 @@ public class RecipientResolver {
   }
 
   /**
-   * Resolves and deduplicates recipients across multiple destinations of the same type.
-   * Deduplication uses Recipient.equals() (email for EmailRecipient, endpoint for WebhookRecipient).
-   *
-   * @param event the change event triggering the notification
-   * @param destinations list of subscription destinations to resolve recipients for
-   * @return deduplicated set of resolved recipients
+   * The recipients of several destinations for one event, deduplicated, for callers that send to
+   * whoever could be found. A lookup that failed is logged and costs only what it could not find.
    */
   public Set<Recipient> resolveRecipients(
       ChangeEvent event, List<SubscriptionDestination> destinations) {
-
-    Set<Recipient> allRecipients = new HashSet<>();
-
-    for (SubscriptionDestination destination : destinations) {
-      Set<Recipient> recipients = resolveRecipientsForDestination(event, destination);
-      allRecipients.addAll(recipients);
-    }
-
-    return allRecipients;
+    Recipients reached =
+        destinations.stream()
+            .map(destination -> guarded(event, destination))
+            .collect(Recipients.combined());
+    reached
+        .failures()
+        .forEach(
+            failure ->
+                LOG.warn(
+                    "A recipient of event {} could not be looked up: {}", event.getId(), failure));
+    return new HashSet<>(reached.found());
   }
 
-  // For callers that send to whoever could be found: a lookup that fails reaches nobody.
-  private Set<Recipient> resolveRecipientsForDestination(
-      ChangeEvent event, SubscriptionDestination destination) {
-    Set<Recipient> recipients = Set.of();
+  // An unexpected error costs its own destination only.
+  private Recipients guarded(ChangeEvent event, SubscriptionDestination destination) {
+    Recipients reached;
     try {
-      recipients = recipientsOf(event, destination);
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to resolve recipients for event {}-{}",
-          event.getEntityType(),
-          event.getEntityId(),
-          e);
+      reached = recipientsOf(event, destination);
+    } catch (RuntimeException e) {
+      LOG.error("Recipients of destination {} could not be resolved", destination.getId(), e);
+      reached = Recipients.failed(String.valueOf(e.getMessage()));
     }
-    return recipients;
+    return reached;
   }
 
-  /**
-   * The recipients of one destination for one event. A lookup that fails is thrown, so the caller
-   * can tell a destination nobody could be looked up for from one that reaches nobody.
-   */
-  public Set<Recipient> recipientsOf(ChangeEvent event, SubscriptionDestination destination) {
-    Set<Recipient> recipients = new HashSet<>();
+  /** The recipients of one destination for one event, and the lookups that failed. */
+  public Recipients recipientsOf(ChangeEvent event, SubscriptionDestination destination) {
+    Recipients reached = Recipients.none();
     SubscriptionDestination.SubscriptionCategory category = destination.getCategory();
     RecipientResolutionStrategy strategy = STRATEGIES.get(category);
     if (strategy == null) {
       LOG.error("No strategy found for category {}", category);
     } else {
       SubscriptionAction action = extractActionConfig(destination);
-      recipients.addAll(strategy.resolve(event, action, destination));
-      recipients.addAll(downstreamRecipients(event, action, destination, strategy));
+      reached =
+          strategy
+              .resolve(event, action, destination)
+              .and(downstreamRecipients(event, action, destination, strategy));
     }
-    return recipients;
+    return reached;
   }
 
   // Only for internal categories: an external destination names its receivers itself.
-  private Set<Recipient> downstreamRecipients(
+  private Recipients downstreamRecipients(
       ChangeEvent event,
       SubscriptionAction action,
       SubscriptionDestination destination,
       RecipientResolutionStrategy strategy) {
-    Set<Recipient> recipients = Set.of();
     boolean wanted =
         Boolean.TRUE.equals(destination.getNotifyDownstream())
             && destination.getCategory() != SubscriptionDestination.SubscriptionCategory.EXTERNAL;
-    if (wanted) {
-      recipients =
-          new LineageBasedDownstreamHandler(LINEAGE_RESOLVERS, strategy)
-              .resolveDownstreamRecipients(
-                  action, destination, event, destination.getDownstreamDepth());
-    }
-    return recipients;
+    return wanted
+        ? new LineageBasedDownstreamHandler(LINEAGE_RESOLVERS, strategy)
+            .resolveDownstreamRecipients(
+                action, destination, event, destination.getDownstreamDepth())
+        : Recipients.none();
   }
 
   /**

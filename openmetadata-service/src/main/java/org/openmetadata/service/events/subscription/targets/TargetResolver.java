@@ -23,8 +23,7 @@ import java.util.function.BiFunction;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.notifications.recipients.RecipientLookups;
-import org.openmetadata.service.notifications.recipients.RecipientLookups.Collected;
+import org.openmetadata.service.notifications.recipients.Recipients;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 
 /**
@@ -38,12 +37,9 @@ public final class TargetResolver {
   /** @param failedLookups why a destination's recipients could not be looked up, by destination */
   public record Resolved(List<Target> targets, Map<UUID, String> failedLookups) {}
 
-  private final BiFunction<ChangeEvent, SubscriptionDestination, ? extends Iterable<Recipient>>
-      recipientsOf;
+  private final BiFunction<ChangeEvent, SubscriptionDestination, Recipients> recipientsOf;
 
-  public TargetResolver(
-      BiFunction<ChangeEvent, SubscriptionDestination, ? extends Iterable<Recipient>>
-          recipientsOf) {
+  public TargetResolver(BiFunction<ChangeEvent, SubscriptionDestination, Recipients> recipientsOf) {
     this.recipientsOf = recipientsOf;
   }
 
@@ -74,8 +70,7 @@ public final class TargetResolver {
       Map<Object, Target> targets,
       Map<UUID, String> failedLookups) {
     try {
-      Collected<? extends Iterable<Recipient>> looked =
-          RecipientLookups.collecting(() -> recipientsOf.apply(event, destination));
+      Recipients looked = recipientsOf.apply(event, destination);
       for (Recipient recipient : inAStableOrder(looked.found())) {
         Target known = targets.get(recipient.identity());
         if (known == null) {

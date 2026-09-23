@@ -14,13 +14,8 @@
 package org.openmetadata.service.notifications.recipients.strategy.impl;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.teams.User;
@@ -30,76 +25,55 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.notifications.recipients.RecipientLookups;
+import org.openmetadata.service.notifications.recipients.Lookup;
+import org.openmetadata.service.notifications.recipients.Recipients;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.strategy.RecipientResolutionStrategy;
 
 /**
- * Resolves system administrators.
- * This resolver queries for users with admin role and converts them to recipients
- * with appropriate contact information based on the notification type.
+ * Resolves system administrators: every user with the admin role, with the address the
+ * destination's channel uses.
  */
-@Slf4j
 public class AdminRecipientResolver implements RecipientResolutionStrategy {
+  private static final int PAGE_SIZE = 50;
 
   @Override
-  public Set<Recipient> resolve(
+  public Recipients resolve(
       ChangeEvent event, SubscriptionAction action, SubscriptionDestination destination) {
-    return resolveAdminRecipients(destination);
+    return admins(destination);
   }
 
   @Override
-  public Set<Recipient> resolve(
+  public Recipients resolve(
       UUID entityId,
       String entityType,
       SubscriptionAction action,
       SubscriptionDestination destination) {
-    return resolveAdminRecipients(destination);
+    return admins(destination);
   }
 
-  private Set<Recipient> resolveAdminRecipients(SubscriptionDestination destination) {
-    try {
-      List<User> adminUsers = queryAdminUsers();
-
-      if (adminUsers.isEmpty()) {
-        return Collections.emptySet();
-      }
-
-      return adminUsers.stream()
-          .map(user -> Recipient.fromUser(user, destination))
-          .filter(Objects::nonNull)
-          .collect(Collectors.toSet());
-
-    } catch (Exception e) {
-      RecipientLookups.reportUnlessAbsent(e);
-      LOG.error("Failed to resolve admin recipients", e);
-      return Collections.emptySet();
-    }
+  private static Recipients admins(SubscriptionDestination destination) {
+    return Recipients.from(
+        Lookup.of("the admins", AdminRecipientResolver::everyAdmin),
+        admins ->
+            admins.stream()
+                .map(admin -> Recipients.of(Recipient.fromUser(admin, destination)))
+                .collect(Recipients.combined()));
   }
 
-  private List<User> queryAdminUsers() {
-    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-    List<User> adminUsers = new ArrayList<>();
-    ListFilter listFilter = new ListFilter(Include.ALL);
-    listFilter.addQueryParam("isAdmin", "true");
+  private static List<User> everyAdmin() {
+    UserRepository users = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    ListFilter admins = new ListFilter(Include.ALL);
+    admins.addQueryParam("isAdmin", "true");
+    List<User> found = new ArrayList<>();
     String after = null;
-
-    try {
-      do {
-        ResultList<User> result =
-            userRepository.listAfter(
-                null, userRepository.getFields("email,profile"), listFilter, 50, after);
-
-        adminUsers.addAll(result.getData());
-
-        after = result.getPaging().getAfter();
-      } while (after != null);
-    } catch (Exception e) {
-      RecipientLookups.reportUnlessAbsent(e);
-      LOG.error("Failed to query admin users", e);
-    }
-
-    return adminUsers;
+    do {
+      ResultList<User> page =
+          users.listAfter(null, users.getFields("email,profile"), admins, PAGE_SIZE, after);
+      found.addAll(page.getData());
+      after = page.getPaging().getAfter();
+    } while (after != null);
+    return found;
   }
 
   @Override

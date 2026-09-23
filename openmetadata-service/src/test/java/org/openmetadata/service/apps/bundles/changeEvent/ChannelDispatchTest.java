@@ -47,6 +47,7 @@ import org.openmetadata.service.events.subscription.AlertingSettings.Sending;
 import org.openmetadata.service.events.subscription.channels.builtin.BuiltInChannels;
 import org.openmetadata.service.events.subscription.targets.TargetResolver;
 import org.openmetadata.service.notifications.EventContent;
+import org.openmetadata.service.notifications.recipients.Recipients;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 
@@ -76,7 +77,7 @@ class ChannelDispatchTest {
         new TargetResolver(
             (event, destination) -> {
               asked.add(destination);
-              return Set.of();
+              return Recipients.none();
             });
 
     Optional<EventPublisherException> failure =
@@ -214,6 +215,27 @@ class ChannelDispatchTest {
     }
   }
 
+  // A team that could not be read fails its destination; the people who were found still receive.
+  @Test
+  void lookupFailureFailsTheDestinationAndFoundRecipientsStillReceive() throws Exception {
+    Destination<ChangeEvent> owners = publisher(true);
+    Recipient alice = new EmailRecipient("alice@corp.com", "alice");
+    ChannelDispatch dispatch =
+        new ChannelDispatch(
+            List.of(owners),
+            new TargetResolver(
+                (event, destination) ->
+                    Recipients.of(alice).and(Recipients.failed("team A: no answer"))),
+            health);
+
+    Optional<EventPublisherException> failure = dispatch.send(EVENT, CONTENT);
+
+    verify(owners).sendTo(any(), eq(alice));
+    assertTrue(failure.isPresent());
+    assertEquals(SubscriptionStatus.Status.FAILED, statusOf(owners).getStatus());
+    assertTrue(statusOf(owners).getLastFailedReason().contains("team A: no answer"));
+  }
+
   private static Set<Recipient> people(int howMany) {
     Set<Recipient> people = new HashSet<>();
     for (int person = 0; person < howMany; person++) {
@@ -224,7 +246,9 @@ class ChannelDispatchTest {
 
   private ChannelDispatch dispatch(Set<Recipient> found, Destination<ChangeEvent> publisher) {
     return new ChannelDispatch(
-        List.of(publisher), new TargetResolver((event, destination) -> found), health);
+        List.of(publisher),
+        new TargetResolver((event, destination) -> Recipients.of(found)),
+        health);
   }
 
   private SubscriptionStatus statusOf(Destination<ChangeEvent> publisher) {
