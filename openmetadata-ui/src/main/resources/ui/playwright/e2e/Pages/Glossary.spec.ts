@@ -12,6 +12,7 @@
  */
 import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
+import { GLOSSARY_ROUTE } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
@@ -107,7 +108,6 @@ import {
   toggleGlossaryTermInPicker,
 } from '../../utils/glossaryPicker';
 import { TaskDetails, waitForTaskResolveResponse } from '../../utils/task';
-import { GLOSSARY_ROUTE } from '../../constant/sidebar';
 import { performUserLogin } from '../../utils/user';
 
 const user1 = new UserClass();

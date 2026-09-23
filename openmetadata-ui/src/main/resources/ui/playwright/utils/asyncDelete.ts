@@ -21,7 +21,7 @@ import {
 // Re-export WebSocket utilities for convenience
 export {
   cleanupWebSocketMock as clearMockedWebSocket,
-  setupWebSocketMock as setupMockedWebSocket,
+  setupWebSocketMock as setupMockedWebSocket
 };
 
 /**
