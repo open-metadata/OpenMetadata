@@ -179,6 +179,13 @@ EXPOSE 8080
 RUN pip uninstall upath -y && pip install "universal-pathlib==0.3.10"
 
 
+# Models are opt-in so the default image remains unchanged. Run this after the
+# package installs and before the spaCy cleanup below, while using the runtime user.
+ARG AUTO_CLASSIFICATION_LANGUAGES=""
+RUN if [ -n "$AUTO_CLASSIFICATION_LANGUAGES" ]; then \
+      metadata install-classification-models --languages "$AUTO_CLASSIFICATION_LANGUAGES"; \
+    fi
+
 # Strip spaCy's bundled test fixture, which scanners misreport as an installed black.
 # See ingestion/scripts/strip_spacy_test_fixture.sh for the rationale. Must run after the
 # final pip install, or a later install restores the fixture.
