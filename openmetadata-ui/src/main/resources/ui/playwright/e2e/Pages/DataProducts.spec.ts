@@ -125,6 +125,8 @@ test.describe('Data Products', () => {
   });
 
   test('Create Data Product and Manage Assets', async ({ page }) => {
+    // Add assets flow waits on the search API which can take >30s under CI load
+    test.slow();
     const dataProduct = new DataProduct([domain]);
     const table = new TableClass();
 
