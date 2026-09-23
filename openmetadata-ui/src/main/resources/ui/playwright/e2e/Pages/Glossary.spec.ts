@@ -1455,6 +1455,7 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossary(page, glossaryA.data.displayName);
       await initiateDelete(page);
       await page.goto('/glossary', { waitUntil: 'commit' });
+      await expectGlossaryVisible(page, glossaryC.data.displayName);
       await expectGlossaryNotVisible(page, glossaryA.data.displayName);
 
       // Delete B (fails via mocked WebSocket event)
@@ -1466,15 +1467,16 @@ test.describe('Glossary tests', () => {
       emitDeleteFailure(jobIdB, glossaryB.data.name);
       await refetch;
 
-      await page.goto('/glossary', { waitUntil: 'commit' });
+      // No navigation — the client already has the correct state after the refetch.
+      // A full reload would wipe the mock and fetch server state instead of testing
+      // that the UI correctly handled the failure event.
 
       // A deleted, B restored, C untouched
+      await expectGlossaryVisible(page, glossaryB.data.displayName);
+      await expectGlossaryVisible(page, glossaryC.data.displayName);
       await expect(
         page.getByRole('menuitem', { name: glossaryA.data.displayName })
       ).not.toBeVisible();
-
-      await expectGlossaryVisible(page, glossaryB.data.displayName);
-      await expectGlossaryVisible(page, glossaryC.data.displayName);
     } finally {
       clearMockedWebSocket();
       await glossaryB.delete(apiContext);
