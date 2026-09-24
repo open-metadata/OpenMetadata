@@ -17,7 +17,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.lang.reflect.Field;
+import java.net.URI;
 import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +34,7 @@ import org.openmetadata.schema.entity.events.FailedEvent;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -658,6 +662,46 @@ class AbstractEventConsumerTest {
     assertEquals(1, metrics.failedEvents());
     assertEquals(
         1, consumer.capturedFailures.size(), "handleFailedEvent invoked for the failing type");
+  }
+
+  // A destination nothing can be sent through never joins its channel: the others of that
+  // channel are still sent, wherever it stands among them.
+  @Test
+  void aDestinationWithNoPublisherCostsItsChannelNothing() throws Exception {
+    for (boolean unusableFirst : List.of(true, false)) {
+      RealPublishConsumer consumer = newRealConsumerWithMetrics();
+      Destination<ChangeEvent> unusable =
+          AlertFactory.getAlert(
+              eventSubscription,
+              new SubscriptionDestination()
+                  .withId(UUID.randomUUID())
+                  .withType(SubscriptionType.WEBHOOK)
+                  .withEnabled(true)
+                  .withConfig(
+                      new Webhook().withEndpoint(URI.create("ftp://saved-long-ago.example.com"))));
+      Destination<ChangeEvent> usable = mockDestination(SubscriptionType.WEBHOOK, false);
+      UUID unusableId = UUID.randomUUID();
+      UUID usableId = UUID.randomUUID();
+      Map<UUID, Destination<ChangeEvent>> destinations = new LinkedHashMap<>();
+      if (unusableFirst) {
+        destinations.put(unusableId, unusable);
+      }
+      destinations.put(usableId, usable);
+      destinations.putIfAbsent(unusableId, unusable);
+      consumer.destinationMap = destinations;
+      ChangeEvent event = createMockChangeEvent();
+      Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(unusableId, usableId));
+
+      try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class)) {
+        alertUtil
+            .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
+            .thenReturn(events);
+        consumer.publishEvents(events);
+      }
+
+      verify(usable).sendMessage(eq(event), any());
+      assertEquals(1, consumer.ledger.pending().delivered().size());
+    }
   }
 
   private Destination<ChangeEvent> mockDestination(SubscriptionType type) {

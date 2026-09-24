@@ -64,18 +64,16 @@ public class TeamRecipientResolver implements RecipientResolutionStrategy {
       return Collections.emptySet();
     }
 
-    SubscriptionDestination.SubscriptionType notificationType = destination.getType();
     return action.getReceivers().stream()
-        .map(teamName -> resolveTeamByName(teamName, notificationType))
+        .map(teamName -> resolveTeamByName(teamName, destination))
         .filter(Objects::nonNull)
         .collect(Collectors.toUnmodifiableSet());
   }
 
-  private Recipient resolveTeamByName(
-      String teamName, SubscriptionDestination.SubscriptionType notificationType) {
+  private Recipient resolveTeamByName(String teamName, SubscriptionDestination destination) {
     try {
       Team team = Entity.getEntityByName(Entity.TEAM, teamName, TEAM_FIELDS, Include.NON_DELETED);
-      return Recipient.fromTeam(team, notificationType);
+      return Recipient.fromTeam(team, destination);
     } catch (Exception e) {
       LOG.error("Failed to resolve team recipient for team {}", teamName, e);
       return null;
@@ -101,18 +99,16 @@ public class TeamRecipientResolver implements RecipientResolutionStrategy {
       return Collections.emptySet();
     }
 
-    SubscriptionDestination.SubscriptionType notificationType = destination.getType();
     return teamIds.stream()
-        .map(teamId -> resolveTeamById(teamId, notificationType))
+        .map(teamId -> resolveTeamById(teamId, destination))
         .filter(Objects::nonNull)
         .collect(Collectors.toUnmodifiableSet());
   }
 
-  private Recipient resolveTeamById(
-      UUID teamId, SubscriptionDestination.SubscriptionType notificationType) {
+  private Recipient resolveTeamById(UUID teamId, SubscriptionDestination destination) {
     try {
       Team team = Entity.getEntity(Entity.TEAM, teamId, TEAM_FIELDS, Include.NON_DELETED);
-      return Recipient.fromTeam(team, notificationType);
+      return Recipient.fromTeam(team, destination);
     } catch (Exception e) {
       LOG.error("Failed to resolve team recipient for team {}", teamId, e);
       return null;
