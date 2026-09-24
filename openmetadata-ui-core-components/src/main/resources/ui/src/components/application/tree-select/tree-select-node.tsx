@@ -28,6 +28,7 @@ export interface TreeSelectTreeItemContentProps<T> {
   multiple: boolean;
   disabled: boolean;
   hasChildItems: boolean;
+  maxIndentLevel?: number;
   onNodeClick: () => void;
 }
 
@@ -60,6 +61,7 @@ export const TreeSelectTreeItemContent = <T,>({
   multiple,
   disabled,
   hasChildItems,
+  maxIndentLevel = 2,
   onNodeClick,
 }: TreeSelectTreeItemContentProps<T>) => {
   const isSelectable = node.allowSelection !== false;
@@ -70,7 +72,7 @@ export const TreeSelectTreeItemContent = <T,>({
       className="tw:text-sm tw:font-normal tw:text-primary"
       hasChildItems={hasChildItems}
       indentPerLevel={28}
-      maxIndentLevel={2}>
+      maxIndentLevel={maxIndentLevel}>
       {() => (
         <div
           className={cx(

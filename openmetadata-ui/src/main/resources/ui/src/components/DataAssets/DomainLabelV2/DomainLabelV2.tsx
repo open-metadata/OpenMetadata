@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Tooltip, Typography } from 'antd';
+import { Card } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
 import {
   Dispatch,
-  lazy,
+  KeyboardEvent,
+  MouseEvent,
   SetStateAction,
   useCallback,
   useEffect,
@@ -24,20 +25,16 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
-import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   getAPIfromSource,
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
-import { renderDomainLink } from '../../../utils/DomainUtils';
-import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { DomainLabelProps } from '../../common/DomainLabel/DomainLabel.interface';
+import DomainSelect from '../../common/DomainSelect/DomainSelect';
+import DomainTags from '../../common/DomainTags/DomainTags';
 import {
   WidgetEditButton,
   WidgetPlusButton,
@@ -47,13 +44,22 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericCo
 import { AssetsUnion } from '../AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../DataAssetsHeader/DataAssetsHeader.interface';
 
-const DomainSelectableList = withSuspenseFallback(
-  lazy(
-    () =>
-      import('../../common/DomainSelectableList/DomainSelectableList.component')
-  ),
-  null
-);
+// Content key for a domain list, used to skip no-op state updates that would
+// otherwise remount the picker on every context re-render. Keyed on every
+// render-relevant field (not just identity) so refreshed metadata — a renamed
+// domain, a flipped `inherited`, a changed link — still updates the chip, while
+// unchanged data stays reference-stable. JSON encoding keeps it collision-safe.
+const domainsRefKey = (list: EntityReference[]): string =>
+  JSON.stringify(
+    list.map((d) => [
+      d.id,
+      d.fullyQualifiedName,
+      d.name,
+      d.displayName,
+      d.inherited,
+      d.href,
+    ])
+  );
 
 const resolveDomainsForPatch = (
   selectedDomain: EntityReference | EntityReference[]
@@ -171,53 +177,23 @@ export const DomainLabelV2 = <
   );
 
   useEffect(() => {
-    if (domains) {
-      if (Array.isArray(domains)) {
-        setActiveDomain(domains);
-      } else {
-        setActiveDomain([domains]);
-      }
+    let nextDomains: EntityReference[] = [];
+    if (Array.isArray(domains)) {
+      nextDomains = domains;
+    } else if (domains) {
+      nextDomains = [domains];
     }
+
+    // `data.domains` arrives as a fresh array reference on every context
+    // re-render (and is `[]`, which is truthy, when nothing is assigned).
+    // Setting state unconditionally would churn `activeDomain`'s identity on
+    // every render, remounting the DomainSelect subtree and collapsing an open
+    // picker. Only commit when the referenced domains actually changed; return
+    // the previous reference otherwise so React bails out of the update.
+    setActiveDomain((prev) =>
+      domainsRefKey(prev) === domainsRefKey(nextDomains) ? prev : nextDomains
+    );
   }, [domains]);
-
-  const domainLink = useMemo(() => {
-    if (!isEmpty(activeDomain)) {
-      return activeDomain.map((domain) => {
-        const inheritedIcon = domain?.inherited ? (
-          <Tooltip
-            title={t('label.inherited-entity', {
-              entity: domainLabel,
-            })}>
-            <InheritIcon className="inherit-icon cursor-pointer" width={14} />
-          </Tooltip>
-        ) : null;
-
-        return (
-          <div className="d-flex w-max-full items-center gap-1" key={domain.id}>
-            <Typography.Text className="self-center text-xs whitespace-nowrap">
-              <DomainIcon
-                className="d-flex"
-                color={DE_ACTIVE_COLOR}
-                height={16}
-                name="folder"
-                width={16}
-              />
-            </Typography.Text>
-            {renderDomainLink(
-              domain,
-              getEntityName(domain),
-              true,
-              'text-primary domain-link',
-              true
-            )}
-            {inheritedIcon && <div className="d-flex">{inheritedIcon}</div>}
-          </div>
-        );
-      });
-    }
-
-    return null;
-  }, [activeDomain, domainLabel]);
 
   // Named-flag derivation (Task 8 sweep): raw EditAll-only read, deleted-gated exactly as
   // before — identical mapping onto `canEditAll`.
@@ -229,39 +205,64 @@ export const DomainLabelV2 = <
     return props?.hasPermission ?? canEditAll;
   }, [canEditAll, props?.hasPermission]);
 
-  const selectableList = useMemo(() => {
+  const editor = useMemo(() => {
     if (!hasPermission) {
       return null;
     }
 
-    const actionButton = isEmpty(activeDomain) ? (
-      <WidgetPlusButton
-        data-testid="add-domain"
-        title={t('label.add-entity', {
-          entity: domainLabel,
-        })}
-        onClick={(e) => e.stopPropagation()}
-      />
-    ) : (
-      <WidgetEditButton
-        data-testid="edit-domain"
-        disabled={!hasPermission}
-        title={t('label.edit-entity', {
-          entity: domainLabel,
-        })}
-        onClick={(e) => e.stopPropagation()}
-      />
-    );
+    const renderTrigger = ({ toggle }: { toggle: () => void }) => {
+      const trigger = isEmpty(activeDomain) ? (
+        <WidgetPlusButton
+          data-testid="add-domain"
+          title={t('label.add-entity', { entity: domainLabel })}
+        />
+      ) : (
+        <WidgetEditButton
+          data-testid="edit-domain"
+          title={t('label.edit-entity', { entity: domainLabel })}
+        />
+      );
+
+      // Toggle on capture so the click drives the picker before the react-aria
+      // button's own press handling can swallow it or fire twice (which opened
+      // then immediately re-closed the popover). Mirrors DomainSelectableList.
+      // Keyboard is handled explicitly: react-aria's usePress preventDefaults
+      // Enter/Space and never dispatches a bubbling click, so the capture-phase
+      // click handler alone would leave the picker unreachable by keyboard.
+      return (
+        <span
+          role="presentation"
+          onClickCapture={(e: MouseEvent<HTMLSpanElement>) => {
+            e.stopPropagation();
+            toggle();
+          }}
+          onKeyDownCapture={(e: KeyboardEvent<HTMLSpanElement>) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              e.stopPropagation();
+              toggle();
+            }
+          }}>
+          {trigger}
+        </span>
+      );
+    };
 
     return (
-      <DomainSelectableList
-        hasPermission={Boolean(hasPermission)}
+      <DomainSelect
+        hasPermission
+        data-testid="domain-selectable-tree"
         isClearable={props.isClearable}
         multiple={props.multiple}
+        renderTrigger={renderTrigger}
         selectedDomain={activeDomain}
-        onUpdate={handleDomainSave}>
-        {actionButton}
-      </DomainSelectableList>
+        triggerVariant="button"
+        onUpdate={
+          handleDomainSave as (
+            domain: EntityReference | EntityReference[] | undefined
+          ) => Promise<void>
+        }
+      />
     );
   }, [
     hasPermission,
@@ -270,20 +271,19 @@ export const DomainLabelV2 = <
     props.isClearable,
     props.multiple,
     domainLabel,
+    t,
   ]);
 
   const label = useMemo(() => {
+    const chips = <DomainTags domains={activeDomain} />;
+
     if (props.showDomainHeading) {
       return (
         <WidgetCard
-          headerExtra={selectableList}
+          headerExtra={editor}
           isExpandDisabled={isEmpty(activeDomain)}
           title={domainLabel}>
-          {domainLink && (
-            <div className="d-flex items-center gap-1 flex-wrap">
-              {domainLink}
-            </div>
-          )}
+          {!isEmpty(activeDomain) && chips}
         </WidgetCard>
       );
     }
@@ -292,18 +292,11 @@ export const DomainLabelV2 = <
       <Card
         className="d-flex items-center gap-1 flex-wrap"
         data-testid="header-domain-container">
-        {domainLink}
-        {selectableList}
+        {chips}
+        {editor}
       </Card>
     );
-  }, [
-    activeDomain,
-    hasPermission,
-    selectableList,
-    domainLink,
-    domainLabel,
-    props.showDomainHeading,
-  ]);
+  }, [activeDomain, editor, domainLabel, props.showDomainHeading]);
 
   return label;
 };
