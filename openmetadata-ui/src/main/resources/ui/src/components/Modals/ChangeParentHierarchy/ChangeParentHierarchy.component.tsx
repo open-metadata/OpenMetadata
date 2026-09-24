@@ -55,7 +55,6 @@ const ParentPicker = ({
   onChange?: (value?: string) => void;
 }) => (
   <GlossaryTermPicker
-    // A glossary is a valid parent: picking one promotes the term to its root.
     selectGlossaries
     data-testid="change-parent-select"
     // A term cannot be moved under itself.
