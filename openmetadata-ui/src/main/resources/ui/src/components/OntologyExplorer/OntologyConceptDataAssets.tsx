@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, ButtonUtility } from '@openmetadata/ui-core-components';
-import { XClose } from '@untitledui/icons';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useCallback, useEffect, useRef, useState } from 'react';

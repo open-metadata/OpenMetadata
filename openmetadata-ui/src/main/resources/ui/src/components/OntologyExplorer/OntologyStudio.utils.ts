@@ -363,45 +363,24 @@ function resolvePrimaryParent(
     })[0];
 }
 
-function buildDepthResolver(
-  parentMap: Map<string, Set<string>>,
-  nodeById: Map<string, OntologyNode>
-) {
-  const depthCache = new Map<string, number>();
+// The tree never indents past this, however deep the hierarchy.
+const MAX_TREE_DEPTH = 16;
 
-  const resolveDepth = (nodeId: string, path = new Set<string>()): number => {
-    const cached = depthCache.get(nodeId);
-    if (cached !== undefined) {
-      return cached;
-    }
-    if (path.has(nodeId) || path.size >= 16) {
-      return 0;
-    }
-    const nextPath = new Set(path).add(nodeId);
-    const primaryParent = resolvePrimaryParent(nodeId, parentMap, nodeById);
-    const depth = primaryParent
-      ? Math.min(16, resolveDepth(primaryParent, nextPath) + 1)
-      : 0;
-    depthCache.set(nodeId, depth);
+type UnplacedTreeRow = Omit<OntologyTreeRow, 'depth'>;
 
-    return depth;
-  };
+const compareByLabel = (left: UnplacedTreeRow, right: UnplacedTreeRow) =>
+  left.node.label.localeCompare(right.node.label);
 
-  return resolveDepth;
-}
-
-const compareRows = (left: OntologyTreeRow, right: OntologyTreeRow) =>
-  left.depth - right.depth || left.node.label.localeCompare(right.node.label);
-
-// Depth-first, so each row is followed by its own subtree. A row whose primary
-// parent is in another glossary starts a subtree of its own.
+// Depth-first, so each row is followed by its own subtree. Depth counts
+// ancestors inside the glossary, so a row whose primary parent is in another
+// glossary starts a subtree of its own at the root.
 function orderAsTree(
-  rows: OntologyTreeRow[],
+  rows: UnplacedTreeRow[],
   primaryParentOf: (nodeId: string) => string | undefined
 ): OntologyTreeRow[] {
   const rowIds = new Set(rows.map((row) => row.node.id));
-  const childrenOf = new Map<string, OntologyTreeRow[]>();
-  const roots: OntologyTreeRow[] = [];
+  const childrenOf = new Map<string, UnplacedTreeRow[]>();
+  const roots: UnplacedTreeRow[] = [];
   rows.forEach((row) => {
     const parentId = primaryParentOf(row.node.id);
     if (!parentId || !rowIds.has(parentId)) {
@@ -418,20 +397,23 @@ function orderAsTree(
   });
   const ordered: OntologyTreeRow[] = [];
   const visited = new Set<string>();
-  const visit = (row: OntologyTreeRow) => {
+  const visit = (row: UnplacedTreeRow, depth: number) => {
     if (visited.has(row.node.id)) {
       return;
     }
     visited.add(row.node.id);
-    ordered.push(row);
-    childrenOf.get(row.node.id)?.sort(compareRows).forEach(visit);
+    ordered.push({ ...row, depth: Math.min(MAX_TREE_DEPTH, depth) });
+    childrenOf
+      .get(row.node.id)
+      ?.sort(compareByLabel)
+      .forEach((child) => visit(child, depth + 1));
   };
-  roots.sort(compareRows).forEach(visit);
+  roots.sort(compareByLabel).forEach((root) => visit(root, 0));
   // Rows on a parent cycle never hang from a root; keep them visible.
   rows
     .filter((row) => !visited.has(row.node.id))
-    .sort(compareRows)
-    .forEach(visit);
+    .sort(compareByLabel)
+    .forEach((row) => visit(row, 0));
 
   return ordered;
 }
@@ -458,21 +440,19 @@ export function buildOntologyTreeGroups(
     }
   });
   const parentMap = buildParentMap(graphData, termIds, relationTypes);
-  const resolveDepth = buildDepthResolver(parentMap, nodeById);
   const glossaryNameById = new Map(
     glossaries.map((glossary) => [
       glossary.id,
       glossary.displayName || glossary.name,
     ])
   );
-  const groups = new Map<string, OntologyTreeRow[]>();
+  const groups = new Map<string, UnplacedTreeRow[]>();
 
   terms.forEach((term) => {
     const glossaryId = term.glossaryId ?? term.group ?? '';
     const rows = groups.get(glossaryId) ?? [];
     const relationCount = relationCounts.get(term.id) ?? 0;
     rows.push({
-      depth: resolveDepth(term.id),
       isIsolated: relationCount === 0,
       node: term,
       parentCount: parentMap.get(term.id)?.size ?? 0,

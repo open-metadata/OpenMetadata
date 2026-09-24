@@ -96,6 +96,13 @@ const GRAPH: OntologyGraphData = {
   ],
 };
 
+const parentOf = (from: string, to: string) => ({
+  from,
+  to,
+  label: 'Parent of',
+  relationType: 'parentOf',
+});
+
 describe('OntologyStudio utils', () => {
   it('resolves a human label without allowing an entity UUID to win', () => {
     const id = '002e5485-0c59-45cc-912e-15fbc7e350bf';
@@ -221,12 +228,6 @@ describe('OntologyStudio utils', () => {
       type: 'glossaryTerm',
       glossaryId: 'g1',
     });
-    const parentOf = (from: string, to: string) => ({
-      from,
-      to,
-      label: 'Parent of',
-      relationType: 'parentOf',
-    });
     const [group] = buildOntologyTreeGroups(
       {
         nodes: [
@@ -251,6 +252,38 @@ describe('OntologyStudio utils', () => {
       ['Churn', 1],
       ['Voluntary Churn', 2],
       ['Churn Rate', 1],
+    ]);
+  });
+
+  it('starts a term whose parent is in another glossary at the root of its own glossary', () => {
+    const term = (id: string, label: string, glossaryId: string) => ({
+      id,
+      label,
+      type: 'glossaryTerm',
+      glossaryId,
+    });
+    const groups = buildOntologyTreeGroups(
+      {
+        nodes: [
+          term('revenue', 'Revenue', 'g1'),
+          term('policy', 'Revenue Policy', 'g2'),
+          term('rule', 'Recognition Rule', 'g2'),
+        ],
+        edges: [parentOf('revenue', 'policy'), parentOf('policy', 'rule')],
+      },
+      { ...FILTERS, glossaryIds: ['g1', 'g2'] },
+      GLOSSARIES,
+      RELATION_TYPES
+    );
+    const rowsOf = (glossaryName: string) =>
+      groups
+        .find((group) => group.glossaryName === glossaryName)
+        ?.rows.map((row) => [row.node.label, row.depth]);
+
+    expect(rowsOf('Finance')).toEqual([['Revenue', 0]]);
+    expect(rowsOf('Compliance')).toEqual([
+      ['Revenue Policy', 0],
+      ['Recognition Rule', 1],
     ]);
   });
 

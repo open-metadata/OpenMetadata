@@ -12,7 +12,7 @@
  */
 
 import { Badge, Button, Input } from '@openmetadata/ui-core-components';
-import { Edit03, SearchMd } from '@untitledui/icons';
+import { Edit, Search } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
@@ -62,7 +62,7 @@ interface InspectorRelation {
 
 const EXTERNAL_SCHEME_SUGGESTIONS = ['schema', 'wikidata', 'fibo', 'snomed'];
 const SearchInputIcon = ({ className }: { className?: string }) => (
-  <SearchMd aria-hidden="true" className={className} />
+  <Search aria-hidden="true" className={className} />
 );
 
 function toConceptSlug(label: string): string {
@@ -513,7 +513,7 @@ const OntologyAuthoringInspector = ({
           )}
           color="tertiary"
           data-testid="ontology-concept-edit"
-          iconLeading={Edit03}
+          iconLeading={Edit}
           onClick={onRequestEdit}>
           {t('label.edit')}
         </Button>
