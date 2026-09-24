@@ -47,6 +47,11 @@ import {
   uuid,
 } from './common';
 import { addOwner, waitForAllLoadersToDisappear } from './entity';
+import {
+  applyGlossaryPicker,
+  openGlossaryPicker,
+  toggleGlossaryTermInPicker,
+} from './glossaryPicker';
 import { sidebarClick } from './sidebar';
 
 const waitForSearchDebounce = async (page: Page) => {
@@ -259,13 +264,10 @@ export const assignDomainWidget = async (
       response.url().includes('/api/v1/search/query') &&
       response.url().includes(encodeURIComponent(domain.name))
   );
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domain.name);
+  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
   await searchDomain;
 
-  const domainTag = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
+  const domainTag = page.getByTestId(`tree-node-${domain.fullyQualifiedName}`);
   await domainTag.waitFor({ state: 'visible' });
 
   if (multiSelect) {
@@ -273,7 +275,7 @@ export const assignDomainWidget = async (
     const patchReq = page.waitForResponse(
       (req) => req.request().method() === 'PATCH'
     );
-    await page.getByTestId('saveAssociatedTag').click();
+    await page.getByTestId('update-btn').click();
     await patchReq;
   } else {
     const patchReq = page.waitForResponse(
@@ -286,7 +288,7 @@ export const assignDomainWidget = async (
   await waitForAllLoadersToDisappear(page);
 
   await expect(
-    page.getByTestId('domain-link').filter({ hasText: domain.displayName })
+    page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
   ).toBeVisible();
 };
 
@@ -298,30 +300,26 @@ export const removeDomainWidget = async (
   await openWidgetEditor(page, 'add-domain', 'edit-domain', true);
   await waitForAllLoadersToDisappear(page);
 
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .clear();
+  await page.getByTestId('domain-selectable-tree-search').clear();
 
   const searchDomain = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       response.url().includes(encodeURIComponent(domain.name))
   );
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domain.name);
+  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
   await searchDomain;
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
-  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
+  await page.getByTestId(`tree-node-${domain.fullyQualifiedName}`).click();
   await patchReq;
   await waitForAllLoadersToDisappear(page);
 
-  await expect(page.getByTestId('domain-link')).not.toBeVisible();
+  await expect(
+    page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
+  ).not.toBeVisible();
 };
 
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
@@ -996,9 +994,19 @@ export const addAssetsToDataProduct = async (
 
   await expect(page.getByTestId('empty-placeholder')).toBeVisible();
 
-  const assetRes = page.waitForResponse('/api/v1/search/query?q=&index=all&*');
+  // Must match size=25 specifically: the drawer also fires a size=0 count query
+  // that matches a broader string pattern and can take 50+ s under load.
+  const assetRes = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('q=&') &&
+      response.url().includes('index=all') &&
+      response.url().includes('size=25')
+  );
   await page.getByTestId('data-product-details-add-button').click();
   await assetRes;
+
+  await expect(page.getByTestId('searchbar')).toBeVisible();
 
   for (const asset of assets) {
     const name = get(asset, 'entityResponseData.name') as string | undefined;
@@ -1013,7 +1021,11 @@ export const addAssetsToDataProduct = async (
     }
 
     const searchRes = page.waitForResponse(
-      `/api/v1/search/query?q=${name}&index=all&from=0&size=25&*`
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(`q=${name}`) &&
+        response.url().includes('index=all') &&
+        response.url().includes('size=25')
     );
     await page.getByTestId('searchbar').fill(name);
     await searchRes;
@@ -1246,51 +1258,43 @@ export const addTagsAndGlossaryToDomain = async (
   {
     tagFqn,
     glossaryTermFqn,
+    glossaryTermName,
     isDomain = true,
   }: {
     tagFqn: string;
     glossaryTermFqn: string;
+    // From the term, never split out of the FQN: a name can contain dots.
+    glossaryTermName: string;
     isDomain?: boolean;
   }
 ) => {
-  const addTagOrTerm = async (
-    containerType: 'tags' | 'glossary',
-    value: string
-  ) => {
-    const container = `[data-testid="${containerType}-container"]`;
+  const patchUrl = (response: import('@playwright/test').Response) =>
+    response
+      .url()
+      .includes(`/api/v1/${isDomain ? 'domains' : 'dataProducts'}/`) &&
+    response.request().method() === 'PATCH';
 
-    // Click add button
-    await page.locator(`${container} [data-testid="add-tag"]`).click();
+  // Add classification tag (still uses the old tag-select form)
+  const tagsContainer = '[data-testid="tags-container"]';
+  await page.locator(`${tagsContainer} [data-testid="add-tag"]`).click();
+  const tagInput = page.locator(`${tagsContainer} #tagsForm_tags`);
+  await tagInput.click();
+  await tagInput.fill(tagFqn);
+  await page.getByTestId(`tag-${tagFqn}`).click();
+  const tagPatchResponse = page.waitForResponse(patchUrl);
+  await page.getByTestId('saveAssociatedTag').click();
+  await tagPatchResponse;
 
-    // Fill and select tag/term
-    const input = page.locator(`${container} #tagsForm_tags`);
-    await input.click();
-    await input.fill(value);
-    const tag = page.getByTestId(`tag-${value}`);
-    if (containerType === 'glossary') {
-      // To avoid clicking on white space between checkbox and text
-      await tag.locator('.ant-select-tree-checkbox').click();
-    } else {
-      await tag.click();
-    }
-
-    // Save and wait for response
-    const updateResponse = page.waitForResponse(
-      (response) =>
-        response
-          .url()
-          .includes(`/api/v1/${isDomain ? 'domains' : 'dataProducts'}/`) &&
-        response.request().method() === 'PATCH'
-    );
-    await page.getByTestId('saveAssociatedTag').click();
-    await updateResponse;
-  };
-
-  // Add tag
-  await addTagOrTerm('tags', tagFqn);
-
-  // Add glossary term
-  await addTagOrTerm('glossary', glossaryTermFqn);
+  // Add glossary term (uses the new GlossaryTermPicker)
+  await openGlossaryPicker(
+    page,
+    page.locator('[data-testid="glossary-container"] [data-testid="add-tag"]')
+  );
+  await toggleGlossaryTermInPicker(page, {
+    name: glossaryTermName,
+    fullyQualifiedName: glossaryTermFqn,
+  });
+  await applyGlossaryPicker(page, patchUrl);
 };
 
 /**
@@ -2079,21 +2083,17 @@ export const selectDomainFromNavbar = async (
   domain: Domain['responseData']
 ) => {
   const domainDropdown = page.getByTestId('domain-dropdown');
-  const domainTree = page.getByTestId('domain-selectable-tree');
+  const domainSearch = page.getByTestId('domain-dropdown-search');
   const searchTerm = domain.displayName ?? domain.name;
 
   await domainDropdown.click();
-  await page
-    .getByTestId('domain-selectable-tree')
-    .waitFor({ state: 'visible' });
+  await domainSearch.waitFor({ state: 'visible' });
 
-  await domainTree.getByTestId('searchbar').waitFor({ state: 'visible' });
-
-  await domainTree.getByTestId('searchbar').click();
+  await domainSearch.click();
   await page.keyboard.press('Control+a');
-  await domainTree.getByTestId('searchbar').pressSequentially(searchTerm);
+  await domainSearch.pressSequentially(searchTerm);
 
-  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
+  await page.getByTestId(`tree-node-${domain.fullyQualifiedName}`).click();
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -2238,7 +2238,9 @@ export const openDataProductDrawer = async (page: Page, domain: Domain) => {
 
   await page.getByTestId('name').locator('input').fill(`test-dp-${Date.now()}`);
 
-  const descriptionEditor = page.locator('[contenteditable="true"]').first();
+  const descriptionEditor = page
+    .locator('.add-domain-form-description')
+    .locator('[contenteditable="true"]');
   await descriptionEditor.waitFor({ state: 'visible', timeout: 10000 });
   await descriptionEditor.click();
   await page.keyboard.type('Test data product description');
@@ -2258,6 +2260,11 @@ export const openDataProductDrawer = async (page: Page, domain: Domain) => {
   const domainOption = page.getByText(domain.data.displayName);
   await domainOption.waitFor({ state: 'visible', timeout: 5000 });
   await domainOption.click();
+
+  // Wait for the DomainSelectableList Popover overlay to close before returning.
+  await page
+    .locator('.domain-select-popover')
+    .waitFor({ state: 'hidden', timeout: 5000 });
 };
 
 const parseRequestBody = (postData: string | null | undefined) => {

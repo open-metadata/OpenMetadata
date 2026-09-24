@@ -10,39 +10,33 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Tooltip, Typography } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
-import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
-
 import { EntityReference } from '../../../generated/entity/type';
 import { useAuth } from '../../../hooks/authHooks';
 import {
   getAPIfromSource,
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
-import { renderDomainLink } from '../../../utils/DomainUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import DomainSelectableListNew from '../DomainSelectableList/DomainSelectableListNew.component';
+import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
+import DomainTags from '../DomainTags/DomainTags';
 import { DomainLabelProps } from './DomainLabel.interface';
 
 export const DomainLabelNew = ({
   afterDomainUpdateAction,
   hasPermission,
   domains,
-  domainDisplayName,
   entityType,
   entityFqn,
   entityId,
-  textClassName,
-  showDomainHeading = false,
   multiple = false,
   onUpdate,
   userData,
@@ -50,7 +44,6 @@ export const DomainLabelNew = ({
   const { t } = useTranslation();
   const [activeDomain, setActiveDomain] = useState<EntityReference[]>([]);
   const isAdminUser = useAuth();
-  const [showAll, setShowAll] = useState<boolean>(false);
 
   const handleDomainSave = useCallback(
     async (selectedDomain: EntityReference | EntityReference[]) => {
@@ -100,90 +93,20 @@ export const DomainLabelNew = ({
     }
   }, [domains]);
 
-  const domainLink = useMemo(() => {
-    if (
-      activeDomain &&
-      Array.isArray(activeDomain) &&
-      activeDomain.length > 0
-    ) {
-      const displayDomains = showAll ? activeDomain : activeDomain.slice(0, 5);
-      const remainingCount = activeDomain.length - 5;
-
-      return (
-        <div className="d-flex flex-col gap-1 items-start">
-          <div className="d-flex gap-1 flex-wrap flex-col">
-            {displayDomains.map((domain) => {
-              const inheritedIcon = domain?.inherited ? (
-                <Tooltip
-                  title={t('label.inherited-entity', {
-                    entity: t('label.domain-plural'),
-                  })}>
-                  <span className="inherit-icon-container d-flex items-center flex-center">
-                    <InheritIcon className="inherit-icon" height={8} />
-                  </span>
-                </Tooltip>
-              ) : null;
-
-              return (
-                <div className="d-flex gap-1" key={domain.id}>
-                  {renderDomainLink(
-                    domain,
-                    domainDisplayName,
-                    showDomainHeading,
-                    'chip-tag-link',
-                    true
-                  )}
-                  {inheritedIcon && (
-                    <div className="d-flex">{inheritedIcon}</div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          {remainingCount > 0 && (
-            <Typography.Text
-              className="text-primary text-xs cursor-pointer"
-              data-testid="show-all-domains"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowAll(!showAll);
-              }}>
-              {showAll ? t('label.show-less') : `+${remainingCount} more`}
-            </Typography.Text>
-          )}
-        </div>
-      );
-    } else {
-      return (
-        <Typography.Text
-          className={classNames('text-sm no-data-chip-placeholder')}
-          data-testid="no-domain-text">
-          {t('label.no-entity', { entity: t('label.domain-plural') })}
-        </Typography.Text>
-      );
-    }
-  }, [
-    activeDomain,
-    domainDisplayName,
-    showDomainHeading,
-    textClassName,
-    showAll,
-  ]);
-
   const label = useMemo(() => {
     return (
       <div
         className="d-flex flex-col items-start gap-1 flex-wrap justify-center"
         data-testid="header-domain-container">
-        {domainLink}
+        <DomainTags domains={activeDomain} />
       </div>
     );
-  }, [domainLink]);
+  }, [activeDomain]);
 
   const selectableList = useMemo(() => {
     return (
       hasPermission && (
-        <DomainSelectableListNew
+        <DomainSelectableList
           hasPermission={Boolean(isAdminUser) && !userData?.deleted}
           multiple={multiple}
           selectedDomain={activeDomain}
@@ -191,7 +114,8 @@ export const DomainLabelNew = ({
         />
       )
     );
-  }, [hasPermission, activeDomain, handleDomainSave]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasPermission, activeDomain, handleDomainSave, isAdminUser, userData]);
 
   return (
     <div className="d-flex flex-col mb-4 w-full p-[20px] user-profile-card">
@@ -201,22 +125,15 @@ export const DomainLabelNew = ({
         </div>
 
         <div className="d-flex justify-between w-full">
-          <Typography.Text className="text-sm font-medium p-l-xss">
+          <Typography className="text-sm font-medium p-l-xss">
             {t('label.domain-plural')}
-          </Typography.Text>
+          </Typography>
           {selectableList}
         </div>
       </div>
       <div className="user-profile-card-body d-flex justify-start gap-2">
         <div className="user-page-icon d-flex-center">
-          <Divider
-            style={{
-              height: '100%',
-              width: '1px',
-              background: '#D9D9D9',
-            }}
-            type="vertical"
-          />
+          <Divider className="tw:h-full" orientation="vertical" />
         </div>
         {label}
       </div>

@@ -149,21 +149,78 @@ export const getToken = async (page: Page) => {
   return await getTokenFromStorage(page);
 };
 
+// Transport-layer failures where the connection died without the client
+// receiving a response. These strings do NOT reliably distinguish
+// "request never reached the server" from "server processed it and then the
+// connection dropped before the response landed" -- ECONNRESET/socket hang up
+// can be either. Retrying is therefore only safe for idempotent methods
+// (GET/HEAD/PUT); repeating a POST/PATCH/DELETE risks a duplicate write, a
+// second application of an array patch, or a spurious 404 on cleanup.
+const UNSENT_REQUEST_ERROR =
+  /socket hang up|ECONNRESET|EPIPE|socket disconnected|other side closed/i;
+
+// Idempotent methods only. POST/PATCH/DELETE deliberately excluded -- see the
+// comment on UNSENT_REQUEST_ERROR above. A POST fixture-setup call that hits
+// this race should be wrapped explicitly (e.g. via createOrFetch, which has
+// 409 recovery) rather than silently double-fired.
+const RETRIABLE_METHODS = new Set(['get', 'head', 'put']);
+
+/**
+ * Re-sends an idempotent request that died with the connection rather than
+ * with a response.
+ *
+ * `conf/openmetadata.yaml` closes idle connections after `SERVER_IDLE_TIMEOUT`
+ * (60s), while this context asks for `Connection: keep-alive`. A request handed
+ * to a connection the server is closing in the same instant loses that race and
+ * surfaces as `apiRequestContext.get: socket hang up`. Retrying once on a fresh
+ * connection is the only fix available on this side, and only safe for methods
+ * where a duplicate application is a no-op.
+ */
+const retryUnsentRequests = (context: APIRequestContext): APIRequestContext =>
+  new Proxy(context, {
+    get(target, property) {
+      // Read against the target, not the proxy: a getter that used `this`
+      // would otherwise re-enter this trap.
+      const value = Reflect.get(target, property);
+
+      if (typeof value !== 'function') {
+        return value;
+      }
+      if (!RETRIABLE_METHODS.has(String(property))) {
+        return value.bind(target);
+      }
+
+      return async (...args: unknown[]) => {
+        try {
+          return await value.apply(target, args);
+        } catch (error) {
+          if (!UNSENT_REQUEST_ERROR.test(String(error))) {
+            throw error;
+          }
+
+          return await value.apply(target, args);
+        }
+      };
+    },
+  });
+
 export const getAuthContext = async (token: string) => {
   const isH2Mode = process.env.PW_PROTOCOL === 'h2';
 
-  return await request.newContext({
-    baseURL:
-      process.env.PLAYWRIGHT_TEST_BASE_URL ??
-      (isH2Mode ? 'https://localhost:8585' : 'http://localhost:8585'),
-    // Default timeout is 30s making it to 1m for AUTs
-    timeout: 90000,
-    ignoreHTTPSErrors: isH2Mode,
-    extraHTTPHeaders: {
-      ...(isH2Mode ? {} : { Connection: 'keep-alive' }),
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  return retryUnsentRequests(
+    await request.newContext({
+      baseURL:
+        process.env.PLAYWRIGHT_TEST_BASE_URL ??
+        (isH2Mode ? 'https://localhost:8585' : 'http://localhost:8585'),
+      // Default timeout is 30s making it to 1m for AUTs
+      timeout: 90000,
+      ignoreHTTPSErrors: isH2Mode,
+      extraHTTPHeaders: {
+        ...(isH2Mode ? {} : { Connection: 'keep-alive' }),
+        Authorization: `Bearer ${token}`,
+      },
+    })
+  );
 };
 
 const DISABLE_ETAG_CONDITIONAL_READS_KEY = 'OM_DISABLE_ETAG_CONDITIONAL_READS';
@@ -588,15 +645,14 @@ export const assignDomain = async (
       response.url().includes(encodeURIComponent(domain.name))
   );
 
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domain.name);
+  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
 
   await searchDomain;
 
   // Wait for the tag element to be visible and ensure page is still valid
-  const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
+  const tagSelector = page.getByTestId(
+    `tree-node-${domain.fullyQualifiedName}`
+  );
   await tagSelector.waitFor({ state: 'visible' });
   await tagSelector.click();
 
@@ -604,23 +660,20 @@ export const assignDomain = async (
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('saveAssociatedTag')
-    .click();
+  await page.getByTestId('update-btn').click();
   await patchReq;
   await waitForAllLoadersToDisappear(page);
 
   if (checkSelectedDomain) {
     const hasMultipleDomains = await page
-      .getByTestId('domain-count-button')
+      .getByTestId('show-all-domains')
       .isVisible();
     if (hasMultipleDomains) {
-      await expect(page.getByTestId('domain-count-button')).toBeVisible();
+      await expect(page.getByTestId('show-all-domains')).toBeVisible();
     } else {
-      await expect(page.getByTestId('domain-link')).toContainText(
-        domain.displayName
-      );
+      await expect(
+        page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
+      ).toContainText(domain.displayName);
     }
   }
 };
@@ -638,15 +691,14 @@ export const assignSingleSelectDomain = async (
       response.url().includes(encodeURIComponent(domain.name))
   );
 
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domain.name);
+  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
 
   await searchDomain;
 
   // Wait for the tag element to be visible and ensure page is still valid
-  const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
+  const tagSelector = page.getByTestId(
+    `tree-node-${domain.fullyQualifiedName}`
+  );
   await tagSelector.waitFor({ state: 'visible' });
 
   const patchReq = page.waitForResponse(
@@ -658,9 +710,15 @@ export const assignSingleSelectDomain = async (
   await patchReq;
   await waitForAllLoadersToDisappear(page);
 
-  await expect(page.getByTestId('domain-link')).toContainText(
-    domain.displayName
-  );
+  // Selecting commits and closes the picker; wait for it to fully detach so a
+  // subsequent reopen (e.g. removeSingleSelectDomain) does not race the close.
+  await page
+    .getByTestId('domain-selectable-tree-search')
+    .waitFor({ state: 'detached' });
+
+  await expect(
+    page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
+  ).toContainText(domain.displayName);
 };
 
 export const updateDomain = async (
@@ -670,41 +728,34 @@ export const updateDomain = async (
   await page.getByTestId('add-domain').click();
   await waitForAllLoadersToDisappear(page);
 
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .clear();
+  await page.getByTestId('domain-selectable-tree-search').clear();
 
   const searchDomain = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       response.url().includes(encodeURIComponent(domain.name))
   );
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domain.name);
+  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
   await searchDomain;
 
-  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
+  await page.getByTestId(`tree-node-${domain.fullyQualifiedName}`).click();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('saveAssociatedTag')
-    .click();
+  await page.getByTestId('update-btn').click();
   await patchReq;
   await waitForAllLoadersToDisappear(page);
 
-  await expect(page.getByTestId('header-domain-container')).toContainText('+1');
-
-  await page.getByTestId('header-domain-container').getByText('+1').hover();
+  // The header layout shows one chip plus a "+ N More" toggle; expanding it
+  // reveals the newly added domain chip inline.
+  const showMore = page.getByTestId('show-all-domains');
+  await expect(showMore).toBeVisible();
+  await showMore.click();
 
   await expect(
-    page.getByRole('menuitem', { name: domain.displayName })
+    page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
   ).toBeVisible();
 };
 
@@ -721,13 +772,12 @@ export const removeDomain = async (
       response.url().includes('/api/v1/search/query') &&
       response.url().includes(encodeURIComponent(domain.name))
   );
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domain.name);
+  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
   await searchDomain;
 
-  const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
+  const tagSelector = page.getByTestId(
+    `tree-node-${domain.fullyQualifiedName}`
+  );
   await tagSelector.waitFor({ state: 'visible' });
   await tagSelector.click();
 
@@ -735,10 +785,7 @@ export const removeDomain = async (
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('saveAssociatedTag')
-    .click();
+  await page.getByTestId('update-btn').click();
   await patchReq;
   await waitForAllLoadersToDisappear(page);
 
@@ -755,30 +802,30 @@ export const removeSingleSelectDomain = async (
   await page.getByTestId('add-domain').click();
   await waitForAllLoadersToDisappear(page);
 
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .clear();
+  await page.getByTestId('domain-selectable-tree-search').clear();
 
   const searchDomain = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       response.url().includes(encodeURIComponent(domain.name))
   );
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domain.name);
+  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
   await searchDomain;
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
+  await page.getByTestId(`tree-node-${domain.fullyQualifiedName}`).click();
 
   await patchReq;
   await waitForAllLoadersToDisappear(page);
+
+  // Deselecting commits and closes the picker; wait for it to fully detach so a
+  // subsequent reopen does not race the close animation.
+  await page
+    .getByTestId('domain-selectable-tree-search')
+    .waitFor({ state: 'detached' });
 
   await expect(page.getByTestId('no-domain-text')).toContainText(
     showDashPlaceholder ? '--' : 'No Domains'
@@ -808,7 +855,7 @@ export const assignDataProduct = async (
           await waitForAllLoadersToDisappear(page);
 
           return page
-            .getByTestId('domain-link')
+            .getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
             .textContent()
             .catch(() => null);
         },
@@ -821,14 +868,14 @@ export const assignDataProduct = async (
       .toContain(domain.displayName);
   } else {
     const hasMultipleDomains = await page
-      .getByTestId('domain-count-button')
+      .getByTestId('show-all-domains')
       .isVisible();
     if (hasMultipleDomains) {
-      await expect(page.getByTestId('domain-count-button')).toBeVisible();
+      await expect(page.getByTestId('show-all-domains')).toBeVisible();
     } else {
-      await expect(page.getByTestId('domain-link')).toContainText(
-        domain.displayName
-      );
+      await expect(
+        page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
+      ).toContainText(domain.displayName);
     }
   }
 
@@ -1028,9 +1075,11 @@ export const verifyDomainLinkInCard = async (
   entityCard: Locator,
   domain: Domain['responseData']
 ) => {
-  const domainLink = entityCard.getByTestId('domain-link').filter({
-    hasText: domain.displayName,
-  });
+  const domainLink = entityCard
+    .getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
+    .filter({
+      hasText: domain.displayName,
+    });
 
   await expect(domainLink).toBeVisible();
   await expect(domainLink).toContainText(domain.displayName);
@@ -1474,19 +1523,6 @@ type ResponseWithRequest = {
   url: () => string;
 };
 
-type MetricSearchHit = {
-  _source?: {
-    displayName?: string;
-    name?: string;
-  };
-};
-
-type MetricSearchResponse = {
-  hits?: {
-    hits?: MetricSearchHit[];
-  };
-};
-
 type CsvAsyncJob = {
   jobId: string;
   status: string;
@@ -1525,99 +1561,53 @@ export const fetchCompletedCsvAsyncJobResult = async (
   return resultResponse.text();
 };
 
-export const isMetricsSearchResponse = (response: ResponseWithRequest) => {
+export const isMetricsListingResponse = (response: ResponseWithRequest) => {
   const url = new URL(response.url());
 
   return (
     response.request().method() === 'GET' &&
-    url.pathname.endsWith('/api/v1/search/query') &&
-    url.searchParams.get('index') === 'metric'
+    (url.pathname.endsWith('/api/v1/metrics/hierarchy') ||
+      (url.pathname.endsWith('/api/v1/search/query') &&
+        url.searchParams.get('index') === 'metric'))
   );
 };
 
-export const waitForMetricsSearchResponse = (page: Page) =>
-  page.waitForResponse(isMetricsSearchResponse);
+export const waitForMetricsListingResponse = (page: Page) =>
+  page.waitForResponse(isMetricsListingResponse);
 
 export const testMetricsPaginationNavigation = async (page: Page) => {
-  const page1ResponsePromise = waitForMetricsSearchResponse(page);
+  const page1ResponsePromise = waitForMetricsListingResponse(page);
 
-  await page.goto('/metrics?pageSize=15', { waitUntil: 'domcontentloaded' });
+  await page.goto('/metrics', { waitUntil: 'domcontentloaded' });
 
   const page1Response = await page1ResponsePromise;
   expect(page1Response.status()).toBe(200);
+  const page1Url = new URL(page1Response.url());
+  expect(page1Url.pathname).toContain('/api/v1/metrics/hierarchy');
+  expect(page1Url.searchParams.get('limit')).toBe('20');
+  expect(page1Url.searchParams.get('offset')).toBe('0');
 
   await page.locator('table').waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
 
-  const page1Data: MetricSearchResponse = await page1Response.json();
-  const page1FirstItem = page1Data.hits?.hits?.[0]?._source;
-  const page1FirstItemName =
-    page1FirstItem?.displayName ?? page1FirstItem?.name;
-
-  await expect(page.getByTestId('previous')).toBeDisabled();
-  const nextButton = page.getByTestId('next');
+  await expect(page.getByTestId('metric-page-previous')).toBeDisabled();
+  const nextButton = page.getByTestId('metric-page-next');
   await expect(nextButton).toBeEnabled();
 
   const [page2Response] = await Promise.all([
-    waitForMetricsSearchResponse(page),
+    waitForMetricsListingResponse(page),
     nextButton.click(),
   ]);
   expect(page2Response.status()).toBe(200);
+  const page2Url = new URL(page2Response.url());
+  expect(page2Url.searchParams.get('limit')).toBe('20');
+  expect(page2Url.searchParams.get('offset')).toBe('20');
 
   await waitForAllLoadersToDisappear(page);
-  await expect(page.getByTestId('previous')).toBeEnabled();
-  expect(new URL(page.url()).searchParams.get('currentPage')).toBe('2');
-
-  const paginationText = page.locator('[data-testid="page-indicator"]');
-  await expect(paginationText).toBeVisible();
-  expect(await paginationText.textContent()).toMatch(/2\s*of\s*\d+/);
-
-  if (page1FirstItemName) {
-    await expect(page.locator('tbody tr').first()).not.toContainText(
-      page1FirstItemName
-    );
-  }
-
-  const reloadResponsePromise = waitForMetricsSearchResponse(page);
-
-  await page.reload();
-
-  const reloadResponse = await reloadResponsePromise;
-  expect(reloadResponse.status()).toBe(200);
-
-  await page.locator('table').waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
-  await expect(page.getByTestId('previous')).toBeEnabled();
-  expect(new URL(page.url()).searchParams.get('currentPage')).toBe('2');
-  expect(await paginationText.textContent()).toMatch(/2\s*of\s*\d+/);
-
-  const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
-  await expect(pageSizeDropdown).toHaveText('15 / Page');
-
-  const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
-  await pageSizeDropdown.hover();
-  const isMenuVisibleAfterHover = await menuItem.isVisible();
-  if (!isMenuVisibleAfterHover) {
-    await pageSizeDropdown.click();
-  }
-  await menuItem.waitFor({ state: 'visible' });
-
-  const pageSizeChangeResponsePromise = waitForMetricsSearchResponse(page);
-  await menuItem.click();
-
-  const pageSizeChangeResponse = await pageSizeChangeResponsePromise;
-  expect(pageSizeChangeResponse.status()).toBe(200);
-  expect(new URL(pageSizeChangeResponse.url()).searchParams.get('size')).toBe(
-    '25'
+  await expect(page.getByTestId('metric-page-previous')).toBeEnabled();
+  await expect(page.getByTestId('metric-page-indicator')).toHaveText(
+    /2\s*of\s*\d+/
   );
-
-  await waitForAllLoadersToDisappear(page);
-  await expect(pageSizeDropdown).toHaveText('25 / Page');
-
-  const newRowCount = await page
-    .locator('tbody > tr[data-row-key]:visible')
-    .count();
-  expect(newRowCount).toBeLessThanOrEqual(25);
 };
 
 export const testClientSidePaginationNavigation = async (
@@ -1899,12 +1889,30 @@ export const testTableSearch = async (
   }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
 };
 
+// React-aria closes a non-modal popover (Select, ComboBox) when an ancestor of
+// its trigger scrolls, and the browser delivers `scroll` a frame after the
+// scroll itself. If a trigger is even partly clipped by a scroll container,
+// Playwright's click scrolls it just before pointerdown; the event then lands
+// after pointerdown has opened the popover and closes it again. Centre the
+// element -- `scrollIntoViewIfNeeded` only reveals the minimum and can leave the
+// click point clipped, so Playwright scrolls again at click time -- and let two
+// frames run so the scroll is delivered before anything opens.
+export const scrollIntoViewAndSettle = async (locator: Locator) => {
+  await locator.evaluate(async (element) => {
+    element.scrollIntoView({ block: 'center', inline: 'nearest' });
+    await new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve))
+    );
+  });
+};
+
 export const selectOptionWithRetry = async (
   trigger: Locator,
   option: Locator
 ) => {
   await expect(async () => {
     if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+      await scrollIntoViewAndSettle(trigger);
       await trigger.click();
     }
 

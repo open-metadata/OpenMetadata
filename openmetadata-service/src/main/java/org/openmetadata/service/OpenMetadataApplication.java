@@ -342,6 +342,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     Entity.setAuditLogRepository(auditLogRepository);
     ResourceRegistry.addResource(
         Entity.AUDIT_LOG, List.of(MetadataOperation.AUDIT_LOGS), Collections.emptySet());
+    ResourceRegistry.addResource(
+        Entity.RDF, List.of(MetadataOperation.EXECUTE_SPARQL_QUERY), Collections.emptySet());
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
@@ -369,7 +371,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Instantiate JWT Token Generator
     JWTTokenGenerator.getInstance()
         .init(
-            SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
+            SecurityConfigurationManager.getCurrentAuthConfig(),
             catalogConfig.getJwtTokenConfiguration());
 
     initializeWebsockets(catalogConfig, environment);
@@ -957,7 +959,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       // Update JWT configuration first
       JWTTokenGenerator.getInstance()
           .init(
-              SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
+              SecurityConfigurationManager.getCurrentAuthConfig(),
               config.getJwtTokenConfiguration());
 
       // Re-register authenticator with new config
@@ -1323,6 +1325,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       AsyncService.getInstance().shutdown();
       EntityLifecycleEventDispatcher.getInstance().shutdown();
       AppScheduler.shutDown();
+      // Before RDF teardown: closing the engine can still fire workflow listeners that write
+      // through to repositories, and those writes may fan out to the RDF updater.
+      WorkflowHandler.shutDown();
       RdfUpdater.disable();
       LOG.info("Stopping the application");
     }

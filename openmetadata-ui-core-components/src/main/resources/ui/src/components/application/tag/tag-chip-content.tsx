@@ -1,0 +1,94 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { cx } from '@/utils/cx';
+import { FC, lazy, ReactNode, Suspense } from 'react';
+
+// Lazy-loaded so the common case (no `icon` string prop — just a variant's
+// default icon) never pulls ICON_MAP's ~44 icon components into the eager
+// bundle. ICON_MAP is a plain object literal, so a bundler cannot tree-shake
+// individual unused icons out of it — only avoiding the import entirely does.
+// Icon is deliberately NOT re-exported from the root barrel (see
+// components/index.ts) so this dynamic import actually gets its own chunk
+// instead of being subsumed into whatever already imports the barrel statically.
+const Icon = lazy(() =>
+  import('../../foundations/icon/icon').then((m) => ({ default: m.Icon }))
+);
+
+interface TagChipContentProps {
+  label: string;
+  maxWidth: string | number;
+  /** ICON_MAP key or image URL. When omitted, `defaultIcon` renders instead. */
+  icon?: string;
+  /** Rendered when `icon` is not provided. */
+  defaultIcon: ReactNode;
+  labelClassName?: string;
+  /** Test id set on the label element (e.g. the legacy `domain-link` hook). */
+  labelTestId?: string;
+  /** Rich label content rendered in place of `label` (e.g. a diff node). */
+  labelContent?: ReactNode;
+  iconSize: number;
+  iconTestId?: string;
+  /** Rendered after the label, inside the chip (e.g. an inherit glyph). */
+  trailing?: ReactNode;
+}
+
+/**
+ * Pure inner content (icon + label) shared by every entity tag chip variant
+ * (Classification/Glossary/Domain/DataProduct/AutoClassification). Has no
+ * knowledge of Badge/Tooltip/Link — those are composed by each variant.
+ */
+export const TagChipContent: FC<TagChipContentProps> = ({
+  label,
+  maxWidth,
+  icon,
+  defaultIcon,
+  labelClassName,
+  labelTestId,
+  labelContent,
+  iconSize,
+  iconTestId,
+  trailing,
+}) => {
+  const iconNode = icon ? (
+    <Suspense fallback={null}>
+      <Icon iconValue={icon} imageClassName="tag-color-text" size={iconSize} />
+    </Suspense>
+  ) : (
+    defaultIcon
+  );
+
+  const labelNode = (
+    <div style={{ maxWidth }}>
+      <span
+        className={cx('tw:block tw:truncate', labelClassName)}
+        data-testid={labelTestId}>
+        {labelContent ?? label}
+      </span>
+    </div>
+  );
+
+  return (
+    <div className="tw:flex tw:items-center tw:gap-1">
+      {iconNode && (
+        <span
+          aria-hidden
+          className="tw:inline-flex tw:shrink-0 tw:items-center"
+          data-testid={iconTestId}>
+          {iconNode}
+        </span>
+      )}
+      {labelNode}
+      {trailing}
+    </div>
+  );
+};

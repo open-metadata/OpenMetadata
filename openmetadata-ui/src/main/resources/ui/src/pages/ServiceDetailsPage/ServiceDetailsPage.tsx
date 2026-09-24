@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tabs, TabsProps, Tooltip } from 'antd';
+import { Button, Col, Row, Tabs, TabsProps, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase, toString } from 'lodash';
@@ -49,7 +49,9 @@ import ServiceInsightsTab from '../../components/ServiceInsights/ServiceInsights
 import { WorkflowStatesData } from '../../components/ServiceInsights/ServiceInsightsTab.interface';
 import { useApplicationsProvider } from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import Ingestion from '../../components/Settings/Services/Ingestion/Ingestion.component';
+import ServiceAttributesCard from '../../components/Settings/Services/ServiceAttributes/ServiceAttributesCard';
 import ServiceConnectionDetails from '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component';
+import ServiceSectionCard from '../../components/Settings/Services/ServiceSectionCard/ServiceSectionCard';
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
@@ -76,13 +78,13 @@ import {
 } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
+import { ServiceAttributes } from '../../generated/entity/services/serviceAttributes';
 
 import { Tag } from '../../generated/entity/classification/tag';
 import { Directory } from '../../generated/entity/data/directory';
 import { File } from '../../generated/entity/data/file';
 import { Spreadsheet } from '../../generated/entity/data/spreadsheet';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import {
   DashboardConnection,
   DashboardServiceType,
@@ -156,10 +158,7 @@ import {
   TabContribution,
 } from '../../utils/ExtensionPointTypes';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getEditConnectionPath,
   getServiceDetailsPath,
@@ -728,10 +727,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const fetchDatabases = useCallback(
     async (paging?: PagingWithoutTotal) => {
-      const databaseUsagePermission = getPrioritizedViewPermission(
-        permissions.database,
-        PermissionOperation.ViewUsage
-      );
+      const databaseUsagePermission = getDerivedPermissionFlags(
+        permissions.database
+      ).canViewUsage;
       const { data, paging: resPaging } = await getDatabases(
         decodedServiceFQN,
         databaseUsagePermission
@@ -763,10 +761,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const fetchDashboards = useCallback(
     async (paging?: PagingWithoutTotal) => {
-      const dashboardUsagePermission = getPrioritizedViewPermission(
-        permissions.dashboard,
-        PermissionOperation.ViewUsage
-      );
+      const dashboardUsagePermission = getDerivedPermissionFlags(
+        permissions.dashboard
+      ).canViewUsage;
       const { data, paging: resPaging } = await getDashboards(
         decodedServiceFQN,
         dashboardUsagePermission
@@ -805,10 +802,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const fetchPipeLines = useCallback(
     async (paging?: PagingWithoutTotal) => {
-      const pipelineUsagePermission = getPrioritizedViewPermission(
-        permissions.pipeline,
-        PermissionOperation.ViewUsage
-      );
+      const pipelineUsagePermission = getDerivedPermissionFlags(
+        permissions.pipeline
+      ).canViewUsage;
       const { data, paging: resPaging } = await getPipelines(
         decodedServiceFQN,
         pipelineUsagePermission
@@ -1124,6 +1120,38 @@ const ServiceDetailsPage: FunctionComponent = () => {
         }));
       } catch (error) {
         showErrorToast(error as AxiosError);
+      }
+    },
+    [serviceDetails, serviceCategory]
+  );
+
+  const handleUpdateServiceAttributes = useCallback(
+    async (serviceAttributes: ServiceAttributes) => {
+      if (isEmpty(serviceDetails)) {
+        return;
+      }
+
+      const updatedData: ServicesType = {
+        ...serviceDetails,
+        serviceAttributes,
+      };
+      const jsonPatch = compare(serviceDetails, updatedData);
+
+      try {
+        const response = await patchService(
+          serviceCategory,
+          serviceDetails.id,
+          jsonPatch
+        );
+        setServiceDetails((pre) => ({
+          ...pre,
+          serviceAttributes: response.serviceAttributes,
+        }));
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+
+        // Rethrow so the card stays in edit mode and the user does not lose their input.
+        throw error;
       }
     },
     [serviceDetails, serviceCategory]
@@ -1763,51 +1791,61 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const testConnectionTab = useMemo(() => {
     return (
       <div className="connection-tab-content">
-        <div className="flex items-center justify-between">
-          <AirflowMessageBanner />
+        <AirflowMessageBanner />
 
-          <Space className="w-full justify-end">
-            <Tooltip
-              title={
-                flags.canEditAll
-                  ? t('label.edit-entity', {
-                      entity: t('label.connection'),
-                    })
-                  : t('message.no-permission-for-action')
-              }>
-              <Button
-                ghost
-                data-testid="edit-connection-button"
-                disabled={!flags.canEditAll}
-                type="primary"
-                onClick={goToEditConnection}>
-                {t('label.edit-entity', {
-                  entity: t('label.connection'),
-                })}
-              </Button>
-            </Tooltip>
-            {allowTestConn && (
-              <TestConnection
-                connectionType={serviceDetails?.serviceType ?? ''}
-                extraInfo={extraInfoData?.name}
-                getData={() => connectionDetails}
-                hostIp={hostIp}
-                isTestingDisabled={isTestingDisabled}
-                serviceCategory={serviceCategory as ServiceCategory}
-                serviceName={serviceDetails?.name}
-                // validation is not required as we have all the data available and not in edit mode
-                shouldValidateForm={false}
-                showDetails={false}
-              />
-            )}
-          </Space>
-        </div>
+        <ServiceSectionCard
+          actions={
+            <>
+              <Tooltip
+                title={
+                  flags.canEditAll
+                    ? t('label.edit-entity', {
+                        entity: t('label.connection'),
+                      })
+                    : t('message.no-permission-for-action')
+                }>
+                <Button
+                  ghost
+                  data-testid="edit-connection-button"
+                  disabled={!flags.canEditAll}
+                  type="primary"
+                  onClick={goToEditConnection}>
+                  {t('label.edit-entity', {
+                    entity: t('label.connection'),
+                  })}
+                </Button>
+              </Tooltip>
+              {allowTestConn && (
+                <TestConnection
+                  connectionType={serviceDetails?.serviceType ?? ''}
+                  extraInfo={extraInfoData?.name}
+                  getData={() => connectionDetails}
+                  hostIp={hostIp}
+                  isTestingDisabled={isTestingDisabled}
+                  serviceCategory={serviceCategory as ServiceCategory}
+                  serviceName={serviceDetails?.name}
+                  // validation is not required as we have all the data available and not in edit mode
+                  shouldValidateForm={false}
+                  showDetails={false}
+                />
+              )}
+            </>
+          }
+          description={t('message.connection-configuration-description')}
+          testId="connection-details-card"
+          title={t('label.connection-details')}>
+          <ServiceConnectionDetails
+            connectionDetails={connectionDetails ?? {}}
+            extraInfo={extraInfoData}
+            serviceCategory={serviceCategory}
+            serviceFQN={serviceDetails?.serviceType || ''}
+          />
+        </ServiceSectionCard>
 
-        <ServiceConnectionDetails
-          connectionDetails={connectionDetails ?? {}}
-          extraInfo={extraInfoData}
-          serviceCategory={serviceCategory}
-          serviceFQN={serviceDetails?.serviceType || ''}
+        <ServiceAttributesCard
+          hasEditPermission={flags.canEditAll}
+          serviceAttributes={serviceDetails?.serviceAttributes}
+          onSave={handleUpdateServiceAttributes}
         />
       </div>
     );
@@ -1816,6 +1854,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     allowTestConn,
     goToEditConnection,
     serviceDetails,
+    handleUpdateServiceAttributes,
     connectionDetails,
     isTestingDisabled,
     serviceCategory,

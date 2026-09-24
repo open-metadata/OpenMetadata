@@ -419,11 +419,11 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
         className={classNames(
           'tw:flex tw:cursor-pointer tw:items-center tw:gap-2 tw:overflow-hidden tw:rounded-[10px] tw:p-0',
           {
-            'tw:bg-primary tw:w-full': !collapsed,
+            'tw:bg-surface tw:w-full': !collapsed,
           }
         )}
         data-testid="ask-ai-user-menu-trigger">
-        <ProfilePicture displayName={displayName} name={email} width="40" />
+        <ProfilePicture displayName={displayName} name={email} size="sm" />
         {!collapsed && (
           <Box
             align="start"

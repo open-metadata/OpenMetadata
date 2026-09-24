@@ -29,6 +29,7 @@ import {
   redirectToHomePage,
   toastNotification,
   uuid,
+  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import {
   checkAssetsCount,
@@ -792,7 +793,15 @@ test.describe('Multiple Subdomains Tests', () => {
 
       // Delete the subdomain (recursive delete)
       await page.getByTestId('manage-button').click();
-      await page.getByTestId('delete-button').click();
+      // The manage menu is an Ant dropdown, and pressing an item while it is
+      // still scaling puts mousedown and mouseup in different places, so no
+      // click is synthesised -- the item just takes focus. The snapshot for
+      // this failure is exactly that: the menu still open with "Delete"
+      // [active] and no dialog behind it.
+      const deleteMenuItem = page.getByTestId('delete-button');
+      await expect(deleteMenuItem).toBeVisible();
+      await waitForAntdPopupToSettle(page);
+      await deleteMenuItem.click();
 
       await expect(page.getByRole('dialog')).toBeVisible();
 
@@ -883,7 +892,7 @@ test.describe('Data Product Search and Filter', () => {
 
       // Select domain1 from global dropdown
       await page.getByTestId('domain-dropdown').click();
-      await page.getByTestId('domain-selectable-tree').waitFor({
+      await page.getByTestId('domain-dropdown-search').waitFor({
         state: 'visible',
       });
 
@@ -893,13 +902,12 @@ test.describe('Data Product Search and Filter', () => {
           response.url().includes('index=domain')
       );
       await page
-        .getByTestId('domain-selectable-tree')
-        .getByTestId('searchbar')
+        .getByTestId('domain-dropdown-search')
         .fill(domain1.responseData.displayName);
       await searchDomainRes;
 
       const tagSelector = page.getByTestId(
-        `tag-${domain1.responseData.fullyQualifiedName}`
+        `tree-node-${domain1.responseData.fullyQualifiedName}`
       );
       await tagSelector.waitFor({ state: 'visible' });
       await tagSelector.click();
@@ -915,7 +923,7 @@ test.describe('Data Product Search and Filter', () => {
 
       // Clear domain filter
       await page.getByTestId('domain-dropdown').click();
-      await page.getByTestId('all-domains-selector').click();
+      await page.getByTestId('tree-node-All Domains').click();
 
       await dp1.delete(apiContext);
       await dp2.delete(apiContext);

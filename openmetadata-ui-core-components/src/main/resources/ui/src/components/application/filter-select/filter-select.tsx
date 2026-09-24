@@ -14,19 +14,24 @@ import { Button } from '@/components/base/buttons/button';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { Skeleton } from '@/components/base/skeleton/skeleton';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
-import { Input } from '@/components/base/input/input';
+import { Typography } from '@/components/foundations/typography';
+import {
+  DropdownSearchField,
+  DropdownStagedFooter,
+  DropdownStatusFooter,
+  TriggerCountBadge,
+} from './filter-select.shared';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { borderAfter } from '@/utils/tailwindClasses';
-import { Check, ChevronDown, SearchLg, XClose } from '@untitledui/icons';
+import { ChevronDown, ChevronUp, XClose } from '@untitledui/icons';
 import {
   useEffect,
   useMemo,
   useRef,
   useState,
   type FC,
-  type HTMLAttributes,
   type ReactNode,
   type RefObject,
 } from 'react';
@@ -36,29 +41,17 @@ import type {
   FilterSelectProps,
   FilterSelectTriggerVariant,
 } from './filter-select.types';
-
-// Narrow wrapper so the icon prop's type doesn't widen to the raw
-// `@untitledui/icons` FC, whose `children` type clashes with consumers that
-// augment ReactNode globally (e.g. react-i18next).
-const SearchInputIcon = (props: HTMLAttributes<HTMLOrSVGElement>) => (
-  <SearchLg aria-hidden="true" {...props} />
-);
+import { TreeSelect } from '../tree-select/tree-select';
 
 const optionText = (option: FilterSelectOption): string =>
   option.textValue ??
   (typeof option.label === 'string' ? option.label : option.value);
 
-const TriggerCountBadge = ({ count }: { count: number }) => (
-  <span
-    className="tw:ml-1.5 tw:inline-flex tw:h-[18px] tw:min-w-[18px] tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-utility-brand-50 tw:px-[5px] tw:text-xs tw:font-medium tw:text-utility-brand-700 tw:tabular-nums"
-    data-testid="filter-count-badge">
-    {count}
-  </span>
-);
-
-const TriggerButton = ({
+export const TriggerButton = ({
   hasSelection,
+  isOpen,
   text,
+  label,
   count,
   placeholder,
   testId,
@@ -68,7 +61,9 @@ const TriggerButton = ({
   bordered,
 }: {
   hasSelection: boolean;
+  isOpen?: boolean;
   text: string;
+  label: string;
   count?: number;
   placeholder?: string;
   testId?: string;
@@ -92,16 +87,21 @@ const TriggerButton = ({
           // fits on one row beside same-sized toolbar controls.
           !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
           hasSelection &&
-            'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary',
-          hasSelection && bordered && 'tw:after:outline-brand',
+            'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary tw:*:data-icon:text-fg-brand-primary',
+          // Active-filter border is brand blue in light, but neutral (gray-700)
+          // in dark per the palette guideline — dark:*_alt flips only the dark
+          // value and leaves light frozen.
+          hasSelection &&
+            bordered &&
+            'tw:after:outline-brand tw:dark:after:outline-brand_alt',
           className
         )}
         color={bordered ? 'secondary' : 'tertiary'}
         data-testid={testId}
         iconLeading={icon}
-        iconTrailing={ChevronDown}
+        iconTrailing={isOpen ? ChevronUp : ChevronDown}
         size={bordered ? 'md' : 'sm'}>
-        {text}
+        <span data-testid={`search-dropdown-${label}`}>{text}</span>
         {countBadge}
       </Button>
     );
@@ -111,7 +111,9 @@ const TriggerButton = ({
     return (
       <AriaButton
         className={cx(
-          'tw:flex tw:w-44 tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:px-3 tw:py-2 tw:shadow-xs tw:outline-brand',
+          // Sized like the toolbar selects this trigger replaces: 32px tall,
+          // filling the width its container gives it (constrain via className).
+          'tw:flex tw:h-8 tw:w-full tw:min-w-24 tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:px-3 tw:shadow-xs tw:outline-brand',
           className
         )}
         data-testid={testId}>
@@ -119,11 +121,17 @@ const TriggerButton = ({
           className={cx(
             'tw:flex-1 tw:truncate tw:text-left tw:text-sm tw:font-medium',
             hasSelection ? 'tw:text-secondary' : 'tw:text-placeholder'
-          )}>
+          )}
+          data-testid={`search-dropdown-${label}`}>
           {hasSelection ? text : placeholder ?? text}
         </span>
         {countBadge}
-        <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
+        <ChevronDown
+          className={cx(
+            'tw:size-5 tw:shrink-0 tw:text-fg-quaternary tw:transition-transform tw:duration-200',
+            isOpen && 'tw:rotate-180'
+          )}
+        />
       </AriaButton>
     );
   }
@@ -137,9 +145,15 @@ const TriggerButton = ({
         className
       )}
       data-testid={testId}>
-      {text}
+      <span data-testid={`search-dropdown-${label}`}>{text}</span>
       {countBadge}
-      <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
+      <ChevronDown
+        className={cx(
+          'tw:size-5 tw:shrink-0 tw:transition-transform tw:duration-200',
+          isOpen && 'tw:rotate-180',
+          hasSelection ? 'tw:text-fg-brand-primary' : 'tw:text-fg-quaternary'
+        )}
+      />
     </AriaButton>
   );
 };
@@ -156,6 +170,7 @@ const TriggerButton = ({
  */
 const ChipsField = ({
   chips,
+  isOpen,
   placeholder,
   testId,
   className,
@@ -163,6 +178,7 @@ const ChipsField = ({
   onRemove,
 }: {
   chips: { value: string; label: ReactNode }[];
+  isOpen?: boolean;
   placeholder: string;
   testId?: string;
   className?: string;
@@ -183,7 +199,7 @@ const ChipsField = ({
           className="tw:flex tw:max-w-44 tw:items-center tw:gap-0.5 tw:rounded-md tw:border tw:border-secondary tw:bg-secondary tw:py-px tw:pr-0.5 tw:pl-2 tw:text-xs tw:font-medium tw:text-secondary"
           data-testid="filter-chip"
           key={chip.value}>
-          <span className="tw:truncate">{chip.label}</span>
+          <Typography className="tw:truncate">{chip.label}</Typography>
           <button
             aria-label={t('label.remove-filter')}
             className="tw:flex tw:cursor-pointer tw:rounded-xs tw:p-0.5 tw:text-placeholder tw:outline-brand tw:hover:text-secondary tw:focus-visible:outline-2"
@@ -201,13 +217,21 @@ const ChipsField = ({
         className="tw:flex tw:min-w-10 tw:flex-1 tw:cursor-pointer tw:items-center tw:justify-between tw:gap-2 tw:self-stretch tw:rounded-sm tw:pl-1.5 tw:outline-brand"
         data-testid={testId}>
         {chips.length === 0 ? (
-          <span className="tw:truncate tw:text-sm tw:font-normal tw:text-placeholder">
+          <Typography
+            className="not-prose tw:truncate tw:text-placeholder"
+            size="text-sm"
+            weight="regular">
             {placeholder}
-          </span>
+          </Typography>
         ) : (
           <span />
         )}
-        <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
+        <ChevronDown
+          className={cx(
+            'tw:size-5 tw:shrink-0 tw:text-fg-quaternary tw:transition-transform tw:duration-200',
+            isOpen && 'tw:rotate-180'
+          )}
+        />
       </AriaButton>
     </div>
   );
@@ -217,10 +241,13 @@ const OptionRow = ({
   option,
   hideCounts,
   showCheckbox,
+  isNullOption,
 }: {
   option: FilterSelectOption;
   hideCounts?: boolean;
   showCheckbox: boolean;
+  /** The pinned "No <X>" row, which the design mutes relative to real options. */
+  isNullOption?: boolean;
 }) => {
   const iconComponent = isReactComponent(option.icon)
     ? (option.icon as FC<{ className?: string }>)
@@ -230,11 +257,22 @@ const OptionRow = ({
   return (
     <Dropdown.Item
       checkboxSize="xs"
-      // Selection is conveyed by the checkbox alone — suppress the default
-      // selected background, keeping the hover/focus tint.
+      // Multi select: the checkbox alone conveys selection — suppress the
+      // default selected background, keeping the hover/focus tint. Single
+      // select has no checkbox, so the selected row itself goes brand: blue
+      // tint, blue label, blue icon.
       className={(state) =>
-        state.isSelected && !state.isFocused ? 'tw:[&>div]:bg-transparent!' : ''
+        cx(
+          showCheckbox &&
+            state.isSelected &&
+            !state.isFocused &&
+            'tw:[&>div]:bg-transparent!',
+          !showCheckbox &&
+            state.isSelected &&
+            'tw:[&>div]:bg-utility-brand-50! tw:[&_svg]:text-fg-brand-primary!'
+        )
       }
+      data-testid={option.value}
       icon={iconComponent}
       id={option.value}
       showCheckbox={showCheckbox}
@@ -242,29 +280,38 @@ const OptionRow = ({
       {(state) => (
         <span
           className={cx(
-            'tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2 tw:text-xs tw:font-normal',
-            state.isSelected ? 'tw:text-primary' : 'tw:text-secondary'
+            'tw:relative tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2 tw:text-sm tw:font-normal',
+            // Real options read at full strength whether or not they are
+            // selected; only the pinned null row is muted. Single select has no
+            // checkbox, so its selected row goes brand instead.
+            isNullOption ? 'tw:text-secondary' : 'tw:text-primary',
+            !showCheckbox && state.isSelected && 'tw:text-fg-brand-primary'
           )}>
           {iconNode !== undefined && (
             <span aria-hidden="true" className="tw:flex tw:shrink-0">
               {iconNode}
             </span>
           )}
-          <span className="tw:grow tw:truncate">{option.label}</span>
+          <Typography
+            className="not-prose tw:grow tw:truncate"
+            title={optionText(option)}>
+            {option.label}
+          </Typography>
           {!hideCounts && option.count !== undefined && (
-            <span
+            <Typography
               className={cx(
-                'tw:shrink-0 tw:rounded-md tw:border tw:border-secondary tw:px-1.5 tw:text-xs tw:font-normal tw:tabular-nums',
-                state.isSelected ? 'tw:text-tertiary' : 'tw:text-placeholder'
-              )}>
+                'not-prose tw:shrink-0 tw:rounded-md tw:border tw:px-1.5 tw:tabular-nums',
+                !showCheckbox && state.isSelected
+                  ? 'tw:border-utility-brand-200 tw:text-fg-brand-primary'
+                  : 'tw:border-secondary',
+                showCheckbox && state.isSelected && 'tw:text-tertiary',
+                !state.isSelected && 'tw:text-placeholder'
+              )}
+              data-testid="filter-count"
+              size="text-xs"
+              weight="regular">
               {option.count.toLocaleString()}
-            </span>
-          )}
-          {!showCheckbox && state.isSelected && (
-            <Check
-              aria-hidden="true"
-              className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary"
-            />
+            </Typography>
           )}
         </span>
       )}
@@ -281,7 +328,7 @@ const OptionRow = ({
  * `CheckboxBase` size `sm`), so checkbox size, alignment, and typography are
  * uniform by construction.
  */
-export const FilterSelect = ({
+const FilterSelect = ({
   label,
   options,
   selectedValues,
@@ -316,9 +363,11 @@ export const FilterSelect = ({
   const [staged, setStaged] = useState<string[]>(selectedValues);
   const searchWrapperRef = useRef<HTMLDivElement>(null);
   const chipsFieldRef = useRef<HTMLDivElement>(null);
+  const triggerWrapRef = useRef<HTMLSpanElement>(null);
+  const popoverContentRef = useRef<HTMLDivElement>(null);
 
   const isMulti = selectionMode === 'multiple';
-  const isStaged = isMulti && commitMode === 'staged';
+  const isStaged = commitMode === 'staged';
   const isChips =
     isMulti && triggerVariant === 'input' && triggerDisplay === 'chips';
   const current = isStaged ? staged : selectedValues;
@@ -403,13 +452,40 @@ export const FilterSelect = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
+  // While open, resync on a genuine change to the selected values, keyed on the
+  // values rather than the array. Consumers pass `selectedValues` as a memo over
+  // server-fetched options, so a suggestions request resolving mid-edit hands
+  // over a new array holding the same values; syncing on that would discard the
+  // row the user just clicked. A real external change — Explore quick filters
+  // stay mounted and open across query-string-only navigation, so a filter
+  // cleared that way must reach the staged set — still applies, which keeps
+  // Apply from writing a stale value back.
+  const selectedValuesKey = useMemo(
+    () => JSON.stringify(selectedValues),
+    [selectedValues]
+  );
+  useEffect(() => {
+    if (isOpen && isStaged) {
+      setStaged(selectedValues);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedValuesKey]);
+
   const handleOpenChange = (open: boolean) => {
     setInternalOpen(open);
     onOpenChange?.(open);
     setQuery('');
   };
 
+  // A closing popover's subtree survives until its exit transition ends, so
+  // keystrokes can land in the *previous* filter's search box after a sibling
+  // swap — its onSearch would then repaint the consumer's (often shared)
+  // options with the wrong facet's results. Ignore input once closed; the
+  // box is also disabled below so automation waits for the live one instead.
   const handleSearch = (search: string) => {
+    if (!isOpen) {
+      return;
+    }
     setQuery(search);
     onSearch?.(search);
   };
@@ -439,8 +515,12 @@ export const FilterSelect = ({
     if (isMulti) {
       commit(next);
     } else {
-      onChange(next.length > 0 ? [next[0]] : []);
-      handleOpenChange(false);
+      // Staged single-select keeps legacy parity: the pick waits for Apply
+      // and the popover stays open; immediate mode commits and closes.
+      commit(next.length > 0 ? [next[0]] : []);
+      if (!isStaged) {
+        handleOpenChange(false);
+      }
     }
   };
 
@@ -467,178 +547,301 @@ export const FilterSelect = ({
     handleOpenChange(false);
   };
 
+  // Non-modal keeps the page interactive while a filter is open, but React
+  // Aria then dismisses on neither outside interaction nor Escape — so
+  // dismissal is owned here. Closing on pointerdown (not click) restores the
+  // legacy one-click behaviour: pressing a sibling filter closes this one and
+  // opens that one in the same gesture.
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    const closeOnOutsidePointerDown = (event: Event) => {
+      const target = event.target as Node;
+      if (
+        triggerWrapRef.current?.contains(target) ||
+        popoverContentRef.current?.contains(target)
+      ) {
+        return;
+      }
+      handleOpenChange(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        // Consume the keystroke: this listener runs in the capture phase, and
+        // letting it continue hands Escape to the host drawer/modal as well,
+        // tearing down the surface the filter sits in.
+        event.stopPropagation();
+        event.preventDefault();
+        handleOpenChange(false);
+      }
+    };
+    document.addEventListener('pointerdown', closeOnOutsidePointerDown, true);
+    document.addEventListener('keydown', closeOnEscape, true);
+
+    return () => {
+      document.removeEventListener(
+        'pointerdown',
+        closeOnOutsidePointerDown,
+        true
+      );
+      document.removeEventListener('keydown', closeOnEscape, true);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  // React Aria yanks the option list back to the top when focus enters the
+  // menu mid-press (it focuses the first item / restores a stale scroll
+  // position), and menus commit selection on pointer *release* — so a click
+  // on a scrolled-down row can land on whichever row slides under the cursor,
+  // toggling the wrong option. Pin the scroll position for the duration of a
+  // mouse/pen press on an option row. Touch is exempt so swipe-scrolling a
+  // press started on a row keeps working.
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    let scroller: HTMLElement | null = null;
+    let pinnedTop = 0;
+    const holdScroll = (event: Event) => {
+      if (
+        scroller &&
+        event.target === scroller &&
+        scroller.scrollTop !== pinnedTop
+      ) {
+        scroller.scrollTop = pinnedTop;
+      }
+    };
+    const releasePress = () => {
+      scroller = null;
+    };
+    const pinOnRowPress = (event: PointerEvent) => {
+      if (event.pointerType === 'touch') {
+        return;
+      }
+      const row = (event.target as HTMLElement).closest?.('[role^="menuitem"]');
+      if (!row || !popoverContentRef.current?.contains(row)) {
+        return;
+      }
+      scroller = row.closest('[role="menu"]');
+      pinnedTop = scroller?.scrollTop ?? 0;
+    };
+    // The reset happens synchronously inside React Aria's focus handler, so
+    // undo it in the same focusin dispatch (document bubble runs after the
+    // React root's delegated handlers) — a later async 'scroll' correction
+    // could lose the race against the pointerup hit-test.
+    const holdScrollOnFocus = () => {
+      if (scroller && scroller.scrollTop !== pinnedTop) {
+        scroller.scrollTop = pinnedTop;
+      }
+    };
+    document.addEventListener('pointerdown', pinOnRowPress, true);
+    document.addEventListener('focusin', holdScrollOnFocus);
+    document.addEventListener('scroll', holdScroll, true);
+    document.addEventListener('pointerup', releasePress, true);
+    document.addEventListener('pointercancel', releasePress, true);
+
+    return () => {
+      document.removeEventListener('pointerdown', pinOnRowPress, true);
+      document.removeEventListener('focusin', holdScrollOnFocus);
+      document.removeEventListener('scroll', holdScroll, true);
+      document.removeEventListener('pointerup', releasePress, true);
+      document.removeEventListener('pointercancel', releasePress, true);
+    };
+  }, [isOpen]);
+
   const showFooter = isStaged;
   // Immediate mode has nothing to apply, so it gets a quiet footer instead:
   // what is selected, and a way to drop it all without closing the menu.
   const showStatusFooter = isMulti && !isStaged;
   const showSelectAllRow =
     isMulti && Boolean(showSelectAll) && displayedOptions.length > 0;
-  const isEmpty =
-    !isLoading && displayedOptions.length === 0 && !displayedNullOption;
+  // The null row is a synthetic filter, not a search result: an unmatched
+  // search shows the empty state even while "No <entity>" stays available
+  // (legacy SearchDropdown stacked exactly these two).
+  const isEmpty = !isLoading && displayedOptions.length === 0;
+  const showMenu = !isLoading && (!isEmpty || Boolean(displayedNullOption));
 
   return (
     <Dropdown.Root isOpen={isOpen} onOpenChange={handleOpenChange}>
-      {isChips ? (
-        <ChipsField
-          chips={chips}
-          className={className}
-          fieldRef={chipsFieldRef}
-          placeholder={placeholder ?? label}
-          testId={testId}
-          onRemove={(value) =>
-            onChange(selectedValues.filter((selected) => selected !== value))
-          }
-        />
-      ) : (
-        <TriggerButton
-          bordered={bordered}
-          className={cx(
-            typography === 'regular' && 'tw:font-normal',
-            className
-          )}
-          count={isMulti ? selectedValues.length : undefined}
-          hasSelection={selectedValues.length > 0}
-          icon={triggerIcon}
-          placeholder={placeholder}
-          testId={testId}
-          text={triggerText}
-          variant={triggerVariant}
-        />
-      )}
+      <span className="tw:contents" ref={triggerWrapRef}>
+        {isChips ? (
+          <ChipsField
+            chips={chips}
+            className={className}
+            fieldRef={chipsFieldRef}
+            isOpen={isOpen}
+            placeholder={placeholder ?? label}
+            testId={testId}
+            onRemove={(value) =>
+              onChange(selectedValues.filter((selected) => selected !== value))
+            }
+          />
+        ) : (
+          <TriggerButton
+            bordered={bordered}
+            className={cx(
+              typography === 'regular' && 'tw:font-normal',
+              className
+            )}
+            count={isMulti ? selectedValues.length : undefined}
+            hasSelection={selectedValues.length > 0}
+            icon={triggerIcon}
+            isOpen={isOpen}
+            label={label}
+            placeholder={placeholder}
+            testId={testId}
+            text={triggerText}
+            variant={triggerVariant}
+          />
+        )}
+      </span>
       <Dropdown.Popover
-        className={cx('tw:w-80', popoverClassName)}
+        // A filter popover is not a modal. React Aria's default blocks every
+        // pointer event outside the overlay, so with one filter open the page
+        // — including the trigger that opened it, and every sibling filter —
+        // stops taking clicks until it is dismissed. The component this
+        // replaces let those clicks through.
+        isNonModal
+        // Close without an exit animation: the closing subtree otherwise
+        // stays visible (and hit-testable) for the animation's duration, so a
+        // fast sibling swap can read or type into the dying filter instead of
+        // the one just opened. animate-none makes react-aria unmount at once;
+        // hidden covers the same frame.
+        className={(state) =>
+          cx(
+            'tw:w-80',
+            state.isExiting && 'tw:hidden tw:animate-none',
+            popoverClassName
+          )
+        }
+        data-testid="drop-down-menu"
         placement="bottom left"
         triggerRef={isChips ? chipsFieldRef : undefined}>
-        {searchable && (
-          <div className="tw:p-2" ref={searchWrapperRef}>
-            <Input
-              icon={SearchInputIcon}
+        <div className="tw:contents" ref={popoverContentRef}>
+          {searchable && (
+            <DropdownSearchField
+              inputDataTestId="search-input"
+              isDisabled={!isOpen}
               placeholder={t('label.search')}
-              size="sm"
               value={query}
+              wrapperRef={searchWrapperRef}
               onChange={handleSearch}
             />
-          </div>
-        )}
+          )}
 
-        {showSelectAllRow && (
-          <div className="tw:px-4 tw:py-2">
-            <Checkbox
-              isIndeterminate={
-                displayedSelectedCount > 0 && !allDisplayedSelected
-              }
-              isSelected={allDisplayedSelected}
-              label={t('label.select-all')}
-              size="xs"
-              onChange={handleSelectAll}
-            />
-          </div>
-        )}
-
-        {isLoading && (
-          <div
-            aria-label={t('label.loading')}
-            className="tw:flex tw:flex-col tw:gap-2 tw:px-4 tw:py-2"
-            role="status">
-            <Skeleton variant="text" width="80%" />
-            <Skeleton variant="text" width="60%" />
-            <Skeleton variant="text" width="70%" />
-          </div>
-        )}
-
-        {isEmpty && (
-          <div className="tw:px-4 tw:py-2 tw:text-sm tw:text-tertiary">
-            {emptyState ?? t('label.no-data-found')}
-          </div>
-        )}
-
-        {!isLoading && !isEmpty && (
-          <Dropdown.Menu
-            aria-label={label}
-            // A search box owns focus while it is there: the menu remounts
-            // whenever results land, and MenuTrigger's autofocus would pull
-            // the caret out of the box mid-query.
-            autoFocus={searchable ? false : undefined}
-            className="tw:max-h-64 tw:overflow-y-auto"
-            disallowEmptySelection={false}
-            selectedKeys={selectedKeySet}
-            selectionMode={selectionMode}
-            onSelectionChange={handleSelectionChange}>
-            {displayedNullOption && (
-              <OptionRow
-                hideCounts={hideCounts}
-                option={displayedNullOption}
-                showCheckbox={isMulti}
+          {showSelectAllRow && (
+            <div className="tw:px-4 tw:py-2">
+              <Checkbox
+                isIndeterminate={
+                  displayedSelectedCount > 0 && !allDisplayedSelected
+                }
+                isSelected={allDisplayedSelected}
+                label={
+                  <span className="tw:text-sm tw:text-primary">
+                    {t('label.select-all')}
+                  </span>
+                }
+                size="xs"
+                onChange={handleSelectAll}
               />
-            )}
-            {displayedOptions.map((option) => (
-              <OptionRow
-                hideCounts={hideCounts}
-                key={option.value}
-                option={option}
-                showCheckbox={isMulti}
-              />
-            ))}
-          </Dropdown.Menu>
-        )}
-
-        {helperText !== undefined && (
-          <div className="tw:border-t tw:border-secondary tw:px-3 tw:py-2 tw:text-xs tw:text-tertiary">
-            {helperText}
-          </div>
-        )}
-
-        {showFooter && (
-          <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:p-3">
-            <Button
-              color="tertiary"
-              data-testid="clear-filter-btn"
-              isDisabled={staged.length === 0}
-              size="sm"
-              onPress={() => setStaged([])}>
-              {t('label.clear-all')}
-            </Button>
-            <div className="tw:flex tw:items-center tw:gap-2">
-              <Button
-                color="secondary"
-                data-testid="cancel-filter-btn"
-                size="sm"
-                onPress={() => handleOpenChange(false)}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                color="primary"
-                data-testid="apply-filter-btn"
-                size="sm"
-                onPress={handleApply}>
-                {staged.length > 0
-                  ? t('label.apply-count', { count: staged.length })
-                  : t('label.apply')}
-              </Button>
             </div>
-          </div>
-        )}
+          )}
 
-        {showStatusFooter && (
-          <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-1.5 tw:pr-1.5 tw:pl-3">
-            <span
-              className="tw:text-xs tw:font-normal tw:text-tertiary"
-              data-testid="selected-count">
-              {selectedValues.length === 0
-                ? t('label.none-selected')
-                : t('label.count-selected', { count: selectedValues.length })}
-            </span>
-            <Button
-              color="tertiary"
-              data-testid="clear-filter-btn"
-              isDisabled={selectedValues.length === 0}
-              size="sm"
-              onPress={() => onChange([])}>
-              {t('label.clear-all')}
-            </Button>
-          </div>
-        )}
+          {isLoading && (
+            <div
+              aria-label={t('label.loading')}
+              className="tw:flex tw:flex-col tw:gap-2 tw:px-4 tw:py-2"
+              role="status">
+              <Skeleton variant="text" width="80%" />
+              <Skeleton variant="text" width="60%" />
+              <Skeleton variant="text" width="70%" />
+            </div>
+          )}
+
+          {showMenu && (
+            <Dropdown.Menu
+              aria-label={label}
+              // A search box owns focus while it is there: the menu remounts
+              // whenever results land, and MenuTrigger's autofocus would pull
+              // the caret out of the box mid-query.
+              autoFocus={searchable ? false : undefined}
+              className="tw:max-h-64 tw:overflow-y-auto"
+              disallowEmptySelection={false}
+              selectedKeys={selectedKeySet}
+              selectionMode={selectionMode}
+              // Closing is owned by this component (immediate single-select
+              // closes on commit; staged waits for Apply/Cancel), so the menu
+              // must never close itself on selection.
+              shouldCloseOnSelect={false}
+              onSelectionChange={handleSelectionChange}>
+              {displayedNullOption && (
+                <OptionRow
+                  isNullOption
+                  hideCounts={hideCounts}
+                  option={displayedNullOption}
+                  showCheckbox={isMulti}
+                />
+              )}
+              {displayedOptions.map((option) => (
+                <OptionRow
+                  hideCounts={hideCounts}
+                  key={option.value}
+                  option={option}
+                  showCheckbox={isMulti}
+                />
+              ))}
+            </Dropdown.Menu>
+          )}
+
+          {isEmpty && (
+            <div className="tw:px-4 tw:py-2 tw:text-center">
+              <Typography
+                className="not-prose"
+                color="secondary"
+                size="text-xs">
+                {emptyState ?? t('label.no-data-found')}
+              </Typography>
+            </div>
+          )}
+
+          {helperText !== undefined && (
+            <div className="tw:border-t tw:border-secondary tw:px-3 tw:py-2">
+              <Typography className="tw:text-tertiary" size="text-xs">
+                {helperText}
+              </Typography>
+            </div>
+          )}
+
+          {showFooter && (
+            <DropdownStagedFooter
+              count={staged.length}
+              onApply={handleApply}
+              onCancel={() => handleOpenChange(false)}
+              onClear={() => setStaged([])}
+            />
+          )}
+
+          {showStatusFooter && (
+            <DropdownStatusFooter
+              count={selectedValues.length}
+              onClear={() => onChange([])}
+            />
+          )}
+        </div>
       </Dropdown.Popover>
     </Dropdown.Root>
   );
 };
+
+const _FilterSelect = FilterSelect as typeof FilterSelect & {
+  Tree: typeof TreeSelect;
+};
+_FilterSelect.Tree = TreeSelect;
+
+export {
+  DropdownSearchField,
+  SearchInputIcon,
+  TriggerCountBadge,
+} from './filter-select.shared';
+export { _FilterSelect as FilterSelect };

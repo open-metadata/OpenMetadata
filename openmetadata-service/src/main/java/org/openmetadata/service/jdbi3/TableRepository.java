@@ -121,6 +121,7 @@ import org.openmetadata.sdk.exception.EntitySpecViolationException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.search.PropagationDescriptor;
@@ -334,20 +335,19 @@ public class TableRepository extends EntityRepository<Table> {
       return;
     }
 
-    boolean needsOwnersOrDomains = super.requiresParentForInheritance(table, fields);
+    boolean needsOwnersOrDomains = requiresParentForOwnersOrDomains(table, fields);
     boolean needsRetention =
         shouldResolveRetentionInheritance(fields) && table.getRetentionPeriod() == null;
-    if (!needsOwnersOrDomains && !needsRetention) {
+    boolean needsTags = requiresParentForPropagatedTags(fields);
+    if (!needsOwnersOrDomains && !needsRetention && !needsTags) {
       return;
     }
 
-    String inheritanceFields =
-        needsOwnersOrDomains
-            ? (needsRetention ? "owners,domains,retentionPeriod" : "owners,domains")
-            : "retentionPeriod";
     DatabaseSchema schema =
         loadInheritanceParentLeniently(
-            table.getDatabaseSchema(), inheritanceFields, DatabaseSchema.class);
+            table.getDatabaseSchema(),
+            inheritanceParentFields(needsOwnersOrDomains, needsRetention, needsTags),
+            DatabaseSchema.class);
     if (schema == null) {
       return;
     }
@@ -358,6 +358,9 @@ public class TableRepository extends EntityRepository<Table> {
     if (needsRetention) {
       table.withRetentionPeriod(schema.getRetentionPeriod());
     }
+    // The schema was loaded through the inheritance path, so its own tags already carry the
+    // database's and the service's -- that is what makes propagation transitive.
+    inheritTags(table, fields, schema);
   }
 
   private void setDefaultFields(Table table) {
@@ -1450,9 +1453,12 @@ public class TableRepository extends EntityRepository<Table> {
     dao.update(table.getId(), table.getFullyQualifiedName(), JsonUtils.pojoToJson(table));
     // addDataModel bypasses the EntityRepository.update() path, so invalidateCachesAfterStore
     // never runs. Drop every cached variant manually so the next GET rebuilds with the freshly
-    // merged tags/dataModel instead of stale pre-merge JSON.
+    // merged tags/dataModel instead of stale pre-merge JSON. It also bypasses postUpdate, which is
+    // normally what triggers the RDF snapshot write — trigger it explicitly so the tags merged
+    // above (entity- and column-level) actually reach RDF.
     EntityRepository.invalidateCacheForEntity(
         entityType, table.getId(), table.getFullyQualifiedName());
+    RdfUpdater.updateEntity(table);
     setFieldsInternal(table, new Fields(Set.of(FIELD_OWNERS), FIELD_OWNERS));
     setFieldsInternal(table, new Fields(Set.of(FIELD_TAGS), FIELD_TAGS));
     return table;
@@ -1709,7 +1715,7 @@ public class TableRepository extends EntityRepository<Table> {
     for (Table table : entities) {
       collectColumnTags(table.getColumns(), columnTagsByTarget);
     }
-    applyTagsBatchWithRdf(columnTagsByTarget);
+    applyTagsBatch(columnTagsByTarget);
   }
 
   @Override
@@ -1833,6 +1839,7 @@ public class TableRepository extends EntityRepository<Table> {
   protected void applyInheritance(Table entity, Fields fields, EntityInterface parent) {
     inheritOwners(entity, fields, parent);
     inheritDomains(entity, fields, parent);
+    inheritTags(entity, fields, parent);
     if (parent instanceof DatabaseSchema schema) {
       entity.withRetentionPeriod(
           entity.getRetentionPeriod() == null

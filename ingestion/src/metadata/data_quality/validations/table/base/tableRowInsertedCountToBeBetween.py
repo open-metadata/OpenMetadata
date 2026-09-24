@@ -18,6 +18,7 @@ from abc import abstractmethod
 from typing import cast
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
+from metadata.data_quality.validations.result_messages import SamplingStability
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
@@ -32,6 +33,8 @@ ROW_COUNT = "rowCount"
 
 class BaseTableRowInsertedCountToBeBetweenValidator(BaseTestValidator):
     """Validator table row inserted count to be between test case"""
+
+    SAMPLING_STABILITY = SamplingStability.SCALES_WITH_SAMPLE
 
     def _run_validation(self) -> TestCaseResult:
         """Execute the specific test validation logic
@@ -87,11 +90,16 @@ class BaseTableRowInsertedCountToBeBetweenValidator(BaseTestValidator):
             int,
             float("inf"),
         )
+        # Both bounds default to an infinity, so neither is ever None despite what the
+        # loosely typed parameter reader declares.
+        min_bound, max_bound = self.apply_bound_tolerance(cast("float", min_bound), cast("float", max_bound))
+
+        matched = min_bound <= res <= max_bound
 
         return self.get_test_case_result_object(
             self.execution_date,
-            self.get_test_case_status(min_bound <= res <= max_bound),
-            f"Found insertedRows={res} vs. the expected min={min_bound}, max={max_bound}.",
+            self.get_test_case_status(matched),
+            self.format_statistic_message("Inserted row count", res, (min_bound, max_bound), matched),
             [TestResultValue(name=ROW_COUNT, value=str(res))],
         )
 

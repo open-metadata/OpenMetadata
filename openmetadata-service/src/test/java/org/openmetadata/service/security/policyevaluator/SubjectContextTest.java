@@ -126,6 +126,13 @@ public class SubjectContextTest {
                         new ImmutablePair<>(Entity.POLICY, i.getArgument(1))),
                     Policy.class));
 
+    // TeamHierarchyResolver reads the team graph out of entity_relationship rather than loading a
+    // Team per node, so the graph has to exist as relationship rows, not only as cached entities.
+    TeamGraphFixture.install();
+    TeamGraphFixture.stubReferences(teamRepository, Entity.TEAM);
+    TeamGraphFixture.stubReferences(roleRepository, Entity.ROLE);
+    TeamGraphFixture.stubReferences(policyRepository, Entity.POLICY);
+
     // Create team hierarchy:
     //                           team1
     //                      /      |      \
@@ -459,6 +466,7 @@ public class SubjectContextTest {
             .withParents(parentList);
     EntityRepository.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.TEAM, team.getId()), JsonUtils.pojoToJson(team));
+    TeamGraphFixture.register(team);
     return team;
   }
 
@@ -520,6 +528,7 @@ public class SubjectContextTest {
     circularTeam.setParents(List.of(circularTeam.getEntityReference()));
     EntityRepository.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.TEAM, circularTeam.getId()), JsonUtils.pojoToJson(circularTeam));
+    TeamGraphFixture.register(circularTeam);
 
     // Test getRolesForTeams - should not cause StackOverflowError
     List<EntityReference> roles =
@@ -560,6 +569,8 @@ public class SubjectContextTest {
         new ImmutablePair<>(Entity.TEAM, teamA.getId()), JsonUtils.pojoToJson(teamA));
     EntityRepository.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.TEAM, teamB.getId()), JsonUtils.pojoToJson(teamB));
+    TeamGraphFixture.register(teamA);
+    TeamGraphFixture.register(teamB);
 
     // Test getRolesForTeams - should not cause StackOverflowError
     List<EntityReference> rolesA =
