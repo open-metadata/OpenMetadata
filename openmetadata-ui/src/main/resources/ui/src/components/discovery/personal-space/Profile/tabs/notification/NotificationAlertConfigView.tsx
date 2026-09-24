@@ -32,9 +32,7 @@ import {
 } from '../../../../../../generated/entity/events/notificationTemplate';
 import { Effect } from '../../../../../../generated/events/api/createEventSubscription';
 import { EventFilterRule } from '../../../../../../generated/events/eventFilterRule';
-import {
-  EventSubscription,
-} from '../../../../../../generated/events/eventSubscription';
+import { EventSubscription } from '../../../../../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../../../../../generated/events/filterResourceDescriptor';
 import { getResourceFunctions } from '../../../../../../rest/alertsAPI';
 import { getAllNotificationTemplates } from '../../../../../../rest/notificationtemplateAPI';
@@ -99,9 +97,7 @@ function ReadOnlyTriggerDisplay({
                   </Typography>
 
                   <Box align="center" direction="row" gap={2}>
-                    <Typography size="text-sm">
-                      {t('label.include')}
-                    </Typography>
+                    <Typography size="text-sm">{t('label.include')}</Typography>
                     <Toggle
                       isDisabled
                       data-testid={`trigger-switch-${triggerKey}`}
@@ -123,7 +119,9 @@ function ReadOnlyTriggerDisplay({
 
 function extractAlertViewData(
   alertDetails: EventSubscription,
-  modifiedAlertData: ReturnType<typeof alertsClassBase.getModifiedAlertDataForForm>
+  modifiedAlertData: ReturnType<
+    typeof alertsClassBase.getModifiedAlertDataForForm
+  >
 ) {
   const alertResources =
     modifiedAlertData?.filteringRules?.resources ??
@@ -278,7 +276,7 @@ function NotificationAlertConfigView({
   } = extractAlertViewData(alertDetails, modifiedAlertData);
 
   return (
-    <Box className='tw:w-[60%]' direction="col" gap={4}>
+    <Box className="tw:w-[60%]" direction="col" gap={4}>
       <NotificationSourceSelect
         isViewMode
         filterResources={filterResources}

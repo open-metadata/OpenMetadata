@@ -191,7 +191,12 @@ const ProfilePage: React.FC = () => {
       (item) => !item.isVisible || item.isVisible(permissions, isAdmin)
     );
 
-    return [...coreItems, ...workspaceItems, ...applicationItems, ...contributed];
+    return [
+      ...coreItems,
+      ...workspaceItems,
+      ...applicationItems,
+      ...contributed,
+    ];
   }, [currentUser?.isAdmin, extensionRegistry, permissions, userData]);
 
   // Clear header override whenever the user switches nav items.

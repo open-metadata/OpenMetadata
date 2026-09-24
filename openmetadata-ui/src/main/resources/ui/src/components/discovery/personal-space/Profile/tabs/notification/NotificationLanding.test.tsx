@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import NotificationLanding from './NotificationLanding';
 
 jest.mock('react-i18next', () => ({
@@ -29,11 +28,21 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       <div {...props}>{children}</div>
     )),
   Card: Object.assign(
-    jest.fn().mockImplementation(({ children, onClick, isClickable: _isClickable, size: _size, ...props }) => (
-      <button {...props} type="button" onClick={onClick}>
-        {children}
-      </button>
-    )),
+    jest
+      .fn()
+      .mockImplementation(
+        ({
+          children,
+          onClick,
+          isClickable: _isClickable,
+          size: _size,
+          ...props
+        }) => (
+          <button {...props} type="button" onClick={onClick}>
+            {children}
+          </button>
+        )
+      ),
     {
       Content: jest
         .fn()
@@ -60,18 +69,14 @@ describe('NotificationLanding', () => {
     render(<NotificationLanding onNavigate={mockOnNavigate} />);
 
     expect(screen.getByTestId('notification-landing')).toBeInTheDocument();
-    expect(
-      screen.getByTestId('notification-card-alerts')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('notification-card-alerts')).toBeInTheDocument();
   });
 
   it('should render alert title and description text', () => {
     render(<NotificationLanding onNavigate={mockOnNavigate} />);
 
     expect(screen.getByText('label.alert-plural')).toBeInTheDocument();
-    expect(
-      screen.getByText('message.alerts-description')
-    ).toBeInTheDocument();
+    expect(screen.getByText('message.alerts-description')).toBeInTheDocument();
   });
 
   it('should call onNavigate with list view when card is clicked', () => {

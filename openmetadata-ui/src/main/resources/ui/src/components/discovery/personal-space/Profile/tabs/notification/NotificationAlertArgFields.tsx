@@ -19,6 +19,7 @@ import {
 import { AxiosError } from 'axios';
 import { isEmpty, uniqBy } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DATA_CONTRACT_STATUS_OPTIONS } from '../../../../../../constants/Alerts.constants';
 import { PAGE_SIZE_LARGE } from '../../../../../../constants/constants';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
@@ -28,7 +29,6 @@ import { TestCaseStatus } from '../../../../../../generated/tests/testCase';
 import { EventType } from '../../../../../../generated/type/changeEvent';
 import { searchContracts } from '../../../../../../rest/contractAPI';
 import { searchQuery } from '../../../../../../rest/searchAPI';
-import { DATA_CONTRACT_STATUS_OPTIONS } from '../../../../../../constants/Alerts.constants';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { t } from '../../../../../../utils/i18next/LocalUtil';
 import searchClassBase from '../../../../../../utils/SearchClassBase';
@@ -61,7 +61,12 @@ const searchEntity = async ({
 
     return uniqBy(
       response.hits.hits.map((d) => {
-        const src = d._source as { fullyQualifiedName?: string; entityType?: string; displayName?: string; name?: string };
+        const src = d._source as {
+          fullyQualifiedName?: string;
+          entityType?: string;
+          displayName?: string;
+          name?: string;
+        };
         const displayName = showDisplayNameAsLabel
           ? getEntityName(d._source)
           : src.fullyQualifiedName ?? '';
@@ -323,9 +328,7 @@ function AlertStaticAutocomplete({
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-const enumToSelectItems = (
-  enumObj: Record<string, string>
-): SelectItemType[] =>
+const enumToSelectItems = (enumObj: Record<string, string>): SelectItemType[] =>
   Object.values(enumObj).map((v) => ({ id: v, label: v }));
 
 const valuesToSelectItems = (values: string[]): SelectItemType[] =>

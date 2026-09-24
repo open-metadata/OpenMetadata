@@ -116,11 +116,7 @@ function NotificationSourceSelect({
                           id={name}
                           key={name}
                           textValue={getEntityNameLabel(name)}>
-                          <Box
-                            inline
-                            align="center"
-                            direction="row"
-                            gap={2}>
+                          <Box inline align="center" direction="row" gap={2}>
                             {searchClassBase.getEntityIconWithBg(
                               name,
                               EntityIconSize.Size14

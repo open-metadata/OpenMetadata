@@ -12,7 +12,6 @@
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
 import { EventSubscriptionDiagnosticInfo } from '../../../../../../generated/events/api/eventSubscriptionDiagnosticInfo';
 import { getDiagnosticInfo } from '../../../../../../rest/observabilityAPI';
 import NotificationDiagnosticInfo from './NotificationDiagnosticInfo';
@@ -88,9 +87,7 @@ describe('NotificationDiagnosticInfo', () => {
       />
     );
 
-    expect(
-      screen.getByTestId('diagnostic-info-container')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('diagnostic-info-container')).toBeInTheDocument();
     expect(screen.getByText('label.latest-offset:')).toBeInTheDocument();
     expect(screen.getByText('100')).toBeInTheDocument();
   });

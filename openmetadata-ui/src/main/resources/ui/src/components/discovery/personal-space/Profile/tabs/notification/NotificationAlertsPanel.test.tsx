@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
 import NotificationAlertsPanel from './NotificationAlertsPanel';
 
 jest.mock('react-i18next', () => ({
@@ -28,13 +27,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children, ...props }) => (
       <div {...props}>{children}</div>
     )),
-  Button: jest
-    .fn()
-    .mockImplementation(({ children, onPress, ...props }) => (
-      <button {...props} onClick={onPress}>
-        {children}
-      </button>
-    )),
+  Button: jest.fn().mockImplementation(({ children, onPress, ...props }) => (
+    <button {...props} onClick={onPress}>
+      {children}
+    </button>
+  )),
   ButtonUtility: jest.fn().mockImplementation(({ onPress, ...props }) => (
     <button {...props} onClick={onPress}>
       {props['data-testid']}
@@ -47,23 +44,33 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   EmptyPlaceholder: jest.fn(() => <div data-testid="empty-placeholder" />),
   PaginationCardWithControls: jest.fn(() => null),
   Table: Object.assign(
-    jest.fn().mockImplementation(({ children, ...props }) => (
-      <table {...props}>{children}</table>
-    )),
+    jest
+      .fn()
+      .mockImplementation(({ children, ...props }) => (
+        <table {...props}>{children}</table>
+      )),
     {
       Header: jest.fn().mockImplementation(({ children, columns }) => (
         <thead>
-          <tr>{columns?.map((col: { id: string; label: string }) => children(col))}</tr>
+          <tr>
+            {columns?.map((col: { id: string; label: string }) =>
+              children(col)
+            )}
+          </tr>
         </thead>
       )),
-      Head: jest.fn().mockImplementation(({ label, ...props }) => (
-        <th {...props}>{label}</th>
-      )),
+      Head: jest
+        .fn()
+        .mockImplementation(({ label, ...props }) => (
+          <th {...props}>{label}</th>
+        )),
       Body: jest
         .fn()
         .mockImplementation(({ children, items, renderEmptyState }) =>
           items?.length > 0 ? (
-            <tbody>{items.map((item: Record<string, unknown>) => children(item))}</tbody>
+            <tbody>
+              {items.map((item: Record<string, unknown>) => children(item))}
+            </tbody>
           ) : (
             <tbody>
               <tr>
@@ -156,18 +163,16 @@ jest.mock('../../../../../../utils/EntityNameUtils', () => ({
     entity?.displayName ?? entity?.name ?? '',
 }));
 
-jest.mock(
-  '../../../../../common/DeleteModal/DeleteModal',
-  () =>
-    jest.fn(({ open, onDelete }) =>
-      open ? (
-        <div data-testid="delete-modal">
-          <button data-testid="confirm-delete" onClick={onDelete}>
-            confirm
-          </button>
-        </div>
-      ) : null
-    )
+jest.mock('../../../../../common/DeleteModal/DeleteModal', () =>
+  jest.fn(({ open, onDelete }) =>
+    open ? (
+      <div data-testid="delete-modal">
+        <button data-testid="confirm-delete" onClick={onDelete}>
+          confirm
+        </button>
+      </div>
+    ) : null
+  )
 );
 
 jest.mock(
@@ -194,9 +199,7 @@ describe('NotificationAlertsPanel', () => {
     });
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId('alerts-list-table')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('alerts-list-table')).toBeInTheDocument();
     });
   });
 
@@ -206,9 +209,9 @@ describe('NotificationAlertsPanel', () => {
     });
 
     await waitFor(() => {
-      expect(
-        screen.getAllByTestId('alert-name').length
-      ).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByTestId('alert-name').length).toBeGreaterThanOrEqual(
+        1
+      );
     });
   });
 
@@ -218,12 +221,8 @@ describe('NotificationAlertsPanel', () => {
     });
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId('alert-edit-user-alert')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByTestId('alert-delete-user-alert')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('alert-edit-user-alert')).toBeInTheDocument();
+      expect(screen.getByTestId('alert-delete-user-alert')).toBeInTheDocument();
     });
   });
 
@@ -245,9 +244,7 @@ describe('NotificationAlertsPanel', () => {
     });
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId('alert-delete-user-alert')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('alert-delete-user-alert')).toBeInTheDocument();
     });
 
     act(() => {

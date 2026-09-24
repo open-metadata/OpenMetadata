@@ -239,7 +239,11 @@ test('Single Filter Alert', async ({ page }) => {
 
   await test.step('Create alert', async () => {
     await page.getByTestId('add-alert').click();
-    await inputAlertInformation({ page, name: ALERT_NAME, sourceName: SOURCE_NAME_1 });
+    await inputAlertInformation({
+      page,
+      name: ALERT_NAME,
+      sourceName: SOURCE_NAME_1,
+    });
 
     await page.getByTestId('add-filters').click();
     await addOwnerFilterProfile({
@@ -336,7 +340,11 @@ test('Multiple Filters Alert', async ({ page }) => {
 
   await test.step('Create alert', async () => {
     await page.getByTestId('add-alert').click();
-    await inputAlertInformation({ page, name: ALERT_NAME, sourceName: SOURCE_NAME_1 });
+    await inputAlertInformation({
+      page,
+      name: ALERT_NAME,
+      sourceName: SOURCE_NAME_1,
+    });
 
     await addMultipleFiltersProfile({ page, user1, user2, domain, dashboard });
 
@@ -431,7 +439,11 @@ test('Task source alert', async ({ page }) => {
 
   await test.step('Create alert', async () => {
     await page.getByTestId('add-alert').click();
-    await inputAlertInformation({ page, name: ALERT_NAME, sourceName: SOURCE_NAME_3 });
+    await inputAlertInformation({
+      page,
+      name: ALERT_NAME,
+      sourceName: SOURCE_NAME_3,
+    });
 
     await page.click('[data-testid="add-destination-button"]');
     await addInternalDestinationProfile({
@@ -463,7 +475,11 @@ test('Conversation source alert', async ({ page }) => {
 
   await test.step('Create alert', async () => {
     await page.getByTestId('add-alert').click();
-    await inputAlertInformation({ page, name: ALERT_NAME, sourceName: SOURCE_NAME_4 });
+    await inputAlertInformation({
+      page,
+      name: ALERT_NAME,
+      sourceName: SOURCE_NAME_4,
+    });
 
     await page.click('[data-testid="add-destination-button"]');
     await addInternalDestinationProfile({
@@ -531,7 +547,11 @@ test('Alert with recent events check', async ({ page }) => {
 
   await test.step('Create and trigger alert', async () => {
     await page.getByTestId('add-alert').click();
-    await inputAlertInformation({ page, name: ALERT_NAME, sourceName: SOURCE_NAME_5 });
+    await inputAlertInformation({
+      page,
+      name: ALERT_NAME,
+      sourceName: SOURCE_NAME_5,
+    });
 
     await page.getByTestId('add-filters').click();
     await addEntityFQNFilterProfile({
@@ -589,7 +609,11 @@ test('Destination should work properly', async ({ page }) => {
   await navigateToAlertsList(page);
   await page.getByTestId('add-alert').click();
 
-  await inputAlertInformation({ page, name: 'test-name', sourceName: SOURCE_NAME_1 });
+  await inputAlertInformation({
+    page,
+    name: 'test-name',
+    sourceName: SOURCE_NAME_1,
+  });
 
   await page.click('[data-testid="add-destination-button"]');
   await addInternalDestinationProfile({
@@ -637,7 +661,6 @@ test('Destination should work properly', async ({ page }) => {
   const testResponse = await testDestinations;
   expect(testResponse.status()).toBe(200);
   await testResponse.json().then(async (testResults) => {
-
     expect(testResults).toHaveLength(2);
 
     for (const testResult of testResults) {

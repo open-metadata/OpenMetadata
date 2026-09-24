@@ -98,25 +98,25 @@ function NotificationDiagnosticInfo({
       {diagnosticItems.map((item) => (
         <Grid.Item key={item.key} span={12}>
           <Box align="center" direction="row" gap={2}>
-          <Box
-            align="center"
-            className="tw:basis-48 tw:shrink-0"
-            direction="row"
-            gap={1}>
-            <Typography className="tw:text-tertiary" size="text-sm">
-              {`${item.key}:`}
+            <Box
+              align="center"
+              className="tw:basis-48 tw:shrink-0"
+              direction="row"
+              gap={1}>
+              <Typography className="tw:text-tertiary" size="text-sm">
+                {`${item.key}:`}
+              </Typography>
+              <ButtonUtility
+                className="tw:p-0"
+                color="tertiary"
+                icon={InfoCircle}
+                size="xs"
+                tooltip={String(item.description)}
+              />
+            </Box>
+            <Typography className="tw:font-medium" size="text-sm">
+              {formatValue(item.value)}
             </Typography>
-            <ButtonUtility
-              className="tw:p-0"
-              color="tertiary"
-              icon={InfoCircle}
-              size="xs"
-              tooltip={String(item.description)}
-            />
-          </Box>
-          <Typography className="tw:font-medium" size="text-sm">
-            {formatValue(item.value)}
-          </Typography>
           </Box>
         </Grid.Item>
       ))}

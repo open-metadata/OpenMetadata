@@ -47,11 +47,11 @@ import {
   ProviderType,
 } from '../../../../../../generated/events/eventSubscription';
 import { Paging } from '../../../../../../generated/type/paging';
-import {
-  getAllAlerts,
-  getAlertsFromName,
-} from '../../../../../../rest/alertsAPI';
 import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
+import {
+  getAlertsFromName,
+  getAllAlerts,
+} from '../../../../../../rest/alertsAPI';
 import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
@@ -364,7 +364,11 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
 
     // System alerts show placeholder — no actions (matches legacy behaviour)
     if (alert.provider === ProviderType.System) {
-      return <Typography className="tw:text-secondary" size="text-sm">--</Typography>;
+      return (
+        <Typography className="tw:text-secondary" size="text-sm">
+          --
+        </Typography>
+      );
     }
 
     const alertPermission = alertPermissions?.find((p) => p.id === alert.id);
@@ -372,7 +376,11 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
     const hasDelete = Boolean(alertPermission?.delete);
 
     if (!hasEdit && !hasDelete) {
-      return <Typography className="tw:text-secondary" size="text-sm">--</Typography>;
+      return (
+        <Typography className="tw:text-secondary" size="text-sm">
+          --
+        </Typography>
+      );
     }
 
     return (
@@ -384,7 +392,6 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
             icon={Edit}
             size="xs"
             tooltip={t('label.edit')}
-
             onPress={() =>
               onNavigate({
                 type: 'edit',
@@ -400,7 +407,6 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
             icon={Delete}
             size="xs"
             tooltip={t('label.delete')}
-
             onPress={() => setSelectedAlert(alert)}
           />
         )}
@@ -418,7 +424,6 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
             data-testid="alert-name"
             size="sm"
             tooltip={getEntityName(alert)}
-
             onPress={() =>
               onNavigate({
                 type: 'detail',
@@ -444,7 +449,9 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
             maxLength={200}
           />
         ) : (
-          <Typography className="tw:text-secondary" size="text-sm">--</Typography>
+          <Typography className="tw:text-secondary" size="text-sm">
+            --
+          </Typography>
         );
 
       case 'actions':
@@ -541,12 +548,12 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
 
       {selectedAlert && (
         <DeleteModal
+          open
           entityTitle={getEntityName(selectedAlert).toString()}
           isDeleting={isDeleting}
           message={t('message.permanently-delete-common-message', {
             entity: getEntityName(selectedAlert).toString().toLowerCase(),
           })}
-          open
           onCancel={() => setSelectedAlert(undefined)}
           onDelete={handleAlertDelete}
         />

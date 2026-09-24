@@ -24,9 +24,7 @@ import { XClose } from '@untitledui/icons';
 import { isEmpty, isNil } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Effect,
-} from '../../../../../../generated/events/api/createEventSubscription';
+import { Effect } from '../../../../../../generated/events/api/createEventSubscription';
 import {
   EventFilterRule,
   InputType,
@@ -82,7 +80,7 @@ function ControlledFilterArgsField({
         input:
           name === argName
             ? val
-            : (storedArgs.find((a) => a.name === name)?.input ?? []),
+            : storedArgs.find((a) => a.name === name)?.input ?? [],
       }));
       onArgumentsChange(updated as unknown as string[]);
     },
@@ -154,10 +152,7 @@ function NotificationFiltersEditor({
   }, [supportedFilters, filters]);
 
   const handleControlledAdd = () => {
-    onChange([
-      ...filters,
-      { effect: Effect.Include } as EventFilterRule,
-    ]);
+    onChange([...filters, { effect: Effect.Include } as EventFilterRule]);
   };
 
   const handleControlledRemove = (index: number) => {
@@ -169,9 +164,9 @@ function NotificationFiltersEditor({
     field: keyof EventFilterRule,
     fieldValue: EventFilterRule[keyof EventFilterRule]
   ) => {
-    onChange(filters.map((f, i) =>
-      i === index ? { ...f, [field]: fieldValue } : f
-    ));
+    onChange(
+      filters.map((f, i) => (i === index ? { ...f, [field]: fieldValue } : f))
+    );
   };
 
   const showAddFilterButton =
@@ -212,11 +207,13 @@ function NotificationFiltersEditor({
                         })}
                         selectedKey={filter.name ?? null}
                         onSelectionChange={(val) => {
-                          onChange(filters.map((f, i) =>
-                            i === index
-                              ? { ...f, name: String(val), arguments: [] }
-                              : f
-                          ));
+                          onChange(
+                            filters.map((f, i) =>
+                              i === index
+                                ? { ...f, name: String(val), arguments: [] }
+                                : f
+                            )
+                          );
                         }}>
                         {(item) => (
                           <Select.Item id={item.id} key={item.id}>
@@ -253,9 +250,7 @@ function NotificationFiltersEditor({
                   </Box>
 
                   <Box align="center" direction="row" gap={2}>
-                    <Typography size="text-sm">
-                      {t('label.include')}
-                    </Typography>
+                    <Typography size="text-sm">{t('label.include')}</Typography>
                     <Toggle
                       data-testid={`filter-switch-${index}`}
                       isDisabled={isViewMode}

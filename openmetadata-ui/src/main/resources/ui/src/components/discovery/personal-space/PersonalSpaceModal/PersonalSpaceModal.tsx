@@ -15,7 +15,10 @@ import { Dialog, Modal, ModalOverlay } from '@openmetadata/ui-core-components';
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
-import { useSettingsHash, useSettingsHashSync } from '../../../../hooks/useSettingsHash';
+import {
+  useSettingsHash,
+  useSettingsHashSync,
+} from '../../../../hooks/useSettingsHash';
 import PersonalSpaceGate from '../PersonalSpaceGate/PersonalSpaceGate';
 import ProfilePage from '../Profile/ProfilePage';
 import './personal-space-modal.less';
@@ -40,10 +43,7 @@ const PersonalSpaceModal: React.FC = () => {
 
   const isOpen = activePanel !== null;
 
-  const openProfile = useCallback(
-    (panel: 'profile') => open(panel),
-    [open]
-  );
+  const openProfile = useCallback((panel: 'profile') => open(panel), [open]);
 
   const { state: hashState } = useSettingsHash();
 
@@ -67,9 +67,7 @@ const PersonalSpaceModal: React.FC = () => {
   }, [pathname, close, hashState.tab]);
 
   return (
-    <ModalOverlay
-      isOpen={isOpen}
-      onOpenChange={(isOpen) => !isOpen && close()}>
+    <ModalOverlay isOpen={isOpen} onOpenChange={(isOpen) => !isOpen && close()}>
       <Modal>
         <Dialog
           showCloseButton

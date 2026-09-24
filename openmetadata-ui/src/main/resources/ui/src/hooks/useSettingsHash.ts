@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+} from 'react';
 // eslint-disable-next-line openmetadata-imports/no-hook-ui-imports -- type-only import for hash ↔ nav-id mapping
 import type { ProfileNavId } from '../components/discovery/personal-space/Profile/profileNavConfig';
 

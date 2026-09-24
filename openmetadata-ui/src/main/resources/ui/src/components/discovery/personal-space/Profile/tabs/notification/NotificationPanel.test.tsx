@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { NotificationView } from './Notification.types';
 import NotificationPanel from './NotificationPanel';
 
@@ -30,13 +29,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children, ...props }) => (
       <div {...props}>{children}</div>
     )),
-  Button: jest
-    .fn()
-    .mockImplementation(({ children, onPress, ...props }) => (
-      <button {...props} onClick={onPress}>
-        {children}
-      </button>
-    )),
+  Button: jest.fn().mockImplementation(({ children, onPress, ...props }) => (
+    <button {...props} onClick={onPress}>
+      {children}
+    </button>
+  )),
 }));
 
 jest.mock('@untitledui/icons', () => ({
@@ -45,12 +42,9 @@ jest.mock('@untitledui/icons', () => ({
 
 const mockCheckPermission = jest.fn().mockReturnValue(true);
 
-jest.mock(
-  '../../../../../../utils/PermissionsUtils',
-  () => ({
-    checkPermission: (...args: unknown[]) => mockCheckPermission(...args),
-  })
-);
+jest.mock('../../../../../../utils/PermissionsUtils', () => ({
+  checkPermission: (...args: unknown[]) => mockCheckPermission(...args),
+}));
 
 jest.mock(
   '../../../../../../context/PermissionProvider/PermissionProvider',
@@ -105,9 +99,7 @@ describe('NotificationPanel', () => {
       capturedLandingProps.onNavigate({ type: 'list' });
     });
 
-    expect(
-      screen.getByTestId('notification-alerts-panel')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('notification-alerts-panel')).toBeInTheDocument();
   });
 
   it('should call onHeaderChange with breadcrumbs and title on mount', () => {
@@ -129,9 +121,7 @@ describe('NotificationPanel', () => {
       capturedLandingProps.onNavigate({ type: 'add' });
     });
 
-    expect(
-      screen.getByTestId('notification-alert-form')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('notification-alert-form')).toBeInTheDocument();
   });
 
   it('should render NotificationAlertDetail when navigated to detail view', () => {
@@ -145,9 +135,7 @@ describe('NotificationPanel', () => {
       });
     });
 
-    expect(
-      screen.getByTestId('notification-alert-detail')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('notification-alert-detail')).toBeInTheDocument();
   });
 
   it('should not show add-alert action when permission is denied', () => {

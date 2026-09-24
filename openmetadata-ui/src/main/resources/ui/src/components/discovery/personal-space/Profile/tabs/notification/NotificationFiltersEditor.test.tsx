@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { Effect } from '../../../../../../generated/events/api/createEventSubscription';
 import {
   EventFilterRule,
@@ -56,23 +55,29 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )),
   Select: Object.assign(
-    jest.fn().mockImplementation(({ children, ...props }) => (
-      <div data-testid={props['data-testid'] ?? 'select'}>{typeof children === 'function' ? null : children}</div>
-    )),
+    jest
+      .fn()
+      .mockImplementation(({ children, ...props }) => (
+        <div data-testid={props['data-testid'] ?? 'select'}>
+          {typeof children === 'function' ? null : children}
+        </div>
+      )),
     {
       Item: jest
         .fn()
         .mockImplementation(({ children }) => <div>{children}</div>),
     }
   ),
-  Toggle: jest.fn().mockImplementation(({ onChange, isSelected, ...props }) => (
-    <input
-      {...props}
-      checked={isSelected}
-      type="checkbox"
-      onChange={(e) => onChange?.(e.target.checked)}
-    />
-  )),
+  Toggle: jest
+    .fn()
+    .mockImplementation(({ onChange, isSelected, ...props }) => (
+      <input
+        {...props}
+        checked={isSelected}
+        type="checkbox"
+        onChange={(e) => onChange?.(e.target.checked)}
+      />
+    )),
 }));
 
 jest.mock('@untitledui/icons', () => ({
@@ -179,8 +184,6 @@ describe('NotificationFiltersEditor', () => {
     );
 
     expect(screen.queryByTestId('add-filters')).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('remove-filter-0')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('remove-filter-0')).not.toBeInTheDocument();
   });
 });

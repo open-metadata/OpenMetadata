@@ -31,6 +31,11 @@ import { isEmpty, isUndefined, startCase } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterOffIcon } from '../../../../../../assets/svg/ic-filter-off.svg';
+import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+} from '../../../../../../constants/constants';
 import { AlertRecentEventFilters } from '../../../../../../enums/Alerts.enum';
 import { CSMode } from '../../../../../../enums/codemirror.enum';
 import {
@@ -52,11 +57,6 @@ import { formatDateTime } from '../../../../../../utils/date-time/DateTimeUtils'
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import searchClassBase from '../../../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../../../constants/constants';
 import { withSuspenseFallback } from '../../../../../AppRouter/withSuspenseFallback';
 
 const SchemaEditor = withSuspenseFallback(
@@ -88,8 +88,7 @@ function NotificationRecentEvents({
   );
   const { state: hashState, updateParams } = useSettingsHash();
   const initialPage = Number(hashState.params.page) || 1;
-  const initialPageSize =
-    Number(hashState.params.pageSize) || PAGE_SIZE_BASE;
+  const initialPageSize = Number(hashState.params.pageSize) || PAGE_SIZE_BASE;
 
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [pageSize, setPageSize] = useState(initialPageSize);
@@ -169,10 +168,7 @@ function NotificationRecentEvents({
     [paging, pageSize]
   );
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil((paging.total ?? 0) / pageSize)
-  );
+  const totalPages = Math.max(1, Math.ceil((paging.total ?? 0) / pageSize));
 
   useEffect(() => {
     const offset = (currentPage - 1) * pageSize;
@@ -229,7 +225,9 @@ function NotificationRecentEvents({
     return (
       <Box direction="col">
         <Box data-testid="recent-events-list" direction="col" gap={2}>
-          <Accordion allowsMultipleExpanded className="tw:w-full tw:rounded-b-none">
+          <Accordion
+            allowsMultipleExpanded
+            className="tw:w-full tw:rounded-b-none">
             {alertRecentEvents?.map((typedEvent) => {
               const { changeEventData, changeEventDataToDisplay } =
                 getChangeEventDataFromTypedEvent(typedEvent);
@@ -267,9 +265,7 @@ function NotificationRecentEvents({
                           {changeEventData.id}
                         </Typography>
                       </Box>
-                      <Typography
-                        className="tw:text-tertiary!"
-                        size="text-sm">
+                      <Typography className="tw:text-tertiary!" size="text-sm">
                         {formatDateTime(typedEvent.timestamp)}
                       </Typography>
                     </Box>
@@ -279,18 +275,13 @@ function NotificationRecentEvents({
                       data-testid={`event-details-${changeEventData.id}`}
                       direction="col"
                       gap={3}>
-                      <Box
-                        wrap="wrap"
-                        direction="row"
-                        gap={4}>
+                      <Box direction="row" gap={4} wrap="wrap">
                         {Object.entries(changeEventDataToDisplay).map(
                           ([key, value]) =>
                             isUndefined(value) ? null : (
                               <Box
                                 className={
-                                  key === 'reason'
-                                    ? 'tw:w-full'
-                                    : 'tw:min-w-48'
+                                  key === 'reason' ? 'tw:w-full' : 'tw:min-w-48'
                                 }
                                 data-testid={`event-data-${key}`}
                                 direction="col"

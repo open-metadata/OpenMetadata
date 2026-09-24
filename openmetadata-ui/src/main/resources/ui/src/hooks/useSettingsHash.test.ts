@@ -95,6 +95,7 @@ describe('useSettingsHash', () => {
     });
 
     expect(replaceStateSpy).toHaveBeenCalled();
+
     const callArg = replaceStateSpy.mock.calls[0][2] as string;
 
     expect(callArg).not.toContain('#');

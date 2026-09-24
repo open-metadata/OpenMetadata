@@ -29,10 +29,10 @@ import {
 import { User } from '../../../../generated/entity/teams/user';
 import { userPermissions } from '../../../../utils/PermissionsUtils';
 import AccessTokenPanel from './components/AccessTokenPanel';
-import NotificationPanel from './tabs/notification/NotificationPanel';
 import CustomPropertiesPanel from './panels/CustomPropertiesPanel/CustomPropertiesPanel';
 import ProfileDetailsPanel from './ProfileDetailsPanel';
 import AccessControlPanel from './tabs/access-control/AccessControlPanel';
+import NotificationPanel from './tabs/notification/NotificationPanel';
 import PermissionsTab from './tabs/PermissionsTab';
 
 export type ProfileNavId =

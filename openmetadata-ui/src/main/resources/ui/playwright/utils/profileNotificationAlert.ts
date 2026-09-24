@@ -76,7 +76,9 @@ const fillAutocompleteAndSelect = async ({
     await input.fill(searchText);
   }
 
-  const option = page.getByRole('option', { name: new RegExp(searchText, 'i') });
+  const option = page.getByRole('option', {
+    name: new RegExp(searchText, 'i'),
+  });
 
   await expect(option).toBeVisible({ timeout: 30_000 });
   await option.click();
@@ -100,11 +102,7 @@ const selectFilterType = async ({
   filterName: string;
   exclude?: boolean;
 }) => {
-  await selectCoreUIOption(
-    page,
-    `filter-select-${filterNumber}`,
-    filterName
-  );
+  await selectCoreUIOption(page, `filter-select-${filterNumber}`, filterName);
 
   if (exclude) {
     const toggle = page.getByTestId(`filter-switch-${filterNumber}`);
@@ -387,7 +385,10 @@ export const addInternalDestinationProfile = async ({
     optionName: type,
   });
 
-  await page.getByRole('listbox').waitFor({ state: 'detached' }).catch(() => undefined);
+  await page
+    .getByRole('listbox')
+    .waitFor({ state: 'detached' })
+    .catch(() => undefined);
 };
 
 // ─── Recent events ────────────────────────────────────────────────────────────

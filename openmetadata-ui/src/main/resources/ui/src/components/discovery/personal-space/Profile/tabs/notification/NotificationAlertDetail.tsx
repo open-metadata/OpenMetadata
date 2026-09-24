@@ -33,20 +33,18 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import NotificationRecentEvents from './NotificationRecentEvents';
-import NotificationAlertConfigView from './NotificationAlertConfigView';
-import NotificationDiagnosticInfo from './NotificationDiagnosticInfo';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
+import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { AlertDetailTabs } from '../../../../../../enums/Alerts.enum';
 import { EntityType } from '../../../../../../enums/entity.enum';
+import { EntityReference } from '../../../../../../generated/entity/data/table';
+import { EventSubscriptionDiagnosticInfo } from '../../../../../../generated/events/api/eventSubscriptionDiagnosticInfo';
 import {
   EventSubscription,
   ProviderType,
 } from '../../../../../../generated/events/eventSubscription';
-import { EntityReference } from '../../../../../../generated/entity/data/table';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
-import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   getAlertsFromName,
   updateNotificationAlert,
@@ -55,20 +53,22 @@ import {
   getDiagnosticInfo,
   syncOffset,
 } from '../../../../../../rest/observabilityAPI';
-import { EventSubscriptionDiagnosticInfo } from '../../../../../../generated/events/api/eventSubscriptionDiagnosticInfo';
 import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import { UserTeamSelectableList } from '../../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import { UserTeamSelectableList } from '../../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import type { NotificationView } from './Notification.types';
+import NotificationAlertConfigView from './NotificationAlertConfigView';
+import NotificationDiagnosticInfo from './NotificationDiagnosticInfo';
+import NotificationRecentEvents from './NotificationRecentEvents';
 
 interface NotificationAlertDetailProps {
   fqn: string;
@@ -102,61 +102,61 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
   const { t } = useTranslation();
 
   return (
-  <Box className="tw:mb-2" direction="col">
-    <Box align="center" direction="row" gap={2}>
-      <Typography className="tw:text-primary" weight="medium">
-        {t('label.description')}
-      </Typography>
-      {canEdit && !isEditing && (
-        <ButtonUtility
-          color="tertiary"
-          data-testid="edit-description-btn"
-          icon={Edit}
-          size="xs"
-          tooltip={String(
-            t('label.edit-entity', { entity: t('label.description') })
+    <Box className="tw:mb-2" direction="col">
+      <Box align="center" direction="row" gap={2}>
+        <Typography className="tw:text-primary" weight="medium">
+          {t('label.description')}
+        </Typography>
+        {canEdit && !isEditing && (
+          <ButtonUtility
+            color="tertiary"
+            data-testid="edit-description-btn"
+            icon={Edit}
+            size="xs"
+            tooltip={String(
+              t('label.edit-entity', { entity: t('label.description') })
+            )}
+            onPress={onStartEdit}
+          />
+        )}
+      </Box>
+
+      {isEditing ? (
+        <Box data-testid="edit-description-modal" direction="col" gap={2}>
+          <RichTextEditor
+            className="new-form-style"
+            initialValue={description ?? ''}
+            ref={editorRef}
+          />
+          <Box direction="row" gap={2} justify="end">
+            <Button
+              color="tertiary"
+              isDisabled={isSaving}
+              size="sm"
+              onPress={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              isLoading={isSaving}
+              size="sm"
+              onPress={onSave}>
+              {t('label.save')}
+            </Button>
+          </Box>
+        </Box>
+      ) : (
+        <>
+          {description ? (
+            <RichTextEditorPreviewerV1 markdown={description} />
+          ) : (
+            <Typography className="tw:text-tertiary" size="text-sm">
+              --
+            </Typography>
           )}
-          onPress={onStartEdit}
-        />
+        </>
       )}
     </Box>
-
-    {isEditing ? (
-      <Box data-testid="edit-description-modal" direction="col" gap={2}>
-        <RichTextEditor
-          className="new-form-style"
-          initialValue={description ?? ''}
-          ref={editorRef}
-        />
-        <Box direction="row" gap={2} justify="end">
-          <Button
-            color="tertiary"
-            isDisabled={isSaving}
-            size="sm"
-            onPress={onCancel}>
-            {t('label.cancel')}
-          </Button>
-          <Button
-            color="primary"
-            isLoading={isSaving}
-            size="sm"
-            onPress={onSave}>
-            {t('label.save')}
-          </Button>
-        </Box>
-      </Box>
-    ) : (
-      <>
-        {description ? (
-          <RichTextEditorPreviewerV1 markdown={description} />
-        ) : (
-          <Typography className="tw:text-tertiary" size="text-sm">
-            --
-          </Typography>
-        )}
-      </>
-    )}
-  </Box>
   );
 };
 
@@ -171,8 +171,7 @@ const DiagnosticStatsSummary: FC<{
     (diagnosticData.failedEventsCount ?? 0);
   const pendingEvents = Math.max(
     0,
-    (diagnosticData.latestOffset ?? 0) -
-      (diagnosticData.currentOffset ?? 0)
+    (diagnosticData.latestOffset ?? 0) - (diagnosticData.currentOffset ?? 0)
   );
 
   return (
@@ -288,7 +287,9 @@ const AlertDetailTabContent: FC<{
   }
 
   if (activeTab === AlertDetailTabs.DIAGNOSTIC_INFO) {
-    return <NotificationDiagnosticInfo diagnosticData={diagnosticData} fqn={fqn} />;
+    return (
+      <NotificationDiagnosticInfo diagnosticData={diagnosticData} fqn={fqn} />
+    );
   }
 
   return null;
@@ -305,8 +306,7 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
 
   const { state: hashState, updateParams } = useSettingsHash();
   const initialTab =
-    (hashState.params.tab as AlertDetailTabs) ||
-    AlertDetailTabs.CONFIGURATION;
+    (hashState.params.tab as AlertDetailTabs) || AlertDetailTabs.CONFIGURATION;
 
   const [alert, setAlert] = useState<EventSubscription>();
   const [isLoading, setIsLoading] = useState(true);
@@ -520,9 +520,9 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
       <Box
         align="center"
         className="tw:border tw:border-secondary tw:mb-2 tw:rounded-lg tw:p-3"
-        wrap="wrap"
         direction="row"
-        gap={6}>
+        gap={6}
+        wrap="wrap">
         <Box align="center" direction="row" gap={2}>
           <Typography className="tw:text-tertiary tw:shrink-0" size="text-sm">
             {`${t('label.owner-plural')}:`}
@@ -544,9 +544,7 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
         )}
       </Box>
 
-      <Tabs
-        selectedKey={activeTab}
-        onSelectionChange={handleTabChange}>
+      <Tabs selectedKey={activeTab} onSelectionChange={handleTabChange}>
         <Tabs.List size="sm" type="underline">
           <Tabs.Item id={AlertDetailTabs.CONFIGURATION}>
             {t('label.configuration')}

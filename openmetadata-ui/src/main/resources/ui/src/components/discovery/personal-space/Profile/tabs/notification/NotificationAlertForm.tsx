@@ -32,14 +32,6 @@ import React, {
 } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import NotificationDestinationBridge, {
-  DestinationFormValidator,
-} from './NotificationDestinationBridge';
-import NotificationFiltersEditor from './NotificationFiltersEditor';
-import NotificationSourceSelect from './NotificationSourceSelect';
-import InlineAlert from '../../../../../common/InlineAlert/InlineAlert';
-import Loader from '../../../../../common/Loader/Loader';
-import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { NAME_FIELD_RULES } from '../../../../../../constants/Form.constants';
 import { useLimitStore } from '../../../../../../context/LimitsProvider/useLimitsStore';
 import {
@@ -50,11 +42,6 @@ import {
 } from '../../../../../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../../../../../generated/events/filterResourceDescriptor';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
-import type {
-  ModifiedCreateEventSubscription,
-  ModifiedDestination,
-  ModifiedEventSubscription,
-} from './Notification.types';
 import {
   createNotificationAlert,
   getAlertsFromName,
@@ -64,7 +51,20 @@ import {
 import alertsClassBase from '../../../../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import InlineAlert from '../../../../../common/InlineAlert/InlineAlert';
+import Loader from '../../../../../common/Loader/Loader';
+import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
+import type {
+  ModifiedCreateEventSubscription,
+  ModifiedDestination,
+  ModifiedEventSubscription,
+} from './Notification.types';
 import { NotificationView } from './Notification.types';
+import NotificationDestinationBridge, {
+  DestinationFormValidator,
+} from './NotificationDestinationBridge';
+import NotificationFiltersEditor from './NotificationFiltersEditor';
+import NotificationSourceSelect from './NotificationSourceSelect';
 
 interface NotificationAlertFormProps {
   fqn?: string;
@@ -243,13 +243,11 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
         alertType: AlertType.Notification,
         provider: ProviderType.User,
         input: {
-          filters: values.filters.map(
-            ({ name, effect, arguments: args }) => ({
-              name,
-              effect,
-              arguments: args,
-            })
-          ),
+          filters: values.filters.map(({ name, effect, arguments: args }) => ({
+            name,
+            effect,
+            arguments: args,
+          })),
         },
       } as unknown as ModifiedCreateEventSubscription;
 
@@ -298,7 +296,9 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
   return (
     <Box className="tw:flex tw:flex-col tw:h-full" direction="col">
       {/* Scrollable content area */}
-      <Box className="tw:flex-1 tw:overflow-y-auto tw:p-6 tw:pt-0" direction="col">
+      <Box
+        className="tw:flex-1 tw:overflow-y-auto tw:p-6 tw:pt-0"
+        direction="col">
         <Box className="tw:max-w-[50%] tw:w-full" direction="col" gap={4}>
           {/* Title + description */}
           <Box direction="col" gap={1}>

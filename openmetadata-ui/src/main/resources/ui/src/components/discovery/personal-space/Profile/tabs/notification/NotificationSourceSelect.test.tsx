@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { FilterResourceDescriptor } from '../../../../../../generated/events/filterResourceDescriptor';
 import NotificationSourceSelect from './NotificationSourceSelect';
 
@@ -63,26 +62,18 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         .mockImplementation(({ children }) => <div>{children}</div>),
     }
   ),
-  Button: jest
-    .fn()
-    .mockImplementation(({ children, onPress, ...props }) => (
-      <button {...props} onClick={onPress}>
-        {children}
-      </button>
-    )),
+  Button: jest.fn().mockImplementation(({ children, onPress, ...props }) => (
+    <button {...props} onClick={onPress}>
+      {children}
+    </button>
+  )),
   Dropdown: {
-    Root: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
+    Root: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
     Popover: jest
       .fn()
       .mockImplementation(({ children }) => <div>{children}</div>),
-    Menu: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
-    Item: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
+    Menu: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+    Item: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   },
 }));
 
@@ -136,9 +127,7 @@ describe('NotificationSourceSelect', () => {
     );
 
     expect(screen.getByTestId('source-select')).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('add-source-button')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('add-source-button')).not.toBeInTheDocument();
   });
 
   it('should disable select in view mode', () => {
