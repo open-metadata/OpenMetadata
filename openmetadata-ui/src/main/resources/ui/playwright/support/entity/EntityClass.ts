@@ -13,6 +13,7 @@
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import { GlobalSettingOptions, ServiceTypes } from '../../constant/settings';
+import { deleteFixtureEntity } from '../../utils/apiResponse';
 import {
   assignDataProduct,
   assignSingleSelectDomain,
@@ -603,5 +604,3 @@ export class EntityClass {
     });
   }
 }
-
-import { deleteFixtureEntity } from '../../utils/apiResponse';

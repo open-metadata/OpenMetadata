@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
+import { deleteFixtureEntity } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { selectDataProduct } from '../../utils/domain';
 import { getEncodedFqn } from '../../utils/entity';
@@ -305,5 +306,3 @@ export class DataProduct extends EntityClass {
     return response.json();
   }
 }
-
-import { deleteFixtureEntity } from '../../utils/apiResponse';
