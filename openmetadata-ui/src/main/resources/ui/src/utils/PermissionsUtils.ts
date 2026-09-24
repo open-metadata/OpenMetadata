@@ -179,14 +179,28 @@ export const userPermissions = {
 export const hasCustomPropertyViewPermission = (
   entityResource: ResourceEntity,
   permissions: UIPermission
-): boolean =>
-  Boolean(
+): boolean => {
+  const canViewType = Boolean(
     userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions)
-  ) &&
-  Boolean(
-    checkPermission(Operation.ViewCustomFields, entityResource, permissions) ||
-      checkPermission(Operation.ViewAll, entityResource, permissions)
   );
+
+  // tableColumn is not a policy resource: the backend cannot resolve it as an entity and
+  // falls back to authorizing the read on `type`, so TYPE view is all that is required.
+  if (entityResource === ResourceEntity.TABLE_COLUMN) {
+    return canViewType;
+  }
+
+  return (
+    canViewType &&
+    Boolean(
+      checkPermission(
+        Operation.ViewCustomFields,
+        entityResource,
+        permissions
+      ) || checkPermission(Operation.ViewAll, entityResource, permissions)
+    )
+  );
+};
 
 /**
  * Prioritizes field-level edit permissions over EditAll permission

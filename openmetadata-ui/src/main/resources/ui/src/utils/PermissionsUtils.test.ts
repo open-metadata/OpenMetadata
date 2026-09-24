@@ -131,6 +131,21 @@ describe('hasCustomPropertyViewPermission', () => {
     ).toBe(false);
   });
 
+  it('only requires TYPE view for column custom properties', () => {
+    expect(
+      hasCustomPropertyViewPermission(
+        ResourceEntity.TABLE_COLUMN,
+        build({ type: { ViewBasic: true } })
+      )
+    ).toBe(true);
+    expect(
+      hasCustomPropertyViewPermission(
+        ResourceEntity.TABLE_COLUMN,
+        build({ tableColumn: { ViewCustomFields: true } })
+      )
+    ).toBe(false);
+  });
+
   it('falls back to the `all` resource', () => {
     const permissions = build({ all: { ViewAll: true } });
 

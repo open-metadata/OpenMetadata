@@ -371,6 +371,10 @@ describe('GlobalSettingsClassBase', () => {
         items.find((item) => item.key === 'customProperties.topics')
           ?.isProtected
       ).toBe(false);
+      expect(
+        items.find((item) => item.key === 'customProperties.column')
+          ?.isProtected
+      ).toBe(true);
     });
 
     it('should hide custom property items for non-admins without TYPE view access', () => {
