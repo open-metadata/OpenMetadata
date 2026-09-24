@@ -7,18 +7,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.SLACK;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.events.AlertSchedulingInfo;
 import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
 import org.openmetadata.schema.api.events.EventsRecord;
 import org.openmetadata.schema.entity.events.AlertEventInProgress;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
@@ -156,6 +161,29 @@ class AlertTickOutcomesIT {
     }
   }
 
+  @Test
+  void schedulingEndpointAnswersWithTriggerStateAndLag(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription alert = webhookAlert(ns, "scheduling", null, receiver);
+      QuietAlert.settle(alert);
+      FixtureEvents.insert(FixtureEvents.tableEvents());
+
+      String body =
+          SdkClients.adminClient()
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.GET,
+                  "/v1/events/subscriptions/id/" + alert.getId() + "/scheduling",
+                  null,
+                  RequestOptions.builder().build());
+
+      JsonNode answer = JsonUtils.readTree(body);
+      assertEquals("NORMAL", answer.get("triggerState").asText());
+      assertTrue(answer.get("jobClass").asText().endsWith("AlertPublisher"));
+      assertTrue(answer.get("lag").asLong() >= 3);
+    }
+  }
+
   // A consumer that makes its own work reads no change events: its counters say what it handled,
   // and the change events after its position are none of its backlog.
   @Test
@@ -180,6 +208,22 @@ class AlertTickOutcomesIT {
       assertTrue(diagnostics.getHasProcessedAllEvents());
       assertTrue(diagnostics.getTotalUnprocessedEventsList().isEmpty());
       assertTrue(scheduler.checkIfPublisherPublishedAllEvents(alert.getId()));
+    }
+  }
+
+  @Test
+  void schedulingOfASelfDrivenAlertShowsNoLag(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription alert =
+          webhookAlert(ns, "self_driven_scheduling", ReportingConsumer.class.getName(), receiver);
+      QuietAlert.settle(alert);
+      FixtureEvents.insert(FixtureEvents.tableEvents());
+
+      AlertSchedulingInfo answer =
+          EventSubscriptionScheduler.getInstance().getSchedulingInfo(alert.getId());
+
+      assertEquals(0L, answer.getLag());
+      assertEquals(answer.getLatestOffset(), answer.getCurrentOffset());
     }
   }
 

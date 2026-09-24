@@ -2,11 +2,14 @@ package org.openmetadata.it.tests.alerts;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
@@ -15,6 +18,7 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 
 /**
  * What happens to an alert while one of its ticks is running. The tick keeps no state of its own
@@ -62,6 +66,24 @@ class AlertRunningTickIT {
 
       assertTrue(held.stored().getEnabled());
       assertTrue(AlertFixtures.jobExists(held.alert.getId()));
+    }
+  }
+
+  @Test
+  void deletedAlertDuringTickLeavesNoRows(TestNamespace ns) throws Exception {
+    try (HeldTick held = HeldTick.of(ns, "delete_during_tick")) {
+      UUID alertId = held.alert.getId();
+      AlertFixtures.repository().delete("admin", alertId, true, true);
+
+      held.finish();
+
+      Awaitility.await("the job of the deleted alert to be gone")
+          .atMost(Duration.ofSeconds(30))
+          .untilAsserted(() -> assertFalse(AlertFixtures.jobExists(alertId)));
+      assertNull(AlertFixtures.position(alertId));
+      assertEquals(0, AlertFixtures.dao().getSuccessfulRecordCount(alertId.toString()));
+      assertEquals(
+          0, Entity.getCollectionDAO().changeEventDAO().countFailedEvents(alertId.toString()));
     }
   }
 

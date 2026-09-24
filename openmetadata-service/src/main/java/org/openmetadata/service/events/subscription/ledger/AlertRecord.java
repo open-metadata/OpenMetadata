@@ -102,8 +102,14 @@ public final class AlertRecord {
         : JsonUtils.readValue(stored, AlertMetrics.class);
   }
 
+  /** Every id with rows under the ledger's own keys, as stored, including any that name no alert. */
   public static List<String> alertIdsWithRows() {
     return dao().listIdsHavingExtensions(LedgerKeys.all());
+  }
+
+  public static boolean hasRows(UUID alertId) {
+    return dao().listSubscriberExtensions(alertId.toString()).stream()
+        .anyMatch(row -> LedgerKeys.all().contains(row.extension()));
   }
 
   // Health holds only what ticks reported: nothing before the first one.
