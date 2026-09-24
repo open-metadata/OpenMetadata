@@ -109,14 +109,19 @@ describe('TaskActivityTimeline', () => {
     expect(screen.getByTestId('task-comment-card')).toHaveTextContent('hi');
   });
 
-  // The task records who holds it but never when they were given it, so dating
-  // an assignment to creation would misorder it against comments.
-  it('does not invent an assignment event', () => {
+  // The task records who holds it but never when they were given it: the event
+  // shows, but without a time it would have to invent.
+  it('shows the assignment without a timestamp', () => {
     renderTimeline(task);
 
+    const assigned = screen
+      .getByText('message.task-event-assigned:Assignee One')
+      .closest('div');
+
+    expect(assigned).not.toHaveTextContent(/at-\d+/);
     expect(
-      screen.queryByText(/message.task-event-assigned/)
-    ).not.toBeInTheDocument();
+      screen.getByText('message.task-event-created:Olivia Rhye')
+    ).toBeInTheDocument();
   });
 
   it('orders entries oldest first, so a comment follows the events it answers', () => {

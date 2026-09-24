@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   CheckCircle,
   PlusCircle,
+  UserPlus01,
   XCircle,
 } from '@untitledui/icons';
 import classNames from 'classnames';
@@ -42,6 +43,7 @@ export interface TaskActivityTimelineProps {
 
 const EVENT_ICON: Record<TaskTimelineIcon, typeof CheckCircle> = {
   approved: CheckCircle,
+  assigned: UserPlus01,
   created: PlusCircle,
   incident: AlertTriangle,
   rejected: XCircle,

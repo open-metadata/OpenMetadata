@@ -192,6 +192,48 @@ describe('getTaskDetailDescriptor', () => {
   });
 });
 
+describe('source row', () => {
+  const sourceOf = (task: Task) =>
+    getTaskDetailDescriptor(task, t).rows.find((row) => row.key === 'source')
+      ?.value;
+
+  it('names the auto-classifier as the source of an agent-proposed tag', () => {
+    expect(
+      sourceOf(
+        buildTask({
+          type: TaskType.TagUpdate,
+          payload: { source: 'Agent', tagsToAdd: [{ tagFQN: 'PII.Sensitive' }] },
+        } as unknown as Partial<Task>)
+      )
+    ).toEqual({ kind: 'text', text: 'label.auto-classification' });
+  });
+
+  // Outside tagging, an agent is not a classifier.
+  it('calls an agent an agent on a description task', () => {
+    expect(
+      sourceOf(
+        buildTask({
+          payload: { source: 'Agent', newDescription: 'x' },
+        } as unknown as Partial<Task>)
+      )
+    ).toEqual({ kind: 'text', text: 'label.agent' });
+  });
+
+  it('shows an unknown source as it arrived rather than hiding it', () => {
+    expect(
+      sourceOf(
+        buildTask({
+          payload: { source: 'SomethingNew', newDescription: 'x' },
+        } as unknown as Partial<Task>)
+      )
+    ).toEqual({ kind: 'text', text: 'SomethingNew' });
+  });
+
+  it('omits the row when no source is recorded', () => {
+    expect(sourceOf(buildTask())).toBeUndefined();
+  });
+});
+
 describe('deriveTaskAboutEntity', () => {
   it('counts the columns carrying a PII tag', () => {
     const about = deriveTaskAboutEntity(
@@ -212,6 +254,14 @@ describe('deriveTaskAboutEntity', () => {
     });
   });
 
+  it('reads the weekly usage count for the queries tile', () => {
+    expect(
+      deriveTaskAboutEntity({
+        usageSummary: { weeklyStats: { count: 9 } },
+      } as unknown as EntityUnion)?.weeklyQueryCount
+    ).toBe(9);
+  });
+
   it('picks the tier out of the entity tags', () => {
     expect(
       deriveTaskAboutEntity({
@@ -229,6 +279,7 @@ describe('deriveTaskAboutEntity', () => {
       columnCount: undefined,
       piiColumnCount: undefined,
       downstreamCount: undefined,
+      weeklyQueryCount: undefined,
       ownerCount: undefined,
       updatedAt: undefined,
     });

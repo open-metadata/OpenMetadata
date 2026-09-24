@@ -103,6 +103,8 @@ export interface TaskAboutEntity {
   columnCount?: number;
   piiColumnCount?: number;
   downstreamCount?: number;
+  /** Usage count for the current calendar week, not a rolling seven days. */
+  weeklyQueryCount?: number;
   ownerCount?: number;
   updatedAt?: number;
 }

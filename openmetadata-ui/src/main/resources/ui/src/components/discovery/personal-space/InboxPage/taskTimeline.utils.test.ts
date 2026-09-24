@@ -149,4 +149,39 @@ describe('buildTaskTimeline', () => {
       'resolved',
     ]);
   });
+
+  describe('assignment', () => {
+    const assigned = buildTask({
+      createdAt: 100,
+      assignees: [{ id: 'a1', name: 'bob' }],
+      comments: [{ id: 'c1', message: 'hi', createdAt: 50 }],
+    } as unknown as Partial<Task>);
+
+    it('follows creation, since that is when assignment almost always happens', () => {
+      const ids = buildTaskTimeline(assigned).map((entry) => entry.id);
+
+      expect(ids.indexOf('assigned-a1')).toBe(ids.indexOf('created') + 1);
+    });
+
+    // Nothing records when the holder was given the task, so no time is shown.
+    it('carries no timestamp of its own', () => {
+      const event = buildTaskTimeline(assigned).find(
+        (entry) => entry.id === 'assigned-a1'
+      );
+
+      expect(event).toMatchObject({
+        kind: 'event',
+        textKey: 'message.task-event-assigned',
+      });
+      expect(event?.timestamp).toBeUndefined();
+    });
+
+    it('is omitted when nobody holds the task', () => {
+      expect(
+        buildTaskTimeline(buildTask()).some((entry) =>
+          entry.id.startsWith('assigned-')
+        )
+      ).toBe(false);
+    });
+  });
 });

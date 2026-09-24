@@ -192,6 +192,36 @@ const tagsRow = (
     ? [{ key, icon: 'tag', label, value: { kind: 'tags', tags } }]
     : [];
 
+// Who produced a proposed change, in words rather than the payload's enum. The
+// payload holds a single value, so a change an agent proposed and a person then
+// filed reads as its origin alone.
+const SOURCE_LABEL_KEY: Record<string, string> = {
+  User: 'label.user',
+  Agent: 'label.agent',
+  AutoPilot: 'label.auto-pilot',
+  Classification: 'label.classification',
+  Ingestion: 'label.ingestion',
+};
+
+const getSourceLabel = (
+  t: Translate,
+  source?: string,
+  overrides: Record<string, string> = {}
+): string | undefined => {
+  if (!source) {
+    return undefined;
+  }
+  const key = overrides[source] ?? SOURCE_LABEL_KEY[source];
+
+  return key ? t(key) : source;
+};
+
+// On a tag request the agent is the auto-classifier, which is what a reviewer
+// knows it as.
+const TAG_SOURCE_OVERRIDES: Record<string, string> = {
+  Agent: 'label.auto-classification',
+};
+
 /** Assignee / requester / opened-on, which every task type shows. */
 const getCommonRows = (task: Task, t: Translate): TaskDetailRow[] => [
   ...usersRow('assignees', 'user', t('label.assignee'), task.assignees),
@@ -265,7 +295,12 @@ const describeTagUpdate = (
   return {
     rows: [
       ...tagsRow('tags', t('label.tag-plural'), payload.tagsToAdd),
-      ...textRow('source', 'source', t('label.source'), payload.source),
+      ...textRow(
+        'source',
+        'source',
+        t('label.source'),
+        getSourceLabel(t, payload.source, TAG_SOURCE_OVERRIDES)
+      ),
       ...usersRow(
         'requestedBy',
         'owner',
@@ -288,7 +323,12 @@ const describeDescriptionUpdate = (
     rows: [
       ...getCommonRows(task, t),
       ...textRow('fieldPath', 'type', t('label.field'), payload.fieldPath),
-      ...textRow('source', 'source', t('label.source'), payload.source),
+      ...textRow(
+        'source',
+        'source',
+        t('label.source'),
+        getSourceLabel(t, payload.source)
+      ),
     ],
     callout: payload.newDescription
       ? {
@@ -309,7 +349,12 @@ const describeSuggestion = (
     rows: [
       ...getCommonRows(task, t),
       ...textRow('fieldPath', 'type', t('label.field'), payload.fieldPath),
-      ...textRow('source', 'source', t('label.source'), payload.source),
+      ...textRow(
+        'source',
+        'source',
+        t('label.source'),
+        getSourceLabel(t, payload.source)
+      ),
     ],
     callout: payload.suggestedValue
       ? { label: t('label.suggestion'), text: payload.suggestedValue }
@@ -440,6 +485,7 @@ interface EntityWithContext {
   tags?: TagLabel[];
   owners?: EntityReference[];
   columns?: { tags?: TagLabel[] }[];
+  usageSummary?: { weeklyStats?: { count?: number } };
   updatedAt?: number;
 }
 
@@ -463,6 +509,7 @@ export const deriveTaskAboutEntity = (
       (column.tags ?? []).some((tag) => tag.tagFQN?.startsWith(PII_TAG_PREFIX))
     ).length,
     downstreamCount,
+    weeklyQueryCount: typed.usageSummary?.weeklyStats?.count,
     ownerCount: typed.owners?.length,
     updatedAt: typed.updatedAt,
   };
