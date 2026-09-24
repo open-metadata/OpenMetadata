@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Locator, Page } from '@playwright/test';
+import { expect, Locator, Page, Response } from '@playwright/test';
 import {
   SHORTCUTS,
   SLASH_COMMANDS,
@@ -236,13 +236,39 @@ export const createQuickLink = async (
     '[data-testid="related-entities-container"] input[role="combobox"]'
   );
 
+  // Matches the exact `q` the field sent, with the ES reserved-character
+  // escaping the UI adds (`-` → `\-`) stripped.
+  const isAssetSearch = (res: Response, query: string) => {
+    const url = new URL(res.url());
+
+    return (
+      url.pathname.endsWith('/api/v1/search/query') &&
+      url.searchParams.get('index') === 'dataAsset' &&
+      url.searchParams.get('q')?.replaceAll('\\', '') === query &&
+      res.request().method() === 'GET'
+    );
+  };
+
+  // The field sits below the fold of the modal's scrollable body. Scrolling it
+  // in as part of the click dispatches the `scroll` event after react-aria has
+  // opened the popover, and its non-modal popover closes on any ancestor
+  // scroll. Scroll first so that event lands before the popover exists.
+  await assetInput.scrollIntoViewIfNeeded();
+
+  // Focus fires an unfiltered `q=*` fetch. Let it settle before typing so it
+  // cannot resolve after the typed query and replace its results.
+  const initialOptions = page.waitForResponse((res) => isAssetSearch(res, '*'));
   await assetInput.click();
+  expect((await initialOptions).status()).toBe(200);
+
   // `fill` sets .value and fires one synthetic input event; react-aria's
   // combobox closes its popover on that, so the query still runs but the
-  // results have nowhere to render and the option below never appears. The
-  // trace shows the listbox present at the end of the click above and gone
-  // from every snapshot after the fill. Real keystrokes keep it open.
+  // results have nowhere to render. Real keystrokes keep it open.
+  const assetSearch = page.waitForResponse((res) =>
+    isAssetSearch(res, `*${dataAsset.entity.name}*`)
+  );
   await assetInput.pressSequentially(dataAsset.entity.name);
+  expect((await assetSearch).status()).toBe(200);
 
   await expect(
     page.getByRole('option', { name: dataAsset.entity.name })

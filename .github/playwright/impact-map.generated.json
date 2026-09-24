@@ -3399,6 +3399,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/customProperty.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts",
         "playwright/e2e/Pages/GlossaryImportExport.spec.ts"
       ]

@@ -17,7 +17,6 @@ import { ENTITY_PATH } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs } from '../../enums/entity.enum';
-import { Type } from '../../generated/entity/type';
 import CustomEntityDetailV1 from './CustomPropertiesPageV1';
 
 const mockNavigate = jest.fn();
@@ -71,10 +70,16 @@ jest.mock(
 jest.mock(
   '../../components/Settings/CustomProperty/CustomPropertyTable',
   () => ({
-    CustomPropertyTable: jest.fn(({ updateEntityType }) => (
-      <button onClick={() => updateEntityType([] as Type['customProperties'])}>
-        Update Entity Type
-      </button>
+    CustomPropertyTable: jest.fn(({ onDeleteProperty, onUpdateProperty }) => (
+      <>
+        <button onClick={() => onDeleteProperty('prop')}>
+          Delete Property
+        </button>
+        <button
+          onClick={() => onUpdateProperty('prop', { description: 'new' })}>
+          Update Property
+        </button>
+      </>
     )),
   })
 );
@@ -120,12 +125,23 @@ jest.mock('../../components/common/TabsLabel/TabsLabel.component', () =>
   jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
 );
 
-const mockUpdateType = jest.fn().mockResolvedValue({});
+const mockUpdatedType = { id: 'id', customProperties: [] };
+const mockDeleteCustomPropertyByName = jest
+  .fn()
+  .mockResolvedValue(mockUpdatedType);
+const mockUpdateCustomPropertyByName = jest
+  .fn()
+  .mockResolvedValue(mockUpdatedType);
 const mockGetTypeByFQN = jest.fn().mockResolvedValue({ id: 'id' });
 
 jest.mock('../../rest/metadataTypeAPI', () => ({
   getTypeByFQN: jest.fn(() => mockGetTypeByFQN()),
-  updateType: jest.fn(() => mockUpdateType()),
+  deleteCustomPropertyByName: jest.fn((...args) =>
+    mockDeleteCustomPropertyByName(...args)
+  ),
+  updateCustomPropertyByName: jest.fn((...args) =>
+    mockUpdateCustomPropertyByName(...args)
+  ),
 }));
 
 jest.mock('../../utils/GlobalSettingsUtils', () => ({
@@ -187,16 +203,56 @@ describe('CustomPropertiesPageV1 component', () => {
     expect(await screen.findByText('SchemaEditor')).toBeInTheDocument();
   });
 
-  it('update entity type should call updateType api', async () => {
+  it('deletes a property by name on the selected type', async () => {
     render(<CustomEntityDetailV1 />);
 
     userEvent.click(
-      await screen.findByRole('button', {
-        name: 'Update Entity Type',
-      })
+      await screen.findByRole('button', { name: 'Delete Property' })
     );
 
-    await waitFor(() => expect(mockUpdateType).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(mockDeleteCustomPropertyByName).toHaveBeenCalledWith(
+        'table',
+        'prop'
+      )
+    );
+  });
+
+  it('updates a property by name with only the edited fields', async () => {
+    render(<CustomEntityDetailV1 />);
+
+    userEvent.click(
+      await screen.findByRole('button', { name: 'Update Property' })
+    );
+
+    await waitFor(() =>
+      expect(mockUpdateCustomPropertyByName).toHaveBeenCalledWith(
+        'table',
+        'prop',
+        { description: 'new' }
+      )
+    );
+  });
+
+  it('reports and resyncs when the property to update no longer exists', async () => {
+    mockUpdateCustomPropertyByName.mockResolvedValueOnce(undefined);
+
+    render(<CustomEntityDetailV1 />);
+
+    const updateButton = await screen.findByRole('button', {
+      name: 'Update Property',
+    });
+    const fetchesBeforeUpdate = mockGetTypeByFQN.mock.calls.length;
+    userEvent.click(updateButton);
+
+    await waitFor(() =>
+      expect(mockShowErrorToast).toHaveBeenCalledWith(
+        'server.update-entity-error'
+      )
+    );
+    await waitFor(() =>
+      expect(mockGetTypeByFQN).toHaveBeenCalledTimes(fetchesBeforeUpdate + 1)
+    );
   });
 
   it('failed in fetch entityType should not fetch permission', async () => {
@@ -218,15 +274,12 @@ describe('CustomPropertiesPageV1 component', () => {
 
   it('errors check', async () => {
     setMockPermissions(true, { error: 'Error' });
-    mockUpdateType.mockRejectedValueOnce('Error');
+    mockDeleteCustomPropertyByName.mockRejectedValueOnce('Error');
 
     render(<CustomEntityDetailV1 />);
 
-    // update entity type
     userEvent.click(
-      await screen.findByRole('button', {
-        name: 'Update Entity Type',
-      })
+      await screen.findByRole('button', { name: 'Delete Property' })
     );
 
     await waitFor(() => expect(mockShowErrorToast).toHaveBeenCalledTimes(2));
