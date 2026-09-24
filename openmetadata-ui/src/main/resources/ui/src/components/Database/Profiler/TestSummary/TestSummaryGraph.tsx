@@ -33,7 +33,6 @@ import {
   LegendProps,
   Line,
   LineProps,
-  ReferenceArea,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -541,18 +540,6 @@ function TestSummaryGraph({
         minHeight={minHeight ?? 400}>
         <ComposedChart data={plottedData} margin={TEST_SUMMARY_CHART_MARGIN}>
           <CartesianGrid stroke={grid} vertical={false} />
-          {thresholdReference && (
-            // The wash marks the zone below the expectation, as the mock does,
-            // not the whole plot: runs above the line sit on a clear ground.
-            // With no y1 the area reaches down to the bottom of the axis.
-            <ReferenceArea
-              data-testid="below-expectation-area"
-              fill={PLOT_BACKGROUND}
-              fillOpacity={1}
-              ifOverflow="hidden"
-              y2={thresholdReference.y}
-            />
-          )}
           <XAxis
             angle={-45}
             dataKey="name"
@@ -642,6 +629,26 @@ function TestSummaryGraph({
               stroke="none"
             />
           ))}
+          {isSingleSeries &&
+            chartData.information.map((info) => (
+              // The mock shades the area under the line, not a fixed band:
+              // the wash follows each run down and leaves the plot above the
+              // line clear. Only a single series gets it; under several they
+              // would overlap and the shading would stop meaning anything.
+              <Area
+                activeDot={false}
+                data-testid="series-area"
+                dataKey={info.label}
+                dot={false}
+                fill={PLOT_BACKGROUND}
+                fillOpacity={1}
+                isAnimationActive={false}
+                key={`${info.label}-area`}
+                legendType="none"
+                stroke="none"
+                type="linear"
+              />
+            ))}
           {chartData?.information?.map((info) => (
             <Line
               activeDot={false}

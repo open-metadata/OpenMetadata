@@ -95,7 +95,11 @@ jest.mock('../../../../rest/tasksAPI', () => ({
 let mockDotStatus = 'Success';
 
 jest.mock('recharts', () => ({
-  Area: jest.fn().mockImplementation(() => <div data-testid="area" />),
+  Area: jest
+    .fn()
+    .mockImplementation((props) => (
+      <div data-testid={props['data-testid'] ?? 'area'} />
+    )),
   CartesianGrid: jest
     .fn()
     .mockImplementation(() => <div data-testid="cartesian-grid" />),
@@ -141,11 +145,6 @@ jest.mock('recharts', () => ({
       </div>
     );
   }),
-  ReferenceArea: jest
-    .fn()
-    .mockImplementation(({ y2, ...rest }) => (
-      <div data-testid={rest['data-testid'] ?? 'reference-area'} data-y2={y2} />
-    )),
   ReferenceLine: jest.fn().mockImplementation(({ label, x, y, ...rest }) => (
     <div
       data-testid={rest['data-testid'] ?? 'reference-line'}
@@ -492,36 +491,30 @@ describe('TestSummaryGraph', () => {
     expect(screen.queryByTestId('selected-point-halo')).not.toBeInTheDocument();
   });
 
-  // The mock washes the zone below the expectation, leaving the plot above
-  // the line clear, rather than tinting the whole chart.
-  it('should wash only the zone below the expectation line', () => {
+  // The wash is an area under the series, so it follows each run rather than
+  // filling a fixed band.
+  it('should shade the area under a single series', () => {
     render(
       <TestSummaryGraph
         {...mockProps}
-        testCaseParameterValue={[{ name: 'value', value: '10000' }]}
-      />
-    );
-
-    expect(screen.getByTestId('below-expectation-area')).toHaveAttribute(
-      'data-y2',
-      '10000'
-    );
-  });
-
-  it('should draw no wash when the test states no expectation', () => {
-    render(
-      <TestSummaryGraph
-        {...mockProps}
-        testCaseParameterValue={[{ name: 'strategy', value: 'ROWS' }]}
         testCaseResults={[
-          { ...mockProps.testCaseResults[0], maxBound: undefined },
+          {
+            ...mockProps.testCaseResults[0],
+            testResultValue: [{ name: 'value', value: '9990' }],
+          },
         ]}
       />
     );
 
-    expect(
-      screen.queryByTestId('below-expectation-area')
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('series-area')).toBeInTheDocument();
+  });
+
+  // The default fixture plots min and max: two overlapping washes would stop
+  // meaning "below this line".
+  it('should leave several series unshaded', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(screen.queryByTestId('series-area')).not.toBeInTheDocument();
   });
 
   it('should publish the clicked run to the store', () => {
