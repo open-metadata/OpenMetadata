@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.events.subscription;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.NOTIFICATION;
 
@@ -48,24 +47,18 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.events.EventSubscriptionDestinationTestRequest;
 import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
 import org.openmetadata.schema.api.events.EventsRecord;
-import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -86,9 +79,9 @@ import org.openmetadata.service.apps.bundles.changeEvent.AlertFactory;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
+import org.openmetadata.service.events.subscription.AlertCatalog;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
-import org.openmetadata.service.events.subscription.ResourceEventTypes;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
@@ -98,7 +91,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.URLValidator;
 import org.openmetadata.service.util.email.EmailUtil;
 import org.quartz.SchedulerException;
@@ -159,11 +151,11 @@ public class EventSubscriptionResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
+    // Outside the catch-all below on purpose: a server whose catalog does not load would start
+    // with no alert able to build, so it refuses to start and says which entry is at fault.
+    EventsSubscriptionRegistry.initialize(AlertCatalog.load());
     try {
       EventSubscriptionScheduler.initialize(config);
-      EventsSubscriptionRegistry.initialize(
-          listOrEmpty(EventSubscriptionResource.getNotificationsFilterDescriptors()),
-          listOrEmpty(EventSubscriptionResource.getObservabilityFilterDescriptors()));
       repository.initSeedDataFromResourcesOnStartup();
       initializeEventSubscriptions();
       // Schedule the audit log consumer to read from change_event and write to audit_log
@@ -1590,52 +1582,8 @@ public class EventSubscriptionResource
     }
   }
 
-  private static final String ALL_RESOURCE_NAME = "all";
-
-  public static List<FilterResourceDescriptor> getNotificationsFilterDescriptors()
-      throws IOException {
-    List<NotificationResourceDescriptor> entityNotificationDescriptors =
-        getDescriptorsFromFile(
-            "EventSubResourceDescriptor.json", NotificationResourceDescriptor.class);
-    Map<String, EventFilterRule> functions =
-        getDescriptorsFromFile("FilterFunctionsDescriptor.json", EventFilterRule.class).stream()
-            .collect(
-                Collectors.toMap(EventFilterRule::getName, eventFilterRule -> eventFilterRule));
-    List<FilterResourceDescriptor> descriptors =
-        entityNotificationDescriptors.stream()
-            .map(
-                descriptor -> {
-                  List<EventFilterRule> rules =
-                      descriptor.getSupportedFilters().stream()
-                          .map(operation -> functions.get(operation.value()))
-                          .filter(Objects::nonNull)
-                          .toList();
-                  return new FilterResourceDescriptor()
-                      .withName(descriptor.getName())
-                      .withSupportedFilters(rules)
-                      .withContainerEntities(descriptor.getContainerEntities())
-                      .withSupportedEventTypes(
-                          ResourceEventTypes.forResource(descriptor.getName()));
-                })
-            .toList();
-    setAllResourceContainerEntities(descriptors);
-    return descriptors;
-  }
-
-  // The "all" source spans every entity type, so its container entities are the union of every
-  // source's container entities — letting the UI scope an Entity FQN filter to descendants.
-  private static void setAllResourceContainerEntities(List<FilterResourceDescriptor> descriptors) {
-    List<String> unionContainerEntities =
-        descriptors.stream()
-            .map(FilterResourceDescriptor::getContainerEntities)
-            .filter(Objects::nonNull)
-            .flatMap(List::stream)
-            .distinct()
-            .toList();
-    descriptors.stream()
-        .filter(descriptor -> ALL_RESOURCE_NAME.equals(descriptor.getName()))
-        .findFirst()
-        .ifPresent(descriptor -> descriptor.setContainerEntities(unionContainerEntities));
+  public static List<FilterResourceDescriptor> getNotificationsFilterDescriptors() {
+    return AlertCatalog.load().served(CreateEventSubscription.AlertType.NOTIFICATION);
   }
 
   private ResultList<TypedEvent> fetchEventRecords(
@@ -1706,32 +1654,7 @@ public class EventSubscriptionResource
     throw new IllegalArgumentException("Unknown event type: " + event.getClass());
   }
 
-  public static List<FilterResourceDescriptor> getObservabilityFilterDescriptors()
-      throws IOException {
-    return getDescriptorsFromFile(
-        "EntityObservabilityFilterDescriptor.json", FilterResourceDescriptor.class);
-  }
-
-  public static <T> List<T> getDescriptorsFromFile(String fileName, Class<T> classType)
-      throws IOException {
-    List<String> jsonDataFiles =
-        EntityUtil.getJsonDataResources(String.format(".*json/data/%s$", fileName));
-    if (jsonDataFiles.size() != 1) {
-      LOG.warn("Invalid number of jsonDataFiles {}. Only one expected.", jsonDataFiles.size());
-      return Collections.emptyList();
-    }
-    String jsonDataFile = jsonDataFiles.get(0);
-    try {
-      String json =
-          CommonUtil.getResourceAsStream(
-              EventSubscriptionResource.class.getClassLoader(), jsonDataFile);
-      return JsonUtils.readObjects(json, classType);
-    } catch (Exception e) {
-      LOG.warn(
-          "Failed to initialize the events subscription resource descriptors from file {}",
-          jsonDataFile,
-          e);
-    }
-    return Collections.emptyList();
+  public static List<FilterResourceDescriptor> getObservabilityFilterDescriptors() {
+    return AlertCatalog.load().served(CreateEventSubscription.AlertType.OBSERVABILITY);
   }
 }
