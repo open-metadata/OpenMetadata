@@ -261,9 +261,7 @@ export const TreeSelect = <T = unknown,>({
   const popoverRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const prevValueRef = useRef<typeof value>(undefined);
-  // Closing hands focus back to the trigger, whose onFocus would reopen it. The
-  // restore arrives a frame or more later, so the flag stays armed until a focus
-  // event consumes it — a timed reset loses the race and reopens.
+  // Armed until a focus event consumes it; a timed reset loses the race and reopens.
   const skipNextFocusOpen = useRef(false);
   // What was expanded before a search took over, restored when it clears.
   const preSearchExpandedRef = useRef<Set<Key> | null>(null);
@@ -454,12 +452,8 @@ export const TreeSelect = <T = unknown,>({
         isNodeSelected(node.id)
       );
 
-      if (
-        cascadeSelection &&
-        multiple &&
-        !isFullySelected &&
-        node.isLeaf !== true
-      ) {
+      // Both directions: a branch selected while collapsed keeps children out of the tree.
+      if (cascadeSelection && multiple && node.isLeaf !== true) {
         try {
           nodeForSelection = await loadAllDescendants(node);
         } catch {
@@ -468,12 +462,11 @@ export const TreeSelect = <T = unknown,>({
         }
       }
 
-      toggleNodeSelection(nodeForSelection, parentNode);
+      toggleNodeSelection(nodeForSelection, parentNode, isFullySelected);
       // Staged single-select waits for Apply, so the dropdown stays open.
       if (!multiple && !isStaged) {
         clearSearch();
-        // Arm the guard: the pick hands focus back to the trigger, and reopening
-        // there would hide the value behind the search text.
+        // The pick returns focus to the trigger; reopening would hide the value.
         skipNextFocusOpen.current = true;
         setOpen(false);
       }

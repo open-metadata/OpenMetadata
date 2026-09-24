@@ -129,8 +129,8 @@ export const useGlossaryTreeData = (): GlossaryTreeFetcher => {
               label: getEntityName(glossary),
               value: glossary.fullyQualifiedName || glossary.name,
               isLeaf: false,
-              // Checkable to tick its terms; with none there is nothing to tick.
-              allowSelection: glossary.termCount !== 0,
+              // Checkable to tick its terms; the payload marks it a root.
+              allowSelection: true,
               count: glossary.termCount,
               data: glossaryRootValue(glossary),
               hasExclusiveChildren: isExclusive,

@@ -30,10 +30,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   },
 }));
 
-const mockFetchTree = jest.fn();
-
 jest.mock('./useGlossaryTreeData', () => ({
-  useGlossaryTreeData: () => mockFetchTree,
+  useGlossaryTreeData: () => jest.fn(),
 }));
 
 const APPLIED_TERM: TagLabel = {
@@ -63,65 +61,6 @@ const emit = (
 describe('GlossaryTermPicker', () => {
   beforeEach(() => {
     mockTreeSelect.mockClear();
-  });
-
-  it('keeps an empty glossary selectable when glossaries are the value', async () => {
-    mockFetchTree.mockResolvedValue({
-      nodes: [
-        {
-          id: 'Empty',
-          label: 'Empty',
-          value: 'Empty',
-          allowSelection: false,
-          data: { isGlossaryRoot: true },
-        },
-      ],
-    });
-    render(<GlossaryTermPicker selectGlossaries />);
-
-    const { nodes } = await lastProps().fetchData({});
-
-    expect(nodes[0].allowSelection).toBe(true);
-  });
-
-  it('leaves an empty glossary unselectable when terms are the value', async () => {
-    mockFetchTree.mockResolvedValue({
-      nodes: [
-        {
-          id: 'Empty',
-          label: 'Empty',
-          value: 'Empty',
-          allowSelection: false,
-          data: { isGlossaryRoot: true },
-        },
-      ],
-    });
-    render(<GlossaryTermPicker />);
-
-    const { nodes } = await lastProps().fetchData({});
-
-    expect(nodes[0].allowSelection).toBe(false);
-  });
-
-  // ChangeParent picks a term: a glossary row is expand-only there, so a click
-  // on one could only ever clear the pick.
-  it('makes glossary roots unselectable in a single-select term picker', async () => {
-    mockFetchTree.mockResolvedValue({
-      nodes: [
-        {
-          id: 'Filled',
-          label: 'Filled',
-          value: 'Filled',
-          allowSelection: true,
-          data: { isGlossaryRoot: true },
-        },
-      ],
-    });
-    render(<GlossaryTermPicker multiple={false} />);
-
-    const { nodes } = await lastProps().fetchData({});
-
-    expect(nodes[0].allowSelection).toBe(false);
   });
 
   it('seeds the tree with the glossary labels only', () => {

@@ -130,21 +130,28 @@ describe('useTreeSelectSelection', () => {
   });
 
   describe('toggleNodeSelection', () => {
-    // A stripped parent still renders checked, so clicking it must clear the branch.
+    // The row renders checked through its child alone, so the click must clear it.
     it('clears a parent that reads as checked through a collapsed child', () => {
       const collapsed = glossary(1, []);
       const { result } = renderSelection([collapsed]);
 
       act(() => result.current.setSelection([term('t1', 'g')]));
+      act(() => result.current.toggleNodeSelection(collapsed, undefined, true));
 
-      expect(
-        getNodeSelectionState(
-          result.current.getDescendantSelection(collapsed),
-          result.current.isNodeSelected('g')
-        ).isFullySelected
-      ).toBe(true);
+      expect(result.current.selectedData).toEqual([]);
+    });
 
-      act(() => result.current.toggleNodeSelection(collapsed));
+    // Selected while collapsed, the children live only on the hydrated node.
+    it('clears children hydrated on the click, not just the tree', () => {
+      const collapsed = glossary(2, []);
+      const hydrated = glossary(2, [term('t1', 'g'), term('t2', 'g')]);
+      const { result } = renderSelection([collapsed]);
+
+      act(() => result.current.toggleNodeSelection(hydrated));
+
+      expect(result.current.selectedData).toHaveLength(3);
+
+      act(() => result.current.toggleNodeSelection(hydrated, undefined, true));
 
       expect(result.current.selectedData).toEqual([]);
     });
@@ -154,7 +161,7 @@ describe('useTreeSelectSelection', () => {
       const { result } = renderSelection([node]);
 
       act(() => result.current.toggleNodeSelection(node.children![0]));
-      act(() => result.current.toggleNodeSelection(node));
+      act(() => result.current.toggleNodeSelection(node, undefined, false));
 
       expect(result.current.selectedData.map(({ id }) => id)).toEqual([
         't1',
