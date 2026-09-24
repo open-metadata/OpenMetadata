@@ -38,6 +38,7 @@ import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -99,7 +100,8 @@ public class RdfLiveProjectionIT {
 
   @AfterAll
   static void stop() {
-    RdfUpdater.disable();
+    // Leave the updater as the suite started it, so later RDF classes still have it.
+    RdfTestUtils.restoreSuiteRdf();
     Entity.getCollectionDAO().appExtensionTimeSeriesDao().delete(APP_ID.toString(), STATUS);
     if (unavailable != null) {
       unavailable.stop(0);
