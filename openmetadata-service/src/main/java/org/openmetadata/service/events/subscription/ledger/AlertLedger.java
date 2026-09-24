@@ -13,7 +13,6 @@ import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.DestinationHealth;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
-import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -52,7 +51,7 @@ public final class AlertLedger {
   private boolean noted;
   private int successEvents;
   private int failedEvents;
-  private final Map<String, SubscriptionStatus> statusThisTick = new LinkedHashMap<>();
+  private final Map<String, DestinationOutcome> outcomeThisTick = new LinkedHashMap<>();
   private final List<ChangeEvent> delivered = new ArrayList<>();
   private final List<FailureRow> failures = new ArrayList<>();
 
@@ -172,12 +171,9 @@ public final class AlertLedger {
     channelOutcomes(succeeded, failed);
   }
 
-  /** A failure stays for the rest of the tick: a later success must not hide it. */
-  public void destinationStatus(UUID destinationId, SubscriptionStatus status) {
-    SubscriptionStatus soFar = statusThisTick.get(destinationId.toString());
-    if (soFar == null || !HealthStreak.isFailing(soFar)) {
-      statusThisTick.put(destinationId.toString(), status);
-    }
+  /** What the tick came to for a destination, summed by the tick, which reports each once. */
+  public void destinationOutcome(UUID destinationId, DestinationOutcome outcome) {
+    outcomeThisTick.put(destinationId.toString(), outcome);
   }
 
   public Commit commit() {
@@ -200,7 +196,7 @@ public final class AlertLedger {
     return positionMoved
         || countersMoved
         || gapChanged
-        || !statusThisTick.isEmpty()
+        || !outcomeThisTick.isEmpty()
         || !delivered.isEmpty()
         || !failures.isEmpty();
   }
@@ -304,14 +300,14 @@ public final class AlertLedger {
   }
 
   private void writeHealth() {
-    if (!statusThisTick.isEmpty()) {
-      statusThisTick.forEach(
-          (destinationId, status) ->
+    if (!outcomeThisTick.isEmpty()) {
+      outcomeThisTick.forEach(
+          (destinationId, outcome) ->
               health
                   .getDestinations()
                   .put(
                       destinationId,
-                      HealthStreak.after(health.getDestinations().get(destinationId), status)));
+                      HealthStreak.after(health.getDestinations().get(destinationId), outcome)));
       health.withTimestamp(System.currentTimeMillis());
       dao()
           .upsertSubscriberExtension(
@@ -341,7 +337,7 @@ public final class AlertLedger {
     totalEvents = 0;
     successEvents = 0;
     failedEvents = 0;
-    statusThisTick.clear();
+    outcomeThisTick.clear();
     delivered.clear();
     failures.clear();
   }

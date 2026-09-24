@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.events.subscription.channels.builtin;
 
+import java.util.Optional;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.service.events.subscription.channels.Transport;
 import org.openmetadata.service.notifications.channels.NotificationMessage;
@@ -20,6 +21,12 @@ import org.openmetadata.service.notifications.channels.email.EmailMessage;
 import org.openmetadata.service.util.email.EmailUtil;
 
 final class SmtpTransport implements Transport {
+  @Override
+  public Optional<String> unavailableBecause() {
+    boolean smtpOn = Boolean.TRUE.equals(EmailUtil.getSmtpSettings().getEnableSmtpServer());
+    return smtpOn ? Optional.empty() : Optional.of("the mail server is not enabled");
+  }
+
   @Override
   public void deliver(NotificationMessage message, SubscriptionDestination destination) {
     EmailMessage email = (EmailMessage) message;
