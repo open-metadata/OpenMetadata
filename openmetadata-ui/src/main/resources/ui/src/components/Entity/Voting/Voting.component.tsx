@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ThumbsDown, ThumbsUp } from '@untitledui/icons';
+import { ThumbsDown, ThumbsUp } from '@openmetadata/ui-core-components/icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';

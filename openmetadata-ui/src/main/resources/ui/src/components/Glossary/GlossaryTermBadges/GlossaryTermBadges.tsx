@@ -33,6 +33,22 @@ const getVersionBadgeProps = (versionStatus?: VersionStatus) => {
   return { color: 'gray' as const, className: undefined, diff: undefined };
 };
 
+// Reference endpoints are user-entered; anything other than http(s), e.g.
+// `javascript:`, must never reach `href`.
+const getSafeReferenceHref = (endpoint?: string) => {
+  if (!endpoint) {
+    return undefined;
+  }
+
+  try {
+    const { protocol } = new URL(endpoint);
+
+    return ['http:', 'https:'].includes(protocol) ? endpoint : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 export const SynonymBadge = ({
   synonym,
   versionStatus,
@@ -71,7 +87,7 @@ export const ReferenceBadge = ({
         className="tw:no-underline"
         data-diff={diff}
         data-testid={`reference-link-${reference.name}`}
-        href={reference.endpoint}
+        href={getSafeReferenceHref(reference.endpoint)}
         rel="noopener noreferrer"
         target="_blank">
         <Badge

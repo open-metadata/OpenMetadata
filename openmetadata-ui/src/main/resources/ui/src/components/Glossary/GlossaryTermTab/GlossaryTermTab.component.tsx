@@ -12,45 +12,46 @@
  */
 
 import {
-  Button,
-  ButtonUtility,
-  Checkbox,
-  CheckboxBase,
-  Dialog,
-  FeaturedIcon,
-  Input,
-  Modal,
-  ModalOverlay,
-  Owner,
-  Popover,
-  PopoverTrigger,
-  TableCard,
-  TextArea,
-  Typography,
+    Button,
+    ButtonUtility,
+    Checkbox,
+    CheckboxBase,
+    Dialog,
+    FeaturedIcon,
+    Input,
+    Modal,
+    ModalOverlay,
+    Owner,
+    Popover,
+    PopoverTrigger,
+    TableCard,
+    TextArea,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { Icon as EntityStyleIcon } from '@openmetadata/ui-core-components/icon';
-import { AlertTriangle, ChevronDown, ChevronRight } from '@untitledui/icons';
+import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
+import { ChevronDown, ChevronRight } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { TFunction } from 'i18next';
 import { debounce, isEmpty, isUndefined, uniqBy } from 'lodash';
 import {
-  lazy,
-  MouseEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    lazy,
+    MouseEvent,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useHover, useInteractOutside } from 'react-aria';
 import {
-  Button as AriaButton,
-  Checkbox as AriaCheckbox,
-  DropOperation,
-  Heading,
-  useDragAndDrop,
+    Button as AriaButton,
+    Checkbox as AriaCheckbox,
+    DropOperation,
+    Heading,
+    useDragAndDrop
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
@@ -61,42 +62,42 @@ import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-dow
 import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
-  NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_LARGE,
+    NO_DATA_PLACEHOLDER,
+    PAGE_SIZE_LARGE
 } from '../../../constants/constants';
 import {
-  DEFAULT_VISIBLE_COLUMNS,
-  GLOSSARY_TERM_STATUS_OPTIONS,
-  GLOSSARY_TERM_TABLE_COLUMNS_KEYS,
-  STATIC_VISIBLE_COLUMNS,
+    DEFAULT_VISIBLE_COLUMNS,
+    GLOSSARY_TERM_STATUS_OPTIONS,
+    GLOSSARY_TERM_TABLE_COLUMNS_KEYS,
+    STATIC_VISIBLE_COLUMNS
 } from '../../../constants/Glossary.contant';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { CursorType } from '../../../enums/pagination.enum';
 import type { ResolveTask } from '../../../generated/api/tasks/resolveTask';
 import {
-  EntityReference,
-  EntityStatus,
-  GlossaryTerm,
+    EntityReference,
+    EntityStatus,
+    GlossaryTerm
 } from '../../../generated/entity/data/glossaryTerm';
 import { User } from '../../../generated/entity/teams/user';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
-  getFirstLevelGlossaryTermsPaginated,
-  getGlossaryTermChildrenLazy,
-  getGlossaryTerms,
-  GlossaryTermWithChildren,
-  patchGlossaryTerm,
-  searchGlossaryTermsPaginated,
+    getFirstLevelGlossaryTermsPaginated,
+    getGlossaryTermChildrenLazy,
+    getGlossaryTerms,
+    GlossaryTermWithChildren,
+    patchGlossaryTerm,
+    searchGlossaryTermsPaginated
 } from '../../../rest/glossaryAPI';
 import {
-  listTasks,
-  resolveTask as resolveTaskAPI,
-  Task,
-  TaskCategory,
-  TaskEntityStatus,
-  TaskEntityType,
-  TaskResolutionType,
+    listTasks,
+    resolveTask as resolveTaskAPI,
+    Task,
+    TaskCategory,
+    TaskEntityStatus,
+    TaskEntityType,
+    TaskResolutionType
 } from '../../../rest/tasksAPI';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -104,9 +105,9 @@ import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
 import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
 import Fqn from '../../../utils/Fqn';
 import {
-  buildTree,
-  glossaryTermTableColumnsWidth,
-  permissionForApproveOrReject,
+    buildTree,
+    glossaryTermTableColumnsWidth,
+    permissionForApproveOrReject
 } from '../../../utils/GlossaryPureUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
@@ -123,8 +124,8 @@ import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.inte
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import StatusAction from '../../common/StatusAction/StatusAction';
 import {
-  ColumnsType,
-  ExpandableConfig,
+    ColumnsType,
+    ExpandableConfig
 } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
@@ -132,17 +133,17 @@ import { SynonymBadge } from '../GlossaryTermBadges/GlossaryTermBadges';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import GlossaryTermEmptyPlaceholder from './GlossaryTermEmptyPlaceholder.component';
 import {
-  GlossaryTermMoveConfirmationModalProps,
-  GlossaryTermTabProps,
-  ModifiedGlossaryTerm,
-  MoveGlossaryTermType,
+    GlossaryTermMoveConfirmationModalProps,
+    GlossaryTermTabProps,
+    ModifiedGlossaryTerm,
+    MoveGlossaryTermType
 } from './GlossaryTermTab.interface';
 import {
-  computeShowExpandTreeLoadMore,
-  hasActiveSearchTerm,
-  isStaleFetchResponse,
-  resolveTotalTermsCount,
-  shouldShowEmptyPlaceholder,
+    computeShowExpandTreeLoadMore,
+    hasActiveSearchTerm,
+    isStaleFetchResponse,
+    resolveTotalTermsCount,
+    shouldShowEmptyPlaceholder
 } from './GlossaryTermTab.utils';
 const WorkflowHistory = withSuspenseFallback(
   lazy(
