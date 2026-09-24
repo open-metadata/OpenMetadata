@@ -164,21 +164,25 @@ public class MigrationWorkflow {
         .toList();
   }
 
-  private List<MigrationProcess> filterAndGetMigrationsToRun(
-      List<MigrationFile> availableMigrations) {
+  // Package-private for testing
+  List<MigrationProcess> filterAndGetMigrationsToRun(List<MigrationFile> availableMigrations) {
     List<MigrationFile> applyMigrations = resolveApplyMigrations(availableMigrations);
     List<MigrationProcessExtensionProvider> extensionProviders = loadExtensionProviders();
     List<MigrationProcess> processes = new ArrayList<>();
     try {
       for (MigrationFile file : applyMigrations) {
         file.parseSQLFiles();
-        if (file.isReprocessing() && !file.hasNewStatements()) {
+        MigrationProcess process = resolveMigrationProcess(file, extensionProviders);
+        if (file.isReprocessing()
+            && !file.hasNewStatements()
+            && !hasPendingDataMigration(process)) {
           LOG.debug(
-              "[MigrationWorkflow] Skipping version {} - reprocessing with no new SQL statements",
+              "[MigrationWorkflow] Skipping version {} - reprocessing with no new SQL statements"
+                  + " and no pending data migration",
               file.version);
           continue;
         }
-        processes.add(resolveMigrationProcess(file, extensionProviders));
+        processes.add(process);
       }
     } catch (Exception e) {
       LOG.error("Failed to list and add migrations to run due to ", e);
@@ -461,7 +465,9 @@ public class MigrationWorkflow {
             runSchemaChanges(row, process);
 
             if (shouldRunDataMigration(process)) {
-              runStepAndAddStatus(row, process::runDataMigration);
+              if (runStepAndAddStatus(row, process::runDataMigration)) {
+                recordDataMigration(process);
+              }
             } else {
               LOG.info(
                   "[MigrationWorkflow] Skipping data migration for reprocessed previous release train version: {}",
@@ -497,11 +503,52 @@ public class MigrationWorkflow {
   }
 
   private boolean shouldRunDataMigration(MigrationProcess process) {
-    boolean result = true;
-    if (process.isReprocessing() && currentMaxMigrationVersion.isPresent()) {
-      result = compareVersions(process.getVersion(), currentMaxMigrationVersion.get()) == 0;
+    if (!process.isReprocessing() || currentMaxMigrationVersion.isEmpty()) {
+      return true;
     }
-    return result;
+    return hasPendingDataMigration(process)
+        || compareVersions(process.getVersion(), currentMaxMigrationVersion.get()) == 0;
+  }
+
+  /**
+   * A version's Java data migration is pending while its identity is absent from
+   * SERVER_MIGRATION_SQL_LOGS. Versions whose migration class does not override
+   * {@code runDataMigration()} report no identity and are never pending, which is what keeps a
+   * reprocessed SQL-only version out of the run.
+   */
+  // Package-private for testing
+  boolean hasPendingDataMigration(MigrationProcess process) {
+    String identity = process.getDataMigrationIdentity();
+    if (identity == null) {
+      return false;
+    }
+    try {
+      return nullOrEmpty(migrationDAO.getSqlQuery(process.getVersion(), identity));
+    } catch (Exception e) {
+      // SERVER_MIGRATION_SQL_LOGS doesn't exist yet, so nothing has been recorded
+      return true;
+    }
+  }
+
+  // Package-private for testing
+  void recordDataMigration(MigrationProcess process) {
+    String identity = process.getDataMigrationIdentity();
+    if (identity == null) {
+      return;
+    }
+    try {
+      migrationDAO.upsertServerMigrationSQL(
+          process.getVersion(),
+          String.format(
+              "-- data migration %s revision %s",
+              process.getClass().getName(), process.getDataMigrationRevision()),
+          identity);
+    } catch (Exception e) {
+      LOG.warn(
+          "[MigrationWorkflow] Could not record the data migration run for version {}",
+          process.getVersion(),
+          e);
+    }
   }
 
   private void runSchemaChanges(List<String> row, MigrationProcess process) {
@@ -561,16 +608,18 @@ public class MigrationWorkflow {
     }
   }
 
-  private void runStepAndAddStatus(
-      List<String> row, MigrationProcess.MigrationProcessCallback process) {
+  // Package-private for testing
+  boolean runStepAndAddStatus(List<String> row, MigrationProcess.MigrationProcessCallback process) {
     try {
       process.call();
       row.add(SUCCESS_MSG);
+      return true;
     } catch (Exception e) {
       row.add(FAILED_MSG + e.getMessage());
       if (!forceMigrations) {
         throw e;
       }
+      return false;
     }
   }
 

@@ -61,6 +61,29 @@ class MigrationWorkflowTest {
     when(jdbi.onDemand(MigrationDAO.class)).thenReturn(migrationDAO);
     when(jdbi.open()).thenReturn(handle);
     when(handle.createQuery(anyString()).mapTo(Integer.class).one()).thenReturn(0);
+    // These tests select on SQL, and several of their version strings collide with a real
+    // migration package (1.13.0 -> postgres.v1130.Migration). Record every Java data migration so
+    // that collision doesn't pull versions in; MigrationWorkflowDataMigrationTest covers pending
+    // ones.
+    when(migrationDAO.getSqlQuery(anyString(), anyString())).thenReturn("-- already recorded");
+  }
+
+  @Test
+  void loadMigrationsReprocessesAVersionWhoseJavaDataMigrationHasNotRun() throws Exception {
+    // A version already in SERVER_CHANGE_LOG whose SQL has all run still has to come back when it
+    // ships an unrecorded Java data migration, which is the whole of issue #33045.
+    Path nativeRoot = Files.createDirectories(tempDir.resolve("native"));
+    createMigrationDir(nativeRoot, "1.2.0", "");
+    when(migrationDAO.getMigrationVersions()).thenReturn(List.of("1.2.0"));
+    when(migrationDAO.getSqlQuery(anyString(), anyString())).thenReturn(null);
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi, nativeRoot.toString(), ConnectionType.POSTGRES, null, null, config, false);
+
+    workflow.loadMigrations();
+
+    assertEquals(List.of("1.2.0"), getMigrationVersions(workflow));
   }
 
   @Test
@@ -263,7 +286,7 @@ class MigrationWorkflowTest {
   }
 
   @Test
-  void loadMigrationsSkipsPreviousMinorReprocessingWhenAllSqlAlreadyRan() throws Exception {
+  void loadMigrationsSkipsPreviousMinorReprocessingWhenNothingIsPending() throws Exception {
     Path nativeRoot = Files.createDirectories(tempDir.resolve("native"));
     createMigrationDir(nativeRoot, "1.12.9", "SELECT 12;");
     createMigrationDir(nativeRoot, "1.13.0", "SELECT 13;");

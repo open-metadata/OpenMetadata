@@ -457,9 +457,9 @@ class MigrationWorkflowReprocessingTest {
     assertEquals(1, toApply.size());
     assertTrue(toApply.get(0).isReprocessing());
 
-    // After parsing, it has no new statements — filterAndGetMigrationsToRun would drop it.
-    // We test this via parseSQLFiles + hasNewStatements since the full filter is in
-    // loadMigrations()
+    // After parsing it has no new statements, and 1.12.3 ships no Java migration class, so
+    // filterAndGetMigrationsToRun drops it. MigrationWorkflowDataMigrationTest covers the
+    // version that does ship one.
     toApply.get(0).parseSQLFiles();
     assertFalse(toApply.get(0).hasNewStatements());
   }

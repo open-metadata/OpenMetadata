@@ -84,6 +84,24 @@ public interface MigrationProcess {
   // force mode and continuous reprocessing can invoke it multiple times for the same version.
   void runDataMigration();
 
+  /**
+   * Revision of this version's Java data migration. Bump it when the migration's behaviour changes
+   * and deployments that already applied the previous revision have to run it again.
+   */
+  default String getDataMigrationRevision() {
+    return "1";
+  }
+
+  /**
+   * Stable identity of this version's Java data migration, or {@code null} when the version ships
+   * no Java work. The workflow records the identity once the migration succeeds, so a version that
+   * is reprocessed on every deployment runs its data migration only while that identity is still
+   * unrecorded.
+   */
+  default String getDataMigrationIdentity() {
+    return null;
+  }
+
   // This method is to run SQL which can be part of the transaction post data migrations
   Map<String, QueryStatus> runPostDDLScripts(boolean isForceMigration);
 

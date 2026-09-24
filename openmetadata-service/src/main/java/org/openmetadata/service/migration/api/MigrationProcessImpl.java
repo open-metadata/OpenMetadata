@@ -153,6 +153,23 @@ public class MigrationProcessImpl implements MigrationProcess {
   public void runDataMigration() {}
 
   @Override
+  public String getDataMigrationIdentity() {
+    if (!overridesDataMigration()) {
+      return null;
+    }
+    return hash(getClass().getName() + ":" + getDataMigrationRevision());
+  }
+
+  private boolean overridesDataMigration() {
+    try {
+      return getClass().getMethod("runDataMigration").getDeclaringClass()
+          != MigrationProcessImpl.class;
+    } catch (NoSuchMethodException e) {
+      return false;
+    }
+  }
+
+  @Override
   public Map<String, QueryStatus> runPostDDLScripts(boolean isForceMigration) {
     return performSqlExecutionAndUpdate(
         handle,

@@ -49,6 +49,14 @@ Detailed SQL execution logs:
 - `checksum`: Hash of the SQL statement (PRIMARY KEY)
 - `executedAt`: Timestamp of SQL execution
 
+This table also records Java data migrations. A migration class that overrides
+`runDataMigration()` has an identity of `hash(className + ":" + getDataMigrationRevision())`,
+written here as a marker row once the migration returns without throwing. That is what lets the
+workflow add Java-only work to a version that is already in `SERVER_CHANGE_LOG`: the version is
+reprocessed while its identity is unrecorded, and dropped again afterwards. Override
+`getDataMigrationRevision()` when you change an existing migration's behaviour and deployments
+that already ran it have to run it again.
+
 ## Migration Logic
 
 The migration workflow follows this decision tree:
