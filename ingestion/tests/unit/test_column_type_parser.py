@@ -191,3 +191,60 @@ def test_struct_field_without_colon_still_raises():
     """A field with no ':' at all is still an invalid struct field format."""
     with pytest.raises(ValueError, match="field_name:field_type"):
         ColumnTypeParser._parse_datatype_string("struct<justaname>")
+
+
+class TestDecimalPrecisionContract:
+    """`dataLength` is the length of a char/varchar/binary (entity/data/table.json), so a numeric's
+    digits belong in `precision` and `scale`.
+
+    Connectors splat this dict straight into `Column`, so the keys emitted here are the contract
+    every one of them depends on - glue, athena, deltalake, unitycatalog, amundsen, quicksight and
+    superset all read it.
+    """
+
+    @pytest.mark.parametrize(
+        "dtype,precision,scale",
+        [
+            ("decimal(10,2)", 10, 2),
+            ("numeric(38,10)", 38, 10),
+            ("decimal(10, 2)", 10, 2),
+            ("decimal(10)", 10, None),
+            ("decimal", None, None),
+        ],
+        ids=["decimal", "numeric", "spaced", "precision_only", "bare"],
+    )
+    def test_precision_and_scale_are_emitted(self, dtype, precision, scale):
+        parsed = ColumnTypeParser._parse_datatype_string(dtype)
+
+        assert parsed.get("precision") == precision
+        assert parsed.get("scale") == scale
+
+    @pytest.mark.parametrize(
+        "dtype",
+        ["decimal(10,2)", "numeric(38,10)", "decimal(10)", "decimal"],
+    )
+    def test_a_numeric_never_reports_a_character_length(self, dtype):
+        """Reporting precision as dataLength is what made Glue decimals look like fixed-width text."""
+        assert "dataLength" not in ColumnTypeParser._parse_datatype_string(dtype)
+
+    @pytest.mark.parametrize("dtype,length", [("varchar(50)", 50), ("char(10)", 10)])
+    def test_character_length_is_unaffected(self, dtype, length):
+        parsed = ColumnTypeParser._parse_datatype_string(dtype)
+
+        assert parsed["dataLength"] == length
+        assert "precision" not in parsed
+
+    def test_the_display_string_is_preserved(self):
+        assert ColumnTypeParser._parse_datatype_string("decimal(10,2)")["dataTypeDisplay"] == "decimal(10,2)"
+
+    def test_a_nested_decimal_child_carries_precision(self):
+        child = ColumnTypeParser._parse_datatype_string("struct<amount:decimal(10,2)>")["children"][0]
+
+        assert (child["precision"], child["scale"]) == (10, 2)
+        assert "dataLength" not in child
+
+    def test_an_array_of_decimal_is_unchanged(self):
+        parsed = ColumnTypeParser._parse_datatype_string("array<decimal(10,2)>")
+
+        assert parsed["dataType"] == "ARRAY"
+        assert parsed["arrayDataType"] == "DECIMAL"
