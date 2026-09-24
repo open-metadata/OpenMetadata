@@ -104,6 +104,46 @@ class TestModelProvisioning:
         assert result.installed == [english_and_spanish[0]]
         assert mock_run.call_args_list[0].args[0][2:4] == ["pip", "install"]
 
+    def test_reports_missing_distribution_metadata_after_a_successful_install(self):
+        specifications = resolve_model_specifications(
+            [ClassificationLanguage.en, ClassificationLanguage.es, ClassificationLanguage.fr]
+        )
+        spanish_versions = iter(["3.8.1", PackageNotFoundError])
+
+        def installed_version(package):
+            if package == "en_core_web_md":
+                return "3.8.0"
+            if package == "es_core_news_md":
+                spanish_version = next(spanish_versions)
+                if spanish_version is PackageNotFoundError:
+                    raise PackageNotFoundError
+                return spanish_version
+            return {"spacy": "3.8.16", "presidio-analyzer": "2.2.358"}[package]
+
+        with (
+            patch("metadata.pii.model_provisioning.version", side_effect=installed_version),
+            patch(
+                "metadata.pii.model_provisioning.subprocess.run",
+                side_effect=[
+                    SimpleNamespace(
+                        returncode=0,
+                        stdout='{"spacy_version": "3.8.16", "model_spacy_version": ">=3.8.0,<3.9.0", "version": "3.8.0"}',
+                        stderr="",
+                    ),
+                    SimpleNamespace(returncode=0, stdout="", stderr=""),
+                ],
+            ) as mock_run,
+            pytest.raises(ModelProvisioningError) as error,
+        ):
+            provision_classification_models(specifications, {"es_core_news_md": ["es"]})
+
+        assert error.value.completed == [specifications[0]]
+        assert error.value.failed == specifications[1]
+        assert error.value.unattempted == [specifications[2]]
+        assert "es_core_news_md" in str(error.value)
+        assert "installed version is not installed" in str(error.value)
+        assert mock_run.call_count == 2
+
     def test_rejects_incompatible_spacy_before_install(self, english_and_spanish):
         with (
             patch(
