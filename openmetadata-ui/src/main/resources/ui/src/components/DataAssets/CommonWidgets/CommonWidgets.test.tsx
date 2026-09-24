@@ -120,6 +120,23 @@ jest.mock('../../Domain/DomainExpertsWidget/DomainExpertWidget', () => ({
   ),
 }));
 
+jest.mock('../../common/TierWidget/TierWidget', () => ({
+  __esModule: true,
+  default: () => <div data-testid="tier-widget" />,
+}));
+jest.mock('../../common/CertificationWidget/CertificationWidget', () => ({
+  __esModule: true,
+  default: () => <div data-testid="certification-widget" />,
+}));
+jest.mock('../DomainLabelV2/DomainLabelV2', () => ({
+  DomainLabelV2: ({ multiple }: { multiple?: boolean }) => (
+    <div
+      data-multiple={String(Boolean(multiple))}
+      data-testid="domain-widget"
+    />
+  ),
+}));
+
 jest.mock('../../../utils/CommonWidget/CommonWidgetClassBase', () => ({
   getCommonWidgetsFromConfig: jest.fn(),
 }));
@@ -449,6 +466,36 @@ describe('CommonWidgets', () => {
     );
 
     expect(await screen.findByTestId('domain-expert-name')).toBeInTheDocument();
+  });
+
+  it.each([
+    [DetailPageWidgetKeys.TIER, 'tier-widget'],
+    [DetailPageWidgetKeys.CERTIFICATION, 'certification-widget'],
+    [DetailPageWidgetKeys.DOMAIN, 'domain-widget'],
+  ])('renders the %s widget', async (key, testId) => {
+    render(
+      <CommonWidgets
+        entityType={EntityType.TABLE}
+        widgetConfig={{ i: key, x: 0, y: 0, w: 1, h: 1 }}
+      />
+    );
+
+    expect(await screen.findByTestId(testId)).toBeInTheDocument();
+  });
+
+  it('renders a widget contributed through the extension registry', () => {
+    (
+      commonWidgetClassBase.getCommonWidgetsFromConfig as jest.Mock
+    ).mockReturnValueOnce(() => <div data-testid="extension-widget" />);
+
+    render(
+      <CommonWidgets
+        entityType={EntityType.TABLE}
+        widgetConfig={{ i: 'KnowledgePanel.Custom', x: 0, y: 0, w: 1, h: 1 }}
+      />
+    );
+
+    expect(screen.getByTestId('extension-widget')).toBeInTheDocument();
   });
 
   it('should call commonWidgetClassBase.getCommonWidgetsFromConfig for unknown widget type', () => {

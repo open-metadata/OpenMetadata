@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { EntityType } from '../../../enums/entity.enum';
-import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import type { WidgetConfig } from '../../../interface/customization.interface';
 import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClassBase';
 import {
   COMMON_WIDGET_REGISTRY,

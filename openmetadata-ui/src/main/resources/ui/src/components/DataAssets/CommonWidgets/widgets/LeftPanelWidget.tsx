@@ -13,7 +13,7 @@
 import { noop } from 'lodash';
 import { lazy } from 'react';
 import { ENTITY_PAGE_TYPE_MAP } from '../../../../constants/Customize.constants';
-import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
+import type { WidgetConfig } from '../../../../interface/customization.interface';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import { EntityDetailWidgetSkeleton } from '../../../common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';

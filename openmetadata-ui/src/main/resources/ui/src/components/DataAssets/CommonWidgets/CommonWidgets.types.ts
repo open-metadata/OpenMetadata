@@ -16,7 +16,7 @@ import {
   ChangeDescription,
   EntityReference,
 } from '../../../generated/entity/type';
-import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import type { WidgetConfig } from '../../../interface/customization.interface';
 
 export interface GenericEntity
   extends Exclude<EntityReference, 'type'>,
