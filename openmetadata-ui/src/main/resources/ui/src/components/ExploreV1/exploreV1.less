@@ -27,8 +27,8 @@
   margin-bottom: var(--om-space-20);
 
   // Dark: the containers (filters, browse tree, results, summary) used
-  // bg-primary — the canvas tone — so they didn't read as surfaces. bg-secondary
-  // lifts them one step, with result cards (bg-surface) one step above that.
+  // bg-primary — the canvas tone — so they didn't read as surfaces. Put them on
+  // bg-surface, matching the search card; result cards stay separated by border.
   .dark-mode & .ant-card,
   .dark-mode & .explore-tree,
   .dark-mode
@@ -37,7 +37,7 @@
     .summary-panel-container
     .content-area,
   .dark-mode & .entity-summary-panel-container .title-section {
-    background: var(--color-bg-secondary);
+    background: var(--color-bg-surface);
   }
 
   .content-height-with-resizable-panel {
