@@ -16,14 +16,12 @@ package org.openmetadata.service.apps.bundles.changeEvent;
 import static org.openmetadata.service.events.subscription.AlertUtil.getFilteredEvents;
 
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +37,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.scheduled.AlertJobs;
 import org.openmetadata.service.events.subscription.AlertTelemetry;
+import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.events.subscription.channels.ChannelResolution;
 import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
@@ -52,6 +52,7 @@ import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+import org.quartz.SchedulerException;
 
 @Slf4j
 @DisallowConcurrentExecution
@@ -69,6 +70,8 @@ public abstract class AbstractEventConsumer
   protected AlertLedger ledger;
   // Offsets of the events the last poll returned, in the same order.
   private List<Long> polledOffsets = List.of();
+  private TickStopSignal stopSignal;
+  private boolean stoppedEarly;
 
   protected EventSubscription eventSubscription;
   protected Map<UUID, Destination<ChangeEvent>> destinationMap;
@@ -120,7 +123,9 @@ public abstract class AbstractEventConsumer
   }
 
   private Map<UUID, Destination<ChangeEvent>> loadDestinationsMap() {
-    Map<UUID, Destination<ChangeEvent>> dMap = new HashMap<>();
+    // In the order the alert declares them: that order decides which destination sends first and
+    // which one supplies the configuration when several share a type.
+    Map<UUID, Destination<ChangeEvent>> dMap = new LinkedHashMap<>();
     if (eventSubscription.getDestinations() == null) {
       return dMap;
     }
@@ -229,13 +234,15 @@ public abstract class AbstractEventConsumer
 
   private Map<String, List<Destination<ChangeEvent>>> groupDestinationsByChannel(
       Set<UUID> destinationIds) {
-    return destinationIds.stream()
-        .map(destinationMap::get)
-        .filter(Objects::nonNull)
+    return destinationMap.entrySet().stream()
+        .filter(entry -> destinationIds.contains(entry.getKey()))
+        .map(Map.Entry::getValue)
         .filter(Destination::getEnabled)
         .collect(
             Collectors.groupingBy(
-                dest -> ChannelResolution.of(dest.getSubscriptionDestination()).channelId()));
+                dest -> ChannelResolution.of(dest.getSubscriptionDestination()).channelId(),
+                LinkedHashMap::new,
+                Collectors.toList()));
   }
 
   @Override
@@ -346,6 +353,8 @@ public abstract class AbstractEventConsumer
     this.eventSubscription = alert;
     this.ledger = openLedger;
     this.destinationMap = loadDestinationsMap();
+    this.stopSignal = TickStopSignal.startingNow(AlertingSettings.current());
+    this.stoppedEarly = false;
     try {
       doInit(context);
       if (kind() != ConsumerKind.SELF_DRIVEN) {
@@ -356,6 +365,11 @@ public abstract class AbstractEventConsumer
     } finally {
       finishTick(context);
     }
+  }
+
+  /** Set when this tick should end after the event, or the batch, it is working on. */
+  protected final TickStopSignal stopSignal() {
+    return stopSignal;
   }
 
   private void readAndPublish(JobExecutionContext context) {
@@ -370,10 +384,14 @@ public abstract class AbstractEventConsumer
     if (interruptedBefore >= SET_ASIDE_FIRST_EVENT_AT && !events.isEmpty()) {
       setAside(events.removeFirst());
     }
-    if (interruptedBefore >= COMMIT_AFTER_EVERY_EVENT_AT) {
-      publishCommittingAfterEach(events, context);
-    } else {
+    boolean careful = interruptedBefore >= COMMIT_AFTER_EVERY_EVENT_AT;
+    // A consumer that reads its events its own way gives the tick no offset to stop at.
+    boolean canStopBetweenEvents = polledOffsets.size() == batch.getData().size();
+    boolean wholeBatchAtOnce = kind() == ConsumerKind.BATCH && !careful;
+    if (wholeBatchAtOnce || !canStopBetweenEvents) {
       publish(events);
+    } else {
+      publishOneByOne(events, careful, context);
     }
   }
 
@@ -385,18 +403,55 @@ public abstract class AbstractEventConsumer
     }
   }
 
-  // After ticks that never came back, the event that stops the server must become the first one
-  // after the committed position, so it can be found and set aside.
-  private void publishCommittingAfterEach(List<ChangeEvent> events, JobExecutionContext context) {
+  // A tick can only stop between two events. After ticks that never came back it also commits after
+  // every
+  // event: the event that stops the server then becomes the first one after the committed
+  // position, where it can be found and set aside.
+  private void publishOneByOne(
+      List<ChangeEvent> events, boolean commitAfterEach, JobExecutionContext context) {
     long endOfBatch = ledger.readUpTo();
     long gapSince = ledger.pendingGapSince();
     int skipped = polledOffsets.size() - events.size();
-    for (int index = 0; index < events.size(); index++) {
-      publish(List.of(events.get(index)));
-      ledger.readUpTo(polledOffsets.get(index + skipped), 0L);
-      commit(context);
+    // The reader pointed the ledger at the end of the batch. Until an event is finished, the
+    // position may only move past what was set aside.
+    ledger.readUpTo(skipped > 0 ? polledOffsets.get(skipped - 1) : ledger.position(), 0L);
+    int processed = 0;
+    while (processed < events.size() && !mustStopBefore(processed)) {
+      publishIsolated(events.get(processed));
+      ledger.readUpTo(polledOffsets.get(processed + skipped), 0L);
+      processed++;
+      if (commitAfterEach) {
+        commit(context);
+      }
     }
-    ledger.readUpTo(endOfBatch, gapSince);
+    stoppedEarly = processed < events.size();
+    if (!stoppedEarly) {
+      ledger.readUpTo(endOfBatch, gapSince);
+    }
+  }
+
+  // The position now follows each event, so an event that cannot be processed at all is recorded
+  // as a failure and passed, or the alert would come back to it on every tick and never get past.
+  private void publishIsolated(ChangeEvent event) {
+    try {
+      publish(List.of(event));
+    } catch (RuntimeException e) {
+      LOG.error(
+          "Alert {} could not process change event {}",
+          eventSubscription.getName(),
+          event.getId(),
+          e);
+      handleFailedEvent(
+          new EventPublisherException(
+              String.format("Failed to process the event: %s", e.getMessage()),
+              Pair.of(eventSubscription.getId(), event)),
+          false);
+    }
+  }
+
+  // The budget never stops a tick before its first event, so an alert always moves forward.
+  private boolean mustStopBefore(int processed) {
+    return ServerStopping.isSet() || (processed > 0 && stopSignal.budgetHasPassed());
   }
 
   private void setAside(ChangeEvent event) {
@@ -417,6 +472,25 @@ public abstract class AbstractEventConsumer
     reportDestinationStatus();
     commit(context);
     ledger.clearOpeningNote();
+    runAgainAtOnceIfStoppedForTime(context);
+  }
+
+  // A one-off trigger for the same job. Quartz holds it until this tick is over, and it then
+  // competes with every other alert's due trigger by fire time, so an alert that has been waiting
+  // goes first and the stopped alert loses no poll interval. A stopping server starts nothing.
+  private void runAgainAtOnceIfStoppedForTime(JobExecutionContext context) {
+    if (stoppedEarly && !ServerStopping.isSet()) {
+      AlertTelemetry.tickStoppedByBudget();
+      try {
+        AlertJobs.runAgainNow(context);
+        AlertTelemetry.ranAgainAtOnce();
+      } catch (SchedulerException e) {
+        LOG.warn(
+            "Alert {} could not run again at once; the rest waits for its next poll",
+            eventSubscription.getName(),
+            e);
+      }
+    }
   }
 
   // Publishers leave their outcome on the destination they sent through. The alert was read from
@@ -471,11 +545,10 @@ public abstract class AbstractEventConsumer
   }
 
   private Map<ChangeEvent, Set<UUID>> createEventsWithReceivers(List<ChangeEvent> events) {
-    Map<ChangeEvent, Set<UUID>> eventsWithReceivers =
-        new TreeMap<>(Comparator.comparing(ChangeEvent::getId));
+    // In the order they were read, which is the order the changes happened.
+    Map<ChangeEvent, Set<UUID>> eventsWithReceivers = new LinkedHashMap<>();
     for (ChangeEvent changeEvent : events) {
-      Set<UUID> receivers = Set.of(destinationMap.keySet().toArray(UUID[]::new));
-      eventsWithReceivers.put(changeEvent, receivers);
+      eventsWithReceivers.put(changeEvent, new LinkedHashSet<>(destinationMap.keySet()));
     }
     return eventsWithReceivers;
   }
