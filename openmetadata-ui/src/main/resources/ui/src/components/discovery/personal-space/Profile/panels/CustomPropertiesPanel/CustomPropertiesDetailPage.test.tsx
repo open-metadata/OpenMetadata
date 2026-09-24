@@ -54,6 +54,11 @@ const mockGetEntityPermission = jest.fn().mockResolvedValue({
   Delete: true,
 });
 
+jest.mock('../../../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+
 jest.mock('../../../../../../rest/metadataTypeAPI', () => ({
   getTypeByFQN: (fqn: string) => mockGetTypeByFQN(fqn),
   deleteCustomPropertyByName: (fqn: string, name: string) =>
@@ -458,6 +463,25 @@ describe('CustomPropertiesDetailPage', () => {
     await waitFor(() => {
       expect(showErrorToast).toHaveBeenCalledWith(mockError);
     });
+  });
+
+  it('drops the property locally when it was already removed elsewhere', async () => {
+    mockDeleteCustomPropertyByName.mockResolvedValueOnce(undefined);
+
+    render(<CustomPropertiesDetailPage {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('row-stringProp')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByLabelText('label.delete')[0]);
+    fireEvent.click(screen.getByTestId('confirm-delete-btn'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('row-stringProp')).not.toBeInTheDocument();
+    });
+
+    expect(showErrorToast).not.toHaveBeenCalled();
   });
 
   it('shows error toast when the delete fails', async () => {

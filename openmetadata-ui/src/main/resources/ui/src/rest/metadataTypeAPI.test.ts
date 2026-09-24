@@ -14,21 +14,26 @@
 import { AxiosError, AxiosHeaders } from 'axios';
 import { Type } from '../generated/entity/type';
 import axiosClient from './axiosClient';
-import { deleteCustomPropertyByName } from './metadataTypeAPI';
+import {
+  deleteCustomPropertyByName,
+  updateCustomPropertyByName,
+} from './metadataTypeAPI';
 
 jest.mock('./axiosClient');
 
 const TYPE_ID = 'type-id';
 
+const property = (name: string, fields: Record<string, unknown> = {}) => ({
+  name,
+  propertyType: { id: 'string-id', type: 'type' },
+  ...fields,
+});
+
+const typeOf = (...properties: ReturnType<typeof property>[]) =>
+  ({ id: TYPE_ID, name: 'table', customProperties: properties } as Type);
+
 const typeWith = (...names: string[]) =>
-  ({
-    id: TYPE_ID,
-    name: 'table',
-    customProperties: names.map((name) => ({
-      name,
-      propertyType: { id: 'string-id', type: 'type' },
-    })),
-  } as Type);
+  typeOf(...names.map((name) => property(name)));
 
 const httpError = (status: number) =>
   new AxiosError('Request failed', String(status), undefined, undefined, {
@@ -90,14 +95,13 @@ describe('deleteCustomPropertyByName', () => {
     );
   });
 
-  it('returns the current type without patching when the property is already gone', async () => {
-    const current = typeWith('a');
-    mockClient.get.mockResolvedValue({ data: current });
+  it('resolves to undefined without patching when the property is already gone', async () => {
+    mockClient.get.mockResolvedValue({ data: typeWith('a') });
 
-    const result = await deleteCustomPropertyByName('table', 'b');
-
+    await expect(
+      deleteCustomPropertyByName('table', 'b')
+    ).resolves.toBeUndefined();
     expect(mockClient.patch).not.toHaveBeenCalled();
-    expect(result).toBe(current);
   });
 
   it('does not retry an error other than a rejected patch', async () => {
@@ -120,5 +124,86 @@ describe('deleteCustomPropertyByName', () => {
       rejected
     );
     expect(mockClient.patch).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('updateCustomPropertyByName', () => {
+  const mockClient = axiosClient as jest.Mocked<typeof axiosClient>;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('patches only the changed fields of the fresh copy, guarded by a test op', async () => {
+    mockClient.get.mockResolvedValue({
+      data: typeOf(
+        property('a'),
+        property('b', { description: 'old', displayName: 'B' })
+      ),
+    });
+    mockClient.patch.mockResolvedValue({ data: typeWith('a', 'b') });
+
+    await updateCustomPropertyByName('table', 'b', {
+      description: 'new',
+      displayName: 'B',
+    });
+
+    expect(mockClient.patch).toHaveBeenCalledWith(
+      `/metadata/types/${TYPE_ID}`,
+      [
+        { op: 'test', path: '/customProperties/1/name', value: 'b' },
+        {
+          op: 'replace',
+          path: '/customProperties/1/description',
+          value: 'new',
+        },
+      ]
+    );
+  });
+
+  it('keeps a concurrent edit to fields it does not change', async () => {
+    mockClient.get.mockResolvedValue({
+      data: typeOf(
+        property('b', { description: 'old', displayName: 'Edited elsewhere' })
+      ),
+    });
+    mockClient.patch.mockResolvedValue({ data: typeWith('b') });
+
+    await updateCustomPropertyByName('table', 'b', { description: 'new' });
+
+    const [, operations] = mockClient.patch.mock.calls[0];
+
+    expect(JSON.stringify(operations)).not.toContain('displayName');
+  });
+
+  it('leaves out undefined changes instead of removing those fields', async () => {
+    mockClient.get.mockResolvedValue({
+      data: typeOf(
+        property('b', {
+          description: 'same',
+          customPropertyConfig: { config: 'dd-MM-yyyy' },
+        })
+      ),
+    });
+    mockClient.patch.mockResolvedValue({ data: typeWith('b') });
+
+    await updateCustomPropertyByName('table', 'b', {
+      description: 'same',
+      customPropertyConfig: undefined,
+    });
+
+    expect(mockClient.patch).toHaveBeenCalledWith(
+      `/metadata/types/${TYPE_ID}`,
+      [{ op: 'test', path: '/customProperties/0/name', value: 'b' }]
+    );
+  });
+
+  it('resolves to undefined without patching when the property no longer exists', async () => {
+    mockClient.get.mockResolvedValue({ data: typeWith('a') });
+
+    await expect(
+      updateCustomPropertyByName('table', 'b', { description: 'new' })
+    ).resolves.toBeUndefined();
+    expect(mockClient.patch).not.toHaveBeenCalled();
   });
 });

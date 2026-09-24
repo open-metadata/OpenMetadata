@@ -121,7 +121,17 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
         entityType.fullyQualifiedName,
         propertyToDelete.name
       );
-      setTypeDetail(updated);
+      // `undefined`: someone else already removed it, so drop it locally.
+      setTypeDetail(
+        (prev) =>
+          updated ??
+          (prev && {
+            ...prev,
+            customProperties: prev.customProperties?.filter(
+              (property) => property.name !== propertyToDelete.name
+            ),
+          })
+      );
       showSuccessToast(
         t('server.delete-entity-success', {
           entity: t('label.custom-property'),

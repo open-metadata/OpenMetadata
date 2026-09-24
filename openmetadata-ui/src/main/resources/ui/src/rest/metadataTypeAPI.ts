@@ -12,7 +12,8 @@
  */
 
 import { AxiosResponse, isAxiosError } from 'axios';
-import { Operation } from 'fast-json-patch';
+import { compare, Operation } from 'fast-json-patch';
+import { isUndefined, omitBy } from 'lodash';
 import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { Category, Type } from '../generated/entity/type';
 import { CustomProperty } from '../generated/type/customProperty';
@@ -89,49 +90,89 @@ export const updateType = async (entityTypeId: string, data: Operation[]) => {
   return response.data;
 };
 
-const MAX_CUSTOM_PROPERTY_DELETE_ATTEMPTS = 3;
+const MAX_CUSTOM_PROPERTY_PATCH_ATTEMPTS = 3;
+
+export type CustomPropertyChanges = Pick<
+  CustomProperty,
+  'customPropertyConfig' | 'description' | 'displayName'
+>;
 
 /**
- * Removes one custom property by name. JSON Patch addresses array items by
- * index, and a type's custom properties are shared and edited concurrently, so
- * an index taken from an older copy can point past the end (400) or at a
- * different property (silently deleting it). The patch is therefore built from
- * a fresh copy and guarded by a `test` op on the name: if the list shifted in
- * between, the server rejects it and the patch is rebuilt.
+ * Patches one custom property, addressed by name. JSON Patch addresses array
+ * items by index, and a type's custom properties are shared and edited
+ * concurrently, so an index taken from an older copy can point past the end
+ * (400) or at a different property (silently changing it). The patch is
+ * therefore built from a fresh copy and guarded by a `test` op on the name: if
+ * the list shifted in between, the server rejects it and the patch is rebuilt.
+ *
+ * Resolves to `undefined` when the property no longer exists.
  */
-export const deleteCustomPropertyByName = async (
+const patchCustomPropertyByName = async (
   typeFQN: string,
-  propertyName: string
-): Promise<Type> => {
+  propertyName: string,
+  buildOperations: (property: CustomProperty, path: string) => Operation[]
+): Promise<Type | undefined> => {
   for (let attempt = 1; ; attempt++) {
     const type = await getTypeByFQN(typeFQN);
-    const index = (type.customProperties ?? []).findIndex(
+    const properties = type.customProperties ?? [];
+    const index = properties.findIndex(
       (property) => property.name === propertyName
     );
 
     if (index === -1) {
-      return type;
+      return undefined;
     }
+
+    const path = `/customProperties/${index}`;
 
     try {
       return await updateType(type.id ?? '', [
-        {
-          op: 'test',
-          path: `/customProperties/${index}/name`,
-          value: propertyName,
-        },
-        { op: 'remove', path: `/customProperties/${index}` },
+        { op: 'test', path: `${path}/name`, value: propertyName },
+        ...buildOperations(properties[index], path),
       ]);
     } catch (error) {
       const isStaleIndex =
         isAxiosError(error) && error.response?.status === 400;
 
-      if (!isStaleIndex || attempt >= MAX_CUSTOM_PROPERTY_DELETE_ATTEMPTS) {
+      if (!isStaleIndex || attempt >= MAX_CUSTOM_PROPERTY_PATCH_ATTEMPTS) {
         throw error;
       }
     }
   }
 };
+
+/**
+ * Removes one custom property by name. Resolves to `undefined` when it was
+ * already gone.
+ */
+export const deleteCustomPropertyByName = (
+  typeFQN: string,
+  propertyName: string
+) =>
+  patchCustomPropertyByName(typeFQN, propertyName, (_property, path) => [
+    { op: 'remove', path },
+  ]);
+
+/**
+ * Applies `changes` to the current server copy of one custom property, so a
+ * concurrent edit to its other fields is kept. An `undefined` change is left
+ * out: `compare` would otherwise emit a `remove` for that field. Resolves to
+ * `undefined` when the property no longer exists.
+ */
+export const updateCustomPropertyByName = (
+  typeFQN: string,
+  propertyName: string,
+  changes: CustomPropertyChanges
+) =>
+  patchCustomPropertyByName(typeFQN, propertyName, (property, path) =>
+    compare(property, {
+      ...property,
+      ...omitBy(changes, isUndefined),
+    }).map((operation) => ({
+      ...operation,
+      path: `${path}${operation.path}`,
+    }))
+  );
 
 export const getFieldsForEntity = async (entityType: EntityType) => {
   const path = `/metadata/types/fields/${entityType}`;

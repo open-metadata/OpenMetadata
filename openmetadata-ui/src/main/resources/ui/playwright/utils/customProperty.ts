@@ -822,6 +822,68 @@ export const addCustomPropertiesForEntity = async ({
   ).toBeVisible();
 };
 
+/**
+ * Waits for the custom-property save to succeed. The UI patches a property by
+ * name with a `test` guard and retries when a concurrent edit shifted the list,
+ * so a rejected (400) attempt before the successful one is expected. Register
+ * before the click, and assert the visible outcome before awaiting this so a
+ * failed save reports on that assertion rather than timing out here.
+ */
+export const waitForCustomPropertySave = (page: Page) =>
+  page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/metadata/types/') &&
+      res.request().method() === 'PATCH' &&
+      res.ok()
+  );
+
+/**
+ * Removes one custom property by name without touching the others. Replacing
+ * the whole list from an earlier read would drop properties that concurrently
+ * running specs added in between, so this removes by index guarded by a `test`
+ * on the name, rebuilt from a fresh read if the list shifted.
+ */
+export const removeCustomPropertyViaApi = async (
+  apiContext: APIRequestContext,
+  typeFqn: string,
+  propertyName: string
+) => {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const typeRes = await apiContext.get(
+      `/api/v1/metadata/types/name/${typeFqn}?fields=customProperties`
+    );
+    const type = (await typeRes.json()) as {
+      id: string;
+      customProperties?: { name: string }[];
+    };
+    const index = (type.customProperties ?? []).findIndex(
+      (property) => property.name === propertyName
+    );
+
+    if (index === -1) {
+      return;
+    }
+
+    const res = await apiContext.patch(`/api/v1/metadata/types/${type.id}`, {
+      data: [
+        {
+          op: 'test',
+          path: `/customProperties/${index}/name`,
+          value: propertyName,
+        },
+        { op: 'remove', path: `/customProperties/${index}` },
+      ],
+      headers: { 'Content-Type': 'application/json-patch+json' },
+    });
+
+    if (res.ok()) {
+      return;
+    }
+  }
+
+  throw new Error(`Could not remove custom property ${propertyName}`);
+};
+
 export const editCreatedProperty = async (
   page: Page,
   propertyName: string,
@@ -877,15 +939,12 @@ export const editCreatedProperty = async (
     await clickOutside(page);
   }
 
-  const patchRequest = page.waitForResponse('/api/v1/metadata/types/*');
+  const saveResponse = waitForCustomPropertySave(page);
 
   await page.locator('button[type="submit"]').click();
 
-  const response = await patchRequest;
-
-  expect(response.status()).toBe(200);
-
   await expect(page.locator('.ant-modal-wrap')).not.toBeVisible();
+  expect((await saveResponse).status()).toBe(200);
 
   // Fetching for updated descriptions for the created custom property
   await expect(
@@ -931,21 +990,14 @@ export const deleteCreatedProperty = async (
   // Ensure the save button is visible before clicking
   await expect(page.locator('[data-testid="save-button"]')).toBeVisible();
 
-  const patchResponse = page.waitForResponse(
-    (res) =>
-      res.url().includes('/api/v1/metadata/types/') &&
-      res.request().method() === 'PATCH',
-    { timeout: 30_000 }
-  );
+  const saveResponse = waitForCustomPropertySave(page);
 
   await page.locator('[data-testid="save-button"]').click();
-  const response = await patchResponse;
-
-  expect(response.status()).toBe(200);
 
   // ConfirmationModal is destroyOnClose: assert the body text unmounts so
   // the modal mask is gone before the next sidebar click in callers' loops.
   await expect(page.locator('[data-testid="body-text"]')).not.toBeAttached();
+  expect((await saveResponse).status()).toBe(200);
   await expect(
     page.locator(`[data-row-key="${propertyName}"]`)
   ).not.toBeVisible();
