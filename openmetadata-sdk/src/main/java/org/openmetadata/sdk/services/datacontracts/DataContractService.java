@@ -13,6 +13,8 @@ import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.sdk.services.EntityServiceBase;
 
 public class DataContractService extends EntityServiceBase<DataContract> {
+  private static final String CREATE_TEST_CASES = "createTestCases";
+
   public DataContractService(HttpClient httpClient) {
     super(httpClient, "/v1/dataContracts");
   }
@@ -133,10 +135,22 @@ public class DataContractService extends EntityServiceBase<DataContract> {
    */
   public DataContract importFromODCS(ODCSDataContract odcs, UUID entityId, String entityType)
       throws OpenMetadataException {
+    return importFromODCS(odcs, entityId, entityType, true);
+  }
+
+  /**
+   * Import data contract from ODCS format.
+   *
+   * @param createTestCases whether the contract's ODCS quality rules become test cases
+   */
+  public DataContract importFromODCS(
+      ODCSDataContract odcs, UUID entityId, String entityType, boolean createTestCases)
+      throws OpenMetadataException {
     RequestOptions options =
         RequestOptions.builder()
             .queryParam("entityId", entityId.toString())
             .queryParam("entityType", entityType)
+            .queryParam(CREATE_TEST_CASES, String.valueOf(createTestCases))
             .build();
     return httpClient.execute(
         HttpMethod.POST, basePath + "/odcs", odcs, DataContract.class, options);
@@ -147,10 +161,22 @@ public class DataContractService extends EntityServiceBase<DataContract> {
    */
   public DataContract importFromODCSYaml(String yamlContent, UUID entityId, String entityType)
       throws OpenMetadataException {
+    return importFromODCSYaml(yamlContent, entityId, entityType, true);
+  }
+
+  /**
+   * Import data contract from ODCS YAML format.
+   *
+   * @param createTestCases whether the contract's ODCS quality rules become test cases
+   */
+  public DataContract importFromODCSYaml(
+      String yamlContent, UUID entityId, String entityType, boolean createTestCases)
+      throws OpenMetadataException {
     RequestOptions options =
         RequestOptions.builder()
             .queryParam("entityId", entityId.toString())
             .queryParam("entityType", entityType)
+            .queryParam(CREATE_TEST_CASES, String.valueOf(createTestCases))
             .header("Content-Type", "application/yaml")
             .build();
     return httpClient.execute(
@@ -173,11 +199,24 @@ public class DataContractService extends EntityServiceBase<DataContract> {
   public DataContract createOrUpdateFromODCS(
       ODCSDataContract odcs, UUID entityId, String entityType, String mode)
       throws OpenMetadataException {
+    return createOrUpdateFromODCS(odcs, entityId, entityType, mode, true);
+  }
+
+  /**
+   * Create or update data contract from ODCS format with specified mode.
+   *
+   * @param mode 'merge' preserves existing fields, 'replace' overwrites all fields
+   * @param createTestCases whether the contract's ODCS quality rules become test cases
+   */
+  public DataContract createOrUpdateFromODCS(
+      ODCSDataContract odcs, UUID entityId, String entityType, String mode, boolean createTestCases)
+      throws OpenMetadataException {
     RequestOptions options =
         RequestOptions.builder()
             .queryParam("entityId", entityId.toString())
             .queryParam("entityType", entityType)
             .queryParam("mode", mode)
+            .queryParam(CREATE_TEST_CASES, String.valueOf(createTestCases))
             .build();
     return httpClient.execute(
         HttpMethod.PUT, basePath + "/odcs", odcs, DataContract.class, options);
@@ -199,11 +238,24 @@ public class DataContractService extends EntityServiceBase<DataContract> {
   public DataContract createOrUpdateFromODCSYaml(
       String yamlContent, UUID entityId, String entityType, String mode)
       throws OpenMetadataException {
+    return createOrUpdateFromODCSYaml(yamlContent, entityId, entityType, mode, true);
+  }
+
+  /**
+   * Create or update data contract from ODCS YAML format with specified mode.
+   *
+   * @param mode 'merge' preserves existing fields, 'replace' overwrites all fields
+   * @param createTestCases whether the contract's ODCS quality rules become test cases
+   */
+  public DataContract createOrUpdateFromODCSYaml(
+      String yamlContent, UUID entityId, String entityType, String mode, boolean createTestCases)
+      throws OpenMetadataException {
     RequestOptions options =
         RequestOptions.builder()
             .queryParam("entityId", entityId.toString())
             .queryParam("entityType", entityType)
             .queryParam("mode", mode)
+            .queryParam(CREATE_TEST_CASES, String.valueOf(createTestCases))
             .header("Content-Type", "application/yaml")
             .build();
     return httpClient.execute(

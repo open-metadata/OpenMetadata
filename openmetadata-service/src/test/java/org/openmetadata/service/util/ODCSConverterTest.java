@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 
@@ -1844,51 +1845,6 @@ class ODCSConverterTest {
   }
 
   @Test
-  void testMapODCSMetricToTestDefinition() {
-    assertEquals(
-        "columnValuesToBeNotNull",
-        ODCSConverter.mapODCSMetricToTestDefinition(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES));
-    assertEquals(
-        "tableRowCountToEqual",
-        ODCSConverter.mapODCSMetricToTestDefinition(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT));
-    assertEquals(
-        "columnValuesToBeUnique",
-        ODCSConverter.mapODCSMetricToTestDefinition(
-            ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES));
-    assertNull(
-        ODCSConverter.mapODCSMetricToTestDefinition(
-            ODCSQualityRule.OdcsQualityMetric.DUPLICATE_VALUES));
-    assertNull(
-        ODCSConverter.mapODCSMetricToTestDefinition(
-            ODCSQualityRule.OdcsQualityMetric.DISTINCT_VALUES));
-    assertNull(
-        ODCSConverter.mapODCSMetricToTestDefinition(ODCSQualityRule.OdcsQualityMetric.FRESHNESS));
-    assertEquals(
-        "columnValuesMissingCountToBeEqual",
-        ODCSConverter.mapODCSMetricToTestDefinition(
-            ODCSQualityRule.OdcsQualityMetric.MISSING_VALUES));
-    assertNull(
-        ODCSConverter.mapODCSMetricToTestDefinition(
-            ODCSQualityRule.OdcsQualityMetric.INVALID_VALUES));
-  }
-
-  @Test
-  void testMapTestDefinitionToODCSMetric() {
-    assertEquals(
-        ODCSQualityRule.OdcsQualityMetric.NULL_VALUES,
-        ODCSConverter.mapTestDefinitionToODCSMetric("columnValuesToBeNotNull"));
-    assertEquals(
-        ODCSQualityRule.OdcsQualityMetric.ROW_COUNT,
-        ODCSConverter.mapTestDefinitionToODCSMetric("tableRowCountToEqual"));
-    assertEquals(
-        ODCSQualityRule.OdcsQualityMetric.ROW_COUNT,
-        ODCSConverter.mapTestDefinitionToODCSMetric("tableRowCountToBeBetween"));
-    assertEquals(
-        ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES,
-        ODCSConverter.mapTestDefinitionToODCSMetric("columnValuesToBeUnique"));
-  }
-
-  @Test
   void testSmartMerge_PreservesExtension() {
     DataContract existing = new DataContract();
     existing.setId(UUID.randomUUID());
@@ -2753,9 +2709,134 @@ class ODCSConverterTest {
   }
 
   @Test
-  void testMapTestDefinitionToODCSMetric_MissingValues() {
+  void smartMergeKeepsTheQualityExpectationsOfTheExistingContract() {
+    EntityReference existingTest = testCaseRef("existing_check");
+    DataContract existing =
+        new DataContract().withName("contract").withQualityExpectations(List.of(existingTest));
+
+    DataContract merged = ODCSConverter.smartMerge(existing, new DataContract());
+
+    assertEquals(List.of(existingTest), merged.getQualityExpectations());
+  }
+
+  @Test
+  void smartMergeAddsImportedQualityExpectationsOnce() {
+    EntityReference existingTest = testCaseRef("existing_check");
+    EntityReference importedTest = testCaseRef("odcs_new_check");
+    DataContract existing =
+        new DataContract().withName("contract").withQualityExpectations(List.of(existingTest));
+    DataContract imported =
+        new DataContract().withQualityExpectations(List.of(importedTest, existingTest));
+
+    DataContract merged = ODCSConverter.smartMerge(existing, imported);
+
+    assertEquals(List.of(existingTest, importedTest), merged.getQualityExpectations());
+  }
+
+  @Test
+  void smartMergeKeepsTheSemanticsOfTheExistingContract() {
+    List<SemanticsRule> semantics =
+        List.of(new SemanticsRule().withName("has owner").withRule("{}"));
+    DataContract existing = new DataContract().withName("contract").withSemantics(semantics);
+
+    DataContract merged = ODCSConverter.smartMerge(existing, new DataContract());
+
+    assertEquals(semantics, merged.getSemantics());
+  }
+
+  @Test
+  void fullReplaceLinksOnlyTheImportedQualityExpectations() {
+    EntityReference importedTest = testCaseRef("odcs_new_check");
+    DataContract existing =
+        new DataContract()
+            .withName("contract")
+            .withQualityExpectations(List.of(testCaseRef("existing_check")));
+
+    DataContract replaced =
+        ODCSConverter.fullReplace(
+            existing, new DataContract().withQualityExpectations(List.of(importedTest)));
+
+    assertEquals(List.of(importedTest), replaced.getQualityExpectations());
+  }
+
+  @Test
+  void fullReplaceWithoutImportedQualityExpectationsUnlinksAll() {
+    DataContract existing =
+        new DataContract()
+            .withName("contract")
+            .withQualityExpectations(List.of(testCaseRef("existing_check")));
+
+    DataContract replaced = ODCSConverter.fullReplace(existing, new DataContract());
+
+    assertTrue(replaced.getQualityExpectations().isEmpty());
+  }
+
+  @Test
+  void freshnessSlaElementBecomesTheSlaColumnAndIsExportedBack() {
+    ODCSDataContract odcs = newODCSContract();
+    odcs.setSlaProperties(
+        List.of(
+            new ODCSSlaProperty()
+                .withProperty("freshness")
+                .withValue("1")
+                .withUnit("hour")
+                .withElement("ORDERS.UPDATED_AT")));
+
+    DataContract contract = ODCSConverter.fromODCS(odcs, tableRef("orders"));
+    ODCSSlaProperty exported =
+        ODCSConverter.toODCS(contract).getSlaProperties().stream()
+            .filter(property -> "freshness".equals(property.getProperty()))
+            .findFirst()
+            .orElseThrow();
+
+    assertEquals("UPDATED_AT", contract.getSla().getColumnName());
+    assertEquals("UPDATED_AT", exported.getElement());
+  }
+
+  @Test
+  void slaColumnIsExportedAsTheColumnsOwnName() {
+    DataContract contract =
+        new DataContract()
+            .withName("orders_contract")
+            .withEntity(tableRef("orders"))
+            .withSla(
+                new ContractSLA()
+                    .withRefreshFrequency(
+                        new RefreshFrequency().withInterval(1).withUnit(RefreshFrequency.Unit.DAY))
+                    .withColumnName("mysql.shop.public.orders.updated_at"));
+
+    List<ODCSSlaProperty> exported = ODCSConverter.toODCS(contract).getSlaProperties();
+
+    assertTrue(exported.stream().allMatch(property -> "updated_at".equals(property.getElement())));
+  }
+
+  @Test
+  void additionalQualityRulesAreExportedOnTheirColumn() {
+    DataContract contract =
+        new DataContract()
+            .withName("orders_contract")
+            .withEntity(tableRef("orders"))
+            .withSchema(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+    ODCSQualityRule nativeRule =
+        new ODCSQualityRule()
+            .withName("id is set")
+            .withMetric(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES)
+            .withColumn("id")
+            .withMustBe(0.0);
+
+    ODCSDataContract odcs = ODCSConverter.toODCS(contract, List.of(nativeRule));
+
+    ODCSSchemaElement idProperty =
+        odcs.getSchema().getFirst().getProperties().stream()
+            .filter(property -> "id".equals(property.getName()))
+            .findFirst()
+            .orElseThrow();
     assertEquals(
-        ODCSQualityRule.OdcsQualityMetric.MISSING_VALUES,
-        ODCSConverter.mapTestDefinitionToODCSMetric("columnValuesMissingCountToBeEqual"));
+        List.of("id is set"),
+        idProperty.getQuality().stream().map(ODCSQualityRule::getName).toList());
+  }
+
+  private static EntityReference testCaseRef(String name) {
+    return new EntityReference().withId(UUID.randomUUID()).withType("testCase").withName(name);
   }
 }
