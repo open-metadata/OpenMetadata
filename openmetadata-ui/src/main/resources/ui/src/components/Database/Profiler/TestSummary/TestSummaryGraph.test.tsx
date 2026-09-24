@@ -141,6 +141,11 @@ jest.mock('recharts', () => ({
       </div>
     );
   }),
+  ReferenceArea: jest
+    .fn()
+    .mockImplementation(({ y2, ...rest }) => (
+      <div data-testid={rest['data-testid'] ?? 'reference-area'} data-y2={y2} />
+    )),
   ReferenceLine: jest.fn().mockImplementation(({ label, x, y, ...rest }) => (
     <div
       data-testid={rest['data-testid'] ?? 'reference-line'}
@@ -456,6 +461,38 @@ describe('TestSummaryGraph', () => {
     render(<TestSummaryGraph {...mockProps} />);
 
     expect(screen.queryByTestId('selected-point-halo')).not.toBeInTheDocument();
+  });
+
+  // The mock washes the zone below the expectation, leaving the plot above
+  // the line clear, rather than tinting the whole chart.
+  it('should wash only the zone below the expectation line', () => {
+    render(
+      <TestSummaryGraph
+        {...mockProps}
+        testCaseParameterValue={[{ name: 'value', value: '10000' }]}
+      />
+    );
+
+    expect(screen.getByTestId('below-expectation-area')).toHaveAttribute(
+      'data-y2',
+      '10000'
+    );
+  });
+
+  it('should draw no wash when the test states no expectation', () => {
+    render(
+      <TestSummaryGraph
+        {...mockProps}
+        testCaseParameterValue={[{ name: 'strategy', value: 'ROWS' }]}
+        testCaseResults={[
+          { ...mockProps.testCaseResults[0], maxBound: undefined },
+        ]}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('below-expectation-area')
+    ).not.toBeInTheDocument();
   });
 
   it('should publish the clicked run to the store', () => {

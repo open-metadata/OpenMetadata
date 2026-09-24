@@ -33,6 +33,7 @@ import {
   LegendProps,
   Line,
   LineProps,
+  ReferenceArea,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -515,11 +516,19 @@ function TestSummaryGraph({
         id={`${testCaseName}_graph`}
         minHeight={minHeight ?? 400}>
         <ComposedChart data={plottedData} margin={TEST_SUMMARY_CHART_MARGIN}>
-          <CartesianGrid
-            fill={PLOT_BACKGROUND}
-            stroke={grid}
-            vertical={false}
-          />
+          <CartesianGrid stroke={grid} vertical={false} />
+          {thresholdReference && (
+            // The wash marks the zone below the expectation, as the mock does,
+            // not the whole plot: runs above the line sit on a clear ground.
+            // With no y1 the area reaches down to the bottom of the axis.
+            <ReferenceArea
+              data-testid="below-expectation-area"
+              fill={PLOT_BACKGROUND}
+              fillOpacity={1}
+              ifOverflow="hidden"
+              y2={thresholdReference.y}
+            />
+          )}
           <XAxis
             angle={-45}
             dataKey="name"
