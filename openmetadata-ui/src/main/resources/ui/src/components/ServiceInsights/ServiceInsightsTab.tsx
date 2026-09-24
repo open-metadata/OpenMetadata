@@ -273,8 +273,8 @@ const ServiceInsightsTab = ({
 
         // A frame that closes the stream carries no payload at all, so applying it would blank
         // every widget — killing a run ends the stream, and the agents stayed off the list until
-        // the page was reloaded. An empty list on a live frame is a real answer and still applies,
-        // so an agent that was deleted or disabled does leave the widget.
+        // the page was reloaded. A live frame still applies, so a deleted metadata agent does leave
+        // the widget.
         if (TERMINAL_CHART_STREAM_STATUSES.includes(data.status)) {
           return;
         }
@@ -285,10 +285,11 @@ const ServiceInsightsTab = ({
             getPlatformInsightsChartDataFormattingMethod(data.data)
           );
 
-          setAgentsInfo(
+          setAgentsInfo((prev) =>
             getFormattedAgentsListFromAgentsLiveInfo(
               data.ingestionPipelineStatus,
-              data.appStatus
+              data.appStatus,
+              prev.filter((agent) => agent.isCollateAgent)
             )
           );
 

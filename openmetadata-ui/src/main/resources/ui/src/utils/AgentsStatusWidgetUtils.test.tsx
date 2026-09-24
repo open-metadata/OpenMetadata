@@ -239,9 +239,15 @@ describe('getFormattedAgentsListFromAgentsLiveInfo', () => {
     ]);
   });
 
-  // Each list is the service's current set, so an agent that was deleted has to leave the widget
-  // rather than linger on the last frame that still carried it.
-  it('drops the Collate agents when a frame reports none', () => {
+  // The server folds a failed automation lookup into an empty app status, so a live frame without
+  // one must not wipe the Collate agents already on screen — while its metadata half still applies.
+  it('keeps the Collate agents on screen when a live frame carries no app status', () => {
+    const preserved = getFormattedAgentsList(
+      {},
+      [],
+      [{ id: 'a1', name: 'svc_TierAutomation' }]
+    );
+
     const result = getFormattedAgentsListFromAgentsLiveInfo(
       [
         {
@@ -249,10 +255,30 @@ describe('getFormattedAgentsListFromAgentsLiveInfo', () => {
           provider: ProviderType.Automation,
         },
       ] as never,
-      []
+      [],
+      preserved
     );
 
-    expect(result.map((a) => a.agentType)).toEqual([PipelineType.Metadata]);
+    expect(result.map((a) => a.agentType)).toEqual([
+      PipelineType.Metadata,
+      'TierAutomation',
+    ]);
+  });
+
+  it('prefers the live Collate app status over the agents on screen', () => {
+    const preserved = getFormattedAgentsList(
+      {},
+      [],
+      [{ id: 'a1', name: 'svc_TierAutomation' }]
+    );
+
+    const result = getFormattedAgentsListFromAgentsLiveInfo(
+      [],
+      [{ appName: 'svc_DescriptionAutomation' } as never],
+      preserved
+    );
+
+    expect(result.map((a) => a.agentType)).toEqual(['DescriptionAutomation']);
   });
 
   it('drops the metadata agents when a frame reports none', () => {

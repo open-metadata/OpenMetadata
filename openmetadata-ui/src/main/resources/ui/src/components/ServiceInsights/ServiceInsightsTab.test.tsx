@@ -217,13 +217,19 @@ describe('ServiceInsightsTab', () => {
       provider: ProviderType.Automation,
     } as IngestionPipeline;
 
-    const frame = (status: string) =>
+    type FrameLists = {
+      ingestionPipelineStatus?: unknown[];
+      appStatus?: unknown[];
+    };
+
+    const frame = (status: string, lists: FrameLists = {}) =>
       JSON.stringify({
         status,
         serviceName: mockProps.serviceDetails.name,
         ingestionPipelineStatus: [],
         appStatus: [],
         workflowInstances: [],
+        ...lists,
       });
 
     const mockSocketOn = jest.fn();
@@ -242,13 +248,19 @@ describe('ServiceInsightsTab', () => {
       });
     });
 
-    const renderTabAndSendFrame = async (status: string) => {
-      await renderTab({ ingestionPipelines: [metadataPipeline] });
+    const renderTabAndSendFrame = async (
+      status: string,
+      {
+        props,
+        lists,
+      }: { props?: Partial<ServiceInsightsTabProps>; lists?: FrameLists } = {}
+    ) => {
+      await renderTab({ ingestionPipelines: [metadataPipeline], ...props });
 
       const [, onChartDataStream] = mockSocketOn.mock.calls[0];
 
       await act(async () => {
-        onChartDataStream(frame(status));
+        onChartDataStream(frame(status, lists));
       });
 
       const { calls } = mockAgentsStatusWidget.mock;
@@ -276,6 +288,20 @@ describe('ServiceInsightsTab', () => {
     // was deleted or disabled has to leave the widget without waiting for a reload.
     it('should drop the agents a live frame no longer reports', async () => {
       expect(await renderTabAndSendFrame('DATA')).toEqual([]);
+    });
+
+    // Except the Collate half: the server folds a failed automation lookup into an empty app
+    // status, so a live frame without one must not wipe the Collate agents the tab loaded. Its
+    // metadata half still applies.
+    it('should keep the Collate agents when a live frame carries no app status', async () => {
+      expect(
+        await renderTabAndSendFrame('DATA', {
+          props: {
+            collateAIagentsList: [{ id: 'a1', name: 'svc_TierAutomation' }],
+          },
+          lists: { ingestionPipelineStatus: [metadataPipeline] },
+        })
+      ).toEqual([PipelineType.Metadata, 'TierAutomation']);
     });
   });
 });

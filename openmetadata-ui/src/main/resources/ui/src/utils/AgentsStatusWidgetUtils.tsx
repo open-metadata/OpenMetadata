@@ -160,13 +160,14 @@ export const getFormattedAgentsList = (
   return orderedAgentsList;
 };
 
-// Every list this is handed is authoritative: an empty one means the service has no such agent
-// left, so a deleted one drops off the widget. Frames that report nothing at all — the payload-less
-// ones that close the stream — are dropped by the caller instead, since there is no way to tell
-// them apart from here.
 export const getFormattedAgentsListFromAgentsLiveInfo = (
   agentsLiveInfo: AgentsLiveInfo[],
-  collateAIagentsLiveInfo: CollateAgentLiveInfo[]
+  collateAIagentsLiveInfo: CollateAgentLiveInfo[],
+  // The server folds a failed or partial automation lookup into an empty app status, so on a live
+  // frame an empty one cannot be told apart from "none left". Keep the Collate agents already on
+  // screen rather than wipe them for one frame. Frames that close the stream never get here — the
+  // caller drops them.
+  preservedCollateAgents: AgentsInfo[] = []
 ): AgentsInfo[] => {
   const filteredAgentsList = agentsLiveInfo.filter(
     (agent) => agent.provider === ProviderType.Automation
@@ -193,9 +194,13 @@ export const getFormattedAgentsListFromAgentsLiveInfo = (
     };
   });
 
+  const collateAIagents = isEmpty(liveCollateAgents)
+    ? preservedCollateAgents
+    : liveCollateAgents;
+
   const allAgentsList: AgentsInfo[] = [
     ...formattedAgentsList,
-    ...liveCollateAgents,
+    ...collateAIagents,
   ];
 
   const orderedAgentsList = reduce(
