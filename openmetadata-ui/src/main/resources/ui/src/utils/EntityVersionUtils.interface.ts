@@ -22,7 +22,7 @@ import { Field } from '../generated/entity/data/topic';
 import { TestCase } from '../generated/tests/testCase';
 import { TagLabel } from '../generated/type/tagLabel';
 import { ServicesType } from '../interface/service.interface';
-import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
+import type { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
 
 export interface TagLabelWithStatus extends TagLabel {
   added: boolean | undefined;
