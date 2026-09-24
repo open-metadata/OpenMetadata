@@ -124,7 +124,7 @@
   },
   "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 4
+      "count": 3
     }
   },
   "playwright/e2e/Features/DataProductDomainMigration.spec.ts": {
@@ -199,7 +199,7 @@
   },
   "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 8
+      "count": 7
     }
   },
   "playwright/e2e/Features/EntityRenameConsolidation.spec.ts": {
@@ -813,7 +813,7 @@
   },
   "playwright/e2e/Pages/UserDetails.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 5
+      "count": 4
     }
   },
   "playwright/e2e/Pages/Users.spec.ts": {

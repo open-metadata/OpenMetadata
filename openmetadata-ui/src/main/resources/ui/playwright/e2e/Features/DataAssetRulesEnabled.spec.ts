@@ -262,16 +262,14 @@ test.describe(
         await page.getByTestId('add-domain').click();
         await waitForAllLoadersToDisappear(page);
 
-        // Verify checkboxes are NOT visible (single-select mode)
-        await expect(
-          page.locator('.domain-selectable-tree .ant-tree-checkbox')
-        ).toHaveCount(0);
+        // Verify checkboxes are NOT present (single-select mode)
+        await expect(page.locator('[data-testid^="checkbox-"]')).toHaveCount(0);
 
         // Close the selector by clicking outside
         await clickOutside(page);
 
         // Wait for domain selector to be fully closed
-        await page.getByTestId('domain-selectable-tree').waitFor({
+        await page.getByTestId('domain-selectable-tree-search').waitFor({
           state: 'detached',
         });
 
@@ -279,26 +277,32 @@ test.describe(
         await assignDomainWidget(page, testDomain1.responseData);
 
         // Verify first domain is visible
-        await expect(page.getByTestId('domain-link')).toContainText(
-          testDomain1.data.displayName
-        );
+        await expect(
+          page.getByTestId(
+            `domain-tag-${testDomain1.responseData.fullyQualifiedName}`
+          )
+        ).toBeVisible();
 
         // Assign second domain (should REPLACE first, not add to it)
         await assignDomainWidget(page, testDomain2.responseData, false, true);
 
         // Verify second domain is visible
-        await expect(page.getByTestId('domain-link')).toContainText(
-          testDomain2.data.displayName
-        );
+        await expect(
+          page.getByTestId(
+            `domain-tag-${testDomain2.responseData.fullyQualifiedName}`
+          )
+        ).toBeVisible();
 
         // Verify first domain is NOT visible (replaced, not added)
         // This confirms single-select mode is enforced by entity rules
-        await expect(page.getByTestId('domain-link')).not.toContainText(
-          testDomain1.data.displayName
-        );
+        await expect(
+          page.getByTestId(
+            `domain-tag-${testDomain1.responseData.fullyQualifiedName}`
+          )
+        ).not.toBeVisible();
 
-        // Verify no domain count button (only single domain, not multiple)
-        await expect(page.getByTestId('domain-count-button')).not.toBeVisible();
+        // Single domain assigned, so no overflow button.
+        await expect(page.getByTestId('show-all-domains')).not.toBeVisible();
       } finally {
         await testGlossaryTerm.delete(apiContext);
         await testGlossary.delete(apiContext);

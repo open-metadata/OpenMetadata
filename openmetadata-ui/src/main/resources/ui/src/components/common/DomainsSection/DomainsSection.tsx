@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { get, isEmpty } from 'lodash';
@@ -23,11 +23,10 @@ import {
   getAPIfromSource,
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
-import { getDomainIcon } from '../../../utils/DomainUtils';
-import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
+import DomainTags from '../DomainTags/DomainTags';
 import Loader from '../Loader/Loader';
 import './DomainsSection.less';
 
@@ -55,8 +54,6 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [activeDomains, setActiveDomains] = useState<EntityReference[]>([]);
-  const [showAllDomains, setShowAllDomains] = useState(false);
-  const [popoverOpen, setPopoverOpen] = useState(false);
   const { entityRules } = useEntityRules(entityType);
 
   // Sync activeDomains with domains prop, similar to DomainLabel
@@ -140,7 +137,6 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
         // Only proceed if there are changes
         if (jsonPatch.length === 0) {
           setIsLoading(false);
-          setPopoverOpen(false);
 
           return;
         }
@@ -166,10 +162,8 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
         }
 
         setIsLoading(false);
-        setPopoverOpen(false);
       } catch (error) {
         setIsLoading(false);
-        setPopoverOpen(false);
         showErrorToast(
           error as AxiosError,
           t('server.entity-updating-error', {
@@ -186,51 +180,10 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
   const domainsDisplay = useMemo(
     () => (
       <div className="domains-display">
-        <div className="domains-list">
-          {(showAllDomains
-            ? activeDomains
-            : activeDomains.slice(0, maxVisibleDomains)
-          ).map((domain) => {
-            const domainWithStyle = domain as EntityReference & {
-              style?: { color?: string; iconURL?: string };
-            };
-
-            return (
-              <div
-                className="domain-item"
-                key={
-                  domainWithStyle.id ||
-                  domainWithStyle.fullyQualifiedName ||
-                  domainWithStyle.name ||
-                  JSON.stringify(domainWithStyle)
-                }>
-                <div className="domain-card-bar">
-                  <div className="domain-card-content">
-                    <div className="domain-card-icon">
-                      {getDomainIcon(domainWithStyle?.style?.iconURL)}
-                    </div>
-                    <span className="domain-name">{getEntityName(domain)}</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-          {activeDomains.length > maxVisibleDomains && (
-            <button
-              className="show-more-domains-button"
-              type="button"
-              onClick={() => setShowAllDomains(!showAllDomains)}>
-              {showAllDomains
-                ? t('label.less')
-                : `+${activeDomains.length - maxVisibleDomains} ${t(
-                    'label.more-lowercase'
-                  )}`}
-            </button>
-          )}
-        </div>
+        <DomainTags domains={activeDomains} maxVisible={maxVisibleDomains} />
       </div>
     ),
-    [showAllDomains, activeDomains, maxVisibleDomains, t]
+    [activeDomains, maxVisibleDomains]
   );
 
   const selectableList = useMemo(() => {
@@ -241,34 +194,21 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
           hasPermission={hasPermission}
           multiple={entityRules.canAddMultipleDomains}
           overlayClassName="domain-popover"
-          popoverProps={{
-            open: popoverOpen,
-            onOpenChange: setPopoverOpen,
-          }}
           selectedDomain={activeDomains}
           wrapInButton={false}
-          onCancel={() => {
-            setPopoverOpen(false);
-          }}
           onUpdate={handleDomainSave}
         />
       )
     );
-  }, [
-    showEditButton,
-    hasPermission,
-    activeDomains,
-    handleDomainSave,
-    popoverOpen,
-  ]);
+  }, [showEditButton, hasPermission, activeDomains, handleDomainSave]);
 
   if (isLoading) {
     return (
       <div className="domains-section">
         <div className="domains-header">
-          <Typography.Text className="domains-title">
+          <Typography className="domains-title">
             {t('label.domain-plural')}
-          </Typography.Text>
+          </Typography>
         </div>
         <div className="domains-content">{loadingState}</div>
       </div>
@@ -279,9 +219,9 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
     return (
       <div className="domains-section">
         <div className="domains-header">
-          <Typography.Text className="domains-title">
+          <Typography className="domains-title">
             {t('label.domain-plural')}
-          </Typography.Text>
+          </Typography>
           {selectableList}
         </div>
         <div className="domains-content">
@@ -298,9 +238,9 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
   return (
     <div className="domains-section">
       <div className="domains-header">
-        <Typography.Text className="domains-title">
+        <Typography className="domains-title">
           {t('label.domain-plural')}
-        </Typography.Text>
+        </Typography>
         {selectableList}
       </div>
       <div className="domains-content">{domainsDisplay}</div>
