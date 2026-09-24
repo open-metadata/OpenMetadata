@@ -2474,8 +2474,7 @@
                                     "privateKeyId": {
                                       "title": "Private Key ID",
                                       "description": "Google Cloud private key id.",
-                                      "type": "string",
-                                      "format": "password"
+                                      "type": "string"
                                     },
                                     "privateKey": {
                                       "title": "Private Key",
@@ -19794,7 +19793,6 @@
                           "type": "object",
                           "properties": {
                             "certificates": {
-                              "type": "object",
                               "title": "SSL Certificates",
                               "description": "SSL Certificates",
                               "oneOf": [
@@ -20374,59 +20372,6 @@
                             "Sftp"
                           ],
                           "default": "Sftp"
-                        },
-                        "basicAuth": {
-                          "title": "Username/Password Authentication",
-                          "description": "Username and password authentication for SFTP",
-                          "type": "object",
-                          "properties": {
-                            "username": {
-                              "title": "Username",
-                              "description": "SFTP username",
-                              "type": "string"
-                            },
-                            "password": {
-                              "title": "Password",
-                              "description": "SFTP password",
-                              "type": "string",
-                              "format": "password"
-                            }
-                          },
-                          "required": [
-                            "username",
-                            "password"
-                          ],
-                          "additionalProperties": false
-                        },
-                        "keyAuth": {
-                          "title": "Private Key Authentication",
-                          "description": "SSH private key authentication for SFTP",
-                          "type": "object",
-                          "properties": {
-                            "username": {
-                              "title": "Username",
-                              "description": "SFTP username",
-                              "type": "string"
-                            },
-                            "privateKey": {
-                              "title": "Private Key",
-                              "description": "SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.",
-                              "type": "string",
-                              "format": "password",
-                              "uiFieldType": "fileOrInput"
-                            },
-                            "privateKeyPassphrase": {
-                              "title": "Private Key Passphrase",
-                              "description": "Passphrase for the private key (if encrypted)",
-                              "type": "string",
-                              "format": "password"
-                            }
-                          },
-                          "required": [
-                            "username",
-                            "privateKey"
-                          ],
-                          "additionalProperties": false
                         }
                       },
                       "properties": {
@@ -20452,10 +20397,59 @@
                           "description": "Authentication method: username/password or SSH private key",
                           "oneOf": [
                             {
-                              "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/10/properties/config/oneOf/2/definitions/basicAuth"
+                              "title": "Username/Password Authentication",
+                              "description": "Username and password authentication for SFTP",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth",
+                              "properties": {
+                                "username": {
+                                  "title": "Username",
+                                  "description": "SFTP username",
+                                  "type": "string"
+                                },
+                                "password": {
+                                  "title": "Password",
+                                  "description": "SFTP password",
+                                  "type": "string",
+                                  "format": "password"
+                                }
+                              },
+                              "required": [
+                                "username",
+                                "password"
+                              ],
+                              "additionalProperties": false
                             },
                             {
-                              "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/10/properties/config/oneOf/2/definitions/keyAuth"
+                              "title": "Private Key Authentication",
+                              "description": "SSH private key authentication for SFTP",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.services.connections.drive.sftp.SftpKeyAuth",
+                              "properties": {
+                                "username": {
+                                  "title": "Username",
+                                  "description": "SFTP username",
+                                  "type": "string"
+                                },
+                                "privateKey": {
+                                  "title": "Private Key",
+                                  "description": "SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.",
+                                  "type": "string",
+                                  "format": "password",
+                                  "uiFieldType": "fileOrInput"
+                                },
+                                "privateKeyPassphrase": {
+                                  "title": "Private Key Passphrase",
+                                  "description": "Passphrase for the private key (if encrypted)",
+                                  "type": "string",
+                                  "format": "password"
+                                }
+                              },
+                              "required": [
+                                "username",
+                                "privateKey"
+                              ],
+                              "additionalProperties": false
                             }
                           ]
                         },

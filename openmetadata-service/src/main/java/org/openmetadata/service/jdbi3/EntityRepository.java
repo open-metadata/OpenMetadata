@@ -3594,20 +3594,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (fqn != null) {
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
     }
-    // Skip every Redis op for entity types that are never cached. Bot/domain/data-product
-    // deletes cascade through many addRelationship/deleteRelationship calls; without this
-    // short-circuit each cascade pays for a pub/sub publish + multiple DELs that touch keys
-    // we never wrote — under heavy parallel load that pushes test budgets like
+    // deferOrInvalidateRedisL2 skips every Redis op for entity types that are never cached.
+    // Bot/domain/data-product deletes cascade through many addRelationship/deleteRelationship
+    // calls; without that short-circuit each cascade pays for a pub/sub publish + multiple DELs
+    // that touch keys we never wrote — under heavy parallel load that pushes test budgets like
     // TaskResourceIT.testDeletingBotCreatorCleansUpOpenSuggestionTasks past their 30 s window.
-    if (!isCacheableEntityType(entityType)) {
-      return;
-    }
-    Map<CacheInvalidationKey, CacheInvalidationKey> deferred = DEFERRED_CACHE_INVALIDATIONS.get();
-    if (deferred != null) {
-      recordCacheInvalidation(deferred, entityType, id, fqn);
-    } else {
-      invalidateRedisL2ForEntity(entityType, id, fqn);
-    }
+    deferOrInvalidateRedisL2(entityType, id, fqn);
   }
 
   private static void recordCacheInvalidation(
@@ -3622,12 +3614,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private static void invalidateRedisL2ForEntity(String entityType, UUID id, String fqn) {
+  static void invalidateRedisL2ForEntity(String entityType, UUID id, String fqn) {
     var cachedEntityDao = CacheBundle.getCachedEntityDao();
     if (cachedEntityDao != null) {
       cachedEntityDao.invalidateBase(entityType, id);
+      cachedEntityDao.invalidateReference(entityType, id);
       if (fqn != null) {
         cachedEntityDao.invalidateByName(entityType, fqn);
+        cachedEntityDao.invalidateReferenceByName(entityType, fqn);
       }
     }
     var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
@@ -3644,9 +3638,33 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (cachedLineage != null) {
       cachedLineage.invalidate(id);
     }
+    var cachedTagUsageDao = CacheBundle.getCachedTagUsageDao();
+    if (cachedTagUsageDao != null) {
+      cachedTagUsageDao.invalidateTags(entityType, id);
+    }
     var pubsub = CacheBundle.getCacheInvalidationPubSub();
     if (pubsub != null) {
       pubsub.publish(entityType, id, fqn, "ref-change");
+    }
+  }
+
+  /**
+   * Issue the Redis-L2 eviction now, or record it for the post-commit drain when a deferral scope is
+   * open. Every writer must go through here rather than calling the cache DAOs directly: a {@code
+   * DEL} sent while the writer's transaction is still open is undone by any concurrent reader, which
+   * takes the resulting miss, reads the not-yet-committed row, and re-populates the key with the
+   * pre-write value. That stale entry then outlives the commit (until TTL), which is how a restored
+   * table kept answering {@code deleted=true} and 404ing — see issue #33860.
+   */
+  private static void deferOrInvalidateRedisL2(String entityType, UUID id, String fqn) {
+    if (!isCacheableEntityType(entityType)) {
+      return;
+    }
+    Map<CacheInvalidationKey, CacheInvalidationKey> deferred = DEFERRED_CACHE_INVALIDATIONS.get();
+    if (deferred != null) {
+      recordCacheInvalidation(deferred, entityType, id, fqn);
+    } else {
+      invalidateRedisL2ForEntity(entityType, id, fqn);
     }
   }
 
@@ -3835,53 +3853,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   protected void invalidateCache(T entity) {
     try {
-      // Invalidate Guava LoadingCache entries
+      // Guava L1 is a local map eviction, so it stays inline. The Redis L2 round trip does not:
+      // deferOrInvalidateRedisL2 holds it until the transaction commits when a scope is open.
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, entity.getFullyQualifiedName()));
-
-      // Invalidate Redis cache entries
-      var cachedEntityDao = CacheBundle.getCachedEntityDao();
-      if (cachedEntityDao != null) {
-        cachedEntityDao.invalidateBase(entityType, entity.getId());
-        cachedEntityDao.invalidateByName(entityType, entity.getFullyQualifiedName());
-        cachedEntityDao.invalidateReference(entityType, entity.getId());
-        cachedEntityDao.invalidateReferenceByName(entityType, entity.getFullyQualifiedName());
-      }
-
-      // Invalidate relationship caches
-      var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
-      if (cachedRelationshipDao != null) {
-        cachedRelationshipDao.invalidateOwners(entityType, entity.getId());
-        cachedRelationshipDao.invalidateDomains(entityType, entity.getId());
-        // The entity's own parent may have moved — drop any cached container lookup for it.
-        cachedRelationshipDao.invalidateContainer(entityType, entity.getId());
-      }
-
-      // Invalidate packed read bundle (relationships + tags)
-      var cachedReadBundle = CacheBundle.getCachedReadBundle();
-      if (cachedReadBundle != null) {
-        cachedReadBundle.invalidate(entityType, entity.getId());
-      }
-
-      // Invalidate cached lineage rooted at this entity. Transitive changes (entity X is a node
-      // in someone else's cached graph) fall through to the 60s TTL — see CachedLineage doc.
-      var cachedLineage = CacheBundle.getCachedLineage();
-      if (cachedLineage != null) {
-        cachedLineage.invalidate(entity.getId());
-      }
-
-      // Invalidate tag caches
-      var cachedTagUsageDao = CacheBundle.getCachedTagUsageDao();
-      if (cachedTagUsageDao != null) {
-        cachedTagUsageDao.invalidateTags(entityType, entity.getId());
-      }
-
-      // Tell other OM instances to evict their local caches.
-      var pubsub = CacheBundle.getCacheInvalidationPubSub();
-      if (pubsub != null) {
-        pubsub.publish(entityType, entity.getId(), entity.getFullyQualifiedName(), "invalidate");
-      }
-
+      deferOrInvalidateRedisL2(entityType, entity.getId(), entity.getFullyQualifiedName());
       LOG.debug("Invalidated cache for deleted entity: {} {}", entityType, entity.getId());
     } catch (Exception e) {
       LOG.warn("Failed to invalidate cache for entity: {} {}", entityType, entity.getId(), e);
