@@ -25,6 +25,7 @@ export interface TreeSelectTreeItemContentProps<T> {
   isLoading: boolean;
   showCheckbox: boolean;
   showIcon: boolean;
+  showExpandIcon?: boolean;
   multiple: boolean;
   disabled: boolean;
   hasChildItems: boolean;
@@ -57,6 +58,7 @@ export const TreeSelectTreeItemContent = <T,>({
   isLoading,
   showCheckbox,
   showIcon,
+  showExpandIcon,
   multiple,
   disabled,
   hasChildItems,
@@ -70,7 +72,8 @@ export const TreeSelectTreeItemContent = <T,>({
       className="tw:text-sm tw:font-normal tw:text-primary"
       hasChildItems={hasChildItems}
       indentPerLevel={28}
-      maxIndentLevel={2}>
+      maxIndentLevel={2}
+      showExpandIcon={showExpandIcon}>
       {() => (
         <div
           className={cx(

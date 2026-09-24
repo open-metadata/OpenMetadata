@@ -42,10 +42,10 @@ test('the suppressions baseline matches its recorded state exactly', () => {
   const EXPECTED = {
     'om-playwright/justified-rule-disable': 10,
     'om-playwright/no-blanket-test-slow': 1,
-    'om-playwright/no-positional-locator': 1170,
+    'om-playwright/no-positional-locator': 1160,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 2,
-    'playwright/no-wait-for-selector': 25,
+    'playwright/no-wait-for-selector': 24,
   };
 
   assert.deepStrictEqual(

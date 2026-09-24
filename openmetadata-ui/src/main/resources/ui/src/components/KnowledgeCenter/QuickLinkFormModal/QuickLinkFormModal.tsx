@@ -13,7 +13,6 @@
 import {
   Autocomplete,
   Button,
-  ClassificationTag,
   Dialog,
   FieldProp,
   FieldTypes,
@@ -39,13 +38,7 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import {
-  LabelType,
-  State,
-  Style,
-  TagLabel,
-  TagSource,
-} from '../../../generated/type/tagLabel';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import {
   CreateKnowledgePage,
   KnowledgePage,
@@ -67,9 +60,9 @@ import { escapeESReservedCharacters } from '../../../utils/StringUtils';
 import { getTagsWithoutTier } from '../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
-import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
+import TagSelector from '../../Tag/TagSelector/TagSelector';
 
 export interface QuickLinkFormModalFormData
   extends Pick<CreateKnowledgePage, 'description' | 'displayName'> {
@@ -87,7 +80,7 @@ interface QuickLinkFormValues {
   displayName: string;
   url: string;
   description: string;
-  tags: QuickLinkFormSelectItem[];
+  tags: TagLabel[];
   glossaryTerms: TagLabel[];
   relatedEntities: QuickLinkFormSelectItem[];
 }
@@ -103,13 +96,6 @@ export interface QuickLinkFormModalProps {
   onSave: (data: QuickLinkFormModalFormData) => void;
   onCancel: () => void;
 }
-
-const mapTagLabelToSelectItem = (tag: TagLabel): QuickLinkFormSelectItem => ({
-  id: tag.tagFQN,
-  label: getTagDisplay(tag.displayName || tag.name) || tag.tagFQN,
-  supportingText: tag.tagFQN,
-  value: tag,
-});
 
 const mapEntityReferenceToSelectItem = (
   ref: EntityReference
@@ -129,7 +115,6 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
 }) => {
   const { t } = useTranslation('translation', { i18n });
   const [isUpdating, setIsUpdating] = useState(false);
-  const [tagOptions, setTagOptions] = useState<QuickLinkFormSelectItem[]>([]);
   const [assetOptions, setAssetOptions] = useState<QuickLinkFormSelectItem[]>(
     []
   );
@@ -188,7 +173,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
         displayName: quickLink.displayName ?? '',
         url: (quickLink.page as QuickLink)?.url ?? '',
         description: quickLink.description ?? '',
-        tags: classification.map(mapTagLabelToSelectItem),
+        tags: classification,
         glossaryTerms: glossaries,
         relatedEntities: filteredRelatedDataAssets.map(
           mapEntityReferenceToSelectItem
@@ -216,41 +201,6 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     };
   }, [isOpen]);
 
-  const fetchTagOptions = useCallback(async (searchText = '') => {
-    try {
-      const response = await tagClassBase.getTags(searchText, 1, true);
-      const options = (response?.data ?? [])
-        .map((option) => {
-          const tag = option.data as {
-            description?: string;
-            displayName?: string;
-            fullyQualifiedName?: string;
-            name?: string;
-            style?: Style;
-          };
-          if (!tag?.fullyQualifiedName) {
-            return null;
-          }
-
-          return mapTagLabelToSelectItem({
-            labelType: LabelType.Manual,
-            source: TagSource.Classification,
-            state: State.Confirmed,
-            tagFQN: tag.fullyQualifiedName,
-            displayName: tag.displayName,
-            name: tag.name,
-            description: tag.description,
-            style: tag.style,
-          });
-        })
-        .filter((opt): opt is QuickLinkFormSelectItem => opt !== null);
-
-      setTagOptions(options);
-    } catch {
-      setTagOptions([]);
-    }
-  }, []);
-
   const fetchAssetOptions = useCallback(async (searchText = '') => {
     try {
       const escaped = escapeESReservedCharacters(searchText);
@@ -275,11 +225,6 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     }
   }, []);
 
-  const debouncedTagSearch = useMemo(
-    () => debounce((text: string) => void fetchTagOptions(text), 250),
-    [fetchTagOptions]
-  );
-
   const debouncedAssetSearch = useMemo(
     () => debounce((text: string) => void fetchAssetOptions(text), 250),
     [fetchAssetOptions]
@@ -287,10 +232,9 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
 
   useEffect(
     () => () => {
-      debouncedTagSearch.cancel();
       debouncedAssetSearch.cancel();
     },
-    [debouncedAssetSearch, debouncedTagSearch]
+    [debouncedAssetSearch]
   );
 
   const handleQuickLinkUpdate = async (
@@ -371,7 +315,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
       displayName: values.displayName,
       url: values.url,
       description: values.description,
-      tags: values.tags.map((item) => item.value as TagLabel),
+      tags: values.tags,
       glossaryTerms: values.glossaryTerms,
       relatedEntities,
     };
@@ -429,49 +373,6 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     placeholder: t('label.description'),
   };
 
-  const tagsField: FieldProp = {
-    name: 'tags',
-    required: false,
-    label: t('label.tag-plural'),
-    id: 'root/tags',
-    type: FieldTypes.TAG_SUGGESTION,
-    props: {
-      'data-testid': 'tags-container',
-      disabled: !canEditTags,
-      filterOption: () => true,
-      multiple: true,
-      onFocus: () => void fetchTagOptions(),
-      onSearchChange: (text: string) => debouncedTagSearch(text),
-      options: tagOptions,
-      renderItem: (item: FormSelectItem) => (
-        <Autocomplete.Item
-          id={item.id}
-          key={item.id}
-          label={item.label}
-          supportingText={item.supportingText}
-        />
-      ),
-      renderTag: (item: FormSelectItem, onRemove: () => void) => {
-        const tagValue = (item as QuickLinkFormSelectItem).value;
-        const style =
-          tagValue && 'style' in tagValue ? tagValue.style : undefined;
-
-        return (
-          <ClassificationTag
-            color={style?.color}
-            icon={style?.iconURL}
-            key={item.id}
-            label={item.label || ''}
-            maxWidth={150}
-            tooltip={item.label || ''}
-            onDelete={onRemove}
-          />
-        );
-      },
-    },
-    placeholder: t(SELECT_FIELD_LABEL_KEY, { field: t('label.tag-plural') }),
-  };
-
   const relatedEntitiesField: FieldProp = {
     name: 'relatedEntities',
     required: false,
@@ -527,7 +428,21 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
               {getField(displayNameField)}
               <div>{getField(urlField)}</div>
               {getField(descriptionField)}
-              {getField(tagsField)}
+              <FormField control={form.control} name="tags">
+                {({ field }) => (
+                  <TagSelector
+                    className="tw:w-full"
+                    data-testid="tags-container"
+                    disabled={!canEditTags}
+                    label={t('label.tag-plural')}
+                    placeholder={t(SELECT_FIELD_LABEL_KEY, {
+                      field: t('label.tag-plural'),
+                    })}
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                  />
+                )}
+              </FormField>
               <FormField control={form.control} name="glossaryTerms">
                 {({ field }) => (
                   <GlossaryTermPicker

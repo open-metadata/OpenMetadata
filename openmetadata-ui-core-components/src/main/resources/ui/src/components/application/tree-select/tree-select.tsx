@@ -218,6 +218,7 @@ export const TreeSelect = <T = unknown,>({
   searchable = false,
   lazyLoad = false,
   showCheckbox = true,
+  showExpandIcon = true,
   showIcon = true,
   cascadeSelection = false,
   debounceMs = 300,
@@ -509,6 +510,7 @@ export const TreeSelect = <T = unknown,>({
               multiple={multiple}
               node={node}
               showCheckbox={showCheckbox && !isExclusiveGroup}
+              showExpandIcon={showExpandIcon}
               showIcon={showIcon}
               onNodeClick={() => {
                 if (!isExclusiveGroup) {
@@ -544,6 +546,7 @@ export const TreeSelect = <T = unknown,>({
       disabled,
       multiple,
       showCheckbox,
+      showExpandIcon,
       showIcon,
       handleNodeAction,
     ]
@@ -591,9 +594,10 @@ export const TreeSelect = <T = unknown,>({
     if (isStaged) {
       setSelection(toArray(value));
     }
+    clearSearch();
     setOpen(false);
     setShowSelectedOnly(false);
-  }, [isStaged, setSelection, value, setOpen]);
+  }, [isStaged, setSelection, value, clearSearch, setOpen]);
 
   // Closing through the trigger is a non-Apply close, so it discards the draft.
   const toggleOpen = useCallback(() => {
@@ -720,9 +724,10 @@ export const TreeSelect = <T = unknown,>({
 
   const handleApply = useCallback(() => {
     onChange?.(multiple ? selectedData : selectedData[0] ?? null);
+    clearSearch();
     setOpen(false);
     setShowSelectedOnly(false);
-  }, [onChange, multiple, selectedData, setOpen]);
+  }, [onChange, multiple, selectedData, clearSearch, setOpen]);
 
   const treeDropdownContent = (
     <div

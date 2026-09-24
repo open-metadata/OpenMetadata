@@ -18,7 +18,11 @@ import {
 import { SidebarItem } from '../constant/sidebar';
 import { TopicClass } from '../support/entity/TopicClass';
 import { redirectToHomePage } from './common';
-import { waitForAllLoadersToDisappear } from './entity';
+import {
+  escapeESReservedCharacters,
+  openClassificationTagPicker,
+  waitForAllLoadersToDisappear,
+} from './entity';
 import { sidebarClick } from './sidebar';
 
 const ARTICLE_PATH_PREFIX = '/context-center/articles/';
@@ -107,32 +111,27 @@ export const updateTags = async (
   const addTagBtn = tagsContainer.getByTestId('add-tag');
   const editTagBtn = tagsContainer.getByTestId('edit-button');
   const isAdd = await addTagBtn.isVisible();
-  if (isAdd) {
-    await addTagBtn.click();
-  } else {
-    await editTagBtn.click();
-  }
+  const trigger = isAdd ? addTagBtn : editTagBtn;
 
-  await page.waitForSelector('[data-testid="tag-selector"] input', {
-    state: 'visible',
-  });
+  await openClassificationTagPicker(page, trigger);
+
   const searchTagResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes(`q=*${data.tag}*`) &&
+      response
+        .url()
+        .includes(encodeURIComponent(escapeESReservedCharacters(data.tag))) &&
       response.request().method() === 'GET'
   );
-  await page.fill('[data-testid="tag-selector"] input', data.tag);
+  await page.getByTestId('classification-tag-picker-search').fill(data.tag);
   await searchTagResponse;
-  await page.click(`[data-testid='tag-${data.tagFqn}']`);
 
-  await expect(
-    page.locator(
-      `[data-testid="tag-selector"] [data-testid="selected-tag-${data.tagFqn}"]`
-    )
-  ).toBeVisible();
+  await page.getByTestId(`tree-node-${data.tagFqn}`).click();
 
-  await page.locator('[data-testid="saveAssociatedTag"]').click();
+  await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+  await expect(page.getByTestId('update-btn')).toBeEnabled();
+  await page.getByTestId('update-btn').click();
+
   const response = await updateKnowledgePage;
   expect(response.status()).toBe(200);
 };
@@ -349,21 +348,21 @@ export const updateQuickLink = async (
   await descriptionTextarea.press('ControlOrMeta+a');
   await descriptionTextarea.fill(knowledgePageQuickLink.updatedDescription);
 
-  const tagInput = modal.locator(
-    '[data-testid="tags-container"] input[role="combobox"]'
-  );
+  const tagsTrigger = modal.getByTestId('tags-container');
+  await tagsTrigger.click();
 
-  await tagInput.click();
-  // Same react-aria combobox as the data-asset one above; same reason.
-  await tagInput.pressSequentially(knowledgePageQuickLink.tag);
+  const searchInput = page
+    .getByTestId('drop-down-menu')
+    .getByTestId('search-input');
+  await searchInput.waitFor({ state: 'visible' });
+  await searchInput.fill(knowledgePageQuickLink.tag);
 
-  await expect(
-    page.getByRole('option', { name: knowledgePageQuickLink.tag })
-  ).toBeVisible();
+  await page
+    .getByTestId('drop-down-menu')
+    .getByTestId(knowledgePageQuickLink.tagFqn)
+    .click();
 
-  await page.getByRole('option', { name: knowledgePageQuickLink.tag }).click();
   await page.keyboard.press('Escape');
-
   await modal.getByRole('button', { name: 'Save' }).click();
 
   await readQuickLink(page, {

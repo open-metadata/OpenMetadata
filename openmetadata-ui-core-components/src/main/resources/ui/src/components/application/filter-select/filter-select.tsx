@@ -345,6 +345,7 @@ const FilterSelect = ({
   nullOption,
   placeholder,
   popoverClassName,
+  popoverStyle,
   resolveMissingLabel,
   searchable,
   selectionMode = 'multiple',
@@ -717,6 +718,7 @@ const FilterSelect = ({
         }
         data-testid="drop-down-menu"
         placement="bottom left"
+        style={popoverStyle}
         triggerRef={isChips ? chipsFieldRef : undefined}>
         <div className="tw:contents" ref={popoverContentRef}>
           {searchable && (
