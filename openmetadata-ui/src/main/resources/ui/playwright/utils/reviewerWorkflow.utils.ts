@@ -14,6 +14,7 @@ import { APIRequestContext, expect, Page } from '@playwright/test';
 import { SidebarItem } from '../constant/sidebar';
 import { DataProduct } from '../support/domain/DataProduct';
 import { TagClass } from '../support/tag/TagClass';
+import { okJson } from './apiResponse';
 import { redirectToHomePage, toastNotification, uuid } from './common';
 import { selectDataProduct } from './domain';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -267,9 +268,20 @@ export const verifyTaskStatus = async (
       async () => {
         const response = await apiContext
           .get(apiEndpoints[entityType])
-          .then((res) => res.json());
+          .then((res) =>
+            okJson<{ entityStatus: string }>(
+              res,
+              `${entityType} ${entityFQN} status`
+            )
+          );
 
-        return response?.entityStatus;
+        if (typeof response.entityStatus !== 'string') {
+          throw new Error(
+            `Missing entity status for ${entityType} ${entityFQN}`
+          );
+        }
+
+        return response.entityStatus;
       },
       {
         message: `Wait for ${entityType} status to be ${statusLabel}`,
@@ -288,7 +300,9 @@ export const verifyTaskStatus = async (
     await sidebarClick(page, SidebarItem.TAGS);
     await (entity as TagClass).visitPage(page);
   } else {
-    await page.goto(`/context-center/articles/${entityFQN}`);
+    await page.goto(`/context-center/articles/${entityFQN}`, {
+      waitUntil: 'domcontentloaded',
+    });
   }
   await waitForAllLoadersToDisappear(page);
   await expect(
@@ -315,6 +329,24 @@ export const checkNotificationAndApproveTask = async (
   await taskCard.waitFor({ state: 'visible', timeout: 15_000 });
   await taskCard.click();
 
+  // Start watching before approving rather than asserting afterwards. The
+  // toast auto-dismisses, and `approveTaskFromDetails` awaits the task-action
+  // response and a possible confirmation modal first -- long enough for the
+  // toast to have come and gone before an assertion placed after it begins
+  // looking. The failure screenshot for this one shows the article already
+  // "Approved", so the approval had worked and only the notification was
+  // missed. Reusing `toastNotification` keeps its stacking-queue locator
+  // rather than introducing a second one.
+  const toastSeen = toastNotification(
+    dataConsumerPage,
+    /Task resolved successfully/,
+    30_000
+  ).catch((error: unknown) => error as Error);
+
   await approveTaskFromDetails(dataConsumerPage);
-  await toastNotification(dataConsumerPage, /Task resolved successfully/);
+
+  const toastFailure = await toastSeen;
+  if (toastFailure) {
+    throw toastFailure;
+  }
 };
