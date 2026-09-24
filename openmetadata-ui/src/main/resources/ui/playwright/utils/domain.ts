@@ -1085,11 +1085,11 @@ export const addAssetsToDataProduct = async (
     // until the test-timeout closes the browser.
     await waitForAllLoadersToDisappear(page);
 
-    const link = page.locator(
-      `[data-testid="table-data-card_${fqn}"] a[data-testid="entity-link"]`
-    );
-    await link.scrollIntoViewIfNeeded();
-    await link.click();
+    await page
+      .locator(
+        `[data-testid="table-data-card_${fqn}"] a[data-testid="entity-link"]`
+      )
+      .click();
 
     await waitForAllLoadersToDisappear(page);
 
@@ -1134,12 +1134,11 @@ export const removeAssetsFromDataProduct = async (
     );
     await page.getByTestId('searchbar').fill(name);
     await searchRes;
-    // Loader wait + scroll before check defeats the reflow race.
+    // Loader wait before check defeats the reflow race between response
+    // arrival and React swapping the list from N cards to 1.
     await waitForAllLoadersToDisappear(page);
 
-    const input = page.locator(`[data-testid="table-data-card_${fqn}"] input`);
-    await input.scrollIntoViewIfNeeded();
-    await input.check();
+    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
   }
 
   const assetsRemoveRes = page.waitForResponse(
