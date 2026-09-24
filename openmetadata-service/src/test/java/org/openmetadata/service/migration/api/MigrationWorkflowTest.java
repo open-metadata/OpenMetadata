@@ -1212,7 +1212,6 @@ class MigrationWorkflowTest {
     when(process.getMigrationsPath()).thenReturn("/tmp/" + version);
     when(process.isReprocessing()).thenReturn(true);
     when(process.getDataMigrationIdentity()).thenReturn("identity-" + version);
-    when(process.getDataMigrationRevision()).thenReturn("1");
     when(process.runSchemaChanges(anyBoolean())).thenReturn(Map.of());
     when(process.runPostDDLScripts(anyBoolean())).thenReturn(Map.of());
     return process;

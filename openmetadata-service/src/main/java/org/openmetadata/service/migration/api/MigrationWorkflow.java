@@ -545,11 +545,7 @@ public class MigrationWorkflow {
     String identity = process.getDataMigrationIdentity();
     if (identity != null) {
       migrationDAO.upsertServerMigrationSQL(
-          process.getVersion(),
-          String.format(
-              "-- data migration %s revision %s",
-              process.getClass().getName(), process.getDataMigrationRevision()),
-          identity);
+          process.getVersion(), "-- data migration " + process.getClass().getName(), identity);
     }
   }
 

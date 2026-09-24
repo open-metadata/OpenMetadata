@@ -20,6 +20,7 @@ import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.context.MigrationContext;
 import org.openmetadata.service.migration.context.MigrationOps;
+import org.openmetadata.service.migration.utils.MigrationCodeFingerprint;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
@@ -154,10 +155,7 @@ public class MigrationProcessImpl implements MigrationProcess {
 
   @Override
   public String getDataMigrationIdentity() {
-    if (!overridesDataMigration()) {
-      return null;
-    }
-    return hash(getClass().getName() + ":" + getDataMigrationRevision());
+    return overridesDataMigration() ? MigrationCodeFingerprint.of(getClass()) : null;
   }
 
   private boolean overridesDataMigration() {

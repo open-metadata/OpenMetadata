@@ -85,18 +85,10 @@ public interface MigrationProcess {
   void runDataMigration();
 
   /**
-   * Revision of this version's Java data migration. Bump it when the migration's behaviour changes
-   * and deployments that already applied the previous revision have to run it again.
-   */
-  default String getDataMigrationRevision() {
-    return "1";
-  }
-
-  /**
-   * Stable identity of this version's Java data migration, or {@code null} when the version ships
-   * no Java work. The workflow records the identity once the migration succeeds, so the current
-   * release train's latest version, which is reprocessed on every deployment, runs its data
-   * migration only while that identity is still unrecorded.
+   * Fingerprint of this version's Java data migration code, or {@code null} when the version ships
+   * no Java work. The workflow records it once the migration succeeds, so the current release
+   * train's latest version, which is reprocessed on every deployment, runs its data migration again
+   * exactly once each time that code changes.
    */
   default String getDataMigrationIdentity() {
     return null;

@@ -50,12 +50,14 @@ Detailed SQL execution logs:
 - `executedAt`: Timestamp of SQL execution
 
 This table also records Java data migrations. A migration class that overrides
-`runDataMigration()` has an identity of `hash(className + ":" + getDataMigrationRevision())`,
-written here as a marker row once the migration returns without throwing. That is what lets the
-workflow add Java-only work to a version that is already in `SERVER_CHANGE_LOG`: the version is
-reprocessed while its identity is unrecorded, and dropped again afterwards. Override
-`getDataMigrationRevision()` when you change an existing migration's behaviour and deployments
-that already ran it have to run it again.
+`runDataMigration()` is identified by a fingerprint of its compiled code: the class itself plus
+every class in the version's `migration/utils/vXYZ` package. The fingerprint is written here as a
+marker row once the migration returns without throwing. That is what lets the workflow add
+Java-only work to a version that is already in `SERVER_CHANGE_LOG`: the version is reprocessed
+while its fingerprint is unrecorded, and dropped again afterwards. Adding a step to the
+migration, or changing one of its helpers, changes the fingerprint, so deployments that already
+ran it run the whole `runDataMigration()` once more — keep it safe to re-run. A toolchain change
+that alters the bytecode (a JDK or Lombok upgrade) causes one extra run the same way.
 
 This applies to the current release train's latest version only. The previous train's latest
 version is reprocessed for appended SQL alone: its data migration was written against that

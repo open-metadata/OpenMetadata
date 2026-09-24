@@ -2,7 +2,6 @@ package org.openmetadata.service.migration.api;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -20,6 +19,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.MigrationCodeFingerprint;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
 class MigrationProcessImplTest {
@@ -98,12 +98,12 @@ class MigrationProcessImplTest {
   }
 
   @Test
-  void identityChangesWithTheDeclaredRevision() throws IOException {
+  void identityIsTheFingerprintOfTheMigrationCode() throws IOException {
     MigrationFile file = createMigrationDir("1.12.3", "", "");
 
-    assertNotEquals(
-        new DataMigration(file).getDataMigrationIdentity(),
-        new RevisedDataMigration(file).getDataMigrationIdentity());
+    assertEquals(
+        MigrationCodeFingerprint.of(DataMigration.class),
+        new DataMigration(file).getDataMigrationIdentity());
   }
 
   static class DataMigration extends MigrationProcessImpl {
@@ -113,17 +113,6 @@ class MigrationProcessImplTest {
 
     @Override
     public void runDataMigration() {}
-  }
-
-  static class RevisedDataMigration extends DataMigration {
-    RevisedDataMigration(MigrationFile migrationFile) {
-      super(migrationFile);
-    }
-
-    @Override
-    public String getDataMigrationRevision() {
-      return "2";
-    }
   }
 
   private MigrationFile createMigrationDir(
