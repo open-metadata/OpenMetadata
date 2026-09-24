@@ -52,6 +52,7 @@ import org.openmetadata.service.util.PerRequestContextCleaner;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
 import org.quartz.SchedulerException;
 
 @Slf4j
@@ -354,7 +355,7 @@ public abstract class AbstractEventConsumer
   record CursorPlan(long offset, long pendingGapSince, int recordCount, boolean skippedGap) {}
 
   @Override
-  public void execute(JobExecutionContext jobExecutionContext) {
+  public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
     // Quartz worker threads are long lived, shared with every other scheduled job, and never pass
     // through the JAX-RS response filter. Per-request ThreadLocal caches left behind here would be
     // served to whatever runs next on this thread — indefinitely stale. Destinations on this thread

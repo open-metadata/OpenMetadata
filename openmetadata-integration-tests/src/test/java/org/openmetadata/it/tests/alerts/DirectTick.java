@@ -6,6 +6,7 @@ import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.openmetadata.service.events.scheduled.AlertJobs;
 import org.openmetadata.service.util.DIContainer;
 import org.quartz.JobDetail;
+import org.quartz.JobExecutionException;
 import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
@@ -32,7 +33,11 @@ final class DirectTick {
   static void run(EventSubscription alert, JobDetail jobDetail) {
     Scheduler scheduler = AlertFixtures.scheduler();
     AlertPublisher job = new AlertPublisher(new DIContainer());
-    job.execute(new JobExecutionContextImpl(scheduler, firedNow(jobDetail), job));
+    try {
+      job.execute(new JobExecutionContextImpl(scheduler, firedNow(jobDetail), job));
+    } catch (JobExecutionException refused) {
+      throw new IllegalStateException("The tick refused job " + jobDetail.getKey(), refused);
+    }
   }
 
   private static JobDetail jobOf(Scheduler scheduler, EventSubscription alert) {

@@ -49,6 +49,7 @@ import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.util.DIContainer;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
 
 @ExtendWith(MockitoExtension.class)
 class AbstractEventConsumerTest {
@@ -169,7 +170,7 @@ class AbstractEventConsumerTest {
 
     try {
       testEventConsumer.execute(jobExecutionContext);
-    } catch (RuntimeException expectedInThisHarness) {
+    } catch (RuntimeException | JobExecutionException expectedInThisHarness) {
       // The subscription cannot be resolved here, so the tick either returns early or throws.
       // Either way the cleanup guarantee below must hold.
     }

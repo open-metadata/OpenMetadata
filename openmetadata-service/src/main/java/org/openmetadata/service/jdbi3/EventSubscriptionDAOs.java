@@ -58,6 +58,9 @@ public interface EventSubscriptionDAOs {
     @SqlQuery("SELECT json FROM event_subscription_entity")
     List<String> listAllEventsSubscriptions();
 
+    @SqlQuery("SELECT id FROM event_subscription_entity")
+    List<String> listAllIds();
+
     @Override
     default boolean supportsSoftDelete() {
       return false;

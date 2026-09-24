@@ -16,7 +16,6 @@ package org.openmetadata.service.events.scheduled;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.quartz.JobDetail;
@@ -39,14 +38,9 @@ public final class AlertJobView {
     this.scheduler = scheduler;
   }
 
-  public boolean isRunning() throws SchedulerException {
-    return scheduler.isStarted() && !scheduler.isInStandbyMode();
-  }
-
-  public Set<UUID> ids() throws SchedulerException {
-    return scheduler.getJobKeys(GroupMatcher.jobGroupEquals(AlertJobs.JOB_GROUP)).stream()
-        .map(key -> UUID.fromString(key.getName()))
-        .collect(Collectors.toSet());
+  /** Every key in the alert group as stored, including any that name no alert. */
+  Set<JobKey> jobKeys() throws SchedulerException {
+    return scheduler.getJobKeys(GroupMatcher.jobGroupEquals(AlertJobs.JOB_GROUP));
   }
 
   public boolean exists(UUID alertId) throws SchedulerException {

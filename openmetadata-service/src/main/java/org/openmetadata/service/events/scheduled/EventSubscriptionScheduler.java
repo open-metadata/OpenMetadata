@@ -223,9 +223,9 @@ public class EventSubscriptionScheduler {
     return date == null ? null : date.getTime();
   }
 
-  /** One reconcile round now, on the calling thread. */
-  public void reconcileNow() throws SchedulerException {
-    reconciler.reconcile();
+  /** One reconcile round now, on the calling thread. Unlike a scheduled round, a failure throws. */
+  public ReconcileRound reconcileNow() throws SchedulerException {
+    return reconciler.reconcile();
   }
 
   private SubscriptionStatus getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status status) {

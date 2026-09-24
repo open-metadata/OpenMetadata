@@ -16,6 +16,7 @@ public final class AlertTelemetry {
   public static final String DIAGNOSTIC_WRITE_FAILED = "diagnostic write failed";
   public static final String GAP_STEPPED_OVER = "gap stepped over";
   public static final String EVENT_SET_ASIDE_AS_INTERRUPTED = "event set aside as interrupted";
+  public static final String FOREIGN_JOB_REFUSED = "job naming no alert refused";
 
   private static final String TICK_DURATION = "alert_tick_duration";
   private static final String TRIGGER_LATENESS = "alert_trigger_lateness";

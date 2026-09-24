@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -51,37 +52,51 @@ class AlertJobsOwnershipTest {
   private static final Pattern NAMES_THE_ALERT_GROUP =
       Pattern.compile("AlertJobs\\.(JOB_GROUP|TRIGGER_GROUP)|\"OMAlertJobGroup\"");
 
+  // A key names an alert only in the one form AlertJobs writes; parsing it anywhere else accepts
+  // forms that are other keys.
+  private static final String CODEC = "events/scheduled/AlertJobs.java";
+  private static final Pattern READS_AN_ID_FROM_A_KEY =
+      Pattern.compile("UUID\\.fromString\\([^;]*getName\\(\\)|getName\\)[^;]*UUID::fromString");
+
   @Test
   void onlyAlertJobsAndItsViewNameTheAlertGroup() throws IOException {
-    try (Stream<Path> sources = Files.walk(MAIN_SOURCES)) {
-      List<String> offenders =
-          sources
-              .filter(path -> path.toString().endsWith(".java"))
-              .map(path -> MAIN_SOURCES.relativize(path).toString().replace('\\', '/'))
-              .filter(relative -> !READERS.contains(relative))
-              .filter(relative -> matches(NAMES_THE_ALERT_GROUP, relative))
-              .sorted()
-              .toList();
-
-      assertEquals(List.of(), offenders, "Reach alert jobs through AlertJobs or AlertJobView");
-    }
+    assertEquals(
+        List.of(),
+        offenders(relative -> !READERS.contains(relative), NAMES_THE_ALERT_GROUP),
+        "Reach alert jobs through AlertJobs or AlertJobView");
   }
 
   @Test
   void onlyAlertJobsWritesAlertJobs() throws IOException {
-    try (Stream<Path> sources = Files.walk(MAIN_SOURCES)) {
-      List<String> offenders =
-          sources
-              .filter(path -> path.toString().endsWith(".java"))
-              .map(path -> MAIN_SOURCES.relativize(path).toString().replace('\\', '/'))
-              .filter(relative -> SCANNED.stream().anyMatch(relative::startsWith))
-              .filter(relative -> !WRITERS.contains(relative))
-              .filter(relative -> matches(WRITES_A_JOB, relative))
-              .sorted()
-              .toList();
+    assertEquals(
+        List.of(),
+        offenders(relative -> scanned(relative) && !WRITERS.contains(relative), WRITES_A_JOB),
+        "Call AlertJobs instead of changing a job directly");
+  }
 
-      assertEquals(List.of(), offenders, "Call AlertJobs instead of changing a job directly");
+  @Test
+  void onlyAlertJobsReadsAnAlertIdFromAKey() throws IOException {
+    assertEquals(
+        List.of(),
+        offenders(relative -> scanned(relative) && !CODEC.equals(relative), READS_AN_ID_FROM_A_KEY),
+        "Read the alert a key names through AlertJobs.alertIdOf or AlertJobs.alertOf");
+  }
+
+  private static List<String> offenders(Predicate<String> inScope, Pattern pattern)
+      throws IOException {
+    try (Stream<Path> sources = Files.walk(MAIN_SOURCES)) {
+      return sources
+          .filter(path -> path.toString().endsWith(".java"))
+          .map(path -> MAIN_SOURCES.relativize(path).toString().replace('\\', '/'))
+          .filter(inScope)
+          .filter(relative -> matches(pattern, relative))
+          .sorted()
+          .toList();
     }
+  }
+
+  private static boolean scanned(String relative) {
+    return SCANNED.stream().anyMatch(relative::startsWith);
   }
 
   private static boolean matches(Pattern pattern, String relative) {

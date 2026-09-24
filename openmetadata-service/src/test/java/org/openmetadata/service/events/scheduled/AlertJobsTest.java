@@ -14,18 +14,34 @@
 package org.openmetadata.service.events.scheduled;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.when;
 
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.openmetadata.service.util.PostCommitActionQueue;
+import org.quartz.JobBuilder;
+import org.quartz.JobDetail;
+import org.quartz.JobExecutionContext;
+import org.quartz.JobKey;
+import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
 
-/** An alert's job follows the commit of the unit of work that changed its row. */
+/**
+ * An alert's job follows the commit of the unit of work that changed its row, and is named in the
+ * one form that is read back as that alert.
+ */
 class AlertJobsTest {
   private final UUID alertId = UUID.randomUUID();
 
@@ -78,5 +94,62 @@ class AlertJobsTest {
 
       jobs.verify(() -> AlertJobs.converge(alertId));
     }
+  }
+
+  // UUID.fromString reads every one of these, but each is another key than the one written.
+  @Test
+  void onlyTheCanonicalTextOfAnIdNamesAnAlert() {
+    assertEquals(Optional.of(alertId), AlertJobs.alertIdOf(AlertJobs.jobKey(alertId)));
+    String canonical = alertId.toString();
+    for (String other :
+        List.of(canonical.toUpperCase(Locale.ROOT), " " + canonical, "1-2-3-4-5", "stray", "")) {
+      assertEquals(Optional.empty(), AlertJobs.alertIdOf(new JobKey(other, AlertJobs.JOB_GROUP)));
+    }
+    assertEquals(Optional.empty(), AlertJobs.alertIdOf((String) null));
+    assertEquals(Optional.empty(), AlertJobs.alertIdOf(new JobKey(canonical, "OtherGroup")));
+  }
+
+  // A case-insensitive store reads a case variant as the alert's own row; a strict one does not.
+  @Test
+  void aVariantIsTheAlertsJobOnlyWhenTheStoreReadsItAsOne() throws SchedulerException {
+    JobKey variant = new JobKey(alertId.toString().toUpperCase(Locale.ROOT), AlertJobs.JOB_GROUP);
+
+    assertEquals(Optional.of(alertId), AlertJobs.alertOf(tick(variant, storing(variant))));
+    assertEquals(
+        Optional.empty(), AlertJobs.alertOf(tick(variant, storing(AlertJobs.jobKey(alertId)))));
+    assertEquals(Optional.empty(), AlertJobs.alertOf(tick(variant, storing(null))));
+  }
+
+  @Test
+  void aStoreThatCannotAnswerLeavesTheTickUndecided() throws SchedulerException {
+    Scheduler scheduler = mock(Scheduler.class);
+    when(scheduler.getJobDetail(any())).thenThrow(new SchedulerException("store down"));
+    JobKey variant = new JobKey(alertId.toString().toUpperCase(Locale.ROOT), AlertJobs.JOB_GROUP);
+
+    assertThrows(SchedulerException.class, () -> AlertJobs.alertOf(tick(variant, scheduler)));
+  }
+
+  @Test
+  void aKeyInALogLineIsBoundedAndCannotStartALine() {
+    assertEquals("stray?line", AlertJobs.printable("stray\nline"));
+    assertEquals(67, AlertJobs.printable("x".repeat(190)).length());
+  }
+
+  private Scheduler storing(JobKey stored) throws SchedulerException {
+    Scheduler scheduler = mock(Scheduler.class);
+    JobDetail job =
+        stored == null
+            ? null
+            : JobBuilder.newJob(AlertPublisher.class).withIdentity(stored).build();
+    when(scheduler.getJobDetail(AlertJobs.jobKey(alertId))).thenReturn(job);
+    return scheduler;
+  }
+
+  private static JobExecutionContext tick(JobKey key, Scheduler scheduler) {
+    JobExecutionContext tick = mock(JobExecutionContext.class);
+    when(tick.getJobDetail())
+        .thenReturn(JobBuilder.newJob(AlertPublisher.class).withIdentity(key).build());
+    when(tick.getScheduler()).thenReturn(scheduler);
+    return tick;
   }
 }

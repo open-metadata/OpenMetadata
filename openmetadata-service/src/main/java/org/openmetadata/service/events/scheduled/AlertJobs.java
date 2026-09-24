@@ -16,6 +16,7 @@ package org.openmetadata.service.events.scheduled;
 import com.google.common.util.concurrent.Striped;
 import java.util.Collection;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.locks.Lock;
@@ -46,11 +47,16 @@ import org.quartz.TriggerKey;
  * commit in one order and reach here in the other, and a disable arriving last would otherwise
  * delete the job an enable had just written. A lock per alert orders this server's callers, and
  * the row is read again after applying, so a peer that committed in between is caught too.
+ *
+ * <p>It also owns how an alert job is named: by the canonical text of its alert's id, the only
+ * form it writes. {@link #alertIdOf(JobKey)} reads that name back, and any other key names no
+ * alert.
  */
 @Slf4j
 public final class AlertJobs {
   public static final String JOB_GROUP = "OMAlertJobGroup";
   public static final String TRIGGER_GROUP = "OMAlertJobGroup";
+  private static final int PRINTABLE_LENGTH = 64;
 
   // Bounded by construction rather than a per-id map that grows with the catalog.
   private static final Striped<Lock> LOCKS = Striped.lock(64);
@@ -121,6 +127,52 @@ public final class AlertJobs {
 
   static TriggerKey triggerKey(UUID alertId) {
     return new TriggerKey(alertId.toString(), TRIGGER_GROUP);
+  }
+
+  // UUID.fromString also reads forms such as "1-2-3-4-5" or upper case, which are other keys.
+  static Optional<UUID> alertIdOf(String name) {
+    return parse(name).filter(id -> id.toString().equals(name));
+  }
+
+  static Optional<UUID> alertIdOf(JobKey key) {
+    return JOB_GROUP.equals(key.getGroup()) ? alertIdOf(key.getName()) : Optional.empty();
+  }
+
+  /**
+   * The alert a tick runs for. A name in another form than the one written here runs only when the
+   * job store reads it as that alert's own job, as a case-insensitive store does for a case variant.
+   */
+  public static Optional<UUID> alertOf(JobExecutionContext tick) throws SchedulerException {
+    JobKey key = tick.getJobDetail().getKey();
+    Optional<UUID> named = alertIdOf(key);
+    return named.isPresent() ? named : storedAs(key, tick.getScheduler());
+  }
+
+  /** A key as it goes into a log line: bounded, and unable to start a line of its own. */
+  public static String printable(String key) {
+    String bounded =
+        key.length() > PRINTABLE_LENGTH ? key.substring(0, PRINTABLE_LENGTH) + "..." : key;
+    return bounded.replaceAll("\\p{Cntrl}", "?");
+  }
+
+  private static Optional<UUID> storedAs(JobKey key, Scheduler scheduler)
+      throws SchedulerException {
+    Optional<UUID> id = JOB_GROUP.equals(key.getGroup()) ? parse(key.getName()) : Optional.empty();
+    boolean sameJob =
+        id.isPresent()
+            && new AlertJobView(scheduler)
+                .job(id.get())
+                .map(stored -> key.equals(stored.getKey()))
+                .orElse(false);
+    return sameJob ? id : Optional.empty();
+  }
+
+  private static Optional<UUID> parse(String name) {
+    try {
+      return Optional.ofNullable(name).map(UUID::fromString);
+    } catch (IllegalArgumentException notAnId) {
+      return Optional.empty();
+    }
   }
 
   private void settle(UUID alertId) throws SchedulerException {
