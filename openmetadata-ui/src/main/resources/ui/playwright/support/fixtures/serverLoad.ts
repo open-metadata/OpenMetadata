@@ -297,12 +297,21 @@ const serveBootConfig = async (route: Route) => {
  * Serving them from a per-worker cache fixes the server side, but it routes
  * ~26k requests per shard through the Playwright driver, and that per-request
  * overhead could plausibly cost more wall-clock than the saved bytes. The
- * merge_group measurement behind CACHEABLE_BOOT_PATTERN says it does: the same
- * ~29k requests a shard, intercepted only so a predicate could reject them,
- * cost ~7% wall-clock. So this stays off by default and now has a reason
- * rather than a caveat. Set PW_CACHE_STATIC_ASSETS=true to A/B it in CI.
+ * earlier objection came from the CACHEABLE_BOOT_PATTERN measurement, where a
+ * predicate handler set Playwright's `all` flag and the whole context
+ * intercepted ~29k requests a shard only to reject most — costing ~7%
+ * wall-clock. That does not apply here: STATIC_ASSET is a RegExp handed to
+ * `context.route` directly, so the browser pauses only asset URLs, not every
+ * request. With the boot-config cache landed, unmitigated static traffic is now
+ * the largest item left — ~65 GB and ~687k requests a merge_group run — so it
+ * is worth paying the interception cost if it nets out positive.
+ *
+ * Enabled by default so a merge_group run measures it against the prior
+ * static-off baseline (compare `staticServerMs`, `staticBytes` and
+ * `maxExecutionSeconds` in playwright-performance.json). Set
+ * PW_CACHE_STATIC_ASSETS=false to turn it back off if the driver overhead wins.
  */
-const cacheStaticAssets = process.env.PW_CACHE_STATIC_ASSETS === 'true';
+const cacheStaticAssets = process.env.PW_CACHE_STATIC_ASSETS !== 'false';
 // Same full-URL form as CACHEABLE_BOOT_PATTERN, so it can be handed to
 // `context.route` directly instead of through a predicate.
 const STATIC_ASSET =
