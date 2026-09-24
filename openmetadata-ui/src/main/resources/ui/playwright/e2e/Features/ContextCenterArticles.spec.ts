@@ -1564,8 +1564,9 @@ test.describe('Context Center Articles', () => {
     });
     await createArticleAfterAction();
 
+    const editToken = uuid();
     await navigateToArticle(dataConsumerPage, article.fullyQualifiedName);
-    await updateBody(dataConsumerPage, `Edited by data consumer ${uuid()}`);
+    await updateBody(dataConsumerPage, `Edited by data consumer ${editToken}`);
 
     const { apiContext: dcApiContext, afterAction: dcAfterAction } =
       await getApiContext(dataConsumerPage);
@@ -1599,10 +1600,36 @@ test.describe('Context Center Articles', () => {
     expect(versionsListRes.ok()).toBeTruthy();
     await waitForAllLoadersToDisappear(page);
 
+    // The body edit also flips entityStatus under the same user, so scope to
+    // the description-change entry rather than any entry by that user.
+    const bodyEditVersionEntry = page
+      .getByTestId('versions-list-container')
+      .getByTestId(/^version-entry-/)
+      .filter({
+        has: page
+          .getByTestId('version-change-description')
+          .filter({ hasText: /description/i }),
+      });
+
+    await expect(
+      bodyEditVersionEntry.getByRole('link', { name: /PW DataConsumer/i })
+    ).toBeVisible();
+
+    // No response wait: when this entry is already the selected version the
+    // click re-navigates to the same route and nothing is refetched.
+    await bodyEditVersionEntry
+      .getByTestId('version-change-description')
+      .click();
+    await waitForAllLoadersToDisappear(page);
+
+    // Later versions carry the same body without diff markup, so the edit
+    // showing as an addition is what ties this entry to the body change.
     await expect(
       page
-        .getByTestId('versions-list-container')
-        .getByRole('link', { name: /PW DataConsumer/i })
+        .locator('.om-block-editor')
+        .getByTestId('diff-added')
+        // Diff spans nest, so anchor to the span that holds only the token.
+        .filter({ hasText: new RegExp(`^${editToken}$`) })
     ).toBeVisible();
 
     const { apiContext, afterAction } = await getApiContext(page);
