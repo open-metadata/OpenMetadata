@@ -5142,16 +5142,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   protected final void cleanup(String deletedBy, T entityInterface) {
     flushInOneTransaction(() -> cleanupFlushBody(deletedBy, entityInterface));
-    // Flowable uses a separate transaction. Cancelling only after this one commits prevents a
-    // rolled-back entity delete from leaving a live entity without its workflow, and keeps the
-    // workflow queries out of the entity transaction's lock-hold time.
-    cancelWorkflowInstances(List.of(entityInterface.getId()));
-    // Re-invalidate after the transaction commits. Any read that slipped in between the
-    // pre-delete invalidate and the commit could have re-populated the cache from the
-    // still-visible DB row; clearing again here guarantees the next read goes back to the
-    // (now empty) DB and observes the deletion.
-    invalidate(entityInterface);
-    markEntityNotFound(entityInterface);
+    settleDeleted(List.of(entityInterface));
   }
 
   private void cleanupFlushBody(String deletedBy, T entityInterface) {
@@ -7248,7 +7239,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // (see descendantsCoveredByAncestorCascade) and batches usage by id-set. Children were
         // already deleted by the recursion above, so this transaction is bounded to this chunk.
         bulkDeleteReferencesAndRows(entities);
-        bulkInvalidate(entities);
+        settleDeleted(entities);
         // When an ancestor's deleteFromSearch cascade already removes these docs in a single
         // delete-by-query (SearchRepository.deleteOrUpdateChildren wipes child indexes by
         // service.id / parent.id — see the DATABASE_SERVICE / default cases), firing one
@@ -7326,7 +7317,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (Entity.getJdbi() == null) {
       bulkCleanupReferences(entities);
       bulkDeleteEntityRows(entities);
-      cancelWorkflowInstances(entityIds(entities));
       return;
     }
     // Same boundary as cleanup(): deadlock retry plus a deferral scope, since the cascade rewrites
@@ -7336,8 +7326,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
           bulkCleanupReferences(entities);
           bulkDeleteEntityRows(entities);
         });
-    // Keep Flowable's separate transaction outside the entity delete transaction. See cleanup().
-    cancelWorkflowInstances(entityIds(entities));
   }
 
   private List<UUID> entityIds(List<T> entities) {
@@ -7490,17 +7478,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private void bulkInvalidate(List<T> entities) {
-    for (T entity : entities) {
-      invalidate(entity);
-      // Mirror cleanup()'s NotFoundCache marker so a concurrent reader that re-populates
-      // L1/Redis between bulkDeleteEntityRows and the next invalidate doesn't keep
-      // returning a stale "found" entity. Without this the next get_by_name/find against
-      // the same id or FQN can still hit the cache and return a deleted entity, which
-      // breaks fixture teardown (DELETE returns 404 because the row is gone but Redis
-      // still hands out the entity to the get_by_name probe).
-      markEntityNotFound(entity);
-    }
+  /**
+   * What a hard delete does once its entities' rows are gone. The caches are evicted now: the
+   * in-process eviction keeps the rest of the unit of work from reading the rows back, and the
+   * shared eviction waits for the commit on its own. Two effects must not happen before the commit:
+   * Flowable cancels the entities' workflows in its own transaction, which a rollback cannot undo,
+   * and the not-found marker would outlive a rollback and hide entities that still exist. Both run
+   * once the outermost unit of work commits, at once when this delete is that unit, and not at all
+   * if it rolls back.
+   *
+   * <p>The marker is queued after the evictions, so it outlives the clear they queue. It is what
+   * stops a reader that re-populated the cache from the not-yet-deleted row, between the delete and
+   * the commit, from handing out a deleted entity afterwards.
+   */
+  private void settleDeleted(List<T> entities) {
+    entities.forEach(this::invalidate);
+    PostCommitActionQueue.runOrDefer(
+        () -> {
+          cancelWorkflowInstances(entityIds(entities));
+          entities.forEach(this::markEntityNotFound);
+        });
   }
 
   private void runHardDeleteAdditionalChildren(List<T> entities, String updatedBy) {

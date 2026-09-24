@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -39,6 +40,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.type.Include;
@@ -46,9 +48,12 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CachedEntityDao;
+import org.openmetadata.service.cache.NotFoundCache;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.PostCommitActionQueue;
 
 /**
  * Unit tests for the iterative bulk restore + bulk soft-delete + bulk hard-delete paths
@@ -75,6 +80,8 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
  *       descendants), and {@code hardDeleteAdditionalChildren} + {@code
  *       bulkEntitySpecificCleanup} fire on the full bulk hard-delete path with the expected
  *       per-entity / per-batch counts.
+ *   <li>A bulk hard delete cancels its entities' workflows and records them as not found only
+ *       once the unit of work it runs in commits, and not at all if that unit rolls back.
  * </ul>
  *
  * The full bulk DB-write path (version history, updateMany, change events, entity row
@@ -774,6 +781,114 @@ class EntityRepositoryRestoreTest {
     verify(relationshipDAO, times(1)).batchDeleteRelationships(anyList(), eq(Entity.PIPELINE));
     verify(extensionDAO, times(1)).deleteAllBatch(anyList());
     verify(pipelineDAO, times(1)).deleteByIds(anyList());
+  }
+
+  @Test
+  void aBulkHardDeleteOnItsOwnSettlesAtOnce() {
+    UUID id = UUID.randomUUID();
+    CountingPipelineRepo repo = repoForHardDelete(id);
+    NotFoundCache notFound = enabledNotFoundCache();
+    WorkflowHandler workflows = mock(WorkflowHandler.class);
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS);
+        MockedStatic<CacheBundle> cacheBundle = mockStatic(CacheBundle.class);
+        MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class)) {
+      stubSettling(entityMock, cacheBundle, workflowHandler, notFound, workflows);
+      repo.bulkHardDeleteSubtree(List.of(id), "user");
+    }
+
+    verify(notFound).markNotFoundById(Entity.PIPELINE, id);
+    verify(workflows).cancelInstancesForEntities(List.of(id), "Entity deleted");
+  }
+
+  @Test
+  void aBulkHardDeleteInsideAUnitOfWorkSettlesOnlyOnceItCommits() {
+    UUID id = UUID.randomUUID();
+    CountingPipelineRepo repo = repoForHardDelete(id);
+    NotFoundCache notFound = enabledNotFoundCache();
+    WorkflowHandler workflows = mock(WorkflowHandler.class);
+    PostCommitActionQueue.begin();
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS);
+        MockedStatic<CacheBundle> cacheBundle = mockStatic(CacheBundle.class);
+        MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class)) {
+      stubSettling(entityMock, cacheBundle, workflowHandler, notFound, workflows);
+      repo.bulkHardDeleteSubtree(List.of(id), "user");
+
+      verify(notFound, never()).markNotFoundById(any(), any());
+      verify(workflows, never()).cancelInstancesForEntities(any(), any());
+
+      PostCommitActionQueue.run(PostCommitActionQueue.drain());
+    } finally {
+      PostCommitActionQueue.clear();
+    }
+
+    InOrder order = inOrder(notFound);
+    order.verify(notFound).invalidate(eq(Entity.PIPELINE), eq(id), any());
+    order.verify(notFound).markNotFoundById(Entity.PIPELINE, id);
+    verify(workflows).cancelInstancesForEntities(List.of(id), "Entity deleted");
+  }
+
+  @Test
+  void aBulkHardDeleteInsideAUnitOfWorkThatRollsBackLeavesNoMarkAndCancelsNothing() {
+    UUID id = UUID.randomUUID();
+    CountingPipelineRepo repo = repoForHardDelete(id);
+    NotFoundCache notFound = enabledNotFoundCache();
+    WorkflowHandler workflows = mock(WorkflowHandler.class);
+    PostCommitActionQueue.begin();
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS);
+        MockedStatic<CacheBundle> cacheBundle = mockStatic(CacheBundle.class);
+        MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class)) {
+      stubSettling(entityMock, cacheBundle, workflowHandler, notFound, workflows);
+      repo.bulkHardDeleteSubtree(List.of(id), "user");
+    } finally {
+      PostCommitActionQueue.clear();
+    }
+
+    verify(notFound, never()).markNotFoundById(any(), any());
+    verify(workflows, never()).cancelInstancesForEntities(any(), any());
+  }
+
+  private CountingPipelineRepo repoForHardDelete(UUID id) {
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    repo.descendantsCoveredByAncestorCascade = true;
+    Pipeline pipeline = new Pipeline().withId(id).withName("p").withFullyQualifiedName("svc.p");
+    when(pipelineDAO.findEntitiesByIds(anyList(), eq(Include.ALL))).thenReturn(List.of(pipeline));
+    when(relationshipDAO.findToBatchAllTypes(anyList(), eq(SUBTREE_RELATIONS), eq(Include.ALL)))
+        .thenReturn(List.of());
+    when(daoCollection.entityExtensionDAO())
+        .thenReturn(mock(CollectionDAO.EntityExtensionDAO.class));
+    when(daoCollection.fieldRelationshipDAO())
+        .thenReturn(mock(CollectionDAO.FieldRelationshipDAO.class));
+    when(daoCollection.tagUsageDAO()).thenReturn(mock(CollectionDAO.TagUsageDAO.class));
+    when(daoCollection.usageDAO()).thenReturn(mock(CollectionDAO.UsageDAO.class));
+    return repo;
+  }
+
+  private static NotFoundCache enabledNotFoundCache() {
+    NotFoundCache notFound = mock(NotFoundCache.class);
+    when(notFound.enabled()).thenReturn(true);
+    return notFound;
+  }
+
+  // CacheBundle.invalidateEntity is how a delete's eviction clears the not-found markers.
+  private static void stubSettling(
+      MockedStatic<Entity> entityMock,
+      MockedStatic<CacheBundle> cacheBundle,
+      MockedStatic<WorkflowHandler> workflowHandler,
+      NotFoundCache notFound,
+      WorkflowHandler workflows) {
+    entityMock
+        .when(Entity::getConversationRepository)
+        .thenReturn(mock(ConversationRepository.class));
+    cacheBundle.when(CacheBundle::getNotFoundCache).thenReturn(notFound);
+    cacheBundle
+        .when(() -> CacheBundle.invalidateEntity(any(), any(), any()))
+        .thenAnswer(
+            call -> {
+              notFound.invalidate(call.getArgument(0), call.getArgument(1), call.getArgument(2));
+              return null;
+            });
+    workflowHandler.when(WorkflowHandler::isInitialized).thenReturn(true);
+    workflowHandler.when(WorkflowHandler::getInstance).thenReturn(workflows);
   }
 
   private CollectionDAO.EntityRelationshipRecord record(UUID id, String type) {
