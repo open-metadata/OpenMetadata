@@ -153,8 +153,10 @@ class ColumnValueLengthsToBeBetweenValidator(
         return dimension_results
 
     def filter(self):
-        min_bound = self.get_min_bound("minLength")
-        max_bound = self.get_max_bound("maxLength")
+        # The verdict is taken against the length window the failure threshold widened into, so the
+        # failed rows are filtered with it too: a value the tolerance accepted is not a failure and
+        # has no business showing up in the sample.
+        min_bound, max_bound = self.get_bounds(self.MIN_BOUND, self.MAX_BOUND)
         filters = []
         if min_bound is not None and min_bound > float("-inf"):
             filters.append((LenFn(self.get_column()), "lt", min_bound))

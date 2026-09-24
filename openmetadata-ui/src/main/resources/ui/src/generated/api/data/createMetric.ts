@@ -43,6 +43,10 @@ export interface CreateMetric {
      */
     domains?: string[];
     /**
+     * List of fully qualified user names for users who are experts in this metric.
+     */
+    experts?: string[];
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -63,6 +67,11 @@ export interface CreateMetric {
      */
     metricExpression?: MetricExpression;
     /**
+     * Fully qualified name of the Metric Group this metric hierarchy belongs to. Children
+     * inherit their parent's group.
+     */
+    metricGroup?: string;
+    /**
      * Type of the metric.
      */
     metricType?: MetricType;
@@ -73,7 +82,11 @@ export interface CreateMetric {
     /**
      * Owners of this metric
      */
-    owners?:   EntityReference[];
+    owners?: EntityReference[];
+    /**
+     * Fully qualified name of the parent metric this metric is a variant of.
+     */
+    parent?:   string;
     provider?: ProviderType;
     /**
      * Other array of related metric fully qualified names that are related to this Metric.

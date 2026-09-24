@@ -268,9 +268,8 @@ const TeamDetailsV1 = ({
    */
   const deleteUserHandler = useCallback(
     (id: string, leave = false) => {
-      const user = [...(currentTeam?.users as Array<UserTeams>)].find(
-        (u) => u.id === id
-      );
+      // `users` arrives with the team's advanced-details fetch, after the page is interactive.
+      const user = (currentTeam?.users ?? []).find((u) => u.id === id);
       setDeletingUser({ user, state: true, leave });
     },
     [currentTeam, setDeletingUser]
