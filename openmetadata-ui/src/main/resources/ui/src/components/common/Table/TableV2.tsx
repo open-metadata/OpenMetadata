@@ -1890,7 +1890,11 @@ const TableV2 = <T extends object>(
                     columnWidths[colKey] ??
                     (colType.width as number | undefined);
 
-                  const stickyStyle = getColumnStickyStyle(colType.fixed, 2);
+                  const stickyStyle = getColumnStickyStyle(
+                    colType.fixed,
+                    2,
+                    'var(--om-color-bg-secondary)'
+                  );
 
                   return (
                     <UntitledTable.Head
