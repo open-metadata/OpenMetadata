@@ -57,6 +57,7 @@ import org.openmetadata.service.security.auth.SamlAuthServletHandler;
 import org.openmetadata.service.security.saml.MockSamlIdp;
 import org.openmetadata.service.security.saml.SamlAssertionConsumerServlet;
 import org.openmetadata.service.security.saml.SamlLoginServlet;
+import org.openmetadata.service.security.saml.SamlMetadataServlet;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.security.session.SessionIdGenerator;
 import org.openmetadata.service.security.session.SessionService;
@@ -209,12 +210,16 @@ class SsoRedirectBoundaryTest {
     URI baseUri = startServer(newOidcHandler(store, List.of(DR_CALLBACK)));
     UserSession pendingSession = storePendingSession(store, DR_CALLBACK);
 
-    get(
-        baseUri.resolve("/callback?code=authorization-code&state=state-abc"),
-        "OM_SESSION=" + pendingSession.getId(),
-        arrivingVia("dr.example.com"));
+    HttpResponse<String> callback =
+        get(
+            baseUri.resolve("/callback?code=authorization-code&state=state-abc"),
+            "OM_SESSION=" + pendingSession.getId(),
+            arrivingVia("dr.example.com"));
 
-    assertEquals(DR_CALLBACK, formParameter(tokenRequestBody.get(), "redirect_uri"));
+    assertEquals(
+        DR_CALLBACK,
+        formParameter(tokenRequestBody.get(), "redirect_uri"),
+        () -> "callback answered " + callback.statusCode() + ": " + callback.body());
   }
 
   @Test
@@ -223,12 +228,16 @@ class SsoRedirectBoundaryTest {
     URI baseUri = startServer(newOidcHandler(store, List.of(DR_CALLBACK)));
     UserSession pendingSession = storePendingSession(store, null);
 
-    get(
-        baseUri.resolve("/callback?code=authorization-code&state=state-abc"),
-        "OM_SESSION=" + pendingSession.getId(),
-        arrivingVia("dr.example.com"));
+    HttpResponse<String> callback =
+        get(
+            baseUri.resolve("/callback?code=authorization-code&state=state-abc"),
+            "OM_SESSION=" + pendingSession.getId(),
+            arrivingVia("dr.example.com"));
 
-    assertEquals(PRIMARY_CALLBACK, formParameter(tokenRequestBody.get(), "redirect_uri"));
+    assertEquals(
+        PRIMARY_CALLBACK,
+        formParameter(tokenRequestBody.get(), "redirect_uri"),
+        () -> "callback answered " + callback.statusCode() + ": " + callback.body());
   }
 
   @Test
@@ -261,6 +270,18 @@ class SsoRedirectBoundaryTest {
         authnRequest.contains("AssertionConsumerServiceURL=\"" + DR_ACS + "\""), authnRequest);
     assertTrue(authnRequest.contains(">" + SP_ENTITY_ID + "</saml:Issuer>"), authnRequest);
     assertEquals(DR_ACS, store.onlySession().getIdpRedirectUri());
+  }
+
+  @Test
+  void samlMetadataAdvertisesEveryAcsUnderOneEntityId() throws Exception {
+    URI baseUri = startServer(newMultiHostSamlHandler(new InMemorySessionStore()));
+
+    HttpResponse<String> response = get(baseUri.resolve("/api/v1/saml/metadata"), null);
+
+    assertEquals(200, response.statusCode());
+    assertTrue(response.body().contains("Location=\"" + PRIMARY_ACS + "\""), response.body());
+    assertTrue(response.body().contains("Location=\"" + DR_ACS + "\""), response.body());
+    assertTrue(response.body().contains("entityID=\"" + SP_ENTITY_ID + "\""), response.body());
   }
 
   @Test
@@ -424,6 +445,7 @@ class SsoRedirectBoundaryTest {
     context.addServlet(new ServletHolder(new AuthCallbackServlet()), "/callback");
     context.addServlet(new ServletHolder(new SamlLoginServlet()), "/api/v1/saml/login");
     context.addServlet(new ServletHolder(new SamlAssertionConsumerServlet()), "/api/v1/saml/acs");
+    context.addServlet(new ServletHolder(new SamlMetadataServlet()), "/api/v1/saml/metadata");
     server.setHandler(context);
     server.start();
     int port = ((ServerConnector) server.getConnectors()[0]).getLocalPort();

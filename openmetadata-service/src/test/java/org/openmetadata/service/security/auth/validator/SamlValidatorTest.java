@@ -1228,6 +1228,17 @@ class SamlValidatorTest {
     }
   }
 
+  /** Reported before the certificate and connectivity checks, so no identity provider is called. */
+  @Test
+  void validateSamlConfigurationRejectsAnUnusableAdditionalAcsUrl() {
+    SamlSSOClientConfig config = baseConfig("https://sso.example.com/sso");
+    config.getSp().withAdditionalAcsUrls(List.of("https://dr.example.com/saml/other"));
+
+    FieldError error = new SamlValidator().validateSamlConfiguration(null, config);
+
+    assertEquals(ValidationErrorBuilder.FieldPaths.SAML_SP_ADDITIONAL_ACS_URLS, error.getField());
+  }
+
   @Test
   void acceptsAdditionalAcsUrlsOnOtherHostsWithTheAcsPath() {
     assertNull(

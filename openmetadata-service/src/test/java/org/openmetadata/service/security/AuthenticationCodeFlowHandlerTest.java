@@ -696,6 +696,22 @@ class AuthenticationCodeFlowHandlerTest {
         invokeOwnUrl(handler, proxiedRequest("https", "evil.example.com"), "/signin"));
   }
 
+  @Test
+  void handleLogout_redirectsToLogoutOnTheRegisteredRequestHost() throws Exception {
+    when(oidcClient.getCallbackUrl()).thenReturn(PRIMARY_CALLBACK);
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    setField(handler, "serverUrl", "https://om.example.com");
+    setField(
+        handler,
+        "authenticationConfiguration",
+        new AuthenticationConfiguration().withAdditionalCallbackUrls(List.of(DR_CALLBACK)));
+
+    handler.handleLogout(proxiedRequest("https", "dr.example.com"), response);
+
+    verify(response).sendRedirect("https://dr.example.com/logout");
+  }
+
   private AuthenticationCodeFlowHandler createCallbackSelectionHandler(
       List<String> additionalCallbackUrls) throws Exception {
     OidcClient primaryClient = new OidcClient();

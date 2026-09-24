@@ -1537,6 +1537,26 @@ class SecurityUtilTest {
     assertFalse(SecurityUtil.isAlternativeCallbackUrl(DR_CALLBACK, null));
   }
 
+  @Test
+  void sameOriginCallbackUrl_returnsNullForAnUnparseablePrimary() {
+    assertNull(
+        SecurityUtil.sameOriginCallbackUrl(
+            "https://dr.example.com", "not a url", List.of(DR_CALLBACK)));
+  }
+
+  /** A hostless trusted entry can never vouch for a redirect to an absolute origin. */
+  @Test
+  void validateRedirectUri_neverMatchesAHostlessTrustedEntryAgainstAnAbsoluteRedirect() {
+    IllegalArgumentException error =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                SecurityUtil.validateRedirectUri(
+                    "https://app.example.com/auth/callback", List.of("/auth/callback")));
+
+    assertEquals("Redirect URI must exactly match a trusted redirect URI", error.getMessage());
+  }
+
   private static Map<String, Claim> jwtClaims(Map<String, Object> values) {
     String token = JWT.create().withPayload(values).sign(Algorithm.none());
     return JWT.decode(token).getClaims();

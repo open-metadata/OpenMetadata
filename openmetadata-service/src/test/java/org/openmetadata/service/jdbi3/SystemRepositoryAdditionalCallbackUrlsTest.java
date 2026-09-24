@@ -16,13 +16,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.security.client.OidcClientConfig;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.system.FieldError;
 import org.openmetadata.service.util.ValidationErrorBuilder.FieldPaths;
+import sun.misc.Unsafe;
 
 class SystemRepositoryAdditionalCallbackUrlsTest {
 
@@ -65,6 +69,41 @@ class SystemRepositoryAdditionalCallbackUrlsTest {
             .withAdditionalCallbackUrls(List.of("https://dr.example.com/callback"));
 
     assertNull(SystemRepository.validateAdditionalCallbackUrls(confidentialClient));
+  }
+
+  /** The check runs as part of the base authentication-field validation on every save. */
+  @Test
+  void baseFieldValidationRejectsAnUnusableAdditionalCallbackUrl() throws Exception {
+    AuthenticationConfiguration config =
+        publicClient(List.of("https://dr.example.com/auth/callback"))
+            .withProvider(AuthProvider.GOOGLE)
+            .withProviderName("google")
+            .withJwtPrincipalClaims(List.of("email"))
+            .withPublicKeyUrls(List.of("https://www.googleapis.com/oauth2/v3/certs"))
+            .withAuthority("https://accounts.google.com")
+            .withClientId("client-id");
+
+    FieldError error = validateBaseFields(config);
+
+    assertEquals(FieldPaths.AUTH_ADDITIONAL_CALLBACK_URLS, error.getField());
+  }
+
+  /**
+   * The base-field check is an instance method that reads nothing from the instance, and building a
+   * real repository needs the entity DAOs, so it is invoked on an unconstructed instance.
+   */
+  private static FieldError validateBaseFields(AuthenticationConfiguration config)
+      throws Exception {
+    Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
+    unsafeField.setAccessible(true);
+    SystemRepository repository =
+        (SystemRepository)
+            ((Unsafe) unsafeField.get(null)).allocateInstance(SystemRepository.class);
+    Method method =
+        SystemRepository.class.getDeclaredMethod(
+            "validateAuthenticationConfigurationBaseFields", AuthenticationConfiguration.class);
+    method.setAccessible(true);
+    return (FieldError) method.invoke(repository, config);
   }
 
   private AuthenticationConfiguration publicClient(List<String> additionalCallbackUrls) {
