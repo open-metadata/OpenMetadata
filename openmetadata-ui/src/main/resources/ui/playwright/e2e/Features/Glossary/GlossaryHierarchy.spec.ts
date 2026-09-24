@@ -312,7 +312,7 @@ test.describe('Glossary Hierarchy', () => {
 
       // Verify modal is closed
       await expect(
-        page.locator('[role="dialog"].change-parent-hierarchy-modal')
+        page.getByTestId('change-parent-hierarchy-modal')
       ).not.toBeVisible();
       await waitForAllLoadersToDisappear(page);
 

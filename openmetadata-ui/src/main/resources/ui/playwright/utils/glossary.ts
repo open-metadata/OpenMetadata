@@ -1267,15 +1267,9 @@ export const changeTermHierarchyFromModal = async (
   await page.getByTestId('manage-button').click();
   await page.getByTestId('change-parent-button').click();
 
-  // Ant's Modal spreads data-testid onto `.ant-modal-root`, a zero-size wrapper
-  // that never satisfies toBeVisible even while the dialog is on screen — the
-  // dialog itself is the element with a box. Scoping still matters: the bare
-  // `Select Parent` label also matches the control of a hierarchy modal left in
-  // the DOM by an earlier step, and clicking that waits out the whole test on a
-  // hidden element.
-  const hierarchyModal = page
-    .locator('[data-testid="change-parent-hierarchy-modal"]')
-    .getByRole('dialog');
+  // Scope to the dialog: the bare `Select Parent` label can also match other
+  // pickers on the page.
+  const hierarchyModal = page.getByTestId('change-parent-hierarchy-modal');
   await expect(hierarchyModal).toBeVisible();
 
   // A glossary sits at the picker's root; only a term has to be searched for.
@@ -1290,15 +1284,10 @@ export const changeTermHierarchyFromModal = async (
   );
 
   const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*/moveAsync');
-  await page
-    .locator('[data-testid="change-parent-hierarchy-modal"]')
-    .getByRole('button', { name: 'Save' })
-    .click();
+  await hierarchyModal.getByRole('button', { name: 'Save' }).click();
   await saveRes;
 
-  await expect(
-    page.locator('[role="dialog"].change-parent-hierarchy-modal')
-  ).toBeHidden();
+  await expect(hierarchyModal).toBeHidden();
 };
 
 export const deleteGlossaryOrGlossaryTerm = async (
