@@ -451,6 +451,7 @@ describe('CrossTabLock (Web Locks path)', () => {
     const shortcutHit = await lock.runExclusive(
       jest.fn(async () => ({ idToken: 'unused', expiresAt: 43 }))
     );
+
     expect(shortcutHit).toEqual({
       role: 'follower',
       message: {
@@ -467,6 +468,7 @@ describe('CrossTabLock (Web Locks path)', () => {
       expiresAt: 44,
     }));
     const retry = await lock.runExclusive(secondMintWork);
+
     expect(secondMintWork).toHaveBeenCalledTimes(1);
     expect(retry).toEqual({
       role: 'leader',
