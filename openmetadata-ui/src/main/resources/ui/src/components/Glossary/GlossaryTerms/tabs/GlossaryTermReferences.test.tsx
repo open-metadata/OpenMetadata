@@ -47,7 +47,7 @@ describe('GlossaryTermReferences', () => {
     expect(reference).toBeInTheDocument();
     expect(reference.closest('a')).toHaveAttribute(
       'href',
-      'https://www.google.com/'
+      'https://www.google.com'
     );
     expect(editBtn).toBeInTheDocument();
 
