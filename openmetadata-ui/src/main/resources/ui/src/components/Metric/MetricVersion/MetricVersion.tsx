@@ -20,9 +20,9 @@ import { ChangeDescription } from '../../../generated/entity/data/metric';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { getRenderedActiveTab } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import {
-    getCommonExtraInfoForVersionDetails,
-    getEntityVersionByField,
-    getEntityVersionTags
+  getCommonExtraInfoForVersionDetails,
+  getEntityVersionByField,
+  getEntityVersionTags,
 } from '../../../utils/EntityVersionUtilsPure';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getVersionPath } from '../../../utils/RouterUtils';
