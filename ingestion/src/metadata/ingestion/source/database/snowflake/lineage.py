@@ -78,9 +78,10 @@ DEFAULT_ACCESS_HISTORY_CHUNK_DAYS = 2
 
 # How far past a stored-procedure window the non-CALL half of the query-history read has
 # to reach. A CALL that starts just inside a window keeps running after it closes, and its
-# child queries are only joinable if they are in the scan. Snowflake's default
-# STATEMENT_TIMEOUT_IN_SECONDS is two days, so no CALL outlives that.
-STORED_PROCEDURE_OVERLAP_DAYS = 2
+# child queries are only joinable if they are in the scan. This is Snowflake's hard ceiling
+# on STATEMENT_TIMEOUT_IN_SECONDS (604800 seconds), not its two-day default, because an
+# account can raise the timeout and a CALL may then run for up to seven days.
+STORED_PROCEDURE_OVERLAP_DAYS = 7
 
 # The stored-procedure history read starts as one statement over the whole window and is
 # only split when Snowflake cancels it. Splitting up front is much worse than it looks:

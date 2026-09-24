@@ -221,3 +221,20 @@ def test_an_unknown_statement_is_not_retried():
     src = _make_lineage_source(start=datetime(2025, 1, 1), end=datetime(2025, 1, 9))
 
     assert list(src.narrow_stored_procedure_statement("SELECT 1", _cancelled())) == []
+
+
+def test_split_window_keeps_the_children_of_the_longest_call_snowflake_allows():
+    """After a split the window end is in the past, so the non-CALL bound decides which
+    child queries a CALL keeps. An account can raise STATEMENT_TIMEOUT_IN_SECONDS above
+    its two-day default, up to Snowflake's hard ceiling of 604800 seconds, so the bound
+    has to reach that far or a long CALL near the boundary silently loses lineage."""
+    snowflake_max_statement_runtime = timedelta(seconds=604800)
+    start = datetime(2025, 1, 1)
+    src = _make_lineage_source(start=start, end=start + timedelta(days=60))
+    statement = next(iter(src.get_stored_procedure_sql_statements()))
+
+    for half in src.narrow_stored_procedure_statement(statement, _cancelled()):
+        _, call_upper = _sp_window_bounds(half)
+        _, query_upper = _query_window_bounds(half)
+        reach = datetime.fromisoformat(query_upper) - datetime.fromisoformat(call_upper)
+        assert reach >= snowflake_max_statement_runtime
