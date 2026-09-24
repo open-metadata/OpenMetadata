@@ -24,7 +24,13 @@ import { CommonWidgets } from './CommonWidgets';
 jest.mock('../../Customization/GenericProvider/GenericContext');
 jest.mock('../../common/EntityDescription/Description', () => ({
   __esModule: true,
-  default: () => <div data-testid="description-widget">Description Widget</div>,
+  default: ({ removeBlur }: { removeBlur?: boolean }) => (
+    <div
+      data-remove-blur={String(Boolean(removeBlur))}
+      data-testid="description-widget">
+      Description Widget
+    </div>
+  ),
 }));
 jest.mock(
   '../../DataProducts/DataProductsContainer/DataProductsContainer.component',
@@ -168,6 +174,48 @@ describe('CommonWidgets', () => {
     );
 
     expect(await screen.findByTestId('description-widget')).toBeInTheDocument();
+  });
+
+  it('renders the full description for a large description widget', async () => {
+    render(
+      <CommonWidgets
+        entityType={EntityType.CONTAINER}
+        widgetConfig={{
+          i: DetailPageWidgetKeys.DESCRIPTION,
+          x: 0,
+          y: 0,
+          w: 3,
+          h: 1,
+          config: { size: 'large' },
+        }}
+      />
+    );
+
+    expect(await screen.findByTestId('description-widget')).toHaveAttribute(
+      'data-remove-blur',
+      'true'
+    );
+  });
+
+  it('clamps the description behind read more for a small description widget', async () => {
+    render(
+      <CommonWidgets
+        entityType={EntityType.CONTAINER}
+        widgetConfig={{
+          i: DetailPageWidgetKeys.DESCRIPTION,
+          x: 0,
+          y: 0,
+          w: 1,
+          h: 1,
+          config: { size: 'small' },
+        }}
+      />
+    );
+
+    expect(await screen.findByTestId('description-widget')).toHaveAttribute(
+      'data-remove-blur',
+      'false'
+    );
   });
 
   it('should render data products widget', async () => {
