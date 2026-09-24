@@ -28,5 +28,11 @@ export const PLOT_BACKGROUND = 'var(--om-color-bg-brand)';
 
 export const SELECTED_DOT_HALO = { spread: 4, opacity: 0.2 } as const;
 
+// A dot plus its halo, so a selected run at either end of the axis is not cut.
+export const SELECTED_DOT_EDGE_PADDING =
+  STATUS_DOT_RADIUS + SELECTED_DOT_HALO.spread + 4;
+
+export const EXPECTATION_LABEL_HALO = 4;
+
 export const TOOLTIP_GAP = STATUS_DOT_RADIUS;
 export const TOOLTIP_CLOSE_DELAY = 250;

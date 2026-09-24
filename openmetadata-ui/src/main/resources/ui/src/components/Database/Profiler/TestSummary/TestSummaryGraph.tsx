@@ -86,7 +86,9 @@ import TestSummaryCustomTooltip from '../TestSummaryCustomTooltip/TestSummaryCus
 import TestSummaryStatusKey from './TestSummaryStatusKey';
 import {
   DOT_OUTLINE,
+  EXPECTATION_LABEL_HALO,
   PLOT_BACKGROUND,
+  SELECTED_DOT_EDGE_PADDING,
   SELECTED_DOT_HALO,
   STATUS_DOT_RADIUS,
   STATUS_DOT_RING_WIDTH,
@@ -472,24 +474,46 @@ function TestSummaryGraph({
   );
 
   const referenceArea = useMemo(() => {
-    const reference = thresholdReference;
-
-    if (!reference) {
+    if (!thresholdReference) {
       return <></>;
     }
 
     return (
       <ReferenceLine
+        stroke={GRAY_700}
+        strokeDasharray="4"
+        y={thresholdReference.y}
+      />
+    );
+  }, [thresholdReference]);
+
+  // The label is a second, strokeless line drawn after the series. Recharts
+  // paints in child order, so a label attached to the line underneath would
+  // have every run near the expected value drawn straight through it. The
+  // surface-coloured halo then clears the dots and path behind the text.
+  const expectationLabel = useMemo(() => {
+    if (!thresholdReference) {
+      return <></>;
+    }
+
+    return (
+      <ReferenceLine
+        data-testid="expectation-label"
         label={{
           fill: GRAY_700,
           fontSize: 12,
           fontWeight: 600,
+          paintOrder: 'stroke',
           position: 'insideBottomRight',
-          value: t(reference.labelKey, { value: reference.labelValue }),
+          stroke: DOT_OUTLINE,
+          strokeLinejoin: 'round',
+          strokeWidth: EXPECTATION_LABEL_HALO,
+          value: t(thresholdReference.labelKey, {
+            value: thresholdReference.labelValue,
+          }),
         }}
-        stroke={GRAY_700}
-        strokeDasharray="4"
-        y={reference.y}
+        stroke="none"
+        y={thresholdReference.y}
       />
     );
   }, [thresholdReference, t]);
@@ -533,7 +557,12 @@ function TestSummaryGraph({
             angle={-45}
             dataKey="name"
             domain={['auto', 'auto']}
-            padding={{ left: 8, right: 8 }}
+            // The newest run is selected by default and sits at the right edge;
+            // its halo needs room there or the plot clips it.
+            padding={{
+              left: SELECTED_DOT_EDGE_PADDING,
+              right: SELECTED_DOT_EDGE_PADDING,
+            }}
             scale="time"
             textAnchor="end"
             tick={{ fill: axis, fontSize: 12 }}
@@ -634,6 +663,7 @@ function TestSummaryGraph({
               type="linear"
             />
           ))}
+          {expectationLabel}
         </ComposedChart>
       </ResponsiveContainer>
       <div className="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-2 tw:px-4 tw:pb-2">

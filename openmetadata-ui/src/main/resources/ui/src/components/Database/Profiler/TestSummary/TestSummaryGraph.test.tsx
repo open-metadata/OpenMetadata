@@ -365,10 +365,35 @@ describe('TestSummaryGraph', () => {
       />
     );
 
-    const referenceLine = screen.getByTestId('reference-line');
+    expect(screen.getByTestId('reference-line')).toHaveAttribute(
+      'data-y',
+      '10000'
+    );
+    expect(screen.getByTestId('expectation-label')).toHaveAttribute(
+      'data-y',
+      '10000'
+    );
+    expect(screen.getByTestId('expectation-label')).toHaveTextContent(
+      'label.expected-value'
+    );
+  });
 
-    expect(referenceLine).toHaveAttribute('data-y', '10000');
-    expect(referenceLine).toHaveTextContent('label.expected-value');
+  // Recharts paints in child order: a label drawn before the series would sit
+  // under every run near the expected value.
+  it('should draw the expectation label after the series', () => {
+    render(
+      <TestSummaryGraph
+        {...mockProps}
+        testCaseParameterValue={[{ name: 'value', value: '10000' }]}
+      />
+    );
+
+    const label = screen.getByTestId('expectation-label');
+    const series = screen.getByTestId('line-min');
+
+    expect(
+      series.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
   });
 
   it('should fall back to the learned bound when no parameter asserts a number', () => {
@@ -379,10 +404,13 @@ describe('TestSummaryGraph', () => {
       />
     );
 
-    const referenceLine = screen.getByTestId('reference-line');
-
-    expect(referenceLine).toHaveAttribute('data-y', '96162');
-    expect(referenceLine).toHaveTextContent('label.learned-baseline');
+    expect(screen.getByTestId('reference-line')).toHaveAttribute(
+      'data-y',
+      '96162'
+    );
+    expect(screen.getByTestId('expectation-label')).toHaveTextContent(
+      'label.learned-baseline'
+    );
   });
 
   // A line at no value is the bug this replaced: recharts silently drops it.
@@ -398,6 +426,7 @@ describe('TestSummaryGraph', () => {
     );
 
     expect(screen.queryByTestId('reference-line')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('expectation-label')).not.toBeInTheDocument();
   });
 
   // The run-details card is a sibling of the chart, so the selection has to
