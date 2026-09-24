@@ -110,27 +110,3 @@ export const Disabled: StoryObj = {
     </div>
   ),
 };
-
-export const DomainInherited: StoryObj = {
-  render: () => (
-    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      <DomainTag inherited color="#12B76A" label="Engineering" size="md" />
-      <DomainTag
-        inherited
-        color="#12B76A"
-        href="/domain/engineering"
-        inheritedLabel="Inherited"
-        label="Engineering"
-      />
-      <DomainTag
-        inherited
-        color="#12B76A"
-        inheritedLabel="Inherited"
-        label="Engineering"
-        onDelete={() => {
-          console.log('deleted');
-        }}
-      />
-    </div>
-  ),
-};

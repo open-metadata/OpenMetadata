@@ -1361,7 +1361,7 @@ test.describe(
         await page.getByTestId('domain-dropdown').click();
 
         // Wait for the domain select dropdown to be visible
-        await page.getByTestId('domain-dropdown-search').waitFor({
+        await page.getByTestId('domain-selectable-tree').waitFor({
           state: 'visible',
         });
 
@@ -1373,13 +1373,14 @@ test.describe(
         );
 
         await page
-          .getByTestId('domain-dropdown-search')
+          .getByTestId('domain-selectable-tree')
+          .getByTestId('searchbar')
           .fill(domain.responseData.name);
 
         await domainSearchResponse;
 
         await page
-          .getByTestId(`tree-node-${domain.responseData.fullyQualifiedName}`)
+          .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
           .click();
 
         await sidebarClick(page, SidebarItem.DATA_QUALITY);
