@@ -477,6 +477,11 @@ authenticationConfiguration:
   # Each entry must exactly match the requested redirect URI. Use for browser-extension logins,
   # e.g. ["https://<extension-id>.chromiumapp.org/auth0"].
   additionalTrustedRedirectUris: ${AUTHENTICATION_ADDITIONAL_TRUSTED_REDIRECT_URIS:-[]}
+  # Callback URLs for the other hostnames this deployment answers on (load balancer, DR site),
+  # e.g. ["https://om-dr.example.com/callback"]. The entry matching the request's scheme/host/port
+  # is sent to the IdP as redirect_uri; otherwise callbackUrl is used. Entries whose path differs
+  # from callbackUrl are ignored. Register every entry with the IdP as well.
+  additionalCallbackUrls: ${AUTHENTICATION_ADDITIONAL_CALLBACK_URLS:-[]}
 
   # Email-first claim configuration (recommended)
   # Set these to opt in to email-first identity resolution.
@@ -534,6 +539,10 @@ authenticationConfiguration:
     sp:
       entityId: ${SAML_SP_ENTITY_ID:-"http://localhost:8585/api/v1/saml/metadata"}
       acs: ${SAML_SP_ACS:-"http://localhost:8585/api/v1/saml/acs"}
+      # Additional Assertion Consumer Service URLs, one per hostname this deployment answers on
+      # (load balancer, DR site), e.g. ["https://om-dr.example.com/api/v1/saml/acs"].
+      # Register every entry with the IdP as well; entityId stays single-valued.
+      additionalAcsUrls: ${SAML_SP_ADDITIONAL_ACS_URLS:-[]}
       spX509Certificate: ${SAML_SP_CERTIFICATE:-""}
       spPrivateKey: ${SAML_SP_PRIVATE_KEY:-""}
       callback: ${SAML_SP_CALLBACK:-"http://localhost:8585/saml/callback"}

@@ -450,6 +450,8 @@ authenticationConfiguration:
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
   # For SSO: Set to your OAuth callback URL (e.g., "https://yourhost/api/v1/callback")
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
+  additionalTrustedRedirectUris: ${AUTHENTICATION_ADDITIONAL_TRUSTED_REDIRECT_URIS:-[]}
+  additionalCallbackUrls: ${AUTHENTICATION_ADDITIONAL_CALLBACK_URLS:-[]}
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
   jwtPrincipalClaimsMapping: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS_MAPPING:-[]}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
@@ -492,6 +494,7 @@ authenticationConfiguration:
     sp:
       entityId: ${SAML_SP_ENTITY_ID:-"http://localhost:8585/api/v1/saml/metadata"}
       acs: ${SAML_SP_ACS:-"http://localhost:8585/api/v1/saml/acs"}
+      additionalAcsUrls: ${SAML_SP_ADDITIONAL_ACS_URLS:-[]}
       spX509Certificate: ${SAML_SP_CERTIFICATE:-""}
       spPrivateKey: ${SAML_SP_PRIVATE_KEY:-""}
       callback: ${SAML_SP_CALLBACK:-"http://localhost:8585/saml/callback"}
