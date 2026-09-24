@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/feed/taskFormSchema.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "TaskFormSchema",
   "description": "A TaskFormSchema defines the form structure for creating or resolving a specific type of task. It includes a JSON Schema for validation and a UI schema for rendering.",
   "javaInterfaces": ["org.openmetadata.schema.NamedEntityInterface"],

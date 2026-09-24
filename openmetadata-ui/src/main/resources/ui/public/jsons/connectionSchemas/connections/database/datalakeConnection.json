@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DatalakeConnection",
   "description": "Datalake Connection Config",
   "type": "object",
@@ -41,7 +40,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "AzureConfig",
           "description": "Azure Datalake Storage will ingest files in container",
           "type": "object",
@@ -49,7 +47,6 @@
           "properties": {
             "securityConfig": {
               "title": "Azure Datalake Config Source",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "Azure Cloud Credentials",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",
@@ -92,7 +89,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "GCSConfig",
           "description": "DataLake GCS storage will ingest metadata of files",
           "type": "object",
@@ -100,7 +96,6 @@
           "properties": {
             "securityConfig": {
               "title": "DataLake GCS Security Config",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "GCP credentials configs.",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.GCPCredentials",
@@ -199,7 +194,6 @@
                   "description": "We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP Credentials Path",
                   "oneOf": [
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.GCPValues",
                       "title": "GCP Credentials Values",
@@ -245,7 +239,8 @@
                         "privateKeyId": {
                           "title": "Private Key ID",
                           "description": "Google Cloud private key id.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "privateKey": {
                           "title": "Private Key",
@@ -332,7 +327,6 @@
                       }
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.GCPExternalAccount",
                       "title": "GCP External Account",
@@ -441,7 +435,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "S3Config",
           "description": "DataLake S3 bucket will ingest metadata of files in bucket",
           "type": "object",
@@ -449,7 +442,6 @@
           "properties": {
             "securityConfig": {
               "title": "DataLake S3 Security Config",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "AWS credentials configs.",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -479,7 +471,8 @@
                 "awsSessionToken": {
                   "title": "AWS Session Token",
                   "description": "AWS Session Token.",
-                  "type": "string"
+                  "type": "string",
+                  "format": "password"
                 },
                 "endPointURL": {
                   "title": "Endpoint URL",
@@ -683,7 +676,6 @@
                   "oneOf": [
                     {
                       "title": "AWS S3 Storage Config",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "description": "AWS credentials configs.",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -713,7 +705,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",

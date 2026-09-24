@@ -49,8 +49,10 @@ import org.openmetadata.schema.type.AnnouncementStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.jdbi3.AnnouncementRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -72,6 +74,15 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
 
   public AnnouncementResource(Authorizer authorizer, Limits limits) {
     super(Entity.ANNOUNCEMENT, authorizer, limits);
+    // `description` is the announcement body and `displayName` its headline, not descriptive
+    // metadata about some other asset. Under the default field mapping a PATCH of /description
+    // only needs EditDescription, which DataConsumerPolicy grants to every authenticated user on
+    // every resource — so anyone could rewrite anyone else's announcement (issue #18158).
+    // Require EditAll, which only the target entity's owners and admins hold.
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.ANNOUNCEMENT, Entity.FIELD_DESCRIPTION, MetadataOperation.EDIT_ALL);
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.ANNOUNCEMENT, Entity.FIELD_DISPLAY_NAME, MetadataOperation.EDIT_ALL);
   }
 
   public static class AnnouncementList extends ResultList<Announcement> {

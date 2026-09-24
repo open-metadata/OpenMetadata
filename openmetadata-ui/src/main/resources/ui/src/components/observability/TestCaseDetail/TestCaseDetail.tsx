@@ -64,6 +64,7 @@ import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVers
 import { OBSERVABILITY_ROUTES } from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
+import RunTestCaseButton from './RunTestCaseButton/RunTestCaseButton';
 import './test-case-detail.less';
 import { TestCaseDetailProps } from './TestCaseDetail.types';
 
@@ -153,6 +154,9 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
               className="tw:pt-4 tw:pb-2.5"
               data-testid="test-case-last-run-banner-tab-container">
               <TestCaseLastRunBanner
+                hasEditStatusPermission={
+                  incidentHeaderData.hasEditStatusPermission
+                }
                 incidentTask={incidentHeaderData.incidentTask}
                 nextRunTimestamp={nextRunTimestamp}
                 parameterValues={testCase?.parameterValues}
@@ -160,6 +164,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                 testCaseResult={testCase?.testCaseResult}
                 testCaseStatus={testCase?.testCaseStatus}
                 testCaseStatusData={incidentHeaderData.testCaseStatusData}
+                onAcknowledge={incidentHeaderData.handleAcknowledgeIncident}
               />
             </div>
           )}
@@ -176,6 +181,8 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     incidentHeaderData.incidentTask,
     incidentHeaderData.taskLinkInfo,
     incidentHeaderData.testCaseStatusData,
+    incidentHeaderData.hasEditStatusPermission,
+    incidentHeaderData.handleAcknowledgeIncident,
     testCase?.parameterValues,
     testCase?.testCaseResult,
     testCase?.testCaseStatus,
@@ -438,24 +445,27 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                 </Box>
                 <Box align="center" className="tw:shrink-0" gap={2}>
                   {!isVersionPage && (
-                    <ManageButton
-                      isRecursiveDelete
-                      afterDeleteAction={() =>
-                        navigate(
-                          observabilityRouterClassBase.getDataQualityPagePath()
-                        )
-                      }
-                      allowSoftDelete={false}
-                      canDelete={hasDeletePermission}
-                      displayName={testCase.displayName}
-                      editDisplayNamePermission={editDisplayNamePermission}
-                      entityFQN={testCase.fullyQualifiedName}
-                      entityId={testCase.id}
-                      entityName={testCase.name}
-                      entityType={EntityType.TEST_CASE}
-                      extraDropdownContent={extraDropdownContent}
-                      onEditDisplayName={handleDisplayNameChange}
-                    />
+                    <>
+                      <RunTestCaseButton testCase={testCase} />
+                      <ManageButton
+                        isRecursiveDelete
+                        afterDeleteAction={() =>
+                          navigate(
+                            observabilityRouterClassBase.getDataQualityPagePath()
+                          )
+                        }
+                        allowSoftDelete={false}
+                        canDelete={hasDeletePermission}
+                        displayName={testCase.displayName}
+                        editDisplayNamePermission={editDisplayNamePermission}
+                        entityFQN={testCase.fullyQualifiedName}
+                        entityId={testCase.id}
+                        entityName={testCase.name}
+                        entityType={EntityType.TEST_CASE}
+                        extraDropdownContent={extraDropdownContent}
+                        onEditDisplayName={handleDisplayNameChange}
+                      />
+                    </>
                   )}
                 </Box>
               </Box>

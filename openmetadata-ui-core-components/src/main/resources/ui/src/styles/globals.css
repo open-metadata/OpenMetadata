@@ -6,8 +6,8 @@
     Arial, sans-serif;
   --font-display: theme(--font-inter, 'Inter'), -apple-system, 'Segoe UI',
     Roboto, Arial, sans-serif;
-  --font-mono: ui-monospace, 'Roboto Mono', SFMono-Regular, Menlo, Monaco,
-    Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --font-mono: 'Geist Mono', ui-monospace, 'Roboto Mono', SFMono-Regular, Menlo,
+    Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 
   /* Keep Tailwind scale stable regardless of host/root rem size. */
   --spacing: 4px;
@@ -170,6 +170,48 @@
   --color-brand-800: #1849a9;
   --color-brand-900: #194185;
   --color-brand-950: #102a56;
+
+  /* Entity palette values are stable identifiers in stored metadata. Themes
+     may override their presentation without changing those identifiers. */
+  --color-entity-palette-blue: #1470ef;
+  --color-entity-palette-indigo: #7d81e9;
+  --color-entity-palette-rose: #f14c75;
+  --color-entity-palette-pink: #f689a6;
+  --color-entity-palette-cyan: #05c4ea;
+  --color-entity-palette-teal: #05a580;
+  --color-entity-palette-amber: #ffb01a;
+  --color-entity-palette-purple: #bf4cf1;
+  --color-entity-palette-blue-muted: #99aadf;
+  --color-entity-palette-indigo-muted: #c0b3f2;
+  --color-entity-palette-rose-muted: #edb3b3;
+  --color-entity-palette-orange-muted: #ecb892;
+  --color-entity-palette-cyan-muted: #90dae3;
+  --color-entity-palette-teal-muted: #82e6c4;
+
+  /* Fixed chart hues retain their existing categorical identity. */
+  --color-visualization-test-success: #12b76a;
+  --color-visualization-green-3: #48ca9e;
+  --color-visualization-green-4: #039855;
+  --color-visualization-green-3-translucent: #48ca9e30;
+  --color-visualization-yellow-2: #ffbe0e;
+  --color-visualization-red-3: #f24822;
+  --color-visualization-red-3-translucent: #ff7c501a;
+  --color-visualization-purple-2: #7147e8;
+  --color-visualization-gray-1: #a1a1aa;
+  --color-visualization-blue-2: #3ca2f4;
+  --color-visualization-chart-blue-1: #4689ff;
+  --color-visualization-blue-600: #1677ff;
+  --color-visualization-riptide: #76e9c6;
+  --color-visualization-my-sin: #feb019;
+  --color-visualization-san-marino: #416bb3;
+  --color-visualization-silver-tree: #5cae95;
+  --color-visualization-desert: #b56727;
+  --color-visualization-pink-salmon: #ff92ae;
+  --color-visualization-electric-violet: #9747ff;
+  --color-visualization-lemon-zest: #ffd700;
+  --color-visualization-gray-400: #98a2b3;
+  --color-visualization-gray-300: #d0d5dd;
+  --color-visualization-dq-failed: #cb5a50;
 
   --color-error-25: #fffbfa;
   --color-error-50: #fef3f2;
@@ -1036,32 +1078,36 @@
     --color-utility-gray-800: theme(--color-gray-200);
     --color-utility-gray-900: theme(--color-gray-100);
 
-    --color-utility-error-50: theme(--color-error-950);
-    --color-utility-error-100: theme(--color-error-900);
-    --color-utility-error-200: theme(--color-error-800);
+    /* Status chips: 16% tint bg + 35% border + 400-step text (never dark-on-dark)
+       per palette guideline + Collate #6491. */
+    --color-utility-error-50: --alpha(theme(--color-error-500) / 16%);
+    --color-utility-error-100: --alpha(theme(--color-error-500) / 16%);
+    --color-utility-error-200: --alpha(theme(--color-error-500) / 35%);
     --color-utility-error-300: theme(--color-error-700);
     --color-utility-error-400: theme(--color-error-600);
-    --color-utility-error-500: theme(--color-error-500);
+    --color-utility-error-500: theme(--color-error-400);
     --color-utility-error-600: theme(--color-error-400);
-    --color-utility-error-700: theme(--color-error-300);
+    --color-utility-error-700: theme(--color-error-400);
 
-    --color-utility-warning-50: theme(--color-warning-950);
-    --color-utility-warning-100: theme(--color-warning-900);
-    --color-utility-warning-200: theme(--color-warning-800);
+    --color-utility-warning-50: --alpha(theme(--color-warning-500) / 16%);
+    --color-utility-warning-100: --alpha(theme(--color-warning-500) / 16%);
+    --color-utility-warning-200: --alpha(theme(--color-warning-500) / 35%);
     --color-utility-warning-300: theme(--color-warning-700);
     --color-utility-warning-400: theme(--color-warning-600);
-    --color-utility-warning-500: theme(--color-warning-500);
+    --color-utility-warning-500: theme(--color-warning-400);
     --color-utility-warning-600: theme(--color-warning-400);
-    --color-utility-warning-700: theme(--color-warning-300);
+    --color-utility-warning-700: theme(--color-warning-400);
 
-    --color-utility-success-50: theme(--color-success-950);
-    --color-utility-success-100: theme(--color-success-900);
-    --color-utility-success-200: theme(--color-success-800);
+    /* Status chips: 16% tint bg + 35% border + 400-step text (never dark-on-dark)
+       per palette guideline + Collate #6491. */
+    --color-utility-success-50: --alpha(theme(--color-success-500) / 16%);
+    --color-utility-success-100: --alpha(theme(--color-success-500) / 16%);
+    --color-utility-success-200: --alpha(theme(--color-success-500) / 35%);
     --color-utility-success-300: theme(--color-success-700);
     --color-utility-success-400: theme(--color-success-600);
-    --color-utility-success-500: theme(--color-success-500);
+    --color-utility-success-500: theme(--color-success-400);
     --color-utility-success-600: theme(--color-success-400);
-    --color-utility-success-700: theme(--color-success-300);
+    --color-utility-success-700: theme(--color-success-400);
 
     --color-utility-orange-50: theme(--color-orange-950);
     --color-utility-orange-100: theme(--color-orange-900);
@@ -1174,8 +1220,10 @@
     --color-text-warning-primary: theme(--color-warning-400);
     --color-text-success-primary: theme(--color-success-400);
     --color-text-disabled: theme(--color-gray-500);
-    --color-text-brand-primary: theme(--color-gray-50);
-    --color-text-brand-secondary: theme(--color-gray-300);
+    /* Brand text = blue-300 link tone in dark (palette guideline + Collate #6491
+       --ai-link); regular text stays on the gray ramp. */
+    --color-text-brand-primary: theme(--color-brand-300);
+    --color-text-brand-secondary: theme(--color-brand-300);
     --color-text-brand-tertiary: theme(--color-gray-400);
     --color-text-placeholder: theme(--color-gray-400);
     --color-text-placeholder_subtle: theme(--color-gray-700);
@@ -1185,13 +1233,15 @@
     --color-text-secondary_on-brand: theme(--color-gray-300);
     --color-text-tertiary_on-brand: theme(--color-gray-400);
     --color-text-quaternary_on-brand: theme(--color-gray-400);
-    --color-text-brand-secondary_hover: theme(--color-gray-200);
+    --color-text-brand-secondary_hover: theme(--color-brand-200);
     --color-text-brand-tertiary_alt: theme(--color-gray-50);
     --color-text-error-primary_hover: theme(--color-error-300);
 
     /* BORDER COLORS */
     --color-border-primary: theme(--color-gray-700);
-    --color-border-secondary: theme(--color-gray-800);
+    /* Card edges / dividers are white-alpha, not a gray step — gray-800 was
+       invisible on gray-800 surfaces (per palette guideline + Collate #6491). */
+    --color-border-secondary: --alpha(theme(--color-white) / 8%);
     --color-border-secondary_alt: --alpha(theme(--color-white) / 8%);
     --color-border-subtle: --alpha(theme(--color-white) / 8%);
     --color-border-hover: theme(--color-gray-600);
@@ -1213,8 +1263,10 @@
     --color-fg-secondary: theme(--color-gray-300);
     --color-fg-tertiary: theme(--color-gray-400);
     --color-fg-tertiary_hover: theme(--color-gray-300);
-    --color-fg-quaternary: theme(--color-gray-600);
-    --color-fg-quaternary_hover: theme(--color-gray-500);
+    /* Quaternary icons follow text-tertiary (gray-400) — gray-600 fails the 3:1
+       icon floor on Card/Raised (per palette guideline + Collate #6491). */
+    --color-fg-quaternary: theme(--color-gray-400);
+    --color-fg-quaternary_hover: theme(--color-gray-300);
     --color-fg-error-primary: theme(--color-error-500);
     --color-fg-error-secondary: theme(--color-error-400);
     --color-fg-warning-primary: theme(--color-warning-500);
@@ -1224,17 +1276,30 @@
     --color-fg-secondary_hover: theme(--color-gray-200);
     --color-fg-disabled: theme(--color-gray-500);
     --color-fg-disabled_subtle: theme(--color-gray-600);
-    --color-fg-brand-primary: theme(--color-brand-500);
-    --color-fg-brand-secondary: theme(--color-brand-500);
-    --color-fg-brand-primary_alt: theme(--color-gray-300);
-    --color-fg-brand-secondary_alt: theme(--color-gray-600);
-    --color-fg-brand-secondary_hover: theme(--color-gray-500);
+    /* Brand foreground (icons, tab underline, active accents) = blue-300 link
+       tone in dark (palette guideline + Collate #6491 --ai-link). */
+    --color-fg-brand-primary: theme(--color-brand-300);
+    --color-fg-brand-secondary: theme(--color-brand-300);
+    --color-fg-brand-primary_alt: theme(--color-brand-300);
+    --color-fg-brand-secondary_alt: theme(--color-brand-300);
+    --color-fg-brand-secondary_hover: theme(--color-brand-200);
 
     /* BACKGROUND COLORS */
     --color-bg-primary: theme(--color-gray-950);
     --color-bg-primary-solid: theme(--color-bg-secondary);
     --color-bg-primary_alt: theme(--color-bg-secondary);
     --color-bg-primary_hover: --alpha(theme(--color-white) / 6%);
+
+    /* Empty-placeholder "features" gradient — dark: fade to the page (gray-950)
+       with a subtle blue tint top/bottom, mirroring the light gradient. */
+    --gradient-empty-placeholder-features: linear-gradient(
+      180deg,
+      rgba(41, 53, 74, 0.5) 0%,
+      theme(--color-bg-primary) 25%,
+      theme(--color-bg-primary) 49.52%,
+      theme(--color-bg-primary) 75%,
+      rgba(41, 53, 74, 1) 100%
+    );
     --color-bg-secondary: theme(--color-gray-900);
     --color-bg-secondary-solid: theme(--color-gray-600);
     --color-bg-secondary_subtle: theme(--color-gray-900);
@@ -1255,18 +1320,21 @@
     --color-bg-active: --alpha(theme(--color-white) / 10%);
     --color-bg-disabled: theme(--color-gray-800);
     --color-bg-disabled_subtle: theme(--color-gray-900);
-    --color-bg-brand-primary: --alpha(theme(--color-brand-500) / 16%);
+    /* Brand tint (nav-active, brand count chip) = 14% per palette guideline + Collate #6491. */
+    --color-bg-brand-primary: --alpha(theme(--color-brand-500) / 14%);
     --color-bg-brand-primary_alt: theme(--color-bg-secondary);
     --color-bg-brand-secondary: theme(--color-brand-600);
     --color-bg-secondary_alt: theme(--color-bg-primary);
     --color-bg-brand-solid: theme(--color-brand-600);
     --color-bg-brand-solid_hover: theme(--color-brand-500);
-    --color-bg-overlay: theme(--color-gray-800);
+    /* Modal scrim reads as a near-black veil (bg-overlay/70), not a gray wash. */
+    --color-bg-overlay: theme(--color-gray-950);
     --color-bg-page: theme(--color-gray-950);
     --color-bg-canvas: theme(--color-gray-900);
     --color-bg-surface: theme(--color-gray-800);
     --color-bg-raised: theme(--color-gray-700);
-    --color-bg-overlay-surface: theme(--color-gray-800);
+    /* Modal panel sits on Raised (gray-700) per palette guideline, not gray-800. */
+    --color-bg-overlay-surface: theme(--color-gray-700);
     --color-bg-brand-section: theme(--color-bg-secondary);
     --color-bg-brand-section_subtle: theme(--color-bg-primary);
 
