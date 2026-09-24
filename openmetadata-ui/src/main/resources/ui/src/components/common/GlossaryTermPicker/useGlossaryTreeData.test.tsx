@@ -15,10 +15,12 @@ import { useGlossaryTreeData } from './useGlossaryTreeData';
 
 const mockGetGlossariesList = jest.fn();
 
+const mockSearchGlossaryTerms = jest.fn();
+
 jest.mock('../../../rest/glossaryAPI', () => ({
   getGlossariesList: (...args: unknown[]) => mockGetGlossariesList(...args),
   queryGlossaryTerms: jest.fn(),
-  searchGlossaryTerms: jest.fn(),
+  searchGlossaryTerms: (...args: unknown[]) => mockSearchGlossaryTerms(...args),
 }));
 
 jest.mock('./useGlossaryMutualExclusivity', () => ({
@@ -64,6 +66,33 @@ describe('useGlossaryTreeData', () => {
     const { nodes } = await fetchRoots(false, false);
 
     expect(nodes.some(({ allowSelection }) => allowSelection)).toBe(false);
+  });
+
+  // A glossary whose own name matches has no term hit to carry it into results.
+  it('surfaces a glossary whose name matches the search', async () => {
+    mockSearchGlossaryTerms.mockResolvedValue([]);
+    const { result } = renderHook(() => useGlossaryTreeData());
+
+    await result.current({});
+    const { nodes } = await result.current({ searchTerm: 'fill' });
+
+    expect(nodes.map(({ id }) => id)).toEqual(['Filled']);
+  });
+
+  // Search results take the same rule; otherwise typing re-enables the rows.
+  it('applies the rule to searched glossaries too', async () => {
+    mockSearchGlossaryTerms.mockResolvedValue([
+      {
+        name: 'Filled',
+        fullyQualifiedName: 'Filled',
+        children: [{ name: 't1' }],
+      },
+    ]);
+    const { result } = renderHook(() => useGlossaryTreeData(false, false));
+
+    const { nodes } = await result.current({ searchTerm: 'fi' });
+
+    expect(nodes[0].allowSelection).toBe(false);
   });
 
   // ChangeParent picks the glossary itself, so an empty one is still a target.
