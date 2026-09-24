@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, NavList } from '@openmetadata/ui-core-components';
+import { Button, NavList, Typography } from '@openmetadata/ui-core-components';
 import { Glossary as GlossaryIcon } from '@openmetadata/ui-core-components/icons';
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -103,9 +103,9 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
                 iconLeading={<PlusIcon style={{ height: 16, width: 16 }} />}
                 size="sm"
                 onPress={handleAddGlossaryClick}>
-                <span className="tw:text-brand-600 tw:font-normal">
+                <Typography className="tw:text-brand-tertiary" weight="regular">
                   {t('label.add-entity', { entity: t('label.glossary') })}
-                </span>
+                </Typography>
               </Button>
             </div>
           )}

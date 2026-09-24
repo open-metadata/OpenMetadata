@@ -747,11 +747,13 @@ const TagsPage = () => {
                     classificationForm.reset();
                     handleClassificationDrawerOpen();
                   }}>
-                  <span className="tw:text-brand-600 tw:font-normal">
+                  <Typography
+                    className="tw:text-brand-tertiary"
+                    weight="regular">
                     {t('label.add-entity', {
                       entity: t('label.classification'),
                     })}
-                  </span>
+                  </Typography>
                 </Button>
               )}
             </div>

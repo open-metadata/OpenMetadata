@@ -15,6 +15,7 @@ import {
   Button,
   ButtonUtility,
   Checkbox,
+  CheckboxBase,
   Dialog,
   FeaturedIcon,
   Input,
@@ -39,14 +40,14 @@ import {
   MouseEvent,
   useCallback,
   useEffect,
-  useId,
   useMemo,
   useRef,
   useState,
 } from 'react';
-import { useHover } from 'react-aria';
+import { useHover, useInteractOutside } from 'react-aria';
 import {
   Button as AriaButton,
+  Checkbox as AriaCheckbox,
   DropOperation,
   Heading,
   useDragAndDrop,
@@ -183,8 +184,6 @@ const GlossaryTermMoveConfirmationModal = ({
   onChangeGlossaryTerm,
   t,
 }: GlossaryTermMoveConfirmationModalProps) => {
-  const confirmLabelId = useId();
-
   return (
     <ModalOverlay
       isDismissable={false}
@@ -227,35 +226,40 @@ const GlossaryTermMoveConfirmationModal = ({
               />
             </Typography>
             {hasReviewers && (
-              <div className="tw:flex tw:items-start tw:gap-2">
-                <Checkbox
-                  aria-labelledby={confirmLabelId}
-                  className="tw:mt-0.5"
-                  data-testid="confirm-status-checkbox"
-                  isSelected={confirmCheckboxChecked}
-                  onChange={onConfirmCheckboxChange}
-                />
-                {/* StatusBadge renders a <div>, which the Checkbox label's <p> cannot hold. */}
-                <div
-                  className="tw:text-sm tw:text-secondary"
-                  id={confirmLabelId}>
-                  <Transi18next
-                    i18nKey="message.entity-transfer-confirmation-message"
-                    renderElement={<strong />}
-                    values={{
-                      from: movedGlossaryTerm?.from.name,
-                    }}
-                  />
-                  <span className="tw:ml-1 tw:inline-block">
-                    <StatusBadge
-                      className="p-x-xs p-y-xss"
-                      dataTestId=""
-                      label={EntityStatus.InReview}
-                      status={EntityStatusClass[EntityStatus.InReview]}
+              // StatusBadge renders a <div>, which the core Checkbox label's <p> cannot
+              // hold, so the row is composed from the aria Checkbox and CheckboxBase.
+              <AriaCheckbox
+                className="tw:flex tw:cursor-pointer tw:items-start tw:gap-2"
+                data-testid="confirm-status-checkbox"
+                isSelected={confirmCheckboxChecked}
+                onChange={onConfirmCheckboxChange}>
+                {({ isSelected, isFocusVisible }) => (
+                  <>
+                    <CheckboxBase
+                      className="tw:mt-0.5"
+                      isFocusVisible={isFocusVisible}
+                      isSelected={isSelected}
                     />
-                  </span>
-                </div>
-              </div>
+                    <div className="tw:select-none tw:text-sm tw:text-secondary">
+                      <Transi18next
+                        i18nKey="message.entity-transfer-confirmation-message"
+                        renderElement={<strong />}
+                        values={{
+                          from: movedGlossaryTerm?.from.name,
+                        }}
+                      />
+                      <span className="tw:ml-1 tw:inline-block">
+                        <StatusBadge
+                          className="p-x-xs p-y-xss"
+                          dataTestId=""
+                          label={EntityStatus.InReview}
+                          status={EntityStatusClass[EntityStatus.InReview]}
+                        />
+                      </span>
+                    </div>
+                  </>
+                )}
+              </AriaCheckbox>
             )}
           </Dialog.Content>
           <Dialog.Footer>
@@ -456,6 +460,8 @@ const GlossaryTermStatusCell = ({
 }: GlossaryTermStatusCellProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverContentRef = useRef<HTMLDivElement>(null);
 
   const clearCloseTimeout = useCallback(() => {
     if (closeTimeoutRef.current) {
@@ -485,22 +491,38 @@ const GlossaryTermStatusCell = ({
     onHoverEnd: closePopover,
   });
 
+  // `isNonModal` turns off react-aria's own outside-press and Escape dismissal,
+  // so a popover opened by tap or keyboard needs them wired here. The trigger is
+  // excluded because its own press already toggles the popover.
+  useInteractOutside({
+    ref: popoverContentRef,
+    isDisabled: !isOpen,
+    onInteractOutside: (event) => {
+      if (!triggerRef.current?.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    },
+  });
+
   return (
     <PopoverTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
       <AriaButton
         className="tw:cursor-default tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2"
+        ref={triggerRef}
         onHoverEnd={closePopover}
-        onHoverStart={openPopover}>
+        onHoverStart={openPopover}
+        onKeyDown={(event) => event.key === 'Escape' && setIsOpen(false)}>
         <StatusBadge
           dataTestId={`${record.fullyQualifiedName ?? ''}-status`}
           label={status}
           status={EntityStatusClass[status]}
         />
       </AriaButton>
-      <Popover isNonModal containerClassName="tw:p-3" placement="top start">
+      <Popover isNonModal placement="top start">
         <div
-          className="tw:min-w-65"
+          className="tw:min-w-65 tw:p-3"
           data-testid="workflow-history-popover"
+          ref={popoverContentRef}
           {...popoverHoverProps}>
           <WorkflowHistory glossaryTerm={record as GlossaryTerm} />
         </div>
