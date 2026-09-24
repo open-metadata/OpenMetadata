@@ -15,24 +15,24 @@ import type { FormInstance } from 'antd';
 import type { ComponentType } from 'react';
 import type { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
 import type {
-    OperationPermission,
-    ResourceEntity
+  OperationPermission,
+  ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EventFilterRule } from '../../generated/events/eventSubscription';
 import type { AddAlertFormWidgetProps } from '../../utils/AlertsClassBase';
 import type {
-    AddAlertPageLoadingState,
-    ModifiedCreateEventSubscription,
-    ModifiedDestination,
-    ModifiedEventSubscription,
-    ModifiedWebhookConfig
+  AddAlertPageLoadingState,
+  ModifiedCreateEventSubscription,
+  ModifiedDestination,
+  ModifiedEventSubscription,
+  ModifiedWebhookConfig,
 } from '../../utils/AlertsClassBase.interface';
 
 export type {
-    ModifiedCreateEventSubscription,
-    ModifiedDestination,
-    ModifiedEventSubscription,
-    ModifiedWebhookConfig,
+  ModifiedCreateEventSubscription,
+  ModifiedDestination,
+  ModifiedEventSubscription,
+  ModifiedWebhookConfig,
 };
 
 export interface ObservabilityFilterResourceDescriptor {

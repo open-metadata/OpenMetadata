@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
 import NotificationAlertDetail from './NotificationAlertDetail';
 
 jest.mock('react-i18next', () => ({
@@ -41,11 +40,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Typography: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
-  Owner: jest.fn().mockImplementation(() => <div data-testid="owner-component" />),
+  Owner: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="owner-component" />),
   Tabs: Object.assign(
-    jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
+    jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
     {
       List: jest
         .fn()
@@ -219,10 +218,7 @@ describe('NotificationAlertDetail', () => {
 
   it('should show loader initially', () => {
     render(
-      <NotificationAlertDetail
-        fqn="test-alert"
-        onNavigate={mockOnNavigate}
-      />
+      <NotificationAlertDetail fqn="test-alert" onNavigate={mockOnNavigate} />
     );
 
     expect(screen.getByTestId('loader')).toBeInTheDocument();
@@ -231,10 +227,7 @@ describe('NotificationAlertDetail', () => {
   it('should render tabs after loading', async () => {
     await act(async () => {
       render(
-        <NotificationAlertDetail
-          fqn="test-alert"
-          onNavigate={mockOnNavigate}
-        />
+        <NotificationAlertDetail fqn="test-alert" onNavigate={mockOnNavigate} />
       );
     });
 

@@ -29,7 +29,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     jest
       .fn()
       .mockImplementation(({ children, items, ...props }) => (
-        <div {...props}>{items?.map((item: Record<string, unknown>) => children(item))}</div>
+        <div {...props}>
+          {items?.map((item: Record<string, unknown>) => children(item))}
+        </div>
       )),
     {
       Item: jest

@@ -16,11 +16,11 @@ import { NotificationTemplate } from '../generated/entity/events/notificationTem
 import { User } from '../generated/entity/teams/user';
 import { CreateEventSubscription } from '../generated/events/api/createEventSubscription';
 import {
-    Destination,
-    EventSubscription,
-    SubscriptionCategory,
-    SubscriptionType,
-    Webhook
+  Destination,
+  EventSubscription,
+  SubscriptionCategory,
+  SubscriptionType,
+  Webhook,
 } from '../generated/events/eventSubscription';
 
 export interface ModifiedWebhookConfig extends Webhook {

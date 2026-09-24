@@ -24,10 +24,6 @@ import {
   SubscriptionCategory,
   type EventSubscription,
 } from '../generated/events/eventSubscription';
-import type {
-  ModifiedCreateEventSubscription,
-  ModifiedEventSubscription,
-} from './AlertsClassBase.interface';
 import {
   getConfigHeaderArrayFromObject,
   getConfigHeaderObjectFromArray,
@@ -35,7 +31,11 @@ import {
   getConfigQueryParamsObjectFromArray,
   getRandomizedAlertName,
 } from './Alerts/AlertsUtilPure';
-import type { HandleAlertSaveProps } from './AlertsClassBase.interface';
+import type {
+  HandleAlertSaveProps,
+  ModifiedCreateEventSubscription,
+  ModifiedEventSubscription,
+} from './AlertsClassBase.interface';
 import { getEntityName } from './EntityNameUtils';
 import { handleEntityCreationError } from './formUtils';
 import { t } from './i18next/LocalUtil';

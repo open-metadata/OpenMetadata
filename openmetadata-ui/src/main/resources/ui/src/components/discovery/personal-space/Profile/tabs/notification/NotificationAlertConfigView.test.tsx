@@ -86,9 +86,7 @@ jest.mock('../../../../../../utils/AlertsClassBase', () => ({
 }));
 
 jest.mock('../../../../../../utils/PermissionDerivation', () => ({
-  getDerivedPermissionFlags: jest
-    .fn()
-    .mockReturnValue({ canViewAll: false }),
+  getDerivedPermissionFlags: jest.fn().mockReturnValue({ canViewAll: false }),
 }));
 
 jest.mock('../../../../../../utils/PermissionsUtils', () => ({
@@ -138,18 +136,14 @@ const mockAlertDetails = {
 
 describe('NotificationAlertConfigView', () => {
   it('should show loader initially', () => {
-    render(
-      <NotificationAlertConfigView alertDetails={mockAlertDetails} />
-    );
+    render(<NotificationAlertConfigView alertDetails={mockAlertDetails} />);
 
     expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
 
   it('should render source select after loading', async () => {
     await act(async () => {
-      render(
-        <NotificationAlertConfigView alertDetails={mockAlertDetails} />
-      );
+      render(<NotificationAlertConfigView alertDetails={mockAlertDetails} />);
     });
 
     await waitFor(() => {
@@ -159,23 +153,17 @@ describe('NotificationAlertConfigView', () => {
 
   it('should render destination bridge after loading', async () => {
     await act(async () => {
-      render(
-        <NotificationAlertConfigView alertDetails={mockAlertDetails} />
-      );
+      render(<NotificationAlertConfigView alertDetails={mockAlertDetails} />);
     });
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId('destination-bridge')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('destination-bridge')).toBeInTheDocument();
     });
   });
 
   it('should not render filters editor when alertFilters is empty', async () => {
     await act(async () => {
-      render(
-        <NotificationAlertConfigView alertDetails={mockAlertDetails} />
-      );
+      render(<NotificationAlertConfigView alertDetails={mockAlertDetails} />);
     });
 
     await waitFor(() => {

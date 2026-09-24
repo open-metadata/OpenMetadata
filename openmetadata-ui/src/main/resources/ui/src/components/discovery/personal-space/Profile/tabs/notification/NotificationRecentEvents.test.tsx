@@ -40,17 +40,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children, ...props }) => (
       <div {...props}>{children}</div>
     )),
-  Button: jest
-    .fn()
-    .mockImplementation(({ children, onPress, ...props }) => (
-      <button {...props} onClick={onPress}>
-        {children}
-      </button>
-    )),
+  Button: jest.fn().mockImplementation(({ children, onPress, ...props }) => (
+    <button {...props} onClick={onPress}>
+      {children}
+    </button>
+  )),
   Dropdown: {
-    Root: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
+    Root: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
     Popover: jest
       .fn()
       .mockImplementation(({ children }) => <div>{children}</div>),
@@ -59,9 +55,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       .mockImplementation(({ children }) => (
         <div data-testid="filter-menu">{children}</div>
       )),
-    Item: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
+    Item: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   },
   EmptyPlaceholder: jest.fn(() => <div data-testid="empty-placeholder" />),
   PaginationCardWithControls: jest.fn(() => null),

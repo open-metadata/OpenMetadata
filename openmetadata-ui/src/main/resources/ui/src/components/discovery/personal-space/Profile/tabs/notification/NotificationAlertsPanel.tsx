@@ -195,10 +195,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
 
       let alertList = data;
 
-      if (
-        isFirstPage &&
-        activityFeedResult?.status === 'fulfilled'
-      ) {
+      if (isFirstPage && activityFeedResult?.status === 'fulfilled') {
         alertList = [activityFeedResult.value, ...data];
       }
 

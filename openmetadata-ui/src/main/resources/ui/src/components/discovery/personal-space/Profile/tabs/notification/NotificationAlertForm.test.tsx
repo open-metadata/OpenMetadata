@@ -25,18 +25,17 @@ jest.mock('react-i18next', () => ({
 const mockForm = {
   watch: jest.fn().mockReturnValue([]),
   setValue: jest.fn(),
-  handleSubmit:
-    jest.fn(
-      (fn) => () =>
-        fn({
-          displayName: 'test',
-          resources: [],
-          filters: [],
-          destinations: [],
-          timeout: 10,
-          readTimeout: 30,
-        })
-    ),
+  handleSubmit: jest.fn(
+    (fn) => () =>
+      fn({
+        displayName: 'test',
+        resources: [],
+        filters: [],
+        destinations: [],
+        timeout: 10,
+        readTimeout: 30,
+      })
+  ),
   reset: jest.fn(),
   control: {},
 };
@@ -64,7 +63,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   HookForm: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
-  FormFields: jest.fn().mockImplementation(() => <div data-testid="form-fields" />),
+  FormFields: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="form-fields" />),
   FormField: jest
     .fn()
     .mockImplementation(({ children }) => (
@@ -122,14 +123,11 @@ jest.mock('../../../../../../hooks/useApplicationStore', () => ({
   }),
 }));
 
-jest.mock(
-  '../../../../../../context/LimitsProvider/useLimitsStore',
-  () => ({
-    useLimitStore: jest.fn().mockReturnValue({
-      getResourceLimit: jest.fn(),
-    }),
-  })
-);
+jest.mock('../../../../../../context/LimitsProvider/useLimitsStore', () => ({
+  useLimitStore: jest.fn().mockReturnValue({
+    getResourceLimit: jest.fn(),
+  }),
+}));
 
 jest.mock('../../../../../../constants/Form.constants', () => ({
   NAME_FIELD_RULES: [],
