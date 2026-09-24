@@ -74,11 +74,34 @@
 # IMPORTANT: the cache keys and the apt package list below MUST stay
 # identical to their counterparts in playwright-e2e-reusable.yml — a drifted
 # key populates a cache nobody restores. Update both files together.
-name: Populate Playwright CI caches
+name: Playwright main lane and CI cache warm
 
 on:
+  # TWO DEPTHS, ONE WRITER.
+  #
+  # `push` keeps its original job: warm the caches for the next queue entry,
+  # cheaply, on every commit to main. Unchanged (see the trigger note below).
+  #
+  # `schedule` now runs the shards as well — the MAIN LANE. Nothing has run
+  # the Playwright suite against `main` since #31628 removed
+  # `cron: "30 7 * * *"` from playwright-postgresql-e2e.yml on 2026-08-18, so
+  # the suite has existed only on PRs (a targeted subset) and in the merge
+  # queue (`main` + up to three PRs). Neither answers "is main green?", and
+  # that missing answer is why a merge_group failure cannot be attributed:
+  # this PR, the combination, and "main was already broken" are
+  # indistinguishable without a main-only baseline.
+  #
+  # It lives HERE rather than in a new workflow because
+  # test_no_cache_is_saved_from_an_ephemeral_merge_queue_ref enforces a
+  # one-main-scoped-writer rule, and a second caller on the same event and ref
+  # would also collide with the reusable's own concurrency group
+  # (`playwright-ci-<database>-<event>-<ref>`) and cancel this one.
+  #
+  # Every two hours, not hourly: the suite's p50 is ~58 min, so an hourly
+  # cadence would have runs cancelling each other and finishing nothing. 12
+  # completed runs a day is ample for a 10-run baseline window.
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "0 */2 * * *"
   workflow_dispatch:
   push:
     branches:
@@ -221,11 +244,14 @@ jobs:
   # workflow_dispatch-only against release branches and so never writes main's
   # scope, but the keys should grow a flavour segment before that changes.
   warm-fixture:
-    # Newest wins: a burst of merges to main should leave one run warming the
-    # newest tree, not a queue of runs each warming a tree already stale.
+    # Newest wins WITHIN a depth: a burst of merges to main should leave one
+    # run warming the newest tree, not a queue of runs each warming a tree
+    # already stale. The two depths never cancel each other, though — a
+    # push-warm landing mid-lane must not kill a 58-minute lane run, and a
+    # lane run must not hold up the warm the next queue entry is waiting on.
     concurrency:
-      group: populate-playwright-caches-fixture
-      cancel-in-progress: true
+      group: populate-playwright-caches-fixture-${{ github.event_name == 'push' && 'warm' || 'lane' }}
+      cancel-in-progress: ${{ github.event_name == 'push' }}
     uses: ./.github/workflows/playwright-e2e-reusable.yml
     secrets: inherit
     permissions:
@@ -240,9 +266,270 @@ jobs:
       # (prepare-playwright-fixture needs its requires_airflow output) even
       # though no shard is dispatched.
       workflow_filename: playwright-postgresql-e2e.yml
-      warm_caches_only: true
+      # push  -> warm only, exactly as before: seed the caches for the next
+      #          queue entry and stop before the shards.
+      # else  -> the main lane: run the full plan against main itself.
+      warm_caches_only: ${{ github.event_name == 'push' }}
       # Must match what the merge queue restores, or the fingerprints differ
       # and the warm populates keys nobody reads.
       full_suite: true
       protocol: http
       coarse_bundle: true
+
+  # THE POINT OF THE LANE. Turns a finished main-lane run into two things the
+  # merge queue has never had:
+  #
+  #   1. A ledger — did `main` itself pass, and which tests did not pass on
+  #      their FIRST attempt. `retries: 1` reports a first-attempt failure as
+  #      green, which is how two regressions landed on 2026-09-01 survived
+  #      three days; the ledger records the first attempt regardless.
+  #   2. A baseline — the tests `main` does not reliably pass, so a later gate
+  #      can block on "this PR broke it" and stay quiet on "main was already
+  #      broken". That is the difference the merge queue cannot currently see.
+  #
+  # It REPORTS, it does not block: a `schedule` run gates no pull request and
+  # nothing here is a required status check.
+  main-health:
+    name: Main health ledger
+    needs: [warm-fixture]
+    # Lane runs only. A push warm stops before the shards, so there are no
+    # results to classify.
+    if: >-
+      always() &&
+      github.event_name != 'push' &&
+      needs.warm-fixture.outputs.playwright_ci_result != 'skipped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: read
+    env:
+      # Bump the version segment to invalidate every stored baseline at once,
+      # e.g. after a schema change in refresh_flake_baseline.py.
+      BASELINE_PREFIX: playwright-flake-baseline-v1-postgresql-main
+      BASELINE_PATH: ${{ github.workspace }}/flake-baseline/flake-baseline.json
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Download all results JSON
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          pattern: playwright-results-json-*
+          path: results
+          # Keep the per-artifact subdirectory layout
+          # (results/playwright-results-json-<shardId>/results.json);
+          # classify_playwright_outcome.py infers the shard id from it.
+          merge-multiple: false
+
+      - name: Restore the flake baseline
+        continue-on-error: true
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ env.BASELINE_PATH }}
+          # Cache keys are immutable, so each run writes a new key and reads
+          # the most recent one back through the prefix. Scoped to
+          # refs/heads/main — the one scope merge_group and PR runs can
+          # restore from (#32605). NOT a committed file: refresh-timing-
+          # baseline documents why main commits have to stay rare, and every
+          # push to main resets the merge queue.
+          key: ${{ env.BASELINE_PREFIX }}-${{ github.run_id }}
+          restore-keys: ${{ env.BASELINE_PREFIX }}-
+
+      - name: Classify the run
+        id: classify
+        continue-on-error: true
+        env:
+          EXPECTED_MATRIX: ${{ needs.warm-fixture.outputs.plan_playwright_matrix }}
+          MATRIX_OUTCOME: ${{ needs.warm-fixture.outputs.playwright_ci_result }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          # A missing baseline is the first-run state, not an error: without
+          # --retry-baseline the ledger still reports every retry pass, it
+          # just cannot say which of them are new.
+          baseline_args=()
+          if [[ -f "$BASELINE_PATH" ]]; then
+            baseline_args=(--retry-baseline "$BASELINE_PATH")
+          fi
+          python3 .github/scripts/classify_playwright_outcome.py \
+            --report-glob 'results/playwright-results-json-*/results.json' \
+            --status-glob 'results/playwright-results-json-*/ci-status.json' \
+            --matrix-outcome "$MATRIX_OUTCOME" \
+            --expected-matrix-json "$EXPECTED_MATRIX" \
+            --profile postgresql-main \
+            --source-sha "$SOURCE_SHA" \
+            ${baseline_args[@]+"${baseline_args[@]}"} \
+            --output "$RUNNER_TEMP/main-lane/outcome.json"
+
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          ledger = json.load(open(os.environ["RUNNER_TEMP"] + "/main-lane/outcome.json"))
+          print(f"classification={ledger['classification']}")
+          PY
+
+      - name: Refresh the flake baseline
+        id: refresh-baseline
+        if: ${{ steps.classify.outcome == 'success' }}
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -uo pipefail
+          mkdir -p "$(dirname "$BASELINE_PATH")"
+          current=()
+          if [[ -f "$BASELINE_PATH" ]]; then
+            cp "$BASELINE_PATH" "$RUNNER_TEMP/previous-baseline.json"
+            current=(--current "$RUNNER_TEMP/previous-baseline.json")
+          fi
+
+          python3 .github/scripts/refresh_flake_baseline.py \
+            --ledger "$RUNNER_TEMP/main-lane/outcome.json" \
+            ${current[@]+"${current[@]}"} \
+            --output "$BASELINE_PATH" \
+            --window 10 \
+            --threshold 2 \
+            --run-id "$GITHUB_RUN_ID" \
+            --source-sha "$SOURCE_SHA" \
+            --summary "$RUNNER_TEMP/baseline-summary.md"
+          rc=$?
+
+          # 3 = this run measured nothing (cancelled, no results). Keep the
+          # stored baseline rather than decaying real entries out of the
+          # window on the strength of a run that never observed anything.
+          if [[ "$rc" -eq 3 ]]; then
+            echo "save=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          elif [[ "$rc" -ne 0 ]]; then
+            exit "$rc"
+          fi
+
+          echo "save=true" >> "$GITHUB_OUTPUT"
+          cat "$RUNNER_TEMP/baseline-summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Save the flake baseline
+        if: ${{ steps.refresh-baseline.outputs.save == 'true' }}
+        continue-on-error: true
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ env.BASELINE_PATH }}
+          key: ${{ env.BASELINE_PREFIX }}-${{ github.run_id }}
+
+      - name: Publish the ledger to the job summary
+        if: ${{ always() }}
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          [[ -f "$RUNNER_TEMP/main-lane/outcome.json" ]] || exit 0
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, os
+          ledger = json.load(open(os.environ["RUNNER_TEMP"] + "/main-lane/outcome.json"))
+          counts = ledger["counts"]
+          print("### Playwright main lane")
+          print()
+          print(f"- Classification: `{ledger['classification']}`")
+          print(
+              f"- Tests: {counts['tests']} · failed {counts['failed']} ·"
+              f" passed only on retry {counts['retryPassed']} ·"
+              f" skipped {counts['skipped']}"
+          )
+          for issue in ledger["infrastructureIssues"][:10]:
+              print(f"- :warning: {issue}")
+          for record in ledger["failures"][:20]:
+              print(f"- FAILED `{record['file']}` > {record['title']}")
+          for record in ledger["retryPasses"][:20]:
+              print(f"- FIRST ATTEMPT FAILED `{record['file']}` > {record['title']}")
+          PY
+
+      - name: Upload the main-lane ledger
+        if: ${{ always() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-main-lane-ledger-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/main-lane/outcome.json
+            ${{ env.BASELINE_PATH }}
+          if-no-files-found: warn
+          retention-days: 30
+
+      # Split routing so a broken main and a flake read differently:
+      #   loud  → #ci-cleanup  (test_failure / hung_test / infrastructure_failure /
+      #                         missing_results — main is an incident with an owner)
+      #   quiet → #pw-health   (passed_with_retries / cancelled — awareness only;
+      #                         `retries: 1` has been reporting these as green)
+      - name: Route the Slack payload
+        id: slack-route
+        if: ${{ always() && steps.classify.outputs.classification != '' && steps.classify.outputs.classification != 'passed' }}
+        continue-on-error: true
+        env:
+          CLASSIFICATION: ${{ steps.classify.outputs.classification }}
+        run: |
+          set -euo pipefail
+          case "$CLASSIFICATION" in
+            test_failure|hung_test|infrastructure_failure|missing_results)
+              echo "channel=C0AC5T013V1" >> "$GITHUB_OUTPUT"   # #ci-cleanup
+              echo "severity=loud" >> "$GITHUB_OUTPUT"
+              ;;
+            passed_with_retries|cancelled)
+              echo "channel=C0C008ZAK0V" >> "$GITHUB_OUTPUT"   # #pw-health
+              echo "severity=quiet" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "channel=" >> "$GITHUB_OUTPUT"
+              echo "severity=" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Build the Slack payload
+        id: slack-payload
+        if: ${{ always() && steps.slack-route.outputs.channel != '' }}
+        continue-on-error: true
+        env:
+          CLASSIFICATION: ${{ steps.classify.outputs.classification }}
+          CHANNEL: ${{ steps.slack-route.outputs.channel }}
+          SEVERITY: ${{ steps.slack-route.outputs.severity }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' > slack.json
+          import json, os
+          ledger = json.load(open(os.environ["RUNNER_TEMP"] + "/main-lane/outcome.json"))
+          counts = ledger["counts"]
+          sha = os.environ.get("GITHUB_SHA", "")[:7]
+          severity = os.environ["SEVERITY"]
+          emoji, header = (
+              (":red_circle:", "*main lane*")
+              if severity == "loud"
+              else (":large_yellow_circle:", "*main lane (flake awareness)*")
+          )
+          # Slack mrkdwn has no []() links; it uses <url|text>.
+          lines = [
+              f"{emoji} {header} — `{os.environ['CLASSIFICATION']}`"
+              f" at <{os.environ['COMMIT_URL']}|{sha}>",
+              f"{counts['failed']} failed and {counts['retryPassed']} passed only on"
+              f" retry, of {counts['tests']} tests.",
+          ]
+          lines += [f"• `{r['file']}` › {r['title']}" for r in ledger["failures"][:10]]
+          lines += [
+              f"• (first attempt) `{r['file']}` › {r['title']}"
+              for r in ledger["retryPasses"][:10]
+          ]
+          lines.append(f"<{os.environ['RUN_URL']}|run>")
+          json.dump({"channel": os.environ["CHANNEL"], "text": "\n".join(lines)}, open("slack.json", "w"))
+          PY
+
+      - name: Post to Slack
+        if: ${{ always() && steps.slack-payload.outcome == 'success' }}
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          # Keep on — the action discards Slack API errors by default.
+          errors: true
+          payload-file-path: slack.json
