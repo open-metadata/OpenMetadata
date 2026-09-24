@@ -13,6 +13,7 @@
 
 import { BadgeColors } from '@openmetadata/ui-core-components';
 import { EntityReference, Task } from '../../../../generated/entity/tasks/task';
+import { TestCase } from '../../../../generated/tests/testCase';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { EntityUnion } from '../../../Explore/ExplorePage.interface';
 
@@ -105,8 +106,34 @@ export interface TaskAboutEntity {
   downstreamCount?: number;
   /** Usage count for the current calendar week, not a rolling seven days. */
   weeklyQueryCount?: number;
+  /** The failing test case behind an incident. */
+  testCase?: TestCase;
+  /** FQN of the table an incident's test case runs against. */
+  testCaseTableFqn?: string;
   ownerCount?: number;
   updatedAt?: number;
+}
+
+/**
+ * One tile in the asset card's strip. Data, not markup, so the per-type choice
+ * of tiles stays a pure function and one renderer draws every tile set.
+ */
+export interface StatTile {
+  key: string;
+  /** Already translated. */
+  label: string;
+  value: string;
+  /**
+   * `metric` puts a large value over its label — a count or a time. `field`
+   * puts the label first — a named property such as a test type.
+   */
+  layout?: 'metric' | 'field';
+  /** Colours a value that needs a reviewer's attention. */
+  tone?: 'error' | 'warning';
+  /** Renders the value as a link. */
+  to?: string;
+  /** Renders the value as a coloured badge. */
+  badgeColor?: BadgeColors;
 }
 
 export interface TaskStatTilesProps {

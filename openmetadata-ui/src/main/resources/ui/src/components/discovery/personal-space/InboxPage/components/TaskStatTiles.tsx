@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 
-import { Box, Skeleton, Typography } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Box,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { getRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
-import { TaskAboutEntity, TaskStatTilesProps } from '../taskDetail.types';
-
-export interface StatTile {
-  key: string;
-  label: string;
-  value: string;
-}
+import { Link } from 'react-router-dom';
+import { StatTile, TaskStatTilesProps } from '../taskDetail.types';
+import { getTaskStatTiles } from '../taskStatTiles.utils';
 
 // Enumerated so Tailwind sees every class literally. The grid always has exactly
 // as many columns as tiles: a hidden tile must not leave an empty cell, which
@@ -36,6 +36,40 @@ const COLUMNS_CLASS: Record<number, string> = {
 };
 const PLACEHOLDER_TILES = [0, 1, 2, 3];
 
+const TONE_CLASS: Record<NonNullable<StatTile['tone']>, string> = {
+  error: 'tw:text-error-primary',
+  warning: 'tw:text-warning-primary',
+};
+
+/** A tile's value as plain text, a link, or a coloured badge. */
+const TileValue: React.FC<{ tile: StatTile }> = ({ tile }) => {
+  if (tile.to) {
+    return (
+      <Link
+        className="tw:font-mono tw:text-sm tw:text-utility-blue-dark-500 tw:underline!"
+        to={tile.to}>
+        {tile.value}
+      </Link>
+    );
+  }
+  if (tile.badgeColor) {
+    return (
+      <Badge color={tile.badgeColor} size="sm" type="color">
+        {tile.value}
+      </Badge>
+    );
+  }
+
+  return (
+    <Typography
+      className={classNames(tile.tone && TONE_CLASS[tile.tone])}
+      size={tile.layout === 'field' ? 'text-sm' : 'text-lg'}
+      weight="semibold">
+      {tile.value}
+    </Typography>
+  );
+};
+
 export interface TaskStatTileGridProps {
   tiles: StatTile[];
   isLoading?: boolean;
@@ -46,6 +80,9 @@ export interface TaskStatTileGridProps {
 /**
  * The asset card's strip of stat tiles. Shared so a plugin supplying its own
  * tiles for a task type renders them exactly as the inbox does.
+ *
+ * A `metric` tile puts its value first — a count or a time. A `field` tile puts
+ * its label first — a named property such as a test type.
  */
 export const TaskStatTileGrid: React.FC<TaskStatTileGridProps> = ({
   tiles,
@@ -74,95 +111,51 @@ export const TaskStatTileGrid: React.FC<TaskStatTileGridProps> = ({
   return (
     <Box
       className={classNames(
-        'tw:grid tw:grid-cols-1 tw:gap-px tw:bg-border-secondary',
+        'tw:grid tw:grid-cols-1 tw:gap-px tw:border-t tw:border-secondary tw:bg-border-secondary',
         COLUMNS_CLASS[Math.min(tiles.length, 5)]
       )}
       data-testid={`${testIdPrefix}-tiles`}>
-      {tiles.map((tile) => (
-        <Box
-          className="tw:bg-primary tw:p-4"
-          data-testid={`${testIdPrefix}-${tile.key}`}
-          direction="col"
-          gap={1}
-          key={tile.key}>
-          <Typography size="text-lg" weight="semibold">
-            {tile.value}
-          </Typography>
+      {tiles.map((tile) => {
+        const label = (
           <Typography className="tw:text-secondary" size="text-xs">
             {tile.label}
           </Typography>
-        </Box>
-      ))}
+        );
+        const isField = tile.layout === 'field';
+
+        return (
+          <Box
+            align="start"
+            className="tw:bg-primary tw:p-4"
+            data-testid={`${testIdPrefix}-${tile.key}`}
+            direction="col"
+            gap={1}
+            key={tile.key}>
+            {isField && label}
+            <TileValue tile={tile} />
+            {!isField && label}
+          </Box>
+        );
+      })}
     </Box>
   );
 };
 
-type Translate = (key: string, options?: Record<string, unknown>) => string;
-
 /**
- * The tiles a task's asset can actually back with data today. A value that is
- * missing (an entity type without columns, a lineage service that did not
- * answer) drops its tile rather than showing a zero it cannot vouch for.
+ * The asset context strip inside the task's asset card, chosen by task type. A
+ * plugin can replace it for a type it owns (`InboxTaskPanelContribution.stats`).
  */
-const getStatTiles = (about: TaskAboutEntity, t: Translate): StatTile[] => {
-  const tiles: StatTile[] = [];
-
-  if (about.downstreamCount !== undefined) {
-    tiles.push({
-      key: 'downstream',
-      label: t('label.downstream'),
-      value: String(about.downstreamCount),
-    });
-  }
-  if (about.columnCount !== undefined) {
-    tiles.push({
-      key: 'columns',
-      label: t('label.column-plural'),
-      value: String(about.columnCount),
-    });
-  }
-  // A calendar-week figure, so it is labelled as this week rather than as the
-  // last seven days.
-  if (about.weeklyQueryCount !== undefined) {
-    tiles.push({
-      key: 'queries',
-      label: t('label.queries-this-week'),
-      value: String(about.weeklyQueryCount),
-    });
-  }
-  // Nothing records when an asset lost its owner, so an unowned asset says so
-  // plainly instead of showing a count of zero or a duration it cannot know.
-  if (about.ownerCount !== undefined) {
-    tiles.push({
-      key: 'owners',
-      label: t('label.owner-plural'),
-      value: about.ownerCount ? String(about.ownerCount) : t('label.no-owner'),
-    });
-  }
-  // The only timestamp available is the last metadata change — not data
-  // freshness — so the label names exactly that.
-  if (about.updatedAt) {
-    tiles.push({
-      key: 'updatedAt',
-      label: t('label.metadata-updated'),
-      value: getRelativeTime(about.updatedAt),
-    });
-  }
-
-  return tiles;
-};
-
-/**
- * The asset context strip inside the task's asset card. A plugin can replace it
- * wholesale for a task type it owns (see `InboxTaskPanelContribution.stats`).
- */
-const TaskStatTiles: React.FC<TaskStatTilesProps> = ({ about, isLoading }) => {
+const TaskStatTiles: React.FC<TaskStatTilesProps> = ({
+  task,
+  about,
+  isLoading,
+}) => {
   const { t } = useTranslation();
 
   return (
     <TaskStatTileGrid
       isLoading={isLoading}
-      tiles={about ? getStatTiles(about, t) : []}
+      tiles={about ? getTaskStatTiles(task, about, t) : []}
     />
   );
 };

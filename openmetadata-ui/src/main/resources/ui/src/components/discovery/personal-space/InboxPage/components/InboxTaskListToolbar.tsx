@@ -103,7 +103,7 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
       <FilterSelect
         bordered
         data-testid="inbox-tasks-type-filter"
-        label={t('label.type')}
+        label={t('label.filter')}
         options={typeOptions}
         selectedValues={typeFilter}
         selectionMode="multiple"

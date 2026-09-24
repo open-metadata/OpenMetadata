@@ -121,12 +121,12 @@ describe('getTaskDetailDescriptor', () => {
     expect(getTaskDetailDescriptor(buildTask(), t).callout).toBeUndefined();
   });
 
-  it('lists the proposed and current owners for an ownership task', () => {
+  // Ownership ships plain: who holds the asset now, and when someone asked.
+  it('describes an ownership task by its current holder', () => {
     const descriptor = getTaskDetailDescriptor(
       buildTask({
         type: TaskType.OwnershipUpdate,
         payload: {
-          newOwners: [{ id: 'u2', name: 'bob' }],
           currentOwners: [{ id: 'u3', name: 'carol' }],
           reason: 'The previous owner left.',
         },
@@ -134,10 +134,67 @@ describe('getTaskDetailDescriptor', () => {
       t
     );
 
-    expect(rowKeys(descriptor.rows)).toEqual(
-      expect.arrayContaining(['newOwners', 'currentOwners'])
-    );
+    expect(rowKeys(descriptor.rows)).toEqual(['owner', 'createdAt']);
+    expect(descriptor.rows[0].value).toEqual({
+      kind: 'users',
+      refs: [{ id: 'u3', name: 'carol' }],
+    });
     expect(descriptor.callout?.text).toBe('The previous owner left.');
+  });
+
+  it('says "No owner" when nobody holds the asset', () => {
+    const descriptor = getTaskDetailDescriptor(
+      buildTask({
+        type: TaskType.OwnershipUpdate,
+        payload: {},
+      } as unknown as Partial<Task>),
+      t
+    );
+
+    expect(descriptor.rows[0].value).toEqual({
+      kind: 'text',
+      text: 'label.no-owner',
+    });
+  });
+
+  it('names ownership actions for what they do', () => {
+    expect(
+      getTaskDetailDescriptor(
+        buildTask({
+          type: TaskType.OwnershipUpdate,
+          payload: {},
+        } as unknown as Partial<Task>),
+        t
+      ).actionLabels
+    ).toEqual({
+      approve: 'label.assign-entity:label.owner',
+      reject: 'label.dismiss',
+    });
+  });
+
+  // A plugin that supplies its own rows still gets the inbox's outcome rows.
+  it('keeps the outcome rows under a plugin override', () => {
+    const descriptor = getTaskDetailDescriptor(
+      buildTask({
+        status: 'Rejected',
+        resolution: { resolvedBy: { id: 'u2', name: 'bob' }, resolvedAt: 5 },
+      } as unknown as Partial<Task>),
+      t,
+      {
+        rows: [
+          {
+            key: 'accessType',
+            icon: 'shield',
+            label: 'x',
+            value: { kind: 'text', text: 'Full' },
+          },
+        ],
+      }
+    );
+
+    expect(rowKeys(descriptor.rows)).toEqual(
+      expect.arrayContaining(['accessType', 'resolvedBy'])
+    );
   });
 
   it('reuses the parameterized label for a tier proposal', () => {
@@ -208,7 +265,7 @@ describe('source row', () => {
           },
         } as unknown as Partial<Task>)
       )
-    ).toEqual({ kind: 'text', text: 'label.auto-classification' });
+    ).toEqual({ kind: 'text', text: 'label.auto-classifier' });
   });
 
   // Outside tagging, an agent is not a classifier.

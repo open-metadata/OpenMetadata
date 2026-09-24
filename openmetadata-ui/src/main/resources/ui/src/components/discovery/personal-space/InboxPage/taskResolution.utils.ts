@@ -122,6 +122,20 @@ const REVIEW_CATEGORIES: ReadonlySet<TaskCategory> = new Set([
 ]);
 
 /**
+ * Whether an open task is waiting on the viewer: it is assigned to them or one
+ * of their teams, and they can approve it. Drives both the status label and the
+ * "waiting on you" note, so the two never disagree.
+ */
+export const isTaskPendingViewer = (
+  task: Task,
+  actions: TaskResolveAction[],
+  currentUserIds: ReadonlySet<string>
+): boolean =>
+  isTaskOpen(task) &&
+  (task.assignees ?? []).some((assignee) => currentUserIds.has(assignee.id)) &&
+  actions.some((action) => action.kind === 'approve');
+
+/**
  * The state shown beside the task title. A closed task shows its terminal
  * status; an open one shows what it is waiting on, which is why it needs the
  * viewer's identity and the actions available to them.
@@ -153,9 +167,7 @@ export const getTaskStatusLabel = (
     return { label: t('label.unassigned'), tone: 'gray' };
   }
 
-  const isMine = assignees.some((assignee) => currentUserIds.has(assignee.id));
-  const canApprove = actions.some((action) => action.kind === 'approve');
-  if (isMine && canApprove) {
+  if (isTaskPendingViewer(task, actions, currentUserIds)) {
     return { label: t('label.pending-your-approval'), tone: 'warning' };
   }
   // Nobody can act on it yet: the workflow's own stage name beats a generic

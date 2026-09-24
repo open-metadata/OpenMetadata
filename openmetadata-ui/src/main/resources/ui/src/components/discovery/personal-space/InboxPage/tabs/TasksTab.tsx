@@ -49,6 +49,7 @@ import InboxTaskListToolbar, {
 } from '../components/InboxTaskListToolbar';
 import TaskDetailPanel from '../components/TaskDetailPanel';
 import TaskDetailSkeleton from '../components/TaskDetailSkeleton';
+import { TASK_TYPE_DOT_CLASS } from '../components/TaskTypeIcon';
 import { InboxDateRange, isTaskOpen } from '../inbox.utils';
 import { getTaskTypeBadge } from '../taskDetail.utils';
 import { filterTasksByTypes, groupTasksByType } from '../taskList.utils';
@@ -156,26 +157,37 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
 
   // Grouping covers the pages loaded so far: the server paginates by cursor,
   // not by type, so a later page can reopen a group that already appeared.
-  const groupedList = groupTasksByType(tasks).map((group) => (
-    <Box direction="col" gap={3} key={group.type}>
-      <Box
-        align="center"
-        className="tw:gap-2 tw:px-1"
-        data-testid="inbox-task-group">
-        <Typography
-          className="tw:uppercase tw:text-quaternary tw:tracking-wide"
-          size="text-xs"
-          weight="semibold">
-          {getTaskTypeBadge({ type: group.type } as Task, t).label}
-        </Typography>
-        <Badge color="gray" size="sm" type="pill-color">
-          {group.count}
-        </Badge>
-        <span className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
+  const groupedList = groupTasksByType(tasks).map((group) => {
+    const badge = getTaskTypeBadge({ type: group.type } as Task, t);
+
+    return (
+      <Box direction="col" gap={1} key={group.type}>
+        <Box
+          align="center"
+          className="tw:gap-2 tw:px-1 tw:py-2"
+          data-testid="inbox-task-group">
+          <span
+            aria-hidden
+            className={classNames(
+              'tw:size-1.5 tw:shrink-0 tw:rounded-full',
+              TASK_TYPE_DOT_CLASS[badge.color] ?? TASK_TYPE_DOT_CLASS.gray
+            )}
+          />
+          <Typography
+            className="tw:uppercase tw:text-tertiary tw:tracking-wide"
+            size="text-xs"
+            weight="semibold">
+            {badge.label}
+          </Typography>
+          <Typography className="tw:text-tertiary" size="text-xs">
+            {group.count}
+          </Typography>
+          <span className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
+        </Box>
+        {group.items.map(renderRow)}
       </Box>
-      {group.items.map(renderRow)}
-    </Box>
-  ));
+    );
+  });
 
   return (
     <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[2fr_3fr]">

@@ -65,7 +65,17 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
 }));
 
-jest.mock('@untitledui/icons', () => ({ MessageDotsCircle: () => <span /> }));
+jest.mock(
+  '@untitledui/icons',
+  () =>
+    new Proxy(
+      {},
+      {
+        get: (_target, name: string) =>
+          name === '__esModule' ? false : () => <span />,
+      }
+    )
+);
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -105,6 +115,13 @@ describe('InboxTaskListItem', () => {
     render(<InboxTaskListItem task={task} onClick={jest.fn()} />);
 
     expect(screen.queryByText('Table')).not.toBeInTheDocument();
+  });
+
+  // The type lives in a tinted icon at the start of the row, not a text badge.
+  it('leads the card with the task type icon', () => {
+    render(<InboxTaskListItem task={task} onClick={jest.fn()} />);
+
+    expect(screen.getByTestId('task-type-icon')).toBeInTheDocument();
   });
 
   it('leaves the asset chip off a task that names no entity', () => {

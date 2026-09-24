@@ -14,7 +14,14 @@
 import { render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 
+jest.mock('react-router-dom', () => ({
+  Link: ({ children, to }: { children?: ReactNode; to: string }) => (
+    <a href={to}>{children}</a>
+  ),
+}));
+
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Badge: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
   Box: ({
     children,
     className,
@@ -29,12 +36,19 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     </div>
   ),
   Skeleton: () => <div data-testid="skeleton" />,
-  Typography: ({ children }: { children?: ReactNode }) => (
-    <span>{children}</span>
-  ),
+  Typography: ({
+    children,
+    className,
+  }: {
+    children?: ReactNode;
+    className?: string;
+  }) => <span className={className}>{children}</span>,
 }));
 
+// Spread the real module: routing helpers reached through the tile builder read
+// the day helpers at import time.
 jest.mock('../../../../../utils/date-time/DateTimeUtils', () => ({
+  ...jest.requireActual('../../../../../utils/date-time/DateTimeUtils'),
   getRelativeTime: (ts: number) => `ago-${ts}`,
 }));
 
@@ -52,45 +66,12 @@ const renderTiles = (about?: TaskAboutEntity, isLoading = false) =>
   render(<TaskStatTiles about={about} isLoading={isLoading} task={TASK} />);
 
 describe('TaskStatTiles', () => {
-  // The usage figure is a calendar week, so it must not claim seven days.
-  it('labels the weekly usage as queries this week', () => {
+  it('renders the tiles the task type calls for', () => {
     renderTiles({ weeklyQueryCount: 9 });
 
     expect(screen.getByTestId('task-stat-queries')).toHaveTextContent(
       '9label.queries-this-week'
     );
-  });
-
-  // Nothing records when an asset lost its owner, so no duration is shown.
-  it('says "No owner" for an unowned asset rather than a zero', () => {
-    renderTiles({ ownerCount: 0 });
-
-    expect(screen.getByTestId('task-stat-owners')).toHaveTextContent(
-      'label.no-owner'
-    );
-  });
-
-  it('counts owners when the asset has them', () => {
-    renderTiles({ ownerCount: 2 });
-
-    expect(screen.getByTestId('task-stat-owners')).toHaveTextContent('2');
-  });
-
-  // The timestamp is the last metadata change, not data freshness.
-  it('names the timestamp as a metadata update, relative to now', () => {
-    renderTiles({ updatedAt: 1000 });
-
-    expect(screen.getByTestId('task-stat-updatedAt')).toHaveTextContent(
-      'ago-1000label.metadata-updated'
-    );
-  });
-
-  it('hides a tile whose number is unknown', () => {
-    renderTiles({ downstreamCount: 3 });
-
-    expect(screen.getByTestId('task-stat-downstream')).toBeInTheDocument();
-    expect(screen.queryByTestId('task-stat-queries')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('task-stat-owners')).not.toBeInTheDocument();
   });
 
   it('renders nothing when no number is known', () => {
@@ -117,6 +98,40 @@ describe('TaskStatTileGrid', () => {
     expect(screen.getByTestId('task-stat-tiles')).toHaveClass(
       'tw:sm:grid-cols-2'
     );
+  });
+
+  // A named property reads label-first; a figure reads value-first.
+  it('puts the label of a field tile before its value', () => {
+    render(
+      <TaskStatTileGrid
+        tiles={[{ key: 'k', label: 'LABEL', value: 'VALUE', layout: 'field' }]}
+      />
+    );
+
+    expect(screen.getByTestId('task-stat-k')).toHaveTextContent('LABELVALUE');
+  });
+
+  it('renders a linked value as a link', () => {
+    render(
+      <TaskStatTileGrid
+        tiles={[{ key: 'k', label: 'Table', value: 'orders', to: '/t/orders' }]}
+      />
+    );
+
+    expect(screen.getByRole('link', { name: 'orders' })).toHaveAttribute(
+      'href',
+      '/t/orders'
+    );
+  });
+
+  it('colours a value that needs attention', () => {
+    render(
+      <TaskStatTileGrid
+        tiles={[{ key: 'k', label: 'Columns', value: '38', tone: 'error' }]}
+      />
+    );
+
+    expect(screen.getByText('38')).toHaveClass('tw:text-error-primary');
   });
 
   it('prefixes the test ids for a plugin-owned tile set', () => {

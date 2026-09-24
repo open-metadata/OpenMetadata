@@ -13,32 +13,23 @@
 
 import {
   Badge,
-  BadgeWithDot,
   Box,
   Button,
+  Dot,
   Dropdown,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  AlertTriangle,
-  Archive,
-  CheckCircle,
-  DotsVertical,
-  File02,
-  Key01,
-  Star01,
-  Tag01,
-  Users01,
-  XCircle,
-} from '@untitledui/icons';
+import { CheckCircle, DotsVertical, XCircle } from '@untitledui/icons';
+import classNames from 'classnames';
 import React, { ComponentProps, ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UserTeamSelectableList } from '../../../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { Task } from '../../../../../generated/entity/tasks/task';
 import { EntityReference } from '../../../../../generated/entity/teams/user';
-import { TaskTypeBadge, TaskTypeIconKey } from '../taskDetail.types';
-import { TaskStatusBadge } from '../taskResolution.utils';
+import { TaskTypeBadge } from '../taskDetail.types';
+import { TaskStatusBadge, TaskStatusTone } from '../taskResolution.utils';
 import { splitTaskActions, TaskResolveAction } from '../taskResolve.utils';
+import { TASK_TYPE_ICON } from './TaskTypeIcon';
 
 export interface TaskDetailHeaderProps {
   task: Task;
@@ -52,18 +43,16 @@ export interface TaskDetailHeaderProps {
   onTransition: (action: TaskResolveAction) => () => void;
 }
 
-const TYPE_ICON: Record<TaskTypeIconKey, typeof CheckCircle> = {
-  access: Key01,
-  approval: CheckCircle,
-  deprecation: Archive,
-  description: File02,
-  incident: AlertTriangle,
-  ownership: Users01,
-  tag: Tag01,
-  tier: Star01,
-};
-
 type TaskActionButtonColor = ComponentProps<typeof Button>['color'];
+
+// The status reads as a coloured dot and word beside the id, not as a pill:
+// the type chip is the header's one badge.
+const STATUS_TONE_CLASS: Record<TaskStatusTone, string> = {
+  success: 'tw:text-success-primary',
+  error: 'tw:text-error-primary',
+  warning: 'tw:text-warning-primary',
+  gray: 'tw:text-tertiary',
+};
 
 const getTaskActionTestId = (action: TaskResolveAction): string => {
   if (action.kind === 'approve') {
@@ -171,7 +160,7 @@ const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
   const { t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { primary, secondary, overflow } = splitTaskActions(actions);
-  const TypeIcon = TYPE_ICON[typeBadge.icon];
+  const TypeIcon = TASK_TYPE_ICON[typeBadge.icon];
   // An assignee action opens a picker rather than firing, so it cannot live in
   // the menu — it stays a button even when it did not win a header slot.
   const menuActions = overflow.filter((action) => action.kind !== 'assignee');
@@ -197,13 +186,16 @@ const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           {task.taskId ?? ''}
         </Typography>
         {statusBadge && (
-          <BadgeWithDot
-            color={statusBadge.tone}
-            data-testid="task-status-badge"
-            size="sm"
-            type="color">
+          <span
+            className={classNames(
+              'tw:inline-flex tw:items-center tw:gap-1.5 tw:text-sm tw:font-medium',
+              STATUS_TONE_CLASS[statusBadge.tone]
+            )}
+            data-color={statusBadge.tone}
+            data-testid="task-status-badge">
+            <Dot aria-hidden size="sm" />
             {statusBadge.label}
-          </BadgeWithDot>
+          </span>
         )}
       </Box>
 

@@ -15,11 +15,16 @@ import { useQuery } from '@tanstack/react-query';
 import { EntityType } from '../../../../enums/entity.enum';
 import { LineageDirection } from '../../../../generated/api/lineage/lineageDirection';
 import { Task } from '../../../../generated/entity/tasks/task';
+import { TestCase } from '../../../../generated/tests/testCase';
 import { getLineageByEntityCount } from '../../../../rest/lineageAPI';
 import { getEntityByFqnUtil } from '../../../../utils/EntityByFqnUtils';
+import EntityLink from '../../../../utils/EntityLink';
 import { EntityUnion } from '../../../Explore/ExplorePage.interface';
 import { TaskAboutEntity } from './taskDetail.types';
-import { deriveTaskAboutEntity } from './taskDetail.utils';
+import {
+  deriveTaskAboutEntity,
+  resolveIncidentTestCaseFqn,
+} from './taskDetail.utils';
 
 export const TASK_ABOUT_ENTITY_QUERY_KEY = 'inbox-task-about-entity';
 const ABOUT_STALE_TIME = 60_000;
@@ -37,11 +42,35 @@ interface TaskAboutTarget {
   entityType: string;
 }
 
+// An incident often names no `about`; its failing test case is then read off the
+// description, which is still enough to show what failed and against what.
 const getAboutTarget = (task?: Task): TaskAboutTarget | undefined => {
   const fqn = task?.about?.fullyQualifiedName;
   const entityType = task?.about?.type;
+  if (fqn && entityType) {
+    return { fqn, entityType };
+  }
+  const testCaseFqn = task ? resolveIncidentTestCaseFqn(task) : '';
 
-  return fqn && entityType ? { fqn, entityType } : undefined;
+  return testCaseFqn.includes('.')
+    ? { fqn: testCaseFqn, entityType: EntityType.TEST_CASE }
+    : undefined;
+};
+
+/** The test case's own context: what it tests, and against which table. */
+const fetchTestCaseContext = async (fqn: string): Promise<TaskAboutEntity> => {
+  const testCase = (await getEntityByFqnUtil(
+    EntityType.TEST_CASE,
+    fqn
+  )) as TestCase | null;
+
+  return {
+    ...deriveTaskAboutEntity(testCase ?? undefined),
+    testCase: testCase ?? undefined,
+    testCaseTableFqn: testCase?.entityLink
+      ? EntityLink.getEntityFqn(testCase.entityLink)
+      : undefined,
+  };
 };
 
 const fetchDownstreamCount = async ({
@@ -86,6 +115,10 @@ export const useTaskAboutEntity = (task?: Task): UseTaskAboutEntityResult => {
     staleTime: ABOUT_STALE_TIME,
     queryFn: async () => {
       const { fqn, entityType } = target as TaskAboutTarget;
+      // A test case has no lineage of its own; its tiles describe the test.
+      if (entityType === EntityType.TEST_CASE) {
+        return fetchTestCaseContext(fqn);
+      }
       const fields =
         entityType === EntityType.TABLE ? TABLE_FIELDS : COMMON_FIELDS;
       const [entity, downstream] = await Promise.allSettled([

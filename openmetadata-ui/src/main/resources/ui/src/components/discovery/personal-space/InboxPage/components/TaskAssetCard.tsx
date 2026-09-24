@@ -37,8 +37,8 @@ export interface TaskAssetCardProps {
  * The asset a task is about: what it is, how it is classified, a way into it,
  * and the few numbers that tell a reviewer whether the change matters.
  *
- * Renders nothing when the task names no entity — an incident carries its
- * failing test case in the title instead.
+ * Renders nothing when neither the task nor its incident test case names an
+ * entity.
  */
 const TaskAssetCard: React.FC<TaskAssetCardProps> = ({
   task,
@@ -47,7 +47,20 @@ const TaskAssetCard: React.FC<TaskAssetCardProps> = ({
   StatTiles = TaskStatTiles,
 }) => {
   const { t } = useTranslation();
-  const aboutRef = task.about;
+  // An incident often names no `about`; its failing test case, fetched from the
+  // description, stands in so the card still says what failed.
+  const testCase = about?.testCase;
+  const aboutRef =
+    task.about ??
+    (testCase?.fullyQualifiedName
+      ? {
+          id: testCase.id,
+          type: EntityType.TEST_CASE,
+          name: testCase.name,
+          displayName: testCase.displayName,
+          fullyQualifiedName: testCase.fullyQualifiedName,
+        }
+      : undefined);
 
   if (!aboutRef?.fullyQualifiedName || !aboutRef.type) {
     return null;

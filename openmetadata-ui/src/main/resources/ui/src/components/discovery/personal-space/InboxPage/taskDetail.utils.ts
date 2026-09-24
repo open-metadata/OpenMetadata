@@ -219,11 +219,15 @@ const getSourceLabel = (
 // On a tag request the agent is the auto-classifier, which is what a reviewer
 // knows it as.
 const TAG_SOURCE_OVERRIDES: Record<string, string> = {
-  Agent: 'label.auto-classification',
+  Agent: 'label.auto-classifier',
 };
 
 /** Assignee / requester / opened-on, which every task type shows. */
-const getCommonRows = (task: Task, t: Translate): TaskDetailRow[] => [
+const getCommonRows = (
+  task: Task,
+  t: Translate,
+  dateLabelKey = 'label.opened-on'
+): TaskDetailRow[] => [
   ...usersRow('assignees', 'user', t('label.assignee'), task.assignees),
   ...usersRow(
     'createdBy',
@@ -231,7 +235,7 @@ const getCommonRows = (task: Task, t: Translate): TaskDetailRow[] => [
     t('label.created-by'),
     task.createdBy ? [task.createdBy] : []
   ),
-  ...dateRow('createdAt', t('label.created-on'), task.createdAt),
+  ...dateRow('createdAt', t(dateLabelKey), task.createdAt),
 ];
 
 /**
@@ -276,10 +280,8 @@ const describeIncident = (
 
   return {
     subtitleKey: 'message.task-opened-this-incident',
-    rows: [
-      ...getCommonRows(task, t),
-      ...textRow('severity', 'shield', t('label.severity'), payload.severity),
-    ],
+    // Severity sits in the asset card's tiles, beside the failing test.
+    rows: getCommonRows(task, t),
     callout: payload.failureReason
       ? { label: t('label.failure-comment'), text: payload.failureReason }
       : undefined,
@@ -293,8 +295,12 @@ const describeTagUpdate = (
   const payload = getPayload<TagUpdatePayload>(task);
 
   return {
+    subtitleKey: 'message.task-requested',
+    actionLabels: {
+      approve: t('label.approve-entity', { entity: t('label.tag') }),
+    },
     rows: [
-      ...tagsRow('tags', t('label.tag-plural'), payload.tagsToAdd),
+      ...tagsRow('tags', t('label.tag'), payload.tagsToAdd),
       ...textRow(
         'source',
         'source',
@@ -307,9 +313,11 @@ const describeTagUpdate = (
         t('label.requested-by'),
         task.createdBy ? [task.createdBy] : []
       ),
-      ...dateRow('requestedOn', t('label.created-on'), task.createdAt),
-      ...usersRow('assignees', 'user', t('label.assignee'), task.assignees),
+      ...dateRow('requestedOn', t('label.requested-on'), task.createdAt),
     ],
+    callout: task.description
+      ? { label: t('label.justification'), text: task.description }
+      : undefined,
   };
 };
 
@@ -320,8 +328,9 @@ const describeDescriptionUpdate = (
   const payload = getPayload<DescriptionUpdatePayload>(task);
 
   return {
+    subtitleKey: 'message.task-requested',
     rows: [
-      ...getCommonRows(task, t),
+      ...getCommonRows(task, t, 'label.requested-on'),
       ...textRow('fieldPath', 'type', t('label.field'), payload.fieldPath),
       ...textRow(
         'source',
@@ -346,8 +355,9 @@ const describeSuggestion = (
   const payload = getPayload<SuggestionPayload>(task);
 
   return {
+    subtitleKey: 'message.task-requested',
     rows: [
-      ...getCommonRows(task, t),
+      ...getCommonRows(task, t, 'label.requested-on'),
       ...textRow('fieldPath', 'type', t('label.field'), payload.fieldPath),
       ...textRow(
         'source',
@@ -367,22 +377,29 @@ const describeOwnershipUpdate = (
   t: Translate
 ): Partial<TaskDetailDescriptor> => {
   const payload = getPayload<OwnershipUpdatePayload>(task);
+  const currentOwners = payload.currentOwners ?? [];
 
   return {
+    subtitleKey: 'message.task-asked',
+    actionLabels: {
+      approve: t('label.assign-entity', { entity: t('label.owner') }),
+      reject: t('label.dismiss'),
+    },
     rows: [
-      ...usersRow(
-        'newOwners',
-        'owner',
-        t('label.new-entity', { entity: t('label.owner-plural') }),
-        payload.newOwners
-      ),
-      ...usersRow(
-        'currentOwners',
-        'owner',
-        t('label.current-entity', { entity: t('label.owner-plural') }),
-        payload.currentOwners
-      ),
-      ...getCommonRows(task, t),
+      currentOwners.length
+        ? {
+            key: 'owner',
+            icon: 'owner',
+            label: t('label.owner'),
+            value: { kind: 'users', refs: currentOwners },
+          }
+        : {
+            key: 'owner',
+            icon: 'owner',
+            label: t('label.owner'),
+            value: { kind: 'text', text: t('label.no-owner') },
+          },
+      ...dateRow('createdAt', t('label.raised-on'), task.createdAt),
     ],
     callout: payload.reason
       ? { label: t('label.context'), text: payload.reason }
@@ -397,6 +414,7 @@ const describeTierUpdate = (
   const payload = getPayload<TierUpdatePayload>(task);
 
   return {
+    subtitleKey: 'message.task-requested',
     rows: [
       ...tagsRow(
         'newTier',
@@ -408,7 +426,7 @@ const describeTierUpdate = (
         t('label.current-entity', { entity: t('label.tier') }),
         payload.currentTier ? [payload.currentTier] : []
       ),
-      ...getCommonRows(task, t),
+      ...getCommonRows(task, t, 'label.requested-on'),
     ],
     callout: payload.reason
       ? { label: t('label.context'), text: payload.reason }
@@ -423,6 +441,7 @@ const describeDomainUpdate = (
   const payload = getPayload<DomainUpdatePayload>(task);
 
   return {
+    subtitleKey: 'message.task-requested',
     rows: [
       ...usersRow(
         'newDomain',
@@ -430,7 +449,7 @@ const describeDomainUpdate = (
         t('label.new-entity', { entity: t('label.domain') }),
         payload.newDomain ? [payload.newDomain as EntityReference] : []
       ),
-      ...getCommonRows(task, t),
+      ...getCommonRows(task, t, 'label.requested-on'),
     ],
     callout: payload.reason
       ? { label: t('label.context'), text: payload.reason }
@@ -453,30 +472,37 @@ const DESCRIBERS: Record<string, Describer> = {
 
 /**
  * The type-specific description of a task's detail pane: header chip, subtitle,
- * summary rows and callout. A plugin may override any slice of this through the
+ * summary rows and callout. `override` carries a plugin's slices from the
  * `inbox.task-panels` extension point (see `InboxTaskPanelContribution`).
  *
  * Every descriptor ends with the closed-task outcome rows, so resolution details
- * surface regardless of type.
+ * surface regardless of type or of who described it.
  */
 export const getTaskDetailDescriptor = (
   task: Task,
-  t: Translate
+  t: Translate,
+  override?: Partial<TaskDetailDescriptor>
 ): TaskDetailDescriptor => {
   const describe = DESCRIBERS[task.type];
-  const specific = describe
-    ? describe(task, t)
-    : {
-        rows: getCommonRows(task, t),
-        callout: task.description
-          ? { label: t('label.context'), text: task.description }
-          : undefined,
-      };
+  const specific = {
+    ...(describe
+      ? describe(task, t)
+      : {
+          rows: getCommonRows(task, t),
+          callout: task.description
+            ? { label: t('label.context'), text: task.description }
+            : undefined,
+        }),
+    // A plugin's slices win, but only the slices it sets.
+    ...override,
+  };
 
   return {
     typeBadge: getTaskTypeBadge(task, t),
     subtitleKey: 'message.task-opened-by',
     ...specific,
+    // Outcome rows are the inbox's, whoever described the rest: a plugin that
+    // supplies its own rows still gets resolved-by / resolved-on appended.
     rows: [...(specific.rows ?? []), ...getResolutionRows(task, t)],
   };
 };

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import {
   Calendar,
   Clock,
@@ -26,7 +26,6 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import { getTagDisplay } from '../../../../../utils/TagsPureUtils';
 import { formatInboxDate } from '../inbox.utils';
 import {
   TaskDetailCallout,
@@ -79,15 +78,12 @@ const RowValue: React.FC<{ value: TaskDetailRowValue }> = ({ value }) => {
         </Box>
       );
 
+    // The full tag FQN, as a reviewer searches for it: "PII.Sensitive".
     case 'tags':
       return (
-        <Box align="center" className="tw:flex-wrap" gap={1}>
-          {value.tags.map((tag) => (
-            <Badge color="gray" key={tag.tagFQN} size="sm" type="modern">
-              {getTagDisplay(tag.tagFQN)}
-            </Badge>
-          ))}
-        </Box>
+        <Typography className="tw:font-mono" size="text-sm" weight="medium">
+          {value.tags.map((tag) => tag.tagFQN).join(', ')}
+        </Typography>
       );
 
     case 'link':

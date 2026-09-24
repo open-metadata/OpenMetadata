@@ -62,7 +62,10 @@ import {
   getTaskDetailDescriptor,
   resolveIncidentTestCaseFqn,
 } from '../taskDetail.utils';
-import { getTaskStatusLabel } from '../taskResolution.utils';
+import {
+  getTaskStatusLabel,
+  isTaskPendingViewer,
+} from '../taskResolution.utils';
 import {
   buildResolveBody,
   getTaskResolveActions,
@@ -337,13 +340,24 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     [extensionRegistry, task]
   );
 
+  const descriptor = useMemo(
+    () =>
+      task
+        ? getTaskDetailDescriptor(task, t, contribution?.describe?.(task, t))
+        : undefined,
+    [task, contribution, t]
+  );
+
   const actions = useMemo(() => {
     if (!task || isSyncingTransitions) {
       return [];
     }
     const effective = getTaskResolveActions(
       task,
-      { approve: t('label.approve'), reject: t('label.reject') },
+      {
+        approve: descriptor?.actionLabels?.approve ?? t('label.approve'),
+        reject: descriptor?.actionLabels?.reject ?? t('label.reject'),
+      },
       formSchema
     ).filter((action) => !consumedTransitionIdsRef.current.has(action.id));
 
@@ -359,7 +373,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     }
 
     return effective;
-  }, [task, isSyncingTransitions, canResolveTask, formSchema, t]);
+  }, [task, isSyncingTransitions, canResolveTask, formSchema, descriptor, t]);
 
   // Stop an in-flight sync on unmount: no state set, no timer left behind.
   useEffect(
@@ -557,17 +571,6 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     [currentUser?.id, currentUser?.teams]
   );
 
-  const descriptor = useMemo(
-    () =>
-      task
-        ? {
-            ...getTaskDetailDescriptor(task, t),
-            ...(contribution?.describe?.(task, t) ?? {}),
-          }
-        : undefined,
-    [task, contribution, t]
-  );
-
   if (!task || !descriptor) {
     return isLoading ? (
       <TaskDetailSkeleton />
@@ -583,6 +586,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   }
 
   const statusBadge = getTaskStatusLabel(task, actions, currentUserIds, t);
+  const isWaitingOnViewer = isTaskPendingViewer(task, actions, currentUserIds);
   // Titleless tasks (governance workflows) carry the taskId as their name, so
   // getTaskTitle composes a title from the task type and the entity it is about
   // instead of repeating the id.
@@ -627,6 +631,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
                 user: getEntityName(task.createdBy),
                 time: getRelativeTime(task.createdAt),
               })}
+              {isWaitingOnViewer && ` · ${t('label.waiting-on-you')}`}
             </Typography>
           </Box>
         </Box>

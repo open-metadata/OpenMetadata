@@ -255,6 +255,7 @@ jest.mock('components/common/RichTextEditor/RichTextEditorPreviewerV1', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Dot: () => <span />,
   BadgeWithDot: ({
     children,
     color,

@@ -19,7 +19,9 @@ import { useTranslation } from 'react-i18next';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { Task } from '../../../../../generated/entity/tasks/task';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { getTaskTypeBadge } from '../taskDetail.utils';
 import { getTaskTitle } from '../taskTitle.utils';
+import TaskTypeIcon from './TaskTypeIcon';
 
 export interface InboxTaskListItemProps {
   task: Task;
@@ -31,7 +33,10 @@ const Dot: React.FC = () => (
   <span className="tw:h-1 tw:w-1 tw:shrink-0 tw:rounded-full tw:bg-utility-gray-blue-300" />
 );
 
-/** The card's second line: task id, who raised it, and the asset it concerns. */
+/**
+ * The card's second line: task id, who raised it and the asset it concerns,
+ * with the comment count at the far end.
+ */
 const TaskCardMeta: React.FC<{ task: Task }> = ({ task }) => {
   const requester = task.createdBy;
   const requesterName = requester?.displayName ?? requester?.name;
@@ -62,21 +67,27 @@ const TaskCardMeta: React.FC<{ task: Task }> = ({ task }) => {
         </>
       )}
       {assetName && (
-        <Badge
-          className="tw:ml-auto tw:shrink-0 tw:font-mono"
-          size="sm"
-          type="modern">
+        <Badge className="tw:shrink-0 tw:font-mono" size="sm" type="modern">
           {assetName}
         </Badge>
       )}
+      <Box align="center" className="tw:ml-auto tw:shrink-0 tw:gap-1">
+        <MessageDotsCircle
+          className="tw:text-secondary"
+          height={14}
+          width={14}
+        />
+        <Typography className="tw:text-secondary" size="text-xs">
+          {task.commentCount ?? task.comments?.length ?? 0}
+        </Typography>
+      </Box>
     </Box>
   );
 };
 
 /**
- * Compact task card in the Inbox Tasks tab: the title and comment count on top,
- * then a meta row of id · requester · the asset it concerns. The task's type is
- * carried by the list's group header rather than repeated on every card.
+ * Compact task card in the Inbox Triage list: the type's tinted icon, the title,
+ * then a meta row of id · requester · the asset it concerns · comment count.
  */
 const InboxTaskListItem: React.FC<InboxTaskListItemProps> = ({
   task,
@@ -84,7 +95,6 @@ const InboxTaskListItem: React.FC<InboxTaskListItemProps> = ({
   onClick,
 }) => {
   const { t } = useTranslation();
-  const commentCount = task.commentCount ?? task.comments?.length ?? 0;
   // Titleless tasks (governance workflows) carry the taskId as their name, so
   // getTaskTitle composes a title from the task type and the entity it is about
   // instead of repeating the id shown in the meta row.
@@ -92,15 +102,15 @@ const InboxTaskListItem: React.FC<InboxTaskListItemProps> = ({
 
   return (
     <Box
+      align="start"
       className={classNames(
         'tw:cursor-pointer tw:rounded-xl tw:border tw:px-4 tw:py-3 tw:transition',
         isActive
           ? 'tw:border-utility-brand-300 tw:bg-utility-brand-50'
-          : 'tw:border-utility-gray-blue-100 tw:hover:bg-utility-gray-blue-50'
+          : 'tw:border-transparent tw:hover:bg-utility-gray-blue-50'
       )}
       data-testid={`inbox-task-${task.id}`}
-      direction="col"
-      gap={2}
+      gap={3}
       role="button"
       tabIndex={0}
       onClick={() => onClick(task)}
@@ -110,7 +120,8 @@ const InboxTaskListItem: React.FC<InboxTaskListItemProps> = ({
           onClick(task);
         }
       }}>
-      <Box align="start" className="tw:justify-between tw:gap-2">
+      <TaskTypeIcon badge={getTaskTypeBadge(task, t)} />
+      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={2}>
         {taskTitle && (
           <Typography
             className="tw:text-left tw:text-primary-900"
@@ -120,21 +131,8 @@ const InboxTaskListItem: React.FC<InboxTaskListItemProps> = ({
             {taskTitle}
           </Typography>
         )}
-        {/* ml-auto, not justify-between alone: a titleless card leaves this as
-        the row's only child, which justify-between would push to the start. */}
-        <Box align="center" className="tw:ml-auto tw:shrink-0 tw:gap-1">
-          <MessageDotsCircle
-            className="tw:text-secondary"
-            height={14}
-            width={14}
-          />
-          <Typography className="tw:text-secondary" size="text-xs">
-            {commentCount}
-          </Typography>
-        </Box>
+        <TaskCardMeta task={task} />
       </Box>
-
-      <TaskCardMeta task={task} />
     </Box>
   );
 };
