@@ -80,6 +80,7 @@ export const NavList = ({
             <NavItemBase
               badge={item.badge}
               current={activeUrl === item.href}
+              dataTestId={item.dataTestId}
               href={item.href}
               icon={item.icon}
               size={size}

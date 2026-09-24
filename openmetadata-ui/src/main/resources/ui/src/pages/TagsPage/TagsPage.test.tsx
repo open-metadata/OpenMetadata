@@ -640,6 +640,26 @@ describe('Test TagsPage page', () => {
     expect(getByText(getAllCounts[2], '5')).toBeInTheDocument();
   });
 
+  it('Classification LeftPanel should render links with the current one marked', async () => {
+    render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
+    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+
+    const sidePanelCategories = await screen.findAllByTestId(
+      'side-panel-classification'
+    );
+    const currentCategories = sidePanelCategories.filter(
+      (item) => item.getAttribute('aria-current') === 'page'
+    );
+
+    sidePanelCategories.forEach((item) => expect(item).toHaveAttribute('href'));
+
+    expect(currentCategories).toHaveLength(1);
+    expect(currentCategories[0]).toHaveTextContent(
+      MOCK_ALL_CLASSIFICATIONS.data[0].displayName ??
+        MOCK_ALL_CLASSIFICATIONS.data[0].name
+    );
+  });
+
   it('OnClick of add new tag, Form should display in drawer', async () => {
     render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));

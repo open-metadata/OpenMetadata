@@ -52,6 +52,8 @@ interface NavItemBaseProps {
   onClick?: MouseEventHandler;
   /** Content to display. */
   children?: ReactNode;
+  /** `data-testid` forwarded to the rendered link. */
+  dataTestId?: string;
 }
 
 export const NavItemBase = ({
@@ -63,6 +65,7 @@ export const NavItemBase = ({
   children,
   truncate = true,
   size = 'md',
+  dataTestId,
   onClick,
 }: NavItemBaseProps) => {
   const iconElement = Icon && (
@@ -135,6 +138,7 @@ export const NavItemBase = ({
           styles.root,
           current && styles.rootSelected
         )}
+        data-testid={dataTestId}
         href={href!}
         rel="noopener noreferrer"
         target={isExternal ? '_blank' : '_self'}
@@ -154,6 +158,7 @@ export const NavItemBase = ({
         styles.root,
         current && styles.rootSelected
       )}
+      data-testid={dataTestId}
       href={href!}
       rel="noopener noreferrer"
       target={isExternal ? '_blank' : '_self'}

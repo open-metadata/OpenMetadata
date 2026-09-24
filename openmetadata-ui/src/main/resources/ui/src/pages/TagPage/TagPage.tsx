@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, PageHeader } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -55,12 +56,11 @@ import StatusBadge from '../../components/common/StatusBadge/StatusBadge.compone
 import { StatusType } from '../../components/common/StatusBadge/StatusBadge.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
-import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { AssetSelectionModal } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import DataQualityDashboard from '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component';
-import { EntityHeader } from '../../components/Entity/EntityHeader/EntityHeader.component';
+import EntityHeaderTitle from '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityStatusBadge } from '../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
 import AssetsTabs, {
@@ -241,26 +241,25 @@ const TagPage = () => {
     [queryClient, tagCacheKey]
   );
 
-  const breadcrumb: TitleBreadcrumbProps['titleLinks'] = useMemo(() => {
-    return tagItem
-      ? [
-          {
-            name: 'Classifications',
-            url: ROUTES.TAGS,
-            activeTitle: false,
-          },
-          {
-            name: tagItem.classification?.name ?? '',
-            url: tagItem.classification?.fullyQualifiedName
-              ? getClassificationDetailsPath(
-                  tagItem.classification.fullyQualifiedName
-                )
-              : '',
-            activeTitle: false,
-          },
-        ]
-      : [];
-  }, [tagItem]);
+  // Same trail DataAssetsHeader renders: ancestors link, the tag itself closes it.
+  const breadcrumbItems = useMemo(
+    () =>
+      tagItem
+        ? [
+            { label: t('label.classification-plural'), href: ROUTES.TAGS },
+            {
+              label: tagItem.classification?.name ?? '',
+              href: tagItem.classification?.fullyQualifiedName
+                ? getClassificationDetailsPath(
+                    tagItem.classification.fullyQualifiedName
+                  )
+                : undefined,
+            },
+            { label: getEntityName(tagItem) },
+          ]
+        : [],
+    [tagItem, t]
+  );
 
   const aiBreadcrumbItems = useMemo(
     () => [
@@ -926,31 +925,39 @@ const TagPage = () => {
   );
 
   const renderClassicHeader = () => (
-    <Row
-      className="data-classification"
-      data-testid="data-classification"
-      gutter={[0, 12]}>
-      <Col className="p-x-md" flex="1">
-        <EntityHeader
-          badge={badge}
-          breadcrumb={breadcrumb}
-          entityData={tagItem}
-          entityType={EntityType.TAG}
-          icon={icon}
-          serviceName={tagItem.name}
-          suffix={learningIcon}
-          titleColor={tagItem.style?.color ?? BLACK_COLOR}
-        />
-      </Col>
-      {haveAssetEditPermission && (
-        <Col className="p-x-md">
-          <div className="d-flex self-end">
+    <PageHeader
+      actions={
+        haveAssetEditPermission ? (
+          <Box align="center">
             {renderAddAssetsButton()}
             {manageDropdown}
-          </div>
-        </Col>
-      )}
-    </Row>
+          </Box>
+        ) : undefined
+      }
+      breadcrumb={
+        <HeaderBreadcrumb
+          autoCollapse
+          className="tw:mb-0"
+          items={breadcrumbItems}
+          showHome={false}
+          size="xs"
+        />
+      }
+      className="data-classification"
+      data-testid="data-classification"
+      title={
+        <EntityHeaderTitle
+          badge={badge}
+          color={tagItem.style?.color ?? BLACK_COLOR}
+          deleted={tagItem.deleted}
+          displayName={tagItem.displayName}
+          icon={icon}
+          name={tagItem.name}
+          serviceName={tagItem.name}
+          suffix={learningIcon}
+        />
+      }
+    />
   );
 
   const renderModals = () => (

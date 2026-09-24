@@ -16,11 +16,11 @@ import {
   Box,
   Button,
   EmptyPlaceholder,
+  NavList,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Grid01, Plus, Star01, Tag01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -59,7 +59,6 @@ import {
   patchClassification,
   patchTag,
 } from '../../rest/tagAPI';
-import { getCountBadge } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getTagPath } from '../../utils/RouterUtils';
@@ -507,10 +506,6 @@ const TagsPage = () => {
     fetchClassifications(!tagCategoryName);
   }, []);
 
-  const onClickClassifications = (category: Classification) => {
-    navigate(getTagPath(category.fullyQualifiedName));
-  };
-
   const handleAddTagSubmit = useCallback(
     async (data: CreateTag | Tag) => {
       if (editTag) {
@@ -707,6 +702,32 @@ const TagsPage = () => {
     handleTagDrawerOpen();
   }, [handleTagDrawerOpen, tagForm]);
 
+  const classificationNavItems = useMemo(
+    () =>
+      classifications.map((category: Classification) => ({
+        label: getEntityName(category),
+        href: getTagPath(category.fullyQualifiedName),
+        dataTestId: 'side-panel-classification',
+        badge: (
+          <Box align="center" className="tw:ml-2 tw:shrink-0" gap={1}>
+            {category.disabled && (
+              <Badge
+                color="gray"
+                data-testid="disabled"
+                size="sm"
+                type="pill-color">
+                {t('label.disabled')}
+              </Badge>
+            )}
+            <Badge color="gray" size="sm" type="pill-color">
+              <span data-testid="filter-count">{category.termCount ?? 0}</span>
+            </Badge>
+          </Box>
+        ),
+      })),
+    [classifications, t]
+  );
+
   const leftPanelLayout = useMemo(
     () => (
       <div className="h-full" data-testid="tags-left-panel">
@@ -735,54 +756,25 @@ const TagsPage = () => {
               )}
             </div>
 
-            {classifications.map((category: Classification) => (
-              <button
-                className={classNames(
-                  'align-center cursor-pointer text-grey-body text-body d-flex p-y-xss p-x-sm m-y-xss',
-                  {
-                    activeCategory:
-                      currentClassification?.name === category.name,
-                  }
+            <nav
+              aria-label={t('label.classification-plural')}
+              data-testid="classification-nav">
+              <NavList
+                activeUrl={getTagPath(
+                  currentClassification?.fullyQualifiedName
                 )}
-                data-testid="side-panel-classification"
-                key={category.name}
-                onClick={() => onClickClassifications(category)}>
-                <Typography
-                  ellipsis
-                  as="p"
-                  className={classNames('tw:truncate', {
-                    'tw:font-bold tw:text-brand-600':
-                      currentClassification?.name === category.name,
-                  })}
-                  data-testid="tag-name"
-                  title={getEntityName(category)}>
-                  {getEntityName(category)}
-                  {category.disabled && (
-                    <Badge
-                      color="gray"
-                      data-testid="disabled"
-                      size="sm"
-                      type="pill-color">
-                      {t('label.disabled')}
-                    </Badge>
-                  )}
-                </Typography>
-
-                {getCountBadge(
-                  category.termCount,
-                  'self-center m-l-auto',
-                  currentClassification?.fullyQualifiedName ===
-                    category.fullyQualifiedName
-                )}
-              </button>
-            ))}
+                className="tw:mt-0 tw:px-2 tw:lg:px-2"
+                items={classificationNavItems}
+                size="sm"
+              />
+            </nav>
           </div>
         </TagsLeftPanelSkeleton>
       </div>
     ),
     [
       isLoading,
-      classifications,
+      classificationNavItems,
       currentClassification,
       createClassificationPermission,
       handleClassificationDrawerOpen,

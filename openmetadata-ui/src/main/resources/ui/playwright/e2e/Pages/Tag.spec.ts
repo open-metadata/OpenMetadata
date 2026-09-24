@@ -382,9 +382,11 @@ test.describe('Tag Page with Admin Roles', () => {
         .first();
       await expect(classificationEntry).toBeVisible({ timeout: 30000 });
       await classificationEntry.click();
-      await expect(adminPage.locator('.activeCategory')).toContainText(
-        classification1.responseData.displayName
-      );
+      await expect(
+        adminPage.locator(
+          '[data-testid="tags-left-panel"] [aria-current="page"]'
+        )
+      ).toContainText(classification1.responseData.displayName);
     };
 
     await openClassification();

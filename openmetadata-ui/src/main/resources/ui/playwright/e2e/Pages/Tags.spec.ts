@@ -306,9 +306,9 @@ test('Classification Page', async ({ page }) => {
   await test.step('Create tag with validation checks', async () => {
     await page.click(`text=${NEW_CLASSIFICATION.displayName}`);
 
-    await expect(page.locator('.activeCategory')).toContainText(
-      NEW_CLASSIFICATION.displayName
-    );
+    await expect(
+      page.locator('[data-testid="tags-left-panel"] [aria-current="page"]')
+    ).toContainText(NEW_CLASSIFICATION.displayName);
 
     await page.click('[data-testid="add-new-tag-button"]');
 
@@ -461,9 +461,9 @@ test('Classification Page', async ({ page }) => {
       .click();
     await classificationResponse;
 
-    await expect(page.locator('.activeCategory')).toContainText(
-      NEW_CLASSIFICATION.displayName
-    );
+    await expect(
+      page.locator('[data-testid="tags-left-panel"] [aria-current="page"]')
+    ).toContainText(NEW_CLASSIFICATION.displayName);
 
     await expect(page.locator('[data-testid="table"]')).toContainText(
       NEW_TAG.name

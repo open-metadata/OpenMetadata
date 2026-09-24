@@ -39,6 +39,13 @@ interface GenericTabProps {
   variant?: GenericTabVariant;
 }
 
+// Governance detail pages render their widgets on the plain page surface.
+const PAGES_WITHOUT_GRID_BACKGROUND = [
+  PageType.Glossary,
+  PageType.GlossaryTerm,
+  PageType.Tag,
+];
+
 export const GenericTab = ({ type, variant = 'default' }: GenericTabProps) => {
   const { layout, updateWidgetHeight } = useGenericContext();
 
@@ -89,7 +96,7 @@ export const GenericTab = ({ type, variant = 'default' }: GenericTabProps) => {
       useCSSTransforms
       verticalCompact
       className={classNames('grid-container', {
-        'bg-grey': type !== PageType.Glossary && type !== PageType.GlossaryTerm,
+        'bg-grey': !PAGES_WITHOUT_GRID_BACKGROUND.includes(type),
         'custom-tab': !leftSideWidgetPresent,
         'height-auto': type === PageType.Glossary,
         'flat-left-panel': variant === 'flat',

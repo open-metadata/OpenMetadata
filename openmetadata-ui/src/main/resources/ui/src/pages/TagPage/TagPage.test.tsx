@@ -56,6 +56,39 @@ jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Box: jest
+    .fn()
+    .mockImplementation(({ children, className }) => (
+      <div className={className}>{children}</div>
+    )),
+  Breadcrumbs: jest
+    .fn()
+    .mockImplementation(
+      ({
+        items,
+        'data-testid': testId,
+      }: {
+        items: { id: string; label: string }[];
+        'data-testid'?: string;
+      }) => (
+        <nav data-testid={testId}>
+          {items.map((item) => (
+            <span key={item.id}>{item.label}</span>
+          ))}
+        </nav>
+      )
+    ),
+  PageHeader: jest
+    .fn()
+    .mockImplementation(
+      ({ actions, breadcrumb, title, 'data-testid': testId }) => (
+        <div data-testid={testId}>
+          {breadcrumb}
+          {title}
+          {actions}
+        </div>
+      )
+    ),
   Button: jest
     .fn()
     .mockImplementation(({ children, onClick }) => (
@@ -228,10 +261,8 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () => {
 });
 
 jest.mock(
-  '../../components/Entity/EntityHeader/EntityHeader.component',
-  () => ({
-    EntityHeader: jest.fn().mockImplementation(() => <div>EntityHeader</div>),
-  })
+  '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
+  () => jest.fn().mockImplementation(() => <div>EntityHeader</div>)
 );
 
 jest.mock(
@@ -297,6 +328,19 @@ describe('TagPage', () => {
         expect.any(String)
       );
     });
+  });
+
+  it('should render the header breadcrumb ending with the current tag', async () => {
+    (useFqn as jest.Mock).mockReturnValue({ fqn: 'PII.NonSensitive' });
+
+    render(<TagPage />);
+
+    const header = await screen.findByTestId('data-classification');
+    const breadcrumb = await screen.findByTestId('breadcrumb');
+
+    expect(header).toContainElement(breadcrumb);
+    expect(breadcrumb).toHaveTextContent('label.classification-plural');
+    expect(breadcrumb).toHaveTextContent('NonSensitive');
   });
 
   it('should call getTagData and fetchClassificationTagAssets when tagFqn changes', async () => {
