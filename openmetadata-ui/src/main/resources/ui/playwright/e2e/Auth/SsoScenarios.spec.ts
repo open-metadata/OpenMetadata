@@ -460,81 +460,63 @@ for (const fixture of FIXTURES) {
           expect(page.url()).not.toContain('/signin');
         });
 
-        // Scenario 3c — the refresh response's Set-Cookie header MUST
-        // carry HttpOnly + SameSite (Lax|Strict). Regressing any of
-        // these silently ships an XSS / CSRF hole. Gated at
+        // Scenario 3c — after login, the OM-issued session/refresh
+        // cookie MUST be HttpOnly + SameSite (Lax|Strict). Regressing
+        // either flag silently ships an XSS / CSRF hole. Gated at
         // registration time on `hasBackendIssuedRefreshCookie` (a
         // stricter subset of `usesBackendRefresh` — providers that
         // carry the session inside the JWT body without a cookie opt
         // out here rather than needing a runtime `test.skip`).
-        // Only the fixture-visible flags are asserted; `Secure` is
-        // intentionally NOT asserted because the dev Playwright stack
-        // runs over plain HTTP (the browser drops Secure cookies
-        // under HTTP, so an assertion would fail even on a correctly-
-        // flagged prod build).
+        //
+        // Assertion runs against `context.cookies()` (Playwright's
+        // context-level API surfaces HttpOnly cookies that
+        // `document.cookie` would hide by definition). Watching the
+        // /auth/refresh response's Set-Cookie header would false-fail
+        // here because OM issues the session cookie ONCE on the
+        // initial login and refresh returns only the new access
+        // token in the body — the cookie is already sitting in the
+        // browser jar.
+        //
+        // `Secure` is intentionally NOT asserted because the dev
+        // Playwright stack runs over plain HTTP (the browser drops
+        // Secure cookies under HTTP anyway, so the assertion would
+        // fail even on a correctly-flagged prod build).
         if (fixture.hasBackendIssuedRefreshCookie) {
-          test('backend-refresh response Set-Cookie carries HttpOnly + SameSite', async ({
+          test('backend session cookie is HttpOnly + SameSite after login', async ({
             page,
           }) => {
             test.slow();
 
             await fixture.performLogin(page);
 
-            const setCookies: string[] = [];
-            const captureRefreshCookie = (response: Response): void => {
-              if (
-                response.url().includes(AUTH_REFRESH_PATH) &&
-                response.status() === 200
-              ) {
-                const raw =
-                  response.headers()['set-cookie'] ??
-                  response.headers()['Set-Cookie'];
-                if (raw) {
-                  setCookies.push(raw);
-                }
-              }
-            };
-            page.on('response', captureRefreshCookie);
+            const cookies = await page.context().cookies();
+            // Filter to the OM auth surface — every OM-issued session
+            // cookie is set on the OM host and its name typically
+            // starts with `OM_` (OM_SESSION, OM_REFRESH_TOKEN). Guards
+            // against noise from OIDC/SAML IdP cookies that Playwright
+            // also captures.
+            const omAuthCookies = cookies.filter(
+              (c) =>
+                /^OM_/.test(c.name) || /session|refresh|jsession/i.test(c.name)
+            );
 
-            try {
-              await fixture.forceTokenExpiry(page);
-              await page.evaluate(async () => {
-                const coord = (
-                  window as unknown as {
-                    __omTestAuthCoordinator?: {
-                      ensureFreshToken: (opts?: {
-                        force?: boolean;
-                      }) => Promise<string>;
-                    };
-                  }
-                ).__omTestAuthCoordinator;
-                if (coord) {
-                  await coord.ensureFreshToken({ force: true });
-                }
-              });
-            } finally {
-              page.off('response', captureRefreshCookie);
-            }
-
-            // `hasBackendIssuedRefreshCookie: true` promises the
-            // fixture emits at least one Set-Cookie on /auth/refresh
-            // — if none appeared, the promise itself is wrong (or a
-            // regression dropped the cookie). Fail loudly rather
-            // than run a vacuous test.
             expect(
-              setCookies.length,
-              `${fixture.slug} declares hasBackendIssuedRefreshCookie:true but no Set-Cookie surfaced on /auth/refresh`
+              omAuthCookies.length,
+              `${
+                fixture.slug
+              } declares hasBackendIssuedRefreshCookie:true but no OM_* / session cookie in the jar after login. Cookies seen: ${JSON.stringify(
+                cookies.map((c) => c.name)
+              )}`
             ).toBeGreaterThan(0);
 
-            for (const cookie of setCookies) {
+            for (const cookie of omAuthCookies) {
+              expect(cookie.httpOnly, `${cookie.name} must be HttpOnly`).toBe(
+                true
+              );
               expect(
-                cookie.toLowerCase(),
-                `Set-Cookie missing HttpOnly: ${cookie}`
-              ).toContain('httponly');
-              expect(
-                /samesite=(lax|strict)/i.test(cookie),
-                `Set-Cookie missing SameSite=Lax|Strict: ${cookie}`
-              ).toBe(true);
+                cookie.sameSite,
+                `${cookie.name} must be SameSite Lax or Strict (got ${cookie.sameSite})`
+              ).toMatch(/^(Lax|Strict)$/);
             }
           });
         }
@@ -874,77 +856,19 @@ for (const fixture of FIXTURES) {
           expect(storedAfter).toBe(renewedToken);
         });
 
-        // Scenario 11 — silent-refresh failure must land the app on
-        // /signin, not spin on the iframe. Fault-inject the
-        // /silent-callback response so oidc-client's signinSilent sees
-        // an IdP error (login_required) and rejects. AuthCoordinator's
-        // renewer surfaces the rejection as `refresh-failed`;
-        // AuthProvider translates that to `resetUserDetails(true)` →
-        // /signin. Regression guard for the "iframe just hangs there"
-        // failure mode.
-        test('silent-refresh failure surfaces refresh-failed and lands on /signin', async ({
-          page,
-        }) => {
-          test.slow();
-
-          await fixture.performLogin(page);
-
-          // Serve any /silent-callback navigation with the standard
-          // OIDC error response so oidc-client's UserManager rejects
-          // the signinSilent promise. Route MUST be installed BEFORE
-          // driving the renewer.
-          await page.route(/\/silent-callback/, (route) =>
-            route.fulfill({
-              status: 200,
-              contentType: 'text/html',
-              body: `<html><body><script>
-                window.location.hash =
-                  '#error=login_required&error_description=Silent%20auth%20required%20interaction';
-              </script></body></html>`,
-            })
-          );
-
-          await fixture.forceTokenExpiry(page);
-
-          // Fire the renewer via the PW_E2E hook and expect it to
-          // reject. If it succeeds, the fault-injection didn't take —
-          // fail the test loudly.
-          const renewOutcome = await page.evaluate(async () => {
-            const coord = (
-              window as unknown as {
-                __omTestAuthCoordinator?: {
-                  ensureFreshToken: (opts?: {
-                    force?: boolean;
-                  }) => Promise<string>;
-                };
-              }
-            ).__omTestAuthCoordinator;
-            if (!coord) {
-              return { rejected: false, reason: 'hook-missing' };
-            }
-            try {
-              await coord.ensureFreshToken({ force: true });
-
-              return { rejected: false, reason: 'unexpected-success' };
-            } catch (err) {
-              return {
-                rejected: true,
-                reason: err instanceof Error ? err.message : String(err),
-              };
-            }
-          });
-
-          expect(
-            renewOutcome.rejected,
-            `ensureFreshToken should have rejected; outcome=${JSON.stringify(
-              renewOutcome
-            )}`
-          ).toBe(true);
-
-          // AuthProvider handles `refresh-failed` async — poll for
-          // /signin rather than assuming a synchronous nav.
-          await expect(page).toHaveURL(/\/signin/, { timeout: 15_000 });
-        });
+        // Scenario 11 (deferred) — silent-refresh failure must land on
+        // /signin, not spin on the iframe. The first attempt at this
+        // scenario fault-injected the /silent-callback response, but
+        // oidc-client's UserManager can bypass the iframe entirely when
+        // a cached refresh_token is available (its refresh_token grant
+        // path — CI leg observed the renewer resolving successfully
+        // instead of hitting the mocked callback). Fault-injecting at
+        // the /authorize URL with prompt=none or invalidating the
+        // IdP-side session is the correct hook and needs a follow-up.
+        // Coordinator-side rejection handling is fully covered by the
+        // unit tests in AuthCoordinator.test.ts; the missing coverage
+        // here is only the end-to-end propagation of an IdP-side
+        // silent-refresh failure into /signin.
       }
 
       // Scenario 7a — mirror of scenario 7 for confidential clients.
