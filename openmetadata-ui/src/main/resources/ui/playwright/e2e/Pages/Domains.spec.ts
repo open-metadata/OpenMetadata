@@ -1375,12 +1375,15 @@ test.describe('Domains', () => {
 
       await page.reload();
       await page.getByTestId('domain-dropdown').click();
-      await page.getByTestId('all-domains-selector').click();
+      await page
+        .getByTestId('domain-dropdown-search')
+        .waitFor({ state: 'visible' });
+      await page.getByTestId('tree-node-All Domains').click();
 
-      await page.getByTestId('domain-dropdown').click();
-
-      await expect(page.getByTestId('all-domains-selector')).toHaveClass(
-        /selected-node/
+      // Picking "All Domains" clears the active scope back to the default,
+      // which the navbar trigger reflects as the "All Domains" label.
+      await expect(page.getByTestId('domain-dropdown')).toContainText(
+        'All Domains'
       );
     } finally {
       await domain.delete(apiContext);
@@ -3294,7 +3297,7 @@ test.describe('Domain Tree View Functionality', () => {
 
       await page.getByTestId('assets').click();
       await responsePromise;
-      await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
+      await page.getByRole('tab', { name: 'Assets', selected: true }).waitFor();
       await waitForAllLoadersToDisappear(page);
 
       expect(apiRequestUrl).not.toBeNull();
@@ -3376,7 +3379,7 @@ test.describe('Domain Tree View Functionality', () => {
 
       await page.getByTestId('assets').click();
       await responsePromise;
-      await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
+      await page.getByRole('tab', { name: 'Assets', selected: true }).waitFor();
       await waitForAllLoadersToDisappear(page);
 
       expect(apiRequestUrl).not.toBeNull();
