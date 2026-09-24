@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { FC, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 export interface TreeSelectNode<T = unknown> {
   id: string;
@@ -144,26 +144,6 @@ export interface TreeSelectProps<T = unknown> {
   onOpenChange?: (open: boolean) => void;
   /** Consumer-owned trigger, rendered in place of the built-in one. */
   renderTrigger?: (props: TreeSelectTriggerRenderProps) => ReactNode;
-  /**
-   * Leading icon for the built-in `button` trigger (e.g. a domain glyph),
-   * mirroring FilterSelect's button. Ignored by the `input` variant.
-   */
-  triggerIcon?: FC<{ className?: string }>;
-  /** Node ids expanded on first render (e.g. a synthetic root shown open). */
-  defaultExpandedKeys?: string[];
-  /**
-   * Cap the visual indent at this tree depth (deeper nodes share that indent).
-   * @default 2
-   */
-  maxIndentLevel?: number;
-  /**
-   * Enables an inline "create" action row at the top of the dropdown. Called
-   * with the current search term so the consumer can prefill a create form.
-   * The row only renders when `createLabel` is also provided.
-   */
-  onCreate?: (searchTerm: string) => void;
-  /** Consumer-translated label for the `onCreate` row (e.g. "Add new domain"). */
-  createLabel?: string;
 
   onNodeExpand?: (nodeId: string) => void;
   onNodeCollapse?: (nodeId: string) => void;
