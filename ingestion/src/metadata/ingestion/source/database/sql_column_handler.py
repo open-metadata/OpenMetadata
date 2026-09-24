@@ -377,7 +377,6 @@ class SqlColumnHandlerMixin:
             table_columns=table_columns,
             schema_name=schema_name,
             table_name=table_name,
-            db_name=db_name,
         )
 
         return table_columns, table_constraints, foreign_columns
@@ -451,7 +450,6 @@ class SqlColumnHandlerMixin:
         table_columns: list[Column],
         schema_name: str,
         table_name: str,
-        db_name: str | None = None,
     ) -> None:
         """
         Extract JSON schema for JSON columns by sampling data from the table.
@@ -486,7 +484,6 @@ class SqlColumnHandlerMixin:
                 table_name=table_name,
                 column_names=column_names,
                 sample_size=sample_size,
-                db_name=db_name,
             )
             for column in columns_to_process:
                 col_name = column.name.root
@@ -518,7 +515,6 @@ class SqlColumnHandlerMixin:
         table_name: str,
         column_names: list[str],
         sample_size: int,
-        db_name: str | None = None,
     ) -> dict[str, list]:
         """
         Sample data from JSON columns in a table.
@@ -538,8 +534,12 @@ class SqlColumnHandlerMixin:
         preparer = self.engine.dialect.identifier_preparer
         quote = preparer.quote
 
-        # Build fully qualified table name safely:
-        parts = [p for p in (db_name, schema_name, table_name) if p]
+        # Address the table as schema.table, never prefixed with the OpenMetadata
+        # database. Sources that iterate several databases rebind the engine to the
+        # current one in `set_inspector`, and connectors with no database layer of
+        # their own report a synthetic name ("default") that the source cannot be
+        # queried with, which made every statement below unresolvable for them.
+        parts = [p for p in (schema_name, table_name) if p]
         full_table_name = ".".join(quote(p) for p in parts)
 
         # Attempt 1: SQLAlchemy Core with explicit columns (no autoload)
@@ -551,17 +551,12 @@ class SqlColumnHandlerMixin:
 
             metadata = MetaData()
 
-            # For 3-level naming (e.g., Databricks Unity Catalog: catalog.schema.table),
-            # we need to include db_name in the schema parameter. SQLAlchemy's Table
-            # uses the schema parameter to construct the fully qualified table name.
-            schema_for_table = f"{db_name}.{schema_name}" if db_name else schema_name
-
             # Define columns explicitly without autoload to avoid DESCRIBE queries
             table = Table(
                 table_name,
                 metadata,
                 *[SaColumn(col_name) for col_name in column_names],
-                schema=schema_for_table,
+                schema=schema_name,
             )
 
             cols = [table.c[col_name] for col_name in column_names]
