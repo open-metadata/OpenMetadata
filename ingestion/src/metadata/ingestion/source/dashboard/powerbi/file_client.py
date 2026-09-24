@@ -18,6 +18,7 @@ import shutil
 import traceback
 import zipfile
 from collections import defaultdict
+from contextlib import suppress
 from functools import singledispatch
 from pathlib import Path
 
@@ -332,4 +333,8 @@ class PowerBiFileClient:
         """
         Method to remove the files after ingestion is completed
         """
-        shutil.rmtree(self.config.pbitFilesSource.pbitFilesExtractDir, ignore_errors=True)
+        source = self.config.pbitFilesSource
+        extract_dir = source.pbitFilesExtractDir if source is not None else None
+        if extract_dir is not None:
+            with suppress(FileNotFoundError):
+                shutil.rmtree(extract_dir)

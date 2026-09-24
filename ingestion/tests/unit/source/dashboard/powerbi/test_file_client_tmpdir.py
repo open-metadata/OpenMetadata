@@ -13,8 +13,17 @@ Tests that the PowerBI file client handles a missing extract directory gracefull
 so that 'Test Connection' can be pressed multiple times without failure (issue #33418).
 """
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+from metadata.generated.schema.entity.services.connections.dashboard.powerbi.azureConfig import (
+    AzureConfig,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.powerbi.gcsConfig import (
+    GCSConfig,
+)
 from metadata.generated.schema.entity.services.connections.dashboard.powerbi.s3Config import (
     S3Config,
 )
@@ -41,9 +50,7 @@ def _make_powerbi_connection(extract_dir: str) -> PowerBIConnection:
     )
 
 
-class TestDeleteTmpFilesIgnoresMissingDir:
-    """delete_tmp_files must not raise when the extract dir was already removed."""
-
+class TestDeleteTmpFiles:
     def test_delete_tmp_files_no_error_when_dir_absent(self, tmp_path):
         extract_dir = str(tmp_path / "pbitFiles")
         conn = _make_powerbi_connection(extract_dir)
@@ -59,6 +66,19 @@ class TestDeleteTmpFilesIgnoresMissingDir:
 
         file_client.delete_tmp_files()  # removes the dir
         file_client.delete_tmp_files()  # second call must not raise
+
+    def test_delete_tmp_files_preserves_permission_error(self, tmp_path: Path):
+        extract_dir = tmp_path / "pbitFiles"
+        extract_dir.mkdir()
+        file_client = PowerBiFileClient(_make_powerbi_connection(str(extract_dir)))
+
+        with (
+            patch("os.scandir", side_effect=PermissionError("denied")),
+            pytest.raises(PermissionError),
+        ):
+            file_client.delete_tmp_files()
+
+        assert extract_dir.exists()
 
 
 class TestExtractDirRecreatedBeforeDownload:
@@ -97,3 +117,32 @@ class TestExtractDirRecreatedBeforeDownload:
             mock_schema.assert_called_once_with(path=str(extract_dir))
 
         assert extract_dir.exists(), "extract_dir must be created by get_pbit_files before use"
+
+    @patch("metadata.ingestion.source.dashboard.powerbi.file_client.AzureClient")
+    def test_azure_extract_dir_created_when_absent(self, mock_azure: MagicMock, tmp_path: Path):
+        extract_dir = tmp_path / "pbitFiles"
+        azure_config = MagicMock(spec=AzureConfig)
+        azure_config.pbitFilesExtractDir = str(extract_dir)
+        azure_config.prefixConfig = None
+        azure_config.securityConfig = MagicMock()
+        mock_azure.return_value.create_blob_client.return_value.list_containers.return_value = []
+
+        get_pbit_files(azure_config)
+
+        assert extract_dir.is_dir()
+
+    @patch("metadata.ingestion.source.dashboard.powerbi.file_client.set_google_credentials")
+    @patch("google.cloud.storage.Client")
+    def test_gcs_extract_dir_created_when_absent(
+        self, mock_storage: MagicMock, _mock_credentials: MagicMock, tmp_path: Path
+    ):
+        extract_dir = tmp_path / "pbitFiles"
+        gcs_config = MagicMock(spec=GCSConfig)
+        gcs_config.pbitFilesExtractDir = str(extract_dir)
+        gcs_config.prefixConfig = None
+        gcs_config.securityConfig = MagicMock()
+        mock_storage.return_value.list_buckets.return_value = []
+
+        get_pbit_files(gcs_config)
+
+        assert extract_dir.is_dir()
