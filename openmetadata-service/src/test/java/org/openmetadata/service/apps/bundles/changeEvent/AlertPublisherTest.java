@@ -30,11 +30,9 @@ import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertRows;
 import org.openmetadata.service.util.DIContainer;
 import org.openmetadata.service.util.PerRequestContextCleaner;
-import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobKey;
-import org.quartz.Scheduler;
 
 @ExtendWith(MockitoExtension.class)
 class AlertPublisherTest {
@@ -42,8 +40,6 @@ class AlertPublisherTest {
   @Mock private DIContainer dependencies;
   @Mock private EventSubscription eventSubscription;
   @Mock private Destination<ChangeEvent> destination;
-  @Mock private JobDetail jobDetail;
-  @Mock private JobDataMap jobDataMap;
 
   private AlertPublisher alertPublisher;
   private UUID receiverId;
@@ -67,14 +63,9 @@ class AlertPublisherTest {
     receiverId = UUID.randomUUID();
     changeEvent = createMockChangeEvent();
 
-    alertPublisher.setJobDetail(jobDetail);
     alertPublisher.eventSubscription = eventSubscription;
     alertPublisher.destinationMap = new HashMap<>();
 
-    lenient().when(jobDetail.getJobDataMap()).thenReturn(jobDataMap);
-    lenient()
-        .when(jobDataMap.get(AbstractEventConsumer.ALERT_INFO_KEY))
-        .thenReturn(eventSubscription);
     lenient().when(eventSubscription.getName()).thenReturn("test-subscription");
     lenient().when(eventSubscription.getEnabled()).thenReturn(true);
   }
@@ -126,7 +117,6 @@ class AlertPublisherTest {
   void testSendAlertWithEventPublisherException() throws EventPublisherException {
     // Use TestAlertPublisher to avoid Entity.getCollectionDAO() static call
     TestAlertPublisher testPublisher = new TestAlertPublisher(dependencies);
-    testPublisher.setJobDetail(jobDetail);
     testPublisher.eventSubscription = eventSubscription;
     testPublisher.destinationMap = new HashMap<>();
 
@@ -236,7 +226,6 @@ class AlertPublisherTest {
     when(job.getKey()).thenReturn(new JobKey(alertId.toString(), "OMAlertJobGroup"));
     JobExecutionContext context = mock(JobExecutionContext.class);
     when(context.getJobDetail()).thenReturn(job);
-    when(context.getScheduler()).thenReturn(mock(Scheduler.class));
 
     try (MockedStatic<PerRequestContextCleaner> cleaner =
             mockStatic(PerRequestContextCleaner.class);
