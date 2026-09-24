@@ -13,8 +13,8 @@
 import { Box, Button, PageHeader } from '@openmetadata/ui-core-components';
 import { Icon as EntityStyleIcon } from '@openmetadata/ui-core-components/icon';
 import {
-    ChevronDown,
-    RefreshCcw01
+  ChevronDown,
+  RefreshCcw01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { cloneDeep, isEmpty, toString } from 'lodash';
@@ -39,14 +39,14 @@ import { ExportTypes } from '../../../constants/Export.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
-    OperationPermission,
-    ResourceEntity
+  OperationPermission,
+  ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
-    EntityStatus,
-    GlossaryTerm
+  EntityStatus,
+  GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
@@ -54,9 +54,9 @@ import { Votes } from '../../../generated/type/votes';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import {
-    exportGlossaryInCSVFormat,
-    getGlossariesById,
-    getGlossaryTermsById
+  exportGlossaryInCSVFormat,
+  getGlossariesById,
+  getGlossaryTermsById,
 } from '../../../rest/glossaryAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityImportPath } from '../../../utils/EntityPureUtils';
@@ -65,16 +65,16 @@ import Fqn from '../../../utils/Fqn';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
-    getGlossaryPath,
-    getGlossaryTermsVersionsPath,
-    getGlossaryVersionsPath
+  getGlossaryPath,
+  getGlossaryTermsVersionsPath,
+  getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import {
-    ManageMenu,
-    ManageMenuItem,
-    toManageMenuItems
+  ManageMenu,
+  ManageMenuItem,
+  toManageMenuItems,
 } from '../../common/EntityPageInfos/ManageButton/ManageMenu';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { DEFAULT_GLOSSARY_TERM_ICON } from '../../common/IconPicker/IconPicker.constants';
