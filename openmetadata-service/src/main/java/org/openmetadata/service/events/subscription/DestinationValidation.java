@@ -1,0 +1,76 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.events.subscription;
+
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import jakarta.ws.rs.BadRequestException;
+import java.util.List;
+import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.events.subscription.channels.Channel;
+import org.openmetadata.service.events.subscription.channels.ChannelResolution;
+
+/**
+ * Checks a destination with the channel that serves it, when the destination is new or was
+ * changed, on every path that saves an alert. A destination may name its channel, and the name must
+ * be a channel registered on this server. A stored destination that a channel's newer rules
+ * would reject is left alone, so an alert can still be renamed; it is sent as configured, and a
+ * send that fails is recorded like any other.
+ */
+public final class DestinationValidation {
+  private static final List<String> NOT_PART_OF_WHAT_A_USER_CONFIGURES =
+      List.of("id", "statusDetails");
+
+  private DestinationValidation() {}
+
+  public static void ofANewAlert(EventSubscription alert) {
+    listOrEmpty(alert.getDestinations()).forEach(DestinationValidation::validate);
+  }
+
+  public static void ofWhatChanged(EventSubscription original, EventSubscription updated) {
+    List<JsonNode> stored =
+        listOrEmpty(original.getDestinations()).stream()
+            .map(DestinationValidation::whatAUserConfigures)
+            .toList();
+    listOrEmpty(updated.getDestinations()).stream()
+        .filter(destination -> !stored.contains(whatAUserConfigures(destination)))
+        .forEach(DestinationValidation::validate);
+  }
+
+  /** Throws a 400 that says what is wrong with the destination. */
+  public static void validate(SubscriptionDestination destination) {
+    ChannelResolution served = ChannelResolution.of(destination);
+    Channel channel =
+        served
+            .channel()
+            .orElseThrow(
+                () ->
+                    new BadRequestException(
+                        String.format(
+                            "No channel %s is registered on this server", served.channelId())));
+    channel.configRules().validate(destination);
+  }
+
+  // Compared by content, never by id: a PUT carries no ids, so every destination of one gets a
+  // new id, and that alone must not make an unchanged destination look new.
+  private static JsonNode whatAUserConfigures(SubscriptionDestination destination) {
+    ObjectNode content = (ObjectNode) JsonUtils.valueToTree(destination);
+    content.remove(NOT_PART_OF_WHAT_A_USER_CONFIGURES);
+    return content;
+  }
+}

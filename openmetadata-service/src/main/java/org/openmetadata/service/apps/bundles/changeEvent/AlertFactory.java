@@ -3,25 +3,31 @@ package org.openmetadata.service.apps.bundles.changeEvent;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.apps.bundles.changeEvent.email.EmailPublisher;
-import org.openmetadata.service.apps.bundles.changeEvent.feed.ActivityStreamPublisher;
-import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatPublisher;
-import org.openmetadata.service.apps.bundles.changeEvent.generic.GenericPublisher;
-import org.openmetadata.service.apps.bundles.changeEvent.msteams.MSTeamsPublisher;
-import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackEventPublisher;
-import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
+import org.openmetadata.service.events.subscription.channels.Channel;
+import org.openmetadata.service.events.subscription.channels.ChannelResolution;
 
 public class AlertFactory {
   public static Destination<ChangeEvent> getAlert(
       EventSubscription subscription, SubscriptionDestination config) {
-    return switch (config.getType()) {
-      case SLACK -> new SlackEventPublisher(subscription, config);
-      case MS_TEAMS -> new MSTeamsPublisher(subscription, config);
-      case G_CHAT -> new GChatPublisher(subscription, config);
-      case WEBHOOK -> new GenericPublisher(subscription, config);
-      case EMAIL -> new EmailPublisher(subscription, config);
-      case ACTIVITY_FEED -> new ActivityStreamPublisher(subscription, config);
-      case GOVERNANCE_WORKFLOW_CHANGE_EVENT -> new WorkflowEventConsumer(subscription, config);
-    };
+    ChannelResolution served = ChannelResolution.of(config);
+    return served
+        .channel()
+        .map(channel -> publisherOrUnserved(channel, subscription, config))
+        .orElseGet(
+            () ->
+                UnservedDestination.ofAnUnregisteredChannel(
+                    subscription, config, served.channelId()));
+  }
+
+  // A destination saved under older rules may hold a configuration its channel now refuses. That
+  // must cost this destination only, never the alert's tick.
+  private static Destination<ChangeEvent> publisherOrUnserved(
+      Channel channel, EventSubscription subscription, SubscriptionDestination config) {
+    try {
+      return channel.publisher(subscription, config);
+    } catch (RuntimeException e) {
+      return new UnservedDestination(
+          subscription, config, "its stored configuration is not usable: " + e.getMessage());
+    }
   }
 }
