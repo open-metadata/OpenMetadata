@@ -224,8 +224,13 @@ export const removeAssetsFromTag = async (
     );
     await page.getByTestId('searchbar').fill(name);
     await searchRes;
+    // Response arrives before the list re-renders from N cards to 1;
+    // wait for loaders + scroll before check() to defeat reflow retries.
+    await waitForAllLoadersToDisappear(page);
 
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    const input = page.locator(`[data-testid="table-data-card_${fqn}"] input`);
+    await input.scrollIntoViewIfNeeded();
+    await input.check();
   }
 
   const assetsRemoveRes = page.waitForResponse(`/api/v1/tags/*/assets/remove`);
@@ -687,8 +692,13 @@ export const verifyEntityTypeFilterInTagAssets = async (
     );
     await page.getByTestId('searchbar').fill(name);
     await searchRes;
+    // Response arrives before the list re-renders from N to 1 card;
+    // loader wait + scroll defeat the "element not stable" retry loop.
+    await waitForAllLoadersToDisappear(page);
 
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    const input = page.locator(`[data-testid="table-data-card_${fqn}"] input`);
+    await input.scrollIntoViewIfNeeded();
+    await input.check();
   }
 
   const clearResponse = page.waitForResponse('/api/v1/search/query?q=*');

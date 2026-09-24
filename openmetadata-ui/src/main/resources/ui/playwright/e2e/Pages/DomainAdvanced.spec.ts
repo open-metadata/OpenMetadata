@@ -606,10 +606,13 @@ test.describe('Bulk Domain Asset Operations', () => {
         );
         await page.getByTestId('searchbar').fill(name);
         await searchRes;
+        await waitForAllLoadersToDisappear(page);
 
-        await page
-          .locator(`[data-testid="table-data-card_${fqn}"] input`)
-          .check();
+        const input = page.locator(
+          `[data-testid="table-data-card_${fqn}"] input`
+        );
+        await input.scrollIntoViewIfNeeded();
+        await input.check();
       }
 
       const removeRes = page.waitForResponse('/api/v1/domains/*/assets/remove');
@@ -1034,8 +1037,13 @@ test.describe('Domain asset dryRun — remove confirmation', () => {
     );
     await page.getByTestId('searchbar').fill(name);
     await searchRes;
+    // Loader wait + scroll before check defeats the reflow race between
+    // response arrival and React swapping the list to a single card.
+    await waitForAllLoadersToDisappear(page);
 
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    const input = page.locator(`[data-testid="table-data-card_${fqn}"] input`);
+    await input.scrollIntoViewIfNeeded();
+    await input.check();
   };
 
   test('single-asset remove with linked data product shows preview and commits on Remove Anyway', async ({
