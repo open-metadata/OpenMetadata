@@ -33,6 +33,7 @@ import {
 import { TaskFormSchema } from '../../../../rest/taskFormSchemasAPI';
 import { getDefaultTaskFormSchema } from '../../../../utils/TaskFormSchemaUtils';
 import {
+  applyActionLabels,
   buildResolveBody,
   getTaskActionInput,
   getTaskResolveActions,
@@ -71,6 +72,41 @@ const DAR_REJECT: TaskAvailableTransition = {
   targetStageId: 'rejected',
   targetTaskStatus: TaskStatus.Rejected,
 };
+
+describe('applyActionLabels', () => {
+  const actions = [
+    {
+      id: 'approve',
+      label: 'Approve',
+      kind: 'approve',
+      requiresComment: false,
+    },
+    { id: 'reject', label: 'Reject', kind: 'reject', requiresComment: true },
+    {
+      id: 'reassign',
+      label: 'Reassign',
+      kind: 'assignee',
+      requiresComment: false,
+    },
+  ] as TaskResolveAction[];
+
+  // Workflow transitions arrive labelled generically; the type knows better.
+  it('renames approve and reject with the type wording, leaving others alone', () => {
+    expect(
+      applyActionLabels(actions, {
+        approve: 'Assign carol',
+        reject: 'Dismiss',
+      }).map((action) => action.label)
+    ).toEqual(['Assign carol', 'Dismiss', 'Reassign']);
+  });
+
+  it('keeps the server labels when the type names nothing', () => {
+    expect(applyActionLabels(actions, { reject: 'Dismiss' })[0].label).toBe(
+      'Approve'
+    );
+    expect(applyActionLabels(actions)).toEqual(actions);
+  });
+});
 
 describe('getTaskResolveActions', () => {
   it('maps the server transitions of a workflow task, classifying each kind', () => {

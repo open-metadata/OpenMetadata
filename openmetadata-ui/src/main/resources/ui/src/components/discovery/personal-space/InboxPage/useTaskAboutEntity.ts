@@ -12,11 +12,11 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { EntityType } from '../../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { LineageDirection } from '../../../../generated/api/lineage/lineageDirection';
 import { Task } from '../../../../generated/entity/tasks/task';
-import { TestCase } from '../../../../generated/tests/testCase';
 import { getLineageByEntityCount } from '../../../../rest/lineageAPI';
+import { getTestCaseByFqn } from '../../../../rest/testAPI';
 import { getEntityByFqnUtil } from '../../../../utils/EntityByFqnUtils';
 import EntityLink from '../../../../utils/EntityLink';
 import { EntityUnion } from '../../../Explore/ExplorePage.interface';
@@ -58,16 +58,17 @@ const getAboutTarget = (task?: Task): TaskAboutTarget | undefined => {
 };
 
 /** The test case's own context: what it tests, and against which table. */
+// Fetched directly rather than through `getEntityByFqnUtil`, whose test-case
+// handler asks for owners only and so never returns the test definition.
 const fetchTestCaseContext = async (fqn: string): Promise<TaskAboutEntity> => {
-  const testCase = (await getEntityByFqnUtil(
-    EntityType.TEST_CASE,
-    fqn
-  )) as TestCase | null;
+  const testCase = await getTestCaseByFqn(fqn, {
+    fields: [TabSpecificField.OWNERS, TabSpecificField.TEST_DEFINITION],
+  });
 
   return {
-    ...deriveTaskAboutEntity(testCase ?? undefined),
-    testCase: testCase ?? undefined,
-    testCaseTableFqn: testCase?.entityLink
+    ...deriveTaskAboutEntity(testCase),
+    testCase,
+    testCaseTableFqn: testCase.entityLink
       ? EntityLink.getEntityFqn(testCase.entityLink)
       : undefined,
   };

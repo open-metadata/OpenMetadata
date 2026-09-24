@@ -27,6 +27,7 @@ import {
   getTaskResolutionNewValue,
   shouldRequireTaskResolutionValue,
 } from '../../../../utils/TaskFormSchemaUtils';
+import { TaskActionLabelOverrides } from './taskDetail.types';
 import { isApproveTransition, isRejectTransition } from './taskList.utils';
 
 // A task with no server transitions is only actionable in these states.
@@ -193,6 +194,25 @@ export const getTaskResolveActions = (
 
   return getLegacyActions(task, labels, schema);
 };
+
+/**
+ * A task type's own wording for its approve and reject buttons ("Assign
+ * owner", "Dismiss"). Workflow transitions arrive with the generic "Approve" /
+ * "Reject", so a type that names its actions more precisely wins; any action
+ * the type does not name keeps the server's label.
+ */
+export const applyActionLabels = (
+  actions: TaskResolveAction[],
+  overrides?: TaskActionLabelOverrides
+): TaskResolveAction[] =>
+  actions.map((action) => {
+    const label =
+      action.kind === 'approve' || action.kind === 'reject'
+        ? overrides?.[action.kind]
+        : undefined;
+
+    return label ? { ...action, label } : action;
+  });
 
 export interface TaskActionInput {
   // The workflow flagged requiresComment; the server 400s without one.

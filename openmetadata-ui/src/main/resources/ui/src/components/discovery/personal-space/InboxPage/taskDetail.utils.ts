@@ -27,6 +27,7 @@ import { TagLabel } from '../../../../generated/type/tagLabel';
 import { TagUpdatePayload } from '../../../../generated/type/tagUpdatePayload';
 import { TestCaseResolutionPayload } from '../../../../generated/type/testCaseResolutionPayload';
 import { TierUpdatePayload } from '../../../../generated/type/tierUpdatePayload';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { EntityUnion } from '../../../Explore/ExplorePage.interface';
 import {
   TaskAboutEntity,
@@ -378,11 +379,17 @@ const describeOwnershipUpdate = (
 ): Partial<TaskDetailDescriptor> => {
   const payload = getPayload<OwnershipUpdatePayload>(task);
   const currentOwners = payload.currentOwners ?? [];
+  // The button names who approving hands the asset to.
+  const proposedOwners = (payload.newOwners ?? [])
+    .map((owner) => getEntityName(owner))
+    .join(', ');
 
   return {
     subtitleKey: 'message.task-asked',
     actionLabels: {
-      approve: t('label.assign-entity', { entity: t('label.owner') }),
+      approve: t('label.assign-entity', {
+        entity: proposedOwners || t('label.owner'),
+      }),
       reject: t('label.dismiss'),
     },
     rows: [

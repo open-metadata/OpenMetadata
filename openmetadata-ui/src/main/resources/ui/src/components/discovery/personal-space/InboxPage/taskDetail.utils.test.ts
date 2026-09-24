@@ -172,6 +172,18 @@ describe('getTaskDetailDescriptor', () => {
     });
   });
 
+  it('names the proposed owner on the approve action', () => {
+    expect(
+      getTaskDetailDescriptor(
+        buildTask({
+          type: TaskType.OwnershipUpdate,
+          payload: { newOwners: [{ id: 'u1', type: 'user', name: 'carol' }] },
+        } as unknown as Partial<Task>),
+        t
+      ).actionLabels?.approve
+    ).toBe('label.assign-entity:carol');
+  });
+
   // A plugin that supplies its own rows still gets the inbox's outcome rows.
   it('keeps the outcome rows under a plugin override', () => {
     const descriptor = getTaskDetailDescriptor(

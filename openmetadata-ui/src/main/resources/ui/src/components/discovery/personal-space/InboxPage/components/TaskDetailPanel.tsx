@@ -67,6 +67,7 @@ import {
   isTaskPendingViewer,
 } from '../taskResolution.utils';
 import {
+  applyActionLabels,
   buildResolveBody,
   getTaskResolveActions,
   TaskResolveAction,
@@ -352,13 +353,13 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     if (!task || isSyncingTransitions) {
       return [];
     }
-    const effective = getTaskResolveActions(
-      task,
-      {
-        approve: descriptor?.actionLabels?.approve ?? t('label.approve'),
-        reject: descriptor?.actionLabels?.reject ?? t('label.reject'),
-      },
-      formSchema
+    const effective = applyActionLabels(
+      getTaskResolveActions(
+        task,
+        { approve: t('label.approve'), reject: t('label.reject') },
+        formSchema
+      ),
+      descriptor?.actionLabels
     ).filter((action) => !consumedTransitionIdsRef.current.has(action.id));
 
     // Drop resolve actions when ResolveTask is denied (self-approval); keep
@@ -609,8 +610,10 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       className="tw:h-full tw:w-full tw:min-h-0"
       data-testid="task-detail-panel"
       direction="col">
+      {/* Sections keep their height and the body scrolls: a flex child with
+          overflow-hidden (the asset card) would otherwise shrink to nothing. */}
       <Box
-        className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto"
+        className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:*:shrink-0"
         direction="col"
         gap={5}>
         <TaskDetailHeader
