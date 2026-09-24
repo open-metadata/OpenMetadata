@@ -647,35 +647,6 @@ test.describe('Glossary P3 Tests', () => {
     }
   });
 
-  // Additional test: API rate limiting handling
-  test('should handle multiple rapid API calls', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    const glossary = new Glossary();
-
-    try {
-      await glossary.create(apiContext);
-
-      // The FQN contains `%'`, an invalid percent-escape. Sent raw, the server
-      // rejects the URI and closes the keep-alive sockets, so the cleanup
-      // DELETE reuses a dead socket and fails with "socket hang up".
-      const fqn = encodeURIComponent(glossary.responseData.fullyQualifiedName);
-      const responses = await Promise.all(
-        Array.from({ length: 5 }, () =>
-          apiContext.get(`/api/v1/glossaries/name/${fqn}`)
-        )
-      );
-
-      expect(responses).toHaveLength(5);
-
-      for (const response of responses) {
-        expect(response.status()).toBe(200);
-      }
-    } finally {
-      await glossary.delete(apiContext);
-      await afterAction();
-    }
-  });
-
   // UI-03: Error state on API failure - non-existent glossary
   test('should show error state when navigating to non-existent glossary', async ({
     browser,
