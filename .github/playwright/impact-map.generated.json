@@ -7011,10 +7011,21 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Modals/EntityNameModal/EntityNameModal.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/ObservabilityLayout.spec.ts",
         "playwright/e2e/Features/EntitySummaryPanel.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryDisplayNameEdit.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryMiscOperations.spec.ts",
+        "playwright/e2e/Pages/Tag.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Modals/IconColorModal/IconColorModal.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Tag.spec.ts"
       ]
     },
     {
@@ -8384,6 +8395,8 @@
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryMiscOperations.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts",
         "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
         "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
@@ -8395,6 +8408,7 @@
         "playwright/e2e/Pages/Domains.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts",
+        "playwright/e2e/Pages/Tag.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts",
         "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
@@ -8413,6 +8427,8 @@
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryMiscOperations.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts",
         "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
         "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
@@ -8424,6 +8440,7 @@
         "playwright/e2e/Pages/Domains.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts",
+        "playwright/e2e/Pages/Tag.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts",
         "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
