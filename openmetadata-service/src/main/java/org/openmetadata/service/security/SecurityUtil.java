@@ -780,17 +780,39 @@ public final class SecurityUtil {
   }
 
   /**
-   * One malformed entry must not disable the others, so it is skipped rather than failing the login
-   * it would otherwise have been compared against.
+   * Whether {@code candidate} could stand in for {@code primaryCallbackUrl} on another host, i.e.
+   * whether {@link #sameOriginCallbackUrl} could ever select it: an absolute http(s) URL with a host,
+   * no user-info or fragment, and the primary's path.
    */
+  public static boolean isAlternativeCallbackUrl(String candidate, String primaryCallbackUrl) {
+    URI primary = parseOrNull(primaryCallbackUrl);
+    return primary != null
+        && StringUtils.isNotBlank(candidate)
+        && alternativeCallbackUri(normalizedPath(primary), candidate.trim()) != null;
+  }
+
   private static boolean isCallbackFor(URI origin, String primaryPath, String candidate) {
+    URI candidateUri = alternativeCallbackUri(primaryPath, candidate);
+    return candidateUri != null && sameOrigin(origin, candidateUri);
+  }
+
+  /**
+   * {@code candidate} parsed when it could stand in for a primary callback URL with {@code
+   * primaryPath}, otherwise {@code null}. One malformed entry must not disable the others, so it is
+   * skipped rather than failing the login it would have been compared against.
+   */
+  private static URI alternativeCallbackUri(String primaryPath, String candidate) {
     try {
       URI candidateUri = parseTrustedRedirectUri(candidate);
-      return sameOrigin(origin, candidateUri)
-          && StringUtils.equals(primaryPath, normalizedPath(candidateUri));
+      boolean isAlternative =
+          candidateUri.isAbsolute()
+              && isWebScheme(candidateUri.getScheme())
+              && StringUtils.isNotBlank(candidateUri.getHost())
+              && StringUtils.equals(primaryPath, normalizedPath(candidateUri));
+      return isAlternative ? candidateUri : null;
     } catch (IllegalArgumentException e) {
-      LOG.warn("Ignoring unusable additional callback URL [{}]: {}", candidate, e.getMessage());
-      return false;
+      LOG.warn("Unusable additional callback URL [{}]: {}", candidate, e.getMessage());
+      return null;
     }
   }
 

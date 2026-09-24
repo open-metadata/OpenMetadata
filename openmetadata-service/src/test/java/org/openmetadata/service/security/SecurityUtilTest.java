@@ -1511,6 +1511,32 @@ class SecurityUtilTest {
         SecurityUtil.sameOriginCallbackUrl("https://dr.example.com", PRIMARY_CALLBACK, List.of()));
   }
 
+  @Test
+  void isAlternativeCallbackUrl_acceptsAnotherHostWithThePrimaryPath() {
+    assertTrue(SecurityUtil.isAlternativeCallbackUrl(DR_CALLBACK, PRIMARY_CALLBACK));
+  }
+
+  @Test
+  void isAlternativeCallbackUrl_rejectsEntriesLoginCouldNeverSelect() {
+    List<String> unusable =
+        List.of(
+            "https://dr.example.com/auth/callback",
+            "/callback",
+            "ftp://dr.example.com/callback",
+            "https://user@dr.example.com/callback",
+            "https://dr.example.com/callback#fragment",
+            "not a url",
+            " ");
+    for (String candidate : unusable) {
+      assertFalse(SecurityUtil.isAlternativeCallbackUrl(candidate, PRIMARY_CALLBACK), candidate);
+    }
+  }
+
+  @Test
+  void isAlternativeCallbackUrl_rejectsEverythingWithoutAPrimary() {
+    assertFalse(SecurityUtil.isAlternativeCallbackUrl(DR_CALLBACK, null));
+  }
+
   private static Map<String, Claim> jwtClaims(Map<String, Object> values) {
     String token = JWT.create().withPayload(values).sign(Algorithm.none());
     return JWT.decode(token).getClaims();
