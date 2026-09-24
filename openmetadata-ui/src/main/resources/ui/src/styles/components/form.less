@@ -162,3 +162,11 @@
     }
   }
 }
+
+// Filter bars sit on the page, so their selects read the raised surface
+// (== bg-primary in light).
+.surface-filters
+  .ant-select:not(.ant-select-customize-input)
+  .ant-select-selector {
+  background: var(--om-color-bg-surface);
+}

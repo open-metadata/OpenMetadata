@@ -19,7 +19,7 @@ import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
 
 export const styles = {
   secondary: [
-    'tw:bg-primary tw:text-fg-quaternary tw:shadow-xs-skeuomorphic',
+    'tw:bg-surface tw:text-fg-quaternary tw:shadow-xs-skeuomorphic',
     'tw:hover:bg-primary_hover tw:hover:text-fg-quaternary_hover tw:disabled:shadow-xs',
     borderAfter,
     'tw:after:outline-primary tw:disabled:after:outline-disabled_subtle',

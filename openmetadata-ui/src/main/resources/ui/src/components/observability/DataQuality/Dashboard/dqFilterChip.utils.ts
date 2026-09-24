@@ -23,7 +23,7 @@ import classNames from 'classnames';
  */
 export const chipTriggerClassName = classNames(
   'tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center',
-  'tw:gap-1 tw:whitespace-nowrap tw:rounded-lg tw:bg-primary tw:px-3.5 tw:py-2.5',
+  'tw:gap-1 tw:whitespace-nowrap tw:rounded-lg tw:bg-surface tw:px-3.5 tw:py-2.5',
   'tw:text-sm tw:font-medium tw:text-secondary tw:shadow-xs-skeuomorphic',
   'tw:relative tw:outline-brand tw:transition tw:duration-100 tw:ease-linear',
   borderAfter,
