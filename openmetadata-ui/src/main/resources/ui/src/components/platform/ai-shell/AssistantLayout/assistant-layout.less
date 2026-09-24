@@ -70,4 +70,10 @@
   .page-layout-v1:not([data-variant='compact']) {
     padding-top: 16px;
   }
+
+  // Core PageLayout pads 8px around the grid and 8px inside Content, which
+  // leaves only 8px under the header band; the AI padding standard is 16px.
+  [data-scroll] > header + main {
+    padding-top: 16px;
+  }
 }
