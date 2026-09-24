@@ -37,6 +37,16 @@ class Column(BaseModel):
     Type: str
     Name: str
     Comment: str | None = None
+    # GetTables returns these, so the Iceberg flag below needs no extra API call.
+    Parameters: dict[str, str] | None = None
+
+    def is_current_iceberg_field(self) -> bool:
+        """Iceberg keeps a dropped field in the schema flagged current=false.
+
+        Only that explicit "false" retires a column: a field Iceberg never annotated,
+        and every column of a non-Iceberg table, is current.
+        """
+        return (self.Parameters or {}).get("iceberg.field.current") != "false"
 
 
 class SerializationDetails(BaseModel):
