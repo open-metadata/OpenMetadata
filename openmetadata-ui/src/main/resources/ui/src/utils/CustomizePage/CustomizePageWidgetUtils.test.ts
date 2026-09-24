@@ -14,7 +14,10 @@ import type { CommonWidgetType } from '../../constants/CustomizeWidgets.constant
 import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { WidgetWidths } from '../../enums/CustomizeDetailPage.enum';
 import { PageType } from '../../generated/system/ui/page';
-import { getAddWidgetHandler } from './CustomizePageWidgetUtils';
+import {
+  getAddWidgetHandler,
+  mergeGridLayout,
+} from './CustomizePageWidgetUtils';
 
 jest.mock('./CustomizePageDispatchUtils', () => ({
   getDefaultWidgetForTab: jest.fn(),
@@ -57,5 +60,40 @@ describe('getAddWidgetHandler', () => {
     expect(addDescription(WidgetWidths.small, 'other-widget')?.config).toEqual({
       size: 'small',
     });
+  });
+});
+
+describe('mergeGridLayout', () => {
+  it('keeps widget meta while taking the grid position from react-grid-layout', () => {
+    const child = { i: 'KnowledgePanel.Description', x: 0, y: 0, w: 1, h: 1 };
+    const previous = [
+      {
+        i: 'KnowledgePanel.Description-1',
+        x: 0,
+        y: 0,
+        w: 3,
+        h: 2,
+        config: { size: 'large' },
+      },
+      {
+        i: 'KnowledgePanel.LeftPanel',
+        x: 0,
+        y: 0,
+        w: 6,
+        h: 4,
+        children: [child],
+      },
+    ];
+    const gridLayout = [
+      { i: 'KnowledgePanel.Description-1', x: 2, y: 5, w: 3, h: 2 },
+      { i: 'KnowledgePanel.LeftPanel', x: 0, y: 1, w: 6, h: 4 },
+      { i: 'KnowledgePanel.Tags-2', x: 0, y: 9, w: 1, h: 1 },
+    ];
+
+    expect(mergeGridLayout(gridLayout, previous)).toEqual([
+      { ...gridLayout[0], config: { size: 'large' } },
+      { ...gridLayout[1], children: [child] },
+      gridLayout[2],
+    ]);
   });
 });

@@ -121,6 +121,20 @@ export const getAddWidgetHandler =
     }
   };
 
+/**
+ * Apply react-grid-layout's `onLayoutChange` output to stored widgets. RGL only
+ * returns grid fields (i/x/y/w/h/...), so widget-owned fields such as `config`
+ * and `children` are carried over from the previous widget with the same `i`.
+ */
+export const mergeGridLayout = (
+  gridLayout: WidgetConfig[],
+  previous: WidgetConfig[] = []
+): WidgetConfig[] =>
+  gridLayout.map((widget) => ({
+    ...previous.find((prev) => prev.i === widget.i),
+    ...widget,
+  }));
+
 export const asyncNoop = async () => {
   noop();
 };
