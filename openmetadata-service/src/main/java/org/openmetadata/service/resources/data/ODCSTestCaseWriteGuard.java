@@ -15,13 +15,17 @@ package org.openmetadata.service.resources.data;
 
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.datacontract.odcs.ODCSTestCaseMaterializer;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
@@ -34,6 +38,7 @@ import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext
  * {@code POST} and {@code PUT /v1/dataQuality/testCases}: without them, permission to import a data
  * contract would be enough to run arbitrary SQL checks against the table.
  */
+@Slf4j
 final class ODCSTestCaseWriteGuard implements ODCSTestCaseMaterializer.WriteGuard {
   private final Authorizer authorizer;
   private final Limits limits;
@@ -45,27 +50,52 @@ final class ODCSTestCaseWriteGuard implements ODCSTestCaseMaterializer.WriteGuar
     this.securityContext = securityContext;
   }
 
+  /** Whether the caller may create test cases on the entity, when it is a table. */
+  boolean canCreateTestCasesOn(EntityReference entity) {
+    boolean allowed = false;
+    if (Entity.TABLE.equals(entity.getType()) && entity.getId() != null) {
+      String tableFqn =
+          Entity.getEntityReferenceById(Entity.TABLE, entity.getId(), Include.NON_DELETED)
+              .getFullyQualifiedName();
+      TestCase probe =
+          new TestCase().withEntityLink(new EntityLink(Entity.TABLE, tableFqn).getLinkString());
+      try {
+        authorizer.authorizeRequests(
+            securityContext, createRequests(probe, tableContext(probe)), AuthorizationLogic.ANY);
+        allowed = true;
+      } catch (AuthorizationException e) {
+        LOG.debug("Caller may not create test cases on {}: {}", tableFqn, e.getMessage());
+      }
+    }
+    return allowed;
+  }
+
   @Override
   public void authorize(TestCase testCase, boolean overwritesExisting) {
-    ResourceContextInterface tableContext =
-        TestCaseResourceContext.builder()
-            .entityLink(EntityLink.parse(testCase.getEntityLink()))
-            .build();
-    List<AuthRequest> requests =
-        overwritesExisting
-            ? updateRequests(testCase, tableContext)
-            : createRequests(testCase, tableContext);
+    ResourceContextInterface tableContext = tableContext(testCase);
+    List<AuthRequest> requests;
+    if (overwritesExisting) {
+      requests = updateRequests(testCase, tableContext);
+    } else {
+      limits.enforceLimits(
+          securityContext,
+          new CreateResourceContext<>(Entity.TEST_CASE, testCase),
+          new OperationContext(Entity.TEST_CASE, MetadataOperation.CREATE_TESTS));
+      requests = createRequests(testCase, tableContext);
+    }
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
   }
 
-  private List<AuthRequest> createRequests(
+  private static ResourceContextInterface tableContext(TestCase testCase) {
+    return TestCaseResourceContext.builder()
+        .entityLink(EntityLink.parse(testCase.getEntityLink()))
+        .build();
+  }
+
+  private static List<AuthRequest> createRequests(
       TestCase testCase, ResourceContextInterface tableContext) {
     CreateResourceContext<TestCase> testCaseContext =
         new CreateResourceContext<>(Entity.TEST_CASE, testCase);
-    limits.enforceLimits(
-        securityContext,
-        testCaseContext,
-        new OperationContext(Entity.TEST_CASE, MetadataOperation.CREATE_TESTS));
     return List.of(
         new AuthRequest(
             new OperationContext(Entity.TABLE, MetadataOperation.CREATE_TESTS), tableContext),

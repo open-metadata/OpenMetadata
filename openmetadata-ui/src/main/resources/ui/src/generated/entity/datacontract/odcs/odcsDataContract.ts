@@ -122,6 +122,7 @@ export enum OdcsAPIVersion {
     V301 = "v3.0.1",
     V302 = "v3.0.2",
     V310 = "v3.1.0",
+    V320 = "v3.2.0",
 }
 
 /**
