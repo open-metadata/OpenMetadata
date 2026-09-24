@@ -49,6 +49,9 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as OccurrencesIcon } from '../../../assets/svg/ic_occurrences.svg';
+import { ReactComponent as PendingChangesIcon } from '../../../assets/svg/ic_pending-changes.svg';
+import { ReactComponent as UniqueColumnsIcon } from '../../../assets/svg/ic_unique-column.svg';
 import AsyncSelectList from '../../../components/common/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSelectList.interface';
 import { useFormDrawerWithRef } from '../../../components/common/atoms/drawer/useFormDrawer';
@@ -98,11 +101,6 @@ import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ColumnGridProps, ColumnGridRowData } from './ColumnGrid.interface';
 import ColumnGridRow from './components/ColumnGridRow';
-import {
-  OccurrencesIcon,
-  PendingChangesIcon,
-  UniqueColumnsIcon,
-} from './components/ColumnStatIcons';
 import {
   RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS,
   SCROLL_TO_ROW_MAX_RETRIES,
