@@ -582,10 +582,39 @@ test.describe('Bulk Domain Asset Operations', () => {
       await checkAssetsCount(page, assets.length);
 
       for (const asset of assets) {
-        const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+        const name = get(asset, 'entityResponseData.name') as
+          | string
+          | undefined;
+        const fqn = get(asset, 'entityResponseData.fullyQualifiedName') as
+          | string
+          | undefined;
+
+        if (!name || !fqn) {
+          throw new Error(
+            `Remove multiple assets: asset missing entityResponseData.name or fullyQualifiedName. Got name=${name}, fqn=${fqn}`
+          );
+        }
+
+        // Narrow before check — same pattern as removeAssetsFromDataProduct.
+        const searchRes = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            response.url().includes(`q=${name}`)
+        );
+        await page.getByTestId('searchbar').fill(name);
+        await searchRes;
+
         await page
           .locator(`[data-testid="table-data-card_${fqn}"] input`)
           .check();
+
+        const clearSearchRes = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            response.url().includes('q=&')
+        );
+        await page.getByTestId('searchbar').clear();
+        await clearSearchRes;
       }
 
       const removeRes = page.waitForResponse('/api/v1/domains/*/assets/remove');
@@ -993,8 +1022,30 @@ test.describe('Domain asset dryRun — remove confirmation', () => {
   };
 
   const selectAssetCardCheckbox = async (page: Page, table: TableClass) => {
+    const name = table.entityResponseData.name ?? '';
     const fqn = table.entityResponseData.fullyQualifiedName ?? '';
+
+    // Narrow the list to this one card first — under SharedInfra the
+    // domain asset tab lists every table on the shard, and toggling a
+    // checkbox reflows enough that a subsequent target scrolls under
+    // the pointer and .check() retries out.
+    const searchRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(`q=${name}`)
+    );
+    await page.getByTestId('searchbar').fill(name);
+    await searchRes;
+
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+
+    const clearSearchRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('q=&')
+    );
+    await page.getByTestId('searchbar').clear();
+    await clearSearchRes;
   };
 
   test('single-asset remove with linked data product shows preview and commits on Remove Anyway', async ({

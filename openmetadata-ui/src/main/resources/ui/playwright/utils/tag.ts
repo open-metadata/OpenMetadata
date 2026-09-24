@@ -201,8 +201,37 @@ export const removeAssetsFromTag = async (
 
   await page.getByTestId('assets').click();
   for (const asset of assets) {
-    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    const name = get(asset, 'entityResponseData.name') as string | undefined;
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName') as
+      | string
+      | undefined;
+
+    if (!name || !fqn) {
+      throw new Error(
+        `removeAssetsFromTag: asset missing entityResponseData.name or fullyQualifiedName. Got name=${name}, fqn=${fqn}`
+      );
+    }
+
+    // Narrow to this card so the tag's asset tab (which under SharedInfra
+    // can list every table/topic/dashboard on the shard) stays stable
+    // while we toggle checkboxes one at a time.
+    const searchRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(`q=${name}`)
+    );
+    await page.getByTestId('searchbar').fill(name);
+    await searchRes;
+
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+
+    const clearSearchRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('q=&')
+    );
+    await page.getByTestId('searchbar').clear();
+    await clearSearchRes;
   }
 
   const assetsRemoveRes = page.waitForResponse(`/api/v1/tags/*/assets/remove`);

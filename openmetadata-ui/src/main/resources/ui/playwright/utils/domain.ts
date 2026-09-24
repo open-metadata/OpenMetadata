@@ -1054,7 +1054,29 @@ export const addAssetsToDataProduct = async (
   await checkAssetsCount(page, assets.length);
 
   for (const asset of assets) {
-    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    const name = get(asset, 'entityResponseData.name') as string | undefined;
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName') as
+      | string
+      | undefined;
+
+    if (!name || !fqn) {
+      throw new Error(
+        `addAssetsToDataProduct verification: asset missing entityResponseData.name or fullyQualifiedName. Got name=${name}, fqn=${fqn}`
+      );
+    }
+
+    // Narrow the asset tab to this one card before clicking. Under
+    // SharedInfra the data-product asset tab is stable in count (we just
+    // added N), but goBack() re-mounts the list and click retries can
+    // race the re-render — see the sibling narrow in the picker helper
+    // in utils/tag.ts:verifyEntityTypeFilterInTagAssets.
+    const searchRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(`q=${name}`)
+    );
+    await page.getByTestId('searchbar').fill(name);
+    await searchRes;
 
     await page
       .locator(
@@ -1083,8 +1105,36 @@ export const removeAssetsFromDataProduct = async (
 ) => {
   await page.getByTestId('assets').click();
   for (const asset of assets) {
-    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    const name = get(asset, 'entityResponseData.name') as string | undefined;
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName') as
+      | string
+      | undefined;
+
+    if (!name || !fqn) {
+      throw new Error(
+        `removeAssetsFromDataProduct: asset missing entityResponseData.name or fullyQualifiedName. Got name=${name}, fqn=${fqn}`
+      );
+    }
+
+    // Narrow the asset tab to this one card before checking. Same reason
+    // as addAssetsToDataProduct's verify loop above.
+    const searchRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(`q=${name}`)
+    );
+    await page.getByTestId('searchbar').fill(name);
+    await searchRes;
+
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+
+    const clearSearchRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('q=&')
+    );
+    await page.getByTestId('searchbar').clear();
+    await clearSearchRes;
   }
 
   const assetsRemoveRes = page.waitForResponse(
