@@ -376,17 +376,69 @@ public class LineageRepository {
     EntityReference pipelineService = getPipelineService(entityLineageDetails);
 
     // An edge that gains, loses, or switches its pipeline feeds a different pair of service edges
-    // than it did before. Release the previous projection first, or the edges it used to feed are
-    // orphaned at assetEdges=1 and the graph shows both paths again.
-    boolean reshaped =
-        childRelationExists
-            && releaseReshapedServiceEdges(fromEntity, toEntity, priorDetails, pipelineService);
+    // than it did before. The previous projection has to be released, or the edges it used to feed
+    // are orphaned at assetEdges=1 and the graph shows both paths again. The new projection is
+    // written first: both land on the target service's search doc, and search removals run
+    // asynchronously, so a write issued after the release can lose a version conflict and never
+    // reach the service view.
+    PriorServiceShape priorShape = childRelationExists ? priorServiceShape(priorDetails) : null;
+    boolean reshaped = priorShape != null && priorShape.isReshapedTo(pipelineService);
     boolean childAlreadyCounted = childRelationExists && !reshaped;
 
-    // A pipeline-annotated edge is projected as fromService -> pipelineService -> toService. Also
-    // emitting the direct fromService -> toService edge would draw two parallel paths for one flow
-    // of data, so the two shapes are mutually exclusive. A direct edge survives only while some
-    // un-annotated child edge still contributes to it, which the assetEdges refcount tracks.
+    insertServiceShape(
+        fromService, toService, pipelineService, entityLineageDetails, childAlreadyCounted);
+    if (reshaped && priorShape.isKnown()) {
+      releaseServiceShape(fromService, toService, priorShape.pipelineService());
+    }
+  }
+
+  /**
+   * The service edges a child edge fed before this write: the direct edge when it carried no
+   * pipeline, otherwise the hops through {@code pipelineService}. {@code isKnown} is false when the
+   * prior pipeline and the service its FQN names are both gone, so those hops can no longer be
+   * named.
+   */
+  private record PriorServiceShape(
+      boolean hadPipeline, boolean isKnown, EntityReference pipelineService) {
+
+    /**
+     * Whether the child now feeds a different pair of service edges, so it counts as a fresh
+     * contributor to the new shape. An unknown prior shape counts as moved: its stale hops are left
+     * to the 2.0.3 repair, but a hop shared with another child would otherwise stay one contributor
+     * short and be deleted while this edge still needs it. That can overcount a hop when the
+     * replacement happens to share the vanished service, but a redundant hop outliving its use is
+     * recoverable where a prematurely deleted one is not.
+     */
+    boolean isReshapedTo(EntityReference newPipelineService) {
+      if (!hadPipeline) {
+        return newPipelineService != null;
+      }
+      return !isKnown
+          || newPipelineService == null
+          || !Objects.equals(pipelineService.getId(), newPipelineService.getId());
+    }
+  }
+
+  private PriorServiceShape priorServiceShape(LineageDetails priorDetails) {
+    if (priorDetails == null || nullOrEmpty(priorDetails.getPipeline())) {
+      return new PriorServiceShape(false, true, null);
+    }
+    EntityReference priorPipelineService = resolveAnnotatorPipelineService(priorDetails);
+    return new PriorServiceShape(true, priorPipelineService != null, priorPipelineService);
+  }
+
+  /**
+   * A pipeline-annotated edge is projected as fromService -> pipelineService -> toService. Also
+   * emitting the direct fromService -> toService edge would draw two parallel paths for one flow of
+   * data, so the two shapes are mutually exclusive. A direct edge survives only while some
+   * un-annotated child edge still contributes to it, which the assetEdges refcount tracks.
+   */
+  private void insertServiceShape(
+      EntityReference fromService,
+      EntityReference toService,
+      EntityReference pipelineService,
+      LineageDetails entityLineageDetails,
+      boolean childAlreadyCounted) {
     if (pipelineService != null) {
       insertServiceEdgeIfDistinct(
           fromService, pipelineService, entityLineageDetails, childAlreadyCounted);
@@ -395,46 +447,6 @@ public class LineageRepository {
       return;
     }
     insertServiceEdgeIfDistinct(fromService, toService, entityLineageDetails, childAlreadyCounted);
-  }
-
-  /**
-   * Reports whether this edge now feeds a different pair of service edges than it did before, so
-   * the caller counts it as a fresh contributor to the new shape. Releases the previous shape too,
-   * whenever that shape can still be identified.
-   */
-  private boolean releaseReshapedServiceEdges(
-      EntityInterface fromEntity,
-      EntityInterface toEntity,
-      LineageDetails priorDetails,
-      EntityReference pipelineService) {
-    if (priorDetails == null) {
-      return false;
-    }
-    if (nullOrEmpty(priorDetails.getPipeline())) {
-      if (pipelineService == null) {
-        return false;
-      }
-      releaseServiceShape(fromEntity.getService(), toEntity.getService(), null);
-      return true;
-    }
-
-    EntityReference priorPipelineService = resolveAnnotatorPipelineService(priorDetails);
-    if (priorPipelineService == null) {
-      // Neither the prior pipeline nor the service its FQN names survives, so the hops it fed
-      // cannot be identified. Releasing with a null service would fall through to the direct edge,
-      // which other child edges own, so the stale hops are left to the 2.0.3 repair. The edge has
-      // still moved onto its current shape and is counted into it: a hop shared with another child
-      // would otherwise stay one contributor short and be deleted while this edge still needs it.
-      // That can overcount a hop when the replacement happens to share the vanished service, but a
-      // redundant hop outliving its use is recoverable where a prematurely deleted one is not.
-      return true;
-    }
-    if (pipelineService != null
-        && Objects.equals(priorPipelineService.getId(), pipelineService.getId())) {
-      return false;
-    }
-    releaseServiceShape(fromEntity.getService(), toEntity.getService(), priorPipelineService);
-    return true;
   }
 
   /**
