@@ -21,7 +21,7 @@
     <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
     <integrationTests.skipParallel>false</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
-    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,AppsResourceIT,TestSuiteReindexIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,EntityShapeIT</integrationTests.globalStateTests>
+    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,AppsResourceIT,TestSuiteReindexIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT</integrationTests.globalStateTests>
     <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,TokenRevocationRedisMultiNodeIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
     <!-- Tags excluded from the ui-it profile. Override on the CLI to include them, e.g.
@@ -319,6 +319,9 @@
                 <include>testcontainers.properties</include>
                 <include>docker-java.properties</include>
                 <include>META-INF/services/**</include>
+                <!-- SearchTestImages (org/openmetadata/it/server/**) copies this archive into the
+                     Docker build context, so it has to travel with the published harness. -->
+                <include>opensearch-plugins/**</include>
               </includes>
             </configuration>
           </execution>
@@ -421,6 +424,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
@@ -470,6 +474,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
@@ -548,6 +553,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
@@ -597,6 +603,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
@@ -676,6 +683,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
@@ -726,6 +734,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
@@ -805,6 +814,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
@@ -854,6 +864,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
@@ -932,6 +943,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
@@ -981,6 +993,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
@@ -1058,6 +1071,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
@@ -1108,6 +1122,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
@@ -1202,6 +1217,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
@@ -1253,6 +1269,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
@@ -1337,6 +1354,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
@@ -1387,6 +1405,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>

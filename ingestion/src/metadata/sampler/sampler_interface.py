@@ -21,6 +21,7 @@ from metadata.generated.schema.configuration.profilerConfiguration import (
     SampleDataIngestionConfig,
 )
 from metadata.generated.schema.entity.data.table import TableData
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.samplingConfig import SampleConfigType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -104,6 +105,28 @@ class SamplerInterface(ABC):
             ),
         )
         return self._sample_config
+
+    @property
+    def applies_sampling(self) -> bool:
+        """Whether reading the dataset returns a subset of the asset rather than all of it.
+
+        A configured sample amount does not answer that on its own: a 100% percentage that is
+        not randomized resolves to the asset itself. `get_dataset` is the authority on that, so
+        both implementations read this rather than repeating the rule, and so does the data
+        quality evaluation scope, which reports the sample a verdict was measured on.
+        """
+        if self.sample_query:
+            return True
+
+        static = self._resolve_sample_config
+        if not static or not static.profileSample:
+            return False
+
+        return not (
+            static.profileSampleType == ProfileSampleType.PERCENTAGE
+            and static.profileSample == 100
+            and self.sample_config.randomizedSample is not True
+        )
 
     @property
     @abstractmethod

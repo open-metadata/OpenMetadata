@@ -423,7 +423,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
           }
         )}
         data-testid="ask-ai-user-menu-trigger">
-        <ProfilePicture displayName={displayName} name={email} width="40" />
+        <ProfilePicture displayName={displayName} name={email} size="sm" />
         {!collapsed && (
           <Box
             align="start"
