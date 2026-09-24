@@ -32,6 +32,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.AnnouncementStatus;
+import org.openmetadata.schema.type.AnnouncementType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
@@ -210,6 +211,46 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
 
     Announcement created = createEntity(request);
     assertEquals("Important Maintenance Window", created.getDisplayName());
+  }
+
+  @Test
+  void testAnnouncementTypeDefaultsToInformation(TestNamespace ns) {
+    Announcement created = createEntity(createMinimalRequest(ns));
+    assertEquals(AnnouncementType.Information, created.getType());
+
+    Announcement fetched = getEntity(created.getId().toString());
+    assertEquals(AnnouncementType.Information, fetched.getType());
+  }
+
+  @Test
+  void testAnnouncementTypeRoundTrips(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    CreateAnnouncement request =
+        new CreateAnnouncement()
+            .withName(ns.prefix("warning-ann"))
+            .withDescription("Schema change coming")
+            .withType(AnnouncementType.Warning)
+            .withStartTime(now)
+            .withEndTime(now + 86400000L);
+
+    Announcement created = createEntity(request);
+    assertEquals(AnnouncementType.Warning, created.getType());
+
+    Announcement fetched = getEntity(created.getId().toString());
+    assertEquals(AnnouncementType.Warning, fetched.getType());
+  }
+
+  @Test
+  void testPatchAnnouncementType(TestNamespace ns) {
+    Announcement created = createEntity(createMinimalRequest(ns));
+    assertEquals(AnnouncementType.Information, created.getType());
+
+    created.setType(AnnouncementType.Issue);
+    Announcement updated = patchEntity(created.getId().toString(), created);
+    assertEquals(AnnouncementType.Issue, updated.getType());
+
+    Announcement fetched = getEntity(created.getId().toString());
+    assertEquals(AnnouncementType.Issue, fetched.getType());
   }
 
   @Test

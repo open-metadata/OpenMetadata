@@ -208,6 +208,7 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
       recordChange("startTime", original.getStartTime(), updated.getStartTime());
       recordChange("endTime", original.getEndTime(), updated.getEndTime());
       recordChange("status", original.getStatus(), updated.getStatus());
+      recordChange("type", original.getType(), updated.getType());
     }
   }
 

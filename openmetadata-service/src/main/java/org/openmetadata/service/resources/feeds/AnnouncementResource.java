@@ -308,6 +308,7 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
         .withName(create.getName() != null ? create.getName() : "announcement-" + UUID.randomUUID())
         .withDisplayName(create.getDisplayName())
         .withDescription(create.getDescription())
+        .withType(create.getType())
         .withEntityLink(create.getEntityLink())
         .withStartTime(create.getStartTime())
         .withEndTime(create.getEndTime())
