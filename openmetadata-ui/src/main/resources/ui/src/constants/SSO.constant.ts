@@ -333,7 +333,12 @@ export const SAML_UI_SCHEMA = {
           'Auto-generated Assertion Consumer Service URL. Copy this value and paste it as ACS URL (or Reply URL) in your SAML Identity Provider configuration.',
       },
       callback: { 'ui:widget': 'hidden', 'ui:hideError': true },
-      additionalAcsUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
+      additionalAcsUrls: {
+        'ui:title': i18next.t('label.additional-acs-url-plural'),
+        'ui:placeholder': i18next.t('label.enter-each-value-and-press-enter'),
+        'ui:help': i18next.t('message.additional-acs-url-help'),
+        'ui:field': 'ArrayField',
+      },
       spX509Certificate: {
         'ui:title': 'SP X.509 Certificate',
         'ui:widget': 'textarea',

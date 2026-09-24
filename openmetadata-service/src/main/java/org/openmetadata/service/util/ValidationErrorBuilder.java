@@ -88,6 +88,8 @@ public class ValidationErrorBuilder {
         "authenticationConfiguration.samlConfiguration.sp.entityId";
     public static final String SAML_SP_ACS_URL =
         "authenticationConfiguration.samlConfiguration.sp.acs";
+    public static final String SAML_SP_ADDITIONAL_ACS_URLS =
+        "authenticationConfiguration.samlConfiguration.sp.additionalAcsUrls";
     public static final String SAML_SP_CERT =
         "authenticationConfiguration.samlConfiguration.sp.spX509Certificate";
     public static final String SAML_SP_KEY =

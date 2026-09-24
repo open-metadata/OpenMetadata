@@ -20,6 +20,7 @@ import java.net.InetSocketAddress;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.List;
+import java.util.stream.IntStream;
 import javax.security.auth.x500.X500Principal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -1225,5 +1226,46 @@ class SamlValidatorTest {
     public void close() {
       server.stop(0);
     }
+  }
+
+  @Test
+  void acceptsAdditionalAcsUrlsOnOtherHostsWithTheAcsPath() {
+    assertNull(
+        SamlValidator.validateAdditionalAcsUrls(
+            serviceProvider(List.of("https://dr.example.com/api/v1/saml/acs"))));
+  }
+
+  /** Existing configurations never set the field, so they must stay saveable. */
+  @Test
+  void acceptsAnAbsentAdditionalAcsList() {
+    assertNull(SamlValidator.validateAdditionalAcsUrls(serviceProvider(null)));
+  }
+
+  @Test
+  void rejectsAnAdditionalAcsUrlLoginCouldNeverSelect() {
+    FieldError error =
+        SamlValidator.validateAdditionalAcsUrls(
+            serviceProvider(List.of("https://dr.example.com/saml/other")));
+
+    assertEquals(ValidationErrorBuilder.FieldPaths.SAML_SP_ADDITIONAL_ACS_URLS, error.getField());
+    assertTrue(error.getError().contains("'https://dr.example.com/saml/other'"));
+  }
+
+  @Test
+  void rejectsMoreAdditionalAcsUrlsThanTheCap() {
+    List<String> acsUrls =
+        IntStream.rangeClosed(1, 21)
+            .mapToObj(i -> "https://host" + i + ".example.com/api/v1/saml/acs")
+            .toList();
+
+    FieldError error = SamlValidator.validateAdditionalAcsUrls(serviceProvider(acsUrls));
+
+    assertEquals(ValidationErrorBuilder.FieldPaths.SAML_SP_ADDITIONAL_ACS_URLS, error.getField());
+  }
+
+  private static ServiceProviderConfig serviceProvider(List<String> additionalAcsUrls) {
+    return new ServiceProviderConfig()
+        .withAcs("https://om.example.com/api/v1/saml/acs")
+        .withAdditionalAcsUrls(additionalAcsUrls);
   }
 }
