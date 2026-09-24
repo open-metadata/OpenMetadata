@@ -14,7 +14,12 @@ import { APIRequestContext, expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { createOrFetch, okJson } from '../../utils/apiResponse';
+import {
+  createOrFetch,
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import {
   assignSingleSelectDomain,
   removeSingleSelectDomain,
@@ -185,16 +190,14 @@ export class DatabaseClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const serviceResponse = await apiContext.patch(
-      `/api/v1/databases/${this.entityResponseData?.['id']}`,
-      {
+    const serviceResponse = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/databases/${this.entityResponseData?.['id']}`, {
         data: patchData,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
-
     const entity = await okJson(serviceResponse, 'DatabaseClass.patch');
 
     this.entityResponseData = entity;
@@ -388,5 +391,3 @@ export class DatabaseClass extends EntityClass {
     await removeSingleSelectDomain(page, domain2);
   }
 }
-
-import { deleteFixtureEntity } from '../../utils/apiResponse';

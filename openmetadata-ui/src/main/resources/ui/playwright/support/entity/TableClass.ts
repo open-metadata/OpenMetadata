@@ -20,7 +20,12 @@ import {
 } from '../../../src/generated/entity/data/table';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { buildFqn, okJson } from '../../utils/apiResponse';
+import {
+  buildFqn,
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { fullUuid, uuid } from '../../utils/common';
 import { visitEntityPage, visitEntityPageByFqn } from '../../utils/entity';
 import {
@@ -600,16 +605,20 @@ export class TableClass extends EntityClass {
       ? `?${new URLSearchParams(queryParams).toString()}`
       : '';
 
-    const response = await apiContext.patch(
-      tableId
-        ? `/api/v1/tables/${tableId}${queryString}`
-        : `/api/v1/tables/name/${encodeURIComponent(tableFqn!)}${queryString}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        tableId
+          ? `/api/v1/tables/${tableId}${queryString}`
+          : `/api/v1/tables/name/${encodeURIComponent(
+              tableFqn!
+            )}${queryString}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
     this.entityResponseData = await okJson(response, 'TableClass.patch');
@@ -681,5 +690,3 @@ export class TableClass extends EntityClass {
     });
   }
 }
-
-import { deleteFixtureEntity } from '../../utils/apiResponse';

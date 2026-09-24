@@ -15,7 +15,7 @@ import * as fs from 'fs';
 import { isUndefined } from 'lodash';
 import * as path from 'path';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
-import { okJson } from '../../utils/apiResponse';
+import { okJson, settleAll } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { getCustomPropertyCreationData } from '../../utils/customPropertyAdvancedSearchUtils';
 import { DataProduct } from '../domain/DataProduct';
@@ -663,5 +663,3 @@ export class EntityDataClass {
 
 // Load response data from file when the module is imported
 EntityDataClass.loadResponseData();
-
-import { settleAll } from '../../utils/apiResponse';

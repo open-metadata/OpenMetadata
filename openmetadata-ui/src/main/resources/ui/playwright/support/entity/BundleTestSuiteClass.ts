@@ -16,6 +16,13 @@ import { uuid } from '../../utils/common';
 import { triggerIngestionPipeline } from '../../utils/ingestionExecution';
 import { ResponseDataType } from './Entity.interface';
 
+// Deploy writes the DAG file before the scheduler recognizes it. An immediate
+// trigger can still return 404 until the next parse — same reason
+// IngestionLogStreamLive.spec.ts waits and retries.
+const PIPELINE_DEPLOY_READINESS_DELAY_MS = 5_000;
+const PIPELINE_TRIGGER_MAX_ATTEMPTS = 3;
+const PIPELINE_TRIGGER_RETRY_DELAY_MS = 10_000;
+
 export class BundleTestSuiteClass {
   bundleTestSuiteResponseData: ResponseDataType = {} as ResponseDataType;
 
@@ -101,6 +108,24 @@ export class BundleTestSuiteClass {
         `Deploy pipeline ${pipelineId} failed (${response.status()}): ${await response.text()}`
       );
     }
-    await triggerIngestionPipeline(apiContext, pipelineId);
+    await new Promise((resolve) =>
+      setTimeout(resolve, PIPELINE_DEPLOY_READINESS_DELAY_MS)
+    );
+
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= PIPELINE_TRIGGER_MAX_ATTEMPTS; attempt++) {
+      try {
+        await triggerIngestionPipeline(apiContext, pipelineId);
+        return;
+      } catch (error) {
+        lastError = error;
+        if (attempt < PIPELINE_TRIGGER_MAX_ATTEMPTS) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, PIPELINE_TRIGGER_RETRY_DELAY_MS)
+          );
+        }
+      }
+    }
+    throw lastError;
   }
 }

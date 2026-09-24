@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
-import { okJson } from '../../utils/apiResponse';
+import {
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
 export type BotResponseDataType = {
@@ -98,20 +102,16 @@ export class BotClass {
   }
 
   async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
-    const response = await apiContext.patch(
-      `/api/v1/bots/${this.responseData.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/bots/${this.responseData.id}`, {
         data,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
-
     this.responseData = await okJson(response, 'BotClass.patch');
 
     return await okJson(response, 'BotClass.patch');
   }
 }
-
-import { deleteFixtureEntity } from '../../utils/apiResponse';

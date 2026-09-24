@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
-import { createOrFetch } from '../../utils/apiResponse';
+import { createOrFetch, deleteFixtureEntity } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
 type ResponseDataType = {
@@ -61,5 +61,3 @@ export class RolesClass {
     return await response.json();
   }
 }
-
-import { deleteFixtureEntity } from '../../utils/apiResponse';
