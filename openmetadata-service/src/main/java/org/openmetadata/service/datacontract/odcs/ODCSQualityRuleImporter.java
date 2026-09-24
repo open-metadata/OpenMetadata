@@ -64,9 +64,15 @@ public final class ODCSQualityRuleImporter {
    * only supported on tables, so for any other entity nothing is created.
    */
   public List<ODCSRuleOutcome> apply(Request request) {
-    DataContract contract = request.contract();
-    boolean runnable = isTable(contract) && !nullOrEmpty(contract.getOdcsQualityRules());
-    return runnable ? importRules(request) : List.of();
+    return isRunnable(request.contract()) ? importRules(request) : List.of();
+  }
+
+  /**
+   * What {@link #apply} would do, without creating test cases. The contract's SLA is updated as
+   * {@link #apply} would, so pass a contract that is not stored.
+   */
+  public List<ODCSRuleOutcome> preview(Request request) {
+    return isRunnable(request.contract()) ? previewRules(request) : List.of();
   }
 
   /**
@@ -90,19 +96,32 @@ public final class ODCSQualityRuleImporter {
   }
 
   private List<ODCSRuleOutcome> importRules(Request request) {
-    DataContract contract = request.contract();
-    ODCSTableTarget target = ODCSTableTarget.of(tableLoader.apply(contract.getEntity()));
-    List<ODCSRuleOutcome> outcomes =
-        applyFreshness(contract, ODCSQualityRuleMapper.map(contract.getOdcsQualityRules(), target));
+    List<ODCSRuleOutcome> outcomes = mapRules(request.contract());
     ODCSTestCaseMaterializer.Result result =
-        materializer.materialize(
-            new ODCSTestCaseMaterializer.Request(
-                testCaseOutcomes(outcomes),
-                request.ownedTestCaseIds(),
-                request.guard(),
-                request.user()));
-    contract.setQualityExpectations(result.testCases());
+        materializer.materialize(materializationRequest(request, outcomes));
+    request.contract().setQualityExpectations(result.testCases());
     return withSkipped(outcomes, result.skipped());
+  }
+
+  private List<ODCSRuleOutcome> previewRules(Request request) {
+    List<ODCSRuleOutcome> outcomes = mapRules(request.contract());
+    return withSkipped(outcomes, materializer.conflicts(materializationRequest(request, outcomes)));
+  }
+
+  private List<ODCSRuleOutcome> mapRules(DataContract contract) {
+    ODCSTableTarget target = ODCSTableTarget.of(tableLoader.apply(contract.getEntity()));
+    return applyFreshness(
+        contract, ODCSQualityRuleMapper.map(contract.getOdcsQualityRules(), target));
+  }
+
+  private static ODCSTestCaseMaterializer.Request materializationRequest(
+      Request request, List<ODCSRuleOutcome> outcomes) {
+    return new ODCSTestCaseMaterializer.Request(
+        testCaseOutcomes(outcomes), request.ownedTestCaseIds(), request.guard(), request.user());
+  }
+
+  private static boolean isRunnable(DataContract contract) {
+    return isTable(contract) && !nullOrEmpty(contract.getOdcsQualityRules());
   }
 
   /**

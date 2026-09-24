@@ -11,39 +11,10 @@
  *  limitations under the License.
  */
 /**
- * Comprehensive validation result for data contract import operations.
- */
-export interface ContractValidation {
-    /**
-     * List of entity-specific constraint violations (e.g., unsupported entity type, invalid
-     * configuration).
-     */
-    constraintErrors?: string[];
-    /**
-     * List of entity-level validation errors (e.g., name too long, invalid pattern).
-     */
-    entityErrors?: string[];
-    /**
-     * For ODCS imports: what the import keeps, changes and leaves out of the ODCS document.
-     */
-    odcsImportReport?: ODCSImportReport;
-    /**
-     * Schema field validation results.
-     */
-    schemaValidation?: SchemaValidation;
-    /**
-     * Whether the contract passes all validation checks.
-     */
-    valid?: boolean;
-}
-
-/**
- * For ODCS imports: what the import keeps, changes and leaves out of the ODCS document.
- *
  * What importing an ODCS document into OpenMetadata keeps, changes and leaves out, so the
  * user can decide whether to import it.
  */
-export interface ODCSImportReport {
+export interface OdcsImportReport {
     /**
      * Whether the requesting user may create test cases on the target, which importing quality
      * rules as test cases requires.
@@ -151,37 +122,4 @@ export enum Outcome {
     NotExecuted = "notExecuted",
     Sla = "sla",
     TestCase = "testCase",
-}
-
-/**
- * Schema field validation results.
- *
- * Schema validation details for data contract.
- */
-export interface SchemaValidation {
-    /**
-     * List of field names that appear more than once in the contract schema.
-     */
-    duplicateFields?: string[];
-    /**
-     * Number of schema checks failed.
-     */
-    failed?: number;
-    /**
-     * List of fields that do not exist in the entity.
-     */
-    failedFields?: string[];
-    /**
-     * Number of schema checks passed.
-     */
-    passed?: number;
-    /**
-     * Total number of schema checks.
-     */
-    total?: number;
-    /**
-     * List of fields with data type mismatches between contract and entity (format: 'fieldName:
-     * expected TYPE1, got TYPE2').
-     */
-    typeMismatchFields?: string[];
 }
