@@ -649,7 +649,6 @@ const MemoryTagsRow: FC<{
         placeholder={t('label.search-entity', {
           entity: t('label.tag-plural'),
         })}
-        tagType={TagSource.Classification}
         onCancel={() => setShowTagForm(false)}
         onSubmit={handleTagSave}
       />

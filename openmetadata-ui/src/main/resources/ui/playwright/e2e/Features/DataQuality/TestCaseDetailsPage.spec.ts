@@ -12,9 +12,12 @@
  */
 import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
+import { escapeRegExp } from 'lodash';
 import { BundleTestSuiteClass } from '../../../support/entity/BundleTestSuiteClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { getCurrentMillis } from '../../../utils/dateTime';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   openTestCaseDetailsPage,
   verifyTestCaseLastRunBanner,
@@ -101,9 +104,19 @@ test.describe(
           'href',
           /\/profiler\/data-quality$/
         );
+        // Matched as a suffix, like the table suite above. `openDetailsPage`
+        // enables AI mode, and `getTestSuitePath` namespaces the route under
+        // `/observability` there — in OSS since #33502, and in Collate through
+        // its override — so pinning either literal asserts a prefix this spec
+        // has no business knowing.
         await expect(bundleSuiteLink).toHaveAttribute(
           'href',
-          `/test-suites/${bundleSuite.bundleTestSuiteResponseData.fullyQualifiedName}`
+          new RegExp(
+            `/test-suites/${escapeRegExp(
+              bundleSuite.bundleTestSuiteResponseData
+                .fullyQualifiedName as string
+            )}$`
+          )
         );
       });
 
@@ -271,6 +284,162 @@ test.describe(
       expect(Math.round(Number(banner?.x) + Number(banner?.width))).toBe(
         Math.round(Number(grid?.x) + Number(grid?.width))
       );
+    });
+
+    test('opens the app mode details page from the Data Quality test cases tab', async ({
+      page,
+    }) => {
+      const testCaseName = table.testCasesResponseData[0].name as string;
+      const isTestCaseListResponse = (url: URL) =>
+        url.pathname.endsWith('/dataQuality/testCases/search/list');
+
+      await test.step('Open the Test Cases tab in app mode', async () => {
+        await enableAiAppMode(page);
+        await page.goto('/observability/data-quality', {
+          waitUntil: 'domcontentloaded',
+        });
+        await waitForAllLoadersToDisappear(page);
+
+        const listResponse = page.waitForResponse((response) =>
+          isTestCaseListResponse(new URL(response.url()))
+        );
+        await page.getByRole('tab', { name: 'Test Cases' }).click();
+        await listResponse;
+
+        await expect(page).toHaveURL(
+          /\/observability\/data-quality\/test-cases/
+        );
+      });
+
+      await test.step('Search for the test case', async () => {
+        const searchResponse = page.waitForResponse((response) => {
+          const url = new URL(response.url());
+
+          return (
+            isTestCaseListResponse(url) &&
+            url.searchParams.get('q') === testCaseName
+          );
+        });
+        await page.getByTestId('searchbar').fill(testCaseName);
+        await searchResponse;
+
+        await expect(page.getByTestId(testCaseName)).toBeVisible();
+      });
+
+      await test.step('Test case link stays inside app mode', async () => {
+        await page.getByTestId(testCaseName).getByRole('link').click();
+
+        await expect(page).toHaveURL(
+          /\/observability\/test-case\/[^/]+\/test-case-results/
+        );
+        await expect(page.getByTestId('test-case-detail-page')).toBeVisible();
+      });
+    });
+  }
+);
+
+test.describe(
+  'Test Case Details Page - Incident strip',
+  { tag: ['@Observability'] },
+  () => {
+    let failedTable: TableClass;
+    let failedTestCase: { name: string; fullyQualifiedName: string };
+
+    test.beforeAll(
+      'Create a test case whose failed run opens an incident',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        failedTable = new TableClass();
+        await failedTable.create(apiContext);
+        const testCase = await failedTable.createTestCase(apiContext);
+        failedTestCase = {
+          name: testCase.name as string,
+          fullyQualifiedName: testCase.fullyQualifiedName as string,
+        };
+
+        const failedTimestamp = getCurrentMillis();
+        await failedTable.addTestCaseResult(
+          apiContext,
+          failedTestCase.fullyQualifiedName,
+          {
+            result: 'Found rowCount=2 vs. the expected range 12 to 34',
+            testCaseStatus: 'Failed',
+            timestamp: failedTimestamp,
+          }
+        );
+
+        // The incident is opened asynchronously by the server once the failed
+        // result lands, so the strip has nothing to render until it exists.
+        await expect
+          .poll(
+            async () => {
+              // Filtered by FQN server-side: an unfiltered window holds every
+              // incident other workers opened at the same time, and the
+              // endpoint's default page of 10 can drop this one.
+              const response = await apiContext.get(
+                `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&testCaseFQN=${encodeURIComponent(
+                  failedTestCase.fullyQualifiedName
+                )}&startTs=${failedTimestamp - 60_000}&endTs=${
+                  failedTimestamp + 60_000
+                }`
+              );
+              const { data } = await response.json();
+
+              return Boolean(data?.length);
+            },
+            { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+          )
+          .toBe(true);
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await failedTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('acknowledges the incident from the failed run banner', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, failedTestCase.fullyQualifiedName);
+
+      const banner = await verifyTestCaseLastRunBanner(page, 'failed');
+      const strip = page.getByTestId('test-case-last-run-incident');
+      const acknowledge = strip.getByTestId('acknowledge-incident-button');
+      const headerStatus = page.getByTestId(`${failedTestCase.name}-status`);
+
+      await test.step('The strip carries the reason and a new incident', async () => {
+        await expect(banner).toContainText(
+          'Found rowCount=2 vs. the expected range 12 to 34'
+        );
+        await expect(strip).toBeVisible();
+        await expect(strip.getByTestId('test-case-incident-status')).toHaveText(
+          'New'
+        );
+        await expect(acknowledge).toBeVisible();
+      });
+
+      await test.step('Acknowledge updates the strip and the header chip', async () => {
+        const transition = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/tasks/') &&
+            response.url().endsWith('/resolve') &&
+            response.request().method() === 'POST'
+        );
+        await acknowledge.click();
+        await transition;
+
+        await expect(strip.getByTestId('test-case-incident-status')).toHaveText(
+          'Acknowledged'
+        );
+        await expect(acknowledge).toBeHidden();
+        await expect(headerStatus).toContainText('Ack');
+      });
     });
   }
 );

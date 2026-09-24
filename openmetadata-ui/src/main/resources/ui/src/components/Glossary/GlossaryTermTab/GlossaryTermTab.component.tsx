@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,9 +15,13 @@ import { DownOutlined, WarningOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button as CoreButton,
+  Dialog,
   Input,
+  Modal as CoreModal,
+  ModalOverlay,
   Owner,
   TableCard,
+  TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Icon as EntityStyleIcon } from '@openmetadata/ui-core-components/icon';
@@ -55,7 +59,6 @@ import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-dow
 import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
-  API_RES_MAX_SIZE,
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE_LARGE,
@@ -69,7 +72,7 @@ import {
 } from '../../../constants/Glossary.contant';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { CursorType } from '../../../enums/pagination.enum';
-import { ResolveTask } from '../../../generated/api/feed/resolveTask';
+import type { ResolveTask } from '../../../generated/api/tasks/resolveTask';
 import {
   EntityReference,
   EntityStatus,
@@ -150,6 +153,13 @@ const WorkflowHistory = withSuspenseFallback(
 const GLOSSARY_TERM_DRAG_TYPE = 'application/x-om-glossary-term';
 
 const GLOSSARY_TABLE_SCROLL = { x: 'max-content', y: 'calc(100vh - 350px)' };
+
+type GlossaryResolveTask = ResolveTask & { newValue: string };
+
+interface PendingGlossaryTermRejection {
+  glossaryTermFqn: string;
+  taskId: string | number;
+}
 
 const getTransferTargetName = (
   movedGlossaryTerm: GlossaryTermMoveConfirmationModalProps['movedGlossaryTerm'],
@@ -426,6 +436,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const [termTaskThreads, setTermTaskThreads] = useState<
     Record<string, Task[]>
   >({});
+  const [pendingRejection, setPendingRejection] =
+    useState<PendingGlossaryTermRejection>();
+  const [rejectionComment, setRejectionComment] = useState('');
+  const [isRejecting, setIsRejecting] = useState(false);
 
   const glossaryTerms = useMemo(() => {
     // Deduplicate by FQN: the table keys rows on fullyQualifiedName, and
@@ -747,30 +761,36 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       setIsLoadingMoreTree(false);
     }
   };
+  const lastFetchedTaskFqnRef = useRef<string | undefined>(undefined);
+
   const fetchAllTasks = useCallback(async () => {
-    if (!activeGlossary?.fullyQualifiedName) {
+    const fqn = activeGlossary?.fullyQualifiedName;
+    if (!fqn || fqn === lastFetchedTaskFqnRef.current) {
       return;
     }
 
     try {
+      // aboutEntity uses server-side prefix matching (FQN LIKE 'glossary.%'), so
+      // only tasks for terms under this glossary are returned — no client-side
+      // prefix filter needed and the limit is now glossary-scoped, not platform-wide.
       const { data } = await listTasks({
         status: TaskEntityStatus.Open,
         category: TaskCategory.Approval,
         type: TaskEntityType.RequestApproval,
-        limit: API_RES_MAX_SIZE,
+        aboutEntity: fqn,
+        limit: PAGE_SIZE_LARGE,
         fields: 'about,assignees',
       });
+      lastFetchedTaskFqnRef.current = fqn;
 
       // Glossary approvals are now workflow-managed RequestApproval tasks created
       // for each glossary term, not legacy glossary-root tasks.
       const tasksByTerm = data.reduce(
         (acc: Record<string, Task[]>, task: Task) => {
           const termFQN = task.about?.fullyQualifiedName;
-          const isGlossaryTermTask =
-            task.about?.type === EntityType.GLOSSARY_TERM &&
-            termFQN?.startsWith(`${activeGlossary.fullyQualifiedName}.`);
-
-          if (isGlossaryTermTask && termFQN) {
+          // Keep only term tasks — the prefix filter also returns the root glossary
+          // entity exact-match, so guard against tasks on the glossary itself.
+          if (task.about?.type === EntityType.GLOSSARY_TERM && termFQN) {
             const entityLink = `<#E::${EntityType.GLOSSARY_TERM}::${termFQN}>`;
             if (!acc[entityLink]) {
               acc[entityLink] = [];
@@ -940,16 +960,17 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   const updateTaskData = useCallback(
     async (
-      data: ResolveTask,
+      data: GlossaryResolveTask,
       taskId: string | number,
       glossaryTermFqn: string
     ) => {
       try {
         if (!taskId) {
-          return;
+          return false;
         }
 
         const updatedTask = await resolveTaskAPI(taskId + '', {
+          comment: data.comment,
           resolutionType: getTaskResolutionType(data.newValue),
           newValue: data.newValue,
         });
@@ -966,7 +987,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         setExpandedRowKeys(currentExpandedKeys);
 
         if (!glossaryChildTerms || !glossaryTermFqn) {
-          return;
+          return true;
         }
 
         const entityLink = `<#E::${EntityType.GLOSSARY_TERM}::${glossaryTermFqn}>`;
@@ -974,7 +995,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         if (isPendingFurtherApproval) {
           notifyPendingApprovalTasks(entityLink, updatedTask);
 
-          return;
+          return true;
         }
 
         applyGlossaryTermApprovalOutcome(
@@ -983,8 +1004,12 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           entityLink,
           taskId
         );
+
+        return true;
       } catch (error) {
         showErrorToast(error as AxiosError);
+
+        return false;
       }
     },
     [expandedRowKeys, glossaryChildTerms, selectedStatus, termTaskThreads]
@@ -992,7 +1017,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   const handleApproveGlossaryTerm = useCallback(
     (taskId: string | number, glossaryTermFqn: string) => {
-      const data = { newValue: 'approved' } as ResolveTask;
+      const data: GlossaryResolveTask = { newValue: 'approved' };
       updateTaskData(data, taskId, glossaryTermFqn);
     },
     [updateTaskData]
@@ -1000,11 +1025,37 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   const handleRejectGlossaryTerm = useCallback(
     (taskId: string | number, glossaryTermFqn: string) => {
-      const data = { newValue: 'rejected' } as ResolveTask;
-      updateTaskData(data, taskId, glossaryTermFqn);
+      setPendingRejection({ glossaryTermFqn, taskId });
+      setRejectionComment('');
     },
-    [updateTaskData]
+    []
   );
+
+  const handleRejectDialogClose = useCallback(() => {
+    if (!isRejecting) {
+      setPendingRejection(undefined);
+      setRejectionComment('');
+    }
+  }, [isRejecting]);
+
+  const handleRejectConfirm = useCallback(async () => {
+    const comment = rejectionComment.trim();
+    if (!pendingRejection || !comment) {
+      return;
+    }
+
+    setIsRejecting(true);
+    const didReject = await updateTaskData(
+      { comment, newValue: 'rejected' },
+      pendingRejection.taskId,
+      pendingRejection.glossaryTermFqn
+    );
+    setIsRejecting(false);
+    if (didReject) {
+      setPendingRejection(undefined);
+      setRejectionComment('');
+    }
+  }, [pendingRejection, rejectionComment, updateTaskData]);
 
   const handleLoadMoreChildren = useCallback(
     (record: ModifiedGlossaryTerm) => {
@@ -2028,6 +2079,47 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           style={{ position: 'relative' }}>
           {renderTableSection()}
         </div>
+        <ModalOverlay
+          isDismissable={!isRejecting}
+          isOpen={Boolean(pendingRejection)}
+          onOpenChange={(isOpen) => !isOpen && handleRejectDialogClose()}>
+          <CoreModal>
+            <Dialog
+              data-testid="glossary-term-reject-dialog"
+              showCloseButton={!isRejecting}
+              title={t('label.reject')}
+              width={480}
+              onClose={handleRejectDialogClose}>
+              <Dialog.Content>
+                <TextArea
+                  isRequired
+                  data-testid="glossary-term-reject-comment"
+                  isDisabled={isRejecting}
+                  label={t('label.comment')}
+                  rows={4}
+                  value={rejectionComment}
+                  onChange={setRejectionComment}
+                />
+              </Dialog.Content>
+              <Dialog.Footer>
+                <CoreButton
+                  color="secondary"
+                  isDisabled={isRejecting}
+                  onPress={handleRejectDialogClose}>
+                  {t('label.cancel')}
+                </CoreButton>
+                <CoreButton
+                  color="primary-destructive"
+                  data-testid="confirm-reject-glossary-term"
+                  isDisabled={!rejectionComment.trim() || isRejecting}
+                  isLoading={isRejecting}
+                  onPress={handleRejectConfirm}>
+                  {t('label.reject')}
+                </CoreButton>
+              </Dialog.Footer>
+            </Dialog>
+          </CoreModal>
+        </ModalOverlay>
         <GlossaryTermMoveConfirmationModal
           activeGlossary={activeGlossary}
           confirmCheckboxChecked={confirmCheckboxChecked}

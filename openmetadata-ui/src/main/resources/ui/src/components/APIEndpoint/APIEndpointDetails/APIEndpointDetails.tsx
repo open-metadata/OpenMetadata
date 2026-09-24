@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,6 +33,7 @@ import apiEndpointClassBase from '../../../utils/APIEndpoints/APIEndpointClassBa
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -317,8 +319,8 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
 
   return (
     <PageLayoutV1 pageTitle={getEntityName(apiEndpointDetails)}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
+      <Box direction="col" gap={3}>
+        <div>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -337,7 +339,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
             onUpdateVote={onUpdateVote}
             onVersionClick={onVersionChange}
           />
-        </Col>
+        </div>
         <GenericProvider<APIEndpoint>
           customizedPage={customizedPage}
           data={apiEndpointDetails}
@@ -345,28 +347,42 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
           permissions={apiEndpointPermissions}
           type={EntityType.API_ENDPOINT}
           onUpdate={onApiEndpointUpdate}>
-          <Col className="entity-details-page-tabs" span={24}>
+          <div className="entity-details-page-tabs">
             <Tabs
-              activeKey={activeTab}
-              className="tabs-new"
+              className="tw:gap-3"
               data-testid="tabs"
-              items={tabs}
-              tabBarExtraContent={
-                isExpandViewSupported && (
-                  <AlignRightIconButton
-                    className={isTabExpanded ? 'rotate-180' : ''}
-                    title={
-                      isTabExpanded ? t('label.collapse') : t('label.expand')
-                    }
-                    onClick={toggleTabExpanded}
-                  />
-                )
-              }
-              onChange={handleTabChange}
-            />
-          </Col>
+              selectedKey={getRenderedActiveTab(tabs, activeTab)}
+              onSelectionChange={(key) => handleTabChange(String(key))}>
+              <Tabs.List
+                actions={
+                  isExpandViewSupported && (
+                    <AlignRightIconButton
+                      className={isTabExpanded ? 'rotate-180' : ''}
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
+                      onClick={toggleTabExpanded}
+                    />
+                  )
+                }
+                size="sm"
+                type="underline"
+                variant="card">
+                {tabs.map(({ key, label }) => (
+                  <Tabs.Item id={key} key={key}>
+                    {label}
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
+              {tabs.map(({ key, children }) => (
+                <Tabs.Panel id={key} key={key}>
+                  {children}
+                </Tabs.Panel>
+              ))}
+            </Tabs>
+          </div>
         </GenericProvider>
-      </Row>
+      </Box>
       <LimitWrapper resource="apiEndpoint">
         <></>
       </LimitWrapper>

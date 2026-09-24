@@ -52,7 +52,10 @@ import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
-import { LineageBand } from '../../../generated/api/lineage/lineageScene';
+import {
+  LineageBand,
+  LineageSceneNode,
+} from '../../../generated/api/lineage/lineageScene';
 import { LineageSettings } from '../../../generated/configuration/lineageSettings';
 import { Table } from '../../../generated/entity/data/table';
 import { LineageLayer } from '../../../generated/settings/settings';
@@ -137,6 +140,7 @@ import {
   LineageNodeType,
   NodeData,
 } from '../Lineage.interface';
+import { getRealEntityRef } from '../LineageMap/LineageMapEdit.utils';
 import LineageNodeRemoveButton from '../LineageNodeRemoveButton';
 import {
   LineageOverlays,
@@ -149,6 +153,24 @@ import {
 
 const LINEAGE_START_TIME_PARAM = 'lineageStartTime';
 const LINEAGE_END_TIME_PARAM = 'lineageEndTime';
+
+// `toLineageNode` overwrites the entity's own id with the scene node id so
+// React Flow can key on it, which leaves `data.node.id` looking like
+// `container:<uuid>` rather than the entity's UUID. The drawer this feeds is
+// generic and fetches permissions by id, so that scene id reaches
+// /api/v1/permissions/<type>/<type>:<uuid>, 404s, and the panel tells the user
+// they lack View Data Asset on an entity they can read -- an admin included.
+// `handleEntityUpdate` reads the same id as its entity fallback. Hand both the
+// real id whenever the scene carries one, and leave legacy nodes, which have no
+// sceneNode, exactly as they were.
+const toDrawerEntity = (node: Node): SourceType => {
+  const details = node.data?.node as SourceType;
+  const sceneNode = (node.data as { sceneNode?: LineageSceneNode } | undefined)
+    ?.sceneNode;
+  const entityId = getRealEntityRef(sceneNode)?.id;
+
+  return entityId ? ({ ...details, id: entityId } as SourceType) : details;
+};
 
 const parseEpochParam = (value: string | null): number | undefined => {
   if (!value) {
@@ -1574,11 +1596,15 @@ export const Lineage = ({
 
   const handleEntityUpdate = useCallback(
     (updatedEntity: Partial<SourceType>) => {
-      const entityId = updatedEntity.id ?? selectedNode?.id ?? '';
+      // updateNodeData matches React Flow nodes by their scene id, so use the
+      // active (clicked) node's id, not selectedNode's now-real entity id.
+      // The drawer omits `id` from its partial payloads (owners/tags/extension),
+      // so the fallback is what actually fires in practice.
+      const entityId = updatedEntity.id ?? activeNode?.id ?? '';
       updateNodeData(entityId, updatedEntity);
       setSelectedNode({ ...selectedNode, ...updatedEntity } as SourceType);
     },
-    [updateNodeData, selectedNode]
+    [updateNodeData, selectedNode, activeNode]
   );
 
   const onNodeClick = useCallback(
@@ -1596,7 +1622,7 @@ export const Lineage = ({
       } else {
         setSelectedEdge(undefined);
         setActiveNode(node);
-        setSelectedNode(node.data.node as SourceType);
+        setSelectedNode(toDrawerEntity(node));
         openDrawer();
         handleLineageTracing(node);
       }

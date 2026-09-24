@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/data/ontologyRelationshipSuggestion.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OntologyRelationshipSuggestion",
   "description": "A validated relationship proposal represented as a Draft-ready operation.",
   "type": "object",

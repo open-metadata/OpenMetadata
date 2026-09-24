@@ -1001,9 +1001,19 @@ export const addAssetsToDataProduct = async (
 
   await expect(page.getByTestId('empty-placeholder')).toBeVisible();
 
-  const assetRes = page.waitForResponse('/api/v1/search/query?q=&index=all&*');
+  // Must match size=25 specifically: the drawer also fires a size=0 count query
+  // that matches a broader string pattern and can take 50+ s under load.
+  const assetRes = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('q=&') &&
+      response.url().includes('index=all') &&
+      response.url().includes('size=25')
+  );
   await page.getByTestId('data-product-details-add-button').click();
   await assetRes;
+
+  await expect(page.getByTestId('searchbar')).toBeVisible();
 
   for (const asset of assets) {
     const name = get(asset, 'entityResponseData.name') as string | undefined;
@@ -1018,7 +1028,11 @@ export const addAssetsToDataProduct = async (
     }
 
     const searchRes = page.waitForResponse(
-      `/api/v1/search/query?q=${name}&index=all&from=0&size=25&*`
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(`q=${name}`) &&
+        response.url().includes('index=all') &&
+        response.url().includes('size=25')
     );
     await page.getByTestId('searchbar').fill(name);
     await searchRes;
@@ -2235,7 +2249,9 @@ export const openDataProductDrawer = async (page: Page, domain: Domain) => {
 
   await page.getByTestId('name').locator('input').fill(`test-dp-${Date.now()}`);
 
-  const descriptionEditor = page.locator('[contenteditable="true"]').first();
+  const descriptionEditor = page
+    .locator('.add-domain-form-description')
+    .locator('[contenteditable="true"]');
   await descriptionEditor.waitFor({ state: 'visible', timeout: 10000 });
   await descriptionEditor.click();
   await page.keyboard.type('Test data product description');
@@ -2255,6 +2271,11 @@ export const openDataProductDrawer = async (page: Page, domain: Domain) => {
   const domainOption = page.getByText(domain.data.displayName);
   await domainOption.waitFor({ state: 'visible', timeout: 5000 });
   await domainOption.click();
+
+  // Wait for the DomainSelectableList Popover overlay to close before returning.
+  await page
+    .locator('.domain-select-popover')
+    .waitFor({ state: 'hidden', timeout: 5000 });
 };
 
 const parseRequestBody = (postData: string | null | undefined) => {
