@@ -85,3 +85,6 @@ export type QuerySearchMustFilterType = {
     should: QuerySearchShouldFilterType[];
   };
 };
+
+// Re-exported because consumers outside this repository import it from this path.
+export type { QueryVote } from '../../../interface/entity/vote.interface';

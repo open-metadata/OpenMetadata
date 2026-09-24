@@ -20,3 +20,6 @@ export interface NodeChildrenProps {
   onColumnHover?: (columnFqn?: string) => void;
   onColumnSelect?: (columnFqn?: string) => void;
 }
+
+// Re-exported because consumers outside this repository import it from this path.
+export type { EntityChildren } from '../../../../interface/lineage.interface';

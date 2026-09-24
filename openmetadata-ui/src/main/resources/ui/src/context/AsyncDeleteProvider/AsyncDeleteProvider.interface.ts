@@ -41,3 +41,6 @@ export interface AsyncDeleteContextType {
     response: AsyncDeleteWebsocketResponse
   ) => void;
 }
+
+// Re-exported because consumers outside this repository import it from this path.
+export type { AsyncDeleteWebsocketResponse } from '../../interface/entity/asyncDelete.interface';
