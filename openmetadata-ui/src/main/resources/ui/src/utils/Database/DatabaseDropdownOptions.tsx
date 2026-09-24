@@ -50,6 +50,7 @@ export const ExtraDatabaseDropdownOptions = (
               </LimitWrapper>
             ),
             key: 'import-button',
+            limitResource: 'database',
             onClick: () =>
               navigate(getEntityImportPath(EntityType.DATABASE, fqn)),
           },

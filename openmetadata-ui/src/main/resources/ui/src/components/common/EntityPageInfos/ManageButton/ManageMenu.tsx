@@ -14,8 +14,9 @@
 import { ButtonUtility, Dropdown } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { noop } from 'lodash';
-import { Key, ReactNode, useCallback, useMemo } from 'react';
+import { isValidElement, Key, ReactNode, useCallback, useMemo } from 'react';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
+import { useIsLimitReached } from '../../../../context/LimitsProvider/useLimitsStore';
 
 /**
  * Click payload handed to an item's `onClick`. Mirrors the antd menu info the
@@ -33,6 +34,12 @@ export interface ManageMenuItem {
   key: string;
   label: ReactNode;
   disabled?: boolean;
+  /**
+   * Limit resource the item creates (the `resource` of the `LimitWrapper`
+   * around its label). The wrapper only greys out the label, so the menu
+   * disables the item itself once that limit is reached.
+   */
+  limitResource?: string;
   onClick?: (info: ManageMenuClickInfo) => void;
 }
 
@@ -55,6 +62,7 @@ type LegacyMenuItem = {
   key: Key;
   label: ReactNode;
   disabled?: boolean;
+  limitResource?: string;
   onClick?: ManageMenuItem['onClick'];
 };
 
@@ -73,8 +81,30 @@ export const toManageMenuItems = (
     key: String(item.key),
     label: item.label,
     disabled: item.disabled,
+    limitResource: item.limitResource,
     onClick: item.onClick,
   }));
+
+/**
+ * Typeahead needs plain text, but labels are rich nodes — usually a
+ * `ManageButtonItemLabel` (possibly inside a Tooltip or LimitWrapper) — so
+ * prefer its `name`, else the label's text content.
+ */
+const getLabelText = (node: ReactNode): string => {
+  if (typeof node === 'string' || typeof node === 'number') {
+    return String(node);
+  }
+  if (Array.isArray(node)) {
+    return node.map(getLabelText).join('');
+  }
+  if (isValidElement<{ name?: ReactNode; children?: ReactNode }>(node)) {
+    const { name, children } = node.props;
+
+    return typeof name === 'string' ? name : getLabelText(children);
+  }
+
+  return '';
+};
 
 export const ManageMenu = ({
   items,
@@ -86,13 +116,21 @@ export const ManageMenu = ({
   'data-testid': dataTestId = 'manage-button',
   menuTestId = 'manage-dropdown-list-container',
 }: ManageMenuProps) => {
+  const isLimitReached = useIsLimitReached();
+
   const disabledKeys = useMemo(
-    () => items.filter((item) => item.disabled).map((item) => item.key),
-    [items]
+    () =>
+      items
+        .filter((item) => item.disabled || isLimitReached(item.limitResource))
+        .map((item) => item.key),
+    [items, isLimitReached]
   );
 
   const handleAction = useCallback(
     (key: Key) => {
+      if (disabledKeys.includes(String(key))) {
+        return;
+      }
       const item = items.find((menuItem) => menuItem.key === String(key));
       item?.onClick?.({
         key: String(key),
@@ -100,7 +138,7 @@ export const ManageMenu = ({
         domEvent: NOOP_DOM_EVENT,
       });
     },
-    [items]
+    [items, disabledKeys]
   );
 
   return (
@@ -137,7 +175,7 @@ export const ManageMenu = ({
                 }
                 id={item.key}
                 key={item.key}
-                textValue={item.key}>
+                textValue={getLabelText(item.label) || item.key}>
                 {item.label}
               </Dropdown.Item>
             ))}

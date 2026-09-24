@@ -12,9 +12,31 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  LimitConfig,
+  ResourceLimit,
+  useLimitStore,
+} from '../../../../context/LimitsProvider/useLimitsStore';
+import { ManageButtonItemLabel } from '../../ManageButtonContentItem/ManageButtonContentItem.component';
 import { ManageMenu, toManageMenuItems } from './ManageMenu';
 
+const testCaseLimit = (
+  limitReached: boolean
+): ResourceLimit['featureLimitStatuses'][number] => ({
+  name: 'testCase',
+  limitReached,
+  currentCount: 10,
+  configuredLimit: {
+    name: 'testCase',
+    limits: { softLimit: 8, hardLimit: 10 },
+  },
+});
+
 describe('ManageMenu', () => {
+  afterEach(() => {
+    useLimitStore.setState({ config: null, resourceLimit: {} });
+  });
+
   it('should open on the trigger and run the chosen item with an antd-compatible event', async () => {
     const onRename = jest.fn((info) => info.domEvent.stopPropagation());
 
@@ -75,5 +97,104 @@ describe('ManageMenu', () => {
         null,
       ])
     ).toEqual([{ key: '1', label: 'Import', disabled: undefined, onClick }]);
+  });
+
+  it('should disable and not run an item whose resource limit is reached', async () => {
+    const onImport = jest.fn();
+    useLimitStore.setState({
+      config: { enable: true } as LimitConfig,
+      resourceLimit: { testCase: testCaseLimit(true) },
+    });
+
+    render(
+      <ManageMenu
+        items={[
+          {
+            key: 'import-button',
+            label: 'Import',
+            limitResource: 'testCase',
+            onClick: onImport,
+          },
+        ]}
+        label="Manage test cases"
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('manage-button'));
+
+    const importItem = await screen.findByRole('menuitem', { name: 'Import' });
+
+    expect(importItem).toHaveAttribute('aria-disabled', 'true');
+
+    fireEvent.click(importItem);
+
+    expect(onImport).not.toHaveBeenCalled();
+  });
+
+  it('should keep an item enabled while its resource is under the limit', async () => {
+    const onImport = jest.fn();
+    useLimitStore.setState({
+      config: { enable: true } as LimitConfig,
+      resourceLimit: { testCase: testCaseLimit(false) },
+    });
+
+    render(
+      <ManageMenu
+        items={[
+          {
+            key: 'import-button',
+            label: 'Import',
+            limitResource: 'testCase',
+            onClick: onImport,
+          },
+        ]}
+        label="Manage test cases"
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('manage-button'));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Import' }));
+
+    expect(onImport).toHaveBeenCalledTimes(1);
+  });
+
+  it('should jump to an item by typing its visible name', async () => {
+    render(
+      <ManageMenu
+        items={[
+          {
+            key: 'item-1',
+            label: (
+              <ManageButtonItemLabel
+                description="Rename the entity"
+                icon={() => null}
+                id="rename-button"
+                name="Rename"
+              />
+            ),
+          },
+          {
+            key: 'item-2',
+            label: (
+              <ManageButtonItemLabel
+                description="Delete the entity"
+                icon={() => null}
+                id="delete-button"
+                name="Delete"
+              />
+            ),
+          },
+        ]}
+        label="Manage table"
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('manage-button'));
+    const menu = await screen.findByRole('menu');
+    fireEvent.keyDown(menu, { key: 'd' });
+
+    expect(
+      screen.getByTestId('delete-button').closest('[role="menuitem"]')
+    ).toHaveAttribute('data-focused', 'true');
   });
 });

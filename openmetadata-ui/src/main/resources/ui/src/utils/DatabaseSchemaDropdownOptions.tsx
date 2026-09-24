@@ -50,6 +50,7 @@ export const ExtraDatabaseSchemaDropdownOptions = (
               </LimitWrapper>
             ),
             key: 'import-button',
+            limitResource: 'databaseSchema',
             onClick: () =>
               navigate(getEntityImportPath(EntityType.DATABASE_SCHEMA, fqn)),
           },

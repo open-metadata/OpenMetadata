@@ -52,6 +52,8 @@ describe('StatItem', () => {
     const trigger = screen.getByRole('button', { name: 'Open metric tasks' });
 
     expect(trigger).toBeDisabled();
+    expect(trigger).toHaveAttribute('data-loading', 'true');
+    expect(trigger.querySelector('[data-icon="loading"]')).toBeInTheDocument();
 
     fireEvent.click(trigger);
 

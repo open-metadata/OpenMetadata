@@ -84,6 +84,7 @@ export const StatItem = ({
       color="tertiary"
       data-testid={testId}
       isDisabled={!onClick || isDisabled}
+      isLoading={loading}
       tooltip={onClick ? tooltip : undefined}
       tooltipPlacement="top"
       onClick={onClick}>

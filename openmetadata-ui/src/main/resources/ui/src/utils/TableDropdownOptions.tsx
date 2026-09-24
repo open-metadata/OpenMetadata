@@ -50,6 +50,7 @@ export const ExtraTableDropdownOptions = (
               </LimitWrapper>
             ),
             key: 'import-button',
+            limitResource: 'table',
             onClick: () => navigate(getEntityImportPath(EntityType.TABLE, fqn)),
           },
         ]
