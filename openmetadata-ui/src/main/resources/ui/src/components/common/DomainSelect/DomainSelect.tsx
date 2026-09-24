@@ -19,6 +19,7 @@ import { Domain as DomainIcon } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as SubDomainIcon } from '../../../assets/svg/ic-subdomain.svg';
 import {
   DEFAULT_DOMAIN_VALUE,
   PAGE_SIZE_LARGE,
@@ -92,16 +93,25 @@ const DomainSelect: FC<DomainSelectProps> = ({
     [allowedFqns]
   );
 
-  // The pure mappers cannot build JSX, so the domain glyph is attached here
-  // (recursively, so search-nested subdomains get it too).
+  // The pure mappers cannot build JSX, so the domain glyph is attached here.
+  // Nested nodes are subdomains of the node above them, so they get the
+  // subdomain glyph; `isSubDomain` is threaded through the recursion (and set
+  // by the lazy-load path when fetching a parent's children).
   const withDomainIcon = useCallback(
     (
-      nodes: TreeSelectNode<EntityReference>[]
+      nodes: TreeSelectNode<EntityReference>[],
+      isSubDomain = false
     ): TreeSelectNode<EntityReference>[] =>
       nodes.map((node) => ({
         ...node,
-        icon: <DomainIcon height={16} width={16} />,
-        children: node.children ? withDomainIcon(node.children) : node.children,
+        icon: isSubDomain ? (
+          <SubDomainIcon height={16} width={16} />
+        ) : (
+          <DomainIcon height={16} width={16} />
+        ),
+        children: node.children
+          ? withDomainIcon(node.children, true)
+          : node.children,
       })),
     []
   );
@@ -137,7 +147,8 @@ const DomainSelect: FC<DomainSelectProps> = ({
       );
 
       const nodes = withDomainIcon(
-        filterAllowedNodes(domainsToTreeNodes(data ?? []))
+        filterAllowedNodes(domainsToTreeNodes(data ?? [])),
+        Boolean(parentId)
       );
 
       // Scope-switcher: a single "All Domains" root with every domain nested

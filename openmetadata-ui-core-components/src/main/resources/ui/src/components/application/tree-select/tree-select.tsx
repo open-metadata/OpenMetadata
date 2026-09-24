@@ -908,7 +908,7 @@ export const TreeSelect = <T = unknown,>({
   if (renderTrigger) {
     return (
       <div className={cx('tw:relative tw:inline-flex', className)}>
-        <div className="tw:flex" ref={triggerRef}>
+        <div className="tw:flex tw:w-full tw:min-w-0" ref={triggerRef}>
           {renderTrigger({
             isOpen,
             toggle: toggleOpen,
