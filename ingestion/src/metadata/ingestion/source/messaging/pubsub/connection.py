@@ -98,10 +98,7 @@ class PubSubConnection(BaseConnection[PubSubConnectionConfig, PubSubClient]):
         try:
             if connection.useEmulator:
                 if not connection.hostPort:
-                    raise ValueError(
-                        "hostPort is required when using the Pub/Sub emulator "
-                        "(e.g. 'localhost:8085')."
-                    )
+                    raise ValueError("hostPort is required when using the Pub/Sub emulator (e.g. 'localhost:8085').")
                 if connection.hostPort == "pubsub.googleapis.com":
                     raise ValueError(
                         "When using the Pub/Sub emulator, 'hostPort' must be set "

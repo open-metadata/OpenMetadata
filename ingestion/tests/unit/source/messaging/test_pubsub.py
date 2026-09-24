@@ -315,9 +315,7 @@ class TestPubSubConnection:
     @patch("metadata.ingestion.source.messaging.pubsub.connection.set_google_credentials")
     @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.PublisherClient")
     @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.SubscriberClient")
-    def test_get_connection_emulator_without_hostport_raises(
-        self, mock_subscriber, mock_publisher, mock_set_creds
-    ):
+    def test_get_connection_emulator_without_hostport_raises(self, mock_subscriber, mock_publisher, mock_set_creds):
         """useEmulator=True without hostPort must raise immediately instead of falling
         through to the GCP-credentials branch and raising a confusing gcpConfig error."""
         from metadata.ingestion.source.messaging.pubsub.connection import PubSubConnection
