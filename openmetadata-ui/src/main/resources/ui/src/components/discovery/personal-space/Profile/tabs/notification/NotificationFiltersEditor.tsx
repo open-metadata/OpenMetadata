@@ -137,7 +137,7 @@ function NotificationFiltersEditor({
   value,
 }: Readonly<NotificationFiltersEditorProps>) {
   const { t } = useTranslation();
-  const filters = value ?? [];
+  const filters = useMemo(() => value ?? [], [value]);
 
   const selectedTrigger = selectedResources?.[0];
 

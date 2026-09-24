@@ -27,7 +27,7 @@ import {
 import type {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
-} from '../pages/AddObservabilityPage/AddObservabilityPage.interface';
+} from './AlertsClassBase.interface';
 import {
   getConfigHeaderArrayFromObject,
   getConfigHeaderObjectFromArray,

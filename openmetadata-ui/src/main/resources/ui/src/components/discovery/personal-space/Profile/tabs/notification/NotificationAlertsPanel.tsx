@@ -170,29 +170,36 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
     const requestId = ++fetchRequestIdRef.current;
     setIsLoading(true);
     try {
-      const { data, paging: responsePaging } = await getAllAlerts({
-        alertType: AlertType.Notification,
-        limit: pageSize,
-        after: pagingParam?.after,
-        before: pagingParam?.before,
-      });
+      const isFirstPage =
+        isUndefined(pagingParam?.after) && isUndefined(pagingParam?.before);
+
+      const [alertsResult, activityFeedResult] = await Promise.allSettled([
+        getAllAlerts({
+          alertType: AlertType.Notification,
+          limit: pageSize,
+          after: pagingParam?.after,
+          before: pagingParam?.before,
+        }),
+        ...(isFirstPage ? [getAlertsFromName('ActivityFeedAlert')] : []),
+      ]);
 
       if (requestId !== fetchRequestIdRef.current) {
         return undefined;
       }
 
+      if (alertsResult.status === 'rejected') {
+        throw alertsResult.reason;
+      }
+
+      const { data, paging: responsePaging } = alertsResult.value;
+
       let alertList = data;
 
-      if (isUndefined(pagingParam?.after) && isUndefined(pagingParam?.before)) {
-        // On page 1, prepend the system ActivityFeedAlert
-        try {
-          const activityFeedAlert = await getAlertsFromName(
-            'ActivityFeedAlert'
-          );
-          alertList = [activityFeedAlert, ...data];
-        } catch {
-          // If ActivityFeedAlert is not found, proceed without it
-        }
+      if (
+        isFirstPage &&
+        activityFeedResult?.status === 'fulfilled'
+      ) {
+        alertList = [activityFeedResult.value, ...data];
       }
 
       setAlerts(alertList);

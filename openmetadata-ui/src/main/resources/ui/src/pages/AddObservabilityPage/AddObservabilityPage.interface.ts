@@ -18,18 +18,22 @@ import type {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { NotificationTemplate } from '../../generated/entity/events/notificationTemplate';
-import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
-import {
-  Destination,
-  EventFilterRule,
-  EventSubscription,
-  SubscriptionCategory,
-  SubscriptionType,
-  Webhook,
-} from '../../generated/events/eventSubscription';
+import { EventFilterRule } from '../../generated/events/eventSubscription';
 import type { AddAlertFormWidgetProps } from '../../utils/AlertsClassBase';
+import type {
+  ModifiedCreateEventSubscription,
+  ModifiedDestination,
+  ModifiedEventSubscription,
+  ModifiedWebhookConfig,
+} from '../../utils/AlertsClassBase.interface';
 import { AddAlertPageLoadingState } from '../AddNotificationPage/AddNotificationPage.interface';
+
+export type {
+  ModifiedCreateEventSubscription,
+  ModifiedDestination,
+  ModifiedEventSubscription,
+  ModifiedWebhookConfig,
+};
 
 export interface ObservabilityFilterResourceDescriptor {
   containerEntities?: string[];
@@ -66,35 +70,6 @@ export interface UseObservabilityAlertTemplatesOptions {
   getResourcePermission: (
     resourceEntity: ResourceEntity
   ) => Promise<OperationPermission>;
-}
-
-export interface ModifiedWebhookConfig extends Webhook {
-  headers?: { key: string; value: string }[];
-  queryParams?: { key: string; value: string }[];
-}
-
-export interface ModifiedDestination extends Destination {
-  destinationType: SubscriptionType | SubscriptionCategory;
-  config?: ModifiedWebhookConfig;
-}
-
-export interface ModifiedEventSubscription
-  extends Omit<EventSubscription, 'notificationTemplate'> {
-  destinations: ModifiedDestination[];
-  notificationTemplate?: string | EventSubscription['notificationTemplate'];
-  timeout: number;
-  readTimeout: number;
-}
-
-export interface ModifiedCreateEventSubscription
-  extends Omit<CreateEventSubscription, 'notificationTemplate'> {
-  notificationTemplate?:
-    | string
-    | CreateEventSubscription['notificationTemplate'];
-  customNotificationTemplateData?: NotificationTemplate;
-  destinations: ModifiedDestination[];
-  timeout: number;
-  readTimeout: number;
 }
 
 export interface UseObservabilityAlertFormReturn {

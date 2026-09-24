@@ -195,7 +195,7 @@ function AlertAsyncAutocomplete({
       value.map(
         (id) => asyncItems.find((item) => item.id === id) ?? { id, label: id }
       ),
-    [value.join(','), asyncItems]
+    [value, asyncItems]
   );
 
   const loadAsync = useCallback(
@@ -243,12 +243,12 @@ function AlertAsyncAutocomplete({
 
   const handleItemInserted = useCallback(
     (key: Key) => onChange([...value, String(key)]),
-    [value.join(','), onChange]
+    [value, onChange]
   );
 
   const handleItemCleared = useCallback(
     (key: Key) => onChange(value.filter((v) => v !== String(key))),
-    [value.join(','), onChange]
+    [value, onChange]
   );
 
   return (
@@ -294,17 +294,17 @@ function AlertStaticAutocomplete({
       value.map(
         (id) => items.find((item) => item.id === id) ?? { id, label: id }
       ),
-    [value.join(','), items]
+    [value, items]
   );
 
   const handleItemInserted = useCallback(
     (key: Key) => onChange([...value, String(key)]),
-    [value.join(','), onChange]
+    [value, onChange]
   );
 
   const handleItemCleared = useCallback(
     (key: Key) => onChange(value.filter((v) => v !== String(key))),
-    [value.join(','), onChange]
+    [value, onChange]
   );
 
   return (
