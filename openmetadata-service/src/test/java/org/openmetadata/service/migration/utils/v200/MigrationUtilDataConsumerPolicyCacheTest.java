@@ -149,10 +149,10 @@ class MigrationUtilDataConsumerPolicyCacheTest {
   }
 
   /**
-   * v203 repair path (#32668): an install already upgraded to 2.0.0/2.0.1/2.0.2 carries the
-   * corrupted state — {@code TaskRule} present but {@code CreateTask-Rule} dropped. Re-invoking the
-   * helpers (as v203's runDataMigration does) must re-add the missing rule and must not duplicate
-   * the rule that already exists.
+   * v202 repair path (#32668): an install already upgraded to 2.0.0/2.0.1 carries the corrupted
+   * state — {@code TaskRule} present but {@code CreateTask-Rule} dropped. Re-invoking the helpers
+   * (as v202's runDataMigration does) must re-add the missing rule and must not duplicate the
+   * rule that already exists.
    */
   @Test
   void repairRestoresMissingCreateTaskRuleWithoutDuplicatingTaskRule() {
@@ -183,7 +183,7 @@ class MigrationUtilDataConsumerPolicyCacheTest {
   }
 
   /**
-   * The v203 repair (and v200 itself) must be idempotent: running the helpers a second time on an
+   * The v202 repair (and v200 itself) must be idempotent: running the helpers a second time on an
    * install that already carries both rules is a no-op — no duplicate rules, no rewrite churn.
    */
   @Test
