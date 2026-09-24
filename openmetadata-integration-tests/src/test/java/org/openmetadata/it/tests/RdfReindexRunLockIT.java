@@ -81,13 +81,13 @@ public class RdfReindexRunLockIT {
   }
 
   @Test
-  void renewalPushesTheExpiryForward() throws InterruptedException {
-    final RdfReindexRunLock holder = lock("run-1", "server-a");
-    holder.acquire();
+  void renewalPushesTheExpiryForward() {
+    final long aMinuteAgo = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(1);
+    locks.tryAcquireLock(
+        lockKey, "run-1", "server-a", aMinuteAgo, aMinuteAgo + RdfReindexRunLock.EXPIRY_MS);
     final long firstExpiry = locks.findByKey(lockKey).expiresAt();
-    TimeUnit.MILLISECONDS.sleep(5);
 
-    assertTrue(holder.renew());
+    assertTrue(lock("run-1", "server-a").renew());
 
     assertTrue(locks.findByKey(lockKey).expiresAt() > firstExpiry);
   }
