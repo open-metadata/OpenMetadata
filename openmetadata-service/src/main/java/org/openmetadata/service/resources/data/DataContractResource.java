@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.data;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.jdbi3.DataContractRepository.RESULT_EXTENSION;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -49,12 +51,15 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.datacontract.ContractValidation;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
@@ -69,16 +74,22 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.datacontract.odcs.ODCSQualityRuleExporter;
+import org.openmetadata.service.datacontract.odcs.ODCSQualityRuleImporter;
+import org.openmetadata.service.datacontract.odcs.ODCSTestCaseMaterializer;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.ODCSConverter;
 import org.openmetadata.service.util.RestUtil;
@@ -96,10 +107,15 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   static final String FIELDS = "owners,reviewers,extension";
   static final String EXPORT_FIELDS = "owners,reviewers,extension,schema,sla,security";
 
+  private static final String REPLACE_MODE = "replace";
+  private static final String TEST_DEFINITION_FIELD = "testDefinition";
   private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
   private static final ObjectMapper YAML_MAPPER =
       new ObjectMapper(new YAMLFactory())
           .setSerializationInclusion(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
+
+  private final ODCSQualityRuleImporter qualityRuleImporter;
+  private final ODCSQualityRuleExporter qualityRuleExporter;
 
   @Override
   public DataContract addHref(UriInfo uriInfo, DataContract dataContract) {
@@ -112,6 +128,20 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
 
   public DataContractResource(Authorizer authorizer, Limits limits) {
     super(Entity.DATA_CONTRACT, authorizer, limits);
+    this.qualityRuleImporter =
+        new ODCSQualityRuleImporter(
+            new ODCSTestCaseMaterializer(
+                (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE)),
+            DataContractResource::loadTableWithColumns);
+    this.qualityRuleExporter =
+        new ODCSQualityRuleExporter(
+            testCase ->
+                Entity.getEntityOrNull(testCase, TEST_DEFINITION_FIELD, Include.NON_DELETED),
+            DataContractResource::loadTableWithColumns);
+  }
+
+  private static Table loadTableWithColumns(EntityReference table) {
+    return Entity.getEntity(Entity.TABLE, table.getId(), Entity.FIELD_COLUMNS, Include.NON_DELETED);
   }
 
   @GET
@@ -1089,7 +1119,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     String fields = (fieldsParam == null || fieldsParam.isEmpty()) ? EXPORT_FIELDS : fieldsParam;
     DataContract dataContract =
         getInternal(uriInfo, securityContext, id, fields, Include.NON_DELETED);
-    return ODCSConverter.toODCS(dataContract);
+    return toODCS(dataContract);
   }
 
   @GET
@@ -1121,7 +1151,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     String fields = (fieldsParam == null || fieldsParam.isEmpty()) ? EXPORT_FIELDS : fieldsParam;
     DataContract dataContract =
         getInternal(uriInfo, securityContext, id, fields, Include.NON_DELETED);
-    ODCSDataContract odcs = ODCSConverter.toODCS(dataContract);
+    ODCSDataContract odcs = toODCS(dataContract);
     try {
       String yamlContent = YAML_MAPPER.writeValueAsString(odcs);
       return Response.ok(yamlContent, "application/yaml").build();
@@ -1163,7 +1193,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     String fields = (fieldsParam == null || fieldsParam.isEmpty()) ? EXPORT_FIELDS : fieldsParam;
     DataContract dataContract =
         getByNameInternal(uriInfo, securityContext, fqn, fields, Include.NON_DELETED);
-    return ODCSConverter.toODCS(dataContract);
+    return toODCS(dataContract);
   }
 
   @GET
@@ -1197,7 +1227,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     String fields = (fieldsParam == null || fieldsParam.isEmpty()) ? EXPORT_FIELDS : fieldsParam;
     DataContract dataContract =
         getByNameInternal(uriInfo, securityContext, fqn, fields, Include.NON_DELETED);
-    ODCSDataContract odcs = ODCSConverter.toODCS(dataContract);
+    ODCSDataContract odcs = toODCS(dataContract);
     try {
       String yamlContent = YAML_MAPPER.writeValueAsString(odcs);
       return Response.ok(yamlContent, "application/yaml").build();
@@ -1244,20 +1274,19 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string"))
           @QueryParam("objectName")
           String objectName,
+      @Parameter(
+              description =
+                  "Create OpenMetadata test cases from the contract's ODCS quality rules and link "
+                      + "them as the contract's quality expectations (tables only).",
+              schema = @Schema(type = "boolean", defaultValue = "true"))
+          @QueryParam("createTestCases")
+          @DefaultValue("true")
+          boolean createTestCases,
       String jsonContent) {
-    try {
-      ObjectMapper jsonMapper = JSON_MAPPER;
-      JsonNode rootNode = jsonMapper.readTree(jsonContent);
-      ODCSConverter.normalizeODCSInput(rootNode);
-      ODCSDataContract odcs = jsonMapper.treeToValue(rootNode, ODCSDataContract.class);
-      EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
-      DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef, objectName);
-      dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
-      dataContract.setUpdatedAt(System.currentTimeMillis());
-      return create(uriInfo, securityContext, dataContract);
-    } catch (JsonProcessingException e) {
-      throw new IllegalArgumentException("Invalid ODCS JSON content: " + e.getMessage(), e);
-    }
+    ODCSImportRequest request =
+        new ODCSImportRequest(entityId, entityType, objectName, createTestCases);
+    return createFromODCS(
+        uriInfo, securityContext, request, readODCS(JSON_MAPPER, jsonContent, "JSON"));
   }
 
   @POST
@@ -1298,20 +1327,19 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string"))
           @QueryParam("objectName")
           String objectName,
+      @Parameter(
+              description =
+                  "Create OpenMetadata test cases from the contract's ODCS quality rules and link "
+                      + "them as the contract's quality expectations (tables only).",
+              schema = @Schema(type = "boolean", defaultValue = "true"))
+          @QueryParam("createTestCases")
+          @DefaultValue("true")
+          boolean createTestCases,
       String yamlContent) {
-    try {
-      ObjectMapper yamlMapper = YAML_MAPPER;
-      JsonNode rootNode = yamlMapper.readTree(yamlContent);
-      ODCSConverter.normalizeODCSInput(rootNode);
-      ODCSDataContract odcs = yamlMapper.treeToValue(rootNode, ODCSDataContract.class);
-      EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
-      DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef, objectName);
-      dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
-      dataContract.setUpdatedAt(System.currentTimeMillis());
-      return create(uriInfo, securityContext, dataContract);
-    } catch (JsonProcessingException e) {
-      throw new IllegalArgumentException("Invalid ODCS YAML content: " + e.getMessage(), e);
-    }
+    ODCSImportRequest request =
+        new ODCSImportRequest(entityId, entityType, objectName, createTestCases);
+    return createFromODCS(
+        uriInfo, securityContext, request, readODCS(YAML_MAPPER, yamlContent, "YAML"));
   }
 
   @POST
@@ -1520,24 +1548,19 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string"))
           @QueryParam("objectName")
           String objectName,
+      @Parameter(
+              description =
+                  "Create OpenMetadata test cases from the contract's ODCS quality rules and link "
+                      + "them as the contract's quality expectations (tables only).",
+              schema = @Schema(type = "boolean", defaultValue = "true"))
+          @QueryParam("createTestCases")
+          @DefaultValue("true")
+          boolean createTestCases,
       String jsonContent) {
-    try {
-      ObjectMapper jsonMapper = JSON_MAPPER;
-      JsonNode rootNode = jsonMapper.readTree(jsonContent);
-      ODCSConverter.normalizeODCSInput(rootNode);
-      ODCSDataContract odcs = jsonMapper.treeToValue(rootNode, ODCSDataContract.class);
-      EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
-      DataContract imported = ODCSConverter.fromODCS(odcs, entityRef, objectName);
-      DataContract dataContract =
-          "replace".equalsIgnoreCase(mode)
-              ? applyFullReplace(entityRef, imported)
-              : applySmartMerge(entityRef, imported);
-      dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
-      dataContract.setUpdatedAt(System.currentTimeMillis());
-      return createOrUpdate(uriInfo, securityContext, dataContract);
-    } catch (JsonProcessingException e) {
-      throw new IllegalArgumentException("Invalid ODCS JSON content: " + e.getMessage(), e);
-    }
+    ODCSImportRequest request =
+        new ODCSImportRequest(entityId, entityType, objectName, createTestCases);
+    return upsertFromODCS(
+        uriInfo, securityContext, request, mode, readODCS(JSON_MAPPER, jsonContent, "JSON"));
   }
 
   @PUT
@@ -1590,34 +1613,131 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string"))
           @QueryParam("objectName")
           String objectName,
+      @Parameter(
+              description =
+                  "Create OpenMetadata test cases from the contract's ODCS quality rules and link "
+                      + "them as the contract's quality expectations (tables only).",
+              schema = @Schema(type = "boolean", defaultValue = "true"))
+          @QueryParam("createTestCases")
+          @DefaultValue("true")
+          boolean createTestCases,
       String yamlContent) {
-    try {
-      ObjectMapper yamlMapper = YAML_MAPPER;
-      JsonNode rootNode = yamlMapper.readTree(yamlContent);
-      ODCSConverter.normalizeODCSInput(rootNode);
-      ODCSDataContract odcs = yamlMapper.treeToValue(rootNode, ODCSDataContract.class);
-      EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
-      DataContract imported = ODCSConverter.fromODCS(odcs, entityRef, objectName);
-      DataContract dataContract =
-          "replace".equalsIgnoreCase(mode)
-              ? applyFullReplace(entityRef, imported)
-              : applySmartMerge(entityRef, imported);
-      dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
-      dataContract.setUpdatedAt(System.currentTimeMillis());
-      return createOrUpdate(uriInfo, securityContext, dataContract);
-    } catch (JsonProcessingException e) {
-      throw new IllegalArgumentException("Invalid ODCS YAML content: " + e.getMessage(), e);
+    ODCSImportRequest request =
+        new ODCSImportRequest(entityId, entityType, objectName, createTestCases);
+    return upsertFromODCS(
+        uriInfo, securityContext, request, mode, readODCS(YAML_MAPPER, yamlContent, "YAML"));
+  }
+
+  /** Query parameters shared by the ODCS import endpoints. */
+  private record ODCSImportRequest(
+      UUID entityId, String entityType, String objectName, boolean createTestCases) {
+    EntityReference entityRef() {
+      return new EntityReference().withId(entityId).withType(entityType);
     }
   }
 
-  private DataContract applySmartMerge(EntityReference entityRef, DataContract imported) {
-    DataContract existing = loadExistingContract(entityRef);
-    return existing == null ? imported : ODCSConverter.smartMerge(existing, imported);
+  private static ODCSDataContract readODCS(ObjectMapper mapper, String content, String format) {
+    try {
+      JsonNode rootNode = mapper.readTree(content);
+      ODCSConverter.normalizeODCSInput(rootNode);
+      return mapper.treeToValue(rootNode, ODCSDataContract.class);
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException(
+          String.format("Invalid ODCS %s content: %s", format, e.getMessage()), e);
+    }
   }
 
-  private DataContract applyFullReplace(EntityReference entityRef, DataContract imported) {
-    DataContract existing = loadExistingContract(entityRef);
-    return existing == null ? imported : ODCSConverter.fullReplace(existing, imported);
+  private Response createFromODCS(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      ODCSImportRequest request,
+      ODCSDataContract odcs) {
+    DataContract contract = ODCSConverter.fromODCS(odcs, request.entityRef(), request.objectName());
+    qualityRuleImporter.resolveSlaColumn(contract);
+    importQualityRules(securityContext, request, contract, null);
+    stampUpdate(contract, securityContext);
+    return create(uriInfo, securityContext, contract);
+  }
+
+  private Response upsertFromODCS(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      ODCSImportRequest request,
+      String mode,
+      ODCSDataContract odcs) {
+    DataContract imported = ODCSConverter.fromODCS(odcs, request.entityRef(), request.objectName());
+    qualityRuleImporter.resolveSlaColumn(imported);
+    DataContract existing = loadExistingContract(request.entityRef());
+    importQualityRules(securityContext, request, imported, existing);
+    DataContract contract = existing == null ? imported : mergeImport(existing, imported, mode);
+    stampUpdate(contract, securityContext);
+    return createOrUpdate(uriInfo, securityContext, contract);
+  }
+
+  private static DataContract mergeImport(
+      DataContract existing, DataContract imported, String mode) {
+    return REPLACE_MODE.equalsIgnoreCase(mode)
+        ? ODCSConverter.fullReplace(existing, imported)
+        : ODCSConverter.smartMerge(existing, imported);
+  }
+
+  /**
+   * Test cases are written before the contract, so everything that would stop the contract from
+   * being stored is checked first; otherwise the import would leave test cases behind for nothing.
+   *
+   * @param existing the contract the import updates, or null when it creates one
+   */
+  private void importQualityRules(
+      SecurityContext securityContext,
+      ODCSImportRequest request,
+      DataContract contract,
+      DataContract existing) {
+    if (request.createTestCases() && !nullOrEmpty(contract.getOdcsQualityRules())) {
+      authorizeContractWrite(securityContext, contract, existing);
+      repository.assertImportable(contract, existing != null);
+      qualityRuleImporter.apply(
+          new ODCSQualityRuleImporter.Request(
+              contract,
+              linkedTestCaseIds(existing),
+              new ODCSTestCaseWriteGuard(authorizer, limits, securityContext),
+              securityContext.getUserPrincipal().getName()));
+    }
+  }
+
+  /** The checks {@link #create} and {@link #createOrUpdate} make before storing the contract. */
+  private void authorizeContractWrite(
+      SecurityContext securityContext, DataContract contract, DataContract existing) {
+    if (existing == null) {
+      OperationContext operationContext =
+          new OperationContext(entityType, MetadataOperation.CREATE);
+      CreateResourceContext<DataContract> resourceContext =
+          new CreateResourceContext<>(entityType, contract);
+      limits.enforceLimits(securityContext, resourceContext, operationContext);
+      authorizer.authorize(securityContext, operationContext, resourceContext);
+    } else {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, MetadataOperation.EDIT_ALL),
+          getResourceContextByName(
+              existing.getFullyQualifiedName(), ResourceContextInterface.Operation.PUT));
+    }
+  }
+
+  private static Set<UUID> linkedTestCaseIds(DataContract contract) {
+    return contract == null
+        ? Set.of()
+        : listOrEmpty(contract.getQualityExpectations()).stream()
+            .map(EntityReference::getId)
+            .collect(Collectors.toSet());
+  }
+
+  private static void stampUpdate(DataContract contract, SecurityContext securityContext) {
+    contract.setUpdatedBy(securityContext.getUserPrincipal().getName());
+    contract.setUpdatedAt(System.currentTimeMillis());
+  }
+
+  private ODCSDataContract toODCS(DataContract contract) {
+    return ODCSConverter.toODCS(contract, qualityRuleExporter.nativeTestCaseRules(contract));
   }
 
   private DataContract loadExistingContract(EntityReference entityRef) {
