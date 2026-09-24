@@ -28,15 +28,23 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { NodeSubType } from '../../../../generated/governance/workflows/elements/nodeSubType';
 import { NodeType } from '../../../../generated/governance/workflows/elements/nodeType';
 import { useEntityFields } from '../../../../hooks/useEntityFields';
-import { EXTENSION_FIELD_PREFIX } from '../../../../utils/WorkflowConfigUtils';
+import {
+  EXTENSION_FIELD_PREFIX,
+  getFieldLabel,
+} from '../../../../utils/WorkflowConfigUtils';
 import { FormActionButtons } from './FormActionButtons';
 import { MetadataFormSection } from './MetadataFormSection';
 
-// Custom-property options are stored as extension.<name>; show the bare name to the user.
-const getFieldLabel = (value: string): string =>
+// Options are stored as extension.<name> for custom properties and the bare name for
+// standard fields. Show the bare name, marking custom properties so a custom property
+// and a standard field of the same name (possible across entity types) stay distinct.
+const getFieldDisplayLabel = (
+  value: string,
+  t: (key: string) => string
+): string =>
   value.startsWith(EXTENSION_FIELD_PREFIX)
-    ? value.slice(EXTENSION_FIELD_PREFIX.length)
-    : value;
+    ? `${getFieldLabel(value)} (${t('label.custom-property')})`
+    : getFieldLabel(value);
 
 interface ScoringLevel {
   threshold: number | string;
@@ -147,7 +155,7 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
     // Sync useListData with loaded fields
     if (!initDoneRef.current) {
       fields.forEach((f) =>
-        selectedFieldItems.append({ id: f, label: getFieldLabel(f) })
+        selectedFieldItems.append({ id: f, label: getFieldDisplayLabel(f, t) })
       );
       initDoneRef.current = true;
     }
@@ -232,7 +240,7 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
             isDisabled={isFormDisabled}
             items={fieldOptions.map((f) => ({
               id: f,
-              label: getFieldLabel(f),
+              label: getFieldDisplayLabel(f, t),
             }))}
             label={t('label.fields')}
             placeholder={t('message.select-fields-to-check')}
@@ -246,7 +254,7 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
             onItemInserted={(key) => {
               const item = {
                 id: String(key),
-                label: getFieldLabel(String(key)),
+                label: getFieldDisplayLabel(String(key), t),
               };
               selectedFieldItems.append(item);
               setSelectedFields((prev) => [...prev, String(key)]);

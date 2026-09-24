@@ -14,9 +14,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { EntityType } from '../enums/entity.enum';
 import {
-  getCustomPropertiesByEntityType,
+  getAllCustomProperties,
   getFieldsForEntity,
 } from '../rest/metadataTypeAPI';
+import { CustomPropertiesForAssets } from '../rest/metadataTypeAPI.interface';
 import { buildFieldOptions } from '../utils/WorkflowConfigUtils';
 
 export const useEntityFields = (entityTypes?: EntityType[]) => {
@@ -35,25 +36,24 @@ export const useEntityFields = (entityTypes?: EntityType[]) => {
     setError(null);
 
     try {
-      const [allFieldsResults, customPropertyResults] = await Promise.all([
+      const [allFieldsResults, customPropertiesByType] = await Promise.all([
         Promise.all(
           entityTypesArray.map((entityType) => getFieldsForEntity(entityType))
         ),
-        // Best-effort: if custom properties can't be fetched, fall back to bare
-        // names rather than breaking the whole field picker.
-        Promise.all(
-          entityTypesArray.map((entityType) =>
-            getCustomPropertiesByEntityType(entityType).catch(() => [])
-          )
-        ),
+        // One bulk call returns custom properties for every entity type; index it
+        // by type below. Best-effort: on failure fall back to bare names rather
+        // than breaking the whole field picker.
+        getAllCustomProperties().catch(() => ({}) as CustomPropertiesForAssets),
       ]);
 
       // Build options per entity type so a custom-property name on one type does not
       // prefix (and hide) a standard field of the same name on another type.
-      const perTypeOptions = allFieldsResults.map((fields, index) =>
+      const perTypeOptions = entityTypesArray.map((entityType, index) =>
         buildFieldOptions(
-          (fields ?? []).filter(Boolean),
-          new Set((customPropertyResults[index] ?? []).map(({ name }) => name))
+          (allFieldsResults[index] ?? []).filter(Boolean),
+          new Set(
+            (customPropertiesByType[entityType] ?? []).map(({ name }) => name)
+          )
         )
       );
 

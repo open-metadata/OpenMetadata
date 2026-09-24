@@ -169,6 +169,16 @@ export const filterExcludeFields = (
 
 export const EXTENSION_FIELD_PREFIX = 'extension.';
 
+// Custom properties are addressed as extension.<name> everywhere in the workflow builder.
+export const withExtensionPrefix = (name: string): string =>
+  `${EXTENSION_FIELD_PREFIX}${name}`;
+
+// Inverse of withExtensionPrefix: the bare name shown to the user.
+export const getFieldLabel = (value: string): string =>
+  value.startsWith(EXTENSION_FIELD_PREFIX)
+    ? value.slice(EXTENSION_FIELD_PREFIX.length)
+    : value;
+
 /**
  * Builds the de-duplicated field-option list for a workflow field picker.
  *
@@ -178,6 +188,9 @@ export const EXTENSION_FIELD_PREFIX = 'extension.';
  * how the trigger/filter field lists are built (see NodeConfigSidebar). Standard fields are left
  * as-is. The prefix is applied after {@link filterExcludeFields} so the added dot does not exclude
  * the property.
+ *
+ * Call this per entity type (each type's own custom properties) and merge the results, so a custom
+ * property on one type does not prefix a standard field of the same name on another type.
  */
 export const buildFieldOptions = (
   fields: Array<{ name?: string }>,
@@ -192,7 +205,7 @@ export const buildFieldOptions = (
     }
 
     const value = customPropertyNames.has(name)
-      ? `${EXTENSION_FIELD_PREFIX}${name}`
+      ? withExtensionPrefix(name)
       : name;
 
     if (!seen.has(value)) {

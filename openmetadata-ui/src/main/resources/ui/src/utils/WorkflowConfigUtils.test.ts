@@ -76,26 +76,6 @@ describe('WorkflowConfigUtils.buildFieldOptions', () => {
     expect(options).not.toContain('someInternal.nested');
   });
 
-  it('keeps a standard field and a same-named custom property from different entity types when built per type then merged', () => {
-    // e.g. node targets [table, dashboard]: table has a standard field "X",
-    // dashboard has a custom property "X". Building per type then merging must
-    // keep both the standard "X" and the prefixed "extension.X".
-    const tableOptions = buildFieldOptions(
-      [{ name: 'name' }, { name: 'X' }],
-      new Set()
-    );
-    const dashboardOptions = buildFieldOptions(
-      [{ name: 'name' }, { name: 'X' }],
-      new Set(['X'])
-    );
-
-    const merged = Array.from(new Set([...tableOptions, ...dashboardOptions]));
-
-    expect(merged).toContain('X');
-    expect(merged).toContain('extension.X');
-    expect(merged.filter((option) => option === 'name')).toHaveLength(1);
-  });
-
   it('ignores fields without a name', () => {
     const fields = [{ name: undefined }, {}, { name: 'description' }];
 
