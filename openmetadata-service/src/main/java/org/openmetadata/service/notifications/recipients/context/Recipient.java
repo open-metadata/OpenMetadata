@@ -27,6 +27,32 @@ import org.openmetadata.service.events.subscription.channels.Channels;
  */
 @Slf4j
 public abstract sealed class Recipient permits EmailRecipient, WebhookRecipient {
+  /** For a receiver a destination's configuration lists, which belongs to no user or team. */
+  public static final String CONFIGURED = "configured endpoint";
+
+  private final String name;
+
+  protected Recipient(String name) {
+    this.name = name;
+  }
+
+  /** The user or team this address belongs to, for a status a person reads. Never the address. */
+  public String name() {
+    return name;
+  }
+
+  /** What makes two recipients one address. Equality and the hash code follow it. */
+  public abstract Object identity();
+
+  @Override
+  public final boolean equals(Object other) {
+    return other instanceof Recipient that && identity().equals(that.identity());
+  }
+
+  @Override
+  public final int hashCode() {
+    return identity().hashCode();
+  }
 
   /** Where the destination's channel reaches this user, or null when it has no address. */
   public static Recipient fromUser(User user, SubscriptionDestination destination) {

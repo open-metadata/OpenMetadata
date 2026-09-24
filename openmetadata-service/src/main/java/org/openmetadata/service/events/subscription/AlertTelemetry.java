@@ -23,6 +23,9 @@ public final class AlertTelemetry {
   private static final String LAG = "alert_lag_events";
   private static final String ABSORBED = "alert_absorbed";
   private static final String CHANNEL_OUTCOMES = "alert_channel_outcomes";
+  private static final String STOPPED_BY_BUDGET = "alert_ticks_stopped_by_budget";
+  private static final String IMMEDIATE_RERUNS = "alert_immediate_reruns";
+  private static final String ATTEMPTS_ON_UNREACHABLE = "alert_attempts_on_unreachable_target";
 
   private AlertTelemetry() {}
 
@@ -37,6 +40,22 @@ public final class AlertTelemetry {
 
   public static void lag(long eventsNotReadYet) {
     Metrics.summary(LAG).record(Math.max(0, eventsNotReadYet));
+  }
+
+  public static void tickStoppedByBudget() {
+    Metrics.counter(STOPPED_BY_BUDGET).increment();
+  }
+
+  public static void ranAgainAtOnce() {
+    Metrics.counter(IMMEDIATE_RERUNS).increment();
+  }
+
+  /**
+   * A target whose connection had already failed in the same tick was reached for again. Counted
+   * whether or not the attempt was then made, because this number decides if it should be.
+   */
+  public static void attemptOnUnreachableTarget(boolean skipped) {
+    Metrics.counter(ATTEMPTS_ON_UNREACHABLE, "skipped", String.valueOf(skipped)).increment();
   }
 
   public static void absorbed(String what) {

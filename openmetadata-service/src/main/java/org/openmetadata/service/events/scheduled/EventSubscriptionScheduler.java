@@ -42,8 +42,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.bundles.changeEvent.ServerStopping;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.events.subscription.AlertRows;
+import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.events.subscription.channels.Channels;
 import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
@@ -108,6 +110,8 @@ public class EventSubscriptionScheduler {
       OpenMetadataConnectionBuilder openMetadataConnectionBuilder)
       throws SchedulerException {
 
+    AlertingSettings.use(AlertingSettings.from(config.getAlertingConfiguration()));
+    ServerStopping.registerShutdownHook();
     StdSchedulerFactory factory = new StdSchedulerFactory();
     factory.initialize(quartzProperties(config.getDataSourceFactory()));
     // Must precede getScheduler(): that is where the job store resolves its datasource name.

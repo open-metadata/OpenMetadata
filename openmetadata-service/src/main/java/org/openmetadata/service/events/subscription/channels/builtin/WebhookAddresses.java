@@ -47,12 +47,12 @@ final class WebhookAddresses implements AddressDirectory {
 
   @Override
   public Recipient ofUser(User user) {
-    return WebhookRecipient.ofProfile(user.getProfile(), onProfile);
+    return WebhookRecipient.ofProfile(user.getName(), user.getProfile(), onProfile);
   }
 
   @Override
   public Recipient ofTeam(Team team) {
-    return WebhookRecipient.ofProfile(team.getProfile(), onProfile);
+    return WebhookRecipient.ofProfile(team.getName(), team.getProfile(), onProfile);
   }
 
   @Override
