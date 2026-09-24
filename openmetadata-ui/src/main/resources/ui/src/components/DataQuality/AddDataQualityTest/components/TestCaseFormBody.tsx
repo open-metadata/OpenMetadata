@@ -734,6 +734,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     onContextChange?.({
       selectedDefinition: selectedTestDefinition,
       selectedTableData,
+      selectedTableFqn,
       selectedColumn,
       selectedTestLevel,
       generateName: generateDynamicTestName,
@@ -743,6 +744,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   }, [
     selectedTestDefinition,
     selectedTableData,
+    selectedTableFqn,
     selectedColumn,
     selectedTestLevel,
     generateDynamicTestName,
