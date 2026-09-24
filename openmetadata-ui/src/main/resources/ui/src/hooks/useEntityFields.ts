@@ -43,7 +43,7 @@ export const useEntityFields = (entityTypes?: EntityType[]) => {
         // One bulk call returns custom properties for every entity type; index it
         // by type below. Best-effort: on failure fall back to bare names rather
         // than breaking the whole field picker.
-        getAllCustomProperties().catch(() => ({}) as CustomPropertiesForAssets),
+        getAllCustomProperties().catch(() => ({} as CustomPropertiesForAssets)),
       ]);
 
       // Build options per entity type so a custom-property name on one type does not
