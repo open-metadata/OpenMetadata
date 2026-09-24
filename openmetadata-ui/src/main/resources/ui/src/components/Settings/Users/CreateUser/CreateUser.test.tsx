@@ -61,12 +61,6 @@ jest.mock('../../../../rest/rolesAPIV1', () => ({
   searchRoles: jest.fn().mockResolvedValue([]),
 }));
 
-// Boundary-mock the domain label: it renders the ui-core TreeSelect picker,
-// which this suite's partial ui-core mock does not provide.
-jest.mock('../../../common/DomainLabel/DomainLabel.component', () => ({
-  DomainLabel: jest.fn(() => <div data-testid="domain-label" />),
-}));
-
 jest.mock('@openmetadata/ui-core-components', () => ({
   Tooltip: jest.fn().mockImplementation(({ children }) => <>{children}</>),
   TooltipTrigger: jest
@@ -79,10 +73,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         {icon}
       </button>
     )),
-  // The domain form field renders DomainSelect (ui-core TreeSelect); stub it so
-  // this suite need not exercise the picker internals.
-  TreeSelect: jest.fn(() => <div data-testid="tree-select" />),
-  DomainTag: jest.fn(() => <span data-testid="domain-tag" />),
 }));
 
 jest.mock('../../Team/TeamsSelectable/TeamsSelectable', () => {

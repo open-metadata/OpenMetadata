@@ -269,10 +269,13 @@ export const assignDomainWidget = async (
       response.url().includes('/api/v1/search/query') &&
       response.url().includes(encodeURIComponent(domain.name))
   );
-  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domain.name);
   await searchDomain;
 
-  const domainTag = page.getByTestId(`tree-node-${domain.fullyQualifiedName}`);
+  const domainTag = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
   await domainTag.waitFor({ state: 'visible' });
 
   if (multiSelect) {
@@ -280,7 +283,7 @@ export const assignDomainWidget = async (
     const patchReq = page.waitForResponse(
       (req) => req.request().method() === 'PATCH'
     );
-    await page.getByTestId('update-btn').click();
+    await page.getByTestId('saveAssociatedTag').click();
     await patchReq;
   } else {
     const patchReq = page.waitForResponse(
@@ -293,7 +296,7 @@ export const assignDomainWidget = async (
   await waitForAllLoadersToDisappear(page);
 
   await expect(
-    page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
+    page.getByTestId('domain-link').filter({ hasText: domain.displayName })
   ).toBeVisible();
 };
 
@@ -305,26 +308,30 @@ export const removeDomainWidget = async (
   await openWidgetEditor(page, 'add-domain', 'edit-domain', true);
   await waitForAllLoadersToDisappear(page);
 
-  await page.getByTestId('domain-selectable-tree-search').clear();
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .clear();
 
   const searchDomain = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       response.url().includes(encodeURIComponent(domain.name))
   );
-  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domain.name);
   await searchDomain;
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
-  await page.getByTestId(`tree-node-${domain.fullyQualifiedName}`).click();
+  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
   await patchReq;
   await waitForAllLoadersToDisappear(page);
 
-  await expect(
-    page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
-  ).not.toBeVisible();
+  await expect(page.getByTestId('domain-link')).not.toBeVisible();
 };
 
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
@@ -2101,17 +2108,21 @@ export const selectDomainFromNavbar = async (
   domain: Domain['responseData']
 ) => {
   const domainDropdown = page.getByTestId('domain-dropdown');
-  const domainSearch = page.getByTestId('domain-dropdown-search');
+  const domainTree = page.getByTestId('domain-selectable-tree');
   const searchTerm = domain.displayName ?? domain.name;
 
   await domainDropdown.click();
-  await domainSearch.waitFor({ state: 'visible' });
+  await page
+    .getByTestId('domain-selectable-tree')
+    .waitFor({ state: 'visible' });
 
-  await domainSearch.click();
+  await domainTree.getByTestId('searchbar').waitFor({ state: 'visible' });
+
+  await domainTree.getByTestId('searchbar').click();
   await page.keyboard.press('Control+a');
-  await domainSearch.pressSequentially(searchTerm);
+  await domainTree.getByTestId('searchbar').pressSequentially(searchTerm);
 
-  await page.getByTestId(`tree-node-${domain.fullyQualifiedName}`).click();
+  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
   await waitForAllLoadersToDisappear(page);
 };
 
