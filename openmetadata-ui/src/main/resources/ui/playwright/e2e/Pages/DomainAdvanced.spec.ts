@@ -596,10 +596,13 @@ test.describe('Bulk Domain Asset Operations', () => {
         }
 
         // Narrow before check — same pattern as removeAssetsFromDataProduct.
+        // The asset tab wraps the search value into `*<value>*`, so match
+        // the name anywhere in the URL and let the next iteration's fill
+        // overwrite (no inter-iteration clear needed).
         const searchRes = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/search/query') &&
-            response.url().includes(`q=${name}`)
+            response.url().includes(name)
         );
         await page.getByTestId('searchbar').fill(name);
         await searchRes;
@@ -607,14 +610,6 @@ test.describe('Bulk Domain Asset Operations', () => {
         await page
           .locator(`[data-testid="table-data-card_${fqn}"] input`)
           .check();
-
-        const clearSearchRes = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/search/query') &&
-            response.url().includes('q=&')
-        );
-        await page.getByTestId('searchbar').clear();
-        await clearSearchRes;
       }
 
       const removeRes = page.waitForResponse('/api/v1/domains/*/assets/remove');
@@ -1028,24 +1023,19 @@ test.describe('Domain asset dryRun — remove confirmation', () => {
     // Narrow the list to this one card first — under SharedInfra the
     // domain asset tab lists every table on the shard, and toggling a
     // checkbox reflows enough that a subsequent target scrolls under
-    // the pointer and .check() retries out.
+    // the pointer and .check() retries out. The tab wraps the search
+    // into `*<value>*`, so match the name anywhere in the URL. Between
+    // consecutive selectAssetCardCheckbox calls, the next fill overwrites
+    // — no inter-call clear needed.
     const searchRes = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes(`q=${name}`)
+        response.url().includes(name)
     );
     await page.getByTestId('searchbar').fill(name);
     await searchRes;
 
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
-
-    const clearSearchRes = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes('q=&')
-    );
-    await page.getByTestId('searchbar').clear();
-    await clearSearchRes;
   };
 
   test('single-asset remove with linked data product shows preview and commits on Remove Anyway', async ({

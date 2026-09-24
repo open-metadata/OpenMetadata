@@ -214,24 +214,18 @@ export const removeAssetsFromTag = async (
 
     // Narrow to this card so the tag's asset tab (which under SharedInfra
     // can list every table/topic/dashboard on the shard) stays stable
-    // while we toggle checkboxes one at a time.
+    // while we toggle checkboxes one at a time. The tab wraps the search
+    // value into `*<value>*`, so `q=<name>` alone won't appear — check
+    // the name is anywhere in the URL instead.
     const searchRes = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes(`q=${name}`)
+        response.url().includes(name)
     );
     await page.getByTestId('searchbar').fill(name);
     await searchRes;
 
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
-
-    const clearSearchRes = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes('q=&')
-    );
-    await page.getByTestId('searchbar').clear();
-    await clearSearchRes;
   }
 
   const assetsRemoveRes = page.waitForResponse(`/api/v1/tags/*/assets/remove`);
@@ -682,26 +676,23 @@ export const verifyEntityTypeFilterInTagAssets = async (
       );
     }
 
+    // The asset tab wraps the search value into `*<value>*` (see
+    // AssetsTabs.component.tsx line ~538), so `q=<name>` alone won't
+    // appear in the URL — check the name is anywhere in the URL instead.
+    // Unique per fixture (uuid-based), no false positives.
     const searchRes = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes(`q=${name}`)
+        response.url().includes(name)
     );
     await page.getByTestId('searchbar').fill(name);
     await searchRes;
 
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
-
-    const clearSearchRes = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes('q=&')
-    );
-    await page.getByTestId('searchbar').clear();
-    await clearSearchRes;
   }
 
   const clearResponse = page.waitForResponse('/api/v1/search/query?q=*');
+  await page.getByTestId('searchbar').clear();
   await page.getByText('Clear').click();
   await clearResponse;
 };

@@ -1069,11 +1069,13 @@ export const addAssetsToDataProduct = async (
     // SharedInfra the data-product asset tab is stable in count (we just
     // added N), but goBack() re-mounts the list and click retries can
     // race the re-render — see the sibling narrow in the picker helper
-    // in utils/tag.ts:verifyEntityTypeFilterInTagAssets.
+    // in utils/tag.ts:verifyEntityTypeFilterInTagAssets. The tab wraps
+    // the search into `*<value>*`, so match the name anywhere in the URL
+    // rather than `q=<name>`.
     const searchRes = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes(`q=${name}`)
+        response.url().includes(name)
     );
     await page.getByTestId('searchbar').fill(name);
     await searchRes;
@@ -1117,24 +1119,18 @@ export const removeAssetsFromDataProduct = async (
     }
 
     // Narrow the asset tab to this one card before checking. Same reason
-    // as addAssetsToDataProduct's verify loop above.
+    // as addAssetsToDataProduct's verify loop above; the tab wraps into
+    // `*<name>*` so we match the name anywhere in the URL, and the next
+    // iteration's fill overwrites (no inter-iteration clear needed).
     const searchRes = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes(`q=${name}`)
+        response.url().includes(name)
     );
     await page.getByTestId('searchbar').fill(name);
     await searchRes;
 
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
-
-    const clearSearchRes = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes('q=&')
-    );
-    await page.getByTestId('searchbar').clear();
-    await clearSearchRes;
   }
 
   const assetsRemoveRes = page.waitForResponse(
