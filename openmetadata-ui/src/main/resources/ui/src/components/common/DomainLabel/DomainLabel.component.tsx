@@ -23,6 +23,7 @@ import {
   getAPIfromSource,
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
+import { getDomainsContentKey } from '../../../utils/DomainSyncUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
@@ -100,16 +101,23 @@ export const DomainLabel = ({
   );
 
   useEffect(() => {
-    if (domains) {
-      if (Array.isArray(domains)) {
-        setActiveDomain(domains);
-      } else {
-        setActiveDomain([domains]);
-      }
-    } else {
-      // note: this is to handle the case where the domain is not set
-      setActiveDomain([]);
+    let nextDomains: EntityReference[] = [];
+    if (Array.isArray(domains)) {
+      nextDomains = domains;
+    } else if (domains) {
+      nextDomains = [domains];
     }
+
+    // `domains` arrives as a fresh array reference on every context re-render.
+    // Setting state unconditionally churns `activeDomain`'s identity, remounting
+    // the DomainSelectableList subtree and collapsing an open picker
+    // mid-interaction. Only commit when the referenced domains actually changed;
+    // return the previous reference otherwise so React bails out of the update.
+    setActiveDomain((prev) =>
+      getDomainsContentKey(prev) === getDomainsContentKey(nextDomains)
+        ? prev
+        : nextDomains
+    );
   }, [domains]);
 
   const domainLink = useMemo(() => {

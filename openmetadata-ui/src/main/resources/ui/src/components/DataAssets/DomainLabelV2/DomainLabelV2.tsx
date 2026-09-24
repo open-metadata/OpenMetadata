@@ -30,6 +30,7 @@ import {
   getAPIfromSource,
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
+import { getDomainsContentKey } from '../../../utils/DomainSyncUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { DomainLabelProps } from '../../common/DomainLabel/DomainLabel.interface';
@@ -43,23 +44,6 @@ import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { AssetsUnion } from '../AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../DataAssetsHeader/DataAssetsHeader.interface';
-
-// Content key for a domain list, used to skip no-op state updates that would
-// otherwise remount the picker on every context re-render. Keyed on every
-// render-relevant field (not just identity) so refreshed metadata — a renamed
-// domain, a flipped `inherited`, a changed link — still updates the chip, while
-// unchanged data stays reference-stable. JSON encoding keeps it collision-safe.
-const domainsRefKey = (list: EntityReference[]): string =>
-  JSON.stringify(
-    list.map((d) => [
-      d.id,
-      d.fullyQualifiedName,
-      d.name,
-      d.displayName,
-      d.inherited,
-      d.href,
-    ])
-  );
 
 const resolveDomainsForPatch = (
   selectedDomain: EntityReference | EntityReference[]
@@ -191,7 +175,9 @@ export const DomainLabelV2 = <
     // picker. Only commit when the referenced domains actually changed; return
     // the previous reference otherwise so React bails out of the update.
     setActiveDomain((prev) =>
-      domainsRefKey(prev) === domainsRefKey(nextDomains) ? prev : nextDomains
+      getDomainsContentKey(prev) === getDomainsContentKey(nextDomains)
+        ? prev
+        : nextDomains
     );
   }, [domains]);
 
