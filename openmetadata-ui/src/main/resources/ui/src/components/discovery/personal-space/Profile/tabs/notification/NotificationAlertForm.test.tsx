@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
 import NotificationAlertForm from './NotificationAlertForm';
 
 const mockT = (key: string) => key;
@@ -73,7 +72,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     )),
   FormItemLabel: jest
     .fn()
-    .mockImplementation(({ label }) => <label>{label}</label>),
+    .mockImplementation(({ label }) => <span>{label}</span>),
   FieldTypes: { TEXT: 'text' },
 }));
 
@@ -184,7 +183,7 @@ describe('NotificationAlertForm', () => {
     expect(screen.getByTestId('loader')).toBeInTheDocument();
 
     await act(async () => {
-      resolveAPI!({ data: [] });
+      (resolveAPI as (v: unknown) => void)({ data: [] });
     });
   });
 

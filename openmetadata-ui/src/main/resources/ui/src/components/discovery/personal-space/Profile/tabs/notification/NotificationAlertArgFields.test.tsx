@@ -29,7 +29,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     jest
       .fn()
       .mockImplementation(({ children, items, ...props }) => (
-        <div {...props}>{items?.map((item: any) => children(item))}</div>
+        <div {...props}>{items?.map((item: Record<string, unknown>) => children(item))}</div>
       )),
     {
       Item: jest
@@ -48,8 +48,8 @@ jest.mock('../../../../../../rest/contractAPI', () => ({
 }));
 
 jest.mock('../../../../../../utils/EntityNameUtils', () => ({
-  getEntityName: (entity: any) =>
-    entity?.displayName ?? entity?.name ?? '',
+  getEntityName: (entity: Record<string, unknown>) =>
+    (entity?.displayName as string) ?? (entity?.name as string) ?? '',
 }));
 
 jest.mock('../../../../../../utils/ToastUtils', () => ({
