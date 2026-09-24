@@ -2640,6 +2640,82 @@ version: 1.0`;
       });
     });
 
+    it('keeps the test case checkbox disabled until re-validation answers', async () => {
+      let answerRevalidation: (validation: unknown) => void = jest.fn();
+      (validateODCSYaml as jest.Mock)
+        .mockResolvedValueOnce({
+          valid: true,
+          odcsImportReport: reportWithWarnings,
+        })
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              answerRevalidation = resolve;
+            })
+        );
+
+      renderModal();
+      await uploadODCSFile();
+
+      const checkbox = await screen.findByTestId('create-test-cases-checkbox');
+
+      await act(async () => {
+        fireEvent.click(checkbox);
+      });
+
+      expect(checkbox).toBeDisabled();
+
+      await act(async () => {
+        answerRevalidation({
+          valid: true,
+          odcsImportReport: reportWithWarnings,
+        });
+      });
+
+      expect(checkbox).toBeEnabled();
+      expect(checkbox).not.toBeChecked();
+    });
+
+    it('ignores a validation that answers after a newer one', async () => {
+      let answerFirstUpload: (validation: unknown) => void = jest.fn();
+      (validateODCSYaml as jest.Mock)
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              answerFirstUpload = resolve;
+            })
+        )
+        .mockResolvedValueOnce({
+          valid: true,
+          odcsImportReport: reportWithWarnings,
+        });
+
+      renderModal();
+      await uploadODCSFile();
+      const removeFile = await screen.findByTestId('remove-file-button');
+      await act(async () => {
+        fireEvent.click(removeFile);
+      });
+      await uploadODCSFile();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('button', { name: 'Import with Warnings' })
+        ).toBeEnabled();
+      });
+
+      await act(async () => {
+        answerFirstUpload({
+          valid: false,
+          odcsImportReport: { ...reportWithWarnings, canImport: false },
+        });
+      });
+
+      expect(
+        screen.getByRole('button', { name: 'Import with Warnings' })
+      ).toBeEnabled();
+    });
+
     it('disables the import when the report has blocking issues', async () => {
       (validateODCSYaml as jest.Mock).mockResolvedValue({
         valid: false,

@@ -236,6 +236,8 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
       return;
     }
 
+    let isLatestRun = true;
+
     const runValidation = async () => {
       setIsValidating(true);
       setServerValidationError(null);
@@ -253,19 +255,31 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
           // OM format validation
           validation = await validateContractYaml(yamlContent);
         }
-        setServerValidation(validation);
+        if (isLatestRun) {
+          setServerValidation(validation);
+        }
       } catch (err) {
-        const error = err as AxiosError<{ message?: string }>;
-        const message =
-          error.response?.data?.message ?? error.message ?? String(err);
-        setServerValidationError(message);
-        setServerValidation(null);
+        if (isLatestRun) {
+          const error = err as AxiosError<{ message?: string }>;
+          const message =
+            error.response?.data?.message ?? error.message ?? String(err);
+          setServerValidationError(message);
+          setServerValidation(null);
+        }
       } finally {
-        setIsValidating(false);
+        if (isLatestRun) {
+          setIsValidating(false);
+        }
       }
     };
 
     runValidation();
+
+    // A slower answer to an earlier run must not replace the report for what is selected now.
+    return () => {
+      isLatestRun = false;
+      setIsValidating(false);
+    };
   }, [
     yamlContent,
     isODCSFormat,
@@ -1236,7 +1250,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                 ? t('message.no-permission-to-create-test-cases')
                 : t('message.create-test-cases-from-quality-rules-hint')
             }
-            isDisabled={cannotCreateTestCases}
+            isDisabled={cannotCreateTestCases || isValidating}
             isSelected={willCreateTestCases}
             label={t('label.create-test-cases-from-quality-rules')}
             onChange={setCreateTestCases}
@@ -1245,7 +1259,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         <ODCSImportReport report={odcsReport} />
       </div>
     );
-  }, [odcsReport, willCreateTestCases, t]);
+  }, [odcsReport, willCreateTestCases, isValidating, t]);
 
   const renderObjectSelector = useCallback(() => {
     if (!isODCSFormat || schemaObjects.length <= 1) {
