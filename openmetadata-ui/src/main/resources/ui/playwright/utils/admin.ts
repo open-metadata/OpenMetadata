@@ -21,9 +21,18 @@ import {
   getWorkerAdminAPIContext,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { claimFirstBoot } from './storageStateRecovery';
 
 export const authenticateAdminPage = async (page: Page) => {
+  // Claimed before goto and settled before choosing the UI-login fallback:
+  // otherwise the storageState guard would claim this first boot itself and
+  // re-seed + reload in the background, landing in the middle of admin.login.
+  const firstBootRecovery = claimFirstBoot(page, '/my-data');
   await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
+
+  if (await firstBootRecovery) {
+    await page.waitForURL('**/my-data', { waitUntil: 'domcontentloaded' });
+  }
   // Promise.any, not Promise.race: only one of the two elements ever appears, so
   // the losing waitFor keeps running until it times out or the page closes. With
   // race, that loser's late rejection is unhandled and shows up in traces as a
