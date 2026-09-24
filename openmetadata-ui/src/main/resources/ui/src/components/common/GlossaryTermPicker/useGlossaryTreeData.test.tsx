@@ -28,8 +28,10 @@ jest.mock('./useGlossaryMutualExclusivity', () => ({
   }),
 }));
 
-const fetchRoots = async (selectableRoots?: boolean) => {
-  const { result } = renderHook(() => useGlossaryTreeData(selectableRoots));
+const fetchRoots = async (rootIsValue?: boolean, rootCascades?: boolean) => {
+  const { result } = renderHook(() =>
+    useGlossaryTreeData(rootIsValue, rootCascades)
+  );
 
   return result.current({});
 };
@@ -55,6 +57,13 @@ describe('useGlossaryTreeData', () => {
       true,
       true,
     ]);
+  });
+
+  // Single-select has no cascade, so a click on a glossary could only clear the pick.
+  it('marks every glossary unselectable when a single-select picks terms', async () => {
+    const { nodes } = await fetchRoots(false, false);
+
+    expect(nodes.some(({ allowSelection }) => allowSelection)).toBe(false);
   });
 
   // ChangeParent picks the glossary itself, so an empty one is still a target.

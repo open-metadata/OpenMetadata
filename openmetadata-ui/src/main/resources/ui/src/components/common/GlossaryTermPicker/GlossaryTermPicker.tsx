@@ -82,7 +82,7 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
   selectGlossaries = false,
 }) => {
   const { t } = useTranslation();
-  const fetchGlossaryTree = useGlossaryTreeData(selectGlossaries);
+  const fetchGlossaryTree = useGlossaryTreeData(selectGlossaries, multiple);
 
   const excluded = useMemo(() => new Set(excludeFqns ?? []), [excludeFqns]);
 

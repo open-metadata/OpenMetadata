@@ -2326,7 +2326,7 @@ const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
           )}
           value={terms}
           onChange={handleChange}
-          onOpenChange={(open) => !open && onClose(true)}
+          onOpenChange={(open) => !open && onClose(true, true)}
         />
       </div>
     );
