@@ -95,6 +95,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     ),
   Skeleton: jest.fn().mockImplementation(() => <span />),
   Tooltip: jest.fn().mockImplementation(({ children }) => <>{children}</>),
+  useTabItemState: jest.fn().mockReturnValue(null),
   Typography: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
@@ -262,7 +263,7 @@ jest.mock('../../components/Modals/StyleModal/StyleModal.component', () => {
   return jest.fn().mockImplementation(() => <div>StyleModal</div>);
 });
 
-jest.mock('../../components/Modals/IconColorModal', () => {
+jest.mock('../../components/Modals/IconColorModal/IconColorModal', () => {
   return jest.fn().mockImplementation(() => <div>IconColorModal</div>);
 });
 

@@ -20,7 +20,13 @@ import {
 import classNames from 'classnames';
 import { cloneDeep, isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
-import { UIEventHandler, useCallback, useEffect, useState } from 'react';
+import {
+  UIEventHandler,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconRemoveColored } from '../../../assets/svg/ic-remove-colored.svg';
 import {
@@ -31,6 +37,7 @@ import { EntityReference } from '../../../generated/entity/data/table';
 import { Paging } from '../../../generated/type/paging';
 import { useRovingFocus } from '../../../hooks/useRovingFocus';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { isNearScrollBottom } from '../../../utils/ScrollUtils';
 import Loader from '../Loader/Loader';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import { UserTag } from '../UserTag/UserTag.component';
@@ -88,6 +95,15 @@ export const SelectableList = ({
   const [searchText, setSearchText] = useState('');
   const { t } = useTranslation();
   const [pagingInfo, setPagingInfo] = useState<Paging>(pagingObject);
+  // Guards against duplicate page fetches: several scroll events can land in the
+  // bottom threshold before the in-flight request settles.
+  const isFetchingNextPage = useRef(false);
+  // Bumped on every new search so a pagination response that resolves after the
+  // search replaced the list is dropped instead of appending stale/duplicate rows.
+  const requestGeneration = useRef(0);
+  // Identifies the latest search so an older search whose response resolves last
+  // cannot overwrite the newer query's results, cursor, and text.
+  const latestSearch = useRef(0);
 
   const [selectedItemsInternal, setSelectedItemsInternal] = useState<
     Map<string, EntityReference>
@@ -161,7 +177,19 @@ export const SelectableList = ({
 
   const handleSearch = useCallback(
     async (search: string) => {
+      const searchId = ++latestSearch.current;
       const { data, paging } = await fetchOptions(search);
+
+      // Drop this response if a newer search has since been issued, so a slow
+      // older request cannot overwrite the newer query's results.
+      if (searchId !== latestSearch.current) {
+        return;
+      }
+
+      // Bump at the moment the list is replaced — after the await — so any page that
+      // started before now (including one begun while this search was in flight)
+      // captured a lower generation and is dropped instead of appending stale rows.
+      requestGeneration.current += 1;
 
       setUniqueOptions(
         isEmpty(search)
@@ -178,20 +206,34 @@ export const SelectableList = ({
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     async (e) => {
       if (
-        e.currentTarget.scrollHeight - e.currentTarget.scrollTop === height &&
-        pagingInfo.after &&
-        uniqueOptions.length < pagingInfo.total
+        !isNearScrollBottom(e.currentTarget) ||
+        !pagingInfo.after ||
+        uniqueOptions.length >= pagingInfo.total ||
+        isFetchingNextPage.current
       ) {
+        return;
+      }
+
+      isFetchingNextPage.current = true;
+      const generation = requestGeneration.current;
+      try {
         const { data, paging } = await fetchOptions(
           searchText,
           pagingInfo.after
         );
 
+        // Drop the page if a search superseded this request while it was in flight.
+        if (generation !== requestGeneration.current) {
+          return;
+        }
+
         setUniqueOptions((prevData) => [...prevData, ...data]);
         setPagingInfo(paging);
+      } finally {
+        isFetchingNextPage.current = false;
       }
     },
-    [pagingInfo, uniqueOptions, searchText]
+    [pagingInfo, uniqueOptions, searchText, fetchOptions]
   );
 
   const handleUpdate = useCallback(

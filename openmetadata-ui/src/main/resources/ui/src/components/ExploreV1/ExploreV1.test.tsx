@@ -379,6 +379,7 @@ jest.mock('../../utils/EntitySearchUtils', () => ({
   highlightEntityNameAndDescription: jest
     .fn()
     .mockImplementation((entity) => entity),
+  renderHighlightedText: jest.fn((text) => text ?? ''),
 }));
 
 jest.mock('../../utils/RouterUtils', () => ({

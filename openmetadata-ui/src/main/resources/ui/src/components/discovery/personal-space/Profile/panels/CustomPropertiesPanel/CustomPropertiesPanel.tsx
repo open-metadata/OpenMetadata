@@ -32,7 +32,7 @@ import { getEntityIconWithBg } from '../../../../../../utils/Assets/AssetsUtils'
 import globalSettingsClassBase from '../../../../../../utils/GlobalSettingsClassBase';
 import { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
 import { userPermissions } from '../../../../../../utils/PermissionsUtils';
-import type { HeaderOverride } from '../../profileNavConfig';
+import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import CustomPropertiesAddPage from './CustomPropertiesAddPage';
 import CustomPropertiesDetailPage from './CustomPropertiesDetailPage';
 import CustomPropertiesEditPage from './CustomPropertiesEditPage';
@@ -45,7 +45,7 @@ import {
 } from './CustomPropertiesPanel.utils';
 
 interface CustomPropertiesPanelProps {
-  onHeaderChange: (overrides: HeaderOverride) => void;
+  onHeaderChange?: (overrides: ProfileHeaderOverride) => void;
 }
 
 const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
@@ -195,7 +195,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
         </Box>
       ) : undefined;
 
-    onHeaderChange({
+    onHeaderChange?.({
       title: pageTitle,
       description: pageDescription,
       breadcrumbs: breadcrumbItems,

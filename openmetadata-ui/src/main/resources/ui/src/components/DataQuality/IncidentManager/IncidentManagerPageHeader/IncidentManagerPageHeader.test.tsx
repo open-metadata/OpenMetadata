@@ -89,6 +89,9 @@ const IncidentManagerPageHeader = ({
 };
 
 jest.mock('../../../../rest/incidentManagerAPI', () => ({
+  // Spread the real module: the transition ids are plain constants the
+  // source reads at import time, and a bare factory leaves them undefined.
+  ...jest.requireActual('../../../../rest/incidentManagerAPI'),
   getIncidentTaskByStateId: jest.fn().mockResolvedValue({
     ...MOCK_TASK_DATA[1],
     payload: {

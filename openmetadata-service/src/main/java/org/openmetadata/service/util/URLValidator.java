@@ -13,62 +13,17 @@
 
 package org.openmetadata.service.util;
 
-import jakarta.ws.rs.BadRequestException;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.util.Arrays;
-import java.util.List;
-import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 
 /**
- * Utility class for validating URLs to prevent SSRF attacks.
+ * Validates a URL supplied through the API before it is stored. The decision itself lives in {@link
+ * OutboundUrlPolicy}; the same policy is applied again when the request is dispatched.
  */
 @Slf4j
 public class URLValidator {
-  private static final List<String> ALLOWED_SCHEMES = Arrays.asList("http", "https");
-  private static final Pattern PRIVATE_IP_PATTERN =
-      Pattern.compile(
-          "^(127\\.|10\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.|192\\.168\\.|169\\.254\\.|\\[?::1\\]?|\\[?[fF][cCdD][0-9a-fA-F]{0,2}:|\\[?[fF][eE][89abAB][0-9a-fA-F]:).*");
+  private URLValidator() {}
 
   public static void validateURL(String urlString) {
-    if (urlString == null || urlString.trim().isEmpty()) {
-      throw new BadRequestException("URL cannot be empty");
-    }
-
-    String host = getString(urlString);
-
-    if (PRIVATE_IP_PATTERN.matcher(host).matches()) {
-      throw new BadRequestException("URL targeting private/internal network not allowed");
-    }
-  }
-
-  private static @NotNull String getString(String urlString) {
-    URL url;
-    try {
-      URI uri = new URI(urlString);
-      url = uri.toURL();
-    } catch (URISyntaxException | MalformedURLException e) {
-      try {
-        url = new URL(urlString);
-      } catch (MalformedURLException ex) {
-        throw new BadRequestException("Invalid URL format: " + ex.getMessage());
-      }
-    }
-
-    String protocol = url.getProtocol().toLowerCase();
-    if (!ALLOWED_SCHEMES.contains(protocol)) {
-      throw new BadRequestException("URL scheme not allowed: " + protocol);
-    }
-
-    String host = url.getHost();
-    if (host == null || host.trim().isEmpty()) {
-      throw new BadRequestException("URL must have a valid host");
-    }
-
-    return host.toLowerCase();
+    OutboundUrlPolicy.getInstance().checkForSave(urlString);
   }
 }

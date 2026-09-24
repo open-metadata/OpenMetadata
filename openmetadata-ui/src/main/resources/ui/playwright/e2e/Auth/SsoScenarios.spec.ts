@@ -13,7 +13,7 @@
 import { expect, Page, Response, test } from '@playwright/test';
 import { performAdminLogin } from '../../utils/admin';
 import { getAuthContext } from '../../utils/common';
-import { auth0MockProviderFixture } from '../../utils/sso-providers/auth0-mock';
+import { auth0ProviderFixture } from '../../utils/sso-providers/auth0';
 import { basicProviderFixture } from '../../utils/sso-providers/basic';
 import type { SsoProviderFixture } from '../../utils/sso-providers/fixture';
 import { keycloakOidcConfidentialProviderFixture } from '../../utils/sso-providers/keycloak-oidc';
@@ -42,7 +42,7 @@ const FIXTURES: SsoProviderFixture[] = [
   keycloakOidcPublicProviderFixture,
   oktaProviderFixture,
   msalMockProviderFixture,
-  auth0MockProviderFixture,
+  auth0ProviderFixture,
 ];
 
 const AUTH_REFRESH_PATH = '/api/v1/auth/refresh';
@@ -372,6 +372,78 @@ for (const fixture of FIXTURES) {
         });
       }
 
+      // Scenario 3b — persistent server-side 401 stops looping within a
+      // bounded request budget. Regression: the fast-path used to
+      // short-circuit refresh when the stored token's `exp` was still
+      // fresh, looping ~2 req/s on /loggedInUser without ever hitting
+      // /auth/refresh (147 calls in 45s per the HAR). The coordinator's
+      // per-request retry cap must now stop that loop. SDK-driven
+      // providers don't use /api/v1/auth/refresh, so opt out.
+      if (fixture.usesBackendRefresh) {
+        test('persistent server-side 401 stops looping within a bounded request budget', async ({
+          page,
+        }) => {
+          test.slow();
+
+          await fixture.performLogin(page);
+
+          const loggedInUserCalls: string[] = [];
+          const authRefreshCalls: string[] = [];
+          page.on('request', (req) => {
+            const u = req.url();
+            if (u.includes(AUTH_REFRESH_PATH)) {
+              authRefreshCalls.push(u);
+            } else if (/\/api\/v1\/users\/loggedInUser/.test(u)) {
+              loggedInUserCalls.push(u);
+            }
+          });
+
+          // Fault-inject the exact 401 body OM's JwtFilter emits after a
+          // signing-key rotation. Scoped to /loggedInUser (the endpoint
+          // the HAR looped on) so the app boots normally and only the
+          // session probe is broken.
+          await page.route(/\/api\/v1\/users\/loggedInUser/, (route) =>
+            route.fulfill({
+              status: 401,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                code: 401,
+                message:
+                  'Not Authorized! Token signing key not found in configured public keys',
+              }),
+            })
+          );
+
+          await page.goto('/', { waitUntil: 'load' });
+          // Wait for the /loggedInUser count to hold steady across 3
+          // consecutive 2s samples — proof the storm has stopped. A
+          // regressed fast-path would keep firing ~2 req/s and the
+          // count would never stabilise before the poll timeout.
+          let previousCount = -1;
+          let stableSamples = 0;
+          await expect
+            .poll(
+              () => {
+                if (loggedInUserCalls.length === previousCount) {
+                  stableSamples += 1;
+                } else {
+                  stableSamples = 0;
+                  previousCount = loggedInUserCalls.length;
+                }
+
+                return stableSamples;
+              },
+              { timeout: 30_000, intervals: [2_000] }
+            )
+            .toBeGreaterThanOrEqual(3);
+
+          // Loose ceilings — well under the ~150 /loggedInUser calls in
+          // the runaway HAR. Both counts must be finite and small.
+          expect(loggedInUserCalls.length).toBeLessThan(15);
+          expect(authRefreshCalls.length).toBeLessThan(10);
+        });
+      }
+
       // Scenario 4 — a second tab in the same browser context inherits the
       // authenticated session via shared localStorage without a second IdP
       // handshake. Fixtures whose auth is per-page (Basic, LDAP) opt out via
@@ -488,24 +560,37 @@ for (const fixture of FIXTURES) {
       // authenticated shell within budget. Real IdPs vary, so the ceiling is
       // 15s soft (the coordinator's own timeouts sit well under this); regress
       // means someone added a synchronous roundtrip to the boot path.
-      test('cold-load with an expired stored token renders authenticated within budget', async ({
-        page,
-      }) => {
-        test.slow();
+      //
+      // Gated at registration time on `supportsColdLoadRefresh`. Providers
+      // whose SDK caches the refresh_token durably (Basic/LDAP/SAML via
+      // /auth/refresh, keycloak-oidc-public via oidc-client's IndexedDB
+      // store, Okta via localStorage, msal-mock via the pre-seeded shim)
+      // recover cleanly. The auth0-mock fixture is opt-out because
+      // @auth0/auth0-react ships with `cacheLocation: "memory"` (OM's
+      // production default) — the reload wipes the SDK's refresh_token
+      // and its silent-authorize fallback needs an IdP session cookie
+      // that Playwright's cross-site-cookie blocking eats. Documented on
+      // the fixture where the flag is set.
+      if (fixture.supportsColdLoadRefresh) {
+        test('cold-load with an expired stored token renders authenticated within budget', async ({
+          page,
+        }) => {
+          test.slow();
 
-        await fixture.performLogin(page);
-        await fixture.forceTokenExpiry(page);
+          await fixture.performLogin(page);
+          await fixture.forceTokenExpiry(page);
 
-        const start = Date.now();
-        await page.reload({ waitUntil: 'domcontentloaded' });
-        await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
-          timeout: 15_000,
+          const start = Date.now();
+          await page.reload({ waitUntil: 'domcontentloaded' });
+          await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
+            timeout: 15_000,
+          });
+          const elapsed = Date.now() - start;
+
+          expect(elapsed).toBeLessThan(15_000);
+          expect(page.url()).not.toContain('/signin');
         });
-        const elapsed = Date.now() - start;
-
-        expect(elapsed).toBeLessThan(15_000);
-        expect(page.url()).not.toContain('/signin');
-      });
+      }
 
       // Scenario 7 — the /silent-callback iframe route is a bare oidc-client
       // handoff and MUST NOT boot the full app. If AppRoot ever mounted here

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,9 +17,11 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import {
   mockedGlossaryTerms,
@@ -176,13 +178,18 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 // The real wrapper div in GlossaryTermTab.component.tsx now carries these
 // same testids (for Playwright), so the mocks render plain content instead
 // of duplicating them — a duplicate testid makes screen.getByTestId ambiguous.
-jest.mock('../../common/EmptyPlaceholder', () => ({
-  NoFilteredResultsPlaceholder: jest
+jest.mock('../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder', () => ({
+  __esModule: true,
+  default: jest
     .fn()
     .mockImplementation(({ description }: { description?: ReactNode }) => (
       <div>{description}</div>
     )),
-  NoSearchResultsPlaceholder: jest.fn().mockImplementation(() => <div />),
+}));
+
+jest.mock('../../common/EmptyPlaceholder/NoSearchResultsPlaceholder', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => <div />),
 }));
 
 jest.mock('../../common/Loader/Loader', () =>
@@ -859,7 +866,8 @@ describe('Test GlossaryTermTab component', () => {
             status: 'Open',
             category: 'Approval',
             type: 'RequestApproval',
-            limit: 100000,
+            aboutEntity: mockedGlossaryTerms[0].fullyQualifiedName,
+            limit: PAGE_SIZE_LARGE,
             fields: 'about,assignees',
           })
         );
@@ -877,7 +885,8 @@ describe('Test GlossaryTermTab component', () => {
             status: 'Open',
             category: 'Approval',
             type: 'RequestApproval',
-            limit: 100000,
+            aboutEntity: mockedGlossaryTerms[0].fullyQualifiedName,
+            limit: PAGE_SIZE_LARGE,
             fields: 'about,assignees',
           })
         );
@@ -1019,6 +1028,55 @@ describe('Test GlossaryTermTab component', () => {
 
       expect(mockShowSuccessToast).toHaveBeenCalledWith('Vote recorded.');
       expect(mockSetGlossaryChildTerms).not.toHaveBeenCalled();
+    });
+
+    it('should require and submit a comment when rejecting from the glossary list', async () => {
+      const term = {
+        ...mockedGlossaryTerms[0],
+        entityStatus: 'In Review',
+      };
+      mockUseGlossaryStore.glossaryChildTerms = [term];
+      mockListTasks.mockResolvedValue({
+        data: [
+          {
+            id: 'task-1',
+            about: { fullyQualifiedName: term.fullyQualifiedName },
+            assignees: [{ id: 'user-1' }],
+          },
+        ],
+      });
+      mockPermissionForApproveOrReject.mockReturnValue({
+        permission: true,
+        taskId: 'task-1',
+      });
+      mockResolveTask.mockResolvedValue({ id: 'task-1', status: 'Rejected' });
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      const rejectButton = await screen.findByTestId(`${term.name}-reject-btn`);
+      fireEvent.click(rejectButton);
+
+      const confirmButton = screen.getByTestId('confirm-reject-glossary-term');
+
+      expect(confirmButton).toBeDisabled();
+
+      fireEvent.change(
+        within(screen.getByTestId('glossary-term-reject-comment')).getByRole(
+          'textbox'
+        ),
+        { target: { value: 'Duplicate glossary term' } }
+      );
+      fireEvent.click(confirmButton);
+
+      await waitFor(() => {
+        expect(mockResolveTask).toHaveBeenCalledWith('task-1', {
+          comment: 'Duplicate glossary term',
+          newValue: 'rejected',
+          resolutionType: 'Rejected',
+        });
+      });
     });
   });
 

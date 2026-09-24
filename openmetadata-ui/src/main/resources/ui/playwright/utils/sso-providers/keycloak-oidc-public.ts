@@ -116,6 +116,7 @@ export const keycloakOidcPublicProviderFixture: SsoProviderFixture = {
   // via oidc-client's signinSilent — same-origin refresh with no popup.
   supportsSilentCallback: true,
   usesBackendRefresh: false,
+  supportsColdLoadRefresh: true,
 
   expectedResponseType: 'code',
   signInButtonPattern: /(sign in|log in) with Keycloak/i,
@@ -182,7 +183,13 @@ export const keycloakOidcPublicProviderFixture: SsoProviderFixture = {
     if (signupAppeared) {
       // displayName is required; the SPA pre-fills it from token claims but
       // the KC realm's user has no given_name claim, so fill deterministically.
-      const fullNameInput = page.getByTestId('full-name-input');
+      // #33575 migrated the signup screen to core-components, which puts the
+      // test id on the react-aria wrapper (`data-input-wrapper`) rather than the
+      // control -- filling it throws "Element is not an <input>". Reach the
+      // control the way the rest of the corpus does for these wrappers.
+      const fullNameInput = page
+        .getByTestId('full-name-input')
+        .locator('input');
       const currentName = await fullNameInput.inputValue().catch(() => '');
       if (!currentName) {
         await fullNameInput.fill('Azure Saml');
