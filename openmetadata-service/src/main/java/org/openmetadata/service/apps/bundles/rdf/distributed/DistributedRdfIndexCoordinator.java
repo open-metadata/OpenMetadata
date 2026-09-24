@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.apps.bundles.rdf.distributed;
 
-import static org.openmetadata.service.rdf.RdfProjectionStateResolver.RDF_INDEX_APP;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.HashMap;
 import java.util.List;
@@ -59,20 +57,9 @@ public class DistributedRdfIndexCoordinator {
   private static final int MAX_IN_FLIGHT_PARTITIONS_PER_SERVER = 5;
   private static final int CURSOR_WALK_BATCH_SIZE = 10_000;
 
-  /** RDF runs are serialized, so only the latest few finished jobs can still lack a run outcome. */
-  private static final int RECENT_FINISHED_JOBS = 5;
-
-  private static final List<IndexJobStatus> FINISHED_JOB_STATUSES =
-      List.of(
-          IndexJobStatus.COMPLETED,
-          IndexJobStatus.COMPLETED_WITH_ERRORS,
-          IndexJobStatus.FAILED,
-          IndexJobStatus.STOPPED);
-
   private final CollectionDAO collectionDAO;
   private final RdfPartitionCalculator partitionCalculator;
   private final String serverId;
-  private final RdfAbandonedRunRecorder abandonedRuns;
   private final AtomicLong lastClaimTimestamp = new AtomicLong(0);
 
   private final ConcurrentHashMap<UUID, Map<String, Map<Long, String>>> partitionStartCursors =
@@ -87,8 +74,6 @@ public class DistributedRdfIndexCoordinator {
     this.collectionDAO = collectionDAO;
     this.partitionCalculator = partitionCalculator;
     this.serverId = ServerIdentityResolver.getInstance().getServerId();
-    this.abandonedRuns =
-        new RdfAbandonedRunRecorder(collectionDAO.appExtensionTimeSeriesDao(), RDF_INDEX_APP);
   }
 
   public CollectionDAO getCollectionDAO() {
@@ -680,20 +665,7 @@ public class DistributedRdfIndexCoordinator {
       reclaimStalePartitions(job.getId());
       refreshAggregatedJob(job.getId());
     }
-    getRecentJobs(FINISHED_JOB_STATUSES, RECENT_FINISHED_JOBS).forEach(this::recordIfAbandoned);
     evictStaleCursorCacheEntries();
-  }
-
-  /**
-   * Best effort: this also runs as a new reindex starts, which one old run must not stop. A run
-   * left unrecorded keeps its marker, so the next sweep tries it again.
-   */
-  private void recordIfAbandoned(final RdfIndexJob job) {
-    try {
-      abandonedRuns.recordIfAbandoned(job);
-    } catch (RuntimeException exception) {
-      LOG.warn("Could not record the outcome of RDF job {}", job.getId(), exception);
-    }
   }
 
   /**
