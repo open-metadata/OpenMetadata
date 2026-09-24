@@ -82,6 +82,7 @@ export const StatItem = ({
       aria-label={srLabel ?? tooltip}
       className="tw:rounded tw:p-0 tw:hover:bg-transparent"
       color="tertiary"
+      data-active={isActive || undefined}
       data-testid={testId}
       isDisabled={!onClick || isDisabled}
       isLoading={loading}

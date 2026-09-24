@@ -60,6 +60,33 @@ describe('StatItem', () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
+  it('marks the active state on the trigger', () => {
+    const { rerender } = render(
+      <StatItem
+        isActive
+        testId="up-vote"
+        tooltip="Up Vote"
+        onClick={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('up-vote')).toHaveAttribute(
+      'data-active',
+      'true'
+    );
+
+    rerender(
+      <StatItem
+        isActive={false}
+        testId="up-vote"
+        tooltip="Up Vote"
+        onClick={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('up-vote')).not.toHaveAttribute('data-active');
+  });
+
   it('does not expose an enabled action when no click handler exists', () => {
     render(
       <StatItem
