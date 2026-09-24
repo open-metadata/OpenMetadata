@@ -95,6 +95,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     ),
   Skeleton: jest.fn().mockImplementation(() => <span />),
   Tooltip: jest.fn().mockImplementation(({ children }) => <>{children}</>),
+  useTabItemState: jest.fn().mockReturnValue(null),
   Typography: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),

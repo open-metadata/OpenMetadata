@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Col, Row, Space, Tabs, TabsProps } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import classNames from 'classnames';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +27,7 @@ import {
   EntityReference,
 } from '../../../generated/entity/data/dashboard';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { getRenderedActiveTab } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getCommonExtraInfoForVersionDetails,
@@ -42,6 +44,7 @@ import Loader from '../../common/Loader/Loader';
 import { ColumnsType } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { TabProps } from '../../common/TabsLabel/TabsLabel.interface';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
@@ -167,7 +170,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
     return getDerivedPermissionFlags(entityPermissions).canViewCustomFields;
   }, [entityPermissions]);
 
-  const tabItems: TabsProps['items'] = useMemo(
+  const tabItems: TabProps[] = useMemo(
     () => [
       {
         key: EntityTabs.DETAILS,
@@ -175,17 +178,17 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
           <TabsLabel id={EntityTabs.DETAILS} name={t('label.detail-plural')} />
         ),
         children: (
-          <Row className="h-full" gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <Row gutter={[0, 16]}>
-                <Col span={24}>
+          <Box className="h-full">
+            <div className="p-t-sm m-x-lg tw:min-w-0 tw:flex-auto">
+              <Box direction="col" gap={4}>
+                <div>
                   <Description
                     description={description}
                     entityType={EntityType.DASHBOARD}
                     showActions={false}
                   />
-                </Col>
-                <Col span={24}>
+                </div>
+                <div>
                   <Table
                     columns={tableColumn}
                     data-testid="schema-table"
@@ -194,13 +197,12 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                     rowKey="id"
                     size="small"
                   />
-                </Col>
-              </Row>
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="220px">
+                </div>
+              </Box>
+            </div>
+            <div
+              className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
+              data-testid="entity-right-panel">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
@@ -219,8 +221,8 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                   />
                 ))}
               </Space>
-            </Col>
-          </Row>
+            </div>
+          </Box>
         ),
       },
       {
@@ -255,8 +257,8 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         <Loader />
       ) : (
         <div className={classNames('version-data')} data-testid="version-data">
-          <Row gutter={[0, 12]}>
-            <Col span={24}>
+          <Box direction="col" gap={3}>
+            <div>
               <DataAssetsVersionHeader
                 breadcrumbLinks={slashedDashboardName}
                 currentVersionData={currentVersionData}
@@ -271,7 +273,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                 version={version}
                 onVersionClick={backHandler}
               />
-            </Col>
+            </div>
             <GenericProvider
               isVersionView
               currentVersionData={currentVersionData}
@@ -279,17 +281,28 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               permissions={entityPermissions}
               type={EntityType.DASHBOARD}
               onUpdate={() => Promise.resolve()}>
-              <Col className="entity-version-page-tabs" span={24}>
+              <div className="entity-version-page-tabs">
                 <Tabs
-                  className="tabs-new"
+                  className="tw:gap-3"
                   data-testid="tabs"
-                  defaultActiveKey={tab}
-                  items={tabItems}
-                  onChange={handleTabChange}
-                />
-              </Col>
+                  defaultSelectedKey={getRenderedActiveTab(tabItems, tab)}
+                  onSelectionChange={(key) => handleTabChange(String(key))}>
+                  <Tabs.List size="sm" type="underline" variant="card">
+                    {tabItems.map(({ key, label }) => (
+                      <Tabs.Item id={key} key={key}>
+                        {label}
+                      </Tabs.Item>
+                    ))}
+                  </Tabs.List>
+                  {tabItems.map(({ key, children }) => (
+                    <Tabs.Panel id={key} key={key}>
+                      {children}
+                    </Tabs.Panel>
+                  ))}
+                </Tabs>
+              </div>
             </GenericProvider>
-          </Row>
+          </Box>
         </div>
       )}
 
