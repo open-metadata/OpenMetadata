@@ -1084,8 +1084,9 @@ class ODCSConverterTest {
     assertEquals(ColumnDataType.STRING, contract.getSchema().get(0).getDataType());
     assertEquals(ColumnConstraint.UNIQUE, contract.getSchema().get(0).getConstraint());
     assertEquals(32, contract.getSchema().get(0).getDataLength());
-    assertEquals(0, contract.getSla().getRefreshFrequency().getInterval());
-    assertEquals(RefreshFrequency.Unit.HOUR, contract.getSla().getRefreshFrequency().getUnit());
+    assertNull(
+        contract.getSla().getRefreshFrequency(),
+        "A value that is not a whole number is left out rather than stored as 0");
     assertEquals("09:00", contract.getSla().getAvailabilityTime());
     assertNull(contract.getSla().getTimezone());
   }
