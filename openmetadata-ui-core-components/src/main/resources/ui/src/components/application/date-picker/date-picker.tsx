@@ -73,7 +73,7 @@ export const DatePicker = ({
         placement="bottom right">
         {/* outline-[3px] ports the bare `tw:ring` faithfully (3px in Tailwind v4, almost
             certainly unintended vs the ring-1 used elsewhere — tracked as a follow-up). */}
-        <AriaDialog className="tw:rounded-2xl tw:bg-primary tw:shadow-xl tw:outline-[3px] tw:outline-secondary_alt">
+        <AriaDialog className="tw:rounded-2xl tw:bg-surface tw:shadow-xl tw:outline-[3px] tw:outline-secondary_alt">
           {({ close }) => (
             <>
               <div className="tw:flex tw:px-6 tw:py-5">
