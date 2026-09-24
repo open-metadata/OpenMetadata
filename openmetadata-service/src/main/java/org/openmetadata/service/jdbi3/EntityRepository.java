@@ -1588,7 +1588,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       boolean fromCache) {
     final boolean useCache = cacheAllowed(fromCache);
     T requestCachedEntity =
-        RequestEntityCache.getById(entityType, id, fields, relationIncludes, useCache, entityClass);
+        FreshReadScope.isActive()
+            ? null
+            : RequestEntityCache.getById(
+                entityType, id, fields, relationIncludes, useCache, entityClass);
     if (requestCachedEntity != null) {
       return withHref(uriInfo, requestCachedEntity);
     }
@@ -1673,17 +1676,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
-   * Callers ask for cached reads by default; a fresh-read scope overrides them. Governance workflows
-   * open that scope because their reads drive gating decisions, where a stale answer routes an entity
-   * to the wrong terminal status silently.
+   * Callers ask for cached reads by default; a fresh-read scope overrides them. Reads that decide
+   * what to happen next open that scope, where a stale answer is acted on silently. See {@link
+   * FreshReadScope} for every cache it keeps out of the answer.
    */
   private static boolean cacheAllowed(boolean fromCache) {
     return fromCache && !FreshReadScope.isActive();
   }
 
+  /**
+   * The not-found markers a read may trust and add to. A fresh read does neither: a marker can call
+   * an entity missing that the database still holds, and a read that decides from its answer must
+   * see the row.
+   */
+  private static NotFoundCache negativeCacheForReads() {
+    return FreshReadScope.isActive() ? null : CacheBundle.getNotFoundCache();
+  }
+
   public final T find(UUID id, Include include, boolean fromCache) throws EntityNotFoundException {
     fromCache = cacheAllowed(fromCache);
-    var notFoundCache = CacheBundle.getNotFoundCache();
+    var notFoundCache = negativeCacheForReads();
     if (!fromCache) {
       // On the explicit-bypass path the L1 cache is being skipped entirely, so checking the
       // negative cache before touching the DB is a clear win — short-circuits a known-missing
@@ -1815,8 +1827,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     fromCache = cacheAllowed(fromCache);
     fqn = quoteFqn ? quoteName(fqn) : fqn;
     T requestCachedEntity =
-        RequestEntityCache.getByName(
-            entityType, fqn, fields, relationIncludes, fromCache, entityClass);
+        FreshReadScope.isActive()
+            ? null
+            : RequestEntityCache.getByName(
+                entityType, fqn, fields, relationIncludes, fromCache, entityClass);
     if (requestCachedEntity != null) {
       return withHref(uriInfo, requestCachedEntity);
     }
@@ -2332,7 +2346,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final T findByName(String fqn, Include include, boolean fromCache) {
     fromCache = cacheAllowed(fromCache);
     fqn = quoteFqn ? quoteName(fqn) : fqn;
-    var notFoundCache = CacheBundle.getNotFoundCache();
+    var notFoundCache = negativeCacheForReads();
     if (!fromCache) {
       // Explicit cache bypass — checking the negative cache before the DB still saves the
       // DB hit on a known-missing entity. (Same reasoning as find(UUID, …).)

@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.OFFSET_EXTENSION;
 import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
@@ -47,6 +46,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertDefinitionPolicy;
+import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -81,17 +81,8 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   public void setFields(
       EventSubscription entity, Fields fields, RelationIncludes relationIncludes) {
     if (fields.contains("statusDetails") && !entity.getDestinations().isEmpty()) {
-      List<SubscriptionDestination> destinations = new ArrayList<>();
-      entity
-          .getDestinations()
-          .forEach(
-              destination ->
-                  destinations.add(
-                      destination.withStatusDetails(
-                          EventSubscriptionScheduler.getInstance()
-                              .getStatusForEventSubscription(
-                                  entity.getId(), destination.getId()))));
-      entity.withDestinations(destinations);
+      entity.withDestinations(
+          new ArrayList<>(EventSubscriptionScheduler.getInstance().destinationsWithStatus(entity)));
     }
     entity.setNotificationTemplate(getTemplateReference(entity));
   }
@@ -207,26 +198,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
   public EventSubscriptionOffset syncEventSubscriptionOffset(String eventSubscriptionName) {
     EventSubscription eventSubscription = getByName(null, eventSubscriptionName, getFields("*"));
-    long latestOffset = daoCollection.changeEventDAO().getLatestOffset();
-    long currentTime = System.currentTimeMillis();
-    // Upsert Offset
-    EventSubscriptionOffset eventSubscriptionOffset =
-        new EventSubscriptionOffset()
-            .withCurrentOffset(latestOffset)
-            .withStartingOffset(latestOffset)
-            .withStartingTimestamp(currentTime)
-            .withTimestamp(currentTime);
-
-    Entity.getCollectionDAO()
-        .eventSubscriptionDAO()
-        .upsertSubscriberExtension(
-            eventSubscription.getId().toString(),
-            OFFSET_EXTENSION,
-            "eventSubscriptionOffset",
-            JsonUtils.pojoToJson(eventSubscriptionOffset));
-
-    EventSubscriptionScheduler.getInstance().updateEventSubscription(eventSubscription);
-    return eventSubscriptionOffset;
+    return AlertRecord.skipBacklog(eventSubscription.getId());
   }
 
   @Override
