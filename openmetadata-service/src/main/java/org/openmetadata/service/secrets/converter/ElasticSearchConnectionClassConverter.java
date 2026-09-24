@@ -14,6 +14,8 @@
 package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
+import org.openmetadata.schema.services.common.SSLCertPaths;
+import org.openmetadata.schema.services.common.SSLCertValues;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.search.elasticSearch.ESAPIAuth;
 import org.openmetadata.schema.services.connections.search.elasticSearch.ESBasicAuth;
@@ -24,6 +26,10 @@ public class ElasticSearchConnectionClassConverter extends ClassConverter {
 
   private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
       List.of(ESBasicAuth.class, ESAPIAuth.class);
+
+  static final String CERTIFICATES = "certificates";
+  static final List<Class<?>> SSL_CERTIFICATE_CLASSES =
+      List.of(SSLCertPaths.class, SSLCertValues.class);
 
   //
   public ElasticSearchConnectionClassConverter() {
@@ -37,6 +43,12 @@ public class ElasticSearchConnectionClassConverter extends ClassConverter {
 
     tryToConvert(elasticSearchConnection.getAuthType(), CONFIG_SOURCE_CLASSES)
         .ifPresent(elasticSearchConnection::setAuthType);
+
+    // `SSLConfig.certificates` is a oneOf of its own, so it needs a second converter pass.
+    if (elasticSearchConnection.getSslConfig() != null) {
+      convertProperty(
+          elasticSearchConnection.getSslConfig(), CERTIFICATES, SSL_CERTIFICATE_CLASSES);
+    }
 
     return elasticSearchConnection;
   }
