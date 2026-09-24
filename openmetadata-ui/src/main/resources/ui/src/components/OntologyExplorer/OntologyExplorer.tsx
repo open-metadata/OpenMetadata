@@ -20,10 +20,13 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Cube02,
+  CubeOutline,
+  LayoutGrid01,
   NoFilterFunnel,
   NoSearch,
+  Search,
 } from '@openmetadata/ui-core-components/icons';
-import { Cube02, CubeOutline, LayoutGrid01, SearchMd } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, {
@@ -87,7 +90,7 @@ import {
 } from './utils/graphBuilders';
 
 const SearchInputIcon = ({ className }: { className?: string }) => (
-  <SearchMd aria-hidden="true" className={className} />
+  <Search aria-hidden="true" className={className} />
 );
 const DEFAULT_GRAPH_BACKDROP_CLASS =
   'tw:absolute tw:inset-0 tw:z-0 tw:bg-primary tw:[background-image:radial-gradient(circle,var(--color-border-secondary)_1px,transparent_1px)] tw:[background-size:14px_14px]';
@@ -1194,7 +1197,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             </Tabs>
           )}
           <div className="tw:relative">
-            <SearchMd
+            <Search
               aria-hidden="true"
               className="tw:pointer-events-none tw:absolute tw:left-3 tw:top-1/2 tw:z-1 tw:size-5 tw:-translate-y-1/2 tw:text-fg-quaternary"
             />
