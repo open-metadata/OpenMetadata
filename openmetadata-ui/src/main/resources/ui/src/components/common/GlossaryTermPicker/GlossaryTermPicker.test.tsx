@@ -30,8 +30,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   },
 }));
 
+const mockFetchTree = jest.fn();
+
 jest.mock('./useGlossaryTreeData', () => ({
-  useGlossaryTreeData: () => jest.fn(),
+  useGlossaryTreeData: () => mockFetchTree,
 }));
 
 const APPLIED_TERM: TagLabel = {
@@ -61,6 +63,44 @@ const emit = (
 describe('GlossaryTermPicker', () => {
   beforeEach(() => {
     mockTreeSelect.mockClear();
+  });
+
+  it('keeps an empty glossary selectable when glossaries are the value', async () => {
+    mockFetchTree.mockResolvedValue({
+      nodes: [
+        {
+          id: 'Empty',
+          label: 'Empty',
+          value: 'Empty',
+          allowSelection: false,
+          data: { isGlossaryRoot: true },
+        },
+      ],
+    });
+    render(<GlossaryTermPicker selectGlossaries />);
+
+    const { nodes } = await lastProps().fetchData({});
+
+    expect(nodes[0].allowSelection).toBe(true);
+  });
+
+  it('leaves an empty glossary unselectable when terms are the value', async () => {
+    mockFetchTree.mockResolvedValue({
+      nodes: [
+        {
+          id: 'Empty',
+          label: 'Empty',
+          value: 'Empty',
+          allowSelection: false,
+          data: { isGlossaryRoot: true },
+        },
+      ],
+    });
+    render(<GlossaryTermPicker />);
+
+    const { nodes } = await lastProps().fetchData({});
+
+    expect(nodes[0].allowSelection).toBe(false);
   });
 
   it('seeds the tree with the glossary labels only', () => {

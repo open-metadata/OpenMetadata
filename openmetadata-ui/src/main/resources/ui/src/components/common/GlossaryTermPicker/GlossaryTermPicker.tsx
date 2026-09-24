@@ -92,12 +92,18 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
       params: Parameters<typeof fetchGlossaryTree>[0]
     ): Promise<TreeSelectDataResponse<GlossaryPickerValue>> => {
       const response = await fetchGlossaryTree(params);
+      // An empty glossary has nothing to tick, but it can still be the value.
+      const nodes = selectGlossaries
+        ? response.nodes.map((node) =>
+            node.data?.isGlossaryRoot ? { ...node, allowSelection: true } : node
+          )
+        : response.nodes;
 
       return excluded.size === 0
-        ? response
-        : { ...response, nodes: pruneNodes(response.nodes, excluded) };
+        ? { ...response, nodes }
+        : { ...response, nodes: pruneNodes(nodes, excluded) };
     },
-    [fetchGlossaryTree, excluded]
+    [fetchGlossaryTree, excluded, selectGlossaries]
   );
 
   const selectedValue = useMemo(
