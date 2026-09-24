@@ -244,8 +244,25 @@ jobs:
           !(github.event_name == 'pull_request_target' &&
             github.event.pull_request.head.repo.full_name != github.repository)
         uses: ./.github/actions/cache-ui-dist
+        with:
+          # Must match the variant implied by PW_E2E_BUILD on the build step
+          # below. Leaving it at `default` would let this job restore a
+          # non-e2e dist, export SKIP_UI_BUILD=true, and skip the frontend
+          # build entirely — so the flag would have no effect — and on a miss
+          # it would save an e2e-shaped dist into the bucket every non-e2e
+          # workflow reads. PW_E2E_BUNDLE is unset here, which is the same
+          # `pw-e2e-build` output the main Playwright lane produces, so the
+          # two share one bucket rather than each paying for its own build.
+          variant: pw-e2e-build
 
       - name: Build with Maven
+        env:
+          # The rest of the Playwright suite runs against a PW_E2E_BUILD
+          # bundle; without this, these two projects were the only ones
+          # testing a differently-chunked app with React Flow virtualisation
+          # still on. A difference between lanes is a difference that can
+          # fail a test for a reason unrelated to the feature under test.
+          PW_E2E_BUILD: "true"
         run: mvn -DskipTests clean package
 
       - name: Save Maven Dependencies
