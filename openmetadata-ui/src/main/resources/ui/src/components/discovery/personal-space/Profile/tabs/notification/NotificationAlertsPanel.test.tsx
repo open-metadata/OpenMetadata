@@ -229,7 +229,9 @@ describe('NotificationAlertsPanel', () => {
   it('should show edit and delete buttons for user alerts', async () => {
     render(<NotificationAlertsPanel onNavigate={mockOnNavigate} />);
 
-    expect(await screen.findByTestId('alert-edit-user-alert')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('alert-edit-user-alert')
+    ).toBeInTheDocument();
     expect(screen.getByTestId('alert-delete-user-alert')).toBeInTheDocument();
   });
 
@@ -247,9 +249,13 @@ describe('NotificationAlertsPanel', () => {
   it('should open delete modal when delete button is clicked', async () => {
     render(<NotificationAlertsPanel onNavigate={mockOnNavigate} />);
 
-    const deleteBtn = await screen.findByTestId('alert-delete-user-alert', undefined, {
-      timeout: 5000,
-    });
+    const deleteBtn = await screen.findByTestId(
+      'alert-delete-user-alert',
+      undefined,
+      {
+        timeout: 5000,
+      }
+    );
     act(() => deleteBtn.click());
 
     expect(screen.getByTestId('delete-modal')).toBeInTheDocument();

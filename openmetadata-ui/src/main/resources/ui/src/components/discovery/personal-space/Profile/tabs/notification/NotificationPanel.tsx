@@ -205,7 +205,15 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
       onBreadcrumbAction,
       title,
     });
-  }, [view, onHeaderChange, t, canAddAlert, detailHeaderActions, onNavigate, resolvedDetailName]);
+  }, [
+    view,
+    onHeaderChange,
+    t,
+    canAddAlert,
+    detailHeaderActions,
+    onNavigate,
+    resolvedDetailName,
+  ]);
 
   const content = (() => {
     if (view.type === 'landing') {
