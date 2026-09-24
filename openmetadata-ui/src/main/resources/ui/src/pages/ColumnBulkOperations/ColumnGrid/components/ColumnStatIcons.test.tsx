@@ -11,42 +11,59 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
+import { ComponentType, SVGProps } from 'react';
 import {
   OccurrencesIcon,
   PendingChangesIcon,
   UniqueColumnsIcon,
 } from './ColumnStatIcons';
 
-const ICONS = [
-  ['UniqueColumnsIcon', <UniqueColumnsIcon key="u" />, 'brand'],
-  ['OccurrencesIcon', <OccurrencesIcon key="o" />, 'success'],
-  ['PendingChangesIcon', <PendingChangesIcon key="p" />, 'warning'],
-] as const;
+// Ordered [name, scale, Component] so both `%s` placeholders in the test
+// titles resolve to strings — a component in that slot prints its source.
+const ICONS: ReadonlyArray<
+  readonly [string, string, ComponentType<SVGProps<SVGSVGElement>>]
+> = [
+  ['UniqueColumnsIcon', 'brand', UniqueColumnsIcon],
+  ['OccurrencesIcon', 'success', OccurrencesIcon],
+  ['PendingChangesIcon', 'warning', PendingChangesIcon],
+];
 
 describe('ColumnStatIcons', () => {
-  it.each(ICONS)('%s paints every shape from the %s scale', (_, icon) => {
-    const { container } = render(icon);
-    const shapes = container.querySelectorAll('rect, path, circle, g');
+  it.each(ICONS)(
+    '%s paints every shape from the %s scale',
+    (_name, scale, Icon) => {
+      const { container } = render(<Icon />);
+      const shapes = container.querySelectorAll('rect, path, circle, g');
 
-    expect(shapes.length).toBeGreaterThan(0);
+      expect(shapes).not.toHaveLength(0);
 
-    shapes.forEach((shape) => {
-      // A shape either carries a utility-* fill/stroke class or inherits one
-      // from an ancestor <g>; what it must never do is bake a literal colour,
-      // which would stay light-mode tinted under .dark-mode.
-      const ownClass = shape.getAttribute('class') ?? '';
-      const inherits = shape.closest('g[class*="utility-"]') !== null;
+      shapes.forEach((shape) => {
+        // A shape either carries the scale's fill/stroke class itself or
+        // inherits one from an ancestor <g>. Pinning the family (not just
+        // "some utility-*") is the point: an icon silently reassigned to
+        // utility-error-* would otherwise still pass.
+        const ownClass = shape.getAttribute('class') ?? '';
+        const inherits =
+          shape.closest(`g[class*="utility-${scale}-"]`) !== null;
 
-      expect(ownClass.includes('utility-') || inherits).toBe(true);
-      expect(shape.getAttribute('fill')).toBeNull();
-      expect(shape.getAttribute('stroke')).toBeNull();
-    });
-  });
+        expect(ownClass.includes(`utility-${scale}-`) || inherits).toBe(true);
+        // A literal colour never remaps under .dark-mode — the regression
+        // this whole file exists to catch.
+        expect(shape.getAttribute('fill')).toBeNull();
+        expect(shape.getAttribute('stroke')).toBeNull();
+      });
+    }
+  );
 
-  it.each(ICONS)('%s forwards sizing props to the root svg', (_, icon) => {
-    const { container } = render(icon);
-    const svg = container.querySelector('svg');
+  it.each(ICONS)(
+    '%s forwards sizing props to the root svg',
+    (_name, _scale, Icon) => {
+      const { container } = render(<Icon height={20} width={20} />);
+      const svg = container.querySelector('svg');
 
-    expect(svg).toHaveAttribute('viewBox', '0 0 47 47');
-  });
+      expect(svg).toHaveAttribute('width', '20');
+      expect(svg).toHaveAttribute('height', '20');
+      expect(svg).toHaveAttribute('viewBox', '0 0 47 47');
+    }
+  );
 });
