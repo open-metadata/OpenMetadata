@@ -2234,6 +2234,11 @@ export interface Connection {
      */
     hostport?: string;
     /**
+     * Ingest the measures of a Unity Catalog metric view as Metric entities, and the lineage
+     * from the relations it reads.
+     */
+    includeMetricViews?: boolean;
+    /**
      * Enable dataflow for ingestion
      */
     dataflows?: boolean;
