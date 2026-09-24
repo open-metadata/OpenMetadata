@@ -43,10 +43,8 @@ import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI'
 import { ListTestCaseParamsBySearch } from '../../../../../rest/testAPI';
 import { getBreadcrumbForTable } from '../../../../../utils/EntityDataBreadcrumbUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import {
-  checkPermission,
-  getPrioritizedEditPermission,
-} from '../../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
+import { checkPermission } from '../../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
 import { ExtraTestCaseDropdownOptions } from '../../../../../utils/TestCaseUtils';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -88,16 +86,12 @@ export const QualityTab = () => {
     showPagination,
   } = testCasePaging;
 
-  const { editTest } = useMemo(() => {
-    return {
-      editTest:
-        permissions &&
-        getPrioritizedEditPermission(permissions, Operation.EditTests),
-      editDataProfile:
-        permissions &&
-        getPrioritizedEditPermission(permissions, Operation.EditDataProfile),
-    };
-  }, [permissions, getPrioritizedEditPermission]);
+  const editTest = useMemo(
+    () =>
+      permissions &&
+      getDerivedPermissionFlags(permissions).can(Operation.EditTests),
+    [permissions]
+  );
 
   const navigate = useNavigate();
   const location = useCustomLocation();
