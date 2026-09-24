@@ -52,9 +52,16 @@ public class CachedEntityDao {
     LOG.info(
         "CACHE: Writing entity to Redis - Key: {}, JSON length: {}", cacheKey, entityJson.length());
     try {
-      cache.hset(cacheKey, Map.of("base", entityJson), Duration.ofSeconds(config.entityTtlSeconds));
-      LOG.info(
-          "CACHE: Successfully wrote entity to Redis - Type: {} -> ID: {}", entityType, entityId);
+      if (cache.tryHset(
+          cacheKey, Map.of("base", entityJson), Duration.ofSeconds(config.entityTtlSeconds))) {
+        LOG.info(
+            "CACHE: Successfully wrote entity to Redis - Type: {} -> ID: {}", entityType, entityId);
+      } else {
+        LOG.info(
+            "CACHE: Entity not written to Redis (unavailable or failed) - Type: {} -> ID: {}",
+            entityType,
+            entityId);
+      }
     } catch (Exception e) {
       LOG.error(
           "CACHE: Failed to write entity to Redis - Type: {} -> ID: {}", entityType, entityId, e);
@@ -82,11 +89,17 @@ public class CachedEntityDao {
         cacheKey,
         entityJson.length());
     try {
-      cache.set(cacheKey, entityJson, Duration.ofSeconds(config.entityTtlSeconds));
-      LOG.info(
-          "CACHE: Successfully wrote entity by name to Redis - Type: {} -> FQN: {}",
-          entityType,
-          fqn);
+      if (cache.trySet(cacheKey, entityJson, Duration.ofSeconds(config.entityTtlSeconds))) {
+        LOG.info(
+            "CACHE: Successfully wrote entity by name to Redis - Type: {} -> FQN: {}",
+            entityType,
+            fqn);
+      } else {
+        LOG.info(
+            "CACHE: Entity not written to Redis by name (unavailable or failed) - Type: {} -> FQN: {}",
+            entityType,
+            fqn);
+      }
     } catch (Exception e) {
       LOG.error(
           "CACHE: Failed to write entity by name to Redis - Type: {} -> FQN: {}",
