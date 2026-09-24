@@ -493,4 +493,19 @@
 
 @body-background: var(--tw-color-utility-gray-blue-50);
 @component-background: var(--tw-color-bg-primary);
-@popover-background: var(--tw-color-bg-primary);
+// Raised surfaces (== bg-primary in light, lifted in dark).
+@btn-default-bg: var(--om-color-bg-surface);
+@table-bg: var(--om-color-bg-surface);
+// Popups, modals, dropdowns and drawers read the overlay surface (== bg-primary in
+// light, gray-800 in dark).
+@popover-background: var(--om-color-bg-overlay-surface);
+@popover-bg: var(--om-color-bg-overlay-surface);
+@dropdown-menu-bg: var(--om-color-bg-overlay-surface);
+@dropdown-menu-submenu-disabled-bg: var(--om-color-bg-overlay-surface);
+@menu-popup-bg: var(--om-color-bg-overlay-surface);
+@select-dropdown-bg: var(--om-color-bg-overlay-surface);
+@mentions-dropdown-bg: var(--om-color-bg-overlay-surface);
+@calendar-bg: var(--om-color-bg-overlay-surface);
+@modal-content-bg: var(--om-color-bg-overlay-surface);
+@modal-header-bg: var(--om-color-bg-overlay-surface);
+@drawer-bg: var(--om-color-bg-overlay-surface);
