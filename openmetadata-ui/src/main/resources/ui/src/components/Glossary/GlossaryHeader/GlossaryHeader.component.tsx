@@ -12,8 +12,10 @@
  */
 import { Box, Button, PageHeader } from '@openmetadata/ui-core-components';
 import { Icon as EntityStyleIcon } from '@openmetadata/ui-core-components/icon';
-import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
-import { ChevronDown } from '@untitledui/icons';
+import {
+    ChevronDown,
+    RefreshCcw01
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { cloneDeep, isEmpty, toString } from 'lodash';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';

@@ -29,8 +29,11 @@ import {
     Typography
 } from '@openmetadata/ui-core-components';
 import { Icon as EntityStyleIcon } from '@openmetadata/ui-core-components/icon';
-import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
-import { ChevronDown, ChevronRight } from '@untitledui/icons';
+import {
+    AlertTriangle,
+    ChevronDown,
+    ChevronRight
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
