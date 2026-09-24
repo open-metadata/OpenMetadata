@@ -25,8 +25,9 @@ import { Task } from '../../../../generated/entity/tasks/task';
 import { getTaskById } from '../../../../rest/tasksAPI';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
+import { Area } from 'recharts';
 import TestSummaryGraph from './TestSummaryGraph';
-import { DOT_OUTLINE } from './TestSummaryGraph.constants';
+import { BOUND_AREA_OPACITY, DOT_OUTLINE } from './TestSummaryGraph.constants';
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
 
 jest.mock('../../../../hooks/useChartColors', () => ({
@@ -515,6 +516,23 @@ describe('TestSummaryGraph', () => {
     render(<TestSummaryGraph {...mockProps} />);
 
     expect(screen.queryByTestId('series-area')).not.toBeInTheDocument();
+  });
+
+  // A stroked band draws a second dashed line wherever the range meets the
+  // expectation line; the mock draws the range as a wash with no edges.
+  it('should draw the allowed range as an edgeless wash', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    const band = (Area as unknown as jest.Mock).mock.calls
+      .map(([props]) => props)
+      .find((props) => props.dataKey === 'boundArea');
+
+    expect(band).toMatchObject({
+      stroke: 'none',
+      fillOpacity: BOUND_AREA_OPACITY,
+      type: 'linear',
+    });
+    expect(band.strokeDasharray).toBeUndefined();
   });
 
   it('should publish the clicked run to the store', () => {

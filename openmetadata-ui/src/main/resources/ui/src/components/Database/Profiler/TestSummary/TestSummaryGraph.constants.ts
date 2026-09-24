@@ -28,6 +28,10 @@ export const PLOT_BACKGROUND = 'var(--om-color-bg-brand)';
 // Sampled against the mock: 0.7 over the surface lands within two points of
 // its wash on every channel, and leaves the grid visible through it.
 export const PLOT_BACKGROUND_OPACITY = 0.7;
+// Green-3 at this opacity over the surface lands within two points of the
+// mock's range band; the shared translucent token is nearly three times as
+// strong and floods a wide range.
+export const BOUND_AREA_OPACITY = 0.07;
 
 export const SELECTED_DOT_HALO = { spread: 4, opacity: 0.2 } as const;
 

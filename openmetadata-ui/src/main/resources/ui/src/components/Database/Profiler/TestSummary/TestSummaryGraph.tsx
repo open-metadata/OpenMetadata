@@ -46,7 +46,6 @@ import {
   COLOR_GREY_400,
   GRAY_700,
   GREEN_3,
-  GREEN_3_OPACITY,
   RED_3,
 } from '../../../../constants/Color.constants';
 import {
@@ -82,6 +81,7 @@ import {
 import TestSummaryCustomTooltip from '../TestSummaryCustomTooltip/TestSummaryCustomTooltip.component';
 import TestSummaryStatusKey from './TestSummaryStatusKey';
 import {
+  BOUND_AREA_OPACITY,
   DOT_OUTLINE,
   EXPECTATION_LABEL_HALO,
   PLOT_BACKGROUND,
@@ -609,15 +609,19 @@ function TestSummaryGraph({
             onMouseEnter={handleLegendMouseEnter}
             onMouseLeave={handleLegendMouseLeave}
           />
+          {/* The allowed range, drawn as the mock does: a faint wash with no
+              edges. Stroked edges put a second dashed line on top of the
+              expectation line wherever the range and the expectation meet. */}
           <Area
             connectNulls
             activeDot={false}
             dataKey="boundArea"
             dot={false}
-            fill={GREEN_3_OPACITY}
-            stroke={GREEN_3}
-            strokeDasharray="4"
-            type="monotone"
+            fill={GREEN_3}
+            fillOpacity={BOUND_AREA_OPACITY}
+            isAnimationActive={false}
+            stroke="none"
+            type="linear"
           />
           {isSingleSeries &&
             chartData.information.map((info) => (
