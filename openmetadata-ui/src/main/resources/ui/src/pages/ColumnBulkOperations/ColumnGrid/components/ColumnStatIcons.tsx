@@ -15,26 +15,6 @@
 
 import { SVGProps } from 'react';
 
-/**
- * Summary-stat featured icons for the column bulk-operations page.
- *
- * These live as JSX rather than `assets/svg/*.svg` because Tailwind only scans
- * `.{tsx,ts,jsx,js,css}` (`styles/tailwind.css` `@source`), so `tw:` classes
- * inside an `.svg` file would never be generated. Each icon keeps the original
- * two-ring + glyph construction but binds every shade to the state's
- * `utility-*` scale, which remaps under `.dark-mode`; the previous baked hexes
- * stayed light-mode tinted on the dark card.
- *
- * The brand inner ring uses -200 rather than the nearer -100 because
- * `--tw-color-utility-brand-100`'s dark mirror does not take effect in the app
- * shell — it computes to the light #d1e9ff while `--color-utility-brand-100`
- * itself is correctly #194185. Verified in the running app; -200 mirrors
- * correctly and inverts to the glyph's -800 value. The warning glyph uses -700
- * for the same reason (-600's mirror is stuck on the light value) and because
- * -700 is the only working warning shade that clears the 3:1 icon-contrast bar
- * against the -200 ring.
- */
-
 export const UniqueColumnsIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
     fill="none"

@@ -51,8 +51,6 @@ const CELL_ELLIPSIS_CLASS = 'tw:min-w-0 tw:w-full tw:overflow-hidden';
 
 const CHILD_ROW_INDENT_PX = 24;
 const BASE_CELL_PADDING_PX = 24;
-// bg-tertiary and the surrounding bg-surface card both resolve to gray-800 in
-// dark, which would erase the parent band, so dark lifts it to bg-raised.
 const PARENT_ROW_BG_CLASS = 'tw:bg-tertiary tw:dark:bg-raised';
 const CHILD_ROW_BG_CLASS = 'tw:bg-secondary';
 const RECENTLY_UPDATED_BG_CLASS = 'tw:bg-utility-warning-50';
@@ -104,8 +102,6 @@ const ColumnGridTableRowBase: React.FC<ColumnGridTableRowProps> = ({
         rowType: type,
         rowClassName: classNames(
           'tw:transition-colors tw:hover:bg-secondary',
-          // bg-active matches bg-secondary in light but lifts to white/10% in
-          // dark, where a selected row would otherwise equal the hover fill.
           isSelected && SELECTED_ROW_BG_CLASS
         ),
       };

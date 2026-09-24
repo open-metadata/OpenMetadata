@@ -18,8 +18,6 @@ import {
   UniqueColumnsIcon,
 } from './ColumnStatIcons';
 
-// Ordered [name, scale, Component] so both `%s` placeholders in the test
-// titles resolve to strings — a component in that slot prints its source.
 const ICONS: ReadonlyArray<
   readonly [string, string, ComponentType<SVGProps<SVGSVGElement>>]
 > = [
@@ -38,17 +36,11 @@ describe('ColumnStatIcons', () => {
       expect(shapes).not.toHaveLength(0);
 
       shapes.forEach((shape) => {
-        // A shape either carries the scale's fill/stroke class itself or
-        // inherits one from an ancestor <g>. Pinning the family (not just
-        // "some utility-*") is the point: an icon silently reassigned to
-        // utility-error-* would otherwise still pass.
         const ownClass = shape.getAttribute('class') ?? '';
         const inherits =
           shape.closest(`g[class*="utility-${scale}-"]`) !== null;
 
         expect(ownClass.includes(`utility-${scale}-`) || inherits).toBe(true);
-        // A literal colour never remaps under .dark-mode — the regression
-        // this whole file exists to catch.
         expect(shape.getAttribute('fill')).toBeNull();
         expect(shape.getAttribute('stroke')).toBeNull();
       });
