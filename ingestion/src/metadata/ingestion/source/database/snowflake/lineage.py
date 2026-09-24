@@ -68,7 +68,6 @@ from metadata.ingestion.source.database.stored_procedures_mixin import (
     StoredProcedureLineageMixin,
 )
 from metadata.utils import fqn
-from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -77,7 +76,40 @@ TABLE_CACHE_MAX_SIZE = 100
 
 DEFAULT_ACCESS_HISTORY_CHUNK_DAYS = 2
 
+# How far past a stored-procedure window the non-CALL half of the query-history read has
+# to reach. A CALL that starts just inside a window keeps running after it closes, and its
+# child queries are only joinable if they are in the scan. Snowflake's default
+# STATEMENT_TIMEOUT_IN_SECONDS is two days, so no CALL outlives that.
+STORED_PROCEDURE_OVERLAP_DAYS = 2
+
+# The stored-procedure history read starts as one statement over the whole window and is
+# only split when Snowflake cancels it. Splitting up front is much worse than it looks:
+# every ACCOUNT_USAGE statement carries a large fixed cost regardless of how little it
+# scans, so a fixed small chunk turns a 30-second read into half an hour of overhead.
+STORED_PROCEDURE_MIN_WINDOW = timedelta(days=1)
+STORED_PROCEDURE_MAX_SPLIT_DEPTH = 4
+STORED_PROCEDURE_WINDOW_CACHE_SIZE = 64
+
+# Snowflake reports both the client cancel (000604) and its own statement timeout (000630)
+# under SQLSTATE 57014. Only those are worth retrying on a narrower window: a permission or
+# syntax failure would fail again on every half and multiply one error into sixteen.
+STATEMENT_CANCELLED_SQLSTATE = "57014"
+
 EXTERNAL_STAGE_PREFIXES = ("s3://", "azure://", "gcs://", "https://")
+
+
+def _is_statement_cancelled(exc: Exception) -> bool:
+    """
+    Whether Snowflake cancelled the statement rather than rejecting it. SQLAlchemy wraps the
+    driver error, which carries the SQLSTATE on `.sqlstate`, and older driver versions leave
+    it only in the message.
+    """
+    driver_error = getattr(exc, "orig", exc)
+    sqlstate = getattr(driver_error, "sqlstate", None)
+    if sqlstate is not None:
+        return str(sqlstate) == STATEMENT_CANCELLED_SQLSTATE
+    return STATEMENT_CANCELLED_SQLSTATE in str(exc)
+
 
 LINEAGE_OBJECT_DOMAINS = {
     "Table",
@@ -118,6 +150,9 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         self._table_cache: LRUCache = LRUCache(maxsize=TABLE_CACHE_MAX_SIZE)
         self._access_history_chunk_days = self._resolve_chunk_days()
         self._use_access_history = self._resolve_use_access_history()
+        # Window each rendered stored-procedure statement covers, so a cancelled one can be
+        # retried over its halves. Bounded because splitting is capped anyway.
+        self._stored_procedure_windows: LRUCache = LRUCache(maxsize=STORED_PROCEDURE_WINDOW_CACHE_SIZE)
 
     def _resolve_chunk_days(self) -> int:
         """
@@ -170,15 +205,74 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
 
     def get_stored_procedure_sql_statement(self) -> str:
         """
-        Return the SQL statement to get the stored procedure queries
+        Return the SQL statement to get the stored procedure queries over the whole
+        configured window. Kept for the mixin's single-statement contract, bounded at
+        both ends so it can never scan to `now`.
         """
-        start, _ = get_start_and_end(self.source_config.queryLogDuration)
-        query = self.stored_procedure_query.format(
-            start_date=start,
+        return self._render_stored_procedure_query(self.start, self.end)
+
+    def get_stored_procedure_sql_statements(self) -> Iterator[str]:
+        """
+        Read the whole configured window in one bounded statement, and let
+        `narrow_stored_procedure_statement` split it only if Snowflake cancels it.
+        """
+        yield self._render_stored_procedure_query(self.start, self.end)
+
+    def narrow_stored_procedure_statement(self, statement: str, exc: Exception) -> Iterator[str]:
+        """
+        Retry a cancelled history read over the two halves of its window.
+
+        `SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES` reads ACCOUNT_USAGE.QUERY_HISTORY twice and
+        joins the halves by session. On a busy account with a long `queryLogDuration` that
+        read can run past a statement timeout, and Snowflake cancels it
+        (`000604 (57014): SQL execution was cancelled by the client due to a timeout`).
+        Halving converges on a window the account can actually scan, while an account that
+        reads its whole window in one go never pays for chunks it does not need. The two
+        halves together cover exactly the same CALL rows as the window they replace, since
+        the window bound is a half-open interval on the CALL's START_TIME.
+        """
+        if not _is_statement_cancelled(exc):
+            return
+        window = self._stored_procedure_windows.get(statement)
+        if window is None:
+            return
+        window_start, window_end, depth = window
+        if depth >= STORED_PROCEDURE_MAX_SPLIT_DEPTH or window_end - window_start <= STORED_PROCEDURE_MIN_WINDOW:
+            logger.warning(
+                "Stored procedure history for %s - %s cannot be narrowed further; "
+                "lower queryLogDuration to bring it back under the statement timeout.",
+                window_start,
+                window_end,
+            )
+            return
+        midpoint = window_start + (window_end - window_start) / 2
+        logger.info(
+            "Stored procedure history query was cancelled for %s - %s; retrying it as %s - %s and %s - %s.",
+            window_start,
+            window_end,
+            window_start,
+            midpoint,
+            midpoint,
+            window_end,
+        )
+        yield self._render_stored_procedure_query(window_start, midpoint, depth + 1)
+        yield self._render_stored_procedure_query(midpoint, window_end, depth + 1)
+
+    def _render_stored_procedure_query(self, window_start: datetime, window_end: datetime, depth: int = 0) -> str:
+        """
+        Render the stored-procedure history SQL for one window, remembering which window it
+        covers so a cancelled statement can be retried over narrower ones. The non-CALL half
+        reaches `STORED_PROCEDURE_OVERLAP_DAYS` past the window so a CALL that starts just
+        before the window closes still finds the queries it ran after the boundary.
+        """
+        statement = self.stored_procedure_query.format(
+            start_date=window_start,
+            end_date=window_end,
+            query_end_date=window_end + timedelta(days=STORED_PROCEDURE_OVERLAP_DAYS),
             account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
         )
-
-        return query  # noqa: RET504
+        self._stored_procedure_windows[statement] = (window_start, window_end, depth)
+        return statement
 
     def yield_table_query(self) -> Iterator[TableQuery]:
         """
@@ -306,7 +400,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         Split the configured [start, end] window into `accessHistoryChunkSize`
         day chunks. A single query over a large window (e.g. queryLogDuration=180)
         builds a FLATTEN-heavy plan that Snowflake cancels on a client/server
-        timeout; per-chunk queries keep each scan bounded and let one slow
+        timeout. Per-chunk queries keep each scan bounded and let one slow
         window fail without aborting the run.
         """
         window_start = self.start
