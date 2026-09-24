@@ -493,4 +493,9 @@
 
 @body-background: var(--tw-color-utility-gray-blue-50);
 @component-background: var(--tw-color-bg-primary);
-@popover-background: var(--tw-color-bg-primary);
+// Overlays (popovers, dropdown menus, select lists) sit on bg-surface so they
+// lift off the page in dark; in light surface resolves to white, as before.
+@popover-background: var(--om-color-bg-surface);
+@popover-bg: var(--om-color-bg-surface);
+@dropdown-menu-bg: var(--om-color-bg-surface);
+@select-dropdown-bg: var(--om-color-bg-surface);

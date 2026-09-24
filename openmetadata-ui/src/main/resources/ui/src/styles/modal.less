@@ -46,3 +46,10 @@
 .ant-popover-inner-content {
   width: 100%;
 }
+
+// antd Tree paints @component-background (bg-primary); inside a popover it
+// would punch a darker hole in the bg-surface overlay.
+.ant-popover-inner .ant-tree,
+.ant-popover-inner .ant-tree .ant-tree-switcher {
+  background: transparent;
+}
