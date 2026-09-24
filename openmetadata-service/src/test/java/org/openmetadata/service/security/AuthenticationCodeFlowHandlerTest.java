@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -628,6 +629,117 @@ class AuthenticationCodeFlowHandlerTest {
     assertEquals("Redirect URI must exactly match a trusted redirect URI", thrown.getMessage());
   }
 
+  private static final String PRIMARY_CALLBACK = "https://om.example.com/callback";
+  private static final String DR_CALLBACK = "https://dr.example.com/callback";
+
+  @Test
+  void additionalCallbackUrlFor_selectsTheUrlRegisteredForTheProxiedHost() throws Exception {
+    AuthenticationCodeFlowHandler handler = createCallbackSelectionHandler(List.of(DR_CALLBACK));
+
+    assertEquals(
+        DR_CALLBACK,
+        invokeWithRequest(
+            handler, "additionalCallbackUrlFor", proxiedRequest("https", "dr.example.com")));
+  }
+
+  @Test
+  void additionalCallbackUrlFor_returnsNullForAnUnregisteredForwardedHost() throws Exception {
+    AuthenticationCodeFlowHandler handler = createCallbackSelectionHandler(List.of(DR_CALLBACK));
+
+    assertNull(
+        invokeWithRequest(
+            handler, "additionalCallbackUrlFor", proxiedRequest("https", "evil.example.com")));
+  }
+
+  /** A single-host deployment must not even consult the request's origin headers. */
+  @Test
+  void additionalCallbackUrlFor_readsNothingFromTheRequestWhenNoneAreConfigured() throws Exception {
+    AuthenticationCodeFlowHandler handler = createCallbackSelectionHandler(List.of());
+    HttpServletRequest request = mock(HttpServletRequest.class);
+
+    assertNull(invokeWithRequest(handler, "additionalCallbackUrlFor", request));
+    verifyNoInteractions(request);
+  }
+
+  @Test
+  void callbackUrlSentToProvider_usesTheRecordedRedirectUri() throws Exception {
+    AuthenticationCodeFlowHandler handler = createCallbackSelectionHandler(List.of(DR_CALLBACK));
+    UserSession pendingSession = UserSession.builder().idpRedirectUri(DR_CALLBACK).build();
+
+    assertEquals(DR_CALLBACK, invokeCallbackUrlSentToProvider(handler, pendingSession));
+  }
+
+  /** Sessions that recorded none, including those written by older builds, were sent the primary. */
+  @Test
+  void callbackUrlSentToProvider_fallsBackToThePrimaryForSessionsWithoutOne() throws Exception {
+    AuthenticationCodeFlowHandler handler = createCallbackSelectionHandler(List.of(DR_CALLBACK));
+
+    assertEquals(
+        PRIMARY_CALLBACK, invokeCallbackUrlSentToProvider(handler, UserSession.builder().build()));
+  }
+
+  @Test
+  void ownUrl_staysOnARegisteredSecondaryHost() throws Exception {
+    AuthenticationCodeFlowHandler handler = createCallbackSelectionHandler(List.of(DR_CALLBACK));
+
+    assertEquals(
+        "https://dr.example.com/signin",
+        invokeOwnUrl(handler, proxiedRequest("https", "dr.example.com"), "/signin"));
+  }
+
+  @Test
+  void ownUrl_fallsBackToServerUrlForAnUnregisteredHost() throws Exception {
+    AuthenticationCodeFlowHandler handler = createCallbackSelectionHandler(List.of(DR_CALLBACK));
+
+    assertEquals(
+        "https://om.example.com/signin",
+        invokeOwnUrl(handler, proxiedRequest("https", "evil.example.com"), "/signin"));
+  }
+
+  private AuthenticationCodeFlowHandler createCallbackSelectionHandler(
+      List<String> additionalCallbackUrls) throws Exception {
+    OidcClient primaryClient = new OidcClient();
+    primaryClient.setCallbackUrl(PRIMARY_CALLBACK);
+    AuthenticationCodeFlowHandler handler =
+        (AuthenticationCodeFlowHandler)
+            getUnsafe().allocateInstance(AuthenticationCodeFlowHandler.class);
+    setField(handler, "client", primaryClient);
+    setField(handler, "serverUrl", "https://om.example.com");
+    setField(
+        handler,
+        "authenticationConfiguration",
+        new AuthenticationConfiguration().withAdditionalCallbackUrls(additionalCallbackUrls));
+    return handler;
+  }
+
+  private String invokeWithRequest(
+      AuthenticationCodeFlowHandler handler, String methodName, HttpServletRequest request)
+      throws Exception {
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(methodName, HttpServletRequest.class);
+    method.setAccessible(true);
+    return (String) method.invoke(handler, request);
+  }
+
+  private String invokeCallbackUrlSentToProvider(
+      AuthenticationCodeFlowHandler handler, UserSession pendingSession) throws Exception {
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "callbackUrlSentToProvider", UserSession.class);
+    method.setAccessible(true);
+    return (String) method.invoke(handler, pendingSession);
+  }
+
+  private String invokeOwnUrl(
+      AuthenticationCodeFlowHandler handler, HttpServletRequest request, String path)
+      throws Exception {
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "ownUrl", HttpServletRequest.class, String.class);
+    method.setAccessible(true);
+    return (String) method.invoke(handler, request, path);
+  }
+
   private AuthenticationCodeFlowHandler createRedirectHandler(
       String serverUrl, String callbackUrl, List<String> additionalTrustedRedirectUris)
       throws Exception {
@@ -1152,6 +1264,7 @@ class AuthenticationCodeFlowHandlerTest {
 
     setField(handler, "sessionService", sessionService);
     setField(handler, "client", client);
+    setField(handler, "authenticationConfiguration", new AuthenticationConfiguration());
 
     return handler;
   }

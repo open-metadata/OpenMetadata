@@ -14,6 +14,7 @@ package org.openmetadata.service.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sun.net.httpserver.HttpServer;
@@ -21,17 +22,21 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicReference;
 import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.eclipse.jetty.server.Server;
@@ -60,11 +65,15 @@ class SsoRedirectBoundaryTest {
   private static final String SERVER_URL = "https://openmetadata.example.com";
   private static final String INVALID_REDIRECT_MESSAGE =
       "Redirect URI must exactly match a trusted redirect URI";
+  private static final String PRIMARY_CALLBACK = SERVER_URL + "/callback";
+  private static final String DR_CALLBACK = "https://dr.example.com/callback";
+  private static final String DR_AUTH_CALLBACK = "https://dr.example.com/auth/callback";
 
   private final HttpClient httpClient =
       HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build();
   private Server server;
   private HttpServer oidcProvider;
+  private final AtomicReference<String> tokenRequestBody = new AtomicReference<>();
 
   @AfterEach
   void stopServer() throws Exception {
@@ -143,8 +152,99 @@ class SsoRedirectBoundaryTest {
     assertPendingSessionUnchanged(store, pendingSession);
   }
 
+  @Test
+  void oidcLoginSendsTheCallbackUrlRegisteredForTheRequestHost() throws Exception {
+    InMemorySessionStore store = new InMemorySessionStore();
+    URI baseUri = startServer(newOidcHandler(store, List.of(DR_CALLBACK)));
+
+    HttpResponse<String> response = loginVia(baseUri, "dr.example.com", DR_AUTH_CALLBACK);
+
+    assertEquals(302, response.statusCode());
+    assertEquals(DR_CALLBACK, sentRedirectUri(response));
+    UserSession pendingSession = store.onlySession();
+    assertEquals(DR_CALLBACK, pendingSession.getIdpRedirectUri());
+    assertEquals(DR_AUTH_CALLBACK, pendingSession.getRedirectUri());
+  }
+
+  /** A forged host can make the login land on itself, but never send an unregistered callback. */
+  @Test
+  void oidcLoginKeepsThePrimaryCallbackUrlForAnUnregisteredHost() throws Exception {
+    InMemorySessionStore store = new InMemorySessionStore();
+    URI baseUri = startServer(newOidcHandler(store, List.of(DR_CALLBACK)));
+
+    HttpResponse<String> response =
+        loginVia(baseUri, "evil.example.com", "https://evil.example.com/auth/callback");
+
+    assertEquals(302, response.statusCode());
+    assertEquals(PRIMARY_CALLBACK, sentRedirectUri(response));
+    assertNull(store.onlySession().getIdpRedirectUri());
+  }
+
+  @Test
+  void oidcLoginKeepsThePrimaryCallbackUrlWhenNoneAreConfigured() throws Exception {
+    InMemorySessionStore store = new InMemorySessionStore();
+    URI baseUri = startServer(newOidcHandler(store));
+
+    HttpResponse<String> response = loginVia(baseUri, "dr.example.com", DR_AUTH_CALLBACK);
+
+    assertEquals(302, response.statusCode());
+    assertEquals(PRIMARY_CALLBACK, sentRedirectUri(response));
+    assertNull(store.onlySession().getIdpRedirectUri());
+  }
+
+  /** RFC 6749 §4.1.3: the token request repeats the redirect_uri the login sent, byte for byte. */
+  @Test
+  void oidcCallbackExchangesTheCodeWithTheCallbackUrlTheLoginSent() throws Exception {
+    InMemorySessionStore store = new InMemorySessionStore();
+    URI baseUri = startServer(newOidcHandler(store, List.of(DR_CALLBACK)));
+    UserSession pendingSession = storePendingSession(store, DR_CALLBACK);
+
+    get(
+        baseUri.resolve("/callback?code=authorization-code&state=state-abc"),
+        "OM_SESSION=" + pendingSession.getId(),
+        arrivingVia("dr.example.com"));
+
+    assertEquals(DR_CALLBACK, formParameter(tokenRequestBody.get(), "redirect_uri"));
+  }
+
+  @Test
+  void oidcCallbackExchangesTheCodeWithThePrimaryForSessionsThatRecordedNone() throws Exception {
+    InMemorySessionStore store = new InMemorySessionStore();
+    URI baseUri = startServer(newOidcHandler(store, List.of(DR_CALLBACK)));
+    UserSession pendingSession = storePendingSession(store, null);
+
+    get(
+        baseUri.resolve("/callback?code=authorization-code&state=state-abc"),
+        "OM_SESSION=" + pendingSession.getId(),
+        arrivingVia("dr.example.com"));
+
+    assertEquals(PRIMARY_CALLBACK, formParameter(tokenRequestBody.get(), "redirect_uri"));
+  }
+
+  @Test
+  void oidcCallbackWithoutPendingSessionSendsSigninToTheRegisteredRequestHostOnly()
+      throws Exception {
+    URI baseUri = startServer(newOidcHandler(new InMemorySessionStore(), List.of(DR_CALLBACK)));
+    URI callback = baseUri.resolve("/callback?code=authorization-code&state=state-abc");
+
+    HttpResponse<String> onRegisteredHost = get(callback, null, arrivingVia("dr.example.com"));
+    HttpResponse<String> onForgedHost = get(callback, null, arrivingVia("evil.example.com"));
+
+    assertEquals(
+        "https://dr.example.com/signin",
+        onRegisteredHost.headers().firstValue("Location").orElseThrow());
+    assertEquals(
+        SERVER_URL + "/signin", onForgedHost.headers().firstValue("Location").orElseThrow());
+  }
+
   private AuthenticationCodeFlowHandler newOidcHandler(InMemorySessionStore store) {
-    AuthenticationConfiguration authConfig = oidcAuthConfig(startOidcProvider());
+    return newOidcHandler(store, List.of());
+  }
+
+  private AuthenticationCodeFlowHandler newOidcHandler(
+      InMemorySessionStore store, List<String> additionalCallbackUrls) {
+    AuthenticationConfiguration authConfig =
+        oidcAuthConfig(startOidcProvider()).withAdditionalCallbackUrls(additionalCallbackUrls);
     return new AuthenticationCodeFlowHandler(
         authConfig, new AuthorizerConfiguration(), new SessionService(authConfig, store));
   }
@@ -196,6 +296,18 @@ class SsoRedirectBoundaryTest {
               responseBody.write(discoveryDocument);
             }
           });
+      oidcProvider.createContext(
+          "/token",
+          exchange -> {
+            tokenRequestBody.set(
+                new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            byte[] refusal = "{\"error\":\"invalid_grant\"}".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(400, refusal.length);
+            try (OutputStream responseBody = exchange.getResponseBody()) {
+              responseBody.write(refusal);
+            }
+          });
       oidcProvider.start();
       return issuer + "/.well-known/openid-configuration";
     } catch (IOException e) {
@@ -236,11 +348,69 @@ class SsoRedirectBoundaryTest {
   }
 
   private HttpResponse<String> get(URI uri, String cookie) throws Exception {
+    return get(uri, cookie, Map.of());
+  }
+
+  private HttpResponse<String> get(URI uri, String cookie, Map<String, String> headers)
+      throws Exception {
     HttpRequest.Builder request = HttpRequest.newBuilder(uri).GET();
     if (cookie != null) {
       request.header("Cookie", cookie);
     }
+    headers.forEach(request::header);
     return httpClient.send(request.build(), HttpResponse.BodyHandlers.ofString());
+  }
+
+  private HttpResponse<String> loginVia(URI baseUri, String host, String redirectUri)
+      throws Exception {
+    return get(
+        baseUri.resolve(
+            "/api/v1/auth/login?redirectUri="
+                + URLEncoder.encode(redirectUri, StandardCharsets.UTF_8)),
+        null,
+        arrivingVia(host));
+  }
+
+  private static Map<String, String> arrivingVia(String host) {
+    return Map.of("X-Forwarded-Proto", "https", "X-Forwarded-Host", host);
+  }
+
+  private static String sentRedirectUri(HttpResponse<String> loginResponse) {
+    URI location = URI.create(loginResponse.headers().firstValue("Location").orElseThrow());
+    return formParameter(location.getRawQuery(), "redirect_uri");
+  }
+
+  private static String formParameter(String encodedPairs, String name) {
+    return encodedPairs == null
+        ? null
+        : Arrays.stream(encodedPairs.split("&"))
+            .map(pair -> pair.split("=", 2))
+            .filter(pair -> pair.length == 2 && pair[0].equals(name))
+            .map(pair -> URLDecoder.decode(pair[1], StandardCharsets.UTF_8))
+            .findFirst()
+            .orElse(null);
+  }
+
+  private UserSession storePendingSession(InMemorySessionStore store, String idpRedirectUri) {
+    long now = System.currentTimeMillis();
+    UserSession session =
+        UserSession.builder()
+            .id(SessionIdGenerator.newSessionId())
+            .type(SessionType.AUTH)
+            .provider("google")
+            .status(SessionStatus.PENDING)
+            .redirectUri(TRUSTED_REDIRECT)
+            .idpRedirectUri(idpRedirectUri)
+            .state("state-abc")
+            .version(0L)
+            .createdAt(now)
+            .updatedAt(now)
+            .lastAccessedAt(now)
+            .expiresAt(now + 60_000)
+            .idleExpiresAt(now + 60_000)
+            .build();
+    store.create(session);
+    return session;
   }
 
   private UserSession storeTamperedPendingSession(InMemorySessionStore store, String provider) {
@@ -342,6 +512,11 @@ class SsoRedirectBoundaryTest {
 
     private boolean isEmpty() {
       return sessions.isEmpty();
+    }
+
+    private UserSession onlySession() {
+      assertEquals(1, sessions.size());
+      return sessions.values().iterator().next();
     }
   }
 }
