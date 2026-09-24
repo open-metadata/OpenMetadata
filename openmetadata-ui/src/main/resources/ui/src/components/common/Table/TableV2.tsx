@@ -108,6 +108,7 @@ import {
   flattenTreeRows,
   getCellWidthStyle,
   getColumnHeaderStyle,
+  getColumnStickyClassName,
   getColumnStickyStyle,
   getSelectedKeysSet,
   getSortDescriptorProp,
@@ -1910,6 +1911,7 @@ const TableV2 = <T extends object>(
                         },
                         getAlignClass(colType.align),
                         getHeaderAlignClass(colType.align),
+                        getColumnStickyClassName(colType.fixed),
                         pingShadowClass(
                           colType.fixed,
                           colIdx,
@@ -2168,6 +2170,7 @@ const TableV2 = <T extends object>(
                                   'tw:align-top'
                                 ),
                               getAlignClass(colType.align),
+                              getColumnStickyClassName(colType.fixed),
                               pingShadowClass(
                                 colType.fixed,
                                 colIdx,

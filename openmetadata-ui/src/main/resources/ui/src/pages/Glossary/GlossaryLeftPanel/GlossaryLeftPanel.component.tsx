@@ -13,10 +13,10 @@
 
 import { Button, NavList } from '@openmetadata/ui-core-components';
 import { Glossary as GlossaryIcon } from '@openmetadata/ui-core-components/icons';
-import { Plus } from '@untitledui/icons';
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import GlossaryV1Skeleton from '../../../components/common/Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
 import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -100,10 +100,12 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
                 className="tw:w-full"
                 color="secondary"
                 data-testid="add-glossary"
-                iconLeading={Plus}
+                iconLeading={<PlusIcon style={{ height: 16, width: 16 }} />}
                 size="sm"
                 onPress={handleAddGlossaryClick}>
-                {t('label.add')}
+                <span className="tw:text-brand-600 tw:font-normal">
+                  {t('label.add-entity', { entity: t('label.glossary') })}
+                </span>
               </Button>
             </div>
           )}

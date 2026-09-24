@@ -132,13 +132,23 @@ export function getColumnStickyStyle(
   zIndex: number
 ): React.CSSProperties {
   if (fixed === 'left') {
-    return { background: 'white', left: 0, position: 'sticky', zIndex };
+    return { left: 0, position: 'sticky', zIndex };
   }
   if (fixed === 'right') {
-    return { background: 'white', position: 'sticky', right: 0, zIndex };
+    return { position: 'sticky', right: 0, zIndex };
   }
 
   return {};
+}
+
+/**
+ * Sticky cells need an opaque background so scrolled content does not show
+ * through; a token class (not an inline colour) keeps it correct in dark mode.
+ */
+export function getColumnStickyClassName(
+  fixed: ColumnType<unknown>['fixed']
+): string | undefined {
+  return fixed === 'left' || fixed === 'right' ? 'tw:bg-primary' : undefined;
 }
 
 /** Header cell style: sized to its share of the table plus any sticky offset. */
