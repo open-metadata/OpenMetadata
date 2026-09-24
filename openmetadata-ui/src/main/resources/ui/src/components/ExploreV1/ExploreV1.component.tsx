@@ -445,7 +445,7 @@ const ExploreResultsListPanel = ({
 }: ExploreResultsListPanelProps) => {
   return (
     <div className="h-full tw:flex tw:min-w-[300px] tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl explore-main-card">
-      <Card className="tw:min-h-0 tw:flex-1 tw:rounded-b-none">
+      <Card className="tw:min-h-0 tw:flex-1 tw:rounded-b-none tw:dark:bg-secondary">
         {!loading && !isElasticSearchIssue ? (
           <SearchedData
             data={searchResults?.hits.hits ?? []}
