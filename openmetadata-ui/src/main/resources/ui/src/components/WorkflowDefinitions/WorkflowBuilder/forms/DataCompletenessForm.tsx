@@ -230,7 +230,10 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
             isRequired
             data-testid="fields-to-check-select"
             isDisabled={isFormDisabled}
-            items={fieldOptions.map((f) => ({ id: f, label: getFieldLabel(f) }))}
+            items={fieldOptions.map((f) => ({
+              id: f,
+              label: getFieldLabel(f),
+            }))}
             label={t('label.fields')}
             placeholder={t('message.select-fields-to-check')}
             selectedItems={selectedFieldItems}
@@ -241,7 +244,10 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
               );
             }}
             onItemInserted={(key) => {
-              const item = { id: String(key), label: getFieldLabel(String(key)) };
+              const item = {
+                id: String(key),
+                label: getFieldLabel(String(key)),
+              };
               selectedFieldItems.append(item);
               setSelectedFields((prev) => [...prev, String(key)]);
             }}>

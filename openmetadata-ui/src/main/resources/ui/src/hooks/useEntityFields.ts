@@ -48,12 +48,16 @@ export const useEntityFields = (entityTypes?: EntityType[]) => {
         ),
       ]);
 
-      const allFields = allFieldsResults.flat().filter(Boolean);
-      const customPropertyNames = new Set(
-        customPropertyResults.flat().map((property) => property.name)
+      // Build options per entity type so a custom-property name on one type does not
+      // prefix (and hide) a standard field of the same name on another type.
+      const perTypeOptions = allFieldsResults.map((fields, index) =>
+        buildFieldOptions(
+          (fields ?? []).filter(Boolean),
+          new Set((customPropertyResults[index] ?? []).map(({ name }) => name))
+        )
       );
 
-      setFieldOptions(buildFieldOptions(allFields, customPropertyNames));
+      setFieldOptions(Array.from(new Set(perTypeOptions.flat())));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load fields');
       setFieldOptions([]);
