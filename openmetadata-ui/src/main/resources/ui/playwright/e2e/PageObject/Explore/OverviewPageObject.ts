@@ -127,8 +127,10 @@ export class OverviewPageObject extends RightPanelBase {
     );
     this.searchBar = this.page.getByTestId('search-bar-container');
     this.tagSearchBar = this.searchBar.getByTestId('tag-select-search-bar');
-    this.domainTree = this.page.getByTestId('domain-selectable-tree');
-    this.domainSearchBar = this.domainTree.getByTestId('searchbar');
+    this.domainTree = this.page.getByTestId('domain-selectable-tree-popover');
+    this.domainSearchBar = this.page.getByTestId(
+      'domain-selectable-tree-search'
+    );
     this.domainList = this.page.locator('.domains-content');
     this.tagListContainer = this.page.locator('.tags-section');
     this.tierListContainer = this.page.getByTestId('cards');
@@ -160,7 +162,7 @@ export class OverviewPageObject extends RightPanelBase {
       'owner-select-teams-search-bar'
     );
     this.listItem = this.page.locator('.selectable-list-item');
-    this.domainTreeNode = this.domainTree.locator('.ant-tree-treenode');
+    this.domainTreeNode = this.page.locator('[data-testid^="tree-node-"]');
     this.clearTierButton = this.tierListContainer.getByTestId('clear-tier');
     this.tagsSection = this.container.locator('.tags-section, [class*="tags"]');
     this.tierSection = this.container.locator('.tier-section, [class*="tier"]');
@@ -351,9 +353,12 @@ export class OverviewPageObject extends RightPanelBase {
       .isVisible();
 
     if (!alreadyAssigned) {
+      // Settle any page loader and bring the trigger into view before clicking,
+      // so the open click is not swallowed by a re-render on slower panels.
+      await this.loader.waitFor({ state: 'detached' });
+      await this.addDomainIcon.scrollIntoViewIfNeeded();
       await this.addDomainIcon.click();
 
-      await this.loader.waitFor({ state: 'detached' });
       await this.domainSearchBar.waitFor({ state: 'visible' });
       await this.domainSearchBar.scrollIntoViewIfNeeded();
       await this.domainSearchBar.fill(domainName);
@@ -365,6 +370,13 @@ export class OverviewPageObject extends RightPanelBase {
         .waitFor({ state: 'visible' });
       const domainPatchPromise = this.waitForPatchResponse();
       await this.domainTreeNode.filter({ hasText: domainName }).click();
+
+      // Multi-select stages behind an Apply button; single-select commits on click.
+      const applyButton = this.page.getByTestId('update-btn');
+      if (await applyButton.isVisible()) {
+        await applyButton.click();
+      }
+
       await domainPatchPromise;
     }
 
@@ -610,10 +622,11 @@ export class OverviewPageObject extends RightPanelBase {
    */
   async removeDomain(domainName: string): Promise<OverviewPageObject> {
     await this.addDomainIcon.waitFor({ state: 'visible' });
-    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-    await this.addDomainIcon.click({ force: true });
+    await this.addDomainIcon.scrollIntoViewIfNeeded();
+    await this.addDomainIcon.click();
 
-    await this.domainTree.waitFor({ state: 'visible' });
+    await this.loader.waitFor({ state: 'detached' });
+    await this.domainSearchBar.waitFor({ state: 'visible' });
 
     const searchDomainPromise = this.page.waitForResponse(
       (response) =>
@@ -628,6 +641,12 @@ export class OverviewPageObject extends RightPanelBase {
     const patchPromise = this.waitForPatchResponse();
 
     await domainItem.click();
+
+    // Multi-select stages behind an Apply button; single-select commits on click.
+    const applyButton = this.page.getByTestId('update-btn');
+    if (await applyButton.isVisible()) {
+      await applyButton.click();
+    }
 
     await patchPromise;
     return this;

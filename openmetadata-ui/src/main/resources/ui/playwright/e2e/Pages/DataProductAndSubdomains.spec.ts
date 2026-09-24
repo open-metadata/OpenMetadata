@@ -892,7 +892,7 @@ test.describe('Data Product Search and Filter', () => {
 
       // Select domain1 from global dropdown
       await page.getByTestId('domain-dropdown').click();
-      await page.getByTestId('domain-selectable-tree').waitFor({
+      await page.getByTestId('domain-dropdown-search').waitFor({
         state: 'visible',
       });
 
@@ -902,13 +902,12 @@ test.describe('Data Product Search and Filter', () => {
           response.url().includes('index=domain')
       );
       await page
-        .getByTestId('domain-selectable-tree')
-        .getByTestId('searchbar')
+        .getByTestId('domain-dropdown-search')
         .fill(domain1.responseData.displayName);
       await searchDomainRes;
 
       const tagSelector = page.getByTestId(
-        `tag-${domain1.responseData.fullyQualifiedName}`
+        `tree-node-${domain1.responseData.fullyQualifiedName}`
       );
       await tagSelector.waitFor({ state: 'visible' });
       await tagSelector.click();
@@ -924,7 +923,7 @@ test.describe('Data Product Search and Filter', () => {
 
       // Clear domain filter
       await page.getByTestId('domain-dropdown').click();
-      await page.getByTestId('all-domains-selector').click();
+      await page.getByTestId('tree-node-All Domains').click();
 
       await dp1.delete(apiContext);
       await dp2.delete(apiContext);
