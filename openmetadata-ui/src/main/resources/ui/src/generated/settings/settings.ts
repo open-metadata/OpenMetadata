@@ -709,6 +709,13 @@ export interface PipelineServiceClientConfiguration {
      */
     defaultAppMode?: DefaultAppMode | null;
     /**
+     * Tenant-wide default view (list, grid, or tree) per page context that has a view toggle.
+     * Keys are page identifiers (dataProducts, domains, subDomains, learningResources); a page
+     * with no entry keeps its own hardcoded default (list/table). 'tree' is only meaningful for
+     * the domains page context, which is the only one whose toggle offers a Tree view.
+     */
+    defaultViewModes?: { [key: string]: DefaultViewMode };
+    /**
      * Timestamp when the fingerprints were last persisted.
      */
     appliedAt?: number;
@@ -1930,6 +1937,12 @@ export interface Aws {
 export enum DefaultAppMode {
     AI = "ai",
     Classic = "classic",
+}
+
+export enum DefaultViewMode {
+    Grid = "grid",
+    List = "list",
+    Tree = "tree",
 }
 
 /**

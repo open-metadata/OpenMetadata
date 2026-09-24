@@ -19,6 +19,7 @@ import {
   EntityUnion,
   ExploreSearchIndex,
 } from '../components/Explore/ExplorePage.interface';
+import { DefaultViewMode } from '../generated/api/configuration/appConfiguration';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { LineageSettings } from '../generated/configuration/lineageSettings';
@@ -62,6 +63,7 @@ export interface ApplicationStore
   applicationsLoaded: boolean;
   appPreferences: AppPreferences;
   rdfEnabled?: boolean;
+  defaultViewModes: Record<string, DefaultViewMode>;
   setInlineAlertDetails: (alertDetails?: InlineAlertProps) => void;
   setSelectedPersona: (persona?: EntityReference) => void;
   setApplicationConfig: (config: UIThemePreference) => void;
@@ -85,6 +87,9 @@ export interface ApplicationStore
   setApplicationsLoaded: (loaded: boolean) => void;
   setAppVersion: (version: string) => void;
   setRdfEnabled: (enabled: boolean) => void;
+  setDefaultViewModes: (
+    defaultViewModes: Record<string, DefaultViewMode>
+  ) => void;
   initializeAuthState: () => void;
 }
 

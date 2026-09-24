@@ -96,13 +96,22 @@ export const getAppConfiguration = async (): Promise<AppConfiguration> => {
  * Admin-only. Writes through the generic `/system/settings` PUT, matching
  * the `config_type`/`config_value` shape the backend's `createOrUpdateSetting`
  * expects (see how `updateGlossaryTermRelationSettings` above writes).
+ *
+ * The backend has no merge logic for this config type (`SystemResource`'s
+ * `createOrUpdateSetting` only merges a handful of other settings, e.g.
+ * search settings) — the PUT replaces the stored row's JSON wholesale. Since
+ * `AppConfiguration` has multiple independent fields (`defaultAppMode`,
+ * `defaultViewModes`, ...) that different UI sections patch separately, we
+ * read-modify-write here so a partial `patch` from one section can never
+ * wipe another section's already-saved fields.
  */
 export const patchAppConfiguration = async (
   patch: Partial<AppConfiguration>
 ): Promise<AppConfiguration> => {
+  const current = await getAppConfiguration();
   const response = await axiosClient.put<Settings>(`/system/settings`, {
     config_type: SettingType.AppConfiguration,
-    config_value: patch,
+    config_value: { ...current, ...patch },
   });
 
   return (response.data.config_value as AppConfiguration) ?? {};

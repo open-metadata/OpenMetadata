@@ -55,6 +55,8 @@ import {
   MAX_VISIBLE_TAGS,
   PAGE_IDS,
 } from '../../constants/Learning.constants';
+import { DefaultViewMode } from '../../generated/api/configuration/appConfiguration';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { LearningResource } from '../../rest/learningResourceAPI';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { useLearningResourceActions } from './hooks/useLearningResourceActions';
@@ -132,7 +134,12 @@ export const LearningResourcesPage: React.FC = () => {
     handlePlayerClose,
   } = useLearningResourceActions({ onRefetch: refetch });
 
-  const [view, setView] = useState<ViewMode>(ViewMode.Table);
+  const { defaultViewModes } = useApplicationStore();
+  const [view, setView] = useState<ViewMode>(
+    defaultViewModes.learningResources === DefaultViewMode.Grid
+      ? ViewMode.Card
+      : ViewMode.Table
+  );
 
   const [searchInputValue, setSearchInputValue] = useState(searchText);
 

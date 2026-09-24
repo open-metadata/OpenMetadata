@@ -23,6 +23,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { DefaultViewMode } from '../../../generated/api/configuration/appConfiguration';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDelete } from '../../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../../common/atoms/domain/ui/useDomainFilters';
@@ -82,7 +84,12 @@ const SubDomainsTable = ({
     };
   }, [debouncedSearch]);
 
-  const [view, setView] = useState<ViewMode>(ViewMode.Table);
+  const { defaultViewModes } = useApplicationStore();
+  const [view, setView] = useState<ViewMode>(
+    defaultViewModes.subDomains === DefaultViewMode.Grid
+      ? ViewMode.Card
+      : ViewMode.Table
+  );
   const { renderDomainCard } = useDomainCardTemplates();
 
   const { columns: subDomainColumns, renderCell: renderSubDomainCell } =
