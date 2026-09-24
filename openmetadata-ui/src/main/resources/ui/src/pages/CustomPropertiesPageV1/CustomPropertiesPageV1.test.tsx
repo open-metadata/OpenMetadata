@@ -35,6 +35,8 @@ jest.mock('../../utils/useRequiredParams', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Box: jest.requireActual('@openmetadata/ui-core-components').Box,
+  Tabs: jest.requireActual('@openmetadata/ui-core-components').Tabs,
   Button: jest
     .fn()
     .mockImplementation(({ children, onClick, 'data-testid': testId }) => (

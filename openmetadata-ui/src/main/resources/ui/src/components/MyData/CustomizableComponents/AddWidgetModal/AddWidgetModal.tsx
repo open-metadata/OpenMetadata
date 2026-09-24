@@ -12,7 +12,8 @@
  */
 
 import { CheckOutlined } from '@ant-design/icons';
-import { Modal, Space, Tabs, TabsProps } from 'antd';
+import { Tabs } from '@openmetadata/ui-core-components';
+import { Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -26,6 +27,7 @@ import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
 import { getWidgetWidthLabelFromKey } from '../../../../utils/CustomizableLandingPagePureUtils';
+import { DetailsTabItem } from '../../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
@@ -70,9 +72,9 @@ function AddWidgetModal({
     [handleAddWidget, placeholderWidgetKey]
   );
 
-  const tabItems: TabsProps['items'] = useMemo(
+  const tabItems: DetailsTabItem[] = useMemo(
     () =>
-      widgetsList?.map((widget) => {
+      (widgetsList ?? []).map((widget) => {
         const widgetSizeOptions: Array<WidgetSizeInfo> =
           widget.data.gridSizes.map((size: WidgetWidths) => ({
             label: (
@@ -136,10 +138,27 @@ function AddWidgetModal({
 
     return (
       <Tabs
+        className="tw:flex-row"
         data-testid="widget-info-tabs"
-        items={tabItems}
-        tabPosition="left"
-      />
+        orientation="vertical">
+        <Tabs.List
+          className="tw:shrink-0 tw:border-r tw:border-secondary tw:p-4"
+          type="line">
+          {tabItems.map(({ key, label }) => (
+            <Tabs.Item id={key} key={key}>
+              {label}
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+        {tabItems.map(({ key, children }) => (
+          <Tabs.Panel
+            className="tw:min-w-0 tw:flex-1 tw:p-4"
+            id={key}
+            key={key}>
+            {children}
+          </Tabs.Panel>
+        ))}
+      </Tabs>
     );
   }, [loading, widgetsList, tabItems]);
 

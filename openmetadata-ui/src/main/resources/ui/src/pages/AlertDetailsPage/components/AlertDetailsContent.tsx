@@ -12,8 +12,8 @@
  */
 
 import { SyncOutlined } from '@ant-design/icons';
-import { Owner } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Row, Skeleton, Space, Tabs, Tooltip } from 'antd';
+import { Box, Owner, Tabs } from '@openmetadata/ui-core-components';
+import { Button, Card, Skeleton, Space, Tooltip } from 'antd';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -24,8 +24,10 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { AlertDetailTabs } from '../../../enums/Alerts.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ProviderType } from '../../../generated/events/eventSubscription';
+import { getRenderedActiveTab } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { hardDeleteEntity } from '../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { AlertDetailsContentProps } from '../AlertDetailsPage.interface';
@@ -74,24 +76,24 @@ function AlertDetailsContent({
     <Card
       className="steps-form-container"
       data-testid="alert-details-container">
-      <Row className="add-notification-container" gutter={[0, 16]}>
-        <Col span={24}>
+      <Box className="add-notification-container" direction="col" gap={4}>
+        <div>
           <TitleBreadcrumb titleLinks={breadcrumb} />
-        </Col>
+        </div>
 
-        <Col span={24}>
-          <Row justify="space-between">
-            <Col span={20}>
-              <Row gutter={[16, 16]}>
-                <Col span={24}>
+        <div>
+          <Box justify="between">
+            <div className="tw:w-5/6">
+              <Box direction="col" gap={4}>
+                <div>
                   <EntityHeaderTitle
                     displayName={alertDetails?.displayName}
                     icon={alertIcon}
                     name={alertDetails?.name ?? ''}
                     serviceName=""
                   />
-                </Col>
-                <Col span={24}>
+                </div>
+                <div>
                   <div className="d-flex items-center flex-wrap gap-2">
                     {ownerLoading ? (
                       <Skeleton.Button active className="extra-info-skeleton" />
@@ -112,10 +114,10 @@ function AlertDetailsContent({
                     )}
                     {extraInfo}
                   </div>
-                </Col>
-              </Row>
-            </Col>
-            <Col>
+                </div>
+              </Box>
+            </div>
+            <div>
               <Space align="center" size={8}>
                 <Tooltip
                   title={t('label.sync-alert-offset', {
@@ -164,14 +166,11 @@ function AlertDetailsContent({
                     </Tooltip>
                   )}
               </Space>
-            </Col>
-          </Row>
-        </Col>
+            </div>
+          </Box>
+        </div>
 
-        <Col
-          className="alert-description"
-          data-testid="alert-description"
-          span={24}>
+        <div className="alert-description" data-testid="alert-description">
           <Description
             description={alertDetails?.description}
             entityType={EntityType.EVENT_SUBSCRIPTION}
@@ -179,17 +178,30 @@ function AlertDetailsContent({
             showCommentsIcon={false}
             onDescriptionUpdate={onDescriptionUpdate}
           />
-        </Col>
+        </div>
 
-        <Col span={24}>
-          <Tabs
-            activeKey={tab}
-            className="tabs-new"
-            items={tabItems}
-            onTabClick={handleTabChange}
-          />
-        </Col>
-      </Row>
+        <Tabs
+          className="tw:gap-3"
+          selectedKey={getRenderedActiveTab(
+            tabItems,
+            tab,
+            AlertDetailTabs.CONFIGURATION
+          )}
+          onSelectionChange={(key) => handleTabChange(String(key))}>
+          <Tabs.List size="sm" type="underline" variant="card">
+            {tabItems.map(({ key, label }) => (
+              <Tabs.Item id={key} key={key}>
+                {label}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+          {tabItems.map(({ key, children }) => (
+            <Tabs.Panel id={key} key={key}>
+              {children}
+            </Tabs.Panel>
+          ))}
+        </Tabs>
+      </Box>
       <DeleteModal
         entityTitle={getEntityName(alertDetails)}
         isDeleting={isDeleting}

@@ -12,7 +12,8 @@
  */
 
 import { DownOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Dropdown, Row, Space, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Button, Card, Dropdown, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +27,7 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import './data-quality-page.less';
 import DataQualityClassBase from './DataQualityClassBase';
@@ -149,80 +151,92 @@ const DataQualityPage = () => {
 
   return (
     <DataQualityProvider createActions={createActions}>
-      <Row
+      <Box
         className="data-quality-page m-b-md"
         data-testid="data-insight-container"
-        gutter={[0, 16]}>
-        <Col span={24}>
-          <Card>
-            <Row>
-              <Col span={16}>
-                <PageHeader
-                  data={{
-                    header: t('label.data-quality'),
-                    subHeader: t('message.page-sub-header-for-data-quality'),
-                  }}
-                  learningPageId={LEARNING_PAGE_IDS.DATA_QUALITY}
-                />
-              </Col>
+        direction="col"
+        gap={4}>
+        <Card>
+          <div className="tw:flex">
+            <div className="tw:w-2/3">
+              <PageHeader
+                data={{
+                  header: t('label.data-quality'),
+                  subHeader: t('message.page-sub-header-for-data-quality'),
+                }}
+                learningPageId={LEARNING_PAGE_IDS.DATA_QUALITY}
+              />
+            </div>
 
-              <Col className="d-flex justify-end" span={8}>
-                {activeTab === DataQualityPageTabs.TEST_SUITES &&
-                  testSuitePermission?.Create && (
-                    <Button
-                      data-testid="add-test-suite-btn"
-                      type="primary"
-                      onClick={handleOpenBundleSuiteModal}>
-                      {t('label.add-a-entity', {
-                        entity: t('label.bundle-suite'),
-                      })}
-                    </Button>
-                  )}
-                {activeTab === DataQualityPageTabs.TEST_CASES && (
+            <div className="d-flex justify-end tw:w-1/3">
+              {activeTab === DataQualityPageTabs.TEST_SUITES &&
+                testSuitePermission?.Create && (
                   <Button
-                    data-testid="add-test-case-btn"
+                    data-testid="add-test-suite-btn"
                     type="primary"
-                    onClick={handleOpenTestCaseModal}>
+                    onClick={handleOpenBundleSuiteModal}>
                     {t('label.add-a-entity', {
-                      entity: t('label.test-case'),
+                      entity: t('label.bundle-suite'),
                     })}
                   </Button>
                 )}
-                {exportDataQualityDashboardButton}
+              {activeTab === DataQualityPageTabs.TEST_CASES && (
+                <Button
+                  data-testid="add-test-case-btn"
+                  type="primary"
+                  onClick={handleOpenTestCaseModal}>
+                  {t('label.add-a-entity', {
+                    entity: t('label.test-case'),
+                  })}
+                </Button>
+              )}
+              {exportDataQualityDashboardButton}
 
-                {activeTab === DataQualityPageTabs.DASHBOARD &&
-                  !isEmpty(addButtonContent) && (
-                    <Dropdown
-                      className="m-l-md"
-                      menu={{
-                        items: addButtonContent,
-                      }}
-                      placement="bottomRight"
-                      trigger={['click']}>
-                      <Button
-                        data-testid="data-quality-add-button-menu"
-                        type="primary">
-                        <Space>
-                          {t('label.add')}
-                          <DownOutlined />
-                        </Space>
-                      </Button>
-                    </Dropdown>
-                  )}
-              </Col>
-            </Row>
-          </Card>
-        </Col>
-        <Col span={24}>
-          <Tabs
-            activeKey={activeTab}
-            className="tabs-new data-quality-page-tabs"
-            data-testid="tabs"
-            items={menuItems}
-            onChange={handleTabChange}
-          />
-        </Col>
-      </Row>
+              {activeTab === DataQualityPageTabs.DASHBOARD &&
+                !isEmpty(addButtonContent) && (
+                  <Dropdown
+                    className="m-l-md"
+                    menu={{
+                      items: addButtonContent,
+                    }}
+                    placement="bottomRight"
+                    trigger={['click']}>
+                    <Button
+                      data-testid="data-quality-add-button-menu"
+                      type="primary">
+                      <Space>
+                        {t('label.add')}
+                        <DownOutlined />
+                      </Space>
+                    </Button>
+                  </Dropdown>
+                )}
+            </div>
+          </div>
+        </Card>
+        <Tabs
+          className="tw:gap-3"
+          data-testid="tabs"
+          selectedKey={getRenderedActiveTab(
+            menuItems,
+            activeTab,
+            DataQualityClassBase.getDefaultActiveTab()
+          )}
+          onSelectionChange={(key) => handleTabChange(String(key))}>
+          <Tabs.List size="sm" type="underline" variant="card">
+            {menuItems.map(({ key, label }) => (
+              <Tabs.Item id={key} key={key}>
+                {label}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+          {menuItems.map(({ key, children }) => (
+            <Tabs.Panel id={key} key={key}>
+              {children}
+            </Tabs.Panel>
+          ))}
+        </Tabs>
+      </Box>
       <TestCaseFormDrawer
         open={isTestCaseModalOpen}
         onClose={handleCloseTestCaseModal}

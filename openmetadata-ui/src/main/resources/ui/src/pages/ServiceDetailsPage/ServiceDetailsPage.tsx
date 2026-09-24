@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Tabs, TabsProps, Tooltip } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase, toString } from 'lodash';
@@ -142,6 +143,10 @@ import {
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
 import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
+import {
+  DetailsTabItem,
+  getRenderedActiveTab,
+} from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import {
   getCurrentMillis,
@@ -1864,7 +1869,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     hostIp,
   ]);
 
-  const tabs: TabsProps['items'] = useMemo(() => {
+  const tabs: DetailsTabItem[] = useMemo(() => {
     const tabs = [];
     const ownerIds = serviceDetails?.owners?.map((owner) => owner.id) ?? [];
     const userOwnsService = ownerIds.includes(currentUser?.id ?? '');
@@ -2123,8 +2128,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
           {getEntityMissingError(serviceCategory as string, decodedServiceFQN)}
         </ErrorPlaceHolder>
       ) : (
-        <Row data-testid="service-page" gutter={[0, 12]}>
-          <Col span={24}>
+        <Box data-testid="service-page" direction="col" gap={3}>
+          <div>
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
@@ -2148,18 +2153,27 @@ const ServiceDetailsPage: FunctionComponent = () => {
               onTierUpdate={handleUpdateTier}
               onVersionClick={versionHandler}
             />
-          </Col>
+          </div>
 
-          <Col className="entity-details-page-tabs" span={24}>
-            <Tabs
-              activeKey={activeTab}
-              className="tabs-new"
-              data-testid="tabs"
-              items={tabs}
-              onChange={activeTabHandler}
-            />
-          </Col>
-        </Row>
+          <Tabs
+            className="tw:gap-3"
+            data-testid="tabs"
+            selectedKey={getRenderedActiveTab(tabs, activeTab)}
+            onSelectionChange={(key) => activeTabHandler(String(key))}>
+            <Tabs.List size="sm" type="underline" variant="card">
+              {tabs.map(({ key, label }) => (
+                <Tabs.Item id={key} key={key}>
+                  {label}
+                </Tabs.Item>
+              ))}
+            </Tabs.List>
+            {tabs.map(({ key, children }) => (
+              <Tabs.Panel id={key} key={key}>
+                {children}
+              </Tabs.Panel>
+            ))}
+          </Tabs>
+        </Box>
       )}
     </PageLayoutV1>
   );

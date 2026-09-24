@@ -12,8 +12,6 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
-import ReactDOM from 'react-dom';
 import { MemoryRouter } from 'react-router-dom';
 import ActivityThreadPanel from './ActivityThreadPanel';
 
@@ -22,10 +20,6 @@ jest.mock('./ActivityThreadPanelBody', () =>
 );
 
 describe('ActivityThreadPanel', () => {
-  beforeAll(() => {
-    ReactDOM.createPortal = jest.fn((element) => element as React.ReactPortal);
-  });
-
   it('opens on conversations and can switch to dedicated tasks', async () => {
     render(
       <MemoryRouter>
