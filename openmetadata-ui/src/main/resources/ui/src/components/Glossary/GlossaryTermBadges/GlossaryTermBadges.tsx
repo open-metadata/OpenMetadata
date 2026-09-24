@@ -41,9 +41,11 @@ const getSafeReferenceHref = (endpoint?: string) => {
   }
 
   try {
-    const { protocol } = new URL(endpoint);
+    const parsedUrl = new URL(endpoint);
 
-    return ['http:', 'https:'].includes(protocol) ? endpoint : undefined;
+    return ['http:', 'https:'].includes(parsedUrl.protocol)
+      ? parsedUrl.toString()
+      : undefined;
   } catch {
     return undefined;
   }
