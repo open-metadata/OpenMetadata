@@ -93,6 +93,18 @@ public final class ODCSTestCaseMaterializer {
             .toList());
   }
 
+  /**
+   * What {@link #materialize} would skip because a different test case already has the name,
+   * without writing anything.
+   */
+  public List<UnsupportedOutcome> conflicts(Request request) {
+    return request.outcomes().stream()
+        .map(outcome -> plan(outcome, request))
+        .filter(Skip.class::isInstance)
+        .map(step -> ((Skip) step).outcome())
+        .toList();
+  }
+
   /** What becomes of one rule's test case, decided before anything is written. */
   private sealed interface Step permits Write, Linked, Skip {}
 
