@@ -51,6 +51,7 @@ import org.openmetadata.schema.services.connections.database.UnityCatalogConnect
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
+import org.openmetadata.schema.services.connections.messaging.NatsConnection;
 import org.openmetadata.schema.services.connections.messaging.PubSubConnection;
 import org.openmetadata.schema.services.connections.mlmodel.VertexAIConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirbyteConnection;
@@ -63,6 +64,7 @@ import org.openmetadata.schema.services.connections.pipeline.OpenLineageConnecti
 import org.openmetadata.schema.services.connections.pipeline.PrefectConnection;
 import org.openmetadata.schema.services.connections.pipeline.SSISConnection;
 import org.openmetadata.schema.services.connections.pipeline.WherescapeConnection;
+import org.openmetadata.schema.services.connections.pipeline.openlineage.NatsBrokerConfig;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.security.RangerConnection;
 import org.openmetadata.schema.services.connections.storage.GCSConnection;
@@ -124,6 +126,8 @@ public final class ClassConverterFactory {
             Map.entry(ClickzettaConnection.class, new ClickzettaConnectionClassConverter()),
             Map.entry(NifiConnection.class, new NifiConnectionClassConverter()),
             Map.entry(OpenLineageConnection.class, new OpenLineageConnectionClassConverter()),
+            Map.entry(NatsBrokerConfig.class, new NatsBrokerConfigClassConverter()),
+            Map.entry(NatsConnection.class, new NatsConnectionClassConverter()),
             Map.entry(MatillionConnection.class, new MatillionConnectionClassConverter()),
             Map.entry(PrefectConnection.class, new PrefectConnectionClassConverter()),
             Map.entry(VertexAIConnection.class, new VertexAIConnectionClassConverter()),

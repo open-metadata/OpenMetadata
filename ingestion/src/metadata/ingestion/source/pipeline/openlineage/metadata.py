@@ -36,6 +36,9 @@ from metadata.generated.schema.entity.services.connections.pipeline.openlineage.
 from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kinesisBrokerConfig import (
     Kinesis as KinesisBrokerConfig,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.natsBrokerConfig import (
+    Nats as NatsBrokerConfig,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
     OpenLineageConnection,
 )
@@ -178,6 +181,11 @@ def deaggregate_kinesis_record(data: bytes) -> list[bytes]:
             if record_data is not None:
                 payloads.append(record_data)
     return payloads
+
+
+DEFAULT_NATS_POOL_TIMEOUT = 1.0
+DEFAULT_NATS_SESSION_TIMEOUT = 30
+DEFAULT_NATS_BATCH_SIZE = 100
 
 
 class OpenlineageSource(PipelineServiceSource):
@@ -1183,6 +1191,10 @@ class OpenlineageSource(PipelineServiceSource):
             yield from self._poll_kafka(broker)
         elif isinstance(broker, KinesisBrokerConfig):
             yield from self._poll_kinesis(broker)
+        elif isinstance(broker, NatsBrokerConfig):
+            # the base class annotates this producer as a list; the Kafka and Kinesis
+            # branches above carry the same suppression through the pyright baseline
+            yield from self._poll_nats(broker)  # pyright: ignore[reportReturnType]
         else:
             raise InvalidSourceException(f"Unsupported broker config type: {type(broker)}")
 
@@ -1298,6 +1310,70 @@ class OpenlineageSource(PipelineServiceSource):
         except Exception as e:
             logger.debug(traceback.format_exc())
             raise InvalidSourceException(f"Failed to read from Kinesis: {str(e)}")  # noqa: B904, RUF010
+
+    def _poll_nats(self, broker: NatsBrokerConfig) -> Iterable[OpenLineageEvent]:
+        """Poll events from a NATS JetStream stream."""
+        try:
+            client = self.client
+            idle_time = 0.0
+            # the schema defaults these, but a config built in code can leave them unset;
+            # `or` would also swallow a deliberate sessionTimeout of 0, which means "one
+            # empty fetch ends the run". poolTimeout and batchSize cannot be 0: the schema
+            # rejects them, because a zero wait never advances idle_time
+            pool_timeout = DEFAULT_NATS_POOL_TIMEOUT if broker.poolTimeout is None else broker.poolTimeout
+            session_timeout = DEFAULT_NATS_SESSION_TIMEOUT if broker.sessionTimeout is None else broker.sessionTimeout
+            batch_size = DEFAULT_NATS_BATCH_SIZE if broker.batchSize is None else broker.batchSize
+            while idle_time <= session_timeout:
+                messages = client.fetch(batch_size, timeout=pool_timeout)
+                if not messages:
+                    logger.debug("no new messages")
+                    idle_time += pool_timeout
+                    continue
+
+                idle_time = 0.0
+                for position, message in enumerate(messages):
+                    parsed = None
+                    try:
+                        event = message_to_open_lineage_event(json.loads(message.data))
+                        parsed = self._filter_event_by_types(
+                            event,
+                            [EventType.COMPLETE, EventType.RUNNING, EventType.START],
+                        )
+                    except Exception as e:
+                        logger.warning("Failed to parse OpenLineage event from NATS message: %s", e)
+                        logger.debug(traceback.format_exc())
+
+                    # The whole batch's acknowledgement timers start together, so tell the
+                    # server the rest are still being worked on before handing this one to
+                    # the pipeline; otherwise a slow run has them redelivered underneath it
+                    self._keep_batch_alive(client, messages[position + 1 :])
+                    if parsed:
+                        yield parsed
+
+                    # Acknowledged once the connector has handed the event on. The
+                    # ingestion pipeline reports its own failures in the run status and
+                    # does not report them back here, so redelivery covers a run that
+                    # died mid-batch, not an event the pipeline rejected.
+                    try:
+                        client.ack(message)
+                    except Exception as e:
+                        # The event stays unacknowledged and comes back next run; that is
+                        # better than losing the rest of this batch
+                        logger.warning("Failed to acknowledge a NATS message: %s", e)
+                        logger.debug(traceback.format_exc())
+
+        except Exception as e:
+            logger.debug(traceback.format_exc())
+            raise InvalidSourceException(f"Failed to read from NATS: {str(e)}")  # noqa: B904, RUF010
+
+    @staticmethod
+    def _keep_batch_alive(client: Any, pending: list[Any]) -> None:
+        """Reset the acknowledgement timer of the events still waiting in the batch."""
+        for message in pending:
+            try:
+                client.in_progress(message)
+            except Exception as e:
+                logger.debug("Could not extend the NATS acknowledgement timer: %s", e)
 
     def get_pipeline_name(self, pipeline_details: OpenLineageEvent) -> str:
         return OpenlineageSource._render_pipeline_name(pipeline_details)

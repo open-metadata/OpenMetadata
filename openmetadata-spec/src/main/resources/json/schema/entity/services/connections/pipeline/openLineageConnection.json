@@ -23,13 +23,16 @@
     },
     "brokerConfig": {
       "title": "Broker Configuration",
-      "description": "Event broker configuration. Choose between Kafka and Kinesis.",
+      "description": "Event broker configuration. Choose between Kafka, Kinesis and NATS.",
       "oneOf": [
         {
           "$ref": "openlineage/kafkaBrokerConfig.json"
         },
         {
           "$ref": "openlineage/kinesisBrokerConfig.json"
+        },
+        {
+          "$ref": "openlineage/natsBrokerConfig.json"
         }
       ]
     },

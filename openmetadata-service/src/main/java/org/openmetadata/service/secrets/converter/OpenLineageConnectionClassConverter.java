@@ -17,6 +17,7 @@ import java.util.List;
 import org.openmetadata.schema.services.connections.pipeline.OpenLineageConnection;
 import org.openmetadata.schema.services.connections.pipeline.openlineage.KafkaBrokerConfig;
 import org.openmetadata.schema.services.connections.pipeline.openlineage.KinesisBrokerConfig;
+import org.openmetadata.schema.services.connections.pipeline.openlineage.NatsBrokerConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 
 /** Converter class to get an `OpenLineageConnection` object. */
@@ -33,7 +34,7 @@ public class OpenLineageConnectionClassConverter extends ClassConverter {
 
     tryToConvertOrFail(
             openLineageConnection.getBrokerConfig(),
-            List.of(KafkaBrokerConfig.class, KinesisBrokerConfig.class))
+            List.of(KafkaBrokerConfig.class, KinesisBrokerConfig.class, NatsBrokerConfig.class))
         .ifPresent(openLineageConnection::setBrokerConfig);
 
     return openLineageConnection;
