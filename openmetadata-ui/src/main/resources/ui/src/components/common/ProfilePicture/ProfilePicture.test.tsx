@@ -11,12 +11,23 @@
  *  limitations under the License.
  */
 
+import { Avatar } from '@openmetadata/ui-core-components';
 import { findByTestId, render } from '@testing-library/react';
 import ProfilePicture from './ProfilePicture';
 
-jest.mock('../AvatarComponent/Avatar', () => {
-  return jest.fn().mockImplementation(() => <div>Avatar</div>);
-});
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Avatar: jest.fn(({ src, 'data-testid': testId, ...props }) =>
+    src ? (
+      <img alt="" data-testid="profile-image" src={src} />
+    ) : (
+      <div data-testid={testId ?? 'profile-avatar'} {...props} />
+    )
+  ),
+}));
+
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => ({ permissions: {} }),
+}));
 
 jest.mock('../../../utils/UserDataUtils', () => {
   return {
@@ -57,5 +68,27 @@ describe('Test ProfilePicture component', () => {
     const profileImage = await findByTestId(container, 'profile-image');
 
     expect(profileImage).toBeInTheDocument();
+  });
+
+  it('forwards a defined size straight to the Avatar', () => {
+    mockUseUserProfile.mockReturnValue(['', false, {}]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} size="sm" />);
+
+    expect((Avatar as jest.Mock).mock.calls[0][0]).toEqual(
+      expect.objectContaining({ size: 'sm' })
+    );
+  });
+
+  it('maps the legacy numeric width to the nearest defined size', () => {
+    mockUseUserProfile.mockReturnValue(['', false, {}]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} width="40" />);
+
+    expect((Avatar as jest.Mock).mock.calls[0][0]).toEqual(
+      expect.objectContaining({ size: 'md' })
+    );
   });
 });

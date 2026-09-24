@@ -30,6 +30,7 @@ on:
       - "pom.xml"
       - "Makefile"
       - "bootstrap/**"
+      - "docker/rdf-store/**"
       - ".github/scripts/classify_test_outcome.py"
       - ".github/workflows/integration-tests-mysql-elasticsearch.yml"
   pull_request_target:
@@ -87,6 +88,7 @@ jobs:
               - 'pom.xml'
               - 'Makefile'
               - 'bootstrap/**'
+              - 'docker/rdf-store/**'
               - '.github/scripts/classify_test_outcome.py'
               - '.github/workflows/integration-tests-mysql-elasticsearch.yml'
 
@@ -98,7 +100,7 @@ jobs:
     if: ${{ needs.changes.outputs.backend == 'true' }}
     steps:
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.7.0
+        uses: lewagon/wait-on-check-action@v1.9.1
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -118,7 +120,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Cache Maven dependencies
@@ -138,7 +140,7 @@ jobs:
       - name: Build and Bundle Integration Test Runtime
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SOURCE_SHA: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           project_version="$(mvn --quiet --non-recursive help:evaluate \
             -Dexpression=project.version -DforceStdout -Dstyle.color=never)"
@@ -184,6 +186,23 @@ jobs:
           du -h "$bundle/reactor-repository.tar.gz" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Integration Test Runtime
+        id: upload-runtime
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: java-it-build-mysql-elasticsearch-${{ github.run_id }}
+          overwrite: true
+          path: ${{ runner.temp }}/java-it-build
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+      # upload-artifact has no built-in retry, and a FinalizeArtifact 403 from the
+      # blob-storage intermediary is transient — without a second attempt it fails the
+      # build job and every lane that depends on it. overwrite: true keeps the re-upload
+      # safe even when the first attempt already staged blobs.
+      - name: Upload Integration Test Runtime (retry)
+        if: ${{ steps.upload-runtime.outcome == 'failure' }}
         uses: actions/upload-artifact@v7
         with:
           name: java-it-build-mysql-elasticsearch-${{ github.run_id }}
@@ -207,6 +226,7 @@ jobs:
           - name: global-state
           - name: multi-node
           - name: retry-queue
+          - name: rdf
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -223,7 +243,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Cache Maven dependencies

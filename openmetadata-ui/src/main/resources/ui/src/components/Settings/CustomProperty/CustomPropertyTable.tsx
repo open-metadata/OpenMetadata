@@ -26,8 +26,8 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { columnSorter } from '../../../utils/EntitySortUtils';
 import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Table from '../../common/Table/Table';
 import { ColumnsType } from '../../common/Table/Table.interface';
+import Table from '../../common/Table/TableV2';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import './custom-property-table.less';
 import { CustomPropertyTableProp } from './CustomPropertyTable.interface';
@@ -37,7 +37,8 @@ import EditCustomPropertyModal, {
 
 export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   customProperties,
-  updateEntityType,
+  onDeleteProperty,
+  onUpdateProperty,
   hasAccess,
   isLoading,
   isButtonLoading,
@@ -54,12 +55,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
     setOperation(OPERATION.NO_OPERATION);
   };
 
-  const handlePropertyDelete = () => {
-    const updatedProperties = customProperties.filter(
-      (property) => property.name !== selectedProperty.name
-    );
-    updateEntityType(updatedProperties);
-  };
+  const handlePropertyDelete = () => onDeleteProperty(selectedProperty.name);
 
   useEffect(() => {
     if (!isButtonLoading) {
@@ -68,33 +64,25 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   }, [isButtonLoading]);
 
   const handlePropertyUpdate = async (data: FormData) => {
-    const updatedProperties = customProperties.map((property) => {
-      if (property.name === selectedProperty.name) {
-        const config = data.customPropertyConfig;
-        const isEnumType = selectedProperty.propertyType.name === 'enum';
+    const config = data.customPropertyConfig;
+    const isEnumType = selectedProperty.propertyType.name === 'enum';
 
-        return {
-          ...property,
-          description: data.description,
-          displayName: data.displayName,
-          ...(config
-            ? {
-                customPropertyConfig: {
-                  config: isEnumType
-                    ? {
-                        multiSelect: Boolean(data?.multiSelect),
-                        values: config,
-                      }
-                    : (config as string[]),
-                },
-              }
-            : {}),
-        };
-      } else {
-        return property;
-      }
+    await onUpdateProperty(selectedProperty.name, {
+      description: data.description,
+      displayName: data.displayName,
+      ...(config
+        ? {
+            customPropertyConfig: {
+              config: isEnumType
+                ? {
+                    multiSelect: Boolean(data?.multiSelect),
+                    values: config,
+                  }
+                : (config as string[]),
+            },
+          }
+        : {}),
     });
-    await updateEntityType(updatedProperties);
     resetSelectedProperty();
   };
 

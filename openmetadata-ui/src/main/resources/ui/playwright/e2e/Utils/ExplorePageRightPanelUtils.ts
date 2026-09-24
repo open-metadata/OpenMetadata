@@ -48,17 +48,15 @@ export const addOwnerInKCPanel = async (page: Page, ownerName: string) => {
   const ownerTabs = page.getByTestId('select-owner-tabs');
   await ownerTabs.waitFor({ state: 'visible' });
 
-  const teamsTab = ownerTabs.locator('[data-node-key="teams"]');
-  const usersTab = ownerTabs.locator('[data-node-key="users"]');
+  const usersTab = ownerTabs.getByRole('tab', { name: 'Users' });
   const searchBar = page.getByTestId('owner-select-users-search-bar');
 
   await waitForAllLoadersToDisappear(page);
 
-  const isTeamsActive = await teamsTab.evaluate((el) =>
-    el.classList.contains('ant-tabs-tab-active')
-  );
+  const isUsersActive =
+    (await usersTab.getAttribute('aria-selected')) === 'true';
 
-  if (isTeamsActive) {
+  if (!isUsersActive) {
     await usersTab.click();
     await waitForAllLoadersToDisappear(page);
   }
@@ -74,12 +72,36 @@ export const addOwnerInKCPanel = async (page: Page, ownerName: string) => {
 
   await waitForAllLoadersToDisappear(page);
 
-  const patchResponse = page.waitForResponse(
-    (r) =>
-      r.url().includes('/api/v1/contextCenter/pages/') &&
-      r.request().method() === 'PATCH'
+  const ownerItem = page
+    .locator('[data-testid="owner-option"]')
+    .filter({ hasText: ownerName });
+  await expect(ownerItem).toBeVisible();
+
+  const isAlreadyActive = await ownerItem.evaluate((el) =>
+    el.classList.contains('active')
   );
-  await page.getByRole('listitem', { name: ownerName }).click();
-  await page.getByTestId('selectable-list-update-btn').click();
-  await patchResponse;
+  if (!isAlreadyActive) {
+    await ownerItem.click();
+  }
+  await expect(ownerItem).toHaveClass(/active/);
+
+  const updateBtn = page.getByTestId('selectable-list-update-btn');
+  await expect(updateBtn).toBeVisible();
+  await expect(updateBtn).toBeEnabled();
+
+  if (!isAlreadyActive) {
+    const patchResponse = page.waitForResponse(
+      (r) =>
+        r.url().includes('/api/v1/contextCenter/pages/') &&
+        r.request().method() === 'PATCH'
+    );
+    await updateBtn.click();
+    const response = await patchResponse;
+    expect(response.status()).toBe(200);
+  } else {
+    await updateBtn.click();
+  }
+
+  await page.getByTestId('select-owner-tabs').waitFor({ state: 'hidden' });
+  await waitForAllLoadersToDisappear(page);
 };

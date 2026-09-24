@@ -7,22 +7,30 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.it.auth.JwtAuthProvider;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -42,6 +50,7 @@ import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 
 /**
  * Integration tests for Search functionality using fluent API.
@@ -1766,23 +1775,29 @@ public class SearchResourceIT {
   // SEARCH EDGE CASES AND ERROR HANDLING
   // ===================================================================
 
+  /**
+   * A malformed {@code queryFilter} used to be logged and dropped, so the search came back 200 with
+   * every row the filter was meant to exclude. Silently widening the result set is worse than
+   * failing, so it is now rejected — see #27990.
+   */
   @Test
-  void testSearchWithMalformedQueryFilter(TestNamespace ns) throws Exception {
+  void testSearchWithMalformedQueryFilter(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
     String malformedFilter = "{\"query\": {\"invalid_syntax";
 
-    assertDoesNotThrow(
-        () -> {
-          String response =
-              client
-                  .search()
-                  .query("*")
-                  .index("table_search_index")
-                  .queryFilter(malformedFilter)
-                  .execute();
-          assertNotNull(response);
-        });
+    InvalidRequestException thrown =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                client
+                    .search()
+                    .query("*")
+                    .index("table_search_index")
+                    .queryFilter(malformedFilter)
+                    .execute());
+
+    assertTrue(thrown.getMessage().contains("queryFilter"), thrown.getMessage());
   }
 
   @Test
@@ -1801,9 +1816,11 @@ public class SearchResourceIT {
   void testSearchWithNegativeOffset(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Negative offset is invalid - Elasticsearch rejects it
+    // Negative offset is invalid - the search engine rejects it. That rejection is the caller's
+    // error, so it now arrives as a 400 rather than the 500 the engine's status used to be
+    // flattened into (#27990).
     assertThrows(
-        org.openmetadata.sdk.exceptions.ApiException.class,
+        InvalidRequestException.class,
         () -> client.search().query("*").index("table_search_index").from(-1).size(10).execute());
   }
 
@@ -1984,5 +2001,147 @@ public class SearchResourceIT {
     assertEquals(200, response.statusCode());
     String[] lines = response.body().split("\n");
     assertEquals(1, lines.length, "Export beyond results should only contain header");
+  }
+
+  // ===================================================================
+  // INDEXED ENTITY TYPES (backs the reindex entity picker)
+  // ===================================================================
+
+  @Test
+  void testEntityTypesComesFromTheIndexRegistry(TestNamespace ns) throws Exception {
+    HttpResponse<String> response = httpGetJson("/v1/search/entityTypes");
+
+    assertEquals(200, response.statusCode());
+
+    List<String> entityTypes =
+        OBJECT_MAPPER.readValue(response.body(), new TypeReference<List<String>>() {});
+
+    assertFalse(entityTypes.isEmpty(), "Entity types should not be empty");
+    assertTrue(entityTypes.contains("table"), "Entity types should contain table");
+    // tableColumn has an index mapping but was absent from the enum the UI used to hardcode.
+    // Its presence is what proves the list is read from the registry rather than copied.
+    assertTrue(entityTypes.contains("tableColumn"), "Entity types should contain tableColumn");
+    assertEquals(
+        entityTypes.stream().sorted().toList(), entityTypes, "Entity types should be sorted");
+  }
+
+  /**
+   * A dataConsumer JWT hits SubjectCache.getUserContext during authorization; if that user has not
+   * been created in this JVM session the lookup throws EntityNotFoundException (→404) and
+   * short-circuits the authorizer before it can reach the permission check. Pin the user up front so
+   * the result is deterministic regardless of suite ordering.
+   */
+  @BeforeAll
+  static void ensureDataConsumerUser() {
+    UserTestFactory.getDataConsumer(null);
+  }
+
+  @Test
+  void testEntityTypesIsReadableByApplicationViewer(TestNamespace ns) throws Exception {
+    String consumerToken =
+        JwtAuthProvider.tokenFor(
+            "data-consumer@open-metadata.org",
+            "data-consumer@open-metadata.org",
+            new String[] {"DataConsumer"},
+            3600);
+
+    HttpResponse<String> response = httpGetJson("/v1/search/entityTypes", consumerToken);
+
+    // The app details page renders for anyone with Application view permission and fetches the
+    // config schema on mount, so a non-admin viewer must not get a 403 here.
+    assertEquals(
+        200, response.statusCode(), "Application viewer should be able to list entity types");
+    assertFalse(
+        OBJECT_MAPPER.readValue(response.body(), new TypeReference<List<String>>() {}).isEmpty(),
+        "Entity types should not be empty for an Application viewer");
+  }
+
+  private HttpResponse<String> httpGetJson(String path) throws Exception {
+    return httpGetJson(path, SdkClients.getAdminToken());
+  }
+
+  private HttpResponse<String> httpGetJson(String path, String token) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + path))
+            .header("Authorization", "Bearer " + token)
+            .header("Accept", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .GET()
+            .build();
+
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  // ===================================================================
+  // MALFORMED INPUT IS THE CALLER'S ERROR, NOT A SERVER FAULT (#27990)
+  // ===================================================================
+
+  private HttpResponse<String> httpGetSearch(String path) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + path))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Accept", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .GET()
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  /**
+   * Explore replays whatever {@code q} sits in the URL. A half-typed phrase carries Lucene syntax
+   * but cannot be parsed, and used to fail the whole search with {@code all shards failed}.
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "revenue%20(draft",
+        "%22quoted%20phrase",
+        "%3Afoo*",
+        "name%3A(foo",
+        "foo%20AND",
+        "foo%5E"
+      })
+  void testUnparseableQueryStillReturnsResults(String encodedQuery) throws Exception {
+    HttpResponse<String> response =
+        httpGetSearch("/v1/search/query?q=" + encodedQuery + "&index=table_search_index");
+
+    assertEquals(
+        200,
+        response.statusCode(),
+        "unparseable q must be searched as text, got: " + response.body());
+  }
+
+  /**
+   * A {@code queryFilter} that is valid JSON but not query DSL is the caller's mistake. It used to
+   * reach the engine and come back as a 500; silently dropping it instead would widen the result
+   * set past what the caller asked for, so it is rejected.
+   */
+  @Test
+  void testMalformedQueryFilterIsRejectedAsBadRequest() throws Exception {
+    String malformedFilter =
+        URLEncoder.encode(
+            "{\"query\":{\"bool\":{\"must\":[[{\"term\":{\"entityType\":\"table\"}}]]}}}",
+            StandardCharsets.UTF_8);
+
+    HttpResponse<String> response =
+        httpGetSearch(
+            "/v1/search/query?q=*&index=table_search_index&query_filter=" + malformedFilter);
+
+    assertEquals(400, response.statusCode(), "expected a client error, got: " + response.body());
+  }
+
+  @Test
+  void testValidQueryFilterStillApplies() throws Exception {
+    String validFilter =
+        URLEncoder.encode(
+            "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}}}",
+            StandardCharsets.UTF_8);
+
+    HttpResponse<String> response =
+        httpGetSearch("/v1/search/query?q=*&index=table_search_index&query_filter=" + validFilter);
+
+    assertEquals(200, response.statusCode(), response.body());
   }
 }

@@ -89,6 +89,11 @@ export interface PipelineService {
      */
     pipelines?: EntityReference[];
     /**
+     * Deployment attributes of this service: environment, region and deployment. Set once here
+     * rather than tagged onto every asset this service ingests.
+     */
+    serviceAttributes?: ServiceAttributes;
+    /**
      * Type of pipeline service such as Airflow or Prefect...
      */
     serviceType: PipelineServiceType;
@@ -237,6 +242,8 @@ export interface PipelineConnection {
  * MuleSoft Anypoint Platform Connection Config
  *
  * Microsoft Fabric Data Factory Pipeline Connection Config
+ *
+ * Salesforce Data 360 Pipeline Connection Config
  *
  * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
  */
@@ -541,6 +548,45 @@ export interface Connection {
      * The Microsoft Fabric workspace ID where the pipelines are located.
      */
     workspaceId?: string;
+    /**
+     * Consumer key provided when you setup your Salesforce connected app
+     */
+    consumerKey?: string;
+    /**
+     * Consumer secret provided when you setup your Salesforce connected app
+     */
+    consumerSecret?: string;
+    /**
+     * Name of the Data 360 database service to use for lineage resolution
+     */
+    data360DbServiceName?: string;
+    /**
+     * Optional configuration to toggle the ingestion of Data Lake Object to Data Model Object
+     * lineage for every dataspace. This walks all Data Model Objects in the configured Data 360
+     * database service, so it is off by default.
+     */
+    includeBulkLineage?: boolean;
+    /**
+     * Pagination limit used when fetching Data 360 objects. The default value is 10, and the
+     * valid range is 1-200
+     */
+    paginationLimit?: number;
+    /**
+     * API version of the Salesforce instance
+     */
+    salesforceApiVersion?: string;
+    /**
+     * Domain of Salesforce instance
+     */
+    salesforceDomain?: string;
+    /**
+     * JSON object mapping a Data 360 connector or data source name to the OpenMetadata service
+     * that holds it, used to resolve the upstream entity of a Data Stream. Example:
+     * {"S3_Connector": "my-s3-service"}
+     */
+    serviceMapping?:            string;
+    supportsLineageExtraction?: boolean;
+    supportsUsageExtraction?:   boolean;
     /**
      * Schema name in HANA where BW/4HANA ABAP metadata tables reside (e.g. SAPHANADB). Check
      * your system with: SELECT SCHEMA_NAME FROM SYS.TABLES WHERE TABLE_NAME = 'RSOADSO'.
@@ -1517,14 +1563,21 @@ export interface DatabaseConnectionClass {
      */
     driver?: string;
     /**
-     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
-     * between the client and server will be encrypted.
+     * Request SSL/TLS encryption for the MSSQL connection. Honoured directly by mssql+pyodbc.
+     * mssql+pytds encrypts only when a CA certificate is supplied in SSL Configuration, and
+     * logs a warning otherwise. mssql+pymssql takes no TLS settings at all - encryption is
+     * decided by FreeTDS configuration.
      */
     encrypt?: boolean;
     /**
      * Host and port of the MSSQL service.
      */
     hostPort?: string;
+    /**
+     * Discover SQL Server synonyms and record them as alternate names (aliases) on the table
+     * they resolve to. Also enables alias resolution when building lineage.
+     */
+    includeSynonyms?: boolean;
     /**
      * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
      */
@@ -1565,7 +1618,9 @@ export interface DatabaseConnectionClass {
     tableFilterPattern?: FilterPattern;
     /**
      * Trust the server certificate without validation. Set to false in production to validate
-     * server certificates against the certificate authority.
+     * server certificates against the certificate authority. On mssql+pytds the certificate
+     * chain is always validated against the supplied CA certificate and only the host name
+     * check is dropped.
      */
     trustServerCertificate?: boolean;
     /**
@@ -1696,6 +1751,7 @@ export enum PipelineServiceType {
     CustomPipeline = "CustomPipeline",
     DBTCloud = "DBTCloud",
     Dagster = "Dagster",
+    Data360Pipeline = "Data360Pipeline",
     DataFactory = "DataFactory",
     DatabricksPipeline = "DatabricksPipeline",
     DomoPipeline = "DomoPipeline",
@@ -1802,6 +1858,42 @@ export enum EntityStatus {
     InReview = "In Review",
     Rejected = "Rejected",
     Unprocessed = "Unprocessed",
+}
+
+/**
+ * Deployment attributes of this service: environment, region and deployment. Set once here
+ * rather than tagged onto every asset this service ingests.
+ *
+ * Deployment attributes of a service, set once on the service rather than tagged onto each
+ * asset it ingests. Policy conditions can match on them to control who sees a service's
+ * assets.
+ */
+export interface ServiceAttributes {
+    /**
+     * Deployment or cluster identifier the source system belongs to, for example
+     * `prod-cluster-01`.
+     */
+    deployment?:  string;
+    environment?: Environment;
+    /**
+     * Geographic region the source system is hosted in, for example `us-east-1` or
+     * `europe-west2`.
+     */
+    region?: string;
+}
+
+/**
+ * Environment the source system runs in. A closed set so policies and filters can rely on
+ * it; use tags on the service for anything outside it.
+ */
+export enum Environment {
+    Development = "Development",
+    Other = "Other",
+    Production = "Production",
+    QA = "QA",
+    Sandbox = "Sandbox",
+    Staging = "Staging",
+    UAT = "UAT",
 }
 
 /**

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty } from 'lodash';
 import React, { ReactNode } from 'react';
 import type {
   ColumnsType,
@@ -37,9 +36,12 @@ export function flattenTreeRows<T>(
     const children = (record as Record<string, unknown>).children as
       | T[]
       | undefined;
+    // AntD parity: an empty `children` array is the lazy-load placeholder —
+    // the row is expandable and fetches its children on expand. Only an
+    // absent `children` key marks a leaf.
     const hasChildren = rowExpandable
       ? rowExpandable(record)
-      : !isEmpty(children);
+      : children !== undefined;
 
     rows.push({ record, depth, actualIndex, hasChildren, rowKey });
 
@@ -127,13 +129,15 @@ export function resolveColumnTitle<T>(
  */
 export function getColumnStickyStyle(
   fixed: ColumnType<unknown>['fixed'],
-  zIndex: number
+  zIndex: number,
+  // Opaque so scrolled content doesn't show through; a token so it flips in dark.
+  background = 'var(--om-color-bg-surface)'
 ): React.CSSProperties {
   if (fixed === 'left') {
-    return { background: 'white', left: 0, position: 'sticky', zIndex };
+    return { background, left: 0, position: 'sticky', zIndex };
   }
   if (fixed === 'right') {
-    return { background: 'white', position: 'sticky', right: 0, zIndex };
+    return { background, position: 'sticky', right: 0, zIndex };
   }
 
   return {};

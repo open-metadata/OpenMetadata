@@ -23,17 +23,21 @@ import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.configuration.YamlConfigurationFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.validation.Validators;
+import io.dropwizard.lifecycle.JettyManaged;
+import io.dropwizard.lifecycle.Managed;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import jakarta.validation.Validator;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.net.ServerSocket;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.hc.client5.http.auth.AuthScope;
@@ -83,6 +87,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
+import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.k3s.K3sContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -121,14 +126,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       "docker.elastic.co/elasticsearch/elasticsearch:9.3.0";
   private static final String DEFAULT_OPENSEARCH_IMAGE = "opensearchproject/opensearch:3.4.0";
 
-  // secoresearch/fuseki:5.5.0 over stain/jena-fuseki: stain's image is
-  // unmaintained (capped at 5.1.0) and missing the two 2025 admin-side CVE
-  // fixes that Jena shipped in 5.5.0 (CVE-2025-49656, CVE-2025-50151). The
-  // secoresearch image is maintained, exposes the same ADMIN_PASSWORD env
-  // var, and uses the standard Fuseki admin endpoints — JenaFusekiStorage's
-  // ensureDatasetExists() handles dataset creation via /$/datasets, so we
-  // don't need stain's `FUSEKI_DATASET_1` shortcut here.
-  private static final String DEFAULT_FUSEKI_IMAGE = "secoresearch/fuseki:5.5.0";
+  private static final String RDF_CONTAINER_IMAGE_PROPERTY = "rdfContainerImage";
+  private static final String RDF_CONTAINER_TMPFS_SIZE_PROPERTY = "rdfContainerTmpfsSize";
+  // Three TDB2 datasets and compaction generations exceed the old single-dataset 256 MiB cap.
+  private static final String DEFAULT_FUSEKI_TMPFS_SIZE = "8g";
   private static final int FUSEKI_PORT = 3030;
   private static final String FUSEKI_DATASET = "openmetadata";
   private static final String FUSEKI_ADMIN_PASSWORD = "test-admin";
@@ -148,7 +149,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static GenericContainer<?> FUSEKI_CONTAINER;
   private static GenericContainer<?> REDIS_CONTAINER;
   private static K3sContainer K3S_CONTAINER;
-  private static GenericContainer<?> MINIO_CONTAINER;
+  private static GenericContainer<?> OBJECT_STORAGE_CONTAINER;
   private static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
   private static final List<DropwizardAppExtension<OpenMetadataApplicationConfig>> ADDITIONAL_APPS =
       java.util.Collections.synchronizedList(new ArrayList<>());
@@ -283,10 +284,20 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           // tag.id; under the parallel-tests fork the tag table grows large and the default
           // 256KB sort_buffer_size overflows with "Out of sort memory" (#27649). 8MB is plenty
           // for an integration-test workload and well under the 4GB overall limit.
-          "--sort_buffer_size=8M");
+          "--sort_buffer_size=8M",
+          // MySQL 8 turns the binary log on by default, in ROW format with FULL row images and a
+          // 30-day expiry, and keeps it in the datadir — the tmpfs below. That is a second,
+          // append-only copy of every write, kept for replication and point-in-time recovery that
+          // a throwaway single-node test database never uses.
+          "--skip-log-bin");
       mysql.withStartupTimeoutSeconds(240);
       mysql.withConnectTimeoutSeconds(240);
-      mysql.withTmpFs(java.util.Map.of("/var/lib/mysql", "rw,size=2g"));
+      if (Boolean.parseBoolean(System.getProperty("dbContainerTmpfs", "true"))) {
+        // The parallel lane outgrew 2g at its very tail: InnoDB reports "The table ... is full",
+        // every COMMIT then stalls, and the lane idles into its job timeout. tmpfs only consumes
+        // memory for what is written, so the larger cap costs nothing until it is needed.
+        mysql.withTmpFs(java.util.Map.of("/var/lib/mysql", "rw,size=3g"));
+      }
       mysql.withCreateContainerCmdModifier(
           cmd ->
               cmd.getHostConfig()
@@ -340,7 +351,16 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           // under load.
           "-c",
           "work_mem=32MB");
-      postgres.withTmpFs(java.util.Map.of("/var/lib/postgresql/data", "rw,size=2g"));
+      if (Boolean.parseBoolean(System.getProperty("dbContainerTmpfs", "true"))) {
+        postgres.withTmpFs(java.util.Map.of("/var/lib/postgresql/data", "rw,size=2g"));
+      }
+      postgres.withCreateContainerCmdModifier(
+          cmd -> {
+            final long memory = Long.getLong("dbContainerMemoryBytes", 0L);
+            final long nanoCpus = Long.getLong("dbContainerNanoCpus", 0L);
+            if (memory > 0) cmd.getHostConfig().withMemory(memory);
+            if (nanoCpus > 0) cmd.getHostConfig().withNanoCPUs(nanoCpus);
+          });
       postgres.withCreateContainerCmdModifier(
           cmd ->
               cmd.getHostConfig()
@@ -475,23 +495,32 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         cacheConfig.redis.keyspace);
   }
 
+  private static String fusekiTmpfsSize() {
+    return System.getProperty(RDF_CONTAINER_TMPFS_SIZE_PROPERTY, DEFAULT_FUSEKI_TMPFS_SIZE);
+  }
+
   private void startFuseki() {
-    String image = System.getProperty("rdfContainerImage", DEFAULT_FUSEKI_IMAGE);
-    LOG.info("Starting Fuseki SPARQL container...");
-    // FUSEKI_DATASET_1 was a stain/jena-fuseki convenience env var to
-    // pre-create a dataset at container start. The maintained image we use
-    // now doesn't provide it; JenaFusekiStorage.ensureDatasetExists() creates
-    // the dataset via the /$/datasets admin endpoint on first connection
-    // instead, so the test path is fine without it.
-    FUSEKI_CONTAINER =
-        new GenericContainer<>(DockerImageName.parse(image))
+    LOG.info("Starting the configured OpenMetadata Fuseki image...");
+    FUSEKI_CONTAINER = createFusekiContainer();
+    FUSEKI_CONTAINER.start();
+
+    fusekiEndpoint =
+        String.format(
+            "http://%s:%d/%s",
+            FUSEKI_CONTAINER.getHost(),
+            FUSEKI_CONTAINER.getMappedPort(FUSEKI_PORT),
+            FUSEKI_DATASET);
+    LOG.info("Fuseki started: {}", fusekiEndpoint);
+  }
+
+  /** Creates an isolated Fuseki instance with the server's assembler and write extension. */
+  public static GenericContainer<?> createFusekiContainer() {
+    final GenericContainer<?> container =
+        fusekiContainer()
             .withExposedPorts(FUSEKI_PORT)
             .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
-            // tmpfs the TDB2 dataset dir so each container start gets a clean
-            // store and a long IT run doesn't grow the container's writable
-            // layer. secoresearch/fuseki stores datasets under /fuseki/databases
-            // by default — mounting tmpfs there keeps writes off-disk entirely.
-            .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m"))
+            .withEnv("FUSEKI_ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
+            .withEnv("JVM_ARGS", System.getProperty("rdfContainerJvmArgs", "-Xms512m -Xmx512m"))
             .waitingFor(
                 Wait.forHttp("/$/ping")
                     .forPort(FUSEKI_PORT)
@@ -505,15 +534,49 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
                             java.util.List.of(
                                 new com.github.dockerjava.api.model.Ulimit(
                                     "nofile", 65536L, 65536L))));
-    FUSEKI_CONTAINER.start();
+    if (Boolean.parseBoolean(System.getProperty("rdfContainerTmpfs", "true"))) {
+      // Scale runs opt out so disk and page-cache measurements describe persistent TDB2 storage.
+      container.withTmpFs(
+          Map.of(
+              "/fuseki/databases", "rw,size=" + fusekiTmpfsSize() + ",mode=1777",
+              "/fuseki-data", "rw,size=" + fusekiTmpfsSize() + ",mode=1777"));
+    }
+    if (Boolean.getBoolean("rdfContainerStablePort")) {
+      // Docker can allocate a different ephemeral host port on restart.
+      try (ServerSocket socket = new ServerSocket(Integer.getInteger("rdfContainerHostPort", 0))) {
+        container.setPortBindings(List.of(socket.getLocalPort() + ":" + FUSEKI_PORT));
+      } catch (IOException exception) {
+        throw new IllegalStateException("Cannot reserve a stable Fuseki test port", exception);
+      }
+    }
+    final long memoryBytes = Long.getLong("rdfContainerMemoryBytes", 0L);
+    final long nanoCpus = Long.getLong("rdfContainerNanoCpus", 0L);
+    container.withCreateContainerCmdModifier(
+        cmd -> {
+          if (memoryBytes > 0) cmd.getHostConfig().withMemory(memoryBytes);
+          if (nanoCpus > 0) cmd.getHostConfig().withNanoCPUs(nanoCpus);
+        });
+    return container;
+  }
 
-    fusekiEndpoint =
-        String.format(
-            "http://%s:%d/%s",
-            FUSEKI_CONTAINER.getHost(),
-            FUSEKI_CONTAINER.getMappedPort(FUSEKI_PORT),
-            FUSEKI_DATASET);
-    LOG.info("Fuseki started: {}", fusekiEndpoint);
+  /** The isolated test container, for scale sampling and restart verification. */
+  public static GenericContainer<?> getFusekiContainer() {
+    return FUSEKI_CONTAINER;
+  }
+
+  /** The isolated metadata database, for scale resource sampling. */
+  public static GenericContainer<?> getDatabaseContainer() {
+    return DATABASE_CONTAINER;
+  }
+
+  private static GenericContainer<?> fusekiContainer() {
+    final String image = System.getProperty(RDF_CONTAINER_IMAGE_PROPERTY);
+    if (image != null && !image.isBlank()) {
+      return new GenericContainer<>(DockerImageName.parse(image));
+    }
+    return new GenericContainer<>(
+        new ImageFromDockerfile()
+            .withFileFromPath(".", Paths.get(getProjectRoot(), "docker", "rdf-store")));
   }
 
   private void startK3s() {
@@ -583,14 +646,14 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
     createIndices();
 
-    // Start MinIO before app boot if object storage is configured to use S3 so that the
+    // Start object storage before app boot if it is configured to use S3 so that the
     // S3AssetService picks up the correct endpoint.
     if (config.getObjectStorage() != null
         && config.getObjectStorage().isEnabled()
         && "s3".equalsIgnoreCase(config.getObjectStorage().getProvider())) {
-      setupMinIO();
+      setupObjectStorage();
       if (config.getObjectStorage().getS3Configuration() != null) {
-        config.getObjectStorage().getS3Configuration().setEndpoint(getMinIOEndpoint());
+        config.getObjectStorage().getS3Configuration().setEndpoint(getObjectStorageEndpoint());
       }
     }
 
@@ -778,6 +841,18 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     rdfConfig.setPassword(FUSEKI_ADMIN_PASSWORD);
     rdfConfig.setDataset(FUSEKI_DATASET);
     rdfConfig.setMaterializedInferenceEnabled(true);
+    final Integer lineageBatchSize = Integer.getInteger("rdfLineageEdgeBatchSize");
+    if (lineageBatchSize != null) {
+      rdfConfig.setBulkLineageEdgeBatchSize(lineageBatchSize);
+    }
+    final Integer appendPayloadBytes = Integer.getInteger("rdfAppendPayloadBytes");
+    if (appendPayloadBytes != null) {
+      rdfConfig.setMaxAppendPayloadBytes(appendPayloadBytes);
+    }
+    final Integer appendEntityBatchSize = Integer.getInteger("rdfAppendEntityBatchSize");
+    if (appendEntityBatchSize != null) {
+      rdfConfig.setBulkAppendEntityBatchSize(appendEntityBatchSize);
+    }
 
     LOG.info("RDF configuration complete");
   }
@@ -839,6 +914,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
     try {
       if (FUSEKI_CONTAINER != null) {
+        if (!FUSEKI_CONTAINER.isRunning()) {
+          LOG.error("Fuseki exited during the test run:\n{}", FUSEKI_CONTAINER.getLogs());
+        }
         FUSEKI_CONTAINER.stop();
       }
     } catch (Exception e) {
@@ -870,38 +948,43 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
 
     try {
-      if (MINIO_CONTAINER != null) {
-        MINIO_CONTAINER.stop();
+      if (OBJECT_STORAGE_CONTAINER != null) {
+        OBJECT_STORAGE_CONTAINER.stop();
       }
     } catch (Exception e) {
-      LOG.warn("Error stopping MinIO container", e);
+      LOG.warn("Error stopping object storage container", e);
     }
   }
 
-  // === On-demand MinIO container for object-storage tests ===
+  // === On-demand S3 container for object-storage tests ===
 
-  public static synchronized void setupMinIO() {
-    if (MINIO_CONTAINER != null && MINIO_CONTAINER.isRunning()) {
-      LOG.info("MinIO already running at {}", getMinIOEndpoint());
+  public static synchronized void setupObjectStorage() {
+    if (OBJECT_STORAGE_CONTAINER != null && OBJECT_STORAGE_CONTAINER.isRunning()) {
+      LOG.info("Object storage already running at {}", getObjectStorageEndpoint());
       return;
     }
-    LOG.info("Starting MinIO Testcontainer on-demand...");
-    // Pin the MinIO image to a known-good release so a newly-published :latest tag
+    LOG.info("Starting S3Proxy Testcontainer on-demand...");
+    // S3Proxy stands in for MinIO, whose image was deleted from Docker Hub. It does not
+    // implement bucket lifecycle or object tagging, which S3LogStorage and the asset
+    // service already treat as best-effort. Pin the tag so a newly-published :latest
     // cannot break integration tests without a code change.
-    MINIO_CONTAINER =
-        new GenericContainer<>("minio/minio:RELEASE.2024-01-16T16-07-38Z")
+    OBJECT_STORAGE_CONTAINER =
+        new GenericContainer<>("andrewgaul/s3proxy:4.1.1")
             .withExposedPorts(9000)
-            .withEnv("MINIO_ROOT_USER", "minio")
-            .withEnv("MINIO_ROOT_PASSWORD", "minio123")
-            .withCommand("server /data")
+            .withEnv("S3PROXY_ENDPOINT", "http://0.0.0.0:9000")
+            .withEnv("S3PROXY_AUTHORIZATION", "aws-v2-or-v4")
+            .withEnv("S3PROXY_IDENTITY", "accesskey")
+            .withEnv("S3PROXY_CREDENTIAL", "secretkey")
             .waitingFor(
-                Wait.forHttp("/minio/health/live")
+                // S3Proxy has no health endpoint; an unauthenticated GET / answers 403
+                // as soon as it is serving requests.
+                Wait.forHttp("/")
                     .forPort(9000)
-                    .forStatusCode(200)
+                    .forStatusCodeMatching(code -> code == 403 || code == 200)
                     .withStartupTimeout(java.time.Duration.ofSeconds(60)));
-    MINIO_CONTAINER.start();
+    OBJECT_STORAGE_CONTAINER.start();
 
-    String endpoint = getMinIOEndpoint();
+    String endpoint = getObjectStorageEndpoint();
 
     // Create the default test bucket so tests can upload immediately.
     software.amazon.awssdk.services.s3.S3Client s3 =
@@ -910,7 +993,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
             .credentialsProvider(
                 software.amazon.awssdk.auth.credentials.StaticCredentialsProvider.create(
                     software.amazon.awssdk.auth.credentials.AwsBasicCredentials.create(
-                        "minio", "minio123")))
+                        "accesskey", "secretkey")))
             .endpointOverride(java.net.URI.create(endpoint))
             .serviceConfiguration(
                 software.amazon.awssdk.services.s3.S3Configuration.builder()
@@ -931,16 +1014,20 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
 
     // Expose endpoint to tests that read a system property / env var.
-    System.setProperty("IT_MINIO_ENDPOINT", endpoint);
+    System.setProperty("IT_S3_ENDPOINT", endpoint);
 
-    LOG.info("MinIO started at {}", endpoint);
+    LOG.info("Object storage started at {}", endpoint);
   }
 
-  public static String getMinIOEndpoint() {
-    if (MINIO_CONTAINER == null || !MINIO_CONTAINER.isRunning()) {
-      throw new IllegalStateException("MinIO container not running. Call setupMinIO() first.");
+  public static String getObjectStorageEndpoint() {
+    if (OBJECT_STORAGE_CONTAINER == null || !OBJECT_STORAGE_CONTAINER.isRunning()) {
+      throw new IllegalStateException(
+          "Object storage container not running. Call setupObjectStorage() first.");
     }
-    return "http://" + MINIO_CONTAINER.getHost() + ":" + MINIO_CONTAINER.getMappedPort(9000);
+    return "http://"
+        + OBJECT_STORAGE_CONTAINER.getHost()
+        + ":"
+        + OBJECT_STORAGE_CONTAINER.getMappedPort(9000);
   }
 
   // === Static accessor methods for tests ===
@@ -1111,6 +1198,27 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   /**
+   * Returns the application's registered {@link Managed} of the given type, if there is one.
+   *
+   * <p>Dropwizard wraps every managed object in a {@link JettyManaged}, so the instance the
+   * application built is only reachable by unwrapping the lifecycle objects. Tests use this to
+   * reach always-on background workers — typically to pause one for the duration of a class whose
+   * assertions would otherwise race it on a shared table.
+   */
+  public static <T extends Managed> Optional<T> findManagedObject(Class<T> type) {
+    if (APP == null) {
+      throw new IllegalStateException(
+          "Application is not running. Ensure TestSuiteBootstrap has initialized.");
+    }
+    return APP.getEnvironment().lifecycle().getManagedObjects().stream()
+        .filter(JettyManaged.class::isInstance)
+        .map(lifeCycle -> ((JettyManaged) lifeCycle).getManaged())
+        .filter(type::isInstance)
+        .map(type::cast)
+        .findFirst();
+  }
+
+  /**
    * Returns the admin port for accessing admin endpoints like /prometheus.
    */
   public static int getAdminPort() {
@@ -1126,6 +1234,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
    */
   public static String getBaseUrl() {
     return "http://localhost:" + getApplicationPort();
+  }
+
+  public static RdfConfiguration getRdfConfiguration() {
+    return APP.getConfiguration().getRdfConfiguration();
   }
 
   /** Hostname of the running search engine container (OpenSearch or Elasticsearch). */
@@ -1161,6 +1273,15 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           "JDBI is not initialized. Ensure TestSuiteBootstrap has initialized.");
     }
     return jdbi;
+  }
+
+  /** The dialect the suite is running against, for tests that exercise dual-dialect SQL. */
+  public static ConnectionType getConnectionType() {
+    if (DATABASE_CONTAINER == null) {
+      throw new IllegalStateException(
+          "Database is not initialized. Ensure TestSuiteBootstrap has initialized.");
+    }
+    return ConnectionType.from(DATABASE_CONTAINER.getDriverClassName());
   }
 
   public static OpenMetadataApplicationConfig createApplicationConfigCopy() {

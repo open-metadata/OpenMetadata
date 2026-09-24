@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Col, Row, Skeleton, Tabs, TabsProps } from 'antd';
+import { Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -36,6 +37,7 @@ import ProfilerSettings from '../../components/Database/Profiler/ProfilerSetting
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
@@ -43,25 +45,22 @@ import {
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
+  FqnPart,
   TabSpecificField,
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -82,7 +81,9 @@ import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { getTableList } from '../../rest/tableAPI';
 import {
   checkIfExpandViewSupported,
+  DetailsTabItem,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import databaseSchemaClassBase from '../../utils/DatabaseSchemaClassBase';
@@ -94,11 +95,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import {
   updateCertificationTag,
@@ -108,7 +105,6 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 const DatabaseSchemaPage: FunctionComponent = () => {
   const { t } = useTranslation();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const queryClient = useQueryClient();
@@ -122,37 +118,43 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   });
   const navigate = useNavigate();
 
-  const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
   const [isTabExpanded, setIsTabExpanded] = useState(false);
   const { customizedPage } = useCustomPages(PageType.DatabaseSchema);
-  const [databaseSchemaPermission, setDatabaseSchemaPermission] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [storedProcedureCount, setStoredProcedureCount] = useState(0);
   const [tableCount, setTableCount] = useState(0);
 
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
 
-  const viewDatabaseSchemaPermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        databaseSchemaPermission,
-        PermissionOperation.ViewBasic
-      ),
-    [databaseSchemaPermission]
+  // View-tier useEntityPermissions call — ungated (none of these named flags ever gated on
+  // `deleted` in the old code). Runs before {@code databaseSchema} exists because
+  // {@code databaseSchemaFields}/the entity {@code useQuery}'s `enabled` below need these
+  // view flags to even run that query (a real ordering cycle, TableDetailsPageV1.tsx
+  // precedent). `canViewBasic` (not `hasViewAccess`) matches the old code's own
+  // `getPrioritizedViewPermission(perms, Operation.ViewBasic)` call exactly — this page never
+  // used the bare ViewBasic-or-ViewAll OR.
+  const {
+    permissions: databaseSchemaPermission,
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    canViewBasic: viewDatabaseSchemaPermission,
+    canViewUsage: viewUsagePermission,
+    canViewAll: viewAllPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+  } = useEntityPermissions(
+    ResourceEntity.DATABASE_SCHEMA,
+    decodedDatabaseSchemaFQN,
+    { enabled: Boolean(decodedDatabaseSchemaFQN) }
   );
 
-  const viewUsagePermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        databaseSchemaPermission,
-        PermissionOperation.ViewUsage
-      ),
-    [databaseSchemaPermission]
-  );
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
 
   const databaseSchemaFields = useMemo(() => {
     // {@code DATABASE_SCHEMA_DEFAULT_FIELDS} matches the order
@@ -290,21 +292,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     () => databaseSchema ?? ({} as DatabaseSchema),
     [databaseSchema]
   );
-
-  const fetchDatabaseSchemaPermission = useCallback(async () => {
-    setIsPermissionsLoading(true);
-    try {
-      const response = await getEntityPermissionByFqn(
-        ResourceEntity.DATABASE_SCHEMA,
-        decodedDatabaseSchemaFQN
-      );
-      setDatabaseSchemaPermission(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsPermissionsLoading(false);
-    }
-  }, [decodedDatabaseSchemaFQN]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -491,8 +478,19 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [currentVersion, decodedDatabaseSchemaFQN]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        getEntityDetailsPath(
+          EntityType.DATABASE,
+          getPartialNameFromTableFQN(
+            decodedDatabaseSchemaFQN,
+            [FqnPart.Service, FqnPart.Database],
+            FQN_SEPARATOR_CHAR
+          )
+        )
+      ),
+    [decodedDatabaseSchemaFQN]
   );
 
   const afterDomainUpdateAction = useCallback(
@@ -536,10 +534,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [decodedDatabaseSchemaFQN, filters.showDeletedTables]);
 
   useEffect(() => {
-    fetchDatabaseSchemaPermission();
-  }, [decodedDatabaseSchemaFQN]);
-
-  useEffect(() => {
     if (viewDatabaseSchemaPermission) {
       fetchStoreProcedureCount();
       fetchTaskCounts();
@@ -556,25 +550,18 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     fetchTableCount();
   }, [filters.showDeletedTables]);
 
-  const {
-    editCustomAttributePermission,
-    viewAllPermission,
-    viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editCustomAttributePermission:
-        getPrioritizedEditPermission(
-          databaseSchemaPermission,
-          PermissionOperation.EditCustomFields
-        ) && !databaseSchema?.deleted,
-      viewAllPermission: databaseSchemaPermission.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        databaseSchemaPermission,
-        PermissionOperation.ViewCustomFields
-      ),
-    }),
-    [databaseSchemaPermission, databaseSchema]
-  );
+  // Edit-tier useEntityPermissions call — the counterpart to the view-tier call near the top
+  // of this component (see its comment for why this component calls the hook twice). This is
+  // the earliest point `deleted` exists (from {@code databaseSchema}, resolved by the entity
+  // useQuery above): `canEditCustomFields` is gated on it, matching the old code's own
+  // `&& !databaseSchema?.deleted` suffix. Both calls share one React Query cache entry (same
+  // resource/identifier), so this costs an extra derivation, not an extra fetch.
+  const { canEditCustomFields: editCustomAttributePermission } =
+    useEntityPermissions(
+      ResourceEntity.DATABASE_SCHEMA,
+      decodedDatabaseSchemaFQN,
+      { deleted: Boolean(databaseSchema?.deleted) }
+    );
 
   const handleExtensionUpdate = async (schema: DatabaseSchema) => {
     if (!databaseSchema) {
@@ -610,7 +597,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     }
   };
 
-  const tabs: TabsProps['items'] = useMemo(() => {
+  const tabs: DetailsTabItem[] = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabs = databaseSchemaClassBase.getDatabaseSchemaPageTabs({
@@ -840,8 +827,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           )}
         </ErrorPlaceHolder>
       ) : (
-        <Row gutter={[0, 12]}>
-          <Col span={24}>
+        <Box direction="col" gap={3}>
+          <div>
             {databaseSchemaLoading || !databaseSchema ? (
               <Skeleton
                 active
@@ -871,7 +858,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 onVersionClick={versionHandler}
               />
             )}
-          </Col>
+          </div>
           <GenericProvider<DatabaseSchema>
             customizedPage={customizedPage}
             data={databaseSchema ?? ({} as DatabaseSchema)}
@@ -879,16 +866,30 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             permissions={databaseSchemaPermission}
             type={EntityType.DATABASE_SCHEMA}
             onUpdate={handleUpdateDatabaseSchema}>
-            <Col className="entity-details-page-tabs" span={24}>
+            <div className="entity-details-page-tabs">
               <Tabs
-                activeKey={activeTab}
-                className="tabs-new"
+                className="tw:gap-3"
                 data-testid="tabs"
-                items={tabs}
-                tabBarExtraContent={expandButton}
-                onChange={activeTabHandler}
-              />
-            </Col>
+                selectedKey={getRenderedActiveTab(tabs, activeTab)}
+                onSelectionChange={(key) => activeTabHandler(String(key))}>
+                <Tabs.List
+                  actions={expandButton}
+                  size="sm"
+                  type="underline"
+                  variant="card">
+                  {tabs.map(({ key, label }) => (
+                    <Tabs.Item id={key} key={key}>
+                      {label}
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
+                {tabs.map(({ key, children }) => (
+                  <Tabs.Panel id={key} key={key}>
+                    {children}
+                  </Tabs.Panel>
+                ))}
+              </Tabs>
+            </div>
           </GenericProvider>
           {updateProfilerSetting && (
             <ProfilerSettings
@@ -898,7 +899,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               onVisibilityChange={(value) => setUpdateProfilerSetting(value)}
             />
           )}
-        </Row>
+        </Box>
       )}
     </PageLayoutV1>
   );

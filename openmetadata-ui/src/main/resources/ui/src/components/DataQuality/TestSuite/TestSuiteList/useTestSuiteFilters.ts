@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty } from 'lodash';
+import { isEmpty, isEqual } from 'lodash';
 import QueryString from 'qs';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/entity/type';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import {
@@ -74,10 +75,19 @@ export const useTestSuiteFilters = ({ tab }: UseTestSuiteFiltersProps) => {
     value: string,
     key: keyof TestSuiteSearchParams
   ) => {
+    const nextValue = isEmpty(value) ? undefined : value;
+
     navigate({
       search: QueryString.stringify({
+        // `params` is the whole query string, so it also carries usePaging's
+        // `currentPage`. A changed value yields a different result set, and
+        // keeping the old page would request an offset past its end. An
+        // unchanged one (e.g. clearing an owner that isn't set) keeps the page.
         ...params,
-        [key]: isEmpty(value) ? undefined : value,
+        [key]: nextValue,
+        ...(isEqual(params[key], nextValue)
+          ? {}
+          : { currentPage: INITIAL_PAGING_VALUE }),
       }),
     });
   };

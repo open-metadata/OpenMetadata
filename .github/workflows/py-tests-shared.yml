@@ -63,15 +63,16 @@ jobs:
     if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     outputs:
       python: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.python }}
+      e2e: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.e2e }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         if: ${{ github.event_name == 'merge_group' }}
         with:
           fetch-depth: 0
           filter: blob:none
           persist-credentials: false
-      - uses: dorny/paths-filter@v4
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
         id: filter
         if: ${{ github.event_name == 'pull_request_target' || github.event_name == 'merge_group' }}
         with:
@@ -79,15 +80,28 @@ jobs:
           filters: |
             python:
               - 'ingestion/**'
+              - '.github/workflows/py-tests.yml'
               - '.github/workflows/py-tests-shared.yml'
+              - '.github/workflows/py-cli-e2e-tests-v2.yml'
+              - '.github/actions/setup-openmetadata-test-environment/action.yml'
               - 'openmetadata-spec/**'
               - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/**'
               - 'openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchMessageBodyReader.java'
               - 'openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchProvider.java'
               - 'openmetadata-service/src/main/java/org/openmetadata/service/ResourceRegistry.java'
+            e2e:
+              - 'ingestion/tests/cli_e2e_v2/**'
+              - 'ingestion/pyproject.toml'
+              - 'ingestion/setup.py'
+              - 'ingestion/src/_openmetadata_testutils/pytest_openmetadata/**'
+              - 'openmetadata-spec/src/main/resources/json/schema/**'
+              - '.github/workflows/py-tests.yml'
+              - '.github/workflows/py-tests-shared.yml'
+              - '.github/workflows/py-cli-e2e-tests-v2.yml'
+              - '.github/actions/setup-openmetadata-test-environment/action.yml'
 
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.7.0
+        uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
         if: ${{ github.event_name == 'pull_request_target' && steps.filter.outputs.python == 'true' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -96,7 +110,7 @@ jobs:
           wait-interval: 30
 
       - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        uses: jesusvasquez333/verify-pr-label-action@657d111bbbe13e22bbd55870f1813c699bde1401 # v1.4.0
         if: ${{ github.event_name == 'pull_request_target' && steps.filter.outputs.python == 'true' }}
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
@@ -113,14 +127,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           allow-unsafe-pr-checkout: true
           persist-credentials: false
 
       - name: Setup JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -128,7 +142,7 @@ jobs:
       # Restore-only: pull_request_target / merge_group writes are scoped to refs no
       # other run can read, so saving would only consume the repo's cache quota.
       - name: Restore Maven dependencies
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -143,7 +157,7 @@ jobs:
         shell: bash
 
       - name: Upload backend distribution
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: openmetadata-backend-distribution
           path: openmetadata-dist/target/openmetadata-*.tar.gz
@@ -163,7 +177,7 @@ jobs:
     steps:
       - name: Restore spaCy model wheel
         id: spacy-model-cache
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: .cache/spacy-model
           key: spacy-model-${{ env.SPACY_MODEL_VERSION }}-${{ env.SPACY_MODEL_SHA256 }}
@@ -180,7 +194,7 @@ jobs:
         shell: bash
 
       - name: Upload spaCy model wheel
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: spacy-en-model
           path: .cache/spacy-model/*.whl
@@ -200,7 +214,7 @@ jobs:
         py-version: ["3.10", "3.11", "3.12"]
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           allow-unsafe-pr-checkout: true
@@ -212,10 +226,21 @@ jobs:
           install-server: 'false'
 
       - name: Download spaCy model
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: spacy-en-model
           path: /tmp/spacy-model
+
+      # pull_request_target runs main's workflow against release-branch heads (2.0, 1.13)
+      # that predate the cli_e2e_v2 framework, so skip when the suite isn't checked out.
+      - name: Run offline E2E framework tests
+        if: ${{ matrix.py-version == '3.10' && needs.changes.outputs.e2e == 'true' && hashFiles('ingestion/tests/cli_e2e_v2/meta/**') != '' }}
+        run: |
+          source env/bin/activate
+          cd ingestion
+          env -u OM_JWT_TOKEN OM_SERVER_URL=http://127.0.0.1:1/api \
+            python -m pytest tests/cli_e2e_v2/meta -q
+        shell: bash
 
       - name: Install and verify spaCy model
         run: |
@@ -272,7 +297,7 @@ jobs:
       - name: Upload test results
         if: ${{ always() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: ${{ inputs.artifact-prefix }}-unit-test-results-${{ matrix.py-version }}
           path: |
@@ -288,7 +313,7 @@ jobs:
       - name: Upload coverage artifact
         if: ${{ matrix.py-version == env.MAIN_PYTHON_VERSION && !cancelled() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: coverage-unit
           path: ingestion/.coverage
@@ -356,7 +381,7 @@ jobs:
           docker-images: false
 
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           allow-unsafe-pr-checkout: true
@@ -367,7 +392,7 @@ jobs:
 
       # Must precede the setup action, which builds the server image from this tarball.
       - name: Download backend distribution
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: openmetadata-backend-distribution
           path: openmetadata-dist/target
@@ -379,14 +404,12 @@ jobs:
           args: ${{ inputs.compose-args }}
 
       - name: Download spaCy model
-        if: matrix.shard.name == 'shard-1'
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: spacy-en-model
           path: /tmp/spacy-model
 
       - name: Install and verify spaCy model
-        if: matrix.shard.name == 'shard-1'
         run: |
           source env/bin/activate
           uv pip install --no-deps /tmp/spacy-model/*.whl
@@ -439,7 +462,7 @@ jobs:
       - name: Upload coverage artifact
         if: ${{ inputs.run-coverage && matrix.py-version == env.MAIN_PYTHON_VERSION && !cancelled() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: coverage-integration-${{ matrix.shard.name }}
           path: ingestion/.coverage
@@ -448,7 +471,7 @@ jobs:
       - name: Upload test results
         if: ${{ always() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: ${{ inputs.artifact-prefix }}-integration-test-results-${{ matrix.shard.name }}-${{ matrix.py-version }}
           path: |
@@ -488,7 +511,7 @@ jobs:
       - name: Upload runner and service diagnostics
         if: ${{ failure() || cancelled() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: ${{ inputs.artifact-prefix }}-integration-diagnostics-${{ matrix.shard.name }}-${{ matrix.py-version }}
           path: ${{ runner.temp }}/python-ci-diagnostics/
@@ -556,7 +579,7 @@ jobs:
     continue-on-error: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           allow-unsafe-pr-checkout: true
@@ -564,7 +587,7 @@ jobs:
           filter: blob:none
           persist-credentials: false
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ env.MAIN_PYTHON_VERSION }}
 
@@ -580,7 +603,7 @@ jobs:
         shell: bash
 
       - name: Download coverage artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           pattern: coverage-*
           path: ingestion/coverage-data/
@@ -611,7 +634,7 @@ jobs:
         id: push-to-sonar
         if: ${{ github.event_name == 'pull_request_target'}}
         continue-on-error: true
-        uses: SonarSource/sonarqube-scan-action@v7
+        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2 # v7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}

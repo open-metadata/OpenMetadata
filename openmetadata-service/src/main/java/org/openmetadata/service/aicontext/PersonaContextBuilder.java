@@ -35,6 +35,7 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.data.MetricAssetDirection;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Page;
@@ -53,6 +54,8 @@ import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
 import org.openmetadata.schema.type.personaContext.ContextRule;
 import org.openmetadata.schema.type.personaContext.ContextSection;
+import org.openmetadata.schema.type.personaContext.SearchScope;
+import org.openmetadata.schema.type.personaContext.SearchScopeRule;
 import org.openmetadata.schema.type.personaContext.SharedKnowledge;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -60,6 +63,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataProductRepository;
+import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
@@ -71,9 +75,10 @@ public class PersonaContextBuilder {
   static final int MAX_SHARED_KNOWLEDGE_ITEMS = 500;
   private static final int SEARCH_BATCH_SIZE = 100;
   private static final int DATA_PRODUCT_ASSET_BATCH_SIZE = 1000;
+  static final int METRIC_ASSET_BATCH_SIZE = 1000;
   private static final int DEFAULT_MAX_ASSETS = 200;
-  private static final Set<String> KNOWLEDGE_ENTITY_TYPES =
-      Set.of(Entity.GLOSSARY_TERM, Entity.PAGE, Entity.METRIC);
+  private static final List<String> KNOWLEDGE_ENTITY_TYPES =
+      List.of(Entity.GLOSSARY_TERM, Entity.PAGE, Entity.METRIC);
   private static final Set<String> ASSET_ENTITY_TYPES =
       Set.of(
           Entity.TABLE,
@@ -156,7 +161,8 @@ public class PersonaContextBuilder {
         new PersonaContext()
             .withPersona(persona.getEntityReference())
             .withGeneratedAt(System.currentTimeMillis())
-            .withSharedKnowledge(sharedKnowledge);
+            .withSharedKnowledge(sharedKnowledge)
+            .withSearchScope(searchScope(definition));
     return PersonaContextMarkdown.render(
         persona, definition, materializedRules, context, knowledge.overflowed());
   }
@@ -185,7 +191,7 @@ public class PersonaContextBuilder {
     orderedRules.sort(
         Comparator.comparing(rule -> !Boolean.TRUE.equals(rule.getAlwaysInContext())));
     for (ContextRule rule : orderedRules) {
-      if (!Boolean.TRUE.equals(rule.getEnabled())) {
+      if (!Boolean.TRUE.equals(rule.getEnabled()) || isFilteredInSearch(rule)) {
         continue;
       }
       RuleSearchResult matches = search(rule);
@@ -275,6 +281,99 @@ public class PersonaContextBuilder {
           exception);
     }
     return new RuleSearchResult(matched, documents);
+  }
+
+  /**
+   * A rule delivered as a search scope contributes its selection to every AI search instead of
+   * preloading its entities. Absent means false so rules stored before the field keep preloading.
+   *
+   * <p>Knowledge rules can never be search-scoped, whatever the flag says. Their whole purpose is to
+   * be in context, so scoping one would silently drop the glossary terms, articles or metrics it
+   * carries out of the document. Enforced here rather than only at the API boundary so a rule stored
+   * with the flag already set cannot resurrect the behaviour.
+   */
+  static boolean isFilteredInSearch(ContextRule rule) {
+    return Boolean.TRUE.equals(rule.getFilteredInSearch())
+        && !isKnowledgeEntityType(rule.getEntityType());
+  }
+
+  /**
+   * Builds the default search scope from the persona's filteredInSearch rules. Each rule becomes an
+   * {@code entityType AND its own filter} clause and the clauses are unioned, so a persona whose
+   * only scoped rule selects tables can search those tables and nothing else. Returns an empty
+   * scope — meaning unscoped search — when no enabled rule opts in.
+   */
+  public static SearchScope searchScope(PersonaContextDefinition definition) {
+    SearchScope scope =
+        new SearchScope().withEntityTypes(new LinkedHashSet<>()).withRules(new ArrayList<>());
+    if (!Boolean.TRUE.equals(definition.getEnabled())) {
+      return scope;
+    }
+    List<Object> clauses = new ArrayList<>();
+    Set<String> entityTypes = new LinkedHashSet<>();
+    Set<String> preloadedAssetTypes = new LinkedHashSet<>();
+    for (ContextRule rule : listOrEmpty(definition.getRules())) {
+      if (!Boolean.TRUE.equals(rule.getEnabled()) || nullOrEmpty(rule.getEntityType())) {
+        continue;
+      }
+      if (isFilteredInSearch(rule)) {
+        clauses.add(scopeClause(rule));
+        entityTypes.add(rule.getEntityType());
+        scope
+            .getRules()
+            .add(
+                new SearchScopeRule()
+                    .withRuleName(rule.getName())
+                    .withEntityType(rule.getEntityType())
+                    .withQueryFilter(rule.getQueryFilter()));
+      } else if (ASSET_ENTITY_TYPES.contains(rule.getEntityType())) {
+        preloadedAssetTypes.add(rule.getEntityType());
+      }
+    }
+    if (clauses.isEmpty()) {
+      return scope;
+    }
+    addPassthroughEntityTypes(clauses, entityTypes, preloadedAssetTypes);
+    Map<String, Object> union = Map.of("should", clauses, "minimum_should_match", 1);
+    List<Object> filters = new ArrayList<>();
+    filters.add(Map.of("term", Map.of("deleted", false)));
+    filters.add(Map.of("bool", union));
+    return scope
+        .withEntityTypes(entityTypes)
+        .withQueryFilter(
+            JsonUtils.pojoToJson(Map.of("query", Map.of("bool", Map.of("filter", filters)))));
+  }
+
+  private static void addPassthroughEntityTypes(
+      List<Object> clauses, Set<String> entityTypes, Set<String> preloadedAssetTypes) {
+    Set<String> passthroughEntityTypes = new LinkedHashSet<>(preloadedAssetTypes);
+    passthroughEntityTypes.addAll(KNOWLEDGE_ENTITY_TYPES);
+    for (String entityType : passthroughEntityTypes) {
+      clauses.add(Map.of("term", Map.of("entityType", entityType)));
+      entityTypes.add(entityType);
+    }
+  }
+
+  private static Object scopeClause(ContextRule rule) {
+    List<Object> filters = new ArrayList<>();
+    filters.add(Map.of("term", Map.of("entityType", rule.getEntityType())));
+    JsonNode ruleFilter = ruleFilterQuery(rule.getQueryFilter());
+    if (ruleFilter != null) {
+      filters.add(ruleFilter);
+    }
+    return Map.of("bool", Map.of("filter", filters));
+  }
+
+  private static JsonNode ruleFilterQuery(String queryFilter) {
+    if (nullOrEmpty(queryFilter)) {
+      return null;
+    }
+    JsonNode parsed = JsonUtils.readTree(queryFilter);
+    if (parsed == null || !parsed.isObject()) {
+      throw new IllegalArgumentException("Persona context queryFilter must be a JSON object");
+    }
+    JsonNode query = parsed.has("query") ? parsed.get("query") : parsed;
+    return query.isEmpty() ? null : query;
   }
 
   static String activeEntityFilter(String queryFilter) {
@@ -446,8 +545,7 @@ public class PersonaContextBuilder {
     String entityType = rule.getEntityType();
     String fqn = stringValue(document.get("fullyQualifiedName"));
     try {
-      EntityInterface entity =
-          Entity.getEntityByName(entityType, fqn, knowledgeFields(entityType), Include.NON_DELETED);
+      EntityInterface entity = loadKnowledgeEntity(entityType, fqn);
       KnowledgeItem item = fullKnowledgeItem(entityType, entity);
       if (item == null) {
         return null;
@@ -468,10 +566,43 @@ public class PersonaContextBuilder {
     }
   }
 
-  private static String knowledgeFields(String entityType) {
+  private static EntityInterface loadKnowledgeEntity(String entityType, String fqn) {
+    EntityInterface entity =
+        Entity.getEntityByName(entityType, fqn, knowledgeFields(entityType), Include.NON_DELETED);
+    if (entity instanceof Metric metric) {
+      MetricRepository repository = (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
+      loadMetricAssets(metric, repository);
+    }
+    return entity;
+  }
+
+  static void loadMetricAssets(Metric metric, MetricRepository repository) {
+    List<EntityReference> assets = new ArrayList<>();
+    int offset = 0;
+    ResultList<MetricAssetDirection> page;
+    do {
+      page =
+          repository.listAssets(metric.getId(), METRIC_ASSET_BATCH_SIZE, offset, null, null, null);
+      List<MetricAssetDirection> linkedAssets = listOrEmpty(page.getData());
+      linkedAssets.stream()
+          .map(MetricAssetDirection::getAsset)
+          .filter(asset -> asset != null)
+          .forEach(assets::add);
+      offset += linkedAssets.size();
+    } while (hasNextMetricAssetPage(page, offset));
+    metric.setAssets(List.copyOf(assets));
+  }
+
+  private static boolean hasNextMetricAssetPage(ResultList<MetricAssetDirection> page, int offset) {
+    return page.getPaging() != null
+        && !nullOrEmpty(page.getData())
+        && offset < page.getPaging().getTotal();
+  }
+
+  static String knowledgeFields(String entityType) {
     return switch (entityType) {
       case Entity.PAGE -> "owners,tags,relatedEntities";
-      case Entity.METRIC -> "owners,tags,assets,relatedMetrics";
+      case Entity.METRIC -> "owners,tags,relatedMetrics";
       case Entity.GLOSSARY_TERM -> "owners,tags,relatedTerms";
       default -> "";
     };

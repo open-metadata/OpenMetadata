@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/teams/team.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Team",
   "description": "This schema defines the Team entity. A `Team` is a group of zero or more users and/or other teams. Teams can own zero or more data assets. Hierarchical teams are supported `Organization` -> `BusinessUnit` -> `Division` -> `Department`.",
   "type": "object",
@@ -82,6 +82,10 @@
     },
     "children" : {
       "description" : "Children teams. An `Organization` can have `BusinessUnit`, `Division` or `Department` as children. A `BusinessUnit` can have `BusinessUnit`, `Division`, or `Department` as children. A `Division` can have `Division` or `Department` as children. A `Department` can have `Department` as children.",
+      "$ref" : "../../type/entityReferenceList.json"
+    },
+    "descendantTeams" : {
+      "description" : "All teams nested under this team, resolved recursively (the full subtree, excluding this team itself). Computed on read; not stored.",
       "$ref" : "../../type/entityReferenceList.json"
     },
     "users": {

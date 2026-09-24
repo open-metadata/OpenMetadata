@@ -23,8 +23,8 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import DisplayName from '../../components/common/DisplayName/DisplayName';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import TableAntd from '../../components/common/Table/Table';
 import { ColumnsType } from '../../components/common/Table/Table.interface';
+import TableAntd from '../../components/common/Table/TableV2';
 import { useGenericContext } from '../../components/Customization/GenericProvider/GenericContext';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import {
@@ -42,7 +42,6 @@ import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
-import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
@@ -57,14 +56,13 @@ import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { getEntityBulkEditPath } from '../../utils/EntityPureUtils';
-import { highlightSearchText } from '../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../utils/EntitySortUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import {
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
-import { stringToHTML } from '../../utils/StringUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import {
   certificationTableObject,
   dataProductTableObject,
@@ -112,9 +110,23 @@ function SchemaTablesTab({
   const allowEditDisplayNamePermission = useMemo(() => {
     return (
       !isVersionView &&
-      getPrioritizedEditPermission(permissions.table, Operation.EditDisplayName)
+      getDerivedPermissionFlags(permissions.table).canEditDisplayName
     );
   }, [permissions, isVersionView]);
+
+  // Resource-level permission (usePermissionProvider().permissions.table, itself
+  // OperationPermission-shaped) run through getDerivedPermissionFlags per the Batch 8
+  // ContextCenter-trio precedent — the fetch stays untouched (still a plain object off the
+  // provider), only the raw `.EditAll` read is replaced. Deleted-gated: the old raw
+  // expression explicitly ANDed `!databaseSchemaDetails.deleted`.
+  const canBulkEditTables = useMemo(
+    () =>
+      getDerivedPermissionFlags(
+        permissions.table,
+        databaseSchemaDetails.deleted
+      ).canEditAll,
+    [permissions.table, databaseSchemaDetails.deleted]
+  );
 
   const searchValue = useMemo(() => {
     const param = location.search;
@@ -127,10 +139,9 @@ function SchemaTablesTab({
 
   const { viewDatabaseSchemaPermission } = useMemo(
     () => ({
-      viewDatabaseSchemaPermission: getPrioritizedViewPermission(
-        databaseSchemaPermission,
-        Operation.ViewBasic
-      ),
+      viewDatabaseSchemaPermission: getDerivedPermissionFlags(
+        databaseSchemaPermission
+      ).canViewBasic,
     }),
     [databaseSchemaPermission]
   );
@@ -259,7 +270,7 @@ function SchemaTablesTab({
         render: (_, record: Table) => {
           return (
             <DisplayName
-              displayName={stringToHTML(
+              displayName={renderHighlightedText(
                 highlightSearchText(record.displayName, searchValue)
               )}
               hasEditPermission={allowEditDisplayNamePermission}
@@ -269,7 +280,9 @@ function SchemaTablesTab({
                 EntityType.TABLE,
                 record.fullyQualifiedName as string
               )}
-              name={stringToHTML(highlightSearchText(record.name, searchValue))}
+              name={renderHighlightedText(
+                highlightSearchText(record.name, searchValue)
+              )}
               onEditDisplayName={handleDisplayNameUpdate}
             />
           );
@@ -378,10 +391,7 @@ function SchemaTablesTab({
               </Typography.Text>
             </span>
 
-            {getBulkEditButton(
-              permissions.table.EditAll && !databaseSchemaDetails.deleted,
-              handleEditTable
-            )}
+            {getBulkEditButton(canBulkEditTables, handleEditTable)}
           </>
         )
       }

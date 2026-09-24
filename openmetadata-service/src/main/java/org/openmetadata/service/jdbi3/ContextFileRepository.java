@@ -13,6 +13,7 @@ import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
@@ -43,6 +44,9 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   public static final String CONTEXT_FILE_ENTITY = "contextFile";
   private static final String DUPLICATE_FILE_NAME_MESSAGE =
       "A file named '%s' already exists in this folder.";
+  private static final String ARCHIVED_FILE_NAME_MESSAGE =
+      "A file named '%s' is in the Archive. Restore it, or permanently delete it from the Archive, "
+          + "before adding a file with this name.";
   private final AssetRepository assetRepository;
   private final ContextFileContentRepository contentRepository;
   private final CollectionDAO.ContextFileDAO contextFileDAO;
@@ -75,11 +79,23 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   public void setFields(
       ContextFile file, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     file.setFolder(fields.contains("folder") ? getFolder(file) : file.getFolder());
+    if (fields.contains("memoryCount")) {
+      file.setMemoryCount(
+          findTo(
+                  file.getId(),
+                  CONTEXT_FILE_ENTITY,
+                  Relationship.MENTIONED_IN,
+                  Entity.CONTEXT_MEMORY)
+              .size());
+    }
   }
 
   @Override
   public void clearFields(ContextFile file, EntityUtil.Fields fields) {
     file.setFolder(fields.contains("folder") ? file.getFolder() : null);
+    if (!fields.contains("memoryCount")) {
+      file.setMemoryCount(null);
+    }
   }
 
   @Override
@@ -91,6 +107,14 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     if (fields.contains("folder")) {
       var folderMap = batchFetchFromIdsAndRelationSingleRelation(entities, Relationship.CONTAINS);
       entities.forEach(file -> file.setFolder(folderMap.get(file.getId())));
+    }
+
+    if (fields.contains("memoryCount")) {
+      // Batched: the per-entity path in setFields would be one query per file here.
+      Map<UUID, Integer> countsByFileId =
+          MemoryCountFetcher.countByEntityId(
+              daoCollection, entityListToStrings(entities), CONTEXT_FILE_ENTITY);
+      entities.forEach(file -> file.setMemoryCount(countsByFileId.getOrDefault(file.getId(), 0)));
     }
 
     fetchAndSetFields(entities, fields);
@@ -114,6 +138,12 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     if (file.getFolder() != null) {
       Folder folder = Entity.getEntity(file.getFolder(), "", Include.NON_DELETED);
       file.setFolder(folder.getEntityReference());
+    }
+    // Enforce name uniqueness at the create chokepoint so every create path (REST create, upload,
+    // import) gets the actionable error rather than a raw DB unique-constraint 409. Skipped on
+    // update: a same-name PUT resolves to the existing row (restore), and move validates itself.
+    if (!update) {
+      validateNoDuplicateFileName(file.getName(), file.getFolder(), null);
     }
   }
 
@@ -146,6 +176,27 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
           CONTEXT_FILE_ENTITY,
           Relationship.CONTAINS);
     }
+  }
+
+  // Knowledge-pill cleanup runs in the *AdditionalChildren hooks rather than postDelete because
+  // those fire while the file -> memory MENTIONED_IN edges still exist. postDelete runs after
+  // cleanup() has already deleted those edges on a hard delete, so a findTo there would match
+  // nothing and orphan the pills. Both hooks hard-delete: a pill is regenerable from its source,
+  // so a deleted file must leave none behind in either form. Mirrors KnowledgePageRepository.
+  @Override
+  @Transaction
+  protected void softDeleteAdditionalChildren(UUID fileId, String deletedBy) {
+    contextMemoryRepository().deleteExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
+  }
+
+  @Override
+  @Transaction
+  protected void hardDeleteAdditionalChildren(UUID fileId, String deletedBy) {
+    contextMemoryRepository().deleteExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
+  }
+
+  private ContextMemoryRepository contextMemoryRepository() {
+    return (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
   }
 
   @Override
@@ -220,6 +271,9 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
       recordChange("fileType", original.getFileType(), updated.getFileType());
       recordChange(
           "processingStatus", original.getProcessingStatus(), updated.getProcessingStatus());
+      recordChange("processingError", original.getProcessingError(), updated.getProcessingError());
+      recordChange(
+          "extractionStats", original.getExtractionStats(), updated.getExtractionStats(), true);
       recordChange("extractedText", original.getExtractedText(), updated.getExtractedText());
       recordChange("pageCount", original.getPageCount(), updated.getPageCount());
       updateFolder();
@@ -295,6 +349,15 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
             fileName.trim(), folderId, excludedId, Relationship.CONTAINS.ordinal());
     if (count > 0) {
       throw new BadRequestException(String.format(DUPLICATE_FILE_NAME_MESSAGE, fileName.trim()));
+    }
+    // A soft-deleted (archived) file keeps its name reserved so it can still be restored, so a
+    // same-name create would otherwise fail the DB unique constraint with a generic "Entity already
+    // exists". Detect it here and tell the user where to resolve it instead.
+    int archivedCount =
+        contextFileDAO.countArchivedByFileNameInFolder(
+            fileName.trim(), folderId, excludedId, Relationship.CONTAINS.ordinal());
+    if (archivedCount > 0) {
+      throw new BadRequestException(String.format(ARCHIVED_FILE_NAME_MESSAGE, fileName.trim()));
     }
   }
 

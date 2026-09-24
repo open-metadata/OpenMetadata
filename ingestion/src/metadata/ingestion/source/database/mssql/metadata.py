@@ -23,6 +23,7 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
 )
@@ -36,7 +37,10 @@ from metadata.generated.schema.type.basic import EntityName, Markdown
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.common_db_source import (
+    CommonDbSourceService,
+    TableNameAndType,
+)
 from metadata.ingestion.source.database.mssql.models import (
     STORED_PROC_LANGUAGE_MAP,
     MssqlStoredProcedure,
@@ -45,9 +49,14 @@ from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_DATABASE,
     MSSQL_GET_DATABASE_COMMENTS,
     MSSQL_GET_ENCRYPTED_STORED_PROCEDURES,
+    MSSQL_GET_INDEXED_VIEWS,
     MSSQL_GET_SCHEMA_COMMENTS,
     MSSQL_GET_STORED_PROCEDURE_COMMENTS,
     MSSQL_GET_STORED_PROCEDURES,
+)
+from metadata.ingestion.source.database.mssql.synonyms import (
+    SynonymMap,
+    build_synonym_map,
 )
 from metadata.ingestion.source.database.mssql.utils import (
     get_columns,
@@ -85,7 +94,10 @@ MSDialect.get_all_view_definitions = get_all_view_definitions
 MSDialect.get_all_table_comments = get_all_table_comments
 MSDialect.get_columns = get_columns
 MSDialect.get_pk_constraint = get_pk_constraint
-MSDialect.get_unique_constraints = get_unique_constraints
+# db_plus_owner widens the reflection signature with the database and owner it
+# resolves, so the dialect's own narrower one no longer matches - as it already
+# does not for the primary key and foreign key readers above.
+MSDialect.get_unique_constraints = get_unique_constraints  # pyright: ignore[reportAttributeAccessIssue]
 MSDialect.get_foreign_keys = get_foreign_keys
 MSDialect.get_table_names = get_table_names
 MSDialect.get_view_names = get_view_names
@@ -110,6 +122,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         self.database_desc_map = {}
         self.stored_procedure_desc_map = {}
         self.encrypted_procedures_cache: dict[tuple[str, str], set[str]] = {}
+        self.synonym_map = SynonymMap()
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
@@ -190,6 +203,44 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         )
         return Markdown(description) if description else None
 
+    def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
+        """
+        Report indexed views as materialized views.
+
+        An MSSQL indexed view is persisted on disk and kept up to date by the
+        engine - materialized in everything but name - so describing it as a
+        plain view understates it. Both types are handled identically everywhere
+        else in the catalogue (view definition, view lineage), so only the
+        reported type changes.
+        """
+        indexed_views = self._get_indexed_views(schema_name)
+        return [
+            TableNameAndType(
+                name=view_name,
+                type_=TableType.MaterializedView if view_name in indexed_views else TableType.View,
+            )
+            for view_name in self.inspector.get_view_names(schema_name) or []
+        ]
+
+    def _get_indexed_views(self, schema_name: str) -> set[str]:
+        """
+        Names of the views in a schema carrying the unique clustered index that
+        makes a view indexed. A failure here only costs the finer type, so it is
+        logged and every view stays a plain view.
+        """
+        try:
+            with self.engine.connect() as conn:
+                results = conn.execute(text(MSSQL_GET_INDEXED_VIEWS), {"schema_name": schema_name}).all()
+            return {row.view_name for row in results}
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                "Could not detect indexed views for schema %s; they will be reported as plain views: %s",
+                schema_name,
+                exc,
+            )
+            return set()
+
     def get_database_names_raw(self) -> Iterable[str]:
         yield from self._execute_database_query(MSSQL_GET_DATABASE)
 
@@ -198,6 +249,12 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         Reset the per-database encrypted-procedure cache and load the description
         maps. Descriptions are optional metadata, so a failure here must not
         abort the run: it is logged and ingestion continues without them.
+
+        Every description query is scoped to the connected database (they select
+        DB_NAME() and read that database's sys catalogue), so the inspector must
+        already point at the database being ingested when this runs. Loading
+        before the switch keys the maps by the previously connected database,
+        which no lookup can ever match.
         """
         self.encrypted_procedures_cache.clear()
         description_loaders = {
@@ -215,8 +272,8 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]
             configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
-            self._load_description_maps()
             self.set_inspector(database_name=configured_db)
+            self._load_description_maps()
             yield configured_db
         else:
             for new_database in self.get_database_names_raw():
@@ -235,8 +292,8 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                     continue
 
                 try:
-                    self._load_description_maps()
                     self.set_inspector(database_name=new_database)
+                    self._load_description_maps()
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
@@ -248,6 +305,76 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                             stackTrace=traceback.format_exc(),
                         )
                     )
+
+    def _in_scope_database_names(self) -> list[str]:
+        """
+        In-scope databases for the synonym sweep, resolved without touching the
+        topology. prepare() runs before get_database_names(), so the filter has
+        to be reapplied here rather than reused from it.
+        """
+        if not self.service_connection.ingestAllDatabases:
+            return [self.service_connection.database]
+
+        database_names = []
+        for database_name in self.get_database_names_raw():
+            database_fqn = fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.config.serviceName,
+                database_name=database_name,
+            )
+            if filter_by_database(
+                self.source_config.databaseFilterPattern,
+                (database_fqn if self.source_config.useFqnForFiltering else database_name),  # pyright: ignore[reportArgumentType]
+            ):
+                continue
+            database_names.append(database_name)
+        return database_names
+
+    def _build_table_fqn(self, database_name: str, schema_name: str, table_name: str) -> str:
+        return fqn.build(  # pyright: ignore[reportReturnType]
+            self.metadata,
+            entity_type=Table,
+            service_name=self.config.serviceName,
+            database_name=database_name,
+            schema_name=schema_name,
+            table_name=table_name,
+            skip_es_search=True,
+        )
+
+    def prepare(self):
+        """
+        Sweep synonyms before the topology runs.
+
+        Synonym discovery is optional metadata: a failure here must not abort the
+        run, so it is logged and ingestion continues with an empty map.
+        """
+        super().prepare()
+        if not self.service_connection.includeSynonyms:
+            logger.info("includeSynonyms is disabled; skipping MSSQL synonym discovery")
+
+            return
+        try:
+            self.synonym_map = build_synonym_map(
+                engine=self.engine,
+                database_names=self._in_scope_database_names(),
+                fqn_builder=self._build_table_fqn,
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not discover MSSQL synonyms, continuing without aliases: %s", exc)
+
+    def get_table_aliases(self, table_name: str, schema_name: str) -> list[str] | None:
+        """Aliases from sys.synonyms whose target is the table being produced"""
+        if self.synonym_map.is_empty():
+            return None
+        return self.synonym_map.aliases_for(
+            self._build_table_fqn(
+                self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                schema_name,
+                table_name,
+            )
+        )
 
     def get_stored_procedures(self) -> Iterable[MssqlStoredProcedure]:
         """List Snowflake stored procedures"""
@@ -318,3 +445,9 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def close(self):
+        """Report synonyms that never resolved to an ingested table"""
+        for alias_fqn, reason in self.synonym_map.unresolved():
+            self.status.warning(alias_fqn, f"Synonym target unresolved: {reason}")
+        super().close()

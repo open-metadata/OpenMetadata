@@ -12,8 +12,8 @@
  */
 
 import {
-  BadgeWithIcon,
   Button,
+  GlossaryTag,
   Tooltip,
   TooltipTrigger,
   Typography,
@@ -22,23 +22,21 @@ import { groupBy, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconTerm } from '../../../../assets/svg/book.svg';
 
-import {
-  NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { EntityType } from '../../../../enums/entity.enum';
-import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
+import {
+  GlossaryTerm,
+  Style,
+} from '../../../../generated/entity/data/glossaryTerm';
 import { RelationshipType } from '../../../../generated/entity/data/relationshipType';
-import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import {
   ChangeDescription,
   EntityReference,
 } from '../../../../generated/entity/type';
 import { TermRelation } from '../../../../generated/type/termRelation';
-import { searchGlossaryTermsPaginated } from '../../../../rest/glossaryAPI';
+import { getGlossaryTermsByIds } from '../../../../rest/glossaryAPI';
 import { listRelationshipTypes } from '../../../../rest/ontologyAPI';
 import { getTextFromHtmlString } from '../../../../utils/BlockEditorPureUtils';
 import {
@@ -48,7 +46,7 @@ import {
 } from '../../../../utils/EntityDiffPureUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
-import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import {
@@ -95,6 +93,7 @@ const BadgeList: React.FC<BadgeListProps> = ({ items, testId }) => {
 const RelatedTermTagButton: React.FC<RelatedTermTagButtonProps> = ({
   entity,
   relationType,
+  style,
   versionStatus,
   getRelationDisplayName,
   onRelatedTermClick,
@@ -130,13 +129,11 @@ const RelatedTermTagButton: React.FC<RelatedTermTagButtonProps> = ({
         className={diffClassName}
         data-testid={getEntityName(entity)}
         onPress={() => onRelatedTermClick(entity.fullyQualifiedName ?? '')}>
-        <BadgeWithIcon
-          color="gray"
-          iconLeading={IconTerm}
-          size="md"
-          type="color">
-          {getEntityName(entity)}
-        </BadgeWithIcon>
+        <GlossaryTag
+          color={style?.color}
+          icon={style?.iconURL}
+          label={getEntityName(entity)}
+        />
       </TooltipTrigger>
     </Tooltip>
   );
@@ -150,12 +147,16 @@ const RelatedTerms = () => {
     isVersionView,
     permissions,
   } = useGenericContext<GlossaryTerm>();
+  const { canEditGlossaryTerms } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [isAdding, setIsAdding] = useState<boolean>(false);
   const [editingRows, setEditingRows] = useState<RelationEditRow[]>([]);
   const [relationTypes, setRelationTypes] = useState<RelationshipType[]>([]);
-  const [preloadedTerms, setPreloadedTerms] = useState<GlossaryTerm[]>([]);
+  const [termStyles, setTermStyles] = useState<Record<string, Style>>({});
 
   const termRelations = useMemo(() => {
     return glossaryTerm?.relatedTerms ?? [];
@@ -174,22 +175,51 @@ const RelatedTerms = () => {
     }
   }, []);
 
-  const fetchAllTerms = useCallback(async () => {
-    try {
-      const result = await searchGlossaryTermsPaginated({
-        offset: 0,
-        limit: PAGE_SIZE_MEDIUM,
-      });
-      setPreloadedTerms(result.data);
-    } catch {
-      // silently handle
-    }
-  }, []);
-
   useEffect(() => {
     fetchRelationTypes();
-    fetchAllTerms();
-  }, [fetchRelationTypes, fetchAllTerms]);
+  }, [fetchRelationTypes]);
+
+  const relatedTermIds = useMemo(
+    () => [
+      ...new Set(
+        termRelations
+          .map((tr) => tr.term?.id)
+          .filter((id): id is string => Boolean(id))
+      ),
+    ],
+    [termRelations]
+  );
+
+  useEffect(() => {
+    if (isEmpty(relatedTermIds)) {
+      setTermStyles({});
+
+      return;
+    }
+
+    let cancelled = false;
+
+    getGlossaryTermsByIds(relatedTermIds)
+      .then((terms) => {
+        if (cancelled) {
+          return;
+        }
+        setTermStyles(
+          Object.fromEntries(
+            terms
+              .filter((term) => term.style)
+              .map((term) => [term.id, term.style as Style])
+          )
+        );
+      })
+      .catch(() => {
+        // styles are cosmetic — fall back to the default tag colour
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [relatedTermIds]);
 
   const relationTypeOptions = useMemo(
     () =>
@@ -201,9 +231,12 @@ const RelatedTerms = () => {
     [relationTypes]
   );
 
-  const handleRelatedTermClick = (fqn: string) => {
-    navigate(getGlossaryPath(fqn));
-  };
+  const handleRelatedTermClick = useCallback(
+    (fqn: string) => {
+      navigate(getGlossaryPath(fqn));
+    },
+    [navigate]
+  );
 
   const handleStartEditing = useCallback(() => {
     if (isEmpty(termRelations)) {
@@ -330,11 +363,12 @@ const RelatedTerms = () => {
         getRelationDisplayName={getRelationDisplayName}
         key={`${entity.fullyQualifiedName}-${relationType}`}
         relationType={relationType}
+        style={entity.id ? termStyles[entity.id] : undefined}
         versionStatus={versionStatus}
         onRelatedTermClick={handleRelatedTermClick}
       />
     ),
-    [getRelationDisplayName]
+    [getRelationDisplayName, handleRelatedTermClick, termStyles]
   );
 
   const getVersionRelatedTerms = useCallback(() => {
@@ -403,10 +437,7 @@ const RelatedTerms = () => {
     if (isVersionView) {
       return getVersionRelatedTerms();
     }
-    const hasEditPermission = getPrioritizedEditPermission(
-      permissions,
-      Operation.EditGlossaryTerms
-    );
+    const hasEditPermission = canEditGlossaryTerms;
     if (!hasEditPermission || !isEmpty(termRelations)) {
       return (
         <div className="d-flex flex-col gap-4">
@@ -435,7 +466,7 @@ const RelatedTerms = () => {
 
     return null;
   }, [
-    permissions,
+    canEditGlossaryTerms,
     termRelations,
     groupedRelations,
     isVersionView,
@@ -447,10 +478,7 @@ const RelatedTerms = () => {
   // Whether the edit/add icons show in the header; isolated so its && chain
   // doesn't add to the component's own complexity.
   const canEditRelatedTerms = (() =>
-    getPrioritizedEditPermission(permissions, Operation.EditGlossaryTerms) &&
-    !isVersionView &&
-    !isEditing &&
-    !isAdding)();
+    canEditGlossaryTerms && !isVersionView && !isEditing && !isAdding)();
 
   const renderHeader = () => (
     <div className="d-flex items-center justify-between w-full">
@@ -507,7 +535,6 @@ const RelatedTerms = () => {
     onRelationTypeChange: handleRelationTypeChange,
     onRemove: handleRemoveRow,
     onTermsChange: handleTermsChange,
-    preloadedTerms,
     relationTypeOptions,
     rows: editingRows,
   };

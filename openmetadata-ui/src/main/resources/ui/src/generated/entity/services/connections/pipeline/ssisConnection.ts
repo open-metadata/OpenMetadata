@@ -54,14 +54,21 @@ export interface MssqlConnection {
      */
     driver?: string;
     /**
-     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
-     * between the client and server will be encrypted.
+     * Request SSL/TLS encryption for the MSSQL connection. Honoured directly by mssql+pyodbc.
+     * mssql+pytds encrypts only when a CA certificate is supplied in SSL Configuration, and
+     * logs a warning otherwise. mssql+pymssql takes no TLS settings at all - encryption is
+     * decided by FreeTDS configuration.
      */
     encrypt?: boolean;
     /**
      * Host and port of the MSSQL service.
      */
     hostPort?: string;
+    /**
+     * Discover SQL Server synonyms and record them as alternate names (aliases) on the table
+     * they resolve to. Also enables alias resolution when building lineage.
+     */
+    includeSynonyms?: boolean;
     /**
      * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
      */
@@ -102,7 +109,9 @@ export interface MssqlConnection {
     tableFilterPattern?: FilterPattern;
     /**
      * Trust the server certificate without validation. Set to false in production to validate
-     * server certificates against the certificate authority.
+     * server certificates against the certificate authority. On mssql+pytds the certificate
+     * chain is always validated against the supplied CA certificate and only the host name
+     * check is dropped.
      */
     trustServerCertificate?: boolean;
     /**

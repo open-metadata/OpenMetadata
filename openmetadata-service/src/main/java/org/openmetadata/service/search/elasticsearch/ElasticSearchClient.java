@@ -183,7 +183,7 @@ public class ElasticSearchClient implements SearchClient {
       Rest5ClientTransport transport =
           new Rest5ClientTransport(lowLevelClient, new JacksonJsonpMapper());
       ElasticsearchClient newClient =
-          new ElasticsearchClient(new MeteredElasticsearchTransport(transport));
+          new ShardFailureAwareElasticsearchClient(new MeteredElasticsearchTransport(transport));
 
       LOG.info("Successfully initialized new Elasticsearch Java API client");
       return newClient;
@@ -552,6 +552,50 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public Response searchByFieldWithOptions(
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      String requiredExistsField,
+      boolean trackTotalHits)
+      throws IOException {
+    return searchManager.searchByFieldWithOptions(
+        fieldName,
+        fieldValue,
+        index,
+        deleted,
+        from,
+        size,
+        sourceIncludes,
+        requiredExistsField,
+        trackTotalHits);
+  }
+
+  @Override
+  public Response searchByTerms(
+      String fieldName,
+      List<String> fieldValues,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      boolean trackTotalHits)
+      throws IOException {
+    return searchManager.searchByTerms(
+        fieldName, fieldValues, index, deleted, from, size, sourceIncludes, trackTotalHits);
+  }
+
+  @Override
+  public boolean isFieldMappedInIndex(String index, String fieldPath) throws IOException {
+    return searchManager.isFieldMappedInIndex(index, fieldPath);
+  }
+
+  @Override
   public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
     return aggregationManager.getEntityTypeCounts(request, index);
   }
@@ -880,7 +924,7 @@ public class ElasticSearchClient implements SearchClient {
 
               // httpclient5 5.6.0 turned on automatic gzip decompression in the async client
               // pipeline by default. Rest5Client / elasticsearch-java's transport also
-              // decompresses the response body itself (see setCompressionEnabled(true) below),
+              // decompresses the response body itself when request compression is enabled,
               // so leaving both enabled makes the second pass run on already-inflated bytes
               // and throws "java.util.zip.ZipException: Not in GZIP format". Disable at the
               // transport layer and let the ES client own decompression.
@@ -900,7 +944,7 @@ public class ElasticSearchClient implements SearchClient {
                         org.apache.hc.core5.util.Timeout.ofSeconds(
                             esConfig.getSocketTimeoutSecs())));
 
-        restClientBuilder.setCompressionEnabled(true);
+        restClientBuilder.setCompressionEnabled(esConfig.getRequestCompressionEnabled());
 
         Rest5Client tempClient = restClientBuilder.build();
         boolean isElasticsearch7 = isElasticsearch7Version(tempClient);
@@ -1048,6 +1092,12 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns) {
     entityManager.deleteColumnsInUpstreamLineage(indexName, deletedColumns);
+  }
+
+  @Override
+  public void reconcileColumnsInUpstreamLineage(
+      String indexName, Map<String, String> renamedColumns, List<String> deletedColumns) {
+    entityManager.reconcileColumnsInUpstreamLineage(indexName, renamedColumns, deletedColumns);
   }
 
   @Override

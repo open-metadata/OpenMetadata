@@ -29,6 +29,7 @@ import {
   redirectToHomePage,
   toastNotification,
   uuid,
+  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import {
   checkAssetsCount,
@@ -36,7 +37,9 @@ import {
   selectDomain,
 } from '../../utils/domain';
 import {
+  escapeESReservedCharacters,
   fillDeleteConfirmationIfPresent,
+  openClassificationTagPicker,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { waitForSearchIndexed } from '../../utils/polling';
@@ -249,10 +252,9 @@ test.describe('Data Product Comprehensive Tests', () => {
       // Search for user with retry mechanism (ES indexing can take time)
       const searchBar = page.getByTestId('searchbar');
       // Use displayName for selecting from list (UI shows displayName)
-      const expertItem = page.getByRole('listitem', {
-        name: user.getUserDisplayName(),
-        exact: true,
-      });
+      const expertItem = page
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user.getUserDisplayName() });
       const maxRetries = 5;
 
       for (let retry = 0; retry < maxRetries; retry++) {
@@ -315,27 +317,30 @@ test.describe('Data Product Comprehensive Tests', () => {
       await selectDataProduct(page, dataProduct.data);
 
       // Click add tag button in tags container
-      await page.getByTestId('tags-container').getByTestId('add-tag').click();
-
-      // Wait for tag selector
-      await page.getByTestId('tag-selector').waitFor({
-        state: 'visible',
-      });
+      await openClassificationTagPicker(
+        page,
+        page.getByTestId('tags-container').getByTestId('add-tag')
+      );
 
       // Search for a tag
-      await page.getByTestId('tag-selector').click();
-      const tagSearchResponse = page.waitForResponse('/api/v1/search/query*');
-      await page.keyboard.type('Personal');
-
-      // Wait for search results
+      const tagSearchResponse = page.waitForResponse(
+        `/api/v1/search/query?q=*${encodeURIComponent(
+          escapeESReservedCharacters('Personal')
+        )}*`
+      );
+      await page
+        .getByTestId('classification-tag-picker-search')
+        .fill('Personal');
       await tagSearchResponse;
 
-      // Select the tag (use first() to handle duplicates)
-      await page.getByTestId('tag-PersonalData.Personal').first().click();
+      // Select the tag
+      await page.getByTestId('tree-node-PersonalData.Personal').click();
 
       // Save
+      await page.getByTestId('update-btn').waitFor({ state: 'visible' });
       const patchRes = page.waitForResponse('/api/v1/dataProducts/*');
-      await page.getByTestId('saveAssociatedTag').click();
+      await expect(page.getByTestId('update-btn')).toBeEnabled();
+      await page.getByTestId('update-btn').click();
       await patchRes;
 
       // Verify tag is displayed
@@ -389,30 +394,27 @@ test.describe('Data Product Comprehensive Tests', () => {
         timeout: 10000,
       });
 
-      // Search for table
-      const searchRes = page.waitForResponse('/api/v1/search/query*');
-      await page
-        .getByTestId('asset-selection-modal')
-        .getByTestId('searchbar')
-        .fill(table.entityResponseData.name);
-      await searchRes;
-
-      // Select the table by clicking the checkbox in the card
-      const tableCheckbox = page
-        .getByTestId('asset-selection-modal')
-        .locator(`[data-testid*="${table.entityResponseData.name}"]`)
+      const assetModal = page.getByTestId('asset-selection-modal');
+      const assetName = table.entityResponseData.name;
+      // The card exposes the name either through a data-testid or as plain
+      // text, so match both rather than probing one and falling back.
+      const assetCard = assetModal
+        .locator(`[data-testid*="${assetName}"]`)
+        .or(assetModal.getByText(assetName))
         .first();
 
-      if (await tableCheckbox.isVisible()) {
-        await tableCheckbox.click();
-      } else {
-        // Try clicking the text directly
-        await page
-          .getByTestId('asset-selection-modal')
-          .getByText(table.entityResponseData.name)
-          .first()
-          .click();
-      }
+      // The modal re-queries only when the search text changes, and a table
+      // created moments ago may not be in the search index yet -- so a single
+      // fill can settle on an empty result set that never refreshes. Re-type
+      // to re-issue the query until the asset actually shows up.
+      await expect(async () => {
+        await assetModal.getByTestId('searchbar').fill('');
+        await assetModal.getByTestId('searchbar').fill(assetName);
+
+        await expect(assetCard).toBeVisible({ timeout: 5_000 });
+      }).toPass({ timeout: 60_000 });
+
+      await assetCard.click();
 
       // Save
       const addRes = page.waitForResponse('/api/v1/dataProducts/*/assets/add');
@@ -796,7 +798,15 @@ test.describe('Multiple Subdomains Tests', () => {
 
       // Delete the subdomain (recursive delete)
       await page.getByTestId('manage-button').click();
-      await page.getByTestId('delete-button').click();
+      // The manage menu is an Ant dropdown, and pressing an item while it is
+      // still scaling puts mousedown and mouseup in different places, so no
+      // click is synthesised -- the item just takes focus. The snapshot for
+      // this failure is exactly that: the menu still open with "Delete"
+      // [active] and no dialog behind it.
+      const deleteMenuItem = page.getByTestId('delete-button');
+      await expect(deleteMenuItem).toBeVisible();
+      await waitForAntdPopupToSettle(page);
+      await deleteMenuItem.click();
 
       await expect(page.getByRole('dialog')).toBeVisible();
 

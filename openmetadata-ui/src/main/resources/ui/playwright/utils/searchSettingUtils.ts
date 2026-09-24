@@ -42,8 +42,10 @@ export const mockEntitySearchConfig = {
     { field: 'columns.name.keyword', boost: 2, matchType: 'exact' },
     { field: 'columns.displayName.keyword', boost: 2, matchType: 'exact' },
     { field: 'columnNamesFuzzy', boost: 1.5, matchType: 'standard' },
+    { field: 'aliases', boost: 5, matchType: 'standard' },
+    { field: 'aliases.keyword', boost: 10, matchType: 'exact' },
   ],
-  highlightFields: ['name', 'description', 'displayName'],
+  highlightFields: ['name', 'description', 'displayName', 'aliases'],
   matchTypeBoostMultipliers: {
     exactMatchMultiplier: 2,
     fuzzyMatchMultiplier: 1,
@@ -87,27 +89,38 @@ export async function setSliderValue(
   testId: string,
   value: number,
   min = 0,
-  max = 100
+  max = 100,
+  valueDisplayTestId?: string
 ) {
   const sliderHandle = page.getByTestId(testId).locator('.ant-slider-handle');
   const sliderTrack = page.getByTestId(testId).locator('.ant-slider-step');
 
-  // Get slider track dimensions
-  const box = await sliderTrack.boundingBox();
-  if (!box) {
-    throw new Error('Slider track not found');
+  const doSlide = async () => {
+    const box = await sliderTrack.boundingBox();
+    if (!box) {
+      throw new Error('Slider track not found');
+    }
+
+    const { x, width } = box;
+    const valuePosition = x + ((value - min) / (max - min)) * width;
+
+    await sliderHandle.hover();
+    await page.mouse.down();
+    await page.mouse.move(valuePosition, box.y);
+    await page.mouse.up();
+  };
+
+  if (valueDisplayTestId) {
+    const weightDisplay = page.getByTestId(valueDisplayTestId);
+    const originalValue = await weightDisplay.textContent();
+
+    await expect(async () => {
+      await doSlide();
+      await expect(weightDisplay).not.toHaveText(originalValue ?? '');
+    }).toPass({ timeout: 15_000, intervals: [2_000] });
+  } else {
+    await doSlide();
   }
-
-  const { x, width } = box;
-
-  // Calculate the exact x-position for the value
-  const valuePosition = x + ((value - min) / (max - min)) * width;
-
-  // Move the slider handle to the calculated position
-  await sliderHandle.hover(); // Ensure visibility
-  await page.mouse.down();
-  await page.mouse.move(valuePosition, box.y);
-  await page.mouse.up();
 }
 
 // The entity search settings page opens with the "Ranking Details" accordion

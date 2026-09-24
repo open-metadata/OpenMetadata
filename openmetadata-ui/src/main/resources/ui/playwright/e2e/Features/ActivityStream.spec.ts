@@ -14,7 +14,10 @@
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
-import { insertActivityEventForTest } from '../../utils/activityAPI';
+import {
+  insertActivityEventForTest,
+  visitTableActivityFeed,
+} from '../../utils/activityAPI';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -157,30 +160,33 @@ test.describe('Activity Stream on Entity Pages', () => {
     if (await addTagButton.isVisible()) {
       await addTagButton.click();
 
-      const tagSearch = page.getByTestId('tag-selector');
+      const pickerSearch = page.getByTestId('classification-tag-picker-search');
 
-      await expect(tagSearch).toBeVisible();
-      await tagSearch.fill('PII');
-
-      const tagOption = page
-        .locator('[data-testid="tag-PII.Sensitive"]')
-        .first();
-
-      if (await tagOption.isVisible()) {
-        await tagOption.click();
-
-        const saveButton = page.locator(
-          '[data-testid="inline-save-btn"], [data-testid="saveAssociatedTag"]'
+      if (await pickerSearch.isVisible({ timeout: 5000 }).catch(() => false)) {
+        const searchResponse = page.waitForResponse(
+          `/api/v1/search/query?q=*${encodeURIComponent('PII')}*`
         );
+        await pickerSearch.fill('PII');
+        await searchResponse;
 
-        if (await saveButton.isVisible()) {
-          const updateResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/tables/') &&
-              response.request().method() === 'PATCH'
-          );
-          await saveButton.click();
-          await updateResponse;
+        const tagNode = page.getByTestId('tree-node-PII.Sensitive');
+
+        if (await tagNode.isVisible({ timeout: 3000 }).catch(() => false)) {
+          await tagNode.click();
+
+          const saveButton = page.getByTestId('update-btn');
+
+          if (
+            await saveButton.isVisible({ timeout: 3000 }).catch(() => false)
+          ) {
+            const updateResponse = page.waitForResponse(
+              (response) =>
+                response.url().includes('/api/v1/tables/') &&
+                response.request().method() === 'PATCH'
+            );
+            await saveButton.click();
+            await updateResponse;
+          }
         }
       }
     }
@@ -227,37 +233,14 @@ test.describe('Activity Stream on Entity Pages', () => {
     await expect(countBadge).toHaveText(/^[1-9]\d*$/, { timeout: 30_000 });
   });
 
-  test(
-    'activity stream API is called when visiting entity page',
-    { tag: '@quarantine' },
-    async ({ page }) => {
-      const activityApiPromise = page
-        .waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/activity') &&
-            response.status() === 200,
-          { timeout: 10000 }
-        )
-        .catch(() => null);
+  test('activity stream API is called when visiting entity page', async ({
+    page,
+  }) => {
+    const responseBody = await visitTableActivityFeed(page, testTable);
 
-      await testTable.visitEntityPage(page);
-      await waitForAllLoadersToDisappear(page);
-
-      const activityFeedTab = page.getByRole('tab', {
-        name: 'Activity Feeds & Tasks',
-      });
-      await activityFeedTab.click();
-
-      const response = await activityApiPromise;
-
-      if (response) {
-        const responseBody = await response.json();
-
-        expect(responseBody).toHaveProperty('data');
-        expect(Array.isArray(responseBody.data)).toBe(true);
-      }
-    }
-  );
+    expect(responseBody).toHaveProperty('data');
+    expect(Array.isArray(responseBody.data)).toBe(true);
+  });
 
   test('activity feed left panel shows All and Tasks options', async ({
     page,

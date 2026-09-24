@@ -15,12 +15,21 @@ import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { Stars01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { TFunction } from 'i18next';
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  FC,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import { useSearchParams } from 'react-router-dom';
 import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
+import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import '../../../components/common/ResizablePanels/resizable-panels.less';
@@ -64,8 +73,18 @@ import {
   CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
 } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+
+const FilePreviewModal = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../../components/ContextCenter/DocumentsView/FilePreviewModal/FilePreviewModal'
+      )
+  )
+);
 
 const getSuccessfulIds = (result: BulkOperationResult): Set<string> =>
   new Set(
@@ -251,6 +270,8 @@ const ContextCenterDocumentsPage: FC = () => {
   const [totalFileCount, setTotalFileCount] = useState(0);
   const [globalFileCount, setGlobalFileCount] = useState(0);
   const [previewFile, setPreviewFile] = useState<ContextFile | undefined>();
+  const [filePreviewModalFile, setFilePreviewModalFile] =
+    useState<ContextFile>();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fetchGenerationRef = useRef(0);
   const folderFetchGenerationRef = useRef(0);
@@ -323,14 +344,26 @@ const ContextCenterDocumentsPage: FC = () => {
     }?${params.toString()}`;
   }, [previewFile, searchParams]);
 
+  // Resource-level permission (usePermissionProvider().getResourcePermission(
+  // KNOWLEDGE_PAGE), itself OperationPermission-shaped) run through
+  // getDerivedPermissionFlags per the Batch 3 DatabaseSchemaTable.tsx / Batch 6
+  // MetricListPage.tsx precedent. `Create`/`Delete` are untouched raw reads (not
+  // flagged by the rule — only EditAll/ViewAll/ViewBasic are). Pure rename: no
+  // field-specific EditX key exists on this resource-level permission object, so
+  // canEditAll matches the old raw `permissions.EditAll` exactly.
+  const canEditAll = useMemo(
+    () => getDerivedPermissionFlags(permissions).canEditAll,
+    [permissions]
+  );
+
   const { hasCreatePermission, hasDeletePermission, hasEditPermission } =
     useMemo(
       () => ({
         hasCreatePermission: permissions.Create,
         hasDeletePermission: permissions.Delete,
-        hasEditPermission: permissions.EditAll,
+        hasEditPermission: canEditAll,
       }),
-      [permissions.Create, permissions.Delete, permissions.EditAll]
+      [permissions.Create, permissions.Delete, canEditAll]
     );
 
   const selectedFolder = useMemo(
@@ -788,6 +821,10 @@ const ContextCenterDocumentsPage: FC = () => {
     [folders, selectedIds, allDocuments, t, fetchFolders]
   );
 
+  const handleCloseFilePreviewModal = useCallback(() => {
+    setFilePreviewModalFile(undefined);
+  }, []);
+
   const handleUploadToFolder = useCallback((folderId: string) => {
     setSelectedFolderId(folderId);
     setIsUploadModalOpen(true);
@@ -913,6 +950,7 @@ const ContextCenterDocumentsPage: FC = () => {
                   onDownload={handleAssetDownload}
                   onFileMoved={handleFileMoved}
                   onLoadMoreFolders={fetchMoreFolders}
+                  onOpenPreview={setFilePreviewModalFile}
                   onPreview={handlePreview}
                   onScrollEnd={handleLoadMore}
                   onSelectFile={handleSelectFile}
@@ -932,6 +970,12 @@ const ContextCenterDocumentsPage: FC = () => {
           </ReflexContainer>
         )}
       </div>
+
+      <FilePreviewModal
+        file={filePreviewModalFile}
+        isOpen={Boolean(filePreviewModalFile)}
+        onClose={handleCloseFilePreviewModal}
+      />
 
       <UploadDocumentModal
         folderFqn={selectedFolderFqn}

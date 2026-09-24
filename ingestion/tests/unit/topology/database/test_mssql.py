@@ -13,6 +13,7 @@ Test Mssql using the topology
 """
 
 import types
+from collections import namedtuple
 from decimal import Decimal
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
@@ -54,6 +55,7 @@ from metadata.ingestion.source.database.mssql.metadata import MssqlSource
 from metadata.ingestion.source.database.mssql.models import MssqlStoredProcedure
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_FOREIGN_KEY,
+    MSSQL_GET_INDEXED_VIEWS,
     MSSQL_SQL_STATEMENT,
     MSSQL_SQL_STATEMENT_CURRENT_DB,
     MSSQL_SQL_STATEMENT_FROM_QUERY_STORE,
@@ -214,6 +216,10 @@ EXPECTED_TABLE = [
 ]
 
 
+# Where the connection points before the run walks to its first database.
+ENTRY_POINT_DATABASE = "<entry point>"
+
+
 class MssqlUnitTest(TestCase):
     """
     Implements the necessary methods to extract
@@ -244,7 +250,7 @@ class MssqlUnitTest(TestCase):
         self.mssql._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema_name: []
 
     def test_yield_database(self):
-        assert EXPECTED_DATABASE == [either.right for either in self.mssql.yield_database(MOCK_DATABASE.name.root)]  # noqa: SIM300
+        assert [either.right for either in self.mssql.yield_database(MOCK_DATABASE.name.root)] == EXPECTED_DATABASE
 
         self.mssql.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
@@ -271,7 +277,7 @@ class MssqlUnitTest(TestCase):
         self.mssql.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_yield_table(self):
-        assert EXPECTED_TABLE == [either.right for either in self.mssql.yield_table(("sample_table", "Regular"))]  # noqa: SIM300
+        assert [either.right for either in self.mssql.yield_table(("sample_table", "Regular"))] == EXPECTED_TABLE
 
     def test_get_stored_procedures(self):
         """
@@ -310,6 +316,14 @@ class MssqlUnitTest(TestCase):
 
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].name, "sp_include")
+
+        # The executed SQL must scope sys.procedures by the routine's schema so a
+        # same-named procedure in another schema cannot fan out and override the
+        # definition (regression guard for the cross-schema join bug).
+        executed_sql = str(mock_conn.execute.call_args.args[0])
+        self.assertIn("sch.name = r.ROUTINE_SCHEMA", executed_sql)
+        self.assertIn(f"ROUTINE_CATALOG = '{MOCK_DATABASE.name.root}'", executed_sql)
+        self.assertIn(f"ROUTINE_SCHEMA = '{MOCK_DATABASE_SCHEMA.name.root}'", executed_sql)
 
 
 class TestUpdateMssqlIschemaNames:
@@ -515,6 +529,98 @@ class TestUpdateMssqlIschemaNames:
         assert yielded == []
         self.mssql.status.failed.assert_called_once()
 
+    def _record_which_database_each_load_reads(self):
+        """
+        Stand in for the connection: `set_inspector` moves it, the description
+        loaders record where it was pointing when they ran. That pairing is the
+        property under test - reading before the move records the database the
+        run has just left, which is what left every database undocumented.
+
+        Whether the inspector truly repoints, and whether the descriptions that
+        come back belong to that database, is asserted against a real server in
+        tests/integration/sql_server/test_reflection.py.
+        """
+        connection = {"database": ENTRY_POINT_DATABASE}
+        read_from = []
+
+        def switch(database_name):
+            connection["database"] = database_name
+
+        def load():
+            read_from.append(connection["database"])
+
+        return (
+            read_from,
+            patch.object(MssqlSource, "set_inspector", side_effect=switch),
+            patch.object(MssqlSource, "_load_description_maps", side_effect=load),
+        )
+
+    def test_descriptions_are_read_from_each_database_after_connecting_to_it(self):
+        """Every description query reads the connected database (they select
+        DB_NAME()), so a load that runs before the switch reads the previous
+        database and no lookup can match the maps it builds."""
+        self.mssql.config.serviceConnection.root.config.ingestAllDatabases = True
+        self.mssql.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        read_from, switching, loading = self._record_which_database_each_load_reads()
+
+        with (
+            patch.object(MssqlSource, "get_database_names_raw", return_value=iter(["db_one", "db_two"])),
+            switching,
+            loading,
+        ):
+            yielded = list(self.mssql.get_database_names())
+
+        assert yielded == ["db_one", "db_two"]
+        assert read_from == yielded
+
+    def test_descriptions_are_read_after_connecting_for_a_single_database(self):
+        """The single-database path holds the same property as the multi-database one."""
+        self.mssql.config.serviceConnection.root.config.ingestAllDatabases = False
+        configured_database = self.mssql.config.serviceConnection.root.config.database
+        read_from, switching, loading = self._record_which_database_each_load_reads()
+
+        with switching, loading:
+            yielded = list(self.mssql.get_database_names())
+
+        assert yielded == [configured_database]
+        assert read_from == yielded
+
+    @staticmethod
+    def _inspector_listing(*view_names):
+        return property(lambda _self: types.SimpleNamespace(get_view_names=lambda schema_name: list(view_names)))
+
+    def test_indexed_views_are_reported_as_materialized_views(self):
+        """An indexed view is persisted and engine-maintained, so calling it a plain
+        view understates it."""
+        with (
+            patch.object(
+                MssqlSource,
+                "inspector",
+                new_callable=lambda: self._inspector_listing("plain_view", "indexed_view"),
+            ),
+            patch.object(MssqlSource, "_get_indexed_views", return_value={"indexed_view"}),
+        ):
+            views = self.mssql.query_view_names_and_types("sales")
+
+        assert [(view.name, view.type_) for view in views] == [
+            ("plain_view", TableType.View),
+            ("indexed_view", TableType.MaterializedView),
+        ]
+
+    def test_a_failure_to_detect_indexed_views_leaves_them_as_plain_views(self):
+        """The finer type is optional metadata: losing it must not lose the views."""
+        self.mssql.engine = _raising_engine()
+
+        with patch.object(MssqlSource, "inspector", new_callable=lambda: self._inspector_listing("plain_view")):
+            views = self.mssql.query_view_names_and_types("sales")
+
+        assert [(view.name, view.type_) for view in views] == [("plain_view", TableType.View)]
+
+    def test_indexed_view_query_matches_only_a_unique_clustered_index(self):
+        """That index is what makes a view indexed, and nothing else must match."""
+        assert "i.type = 1" in MSSQL_GET_INDEXED_VIEWS
+        assert "i.is_unique = 1" in MSSQL_GET_INDEXED_VIEWS
+
 
 class MssqlIdentityColumnTest(TestCase):
     """Regression tests for identity column reflection.
@@ -659,11 +765,19 @@ class TestMssqlTemporalPeriodColumns:
 class TestMssqlQueryStoreSelection:
     """Auto-detection of Query Store vs plan-cache DMVs for MSSQL lineage and usage."""
 
-    @staticmethod
-    def _engine_with_query_store_state(actual_state):
+    _QueryStoreRow = namedtuple("_QueryStoreRow", ["actual_state", "readonly_reason"])
+
+    @classmethod
+    def _engine_with_query_store_state(cls, actual_state, readonly_reason=0):
         engine = MagicMock()
         conn = engine.connect.return_value.__enter__.return_value
-        conn.execute.return_value.scalar.return_value = actual_state
+        # None actual_state simulates an empty result set (no rows).
+        if actual_state is None:
+            conn.execute.return_value.fetchone.return_value = None
+        else:
+            # A namedtuple mirrors the real sqlalchemy Row: supports both row[0]
+            # and row.actual_state, like the code under test relies on.
+            conn.execute.return_value.fetchone.return_value = cls._QueryStoreRow(actual_state, readonly_reason)
         return engine
 
     def test_query_store_enabled_when_read_write(self):
@@ -689,6 +803,35 @@ class TestMssqlQueryStoreSelection:
         engine.connect.side_effect = Exception("VIEW DATABASE STATE denied")
 
         assert mssql_dialet.is_query_store_enabled(engine) is False
+
+    def test_query_store_disabled_on_ag_secondary(self):
+        # readonly_reason == 8 means this is a readable AG secondary.  The replica's
+        # Query Store contains only the primary's workload, so we must not use it.
+        engine = self._engine_with_query_store_state(1, readonly_reason=8)
+        assert mssql_dialet.is_query_store_enabled(engine) is False
+
+    def test_query_store_disabled_on_ag_secondary_combined_bits(self):
+        # readonly_reason may have the AG-secondary bit (8) combined with other bits.
+        # e.g. 8 | 4 = 12.  The bitwise check must catch this; equality would not.
+        engine = self._engine_with_query_store_state(1, readonly_reason=12)
+        assert mssql_dialet.is_query_store_enabled(engine) is False
+
+    def test_query_store_enabled_on_read_write_ag_secondary_false(self):
+        # readonly_reason == 0 — normal read-write database, Query Store is usable.
+        engine = self._engine_with_query_store_state(2, readonly_reason=0)
+        assert mssql_dialet.is_query_store_enabled(engine) is True
+
+    def test_query_store_enabled_when_readonly_reason_is_null(self):
+        # On some SQL Server editions/configs, readonly_reason is SQL NULL for a healthy
+        # READ_WRITE database.  None & 8 raises TypeError; (None or 0) & 8 == 0 (not AG secondary).
+        engine = self._engine_with_query_store_state(2, readonly_reason=None)
+        assert mssql_dialet.is_query_store_enabled(engine) is True
+
+    def test_query_store_enabled_on_read_only_non_ag(self):
+        # readonly_reason == 1 — explicit SET READ_ONLY, not an AG secondary.
+        # Query Store still reflects this database's own workload.
+        engine = self._engine_with_query_store_state(1, readonly_reason=1)
+        assert mssql_dialet.is_query_store_enabled(engine) is True
 
     @staticmethod
     def _lineage_source(query_store_enabled):
@@ -864,3 +1007,70 @@ class TestMssqlPerDatabaseQueryStore:
         engines = list(StoredProcedureLineageMixin.get_stored_procedure_engines(fake_source))
 
         assert engines == [fake_source.engine]
+
+
+def _raising_engine():
+    """An engine whose connect() fails, for the degraded paths."""
+    engine = MagicMock()
+    engine.connect.side_effect = Exception("cannot connect")
+    return engine
+
+
+class TestMssqlUniqueConstraints:
+    """``get_unique_constraints`` must report the UNIQUE constraints on a table.
+
+    SQLAlchemy's MSSQL dialect does not reflect them and the base dialect raises
+    NotImplementedError, which the catalogue swallows, so they were dropped.
+    """
+
+    @staticmethod
+    def _row(constraint_name, column_name):
+        return {"CONSTRAINT_NAME": constraint_name, "COLUMN_NAME": column_name}
+
+    @staticmethod
+    def _unique_constraints(rows):
+        from sqlalchemy.dialects.mssql.base import MSDialect
+
+        connection = MagicMock()
+        connection.execution_options.return_value.execute.return_value.mappings.return_value = rows
+
+        return mssql_dialet.get_unique_constraints(MSDialect(), connection, "orders", schema="sales")
+
+    def test_a_single_column_constraint_is_reported(self):
+        assert self._unique_constraints([self._row("uq_orders_code", "code")]) == [
+            {"name": "uq_orders_code", "column_names": ["code"]}
+        ]
+
+    def test_a_composite_constraint_keeps_its_key_order(self):
+        constraints = self._unique_constraints(
+            [
+                self._row("uq_orders_region_code", "region"),
+                self._row("uq_orders_region_code", "code"),
+            ]
+        )
+
+        assert constraints == [{"name": "uq_orders_region_code", "column_names": ["region", "code"]}]
+
+    def test_constraints_are_reported_separately(self):
+        constraints = self._unique_constraints([self._row("uq_orders_code", "code"), self._row("uq_orders_ref", "ref")])
+
+        assert [constraint["name"] for constraint in constraints] == ["uq_orders_code", "uq_orders_ref"]
+
+    def test_a_table_without_unique_constraints_reports_none(self):
+        assert self._unique_constraints([]) == []
+
+    def test_only_unique_constraints_are_selected(self):
+        """Primary and foreign keys live in the same view and are read elsewhere."""
+        from sqlalchemy.dialects.mssql.base import MSDialect
+
+        connection = MagicMock()
+        connection.execution_options.return_value.execute.return_value.mappings.return_value = []
+
+        mssql_dialet.get_unique_constraints(MSDialect(), connection, "orders", schema="sales")
+
+        (query,), _ = connection.execution_options.return_value.execute.call_args
+        compiled = str(query.compile(dialect=MSDialect(), compile_kwargs={"literal_binds": True}))
+
+        assert "[CONSTRAINT_TYPE] = N'UNIQUE'" in compiled
+        assert "[C].[TABLE_NAME] = N'orders'" in compiled
+        assert "[C].[TABLE_SCHEMA] = N'sales'" in compiled

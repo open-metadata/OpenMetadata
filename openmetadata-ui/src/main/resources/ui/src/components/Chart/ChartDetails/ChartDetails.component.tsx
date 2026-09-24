@@ -11,29 +11,32 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Chart } from '../../../generated/entity/data/chart';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreChart } from '../../../rest/chartsAPI';
 import chartDetailsClassBase from '../../../utils/ChartDetailsClassBase';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -42,10 +45,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../../utils/PermissionsUtils';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
   updateCertificationTag,
@@ -85,9 +85,6 @@ const ChartDetails = ({
     FEED_COUNT_INITIAL_DATA
   );
   const [isTabExpanded, setIsTabExpanded] = useState(false);
-  const [chartPermissions, setChartPermissions] = useState(
-    DEFAULT_ENTITY_PERMISSION
-  );
 
   const { followers = [], deleted } = useMemo(() => {
     return chartDetails;
@@ -99,29 +96,31 @@ const ChartDetails = ({
     };
   }, [followers, currentUser]);
 
-  const { getEntityPermission } = usePermissionProvider();
+  // Fetch-owner, by id (old code used getEntityPermission — id-based — not
+  // getEntityPermissionByFqn), matching the `{ id }` identifier form.
+  const {
+    permissions: chartPermissions,
+    error: permissionsError,
+    canEditAll: editAllPermission,
+    canEditLineage: editLineagePermission,
+    canEditCustomFields: editCustomAttributePermission,
+    canViewAll: viewAllPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+  } = useEntityPermissions(
+    ResourceEntity.CHART,
+    { id: chartDetails.id },
+    { deleted: Boolean(deleted), enabled: Boolean(chartDetails.id) }
+  );
 
-  const fetchResourcePermission = useCallback(async () => {
-    try {
-      const entityPermission = await getEntityPermission(
-        ResourceEntity.CHART,
-        chartDetails.id
-      );
-      setChartPermissions(entityPermission);
-    } catch {
+  useEffect(() => {
+    if (permissionsError) {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.chart'),
         })
       );
     }
-  }, [chartDetails.id, getEntityPermission, setChartPermissions]);
-
-  useEffect(() => {
-    if (chartDetails.id) {
-      fetchResourcePermission();
-    }
-  }, [chartDetails.id]);
+  }, [permissionsError]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -218,31 +217,15 @@ const ChartDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    [navigate]
-  );
-
-  const {
-    editAllPermission,
-    editLineagePermission,
-    editCustomAttributePermission,
-    viewAllPermission,
-    viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editAllPermission: chartPermissions.EditAll && !deleted,
-      editLineagePermission:
-        (chartPermissions.EditAll || chartPermissions.EditLineage) && !deleted,
-      editCustomAttributePermission:
-        (chartPermissions.EditAll || chartPermissions.EditCustomFields) &&
-        !deleted,
-      viewAllPermission: chartPermissions.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        chartPermissions,
-        Operation.ViewCustomFields
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.DASHBOARD_SERVICES,
+          getPartialNameFromTableFQN(decodedChartFQN, [FqnPart.Service])
+        )
       ),
-    }),
-    [chartPermissions, deleted]
+    [decodedChartFQN, navigate]
   );
 
   const tabs = useMemo(() => {
@@ -311,8 +294,8 @@ const ChartDetails = ({
 
   return (
     <PageLayoutV1 pageTitle={getEntityName(chartDetails)}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
+      <Box direction="col" gap={3}>
+        <div>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -331,7 +314,7 @@ const ChartDetails = ({
             onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
-        </Col>
+        </div>
         <GenericProvider<Chart>
           customizedPage={customizedPage}
           data={chartDetails}
@@ -339,28 +322,42 @@ const ChartDetails = ({
           permissions={chartPermissions}
           type={EntityType.CHART}
           onUpdate={onChartUpdate}>
-          <Col className="entity-details-page-tabs" span={24}>
+          <div className="entity-details-page-tabs">
             <Tabs
-              activeKey={activeTab}
-              className="tabs-new"
+              className="tw:gap-3"
               data-testid="tabs"
-              items={tabs}
-              tabBarExtraContent={
-                isExpandViewSupported && (
-                  <AlignRightIconButton
-                    className={isTabExpanded ? 'rotate-180' : ''}
-                    title={
-                      isTabExpanded ? t('label.collapse') : t('label.expand')
-                    }
-                    onClick={toggleTabExpanded}
-                  />
-                )
-              }
-              onChange={handleTabChange}
-            />
-          </Col>
+              selectedKey={getRenderedActiveTab(tabs, activeTab)}
+              onSelectionChange={(key) => handleTabChange(String(key))}>
+              <Tabs.List
+                actions={
+                  isExpandViewSupported && (
+                    <AlignRightIconButton
+                      className={isTabExpanded ? 'rotate-180' : ''}
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
+                      onClick={toggleTabExpanded}
+                    />
+                  )
+                }
+                size="sm"
+                type="underline"
+                variant="card">
+                {tabs.map(({ key, label }) => (
+                  <Tabs.Item id={key} key={key}>
+                    {label}
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
+              {tabs.map(({ key, children }) => (
+                <Tabs.Panel id={key} key={key}>
+                  {children}
+                </Tabs.Panel>
+              ))}
+            </Tabs>
+          </div>
         </GenericProvider>
-      </Row>
+      </Box>
 
       <LimitWrapper resource="chart">
         <></>

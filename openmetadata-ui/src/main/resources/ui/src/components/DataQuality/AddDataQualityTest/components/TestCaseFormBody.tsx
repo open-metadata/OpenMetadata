@@ -28,7 +28,15 @@ import { Edit01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { debounce, snakeCase } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  FC,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { UseFormReturn, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
@@ -48,11 +56,14 @@ import { SearchIndex } from '../../../../enums/search.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { TagSource } from '../../../../generated/entity/data/container';
 import { Table } from '../../../../generated/entity/data/table';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   EntityType,
   TestDefinition,
   TestPlatform,
 } from '../../../../generated/tests/testDefinition';
+import { useThresholdProfilerConfig } from '../../../../hooks/observability/data-quality/useThresholdProfilerConfig';
+import { useDataQualityDimensions } from '../../../../hooks/useDataQualityDimensions';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
@@ -68,12 +79,17 @@ import {
   getServiceTypeForTestDefinition,
 } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { loadFormFieldDocs } from '../../../../utils/DataQuality/FormFieldDocs';
+import { getDimensionSelectOptions } from '../../../../utils/DataQualityDimensionUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { ensureComboboxMenuOpen } from '../../../../utils/formPureUtils';
+import { getThresholdPreviewTarget } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import { unwrapSelectValues } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
 import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
+import ThresholdPreview from '../../../observability/data-quality/ThresholdPreview/ThresholdPreview';
+import TagSelector from '../../../Tag/TagSelector/TagSelector';
 import ParameterFields from './ParameterFields';
 import {
   FormValues,
@@ -83,6 +99,7 @@ import {
   TestLevelOption,
 } from './TestCaseFormV1.interface';
 import TestCaseSchedulerSection from './TestCaseSchedulerSection';
+import { toDataQualityDimensionItem } from './transformTestCaseFormData';
 
 const TABLE_CUSTOM_SQL_QUERY = 'tableCustomSQLQuery';
 const TABLES_CACHE_MAX_SIZE = 100;
@@ -256,6 +273,8 @@ const TestTypeCard: FC<{
   handleActiveField: (id: string) => void;
   isComputeRowCountFieldVisible: boolean;
   computeRowCountField: FieldProp;
+  dataQualityDimensionField: FieldProp;
+  thresholdPreview: ReactNode;
 }> = ({
   isEditMode,
   selectedTestLevel,
@@ -273,6 +292,8 @@ const TestTypeCard: FC<{
   handleActiveField,
   isComputeRowCountFieldVisible,
   computeRowCountField,
+  dataQualityDimensionField,
+  thresholdPreview,
 }) => (
   <div
     className="form-card-section test-type-card test-type-section"
@@ -308,10 +329,15 @@ const TestTypeCard: FC<{
             selectedTestDefinition.description
           )}
         />
+        {thresholdPreview}
       </div>
     )}
 
     {isComputeRowCountFieldVisible && getField(computeRowCountField)}
+
+    {/* Shown in the parameter-only drawer too: the dimension is edited from the parameter box on
+        the test case result page. */}
+    {getField(dataQualityDimensionField)}
   </div>
 );
 
@@ -363,7 +389,9 @@ const TestDetailsCard: FC<{
     <FormField control={form.control} name="tags">
       {({ field }) => (
         <div data-testid="tags-selector" id="root/tags" {...tagsDoc}>
-          <TagSuggestion
+          <TagSelector
+            className="tw:w-full"
+            data-testid="tags-input"
             label={t('label.tag-plural')}
             placeholder={t('label.select-field', {
               field: t('label.tag-plural'),
@@ -454,6 +482,13 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   const [isCheckingPermissions, setIsCheckingPermissions] = useState(false);
   const [isTestNameManuallyEdited, setIsTestNameManuallyEdited] =
     useState(false);
+  const [isDimensionManuallyEdited, setIsDimensionManuallyEdited] =
+    useState(false);
+  // Dimensions are entities managed in Settings > Preferences > Data Quality; the shared hook
+  // owns the fetch so this form, the test definition form and the test case filters all list the
+  // same set and degrade the same way.
+  const { dimensions: dataQualityDimensions, isLoading: isDimensionsLoading } =
+    useDataQualityDimensions();
 
   const testLevelFieldValue = useWatch({
     control: form.control,
@@ -478,6 +513,10 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   const dimensionColumnsValue = useWatch({
     control: form.control,
     name: 'dimensionColumns',
+  });
+  const dataQualityDimensionValue = useWatch({
+    control: form.control,
+    name: 'dataQualityDimension',
   });
 
   const selectedTableFqn = fqnFromSelectItem(
@@ -510,8 +549,14 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
           ResourceEntity.TABLE,
           tableFqn
         );
+        // N-term-OR-with-bare-EditAll (Task 8 Batch 2 KnowledgeCard precedent): EditTests
+        // has no named canEditX flag, and getPrioritizedEditPermission's own EditAll
+        // fallback only applies when the EditTests key is absent — keeping canEditAll as
+        // its own explicit OR-term avoids regressing the case where EditAll=true but
+        // EditTests is present and explicitly false.
+        const tableFlags = getDerivedPermissionFlags(tablePermissions);
         const canCreate =
-          tablePermissions.EditAll || tablePermissions.EditTests;
+          tableFlags.canEditAll || tableFlags.can(Operation.EditTests);
         setCanCreatePipeline(canCreate);
         if (!canCreate) {
           return t('message.no-permission-for-create-test-case-on-table');
@@ -636,6 +681,20 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
     return result;
   }, [columnOptions, selectedColumn, dimensionColumnsValue]);
+
+  // The dimension already set on the test case — and the one the test definition defaults to —
+  // are kept as options even if they have since been removed, so opening the form does not
+  // silently clear the value.
+  const dataQualityDimensionOptions: FormSelectItem[] = useMemo(
+    () =>
+      getDimensionSelectOptions(dataQualityDimensions, [
+        selectedTestDefinition?.dataQualityDimension,
+        fqnFromSelectItem(
+          dataQualityDimensionValue as FormSelectItem | string | null
+        ),
+      ]),
+    [dataQualityDimensions, selectedTestDefinition, dataQualityDimensionValue]
+  );
 
   const fetchTables = useCallback(
     async (searchValue = '') => {
@@ -1027,10 +1086,23 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     form,
   ]);
 
+  // The test definition carries the default dimension of its test cases. Keep
+  // following it while the user hasn't picked a dimension of their own, the
+  // same way the test name follows the selected test type.
+  useEffect(() => {
+    if (!isEditMode && !isDimensionManuallyEdited) {
+      form.setValue(
+        'dataQualityDimension',
+        toDataQualityDimensionItem(selectedTestDefinition?.dataQualityDimension)
+      );
+    }
+  }, [isEditMode, isDimensionManuallyEdited, selectedTestDefinition, form]);
+
   useEffect(() => {
     onContextChange?.({
       selectedDefinition: selectedTestDefinition,
       selectedTableData,
+      selectedTableFqn,
       selectedColumn,
       selectedTestLevel,
       generateName: generateDynamicTestName,
@@ -1040,6 +1112,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   }, [
     selectedTestDefinition,
     selectedTableData,
+    selectedTableFqn,
     selectedColumn,
     selectedTestLevel,
     generateDynamicTestName,
@@ -1184,6 +1257,30 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     },
   };
 
+  const dataQualityDimensionField: FieldProp = {
+    name: 'dataQualityDimension',
+    label: t('label.data-quality-dimension'),
+    // AUTOCOMPLETE, not SELECT, for the same reason as the test type field above: the registered
+    // dimensions load async and an already-open react-aria Select never refreshes its collection,
+    // so a dropdown opened before the fetch lands would only ever show the seeded value.
+    type: FieldTypes.AUTOCOMPLETE,
+    required: false,
+    id: 'root/dataQualityDimension',
+    doc:
+      fieldDocs.dataQualityDimension ??
+      t('message.doc-field-data-quality-dimension'),
+    placeholder: t('label.select-field', {
+      field: t('label.data-quality-dimension'),
+    }),
+    props: {
+      'data-testid': 'data-quality-dimension',
+      isLoading: isDimensionsLoading,
+      options: dataQualityDimensionOptions,
+      onItemInserted: () => setIsDimensionManuallyEdited(true),
+      onItemCleared: () => setIsDimensionManuallyEdited(true),
+    },
+  };
+
   const computeRowCountField = {
     name: 'computePassedFailedRowCount',
     label: t('label.compute-row-count'),
@@ -1312,6 +1409,17 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     }
   }, [fieldDocEntries, setActiveFieldDoc]);
 
+  const tableProfilerConfig = useThresholdProfilerConfig(
+    selectedTestDefinition,
+    selectedTableData?.id
+  );
+  const thresholdPreviewTarget = getThresholdPreviewTarget({
+    isColumnLevel: selectedTestLevel === TestLevel.COLUMN,
+    columnName: selectedColumn,
+    tableName: selectedTableData?.name,
+    tableFqn: selectedTableFqn,
+  });
+
   const canShowSchedulerSection = getCanShowSchedulerSection(
     showOnlyParameter,
     isEditMode,
@@ -1356,6 +1464,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       <TestTypeCard
         additionalFields={additionalFields}
         computeRowCountField={computeRowCountField}
+        dataQualityDimensionField={dataQualityDimensionField}
         fieldDocs={fieldDocs}
         form={form}
         handleActiveField={handleActiveField}
@@ -1370,6 +1479,16 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         showParameterFields={showParameterFields}
         t={t}
         testTypeField={testTypeField}
+        thresholdPreview={
+          selectedTestDefinition && (
+            <ThresholdPreview
+              definition={selectedTestDefinition}
+              form={form}
+              profilerConfig={tableProfilerConfig}
+              target={thresholdPreviewTarget}
+            />
+          )
+        }
       />
 
       {!showOnlyParameter && (

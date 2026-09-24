@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Col, Row, Tabs } from 'antd';
+
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
@@ -31,20 +32,17 @@ import { QueryVote } from '../../components/Database/TableQueries/TableQueries.i
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
-import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
@@ -58,9 +56,11 @@ import {
   restoreSearchIndex,
   updateSearchIndexVotes,
 } from '../../rest/SearchIndexAPI';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
@@ -69,11 +69,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import searchIndexClassBase from '../../utils/SearchIndexDetailsClassBase';
@@ -87,7 +83,6 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
 function SearchIndexDetailsPage() {
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab: activeTab = EntityTabs.FIELDS } = useRequiredParams<{
     tab: EntityTabs;
   }>();
@@ -100,20 +95,30 @@ function SearchIndexDetailsPage() {
   const queryClient = useQueryClient();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
-  const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true);
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
   const { customizedPage, isLoading } = useCustomPages(PageType.SearchIndex);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
-  const [searchIndexPermissions, setSearchIndexPermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
-  const viewPermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(searchIndexPermissions, Operation.ViewBasic),
-    [searchIndexPermissions]
-  );
+  // Two useEntityPermissions calls in this component, partitioned by deleted-sensitivity —
+  // see the analogous comment in TableDetailsPageV1.tsx for the general pattern. This
+  // view-tier call must run before {@code searchIndexDetails} exists: {@code viewPermission}
+  // gates the entity {@code useQuery}'s `enabled` below, and {@code searchIndexDetails} is
+  // that query's own result — a real ordering cycle, not a shortcut. The edit-tier call
+  // (only the two canEdit* flags that need `deleted`) lives further down, at the earliest
+  // point `deleted` exists; see the comment there. Both calls share one React Query cache
+  // entry (same queryKey), so having two costs an extra derivation, not an extra fetch —
+  // never diverges into two fetches as long as both pass the identical (resource,
+  // identifier) pair.
+  const {
+    permissions: searchIndexPermissions, // children consume the raw OperationPermission prop
+    isLoading: isPermissionsLoading,
+    canViewBasic: viewPermission,
+    canViewAll: viewAllPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+    canViewSampleData: viewSampleDataPermission,
+  } = useEntityPermissions(ResourceEntity.SEARCH_INDEX, decodedSearchIndexFQN);
 
   const searchIndexCacheKey = useMemo(
     () => searchIndexQueryKey(decodedSearchIndexFQN, defaultFields),
@@ -128,7 +133,7 @@ function SearchIndexDetailsPage() {
     queryKey: searchIndexCacheKey,
     queryFn: searchIndexQueryFn(decodedSearchIndexFQN, defaultFields),
     enabled: Boolean(
-      decodedSearchIndexFQN && viewPermission && !permissionsLoading
+      decodedSearchIndexFQN && viewPermission && !isPermissionsLoading
     ),
   });
 
@@ -194,76 +199,19 @@ function SearchIndexDetailsPage() {
     };
   }, [searchIndexDetails, searchIndexDetails?.tags]);
 
+  // Edit-tier useEntityPermissions call — the counterpart to the view-tier call near the
+  // top of this component (see its comment for why this component calls the hook twice).
+  // This is the earliest point `deleted` exists (destructured just above, from
+  // {@code searchIndexDetails} resolved by the entity useQuery): both canEdit* flags this
+  // page uses are gated on it — don't destructure a canEdit* flag or `can` from the
+  // view-tier call above, it was captured before `deleted` existed and would silently
+  // return an ungated edit permission.
   const {
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
-    editCustomAttributePermission,
-    editLineagePermission,
-    viewSampleDataPermission,
-    viewAllPermission,
-    viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editTagsPermission:
-        getPrioritizedEditPermission(
-          searchIndexPermissions,
-          Operation.EditTags
-        ) && !deleted,
-      editGlossaryTermsPermission:
-        getPrioritizedEditPermission(
-          searchIndexPermissions,
-          Operation.EditGlossaryTerms
-        ) && !deleted,
-      editDescriptionPermission:
-        getPrioritizedEditPermission(
-          searchIndexPermissions,
-          Operation.EditDescription
-        ) && !deleted,
-      editCustomAttributePermission:
-        getPrioritizedEditPermission(
-          searchIndexPermissions,
-          Operation.EditCustomFields
-        ) && !deleted,
-      editLineagePermission:
-        getPrioritizedEditPermission(
-          searchIndexPermissions,
-          Operation.EditLineage
-        ) && !deleted,
-      viewSampleDataPermission: getPrioritizedViewPermission(
-        searchIndexPermissions,
-        Operation.ViewSampleData
-      ),
-      viewAllPermission: searchIndexPermissions.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        searchIndexPermissions,
-        Operation.ViewCustomFields
-      ),
-    }),
-    [
-      searchIndexPermissions,
-      deleted,
-      getPrioritizedEditPermission,
-      getPrioritizedViewPermission,
-    ]
-  );
-
-  const fetchResourcePermission = useCallback(
-    async (entityFQN: string) => {
-      setPermissionsLoading(true);
-      try {
-        const searchIndexPermission = await getEntityPermissionByFqn(
-          ResourceEntity.SEARCH_INDEX,
-          entityFQN
-        );
-
-        setSearchIndexPermissions(searchIndexPermission);
-      } finally {
-        setPermissionsLoading(false);
-      }
-    },
-    [getEntityPermissionByFqn]
-  );
+    canEditCustomFields: editCustomAttributePermission,
+    canEditLineage: editLineagePermission,
+  } = useEntityPermissions(ResourceEntity.SEARCH_INDEX, decodedSearchIndexFQN, {
+    deleted: Boolean(deleted),
+  });
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -432,9 +380,6 @@ function SearchIndexDetailsPage() {
     searchIndexDetails,
     searchIndexDetails?.extension,
     onDescriptionUpdate,
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
     refetchSearchIndexDetails,
   ]);
 
@@ -593,8 +538,15 @@ function SearchIndexDetailsPage() {
   }, [version]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.SEARCH_SERVICES,
+          getPartialNameFromTableFQN(decodedSearchIndexFQN, [FqnPart.Service])
+        )
+      ),
+    [decodedSearchIndexFQN]
   );
 
   const afterDomainUpdateAction = useCallback(
@@ -608,12 +560,6 @@ function SearchIndexDetailsPage() {
     },
     [setSearchIndexDetails]
   );
-
-  useEffect(() => {
-    if (decodedSearchIndexFQN) {
-      fetchResourcePermission(decodedSearchIndexFQN);
-    }
-  }, [decodedSearchIndexFQN]);
 
   useEffect(() => {
     if (viewPermission) {
@@ -647,7 +593,7 @@ function SearchIndexDetailsPage() {
     [tabs[0], activeTab]
   );
   const getLoadingOrPermissionContent = () => {
-    if (isLoading || permissionsLoading || searchIndexLoading) {
+    if (isLoading || isPermissionsLoading || searchIndexLoading) {
       return <PageLoader />;
     }
 
@@ -682,8 +628,8 @@ function SearchIndexDetailsPage() {
       title={t('label.entity-detail-plural', {
         entity: t('label.search-index'),
       })}>
-      <Row gutter={[0, 12]}>
-        <Col data-testid="entity-page-header" span={24}>
+      <Box direction="col" gap={3}>
+        <div data-testid="entity-page-header">
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -702,7 +648,7 @@ function SearchIndexDetailsPage() {
             onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
-        </Col>
+        </div>
 
         <GenericProvider<SearchIndex>
           customizedPage={customizedPage}
@@ -711,32 +657,46 @@ function SearchIndexDetailsPage() {
           permissions={searchIndexPermissions}
           type={EntityType.SEARCH_INDEX}
           onUpdate={onSearchIndexUpdate}>
-          <Col className="entity-details-page-tabs" span={24}>
+          <div className="entity-details-page-tabs">
             <Tabs
-              activeKey={activeTab}
-              className="tabs-new"
+              className="tw:gap-3"
               data-testid="tabs"
-              items={tabs}
-              tabBarExtraContent={
-                isExpandViewSupported && (
-                  <AlignRightIconButton
-                    className={isTabExpanded ? 'rotate-180' : ''}
-                    title={
-                      isTabExpanded ? t('label.collapse') : t('label.expand')
-                    }
-                    onClick={toggleTabExpanded}
-                  />
-                )
-              }
-              onChange={handleTabChange}
-            />
-          </Col>
+              selectedKey={getRenderedActiveTab(tabs, activeTab)}
+              onSelectionChange={(key) => handleTabChange(String(key))}>
+              <Tabs.List
+                actions={
+                  isExpandViewSupported && (
+                    <AlignRightIconButton
+                      className={isTabExpanded ? 'rotate-180' : ''}
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
+                      onClick={toggleTabExpanded}
+                    />
+                  )
+                }
+                size="sm"
+                type="underline"
+                variant="card">
+                {tabs.map(({ key, label }) => (
+                  <Tabs.Item id={key} key={key}>
+                    {label}
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
+              {tabs.map(({ key, children }) => (
+                <Tabs.Panel id={key} key={key}>
+                  {children}
+                </Tabs.Panel>
+              ))}
+            </Tabs>
+          </div>
         </GenericProvider>
 
         <LimitWrapper resource="searchIndex">
           <></>
         </LimitWrapper>
-      </Row>
+      </Box>
     </PageLayoutV1>
   );
 }

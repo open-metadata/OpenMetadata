@@ -156,7 +156,7 @@ const TableCardRoot = ({
       <div
         {...props}
         className={cx(
-          'tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:shadow-xs tw:outline-1 tw:outline-secondary',
+          'tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:shadow-card tw:outline-1 tw:outline-subtle',
           className
         )}>
         {children}
@@ -190,7 +190,7 @@ const TableCardHeader = ({
   return (
     <div
       className={cx(
-        'tw:relative tw:flex tw:flex-col tw:items-start tw:gap-4 tw:border-b tw:border-secondary tw:bg-primary tw:px-4 tw:md:flex-row',
+        'tw:relative tw:flex tw:flex-col tw:items-start tw:gap-4 tw:border-b tw:border-subtle tw:bg-surface tw:px-4 tw:md:flex-row',
         TABLE_SIZES[size].cardHeader,
         className
       )}>
@@ -251,7 +251,7 @@ const TableRoot = ({
         <AriaTable
           className={(state) =>
             cx(
-              'tw:w-full tw:overflow-x-hidden',
+              'tw:w-full tw:overflow-x-hidden tw:dark:bg-surface',
               typeof className === 'function' ? className(state) : className
             )
           }
@@ -409,6 +409,15 @@ interface TableRowProps<T extends object>
       'children' | 'className' | 'onClick' | 'slot' | 'style' | 'id'
     > {
   highlightSelectedRow?: boolean;
+  /**
+   * Hides the per-row selection cell that `selectionBehavior="toggle"`
+   * otherwise injects. Use for full-width synthetic rows (e.g. section
+   * group headers) whose single child cell spans every column — including
+   * the selection column — via `colSpan`. Without this the row would emit
+   * both the selection cell and the spanning cell, and react-aria's
+   * `TableCollection` throws `Cell count must match column count`.
+   */
+  hideSelectionCell?: boolean;
 }
 
 const TableRow = <T extends object>({
@@ -416,6 +425,7 @@ const TableRow = <T extends object>({
   children,
   className,
   highlightSelectedRow = true,
+  hideSelectionCell = false,
   ...props
 }: TableRowProps<T>) => {
   const { size } = useContext(TableContext) ?? { size: DEFAULT_TABLE_SIZE };
@@ -442,7 +452,7 @@ const TableRow = <T extends object>({
           typeof className === 'function' ? className(state) : className
         )
       }>
-      {selectionBehavior === 'toggle' && (
+      {selectionBehavior === 'toggle' && !hideSelectionCell && (
         <AriaCell
           className={cx(
             'tw:relative tw:py-2 tw:pr-0 tw:pl-4',

@@ -11,29 +11,31 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
-import { Operation as PermissionOperation } from '../../../generated/entity/policies/accessControl/resourcePermission';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDashboard } from '../../../rest/dashboardAPI';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import dashboardDetailsClassBase from '../../../utils/DashboardDetailsClassBase';
@@ -43,11 +45,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../../utils/PermissionsUtils';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
   updateCertificationTag,
@@ -89,9 +87,6 @@ const DashboardDetails = ({
     FEED_COUNT_INITIAL_DATA
   );
   const [isTabExpanded, setIsTabExpanded] = useState(false);
-  const [dashboardPermissions, setDashboardPermissions] = useState(
-    DEFAULT_ENTITY_PERMISSION
-  );
 
   const {
     owners,
@@ -111,29 +106,32 @@ const DashboardDetails = ({
     };
   }, [followers, currentUser]);
 
-  const { getEntityPermission } = usePermissionProvider();
+  // Owning fetch (Task 8 conversion): single resource, by id — DashboardDetailsProps carries
+  // no permissions prop, so this component fetches its own, independent of whichever page
+  // renders it. `deleted` passed through: editCustomAttributePermission/editLineagePermission
+  // were already ANDed with `!deleted` in the old code.
+  const {
+    permissions: dashboardPermissions,
+    error: permissionsError,
+    canEditCustomFields: editCustomAttributePermission,
+    canEditLineage: editLineagePermission,
+    canViewAll: viewAllPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+  } = useEntityPermissions(
+    ResourceEntity.DASHBOARD,
+    { id: dashboardDetails.id },
+    { deleted: Boolean(deleted) }
+  );
 
-  const fetchResourcePermission = useCallback(async () => {
-    try {
-      const entityPermission = await getEntityPermission(
-        ResourceEntity.DASHBOARD,
-        dashboardDetails.id
-      );
-      setDashboardPermissions(entityPermission);
-    } catch {
+  useEffect(() => {
+    if (permissionsError) {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.dashboard'),
         })
       );
     }
-  }, [dashboardDetails.id, getEntityPermission, setDashboardPermissions]);
-
-  useEffect(() => {
-    if (dashboardDetails.id) {
-      fetchResourcePermission();
-    }
-  }, [dashboardDetails.id]);
+  }, [permissionsError]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -244,36 +242,15 @@ const DashboardDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    [navigate]
-  );
-
-  const {
-    editCustomAttributePermission,
-    editAllPermission,
-    editLineagePermission,
-    viewAllPermission,
-    viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editCustomAttributePermission:
-        getPrioritizedEditPermission(
-          dashboardPermissions,
-          PermissionOperation.EditCustomFields
-        ) && !deleted,
-      editAllPermission: PermissionOperation.EditAll && !deleted,
-      editLineagePermission:
-        getPrioritizedEditPermission(
-          dashboardPermissions,
-          PermissionOperation.EditLineage
-        ) && !deleted,
-      viewAllPermission: dashboardPermissions.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        dashboardPermissions,
-        Operation.ViewCustomFields
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.DASHBOARD_SERVICES,
+          getPartialNameFromTableFQN(decodedDashboardFQN, [FqnPart.Service])
+        )
       ),
-    }),
-    [dashboardPermissions, deleted]
+    [decodedDashboardFQN, navigate]
   );
 
   const tabs = useMemo(() => {
@@ -307,7 +284,6 @@ const DashboardDetails = ({
     handleFeedCount,
     editLineagePermission,
     editCustomAttributePermission,
-    editAllPermission,
     viewAllPermission,
     onExtensionUpdate,
   ]);
@@ -342,8 +318,8 @@ const DashboardDetails = ({
 
   return (
     <PageLayoutV1 pageTitle={getEntityName(dashboardDetails)}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
+      <Box direction="col" gap={3}>
+        <div>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -362,7 +338,7 @@ const DashboardDetails = ({
             onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
-        </Col>
+        </div>
         <GenericProvider<Dashboard>
           customizedPage={customizedPage}
           data={dashboardDetails}
@@ -370,28 +346,42 @@ const DashboardDetails = ({
           permissions={dashboardPermissions}
           type={EntityType.DASHBOARD}
           onUpdate={onDashboardUpdate}>
-          <Col className="entity-details-page-tabs" span={24}>
+          <div className="entity-details-page-tabs">
             <Tabs
-              activeKey={activeTab}
-              className="tabs-new"
+              className="tw:gap-3"
               data-testid="tabs"
-              items={tabs}
-              tabBarExtraContent={
-                isExpandViewSupported && (
-                  <AlignRightIconButton
-                    className={isTabExpanded ? 'rotate-180' : ''}
-                    title={
-                      isTabExpanded ? t('label.collapse') : t('label.expand')
-                    }
-                    onClick={toggleTabExpanded}
-                  />
-                )
-              }
-              onChange={handleTabChange}
-            />
-          </Col>
+              selectedKey={getRenderedActiveTab(tabs, activeTab)}
+              onSelectionChange={(key) => handleTabChange(String(key))}>
+              <Tabs.List
+                actions={
+                  isExpandViewSupported && (
+                    <AlignRightIconButton
+                      className={isTabExpanded ? 'rotate-180' : ''}
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
+                      onClick={toggleTabExpanded}
+                    />
+                  )
+                }
+                size="sm"
+                type="underline"
+                variant="card">
+                {tabs.map(({ key, label }) => (
+                  <Tabs.Item id={key} key={key}>
+                    {label}
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
+              {tabs.map(({ key, children }) => (
+                <Tabs.Panel id={key} key={key}>
+                  {children}
+                </Tabs.Panel>
+              ))}
+            </Tabs>
+          </div>
         </GenericProvider>
-      </Row>
+      </Box>
 
       <LimitWrapper resource="dashboard">
         <></>

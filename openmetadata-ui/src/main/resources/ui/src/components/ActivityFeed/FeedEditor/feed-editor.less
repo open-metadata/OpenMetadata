@@ -992,7 +992,7 @@
 /* custom css */
 .editor-container {
   border-radius: var(--om-radius-md);
-  background: white;
+  background: var(--om-color-bg-surface);
   width: 100%;
 }
 .is_edit_post.editor-container {
@@ -1113,13 +1113,13 @@ button.ql-emoji {
   width: 24px;
 }
 
-#om-quill-editor[data-dir='rtl'] {
+.feed-editor-root[data-dir='rtl'] {
   .ql-editor.ql-blank::before {
     text-align: right;
   }
 }
 
-#om-quill-editor {
+.feed-editor-root {
   #tab-panel {
     padding-top: var(--om-space-8);
     gap: var(--om-space-6);

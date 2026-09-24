@@ -1,6 +1,6 @@
 {
     "$id": "https://open-metadata.org/schema/type/aiContext.json",
-    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "AIContext",
     "description": "AI Context (also called a Context Profile) for a data asset. A normalized, LLM-ready projection of an asset's structural signals and the business knowledge attached to it (glossary terms, metrics, Context Center articles). It is assembled server-side so any agent can pull the full context for an asset of any type (table, dashboard, pipeline, topic, ...) in a single call to give strong signals to downstream tasks such as SQL generation. The common envelope (identity, knowledge, lineage) applies to every entity type; the type-specific structural details live under `assetContext`.",
     "type": "object",
@@ -37,6 +37,18 @@
                     "description": "True when content is a lead excerpt or has been omitted to fit the context budget; fetch the full body via the get_knowledge_content tool using this item's fullyQualifiedName.",
                     "type": "boolean",
                     "default": false
+                },
+                "stale": {
+                    "description": "True when read-time trust signals indicate this item may no longer reflect the asset it is attached to (e.g. the asset changed after the knowledge was last updated, or the asset's data-quality tests are failing). Absent means no staleness signal.",
+                    "type": "boolean",
+                    "default": false
+                },
+                "staleReasons": {
+                    "description": "Machine-readable reasons for the stale flag (e.g. assetUpdated, dataQualityFailing).",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             },
             "additionalProperties": false

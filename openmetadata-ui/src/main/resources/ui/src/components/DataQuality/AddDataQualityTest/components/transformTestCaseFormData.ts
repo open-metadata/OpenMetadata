@@ -71,7 +71,12 @@ export interface TestCaseTransformContext {
 }
 
 export interface PipelinePayloadContext {
-  testSuite: TestSuite;
+  /**
+   * Only `id` is read. Callers pass `TestCase.testSuite`, which is an
+   * `EntityReference` rather than a `TestSuite`, so no wider field is safe to
+   * rely on here.
+   */
+  testSuite: Pick<TestSuite, 'id'>;
   createdTestCaseName: string;
   selectedTable?: string;
   table?: Table;
@@ -129,6 +134,7 @@ export const normalizeFormValuesForPayload = (
     selectedDefinition
   ) as FormValues['params'],
   dimensionColumns: unwrapSelectValues(values.dimensionColumns),
+  dataQualityDimension: unwrapSelectValue(values.dataQualityDimension),
   tags: normalizeTagLabels(values.tags),
   glossaryTerms: normalizeTagLabels(values.glossaryTerms),
 });
@@ -180,6 +186,11 @@ export const transformTestCaseFormData = (
         ? values.topDimensions
         : undefined,
     description: isEmpty(values.description) ? undefined : values.description,
+    // Left out when untouched so the API falls back to the test definition's
+    // dimension, which is what the field is prefilled with anyway.
+    dataQualityDimension: normalizedValues.dataQualityDimension as
+      | string
+      | undefined,
     tags: [
       ...(normalizedValues.tags ?? []),
       ...(normalizedValues.glossaryTerms ?? []),
@@ -200,9 +211,9 @@ export const buildTestSuitePipelinePayload = (
 ): CreateIngestionPipeline => {
   const selectedTestCases = normalizeSelectedTestProp(values.testCases);
 
-  const tableName = replaceAllSpacialCharWith_(
-    ctx.selectedTable ?? ctx.table?.fullyQualifiedName ?? ''
-  );
+  const tableFqn = ctx.selectedTable ?? ctx.table?.fullyQualifiedName;
+
+  const tableName = replaceAllSpacialCharWith_(tableFqn ?? '');
 
   const updatedName =
     values.pipelineName || getIngestionName(tableName, PipelineType.TestSuite);
@@ -223,7 +234,10 @@ export const buildTestSuitePipelinePayload = (
     sourceConfig: {
       config: {
         type: ConfigType.TestSuite,
-        entityFullyQualifiedName: ctx.testSuite.fullyQualifiedName,
+        // The entity under test, i.e. the table — not the test suite that holds
+        // the test cases. A suite FQN here resolves to no table and the run
+        // falls through to the logical-suite path.
+        entityFullyQualifiedName: tableFqn,
         testCases:
           values.selectAllTestCases === false
             ? [ctx.createdTestCaseName, ...selectedTestCases]
@@ -278,6 +292,16 @@ const toColumnFormSelectItems = (
   columnNames: string[] | undefined
 ): FormSelectItem[] | undefined =>
   columnNames?.map((columnName) => toColumnFormSelectItem(columnName));
+
+/**
+ * The data quality dimension field is a dropdown over the dimension entities, so its RHF value
+ * is a `FormSelectItem` keyed by the dimension name — the identifier the API expects.
+ */
+export const toDataQualityDimensionItem = (
+  dimension: string | undefined,
+  label?: string
+): FormSelectItem | undefined =>
+  dimension ? { id: dimension, label: label ?? dimension } : undefined;
 
 /**
  * Builds the RHF value for a single Array-typed param from its JSON-array
@@ -452,6 +476,12 @@ export const buildEditDefaults = (
     dimensionColumns: toColumnFormSelectItems(
       testCase.dimensionColumns
     ) as never,
+    // Test cases created before dimensions could be set on them carry none, so
+    // fall back to the dimension of their test definition — the effective one.
+    dataQualityDimension: toDataQualityDimensionItem(
+      testCase.dataQualityDimension?.name ?? definition.dataQualityDimension,
+      testCase.dataQualityDimension?.displayName
+    ),
     testTypeId: {
       id: testCase.testDefinition?.fullyQualifiedName ?? '',
       label: testCase.testDefinition?.fullyQualifiedName ?? '',

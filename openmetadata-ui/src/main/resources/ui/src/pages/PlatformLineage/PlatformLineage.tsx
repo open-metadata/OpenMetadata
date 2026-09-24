@@ -22,7 +22,7 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { debounce, startCase } from 'lodash';
 import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DownloadIcon } from '../../assets/svg/ic-download.svg';
@@ -50,28 +50,20 @@ import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
 import { LineagePlatformView } from '../../context/LineageProvider/LineageProvider.interface';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import {
-  LineageSettings,
-  PipelineViewMode,
-} from '../../generated/configuration/lineageSettings';
 import { EntityReference } from '../../generated/entity/type';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
-import { getEntityPermissionByFqn } from '../../rest/permissionAPI';
+import { useLineageStore } from '../../hooks/useLineageStore';
 import { searchQuery } from '../../rest/searchAPI';
 import { getEntityAPIfromSource } from '../../utils/Assets/AssetsUtils';
 import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
 import { getViewportForLineageExport } from '../../utils/EntityLineageLayoutUtils';
 import { getLineageEntityExclusionFilter } from '../../utils/EntityLineagePureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { getOperationPermissions } from '../../utils/PermissionsUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -87,25 +79,48 @@ const PlatformLineage = () => {
 
   const { fqn: decodedFqn } = useFqn();
   const [selectedEntity, setSelectedEntity] = useState<SourceType>();
-  const [loading, setLoading] = useState(false);
+  const [isEntityLoading, setIsEntityLoading] = useState(false);
   const [options, setOptions] = useState<DefaultOptionType[]>([]);
   const [isSearchLoading, setIsSearchLoading] = useState(false);
   const [defaultValue, setDefaultValue] = useState<string | undefined>(
     decodedFqn || undefined
   );
-  const { appPreferences } = useApplicationStore();
-  const defaultLineageConfig = appPreferences?.lineageConfig as LineageSettings;
-
-  const [lineageConfig, setLineageConfig] = useState<LineageConfig>({
-    downstreamDepth: defaultLineageConfig?.downstreamDepth ?? 1,
-    upstreamDepth: defaultLineageConfig?.upstreamDepth ?? 1,
-    nodesPerLayer: 50,
-    pipelineViewMode:
-      defaultLineageConfig?.pipelineViewMode ?? PipelineViewMode.Node,
-  });
-  const [permissions, setPermissions] = useState<OperationPermission>();
+  // Config lives in the Zustand store — LineageProvider's fetch effect
+  // depends on it, so writing here triggers a refetch. Local useState here
+  // would leave the store untouched and the depth change would never
+  // reach the network.
+  const lineageConfig = useLineageStore((state) => state.lineageConfig);
+  const setLineageConfig = useLineageStore((state) => state.setLineageConfig);
   const [dialogVisible, setDialogVisible] = useState(false);
   const { showModal } = useEntityExportModalProvider();
+
+  // Fetch-owner, by fqn — `entityType` doubles as the resource here (cast, matching the old
+  // code's own `entityType as unknown as ResourceEntity`). Ungated: the old raw
+  // `permissions?.EditAll || permissions?.EditLineage` read never referenced `deleted`.
+  const {
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    canEditLineage,
+  } = useEntityPermissions(
+    entityType as unknown as ResourceEntity,
+    decodedFqn,
+    { enabled: Boolean(decodedFqn && entityType) }
+  );
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
+
+  // Combined loading flag: the old `loading` state covered both the entity fetch AND the
+  // permission fetch together (a single `Promise.allSettled` awaited by one try/finally).
+  // Both fetches now run independently (permission via the hook, entity via `init` below) but
+  // neither is gated on the other's result, so a plain OR reproduces the old "loading until
+  // both settle" behavior without the denied-case stuck-loading risk that gated fetches have
+  // (ServiceVersionPage.tsx precedent — not applicable here since entity fetch isn't
+  // permission-gated).
+  const loading = isEntityLoading || isPermissionsLoading;
 
   const queryParams = useMemo(() => {
     return QueryString.parse(location.search, {
@@ -132,42 +147,71 @@ const PlatformLineage = () => {
     },
     [navigate]
   );
+  // `debounce` only coalesces calls inside its own window, so the empty search
+  // that `onFocus` starts and a search for what the user then types are two
+  // requests in flight at once — and the empty one is the slower of the pair,
+  // since it has no term to narrow three indices by. Without this guard its
+  // late answer overwrites the newer one and the list shows results for a
+  // query the box is no longer holding.
+  //
+  // Token bump is SYNCHRONOUS on every call (before debounce), not inside the
+  // debounced body: a keystroke fires debouncedSearch immediately, which
+  // advances searchOrder and invalidates any in-flight request from the
+  // previous keystroke. If we bumped inside the debounced body instead, a
+  // request that resolved between the keystroke and the next debounced fire
+  // would still match the current token and paint stale results.
+  const searchOrder = useRef(0);
+  const runSearch = useMemo(
+    () =>
+      debounce(async (value: string, request: number) => {
+        try {
+          setIsSearchLoading(true);
+          const searchIndices = [
+            SearchIndex.DATA_ASSET,
+            SearchIndex.DOMAIN,
+            SearchIndex.SERVICE,
+          ];
+
+          const response = await searchQuery({
+            query: escapeESReservedCharacters(value),
+            searchIndex: searchIndices,
+            pageSize: PAGE_SIZE_BASE,
+            queryFilter: getLineageEntityExclusionFilter(),
+            includeDeleted: false,
+          });
+
+          if (request !== searchOrder.current) {
+            return;
+          }
+
+          setOptions(
+            response.hits.hits.map((hit) => ({
+              value: hit._source.fullyQualifiedName ?? '',
+              label: (
+                <EntitySuggestionOption
+                  showEntityTypeBadge
+                  entity={hit._source as EntityReference}
+                  onSelectHandler={handleEntitySelect}
+                />
+              ),
+              data: hit,
+            }))
+          );
+        } finally {
+          if (request === searchOrder.current) {
+            setIsSearchLoading(false);
+          }
+        }
+      }, 300),
+    [handleEntitySelect]
+  );
+
   const debouncedSearch = useCallback(
-    debounce(async (value: string) => {
-      try {
-        setIsSearchLoading(true);
-        const searchIndices = [
-          SearchIndex.DATA_ASSET,
-          SearchIndex.DOMAIN,
-          SearchIndex.SERVICE,
-        ];
-
-        const response = await searchQuery({
-          query: escapeESReservedCharacters(value),
-          searchIndex: searchIndices,
-          pageSize: PAGE_SIZE_BASE,
-          queryFilter: getLineageEntityExclusionFilter(),
-          includeDeleted: false,
-        });
-
-        setOptions(
-          response.hits.hits.map((hit) => ({
-            value: hit._source.fullyQualifiedName ?? '',
-            label: (
-              <EntitySuggestionOption
-                showEntityTypeBadge
-                entity={hit._source as EntityReference}
-                onSelectHandler={handleEntitySelect}
-              />
-            ),
-            data: hit,
-          }))
-        );
-      } finally {
-        setIsSearchLoading(false);
-      }
-    }, 300),
-    []
+    (value: string) => {
+      const request = ++searchOrder.current;
+      runSearch(value, request);
+    },
+    [runSearch]
   );
 
   const init = useCallback(async () => {
@@ -178,30 +222,20 @@ const PlatformLineage = () => {
     }
 
     try {
-      setLoading(true);
-      const [entityResponse, permissionResponse] = await Promise.allSettled([
-        getEntityAPIfromSource(entityType as AssetsUnion)(decodedFqn),
-        getEntityPermissionByFqn(
-          entityType as unknown as ResourceEntity,
-          decodedFqn
-        ),
-      ]);
-
-      if (entityResponse.status === 'fulfilled') {
-        setSelectedEntity(entityResponse.value);
-        setDefaultValue(decodedFqn || undefined);
-      }
-
-      if (permissionResponse.status === 'fulfilled') {
-        const operationPermission = getOperationPermissions(
-          permissionResponse.value
-        );
-        setPermissions(operationPermission);
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
+      setIsEntityLoading(true);
+      const entityResponse = await getEntityAPIfromSource(
+        entityType as AssetsUnion
+      )(decodedFqn);
+      setSelectedEntity(entityResponse);
+      setDefaultValue(decodedFqn || undefined);
+    } catch {
+      // Old code awaited this via Promise.allSettled alongside the permission fetch, so a
+      // rejection (or a synchronous throw from an unsupported entityType) never reached a
+      // showErrorToast call — a settled 'rejected' result just left selectedEntity/
+      // defaultValue unset. Preserve that silently; permission-fetch errors now surface
+      // separately via the hook's own effect above.
     } finally {
-      setLoading(false);
+      setIsEntityLoading(false);
     }
   }, [decodedFqn, entityType]);
 
@@ -224,10 +258,13 @@ const PlatformLineage = () => {
     setDialogVisible(true);
   };
 
-  const handleDialogSave = (config: LineageConfig) => {
-    setLineageConfig(config);
-    setDialogVisible(false);
-  };
+  const handleDialogSave = useCallback(
+    (config: LineageConfig) => {
+      setLineageConfig(config);
+      setDialogVisible(false);
+    },
+    [setLineageConfig]
+  );
 
   const header = useMemo(() => {
     return (
@@ -313,14 +350,12 @@ const PlatformLineage = () => {
           isPlatformLineage
           entity={selectedEntity}
           entityType={entityType}
-          hasEditAccess={
-            permissions?.EditAll || permissions?.EditLineage || false
-          }
+          hasEditAccess={canEditLineage}
           platformHeader={header}
         />
       </LineageProvider>
     );
-  }, [selectedEntity, loading, permissions, entityType, header]);
+  }, [selectedEntity, loading, canEditLineage, entityType, header]);
 
   return (
     <PageLayoutV1

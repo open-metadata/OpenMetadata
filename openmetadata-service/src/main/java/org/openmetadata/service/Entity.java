@@ -180,6 +180,7 @@ public final class Entity {
   public static final String DATABASE = "database";
   public static final String DATABASE_SCHEMA = "databaseSchema";
   public static final String METRIC = "metric";
+  public static final String METRIC_GROUP = "metricGroup";
   public static final String DASHBOARD = "dashboard";
   public static final String DASHBOARD_DATA_MODEL = "dashboardDataModel";
   public static final String PIPELINE = "pipeline";
@@ -231,6 +232,7 @@ public final class Entity {
   public static final String MCP_SERVER = "mcpServer";
   public static final String MCP_EXECUTION = "mcpExecution";
   public static final String TEST_DEFINITION = "testDefinition";
+  public static final String DATA_QUALITY_DIMENSION = "dataQualityDimension";
   public static final String TEST_CONNECTION_DEFINITION = "testConnectionDefinition";
   public static final String TEST_SUITE = "testSuite";
   public static final String KPI = "kpi";
@@ -305,6 +307,7 @@ public final class Entity {
   public static final String WORKFLOW_INSTANCE = "workflowInstance";
   public static final String WORKFLOW_INSTANCE_STATE = "workflowInstanceState";
   public static final String AUDIT_LOG = "auditLog";
+  public static final String RDF = "rdf";
 
   //
   // Reserved names in OpenMetadata

@@ -12,8 +12,6 @@
  */
 
 import { lazy } from 'react';
-import { ReactComponent as DarActiveIcon } from '../../../assets/svg/dar-active.svg';
-import { ReactComponent as DarIcon } from '../../../assets/svg/dar-default.svg';
 import { ReactComponent as DataProductsActiveIcon } from '../../../assets/svg/data-products-active.svg';
 import { ReactComponent as DataProductsIcon } from '../../../assets/svg/data-products-default.svg';
 import { ReactComponent as DomainsActiveIcon } from '../../../assets/svg/domains-active.svg';
@@ -46,7 +44,7 @@ const MarketplaceDataProductsPage = withSuspenseFallback(
 
 /**
  * Marketplace module — mirrors the classic "Data Marketplace" left-sidebar
- * section (Overview, Domains, Data Products, Data Access Requests).
+ * section (Overview, Domains, Data Products).
  *
  * The Domains and Data Products list pages are wired as app-mode routes so they
  * keep-alive and live-refresh on a domain/dataProduct change. The remaining
@@ -64,7 +62,7 @@ export const marketplaceModule: AppModule = {
   defaultPath: ROUTES.DATA_MARKETPLACE,
   routes: [
     {
-      // Marketplace overview — the header is swapped for the shared HeaderShell
+      // Marketplace overview — the header is swapped for the shared PageHeader
       // page header in AI mode. Exact path so it overrides the catch-all for the
       // overview only, leaving the data-access sub-route untouched.
       path: ROUTES.DATA_MARKETPLACE,
@@ -122,13 +120,6 @@ export const marketplaceModule: AppModule = {
             activeIcon: DataProductsActiveIcon,
             labelKey: 'label.data-product-plural',
             path: ROUTES.DATA_PRODUCT,
-          },
-          {
-            key: 'data-access-requests',
-            icon: DarIcon,
-            activeIcon: DarActiveIcon,
-            labelKey: 'label.data-access-request-plural',
-            path: ROUTES.DATA_MARKETPLACE_DATA_ACCESS_REQUESTS,
           },
         ],
       },

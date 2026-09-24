@@ -70,6 +70,7 @@ import {
   LineageNodeType,
   NodeData,
 } from '../../components/Lineage/Lineage.interface';
+import { getRealEntityRef } from '../../components/Lineage/LineageMap/LineageMapEdit.utils';
 import LineageNodeRemoveButton from '../../components/Lineage/LineageNodeRemoveButton';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import {
@@ -84,6 +85,10 @@ import { ELEMENT_DELETE_STATE } from '../../constants/Lineage.constants';
 import { EntityLineageNodeType, EntityType } from '../../enums/entity.enum';
 import { AddLineage } from '../../generated/api/lineage/addLineage';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
+import {
+  LineageBand,
+  LineageSceneNode,
+} from '../../generated/api/lineage/lineageScene';
 import { LineageSettings } from '../../generated/configuration/lineageSettings';
 import { Table } from '../../generated/entity/data/table';
 import { LineageLayer } from '../../generated/settings/settings';
@@ -162,6 +167,24 @@ import {
 
 const LINEAGE_START_TIME_PARAM = 'lineageStartTime';
 const LINEAGE_END_TIME_PARAM = 'lineageEndTime';
+
+// `toLineageNode` overwrites the entity's own id with the scene node id so
+// React Flow can key on it, which leaves `data.node.id` looking like
+// `container:<uuid>` rather than the entity's UUID. The drawer this feeds is
+// generic and fetches permissions by id, so that scene id reaches
+// /api/v1/permissions/<type>/<type>:<uuid>, 404s, and the panel tells the user
+// they lack View Data Asset on an entity they can read -- an admin included.
+// `handleEntityUpdate` reads the same id as its entity fallback. Hand both the
+// real id whenever the scene carries one, and leave legacy nodes, which have no
+// sceneNode, exactly as they were.
+const toDrawerEntity = (node: Node): SourceType => {
+  const details = node.data?.node as SourceType;
+  const sceneNode = (node.data as { sceneNode?: LineageSceneNode } | undefined)
+    ?.sceneNode;
+  const entityId = getRealEntityRef(sceneNode)?.id;
+
+  return entityId ? ({ ...details, id: entityId } as SourceType) : details;
+};
 
 const EntitySummaryPanel = withSuspenseFallback(
   lazy(
@@ -503,8 +526,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     isColumnLevelLineage,
     selectedColumn,
     setSelectedColumn,
+    sceneBand,
     setIsRepositioning,
     isDQEnabled,
+    bumpLineageMutationTick,
     reset,
   } = useLineageStore();
 
@@ -1242,7 +1267,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   );
 
   useEffect(() => {
-    if (!selectedColumn) {
+    if (!selectedColumn || sceneBand === LineageBand.Field) {
       return;
     }
 
@@ -1254,17 +1279,20 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setTracedColumns(connectedColumnEdges);
     setTracedNodes(new Set());
     setSelectedEdge(undefined);
-  }, [selectedColumn, columnEdges]);
+  }, [selectedColumn, columnEdges, sceneBand]);
 
   const onColumnMouseEnter = useCallback(
     (column: string) => {
+      if (sceneBand === LineageBand.Field) {
+        return;
+      }
       const { connectedColumnEdges } = getAllTracedColumnEdge(
         column,
         columnEdges
       );
       setTracedColumns(connectedColumnEdges);
     },
-    [columnEdges]
+    [columnEdges, sceneBand]
   );
 
   const removeEdgeHandler = async (
@@ -1280,6 +1308,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     const edgeData = getEdgeDataFromEdge(edge);
 
     await removeLineageHandler(edgeData);
+    bumpLineageMutationTick();
 
     let filteredEdges: EdgeDetails[] = [];
 
@@ -1321,6 +1350,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     const selectedEdge = createNewEdge(edge);
     const updatedCols = selectedEdge.edge.lineageDetails?.columnsLineage ?? [];
     await addLineageHandler(selectedEdge);
+    bumpLineageMutationTick();
 
     const updatedEdgeWithColumns = (entityLineage.edges ?? []).map((obj) => {
       if (
@@ -1610,11 +1640,15 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   const handleEntityUpdate = useCallback(
     (updatedEntity: Partial<SourceType>) => {
-      const entityId = updatedEntity.id ?? selectedNode?.id ?? '';
+      // updateNodeData matches React Flow nodes by their scene id, so use the
+      // active (clicked) node's id, not selectedNode's now-real entity id.
+      // The drawer omits `id` from its partial payloads (owners/tags/extension),
+      // so the fallback is what actually fires in practice.
+      const entityId = updatedEntity.id ?? activeNode?.id ?? '';
       updateNodeData(entityId, updatedEntity);
       setSelectedNode({ ...selectedNode, ...updatedEntity } as SourceType);
     },
-    [updateNodeData, selectedNode]
+    [updateNodeData, selectedNode, activeNode]
   );
 
   const onNodeClick = useCallback(
@@ -1632,7 +1666,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       } else {
         setSelectedEdge(undefined);
         setActiveNode(node);
-        setSelectedNode(node.data.node as SourceType);
+        setSelectedNode(toDrawerEntity(node));
         setIsDrawerOpen(true);
         handleLineageTracing(node);
       }
@@ -1871,6 +1905,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       try {
         await addLineageHandler(newEdge);
+        bumpLineageMutationTick();
 
         setStatus('success');
         setLoading(false);
@@ -1926,6 +1961,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       try {
         await updateLineageEdge(updatedEdgeDetails);
+        bumpLineageMutationTick();
         const updatedEdges = (entityLineage.edges ?? []).map((edge) => {
           if (
             edge.fromEntity.id === updatedEdgeDetails.edge.fromEntity.id &&
@@ -2160,11 +2196,23 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         if (activeNode) {
           removeNodeHandler(activeNode);
         } else if (selectedEdge) {
-          removeEdgeHandler(selectedEdge, true);
+          if (selectedEdge.data?.isColumnLineage) {
+            removeColumnEdge(selectedEdge, true);
+          } else {
+            removeEdgeHandler(selectedEdge, true);
+          }
         }
       }
     }
-  }, [isEditMode, deletePressed, backspacePressed, activeNode, selectedEdge]);
+  }, [
+    isEditMode,
+    deletePressed,
+    backspacePressed,
+    activeNode,
+    selectedEdge,
+    removeColumnEdge,
+    removeEdgeHandler,
+  ]);
 
   useEffect(() => {
     if (reactFlowInstance?.viewportInitialized) {
@@ -2188,6 +2236,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const activityFeedContextValues: LineageContextType = useMemo(() => {
     return {
       nodes,
+      setSceneNodes: setNodes,
       edges,
       reactFlowInstance,
       entityLineage,
@@ -2432,7 +2481,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         )}
         {showAddEdgeModal && (
           <AddPipeLineModal
-            loading={loading}
+            loading={sceneBand === undefined ? loading : status === 'waiting'}
             selectedEdge={selectedEdge}
             showAddEdgeModal={showAddEdgeModal}
             onModalCancel={handleModalCancel}

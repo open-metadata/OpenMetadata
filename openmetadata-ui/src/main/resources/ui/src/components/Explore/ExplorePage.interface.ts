@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import type { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
@@ -49,7 +49,6 @@ import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
-import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 
 export type UrlParams = {
@@ -130,20 +129,9 @@ export interface ExploreProps {
   }) => void;
 }
 
-export interface ExploreQuickFilterField {
-  key: string;
-  label: string;
-  labelKeyOptions?: Record<string, string | number | boolean>;
-  options?: SearchDropdownOption[];
-  value?: SearchDropdownOption[];
-  hideCounts?: boolean;
-  hideSearchBar?: boolean;
-  searchIndex?: SearchIndex;
-  searchKey?: string;
-  dropdownClassName?: string;
-  singleSelect?: boolean;
-  sourceFields?: string;
-}
+import type { ExploreQuickFilterField } from '../../interface/quickFilter.interface';
+
+export type { ExploreQuickFilterField };
 
 // Type for all the explore tab entities
 export type EntityUnion =

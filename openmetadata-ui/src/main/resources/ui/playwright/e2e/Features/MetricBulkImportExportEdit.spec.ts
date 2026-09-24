@@ -28,7 +28,7 @@ import { createAdminApiContext } from '../../utils/admin';
 import {
   redirectToHomePage,
   uuid,
-  waitForMetricsSearchResponse,
+  waitForMetricsListingResponse,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { verifyPageAccess } from '../../utils/testCases';
@@ -163,6 +163,9 @@ const CSV_HEADERS = [
   'dataProducts',
   'entityStatus',
   'extension',
+  'parent',
+  'experts',
+  'metricGroup',
 ];
 
 const METRIC_EDITOR_RULES = [
@@ -543,14 +546,19 @@ const cleanupFixtures = async () => {
 };
 
 const waitForMetricsPage = async (page: Page) => {
-  const metricsResponse = waitForMetricsSearchResponse(page);
+  const metricsResponse = waitForMetricsListingResponse(page);
   // domcontentloaded, not the default 'load': /metrics pulls enough subresources
   // that waiting for all of them exceeded the 60s navigation timeout under merge
-  // queue load. The real readiness signal is the search response awaited next.
+  // queue load. The real readiness signal is the listing response awaited next.
   await page.goto('/metrics', { waitUntil: 'domcontentloaded' });
   await metricsResponse;
   await waitForAllLoadersToDisappear(page);
-  await expect(page.getByTestId('heading')).toHaveText('Metrics');
+  await expect(page.getByTestId('metric-list-page')).toBeVisible();
+  await expect(
+    page.getByTestId('metric-list-header').getByRole('heading', {
+      name: 'Metrics',
+    })
+  ).toBeVisible();
 };
 
 const filterMetrics = async (page: Page, searchText: string) => {
@@ -581,15 +589,17 @@ const getFirstVisibleFixtureMetricRow = async (
   return { metric, row };
 };
 
+const getMetricActionsMenu = (page: Page) =>
+  page.getByRole('menu', { name: 'Open menu' });
+
 const openMetricActions = async (page: Page) => {
   await page.getByTestId('metric-actions').click();
-  await expect(page.locator('.metric-actions-menu')).toBeVisible();
+  await expect(getMetricActionsMenu(page)).toBeVisible();
 };
 
 const clickMetricAction = async (page: Page, actionName: string) => {
-  await page
-    .locator('.metric-actions-menu-item')
-    .filter({ hasText: actionName })
+  await getMetricActionsMenu(page)
+    .getByRole('menuitemradio', { name: actionName, exact: true })
     .click();
 };
 
@@ -837,6 +847,9 @@ const createMetricCsvFile = (metricName: string) => {
       fixtures.dataProduct.fullyQualifiedName,
       'Approved',
       `${metricCustomPropertyName}:imported custom value`,
+      '',
+      '',
+      '',
     ],
   ]);
   const csvPath = test.info().outputPath(`${metricName}.csv`);
@@ -867,6 +880,9 @@ const createInvalidMetricCsvFile = (fileName: string) => {
       fixtures.dataProduct.fullyQualifiedName,
       '',
       '',
+      '',
+      '',
+      '',
     ],
     [
       `${fixtures.prefix}_invalid_refs`,
@@ -888,6 +904,9 @@ const createInvalidMetricCsvFile = (fileName: string) => {
       'missing_data_product',
       '',
       `${metricCustomPropertyName}:invalid refs`,
+      '',
+      '',
+      '',
     ],
   ]);
   const csvPath = test.info().outputPath(`${fileName}.csv`);
@@ -1060,11 +1079,23 @@ test.describe(
         expect(response.status()).toBe(202);
         // Verify exactly one export request was fired (no duplicate calls).
         await expect.poll(() => exportRequestCount).toBe(1);
-        await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible({
+        // A job reaching a terminal state auto-opens the tray, and the launcher
+        // button only renders while the tray is closed -- so a fast export
+        // removes the very element this used to wait for, and the test lost a
+        // race it could not win. Accept either state, and click only if the
+        // tray has not opened itself.
+        const trayLauncher = page.locator('.csv-jobs-tray-launcher');
+        const trayPopover = page.locator('.csv-jobs-tray-popover');
+
+        await expect(trayLauncher.or(trayPopover)).toBeVisible({
           timeout: 30000,
         });
-        await page.locator('.csv-jobs-tray-launcher').click();
-        await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible();
+
+        if (await trayLauncher.isVisible()) {
+          await trayLauncher.click();
+        }
+
+        await expect(trayPopover).toBeVisible();
         // Verify the export job appears in the tray. Each test uses a dedicated
         // user session so only this test's own job is visible — checking the
         // label is sufficient.
@@ -1074,7 +1105,9 @@ test.describe(
             .filter({ hasText: /Exporting Metrics|Exported Metrics/ })
         ).toBeVisible();
       } finally {
-        await page.close();
+        // A failed test tears the context down first, so closing here throws a
+        // protocol error that replaces the real failure in the report.
+        await page.close().catch(() => undefined);
       }
     });
 
@@ -1118,7 +1151,9 @@ test.describe(
 
         await expectImportedMetricComplexFields(importedMetricName);
       } finally {
-        await page.close();
+        // A failed test tears the context down first, so closing here throws a
+        // protocol error that replaces the real failure in the report.
+        await page.close().catch(() => undefined);
       }
     });
 
@@ -1176,6 +1211,9 @@ test.describe(
             fixtures.dataProduct.fullyQualifiedName,
             'Approved',
             `${metricCustomPropertyName}:updated custom value`,
+            '',
+            '',
+            '',
           ],
         ]);
         const csvPath = test
@@ -1213,7 +1251,9 @@ test.describe(
           [metricCustomPropertyName]: 'updated custom value',
         });
       } finally {
-        await page.close();
+        // A failed test tears the context down first, so closing here throws a
+        // protocol error that replaces the real failure in the report.
+        await page.close().catch(() => undefined);
       }
     });
 
@@ -1389,9 +1429,7 @@ test.describe(
 
       // eslint-disable-next-line playwright/no-force-option -- styled checkbox control intercepts the native input.
       await row.getByRole('checkbox').check({ force: true });
-      await expect(page.locator('.metric-list-selection-count')).toHaveText(
-        '1'
-      );
+      await expect(page.getByText('1 selected', { exact: true })).toBeVisible();
 
       await page.getByTestId('bulk-edit-metric').click();
       await waitForMetricBulkEditGrid(page, selectedMetric.name);
@@ -1432,14 +1470,16 @@ test.describe(
         ).toBeVisible();
         await openMetricActions(metricEditorPage);
         await expect(
-          metricEditorPage
-            .locator('.metric-actions-menu-item')
-            .filter({ hasText: 'Export' })
+          getMetricActionsMenu(metricEditorPage).getByRole('menuitemradio', {
+            name: 'Export',
+            exact: true,
+          })
         ).toBeVisible();
         await expect(
-          metricEditorPage
-            .locator('.metric-actions-menu-item')
-            .filter({ hasText: 'Import' })
+          getMetricActionsMenu(metricEditorPage).getByRole('menuitemradio', {
+            name: 'Import',
+            exact: true,
+          })
         ).toBeVisible();
         await metricEditorPage.keyboard.press('Escape');
 
@@ -1743,7 +1783,7 @@ test.describe(
       await redirectToHomePage(page);
       await waitForMetricsPage(page);
 
-      const searchResponse = waitForMetricsSearchResponse(page);
+      const searchResponse = waitForMetricsListingResponse(page);
       await filterMetrics(page, fixtures.prefix);
       await searchResponse;
 
@@ -1751,10 +1791,8 @@ test.describe(
 
       await page.locator('thead label[slot="selection"]').click();
 
-      await expect(page.locator('.metric-list-selection-bar')).toBeVisible();
-      await expect(page.locator('.metric-list-selection-count')).not.toHaveText(
-        '0'
-      );
+      await expect(page.getByTestId('clear-metric-selection')).toBeVisible();
+      await expect(page.getByText(/^[1-9]\d* selected$/)).toBeVisible();
     });
 
     test('MetricListPage unchecking header checkbox clears the selection bar', async ({
@@ -1763,19 +1801,18 @@ test.describe(
       await redirectToHomePage(page);
       await waitForMetricsPage(page);
 
-      const searchResponse = waitForMetricsSearchResponse(page);
+      const searchResponse = waitForMetricsListingResponse(page);
       await filterMetrics(page, fixtures.prefix);
       await searchResponse;
 
       await expect(page.getByTestId('metric-name').first()).toBeVisible();
 
       await page.locator('thead label[slot="selection"]').click();
-      await expect(page.locator('.metric-list-selection-bar')).toBeVisible();
+      const clearSelection = page.getByTestId('clear-metric-selection');
+      await expect(clearSelection).toBeVisible();
 
       await page.locator('thead label[slot="selection"]').click();
-      await expect(
-        page.locator('.metric-list-selection-bar')
-      ).not.toBeVisible();
+      await expect(clearSelection).not.toBeVisible();
     });
 
     test('MetricListPage clicking anywhere in a row navigates to metric details', async ({
@@ -1783,7 +1820,7 @@ test.describe(
     }) => {
       await redirectToHomePage(page);
       await waitForMetricsPage(page);
-      const searchResponse = waitForMetricsSearchResponse(page);
+      const searchResponse = waitForMetricsListingResponse(page);
       await filterMetrics(page, fixtures.prefix);
       await searchResponse;
 
@@ -1793,7 +1830,7 @@ test.describe(
         .first();
       await expect(row).toBeVisible();
 
-      await row.locator('.metric-status-pill').first().click();
+      await row.getByRole('status').click();
 
       await expect(page).toHaveURL(/\/metric\//);
     });
@@ -1803,7 +1840,7 @@ test.describe(
     }) => {
       await redirectToHomePage(page);
       await waitForMetricsPage(page);
-      const searchResponse = waitForMetricsSearchResponse(page);
+      const searchResponse = waitForMetricsListingResponse(page);
       await filterMetrics(page, fixtures.prefix);
       await searchResponse;
 
@@ -1815,9 +1852,7 @@ test.describe(
 
       await row.locator('label[slot="selection"]').click();
 
-      await expect(page.locator('.metric-list-selection-count')).toHaveText(
-        '1'
-      );
+      await expect(page.getByText('1 selected', { exact: true })).toBeVisible();
       await expect(page).toHaveURL(/\/metrics/);
     });
   }

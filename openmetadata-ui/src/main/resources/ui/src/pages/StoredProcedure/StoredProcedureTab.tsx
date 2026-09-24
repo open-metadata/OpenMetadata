@@ -20,8 +20,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DisplayName from '../../components/common/DisplayName/DisplayName';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import Table from '../../components/common/Table/Table';
 import { ColumnsType } from '../../components/common/Table/Table.interface';
+import Table from '../../components/common/Table/TableV2';
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
@@ -37,10 +37,12 @@ import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPa
 import { searchQuery } from '../../rest/searchAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
-import { highlightSearchText } from '../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../utils/EntitySortUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { stringToHTML } from '../../utils/StringUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -173,7 +175,7 @@ const StoredProcedureTab = () => {
         sorter: getColumnSorter<ServicePageData, 'name'>('name'),
         render: (_, record) => (
           <DisplayName
-            displayName={stringToHTML(
+            displayName={renderHighlightedText(
               highlightSearchText(record.displayName, searchValue)
             )}
             id={record.id ?? ''}
@@ -182,7 +184,9 @@ const StoredProcedureTab = () => {
               EntityType.STORED_PROCEDURE,
               record.fullyQualifiedName ?? ''
             )}
-            name={stringToHTML(highlightSearchText(record.name, searchValue))}
+            name={renderHighlightedText(
+              highlightSearchText(record.name, searchValue)
+            )}
           />
         ),
       },

@@ -33,7 +33,11 @@ import {
   checkAssetsCount,
   selectDataProduct,
 } from '../../utils/domain';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  escapeESReservedCharacters,
+  openClassificationTagPicker,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -267,22 +271,34 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
 
       // Step 2: Add a tag (this triggers consolidation logic)
       await page.getByTestId('documentation').click();
-      await page.getByTestId('tags-container').getByTestId('add-tag').click();
+      await openClassificationTagPicker(
+        page,
+        page.getByTestId('tags-container').getByTestId('add-tag')
+      );
 
+      const tagSearchResponse = page.waitForResponse(
+        `/api/v1/search/query?q=*${encodeURIComponent(
+          escapeESReservedCharacters(tag.data.name)
+        )}*`
+      );
       await page
-        .locator('[data-testid="tag-selector"] input')
+        .getByTestId('classification-tag-picker-search')
         .fill(tag.data.name);
+      await tagSearchResponse;
 
       await page
-        .locator(`[data-testid="tag-${tag.responseData.fullyQualifiedName}"]`)
+        .getByTestId(`tree-node-${tag.responseData.fullyQualifiedName}`)
         .click();
+
+      await page.getByTestId('update-btn').waitFor({ state: 'visible' });
 
       const patchResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/dataProducts/') &&
           response.request().method() === 'PATCH'
       );
-      await page.getByTestId('saveAssociatedTag').click();
+      await expect(page.getByTestId('update-btn')).toBeEnabled();
+      await page.getByTestId('update-btn').click();
       await patchResponse;
 
       // Step 3: Verify assets
@@ -383,7 +399,10 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       await searchResponse;
 
       // Click on the user in the list
-      await page.getByRole('listitem', { name: ownerDisplayName }).click();
+      await page
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: ownerDisplayName })
+        .click();
 
       const patchResponse = page.waitForResponse(
         (response) =>

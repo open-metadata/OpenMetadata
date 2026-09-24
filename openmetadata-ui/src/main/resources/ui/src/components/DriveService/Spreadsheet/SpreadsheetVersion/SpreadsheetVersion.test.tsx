@@ -64,7 +64,7 @@ jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewNew', () =>
     <div data-testid="rich-text-preview">{markdown}</div>
   ))
 );
-jest.mock('../../../common/Table/Table', () =>
+jest.mock('../../../common/Table/TableV2', () =>
   jest.fn(({ dataSource }) => (
     <div data-testid="spreadsheet-children-table">
       {dataSource?.map((worksheet: { name: string }, index: number) => (

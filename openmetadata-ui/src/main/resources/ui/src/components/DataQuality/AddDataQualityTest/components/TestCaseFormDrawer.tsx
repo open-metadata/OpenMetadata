@@ -35,7 +35,6 @@ import { EntityType as EntityTypeEnum } from '../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestDefinition } from '../../../../generated/tests/testDefinition';
-import { TestSuite } from '../../../../generated/tests/testSuite';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import {
@@ -53,6 +52,7 @@ import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/Tes
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { submitAndClose } from '../../../../utils/FormDrawerUtils';
 import { createScrollToErrorHandler } from '../../../../utils/formPureUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { AiFormModal } from '../../../common/atoms/drawer/AiFormModal';
 import { useFormDrawerWithHook } from '../../../common/atoms/drawer/useFormDrawer';
@@ -131,6 +131,13 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   const { isAirflowAvailable } = useAirflowStatus();
   const { permissions } = usePermissionProvider();
   const { ingestionPipeline } = permissions;
+  // Resource-level permission (usePermissionProvider().permissions.ingestionPipeline) —
+  // itself OperationPermission-shaped, so it runs through getDerivedPermissionFlags exactly
+  // like an entity-level fetch (Task 8 Batch 3 DatabaseSchemaTable.tsx precedent).
+  const ingestionPipelineFlags = useMemo(
+    () => getDerivedPermissionFlags(ingestionPipeline),
+    [ingestionPipeline]
+  );
 
   const isEditMode = !!testCase;
 
@@ -207,8 +214,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
 
   const createTestCasePipeline = useCallback(
     async (values: FormValues, created: TestCase) => {
-      const pipelineTestSuite =
-        (created.testSuite as TestSuite | undefined) ?? testSuite;
+      const pipelineTestSuite = created.testSuite ?? testSuite;
       if (!formContext?.canCreatePipeline || !pipelineTestSuite) {
         return;
       }
@@ -216,16 +222,20 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       const pipeline = buildTestSuitePipelinePayload(values, {
         testSuite: pipelineTestSuite,
         createdTestCaseName: created.name,
-        selectedTable: formContext?.selectedTableData?.fullyQualifiedName,
+        // Prefer the raw form FQN: `canCreatePipeline` is gated on it, so it can
+        // be submitted while `selectedTableData` is still being fetched.
+        selectedTable:
+          formContext?.selectedTableFqn ??
+          formContext?.selectedTableData?.fullyQualifiedName,
         table,
       });
 
       const ingestion = await addIngestionPipeline(pipeline);
-      if (isAirflowAvailable && ingestionPipeline.EditAll) {
+      if (isAirflowAvailable && ingestionPipelineFlags.canEditAll) {
         await deployIngestionPipelineById(ingestion.id ?? '');
       }
     },
-    [formContext, testSuite, table, isAirflowAvailable, ingestionPipeline]
+    [formContext, testSuite, table, isAirflowAvailable, ingestionPipelineFlags]
   );
 
   const handleEditSubmit = useCallback(
@@ -262,6 +272,10 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
         ),
         showOnlyParameter,
         isComputeRowCountFieldVisible,
+        // The dimension field is prefilled with the definition's dimension when
+        // the test case has none of its own, so the patch needs it to tell that
+        // prefill apart from a dimension the user actually picked.
+        inheritedDimension: resolvedDefinition?.dataQualityDimension,
       });
 
       if (!jsonPatch.length) {
@@ -288,7 +302,11 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
         selectedColumn: formContext?.selectedColumn,
         selectedTestLevel: formContext?.selectedTestLevel ?? TestLevel.TABLE,
         table,
-        selectedTable: formContext?.selectedTableData?.fullyQualifiedName,
+        // `resolveEntityLink` falls back to '' when every source is empty, so
+        // this must also prefer the raw form FQN over the fetched table.
+        selectedTable:
+          formContext?.selectedTableFqn ??
+          formContext?.selectedTableData?.fullyQualifiedName,
         generateName: formContext?.generateName ?? (() => ''),
       });
 

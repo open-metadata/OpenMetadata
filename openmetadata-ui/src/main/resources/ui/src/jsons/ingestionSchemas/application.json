@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "OpenMetadataApplicationConfig",
   "description": "OpenMetadata Ingestion Framework definition for Applications, i.e., the YAML shape we require.",
   "javaType": "org.openmetadata.schema.metadataIngestion.OpenMetadataAppConfig",
@@ -35,7 +34,6 @@
           "maximum": 100
         },
         "openMetadataServerConfig": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "OpenMetadataConnection",
           "description": "OpenMetadata Connection Config",
           "type": "object",
@@ -114,7 +112,6 @@
               "mask": true,
               "oneOf": [
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Validate SSL Client Config",
                   "description": "OpenMetadata Client configured to validate SSL certificates.",
                   "type": "object",
@@ -129,9 +126,7 @@
                       "accept": [
                         ".pem",
                         ".crt",
-                        ".cer",
-                        ".der",
-                        ".p12"
+                        ".cer"
                       ],
                       "uiFieldType": "fileOrInput"
                     },
@@ -143,9 +138,7 @@
                       "accept": [
                         ".pem",
                         ".crt",
-                        ".cer",
-                        ".der",
-                        ".p12"
+                        ".cer"
                       ],
                       "uiFieldType": "fileOrInput"
                     },
@@ -157,9 +150,7 @@
                       "accept": [
                         ".pem",
                         ".crt",
-                        ".cer",
-                        ".der",
-                        ".p12"
+                        ".cer"
                       ],
                       "uiFieldType": "fileOrInput"
                     }
@@ -170,7 +161,6 @@
             "securityConfig": {
               "mask": true,
               "description": "OpenMetadata Client security configuration.",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "openMetadataJWTClientConfig",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig",
@@ -189,7 +179,6 @@
             "secretsManagerProvider": {
               "description": "Secrets Manager Provider for OpenMetadata Server.",
               "default": "db",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "Secrets Manager Provider",
               "type": "string",
               "javaType": "org.openmetadata.schema.security.secrets.SecretsManagerProvider",
@@ -210,7 +199,6 @@
             "secretsManagerLoader": {
               "description": "Secrets Manager Loader for the Pipeline Service Client.",
               "default": "noop",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "Secrets Manager Client Loader",
               "type": "string",
               "javaType": "org.openmetadata.schema.security.secrets.SecretsManagerClientLoader",
@@ -404,7 +392,6 @@
       "description": "External Application configuration",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "CollateAIAppConfig",
           "description": "Configuration for the CollateAI External Application.",
           "type": "object",
@@ -444,7 +431,6 @@
           ]
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "AutomatorAppConfig",
           "description": "Configuration for the Automator External Application.",
           "type": "object",
@@ -483,7 +469,6 @@
               "description": "Action to take on those entities. E.g., propagate description through lineage, auto tagging, etc.",
               "oneOf": [
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "AddTagsAction",
                   "description": "Apply Classification Tags to the selected assets.",
                   "type": "object",
@@ -508,7 +493,6 @@
                       "description": "Classification Tags to apply (source must be 'Classification')",
                       "type": "array",
                       "items": {
-                        "$schema": "http://json-schema.org/draft-07/schema#",
                         "title": "TagLabel",
                         "description": "This schema defines the type for labeling an entity with a Tag.",
                         "type": "object",
@@ -622,14 +606,12 @@
                           },
                           "metadata": {
                             "description": "Additional metadata associated with this tag label, such as recognizer information for automatically applied tags.",
-                            "$schema": "http://json-schema.org/draft-07/schema#",
                             "title": "TagLabelMetadata",
                             "type": "object",
                             "javaType": "org.openmetadata.schema.type.TagLabelMetadata",
                             "properties": {
                               "recognizer": {
                                 "description": "Metadata about the recognizer that automatically applied this tag",
-                                "$schema": "http://json-schema.org/draft-07/schema#",
                                 "title": "TagLabelRecognizerMetadata",
                                 "type": "object",
                                 "javaType": "org.openmetadata.schema.type.TagLabelRecognizerMetadata",
@@ -743,7 +725,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "RemoveTagsAction",
                   "description": "Remove Classification Tags Action Type",
                   "type": "object",
@@ -810,7 +791,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "AddTermsAction",
                   "description": "Apply Glossary Terms to the selected assets.",
                   "type": "object",
@@ -861,7 +841,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "RemoveTermsAction",
                   "description": "Remove Glossary Terms Action Type",
                   "type": "object",
@@ -928,7 +907,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "AddDomainAction",
                   "description": "Add domains to the selected assets.",
                   "type": "object",
@@ -951,7 +929,6 @@
                     },
                     "domains": {
                       "description": "Domains to apply",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "Entity Reference List",
                       "type": "array",
                       "items": {
@@ -973,7 +950,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "RemoveDomainAction",
                   "description": "Remove domains from the selected assets.",
                   "type": "object",
@@ -1001,7 +977,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "AddDescriptionAction",
                   "description": "Apply Tags to the selected assets.",
                   "type": "object",
@@ -1049,7 +1024,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "AddCustomPropertiesAction",
                   "description": "Add a Custom Property to the selected assets.",
                   "type": "object",
@@ -1088,7 +1062,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "RemoveDescriptionAction",
                   "description": "Remove Owner Action Type",
                   "type": "object",
@@ -1131,7 +1104,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "AddTierAction",
                   "description": "Add an owner to the selected assets.",
                   "type": "object",
@@ -1170,7 +1142,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "RemoveTierAction",
                   "description": "Remove Owner Action Type",
                   "type": "object",
@@ -1198,7 +1169,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "AddTestCaseAction",
                   "description": "Add Test Cases to the selected assets.",
                   "type": "object",
@@ -1295,7 +1265,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "RemoveTestCaseAction",
                   "description": "Remove Test Cases Action Type",
                   "type": "object",
@@ -1348,7 +1317,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "AddOwnerAction",
                   "description": "Add owners to the selected assets.",
                   "type": "object",
@@ -1388,7 +1356,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "RemoveOwnerAction",
                   "description": "Remove Owner Action Type",
                   "type": "object",
@@ -1416,7 +1383,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "RemoveCustomPropertiesAction",
                   "description": "Remove Custom Properties Action Type",
                   "type": "object",
@@ -1452,7 +1418,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "AddDataProductAction",
                   "description": "Add a Data Product to the selected assets.",
                   "type": "object",
@@ -1477,7 +1442,6 @@
                       "description": "Data Products to apply",
                       "type": "array",
                       "items": {
-                        "$schema": "http://json-schema.org/draft-07/schema#",
                         "title": "Entity Reference",
                         "description": "This schema defines the EntityReference type used for referencing an entity. EntityReference is used for capturing relationships from one entity to another. For example, a table has an attribute called database of type EntityReference that captures the relationship of a table `belongs to a` database.",
                         "type": "object",
@@ -1542,7 +1506,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "RemoveDataProductAction",
                   "description": "Remove a Data Product to the selected assets.",
                   "type": "object",
@@ -1579,7 +1542,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "LineagePropagationAction",
                   "description": "Propagate description, tags and glossary terms via lineage",
                   "type": "object",
@@ -1686,7 +1648,6 @@
                       "type": "array",
                       "default": null,
                       "items": {
-                        "$schema": "http://json-schema.org/draft-07/schema#",
                         "title": "PropagationStopConfig",
                         "description": "Configuration to stop lineage propagation based on conditions",
                         "type": "object",
@@ -1743,7 +1704,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "MLTaggingAction",
                   "description": "ML Tagging action configuration for external automator.",
                   "type": "object",
@@ -1800,7 +1760,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "SlackAppConfiguration",
           "description": "This schema defines the Slack App Information",
           "type": "object",
@@ -1839,7 +1798,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "DataInsightsAppConfig",
           "description": "No configuration needed to instantiate the Data Insights Pipeline. The logic is handled in the backend.",
           "type": "object",
@@ -2009,7 +1967,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "DataInsightsReportAppConfig",
           "description": "This schema defines configuration for Data Insights Report Application.",
           "definitions": {
@@ -2043,7 +2000,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "SearchIndexingApp",
           "type": "object",
           "description": "Search Indexing App.",
@@ -2247,7 +2203,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "CacheWarmupApp",
           "type": "object",
           "description": "Cache Warmup Application Configuration.",
@@ -2316,7 +2271,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "RdfIndexingApp",
           "type": "object",
           "description": "RDF indexing application configuration.",
@@ -2465,12 +2419,32 @@
               "default": 10000,
               "minimum": 1000,
               "maximum": 50000
+            },
+            "blueGreenRebuild": {
+              "title": "Blue/Green Rebuild",
+              "description": "Build the rebuild into an idle dataset and switch to it only after the run succeeds, so queries keep seeing the previous graph instead of a partially-rebuilt one. Requires roughly twice the dataset size on disk. Only applies when Recreate RDF Store is enabled.",
+              "type": "boolean",
+              "default": false
+            },
+            "minSuccessRatio": {
+              "title": "Minimum Success Ratio",
+              "description": "Fraction of records that must index successfully before a blue/green rebuild is allowed to become the served dataset. Below this the previous dataset keeps serving and the run is marked failed.",
+              "type": "number",
+              "default": 0.95,
+              "minimum": 0,
+              "maximum": 1
+            },
+            "relationshipIsolationMaxFailures": {
+              "title": "Relationship Isolation Failure Limit",
+              "description": "Maximum failed per-source writes during isolation of a failed RDF relationship batch. Once this limit is reached, remaining sources are recorded as failures. Successful writes do not consume the budget; zero disables per-source isolation. This is separate from HTTP request retries.",
+              "type": "integer",
+              "default": 3,
+              "minimum": 0
             }
           },
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "RdfInferenceAppConfig",
           "description": "Scheduled RDF inference materialization configuration.",
           "type": "object",
@@ -2490,7 +2464,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Retention Configuration",
           "description": "Configure retention policies for each entity.",
           "properties": {
@@ -2534,6 +2507,13 @@
               "default": 90,
               "minimum": 1
             },
+            "workflowRetentionPeriod": {
+              "title": "Automation Workflow Retention Period (days)",
+              "description": "Enter the retention period in days for automation Workflows: the short-lived records left behind by test connection, query runner and reverse ingestion runs. Use 0 to retain them forever.",
+              "type": "integer",
+              "default": 30,
+              "minimum": 0
+            },
             "extensions": {
               "title": "Extension Retention Periods (days)",
               "description": "Retention periods for cleanups contributed by distributions built on OpenMetadata, keyed by the extension's name. OpenMetadata never reads these values; it hands them to the registered DataRetentionExtension, which decides what a missing key means.",
@@ -2552,7 +2532,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "AutoPilotAppConfig",
           "description": "Configuration for the AutoPilot Application.",
           "type": "object",
@@ -2602,7 +2581,6 @@
       "description": "External Application Private configuration",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "CollateAIAppPrivateConfig",
           "description": "Private Configuration for the CollateAI External Application.",
           "type": "object",
@@ -2630,7 +2608,6 @@
             "limits": {
               "title": "Limits",
               "description": "Limits for the CollateAI Application.",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "type": "object",
               "javaType": "io.collate.schema.entity.app.Limits",
               "definitions": {

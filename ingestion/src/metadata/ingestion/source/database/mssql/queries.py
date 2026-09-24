@@ -120,7 +120,9 @@ MSSQL_SQL_STATEMENT_FROM_QUERY_STORE = textwrap.dedent(
 MSSQL_GET_TABLE_COMMENTS = textwrap.dedent(
     """
 SELECT obj.name AS table_name,
-        ep.value AS table_comment,
+        /* sql_variant, which FreeTDS hands back as bytes: the cast the other
+           comment queries already carry is what keeps pymssql returning text. */
+        CAST(ep.value AS NVARCHAR(MAX)) AS table_comment,
         s.name AS "schema"
 FROM sys.objects AS obj
 LEFT JOIN sys.extended_properties AS ep
@@ -345,7 +347,8 @@ SELECT
   ROUTINE_BODY AS language,
   l.definition AS definition
 FROM INFORMATION_SCHEMA.ROUTINES r
-JOIN sys.procedures p ON p.name = r.ROUTINE_NAME 
+JOIN sys.procedures p ON p.name = r.ROUTINE_NAME
+JOIN sys.schemas sch ON p.schema_id = sch.schema_id AND sch.name = r.ROUTINE_SCHEMA
 JOIN sys.sql_modules l on l.object_id = p.object_id
  WHERE ROUTINE_TYPE = 'PROCEDURE'
    AND ROUTINE_CATALOG = '{database_name}'
@@ -427,7 +430,21 @@ order by PROCEDURE_START_TIME desc
     """  # noqa: W291
 )
 
-MSSQL_GET_QUERY_STORE_STATE = "SELECT actual_state FROM sys.database_query_store_options"
+MSSQL_GET_INDEXED_VIEWS = textwrap.dedent(
+    """
+SELECT v.name AS view_name
+FROM sys.views v
+JOIN sys.schemas s
+    ON s.schema_id = v.schema_id
+JOIN sys.indexes i
+    ON i.object_id = v.object_id
+WHERE s.name = :schema_name
+  AND i.type = 1
+  AND i.is_unique = 1
+"""
+)
+
+MSSQL_GET_QUERY_STORE_STATE = "SELECT actual_state, readonly_reason FROM sys.database_query_store_options"
 
 MSSQL_GET_STORED_PROCEDURE_QUERIES_FROM_QUERY_STORE = textwrap.dedent(
     """
@@ -474,3 +491,15 @@ ORDER BY PROCEDURE_START_TIME DESC
 )
 
 GET_DB_CONFIGS = textwrap.dedent("DBCC USEROPTIONS;")
+
+MSSQL_GET_SYNONYMS = textwrap.dedent(
+    """
+SELECT
+    sch.name AS synonym_schema,
+    syn.name AS synonym_name,
+    syn.base_object_name AS base_object_name
+FROM [{database_name}].sys.synonyms syn
+JOIN [{database_name}].sys.schemas sch
+    ON syn.schema_id = sch.schema_id
+"""
+)

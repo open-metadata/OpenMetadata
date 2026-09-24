@@ -47,9 +47,12 @@ import {
 } from './common';
 import {
   addMultiOwner,
+  escapeESReservedCharacters,
   getEntityDisplayName,
+  openClassificationTagPicker,
   waitForAllLoadersToDisappear,
 } from './entity';
+import { pickGlossaryTermInField } from './glossaryPicker';
 import { waitForAggregation } from './searchAggregation';
 import { sidebarClick } from './sidebar';
 import {
@@ -234,7 +237,7 @@ export const goToAssetsTab = async (
 ) => {
   await selectActiveGlossaryTerm(page, displayName);
   await page.getByTestId('assets').click();
-  await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
+  await page.getByRole('tab', { name: 'Assets', selected: true }).waitFor();
 
   await expect(
     page.getByTestId('assets').getByTestId('filter-count')
@@ -349,7 +352,10 @@ export const addTeamAsReviewer = async (
   await page.fill('[data-testid="owner-select-teams-search-bar"]', teamName);
   await teamsSearchResponse;
 
-  const ownerItem = page.locator(`.ant-popover [title="${teamName}"]`);
+  const ownerItem = page
+    .locator('[data-testid="owner-option"]')
+    .filter({ hasText: teamName });
+  await ownerItem.waitFor({ state: 'visible' });
 
   if (isSelectableInsideForm) {
     await ownerItem.click();
@@ -616,11 +622,11 @@ export const fillGlossaryTermDetails = async (
   await page.locator('#url-0').fill('https://test.com');
 
   if (term.icon) {
-    await page.locator('[data-testid="icon-url"]').fill(term.icon);
+    await fillStyleIconUrl(page, term.icon);
   }
 
   if (term.color) {
-    await page.locator('[data-testid="color-color-input"]').fill(term.color);
+    await selectStyleColor(page, term.color);
   }
 
   if (!isUndefined(term.owners)) {
@@ -634,6 +640,35 @@ export const fillGlossaryTermDetails = async (
       type: 'Users',
     });
   }
+};
+
+/**
+ * The icon field is a picker, not a text input: the trigger opens a popover
+ * with an icon grid and a URL tab. Re-clicking the trigger closes the popover
+ * so it cannot cover the form's Save button.
+ */
+export const selectStyleIcon = async (page: Page, iconName: string) => {
+  await page.getByTestId('icon-picker-btn').click();
+  await page.getByRole('button', { name: iconName, exact: true }).click();
+};
+
+export const fillStyleIconUrl = async (page: Page, iconUrl: string) => {
+  await page.getByTestId('icon-picker-btn').click();
+  await page.getByRole('tab', { name: 'URL' }).click();
+
+  const urlInput = page.getByRole('textbox', { name: 'Icon URL' });
+  await urlInput.fill(iconUrl);
+
+  await page.getByTestId('icon-picker-btn').click();
+  await expect(urlInput).not.toBeVisible();
+};
+
+/**
+ * `color` must be one of ENTITY_PALETTE_HEX (uppercase) — the colour field is a
+ * fixed palette of swatches, so an arbitrary hex cannot be picked.
+ */
+export const selectStyleColor = async (page: Page, color: string) => {
+  await page.getByRole('button', { name: `Select color ${color}` }).click();
 };
 
 export const verifyTaskCreated = async (
@@ -957,13 +992,11 @@ const testFilterWithSpecificOption = async (
 
   if (searchText) {
     const aggregateResponse = waitForAggregation(page, { value: searchText });
-    await page
-      .getByRole('textbox', { name: 'Search Service Type...' })
-      .fill(searchText);
+    await page.getByTestId('search-input').fill(searchText);
     await aggregateResponse;
   }
 
-  await page.locator(`[data-testid="${optionTestId}"]`).click();
+  await page.getByTestId('drop-down-menu').getByTestId(optionTestId).click();
 
   const filterResponse = page.waitForResponse(
     `/api/v1/search/query?*query_filter=*${expectedQueryFilterValue}*`
@@ -993,7 +1026,7 @@ const testFilterWithFirstOption = async (
   const dropdownMenu = page.getByTestId('drop-down-menu');
   await dropdownMenu.waitFor();
 
-  const options = dropdownMenu.locator('[data-testid$="-checkbox"]');
+  const options = dropdownMenu.getByRole('menuitemcheckbox');
   await waitForAllLoadersToDisappear(page);
   const firstOption = options.first();
   const noDataPlaceholder = page.getByText(/No data available/i);
@@ -1066,7 +1099,7 @@ export const verifyAssetModalFilters = async (
     page,
     filterWrapper,
     'entityType',
-    'table-checkbox',
+    'table',
     'table'
   );
 
@@ -1074,7 +1107,7 @@ export const verifyAssetModalFilters = async (
     page,
     filterWrapper,
     'serviceType',
-    'Mysql-checkbox',
+    'mysql',
     'mysql',
     'Mysql'
   );
@@ -1251,22 +1284,16 @@ export const changeTermHierarchyFromModal = async (
     .getByRole('dialog');
   await expect(hierarchyModal).toBeVisible();
 
-  const parentSelect = hierarchyModal.getByLabel('Select Parent');
-  await expect(parentSelect).toBeVisible();
-  await expect(parentSelect).toBeEnabled();
-  await parentSelect.click();
-
-  await page.locator('.async-tree-select-list-dropdown').waitFor({
-    state: 'visible',
-  });
-
-  if (isGlossaryTerm) {
-    const searchRes = page.waitForResponse(`/api/v1/search/query?q=*`);
-    await parentSelect.fill(entityDisplayName);
-    await searchRes;
-  }
-
-  await page.getByTestId(`tag-${entityFqn}`).click();
+  // A glossary sits at the picker's root; only a term has to be searched for.
+  await pickGlossaryTermInField(
+    page,
+    hierarchyModal.getByTestId('change-parent-select'),
+    {
+      name: entityDisplayName,
+      displayName: isGlossaryTerm ? entityDisplayName : undefined,
+      fullyQualifiedName: entityFqn,
+    }
+  );
 
   const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*/moveAsync');
   await page
@@ -1355,18 +1382,14 @@ export const addRelatedTerms = async (
 ) => {
   await page.getByTestId('related-term-add-button').click();
 
-  const autocompleteInput = page
-    .locator('[data-testid^="term-autocomplete-"]')
-    .first()
-    .locator('input');
+  const trigger = page.locator('[data-testid^="term-picker-"]').first();
 
   for (const term of relatedTerms) {
-    const entityDisplayName =
-      get(term, 'responseData.displayName') || get(term, 'responseData.name');
-    const searchRes = page.waitForResponse('**/api/v1/glossaryTerms/search*');
-    await autocompleteInput.fill(entityDisplayName);
-    await searchRes;
-    await page.getByRole('option', { name: entityDisplayName }).click();
+    await pickGlossaryTermInField(page, trigger, {
+      name: get(term, 'responseData.name'),
+      displayName: get(term, 'responseData.displayName'),
+      fullyQualifiedName: get(term, 'responseData.fullyQualifiedName'),
+    });
   }
 
   const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
@@ -1407,19 +1430,14 @@ export const addRelatedTermsByRelationType = async (
     await expect(option).toBeVisible();
     await option.click();
 
-    const autocompleteInput = rowLocator
-      .locator('[data-testid^="term-autocomplete-"]')
-      .locator('input');
+    const trigger = rowLocator.locator('[data-testid^="term-picker-"]');
 
     for (const term of row.terms) {
-      const entityDisplayName =
-        get(term, 'responseData.displayName') || get(term, 'responseData.name');
-      const searchRes = page.waitForResponse('**/api/v1/glossaryTerms/search*');
-      await autocompleteInput.fill(entityDisplayName);
-      await searchRes;
-      await page
-        .getByRole('option', { exact: true, name: entityDisplayName })
-        .click();
+      await pickGlossaryTermInField(page, trigger, {
+        name: get(term, 'responseData.name'),
+        displayName: get(term, 'responseData.displayName'),
+        fullyQualifiedName: get(term, 'responseData.fullyQualifiedName'),
+      });
     }
   }
 
@@ -1434,22 +1452,26 @@ export const assignTagToGlossaryTerm = async (
   action: 'Add' | 'Edit' = 'Add',
   parentTestId = 'KnowledgePanel.GlossaryTerms'
 ) => {
-  await page
+  const trigger = page
     .getByTestId(parentTestId)
     .getByTestId('tags-container')
-    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
-    .click();
+    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button');
+
+  await openClassificationTagPicker(page, trigger);
 
   const searchTags = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      escapeESReservedCharacters(tag)
+    )}*`
   );
-  await page.locator('#tagsForm_tags').fill(tag);
+  await page.getByTestId('classification-tag-picker-search').fill(tag);
   await searchTags;
-  await page.getByTestId(`tag-${tag}`).click();
 
-  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+  await page.getByTestId(`tree-node-${tag}`).click();
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+  await expect(page.getByTestId('update-btn')).toBeEnabled();
+  await page.getByTestId('update-btn').click();
 
   await expect(page.getByRole('heading')).toContainText(
     'Would you like to proceed with updating the tags?'
@@ -1843,10 +1865,9 @@ export const addMultiOwnerInDialog = async (data: {
     await searchOwner;
     await waitForAllLoadersToDisappear(page);
 
-    const ownerItem = page.getByRole('listitem', {
-      name: ownerName,
-      exact: true,
-    });
+    const ownerItem = page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: ownerName });
 
     if (type === 'Teams') {
       if (isSelectableInsideForm) {
@@ -2197,8 +2218,12 @@ export const verifyMutualExclusivitySelection = async (
 
 // -- Glossary Tree Select helpers --
 
+// `display: contents` has no box, so scope with this but assert on the tree.
 export const getTreeDropdown = (page: Page) =>
   page.getByTestId('glossary-terms-popover');
+
+export const getTreeDropdownContent = (page: Page) =>
+  page.getByTestId('glossary-terms-popover').locator('[role="treegrid"]');
 
 export const getTreeNode = (page: Page, nodeId: string) =>
   getTreeDropdown(page).getByTestId(`tree-node-${nodeId}`);
@@ -2219,25 +2244,44 @@ export const expandTreeNodeByName = async (
   // (the full glossary tree is virtualized, so a plain scroll can miss an
   // off-screen glossary); nested lookups rely on the parent's already-loaded
   // subtree instead.
+  const popover = getTreeDropdown(page);
+
   if (search) {
-    const searchResponse = page.waitForResponse(
-      /\/api\/v1\/search\/query\?q=.*index=glossaryTerm.*/
-    );
-    await page.getByTestId('glossary-terms').locator('input').fill(displayName);
-    await searchResponse;
-    await waitForAllLoadersToDisappear(page);
+    const input = page.getByTestId('glossary-terms').locator('input');
+    // ES indexing can lag after entity creation; retry the search until the node appears.
+    await expect(async () => {
+      const searchDone = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=glossaryTerm')
+      );
+      // Clear resets to the glossary list (doesn't match the listener); fill triggers a fresh query.
+      await input.clear();
+      await input.fill(displayName);
+      await searchDone;
+      await expect(popover.getByText(displayName, { exact: true })).toBeVisible(
+        { timeout: 2000 }
+      );
+    }).toPass({ timeout: 30000 });
   }
 
-  const popover = getTreeDropdown(page);
-  const nodeText = popover.getByText(displayName, { exact: true });
-  await expect(nodeText).toBeVisible({ timeout: 10000 });
-  await nodeText.scrollIntoViewIfNeeded();
+  // Locate the row by its ARIA role + accessible name — no XPath, no positional
+  // predicate. React-aria renders each TreeGrid item as role="row" and derives
+  // the accessible name from its text content, so this is stable to DOM refactors.
+  const treeItem = popover.getByRole('row', { name: displayName, exact: true });
 
-  const treeItem = nodeText.locator('xpath=ancestor::*[@role="row"][1]');
-  const expandButton = treeItem.locator('button').first();
-  await expect(expandButton).toBeVisible({ timeout: 5000 });
-  await expandButton.click();
-  await waitForAllLoadersToDisappear(page);
+  await expect(treeItem).toBeVisible({ timeout: 10000 });
+  await treeItem.scrollIntoViewIfNeeded();
+
+  const alreadyExpanded =
+    (await treeItem.getAttribute('aria-expanded')) === 'true';
+
+  if (!alreadyExpanded) {
+    const expandButton = treeItem.getByTestId('tree-expand-btn');
+    await expect(expandButton).toBeVisible({ timeout: 5000 });
+    await expandButton.click();
+    await waitForAllLoadersToDisappear(page);
+  }
 };
 
 export const expandToGlossaryTermChildren = async (
@@ -2247,17 +2291,22 @@ export const expandToGlossaryTermChildren = async (
 ) => {
   const glossaryField = page.getByTestId('glossary-terms');
   await expect(glossaryField).toBeVisible();
-  await glossaryField.click();
 
-  await expect(page.getByTestId('glossary-terms-popover')).toBeVisible({
-    timeout: 10000,
-  });
+  // The first click can be swallowed while the drawer is still settling, which
+  // leaves the tree popover closed. Re-open until the treegrid actually renders
+  // (`display: contents` has no box, so wait on the tree inside it). Only click
+  // when the popover is closed, so we never toggle an already-open dropdown.
+  const treeContent = getTreeDropdownContent(page);
+  await expect(async () => {
+    if (!(await treeContent.isVisible())) {
+      await glossaryField.click();
+    }
+    await expect(treeContent).toBeVisible({ timeout: 3000 });
+  }).toPass({ timeout: 30000 });
 
   await expandTreeNodeByName(page, glossaryDisplayName);
   if (parentTermDisplayName) {
-    await expandTreeNodeByName(page, parentTermDisplayName, {
-      search: false,
-    });
+    await expandTreeNodeByName(page, parentTermDisplayName, { search: false });
   }
 };
 

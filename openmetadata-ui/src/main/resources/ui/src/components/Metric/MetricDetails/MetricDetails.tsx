@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,7 +23,6 @@ import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Metric } from '../../../generated/entity/data/metric';
-import { Operation } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -33,6 +33,7 @@ import { restoreMetric } from '../../../rest/metricsAPI';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -42,10 +43,7 @@ import {
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
 import metricDetailsClassBase from '../../../utils/MetricEntityUtils/MetricDetailsClassBase';
-import {
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
   updateCertificationTag,
@@ -147,6 +145,8 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
         })
       );
       onToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -154,6 +154,8 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
           entity: t('label.metric'),
         })
       );
+
+      return false;
     }
   };
 
@@ -215,39 +217,26 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     []
   );
 
-  const {
-    editCustomAttributePermission,
-    editAllPermission,
-    editLineagePermission,
-    viewSampleDataPermission,
-    viewAllPermission,
-    viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editCustomAttributePermission:
-        getPrioritizedEditPermission(
-          metricPermissions,
-          Operation.EditCustomFields
-        ) && !deleted,
-      editAllPermission: metricPermissions.EditAll && !deleted,
-      editLineagePermission:
-        getPrioritizedEditPermission(
-          metricPermissions,
-          Operation.EditLineage
-        ) && !deleted,
-      viewSampleDataPermission:
-        getPrioritizedViewPermission(
-          metricPermissions,
-          Operation.ViewSampleData
-        ) && !deleted,
-      viewAllPermission: metricPermissions.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        metricPermissions,
-        Operation.ViewCustomFields
-      ),
-    }),
+  // Named-flag derivation (Task 8 Batch 9), collapsing the 6-field block below into one
+  // deleted-gated getDerivedPermissionFlags call (DocumentationTab.component.tsx /
+  // TopicDetails.component.tsx precedent) — with one deliberate exception:
+  // viewSampleDataPermission ANDed `!deleted` in the OLD code (unlike its view-flag siblings
+  // viewAllPermission/viewCustomPropertiesPermission, which never did), so it can't just
+  // become the bare `canViewSampleData` flag (which — like every named view flag — is never
+  // deleted-gated) without silently regressing that one field. Applying `!deleted` explicitly
+  // at this one call site preserves the old asymmetric behavior exactly.
+  const flags = useMemo(
+    () => getDerivedPermissionFlags(metricPermissions, deleted),
     [metricPermissions, deleted]
   );
+  const {
+    canEditCustomFields: editCustomAttributePermission,
+    canEditAll: editAllPermission,
+    canEditLineage: editLineagePermission,
+    canViewAll: viewAllPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+  } = flags;
+  const viewSampleDataPermission = flags.canViewSampleData && !deleted;
 
   useEffect(() => {
     fetchTaskCounts();
@@ -308,8 +297,8 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     <PageLayoutV1
       className="metric-details-page"
       pageTitle={getEntityName(metricDetails)}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
+      <Box direction="col" gap={3}>
+        <div>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -329,7 +318,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
             onUpdateVote={onUpdateVote}
             onVersionClick={onVersionChange}
           />
-        </Col>
+        </div>
         <GenericProvider<Metric>
           customizedPage={customizedPage}
           data={metricDetails}
@@ -337,28 +326,42 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
           permissions={metricPermissions}
           type={EntityType.METRIC as CustomizeEntityType}
           onUpdate={onMetricUpdate}>
-          <Col className="metric-page-tabs" span={24}>
+          <div className="metric-page-tabs">
             <Tabs
-              activeKey={activeTab}
-              className="tabs-new"
+              className="tw:gap-3"
               data-testid="tabs"
-              items={tabs}
-              tabBarExtraContent={
-                isExpandViewSupported && (
-                  <AlignRightIconButton
-                    className={isTabExpanded ? 'rotate-180' : ''}
-                    title={
-                      isTabExpanded ? t('label.collapse') : t('label.expand')
-                    }
-                    onClick={toggleTabExpanded}
-                  />
-                )
-              }
-              onChange={handleTabChange}
-            />
-          </Col>
+              selectedKey={getRenderedActiveTab(tabs, activeTab)}
+              onSelectionChange={(key) => handleTabChange(String(key))}>
+              <Tabs.List
+                actions={
+                  isExpandViewSupported && (
+                    <AlignRightIconButton
+                      className={isTabExpanded ? 'rotate-180' : ''}
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
+                      onClick={toggleTabExpanded}
+                    />
+                  )
+                }
+                size="sm"
+                type="underline"
+                variant="card">
+                {tabs.map(({ key, label }) => (
+                  <Tabs.Item id={key} key={key}>
+                    {label}
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
+              {tabs.map(({ key, children }) => (
+                <Tabs.Panel id={key} key={key}>
+                  {children}
+                </Tabs.Panel>
+              ))}
+            </Tabs>
+          </div>
         </GenericProvider>
-      </Row>
+      </Box>
       <LimitWrapper resource="metric">
         <></>
       </LimitWrapper>

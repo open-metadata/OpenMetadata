@@ -315,6 +315,79 @@ describe('TableV2 — ellipsis columns', () => {
     expect(valueDiv().className).toContain('tw:flex-1');
     expect(valueDiv().className).toContain('tw:min-w-0');
   });
+
+  const LONG_TITLE = 'A_VERY_LONG_COLUMN_HEADER_THAT_SHOULD_CLIP';
+
+  it('truncates the plain-text header of an ellipsis column', () => {
+    render(
+      <TableV2
+        columns={[
+          { dataIndex: 'name', ellipsis: true, key: 'name', title: LONG_TITLE },
+        ]}
+        dataSource={[longRow]}
+        pagination={false}
+        rowKey="name"
+      />
+    );
+
+    const header = screen.getByTestId('column-header-content');
+    const titleSpan = header.querySelector('span.tw\\:truncate') as HTMLElement;
+
+    expect(titleSpan).toBeInTheDocument();
+    expect(titleSpan).toHaveTextContent(LONG_TITLE);
+    // AntD exposed the clipped header text on hover through a native title.
+    expect(titleSpan).toHaveAttribute('title', LONG_TITLE);
+    // Both the flex container and the truncating span need min-w-0, or the span
+    // (a flex item, min-width:auto by default) refuses to shrink and the header
+    // overflows anyway.
+    expect(header.className).toContain('tw:min-w-0');
+    expect(titleSpan.className).toContain('tw:min-w-0');
+    // The core Table.Head flex wrapper (`& > div`) also has to shrink, or the
+    // chain from the fixed-width `th` down to the span is never constrained.
+    expect(header.closest('th')?.className).toContain('tw:[&>div>div]:min-w-0');
+  });
+
+  it('leaves a non-ellipsis header free to wrap, as before', () => {
+    render(
+      <TableV2
+        columns={[{ dataIndex: 'name', key: 'name', title: LONG_TITLE }]}
+        dataSource={[longRow]}
+        pagination={false}
+        rowKey="name"
+      />
+    );
+
+    const header = screen.getByTestId('column-header-content');
+
+    expect(header.querySelector('span.tw\\:truncate')).not.toBeInTheDocument();
+    expect(header).toHaveTextContent(LONG_TITLE);
+    expect(header.className).not.toContain('tw:min-w-0');
+    expect(header.closest('th')?.className).not.toContain('min-w-0');
+  });
+
+  it('leaves a custom (non-string) header node untouched', () => {
+    render(
+      <TableV2
+        columns={[
+          {
+            dataIndex: 'name',
+            ellipsis: true,
+            key: 'name',
+            title: <span data-testid="custom-header-node">Custom</span>,
+          },
+        ]}
+        dataSource={[longRow]}
+        pagination={false}
+        rowKey="name"
+      />
+    );
+
+    const header = screen.getByTestId('column-header-content');
+
+    expect(header.querySelector('span.tw\\:truncate')).not.toBeInTheDocument();
+    expect(screen.getByTestId('custom-header-node')).toBeInTheDocument();
+    expect(header.className).not.toContain('tw:min-w-0');
+  });
 });
 
 /**
@@ -858,6 +931,165 @@ describe('TableV2 — size drives cell padding', () => {
 
     expect(cell.className).toContain('tw:p-8');
     expect(cell.className).not.toContain('tw:py-4 tw:pl-6 tw:pr-4');
+  });
+});
+
+/**
+ * TableV2-only: AntD's controlled filters. A column carrying `filteredValue`
+ * owns its filter state — the value filters the rows and lights the icon
+ * regardless of what the dropdown draft holds — and a confirm() from the
+ * dropdown reports the full filter map through `onChange`, which is how the
+ * call sites that own the state learn of the change.
+ */
+describe('TableV2 — controlled column filters', () => {
+  const ROWS = [{ name: 'alpha' }, { name: 'bravo' }];
+  const filterColumn = (filteredValue: string[] | null) => ({
+    dataIndex: 'name',
+    filterDropdown: ({
+      confirm,
+      setSelectedKeys,
+    }: {
+      confirm: () => void;
+      setSelectedKeys: (keys: string[]) => void;
+    }) => (
+      <button
+        data-testid="filter-apply"
+        onClick={() => {
+          setSelectedKeys(['bravo']);
+          confirm();
+        }}>
+        apply
+      </button>
+    ),
+    filterIcon: (filtered: boolean) => (
+      <span data-testid="filter-icon">{filtered ? 'on' : 'off'}</span>
+    ),
+    filteredValue,
+    key: 'name',
+    onFilter: (value: unknown, record: { name: string }) =>
+      record.name === String(value),
+    title: 'Name',
+  });
+
+  it('filters the rows from filteredValue alone', () => {
+    render(
+      <TableV2
+        columns={[filterColumn(['alpha'])]}
+        dataSource={ROWS}
+        pagination={false}
+        rowKey="name"
+      />
+    );
+
+    expect(screen.getByText('alpha')).toBeInTheDocument();
+    expect(screen.queryByText('bravo')).toBeNull();
+    expect(screen.getByTestId('filter-icon')).toHaveTextContent('on');
+  });
+
+  it('treats null as controlled-and-empty', () => {
+    render(
+      <TableV2
+        columns={[filterColumn(null)]}
+        dataSource={ROWS}
+        pagination={false}
+        rowKey="name"
+      />
+    );
+
+    expect(screen.getByText('alpha')).toBeInTheDocument();
+    expect(screen.getByText('bravo')).toBeInTheDocument();
+    expect(screen.getByTestId('filter-icon')).toHaveTextContent('off');
+  });
+
+  it('reports a confirmed selection through onChange, keyed by column key', () => {
+    const onChange = jest.fn();
+    render(
+      <TableV2
+        columns={[filterColumn(null)]}
+        dataSource={ROWS}
+        pagination={false}
+        rowKey="name"
+        onChange={onChange}
+      />
+    );
+
+    press(screen.getByRole('button', { name: /filter/i }));
+    fireEvent.click(screen.getByTestId('filter-apply'));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange.mock.calls[0][1]).toEqual({ name: ['bravo'] });
+    expect(onChange.mock.calls[0][3]).toEqual(
+      expect.objectContaining({ action: 'filter' })
+    );
+  });
+
+  it('keeps an untouched controlled column in the reported map', () => {
+    const onChange = jest.fn();
+    render(
+      <TableV2
+        columns={[
+          filterColumn(null),
+          {
+            ...filterColumn(['alpha']),
+            dataIndex: 'other',
+            key: 'other',
+            title: 'Other',
+          },
+        ]}
+        dataSource={ROWS}
+        pagination={false}
+        rowKey="name"
+        onChange={onChange}
+      />
+    );
+
+    press(screen.getAllByRole('button', { name: /filter/i })[0]);
+    fireEvent.click(screen.getAllByTestId('filter-apply')[0]);
+
+    // Confirming the first column must not clear the second, untouched one.
+    expect(onChange.mock.calls[0][1]).toEqual({
+      name: ['bravo'],
+      other: ['alpha'],
+    });
+  });
+
+  it('reports the freshly filtered rows, not the pre-confirm memo', () => {
+    const onChange = jest.fn();
+    render(
+      <TableV2
+        columns={[{ ...filterColumn(null), filteredValue: undefined }]}
+        dataSource={ROWS}
+        pagination={false}
+        rowKey="name"
+        onChange={onChange}
+      />
+    );
+
+    press(screen.getByRole('button', { name: /filter/i }));
+    fireEvent.click(screen.getByTestId('filter-apply'));
+
+    expect(
+      (onChange.mock.calls[0][3].currentDataSource as { name: string }[]).map(
+        (r) => r.name
+      )
+    ).toEqual(['bravo']);
+  });
+
+  it('filters internally when no filteredValue is given', () => {
+    render(
+      <TableV2
+        columns={[{ ...filterColumn(null), filteredValue: undefined }]}
+        dataSource={ROWS}
+        pagination={false}
+        rowKey="name"
+      />
+    );
+
+    press(screen.getByRole('button', { name: /filter/i }));
+    fireEvent.click(screen.getByTestId('filter-apply'));
+
+    expect(screen.getByText('bravo')).toBeInTheDocument();
+    expect(screen.queryByText('alpha')).toBeNull();
   });
 });
 

@@ -224,6 +224,17 @@ public interface CoreRelationshipDAOs {
     List<ExtensionRecord> getExtensionsByJsonSchema(
         @BindUUID("id") UUID id, @Bind("jsonSchema") String jsonSchema);
 
+    @SqlQuery(
+        "SELECT extension, json FROM entity_extension "
+            + "WHERE id = :id AND extension IN (<extensions>) ORDER BY extension")
+    @RegisterRowMapper(ExtensionMapper.class)
+    List<ExtensionRecord> getExtensionsByKeysInternal(
+        @BindUUID("id") UUID id, @BindList("extensions") List<String> extensions);
+
+    default List<ExtensionRecord> getExtensionsByKeys(UUID id, List<String> extensions) {
+      return EntityDAO.queryInChunks(extensions, chunk -> getExtensionsByKeysInternal(id, chunk));
+    }
+
     // The keyset condition and the LIMIT are applied inside each UNION branch so that neither
     // side materialises more than one page: the global top-:limit under this ORDER BY is always a
     // subset of the union of each branch's own top-:limit. UNION ALL is safe because
@@ -489,6 +500,157 @@ public interface CoreRelationshipDAOs {
       bulkInsertTo(insertToRelationship);
     }
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE entity_relationship SET fromId = :newFromId "
+                + "WHERE fromId = :oldFromId AND fromEntity = :fromEntity AND toEntity = :toEntity "
+                + "AND relation = :relation AND JSON_EXTRACT(json, '$.inherited') = TRUE "
+                + "AND toId IN (<toIds>)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE entity_relationship SET fromId = :newFromId "
+                + "WHERE fromId = :oldFromId AND fromEntity = :fromEntity AND toEntity = :toEntity "
+                + "AND relation = :relation AND (json ->> 'inherited') = 'true' "
+                + "AND toId IN (<toIds>)",
+        connectionType = POSTGRES)
+    int repointInheritedFrom(
+        @BindUUID("oldFromId") UUID oldFromId,
+        @BindUUID("newFromId") UUID newFromId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation,
+        @BindList("toIds") List<String> toIds);
+
+    /**
+     * A page of the entities reachable from {@code fromId}, ordered stably so the caller can walk
+     * them without holding every id in memory. Used to re-index in batches after a bulk
+     * relationship change.
+     */
+    @SqlQuery(
+        "SELECT toId FROM entity_relationship "
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND toEntity = :toEntity "
+            + "AND relation = :relation ORDER BY toId LIMIT :limit OFFSET :offset")
+    List<String> findToIdsPaged(
+        @BindUUID("fromId") UUID fromId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
+    /**
+     * Repoints relationships inherited from {@code oldFromId} onto {@code newFromId}, scoped to
+     * the entities reachable from {@code viaFromId} by {@code viaRelation}, and leaving rows the
+     * user set explicitly (no inherited marker) untouched.
+     *
+     * <p>Scoped by a join rather than by an id list so that reclassifying a test definition that
+     * backs a hundred thousand test cases costs one statement and no heap: the alternative is
+     * reading every affected id into memory purely to send it back in an IN clause.
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE entity_relationship er "
+                + "JOIN entity_relationship via ON via.toId = er.toId AND via.toEntity = :toEntity "
+                + "AND via.fromId = :viaFromId AND via.fromEntity = :viaFromEntity "
+                + "AND via.relation = :viaRelation "
+                + "SET er.fromId = :newFromId "
+                + "WHERE er.fromId = :oldFromId AND er.fromEntity = :fromEntity "
+                + "AND er.relation = :relation AND JSON_EXTRACT(er.json, '$.inherited') = TRUE",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE entity_relationship er SET fromId = :newFromId "
+                + "FROM entity_relationship via "
+                + "WHERE via.toId = er.toId AND via.toEntity = :toEntity "
+                + "AND via.fromId = :viaFromId AND via.fromEntity = :viaFromEntity "
+                + "AND via.relation = :viaRelation "
+                + "AND er.fromId = :oldFromId AND er.fromEntity = :fromEntity "
+                + "AND er.relation = :relation AND (er.json ->> 'inherited') = 'true'",
+        connectionType = POSTGRES)
+    int repointInheritedVia(
+        @BindUUID("oldFromId") UUID oldFromId,
+        @BindUUID("newFromId") UUID newFromId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation,
+        @BindUUID("viaFromId") UUID viaFromId,
+        @Bind("viaFromEntity") String viaFromEntity,
+        @Bind("viaRelation") int viaRelation);
+
+    /**
+     * Creates inherited relationships for entities reachable from {@code viaFromId} that have no
+     * relationship of this kind yet. The counterpart of {@link #repointInheritedVia} for a parent
+     * going from no value to one: there is nothing to repoint, the rows have to be created.
+     *
+     * <p>The anti-join is what keeps it safe to re-run and what stops it overwriting a value the
+     * user set on the child itself — such a child already has a row and is skipped.
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_relationship "
+                + "(fromId, toId, fromEntity, toEntity, relation, relationType, deleted, json) "
+                + "SELECT :newFromId, via.toId, :fromEntity, :toEntity, :relation, '', FALSE, "
+                + "JSON_OBJECT('inherited', TRUE) "
+                + "FROM entity_relationship via "
+                + "LEFT JOIN entity_relationship existing ON existing.toId = via.toId "
+                + "AND existing.toEntity = :toEntity AND existing.fromEntity = :fromEntity "
+                + "AND existing.relation = :relation "
+                + "WHERE via.fromId = :viaFromId AND via.fromEntity = :viaFromEntity "
+                + "AND via.toEntity = :toEntity AND via.relation = :viaRelation "
+                + "AND existing.toId IS NULL",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_relationship "
+                + "(fromId, toId, fromEntity, toEntity, relation, relationType, deleted, json) "
+                + "SELECT :newFromId, via.toId, :fromEntity, :toEntity, :relation, '', FALSE, "
+                + "'{\"inherited\": true}'::jsonb "
+                + "FROM entity_relationship via "
+                + "LEFT JOIN entity_relationship existing ON existing.toId = via.toId "
+                + "AND existing.toEntity = :toEntity AND existing.fromEntity = :fromEntity "
+                + "AND existing.relation = :relation "
+                + "WHERE via.fromId = :viaFromId AND via.fromEntity = :viaFromEntity "
+                + "AND via.toEntity = :toEntity AND via.relation = :viaRelation "
+                + "AND existing.toId IS NULL",
+        connectionType = POSTGRES)
+    int addInheritedVia(
+        @BindUUID("newFromId") UUID newFromId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation,
+        @BindUUID("viaFromId") UUID viaFromId,
+        @Bind("viaFromEntity") String viaFromEntity,
+        @Bind("viaRelation") int viaRelation);
+
+    /** The {@link #repointInheritedVia} counterpart for when there is no new parent to point at. */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE er FROM entity_relationship er "
+                + "JOIN entity_relationship via ON via.toId = er.toId AND via.toEntity = :toEntity "
+                + "AND via.fromId = :viaFromId AND via.fromEntity = :viaFromEntity "
+                + "AND via.relation = :viaRelation "
+                + "WHERE er.fromId = :oldFromId AND er.fromEntity = :fromEntity "
+                + "AND er.relation = :relation AND JSON_EXTRACT(er.json, '$.inherited') = TRUE",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM entity_relationship er USING entity_relationship via "
+                + "WHERE via.toId = er.toId AND via.toEntity = :toEntity "
+                + "AND via.fromId = :viaFromId AND via.fromEntity = :viaFromEntity "
+                + "AND via.relation = :viaRelation "
+                + "AND er.fromId = :oldFromId AND er.fromEntity = :fromEntity "
+                + "AND er.relation = :relation AND (er.json ->> 'inherited') = 'true'",
+        connectionType = POSTGRES)
+    int removeInheritedVia(
+        @BindUUID("oldFromId") UUID oldFromId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation,
+        @BindUUID("viaFromId") UUID viaFromId,
+        @Bind("viaFromEntity") String viaFromEntity,
+        @Bind("viaRelation") int viaRelation);
+
     default void bulkRemoveToRelationship(
         UUID fromId, List<UUID> toIds, String fromEntity, String toEntity, int relation) {
 
@@ -688,7 +850,8 @@ public interface CoreRelationshipDAOs {
     //
     @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship "
-            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation IN (<relation>)")
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity "
+            + "AND relation IN (<relation>) AND deleted = FALSE")
     @RegisterRowMapper(ToRelationshipMapper.class)
     List<EntityRelationshipRecord> findTo(
         @BindUUID("fromId") UUID fromId,
@@ -893,7 +1056,8 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship "
-            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity")
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation "
+            + "AND toEntity = :toEntity AND deleted = FALSE")
     @RegisterRowMapper(ToRelationshipMapper.class)
     List<EntityRelationshipRecord> findTo(
         @BindUUID("fromId") UUID fromId,
@@ -903,7 +1067,8 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery(
         "SELECT toId FROM entity_relationship  "
-            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity")
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation "
+            + "AND toEntity = :toEntity AND deleted = FALSE")
     @RegisterRowMapper(ToRelationshipMapper.class)
     List<UUID> findToIds(
         @BindUUID("fromId") UUID fromId,
@@ -947,7 +1112,8 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery(
         "SELECT fromId, COUNT(toId) FROM entity_relationship "
-            + "WHERE fromId IN (<fromIds>) AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity "
+            + "WHERE fromId IN (<fromIds>) AND fromEntity = :fromEntity AND relation = :relation "
+            + "AND toEntity = :toEntity AND deleted = FALSE "
             + "GROUP BY fromId")
     @RegisterRowMapper(ToRelationshipCountMapper.class)
     List<EntityRelationshipCount> countFindTo(
@@ -987,7 +1153,7 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery(
         "SELECT COUNT(toId) FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
-            + "AND relation IN (<relation>)")
+            + "AND relation IN (<relation>) AND deleted = FALSE")
     @RegisterRowMapper(ToRelationshipMapper.class)
     int countFindTo(
         @BindUUID("fromId") UUID fromId,
@@ -1019,6 +1185,26 @@ public interface CoreRelationshipDAOs {
         @Bind("toEntity") String toEntity);
 
     @SqlQuery(
+        "SELECT COUNT(*) FROM entity_relationship er "
+            + "JOIN metric_entity me ON er.toId = me.id "
+            + "WHERE er.fromId = :fromId AND er.fromEntity = 'metric' AND er.relation = :relation "
+            + "AND er.toEntity = 'metric' AND er.deleted = FALSE "
+            + "AND (me.deleted = false OR me.deleted IS NULL)")
+    int countNonDeletedChildMetrics(
+        @BindUUID("fromId") UUID fromId, @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT er.fromId, COUNT(er.toId) FROM entity_relationship er "
+            + "JOIN metric_entity me ON er.toId = me.id "
+            + "WHERE er.fromId IN (<fromIds>) AND er.fromEntity = 'metric' AND er.relation = :relation "
+            + "AND er.toEntity = 'metric' AND er.deleted = FALSE "
+            + "AND (me.deleted = false OR me.deleted IS NULL) "
+            + "GROUP BY er.fromId")
+    @RegisterRowMapper(ToRelationshipCountMapper.class)
+    List<EntityRelationshipCount> countNonDeletedChildMetricsBatch(
+        @BindList("fromIds") List<String> fromIds, @Bind("relation") int relation);
+
+    @SqlQuery(
         "SELECT er.fromId, COUNT(er.toId) FROM entity_relationship er "
             + "JOIN test_case tc ON er.toId = tc.id "
             + "WHERE er.fromId IN (<fromIds>) AND er.fromEntity = :fromEntity AND er.relation = :relation "
@@ -1033,7 +1219,8 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
-            + "AND relation IN (<relation>) ORDER BY toId LIMIT :limit OFFSET :offset")
+            + "AND relation IN (<relation>) AND deleted = FALSE "
+            + "ORDER BY toId LIMIT :limit OFFSET :offset")
     @RegisterRowMapper(ToRelationshipMapper.class)
     List<EntityRelationshipRecord> findToWithOffset(
         @BindUUID("fromId") UUID fromId,
@@ -1071,7 +1258,8 @@ public interface CoreRelationshipDAOs {
     //
     @SqlQuery(
         "SELECT fromId, fromEntity, json FROM entity_relationship "
-            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity ")
+            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation "
+            + "AND fromEntity = :fromEntity AND deleted = FALSE")
     @RegisterRowMapper(FromRelationshipMapper.class)
     List<EntityRelationshipRecord> findFrom(
         @BindUUID("toId") UUID toId,
@@ -1204,7 +1392,8 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery(
         "SELECT fromId, fromEntity, json FROM entity_relationship "
-            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation")
+            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation "
+            + "AND deleted = FALSE")
     @RegisterRowMapper(FromRelationshipMapper.class)
     List<EntityRelationshipRecord> findFrom(
         @BindUUID("toId") UUID toId,

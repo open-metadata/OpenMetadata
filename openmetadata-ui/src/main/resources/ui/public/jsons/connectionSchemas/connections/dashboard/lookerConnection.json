@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LookerConnection",
   "description": "Looker Connection Config",
   "type": "object",
@@ -54,6 +53,13 @@
       "type": "string",
       "format": "uri"
     },
+    "displayUrl": {
+      "expose": true,
+      "title": "Looker UI URL",
+      "description": "Optional URL for human-facing Looker links when the API URL differs from the browser URL.",
+      "type": "string",
+      "format": "uri"
+    },
     "gitCredentials": {
       "title": "GitHub Credentials",
       "description": "Credentials to extract the .lkml files from a repository. This is required to get all the lineage and definitions.",
@@ -71,7 +77,6 @@
           "default": null
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "GitHubCredentials",
           "description": "Credentials for a GitHub repository",
           "type": "object",
@@ -127,7 +132,6 @@
           ]
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "BitBucketCredentials",
           "description": "Credentials for a BitBucket repository",
           "type": "object",
@@ -189,7 +193,6 @@
           ]
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "GitlabCredentials",
           "description": "Credentials for a Gitlab repository",
           "type": "object",

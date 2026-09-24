@@ -120,6 +120,9 @@ export const unmockDeleteApi = async (
  */
 export const openDeleteModal = async (page: Page) => {
   await page.click('[data-testid="manage-button"]');
+  await page
+    .locator('[data-testid="delete-button"]')
+    .waitFor({ state: 'visible' });
   await page.click('[data-testid="delete-button"]');
 
   await expect(page.locator('[role="dialog"]')).toBeVisible();
@@ -143,12 +146,11 @@ export const initiateDelete = async (page: Page) => {
 /**
  * Waits for a response from the glossaries list API.
  */
-export const waitForGlossaryListRefetch = (page: Page) => {
-  return page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/glossaries') && response.status() === 200
+export const waitForGlossaryListRefetch = (page: Page) =>
+  page.waitForResponse(
+    (r) =>
+      r.request().method() === 'GET' && r.url().includes('/api/v1/glossaries')
   );
-};
 
 /**
  * Verifies that a glossary is visible in the sidebar menu.
