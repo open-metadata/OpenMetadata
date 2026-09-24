@@ -18,7 +18,10 @@ import map from 'lodash/map';
 import startCase from 'lodash/startCase';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
+import {
+  DISABLED,
+  INITIAL_PAGING_VALUE,
+} from '../../../../../constants/constants';
 import { SORT_FIELD_DISPLAY_NAME } from '../../../../../constants/Ingestions.constant';
 import { useAirflowStatus } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { SORT_ORDER } from '../../../../../enums/common.enum';
@@ -67,7 +70,12 @@ export const IngestionPipelineList = ({
   className?: string;
 }) => {
   const [pipelines, setPipelines] = useState<Array<IngestionPipeline>>([]);
-  const { isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
+  const { isAirflowAvailable, isFetchingStatus, platform } = useAirflowStatus();
+
+  // A client switched off in the configuration answers the status call with a healthy 200, so
+  // `isAirflowAvailable` alone cannot tell it from a working one. Deploy answers 200 too without
+  // deploying anything, which is why this has to gate the button rather than the response.
+  const isPlatformDisabled = useMemo(() => platform === DISABLED, [platform]);
 
   const [selectedPipelines, setSelectedPipelines] = useState<
     Array<IngestionPipeline>
@@ -302,8 +310,12 @@ export const IngestionPipelineList = ({
   return (
     <Row className={className} gutter={[16, 16]}>
       <Col span={24}>
-        {/* Says why re-deploy is unavailable; the list itself stays readable. */}
+        {/* Says why re-deploy is unavailable, or why it will not do anything; the list itself
+            stays readable. */}
         <AirflowMessageBanner
+          disabledFallbackMessage={t(
+            'message.pipeline-service-disabled-agent-actions'
+          )}
           unreachableFallbackMessage={t(
             'message.pipeline-service-unreachable-agent-actions'
           )}
@@ -315,7 +327,8 @@ export const IngestionPipelineList = ({
           disabled={
             selectedPipelines?.length === 0 ||
             isFetchingStatus ||
-            !isAirflowAvailable
+            !isAirflowAvailable ||
+            isPlatformDisabled
           }
           loading={deploying}
           type="primary"

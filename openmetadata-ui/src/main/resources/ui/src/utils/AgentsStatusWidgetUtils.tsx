@@ -163,9 +163,10 @@ export const getFormattedAgentsList = (
 export const getFormattedAgentsListFromAgentsLiveInfo = (
   agentsLiveInfo: AgentsLiveInfo[],
   collateAIagentsLiveInfo: CollateAgentLiveInfo[],
-  // Terminal frames (stream completed, or an error fetching chart data) carry no
-  // payload, so keep the agents already on screen instead of blanking them as the
-  // run finishes.
+  // The server folds a failed or partial automation lookup into an empty app status, so on a live
+  // frame an empty one cannot be told apart from "none left". Keep the Collate agents already on
+  // screen rather than wipe them for one frame. Frames that close the stream never get here — the
+  // caller drops them.
   preservedCollateAgents: AgentsInfo[] = []
 ): AgentsInfo[] => {
   const filteredAgentsList = agentsLiveInfo.filter(

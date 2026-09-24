@@ -4690,6 +4690,7 @@
     "pipeline-killed-successfully": "Successfully killed running workflows for {{pipelineName}}",
     "pipeline-not-deployed": "Pipeline is not deployed",
     "pipeline-scheduler-message": "The Ingestion Scheduler is unable to respond. Please reach out to {{brandName}} support. Thank you.",
+    "pipeline-service-disabled-agent-actions": "The pipeline service is disabled for this deployment. Agents are listed from their last recorded state, and deploying or running them has no effect until it is enabled.",
     "pipeline-service-unreachable-agent-actions": "The pipeline service cannot be reached. Agents and their run history are shown from their last recorded state, and agent actions stay unavailable until the service responds again.",
     "pipeline-will-trigger-manually": "Pipeline will only be triggered manually.",
     "pipeline-will-triggered-manually": "Pipeline will only be triggered manually",

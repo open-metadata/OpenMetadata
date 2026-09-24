@@ -4690,6 +4690,7 @@
     "pipeline-killed-successfully": "Workflows en cours d'exécution pour {{pipelineName}} arrêtés avec succès",
     "pipeline-not-deployed": "Le pipeline n'est pas déployé",
     "pipeline-scheduler-message": "Le planificateur d'ingestion ne peut pas répondre. Veuillez contacter le support {{brandName}}. Merci.",
+    "pipeline-service-disabled-agent-actions": "Le service de pipelines est désactivé sur ce déploiement. Les agents sont affichés dans leur dernier état enregistré, et les déployer ou les exécuter n'aura aucun effet jusqu'à ce qu'il soit activé.",
     "pipeline-service-unreachable-agent-actions": "Le service de pipelines est injoignable. Les agents et leur historique d'exécution sont affichés dans leur dernier état enregistré, et les actions sur les agents restent indisponibles jusqu'à ce que le service réponde de nouveau.",
     "pipeline-will-trigger-manually": "La pipeline ne sera déclenchée manuellement que.",
     "pipeline-will-triggered-manually": "La pipeline ne sera déclenchée manuellement que.",

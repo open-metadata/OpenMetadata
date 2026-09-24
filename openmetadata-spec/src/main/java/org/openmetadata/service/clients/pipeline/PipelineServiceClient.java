@@ -36,6 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientPlatform;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
@@ -68,7 +69,7 @@ public abstract class PipelineServiceClient implements PipelineServiceClientInte
   protected static final String CONTENT_TYPE = "application/json";
   private static final Integer MAX_ATTEMPTS = 3;
   private static final Integer BACKOFF_TIME_SECONDS = 5;
-  private static final String DISABLED_STATUS = "disabled";
+  private static final String DISABLED_STATUS = PipelineServiceClientPlatform.DISABLED.value();
 
   protected static final String SERVER_VERSION;
 

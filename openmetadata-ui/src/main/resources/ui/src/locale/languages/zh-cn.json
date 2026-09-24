@@ -4690,6 +4690,7 @@
     "pipeline-killed-successfully": "成功终止{{pipelineName}}的运行工作流",
     "pipeline-not-deployed": "管道未部署",
     "pipeline-scheduler-message": "提取调度器无响应。请联系 {{brandName}} 支持。谢谢。",
+    "pipeline-service-disabled-agent-actions": "此部署中流水线服务已停用。代理按最后记录的状态显示，在启用该服务之前，部署或运行代理不会产生任何效果。",
     "pipeline-service-unreachable-agent-actions": "无法连接到流水线服务。代理及其运行历史按最后记录的状态显示，在服务恢复响应之前，代理操作将不可用。",
     "pipeline-will-trigger-manually": "工作流仅能手动触发",
     "pipeline-will-triggered-manually": "工作流仅能手动触发",
