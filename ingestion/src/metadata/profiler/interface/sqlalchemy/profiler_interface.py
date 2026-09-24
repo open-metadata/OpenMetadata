@@ -26,6 +26,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Column, inspect, text
+from sqlalchemy import column as sa_column
 from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.sql.elements import Label
@@ -289,15 +290,20 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 return {metric.name(): data}
             if isinstance(metric_query, Label):
                 # hotfix to handle transition of unique count implementation
-                sample_column = sample.__table__.c[column.key] if hasattr(sample, "__table__") else sample.c[column.key]
+                sample_columns = sample.__table__.c if hasattr(sample, "__table__") else sample.c
+                # A BigQuery STRUCT subfield (`parent.child`) is sampled through its parent, so it is not a
+                # sample column; address it by path, as the metric query itself does.
+                sample_column = (
+                    sample_columns[column.key] if column.key in sample_columns else sa_column(column.name, column.type)
+                )
                 subquery = (
-                    self.session.query(Count(sample_column).fn().label(UNIQUE_COUNT_GROUP_ALIAS))
+                    session.query(Count(sample_column).fn().label(UNIQUE_COUNT_GROUP_ALIAS))
                     .select_from(sample)
                     .group_by(sample_column)
                     .subquery()
                 )
 
-                metric_query = self.session.query(metric_query).select_from(subquery)
+                metric_query = session.query(metric_query).select_from(subquery)
 
             row = runner.select_first_from_query(metric_query)
             return row._asdict()

@@ -254,3 +254,35 @@ class SampleTest(TestCase):
             "SELECT users_1.id \nFROM users AS users_1 TABLESAMPLE system(50.0 PERCENT) \nWHERE id IN ('1', '2')"
         )
         assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
+
+    def test_sampling_struct_child_column(self, sampler_mock):
+        """A struct child metric (`address.zip`) samples the parent struct column."""
+        from sqlalchemy_bigquery import STRUCT
+
+        class StructUser(Base):
+            __tablename__ = "struct_users"
+            id = Column(Integer, primary_key=True)
+            address = Column(STRUCT(zip=Integer))
+
+        with patch.object(SQASampler, "build_table_orm", return_value=StructUser):
+            sampler = BigQuerySampler(
+                service_connection_config=self.bq_conn,
+                ometa_client=None,
+                entity=self.table_entity,
+                config=DatabaseSamplerConfig(
+                    sample_config=SampleConfig(
+                        profileSampleConfig=ProfileSampleConfig(
+                            sampleConfigType=SampleConfigType.STATIC,
+                            config=StaticSamplingConfig(
+                                profileSample=50.0,
+                                profileSampleType=ProfileSampleType.PERCENTAGE,
+                            ),
+                        )
+                    )
+                ),
+                table_type=TableType.Regular,
+            )
+            query: CTE = sampler.get_sample_query(sampler._resolve_sample_config, column=Column("address.zip", Integer))
+        compiled = str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
+        assert "select struct_users_1.address" in compiled
+        assert "tablesample system(50.0 percent)" in compiled

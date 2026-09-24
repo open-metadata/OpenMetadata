@@ -660,10 +660,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         Method to prepare the foreign constraints
         """
         referred_column_fqns = []
-        if supports_database:
-            database_name = column.get("referred_database")
-        else:
-            database_name = self.context.get().database
+        database_name = (column.get("referred_database") if supports_database else None) or self.context.get().database
 
         referred_schema = column.get("referred_schema") or schema_name
         referred_table_fqn = (
