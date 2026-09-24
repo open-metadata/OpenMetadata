@@ -224,6 +224,12 @@ export const DomainLabelV2 = <
           role="presentation"
           onClickCapture={(e: MouseEvent<HTMLSpanElement>) => {
             e.stopPropagation();
+            // A click with no preceding pointerdown and no keydown — screen-reader
+            // virtual activation, `element.click()`, `fireEvent.click` — reports
+            // `detail === 0`. Without this the picker is unreachable from AT.
+            if (e.detail === 0) {
+              toggle();
+            }
           }}
           onKeyDownCapture={(e: KeyboardEvent<HTMLSpanElement>) => {
             if (e.key === 'Enter' || e.key === ' ') {
