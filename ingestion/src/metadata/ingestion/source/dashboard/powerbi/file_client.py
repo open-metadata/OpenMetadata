@@ -63,6 +63,12 @@ def get_prefix_config(config) -> tuple[str | None, str | None]:
     return None, None
 
 
+def _ensure_extract_dir(path: str | None) -> None:
+    if path is None:
+        raise PowerBIFileConfigException("PowerBI .pbit extraction directory is not configured")
+    Path(path).mkdir(parents=True, exist_ok=True)
+
+
 def get_blobs_grouped_by_dir(blobs: list[str]) -> dict[str, list[str]]:
     """
     Method to group the objs by the dir
@@ -88,9 +94,7 @@ def _safe_local_path(extract_dir: str, blob: str) -> str:
     base = Path(extract_dir).resolve()
     target = (base / blob).resolve()
     if not target.is_relative_to(base):
-        raise PowerBIFileConfigException(
-            f"Skipping .pbit object key that escapes the extract directory: {blob}"
-        )
+        raise PowerBIFileConfigException(f"Skipping .pbit object key that escapes the extract directory: {blob}")
     return str(target)
 
 
@@ -119,7 +123,7 @@ def download_pbit_files(
                 continue
             reader = get_reader(config_source=config, client=client)
             # create the required dir before downloading
-            os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
+            os.makedirs(os.path.dirname(local_file_path), exist_ok=True)  # noqa: PTH103, PTH120
             reader.download(path=blob, local_file_path=local_file_path, **kwargs)
 
 
@@ -133,27 +137,21 @@ def _get_datamodel_schema_list(path: str) -> list[DataModelSchema] | None:
     for connection_file in connection_files:
         try:
             datamodel_schema = DataModelSchema()
-            with open(connection_file, "rb") as file:
+            with open(connection_file, "rb") as file:  # noqa: PTH123
                 connection_json_file = json.load(file)
                 datamodel_schema.connectionFile = ConnectionFile(**connection_json_file)
 
-            datamodel_schema_file = connection_file.replace(
-                "Connections", "DataModelSchema"
-            )
-            with open(datamodel_schema_file, "rb") as file:
+            datamodel_schema_file = connection_file.replace("Connections", "DataModelSchema")
+            with open(datamodel_schema_file, "rb") as file:  # noqa: PTH123
                 data_model_schema_json_file = json.load(file)
                 datamodel_schema.tables = [
-                    PowerBiTable(**table)
-                    for table in data_model_schema_json_file.get("model")["tables"]
-                    or []
+                    PowerBiTable(**table) for table in data_model_schema_json_file.get("model")["tables"] or []
                 ]
             if datamodel_schema.tables and datamodel_schema.connectionFile:
                 datamodel_schema_list.append(datamodel_schema)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Error reading and mapping the datamodel schema file for {connection_file}: {exc}"
-            )
+            logger.error(f"Error reading and mapping the datamodel schema file for {connection_file}: {exc}")
     return datamodel_schema_list
 
 
@@ -170,9 +168,7 @@ def get_datamodel_schema_files_from_pbit(path: str) -> list[DataModelSchema] | N
             # Open each pbit file
             with zipfile.ZipFile(file_path, "r") as zip_ref:
                 # Extract all files in the specified folder
-                zip_ref.extractall(
-                    f"{path}/extracted/{file_path.split('/')[-1].split('.')[0]}"
-                )
+                zip_ref.extractall(f"{path}/extracted/{file_path.split('/')[-1].split('.')[0]}")
 
         return _get_datamodel_schema_list(path)
 
@@ -189,15 +185,13 @@ def get_pbit_files(config):
     """
 
     if config:
-        raise NotImplementedError(
-            f"Config not implemented for type {type(config)}: {config}"
-        )
+        raise NotImplementedError(f"Config not implemented for type {type(config)}: {config}")
 
 
 @get_pbit_files.register
 def _(config: S3Config):
     try:
-        os.makedirs(config.pbitFilesExtractDir, exist_ok=True)
+        _ensure_extract_dir(config.pbitFilesExtractDir)
         bucket_name, prefix = get_prefix_config(config)
 
         client = AWSClient(config.securityConfig).get_client(service_name="s3")
@@ -226,23 +220,20 @@ def _(config: S3Config):
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise PowerBIFileConfigException(f"Error fetching .pbit files from s3: {exc}")
+        raise PowerBIFileConfigException(f"Error fetching .pbit files from s3: {exc}")  # noqa: B904
 
 
 @get_pbit_files.register
 def _(config: AzureConfig):
     try:
-        os.makedirs(config.pbitFilesExtractDir, exist_ok=True)
+        _ensure_extract_dir(config.pbitFilesExtractDir)
         bucket_name, prefix = get_prefix_config(config)
 
         client = AzureClient(config.securityConfig).create_blob_client()
 
         if not bucket_name:
             container_dicts = client.list_containers()
-            containers = [
-                client.get_container_client(container["name"])
-                for container in container_dicts
-            ]
+            containers = [client.get_container_client(container["name"]) for container in container_dicts]
         else:
             container_client = client.get_container_client(bucket_name)
             containers = [container_client]
@@ -254,9 +245,7 @@ def _(config: AzureConfig):
 
             # Download the pbit files and store them in the local path
             download_pbit_files(
-                blob_grouped_by_directory=get_blobs_grouped_by_dir(
-                    blobs=[blob.name for blob in blob_list]
-                ),
+                blob_grouped_by_directory=get_blobs_grouped_by_dir(blobs=[blob.name for blob in blob_list]),
                 config=config,
                 client=client,
                 bucket_name=container_client.container_name,
@@ -267,7 +256,7 @@ def _(config: AzureConfig):
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise PowerBIFileConfigException(
+        raise PowerBIFileConfigException(  # noqa: B904
             f"Error fetching .pbit files from Azure: {exc}"
         )
 
@@ -275,7 +264,7 @@ def _(config: AzureConfig):
 @get_pbit_files.register
 def _(config: GCSConfig):
     try:
-        os.makedirs(config.pbitFilesExtractDir, exist_ok=True)
+        _ensure_extract_dir(config.pbitFilesExtractDir)
         bucket_name, prefix = get_prefix_config(config)
         from google.cloud import storage  # pylint: disable=import-outside-toplevel
 
@@ -293,9 +282,7 @@ def _(config: GCSConfig):
                 obj_list = client.list_blobs(bucket.name)
 
             download_pbit_files(
-                blob_grouped_by_directory=get_blobs_grouped_by_dir(
-                    blobs=[blob.name for blob in obj_list]
-                ),
+                blob_grouped_by_directory=get_blobs_grouped_by_dir(blobs=[blob.name for blob in obj_list]),
                 config=config,
                 client=client,
                 bucket_name=bucket.name,
@@ -306,7 +293,7 @@ def _(config: GCSConfig):
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise PowerBIFileConfigException(f"Error fetching .pbit files from GCS: {exc}")
+        raise PowerBIFileConfigException(f"Error fetching .pbit files from GCS: {exc}")  # noqa: B904
 
 
 @get_pbit_files.register
@@ -319,7 +306,7 @@ def _(config: LocalConfig):
     return None
 
 
-class PowerBIFileConfigException(Exception):
+class PowerBIFileConfigException(Exception):  # noqa: N818
     """
     Raise when encountering errors while extracting pbit files
     """
@@ -345,6 +332,4 @@ class PowerBiFileClient:
         """
         Method to remove the files after ingestion is completed
         """
-        shutil.rmtree(
-            self.config.pbitFilesSource.pbitFilesExtractDir, ignore_errors=True
-        )
+        shutil.rmtree(self.config.pbitFilesSource.pbitFilesExtractDir, ignore_errors=True)

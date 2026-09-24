@@ -13,14 +13,13 @@ Tests that the PowerBI file client handles a missing extract directory gracefull
 so that 'Test Connection' can be pressed multiple times without failure (issue #33418).
 """
 
-import os
 from unittest.mock import MagicMock, patch
 
-from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
-    PowerBIConnection,
-)
 from metadata.generated.schema.entity.services.connections.dashboard.powerbi.s3Config import (
     S3Config,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
+    PowerBIConnection,
 )
 from metadata.ingestion.source.dashboard.powerbi.file_client import (
     PowerBiFileClient,
@@ -29,8 +28,8 @@ from metadata.ingestion.source.dashboard.powerbi.file_client import (
 
 
 def _make_powerbi_connection(extract_dir: str) -> PowerBIConnection:
-    return PowerBIConnection(
-        **{
+    return PowerBIConnection.model_validate(
+        {
             "clientId": "client_id",
             "clientSecret": "client_secret",
             "tenantId": "tenant_id",
@@ -54,7 +53,7 @@ class TestDeleteTmpFilesIgnoresMissingDir:
 
     def test_delete_tmp_files_no_error_on_second_call(self, tmp_path):
         extract_dir = str(tmp_path / "pbitFiles")
-        os.makedirs(extract_dir)
+        (tmp_path / "pbitFiles").mkdir()
         conn = _make_powerbi_connection(extract_dir)
         file_client = PowerBiFileClient(conn)
 
@@ -68,9 +67,7 @@ class TestExtractDirRecreatedBeforeDownload:
 
     @patch("metadata.ingestion.source.dashboard.powerbi.file_client.get_reader")
     @patch("metadata.ingestion.source.dashboard.powerbi.file_client.AWSClient")
-    def test_extract_dir_created_when_absent(
-        self, mock_aws, _mock_get_reader, tmp_path
-    ):
+    def test_extract_dir_created_when_absent(self, mock_aws, _mock_get_reader, tmp_path):
         extract_dir = tmp_path / "pbitFiles"
         # Intentionally do not create extract_dir to simulate post-cleanup state.
         assert not extract_dir.exists()
@@ -99,6 +96,4 @@ class TestExtractDirRecreatedBeforeDownload:
             get_pbit_files(s3_config)
             mock_schema.assert_called_once_with(path=str(extract_dir))
 
-        assert extract_dir.exists(), (
-            "extract_dir must be created by get_pbit_files before use"
-        )
+        assert extract_dir.exists(), "extract_dir must be created by get_pbit_files before use"
