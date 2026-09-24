@@ -202,7 +202,10 @@ describe('source row', () => {
       sourceOf(
         buildTask({
           type: TaskType.TagUpdate,
-          payload: { source: 'Agent', tagsToAdd: [{ tagFQN: 'PII.Sensitive' }] },
+          payload: {
+            source: 'Agent',
+            tagsToAdd: [{ tagFQN: 'PII.Sensitive' }],
+          },
         } as unknown as Partial<Task>)
       )
     ).toEqual({ kind: 'text', text: 'label.auto-classification' });

@@ -136,9 +136,7 @@ const getStatTiles = (about: TaskAboutEntity, t: Translate): StatTile[] => {
     tiles.push({
       key: 'owners',
       label: t('label.owner-plural'),
-      value: about.ownerCount
-        ? String(about.ownerCount)
-        : t('label.no-owner'),
+      value: about.ownerCount ? String(about.ownerCount) : t('label.no-owner'),
     });
   }
   // The only timestamp available is the last metadata change — not data
