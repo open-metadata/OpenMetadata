@@ -723,19 +723,23 @@ export const fillDomainDetails = async (
 ) => {
   await page.keyboard.press('Enter');
 
-  await page.click('[data-testid="domain-selectable-tree-search"]');
+  await page.click(
+    '[data-testid="domain-selectable-tree"] [data-testid="searchbar"]'
+  );
 
   const searchDomain = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(domains.name)}*`
   );
 
-  await page.getByTestId('domain-selectable-tree-search').fill(domains.name);
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domains.name);
 
   await searchDomain;
 
-  await page.getByTestId(`tree-node-${domains.fullyQualifiedName}`).click();
-  // Multi-select picker: commit the staged selection via the Apply footer.
-  await page.getByTestId('update-btn').click();
+  await page.getByTestId(`tag-${domains.fullyQualifiedName}`).click();
+  await clickAssociatedTagSave(page);
 };
 
 const getActiveCellPopoverOpenActions = (page: Page) => {
