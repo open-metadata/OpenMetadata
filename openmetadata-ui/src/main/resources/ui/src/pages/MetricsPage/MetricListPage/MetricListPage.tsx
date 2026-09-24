@@ -83,6 +83,7 @@ import { EntityStatus } from '../../../generated/entity/data/metric';
 import type { TagLabel } from '../../../generated/type/tagLabel';
 import { TagSource } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useMetricHierarchy } from '../../../hooks/useMetricHierarchy';
 import {
   deleteMetricAsync,
@@ -221,8 +222,13 @@ const getDepthClassName = (depth: number) => {
   return '';
 };
 
+// AI padding standard: 16px under the header band (core PageLayout gives 8px).
+const getContentClassName = (isAiMode: boolean) =>
+  isAiMode ? 'tw:pt-4' : undefined;
+
 const MetricListPage = () => {
   const { t } = useTranslation();
+  const contentClassName = getContentClassName(useIsAiMode());
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { getResourcePermission } = usePermissionProvider();
@@ -1530,7 +1536,9 @@ const MetricListPage = () => {
           subtitle={t('message.metric-description')}
           title={t('label.metric-plural')}
         />
-        <PageLayout.Content>{renderLoading()}</PageLayout.Content>
+        <PageLayout.Content className={contentClassName}>
+          {renderLoading()}
+        </PageLayout.Content>
       </PageLayout>
     );
   }
@@ -1544,7 +1552,7 @@ const MetricListPage = () => {
         subtitle={t('message.metric-description')}
         title={t('label.metric-plural')}
       />
-      <PageLayout.Content>
+      <PageLayout.Content className={contentClassName}>
         {renderAccessibleList()}
         <ModalOverlay
           isDismissable

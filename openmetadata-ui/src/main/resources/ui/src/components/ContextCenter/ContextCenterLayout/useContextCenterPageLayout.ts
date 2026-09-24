@@ -19,12 +19,12 @@ interface ContextCenterPageLayoutClassNames {
 }
 
 // AI shell: core PageLayout's own padding is the padding standard (8px around
-// the header, 16px around the content) and assistant-layout.less adds the 16px
-// gap under the header, so the header components drop their classic mb-5.
+// the header, 16px around the content); the content takes the 16px gap under
+// the header itself, so the header components drop their classic mb-5.
 const AI_CLASS_NAMES: ContextCenterPageLayoutClassNames = {
   root: '',
   header: 'tw:*:mb-0',
-  content: '',
+  content: 'tw:pt-4',
 };
 
 // Classic keeps the original 20px gutters with no top padding.

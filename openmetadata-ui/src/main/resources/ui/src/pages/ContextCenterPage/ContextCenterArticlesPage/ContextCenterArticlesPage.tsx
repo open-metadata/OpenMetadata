@@ -66,6 +66,7 @@ import { EntityTabs } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   ContentChangeState,
@@ -111,6 +112,7 @@ function getIsArticleListingUnfiltered(
 const ContextCenterArticlesPage = () => {
   const { t, i18n } = useTranslation();
   const pageLayoutClassNames = useContextCenterPageLayout();
+  const isAiMode = useIsAiMode();
   const navigate = useNavigate();
   const { fqn } = useFqn();
   const { version } = useRequiredParams<{ version?: string }>();
@@ -580,9 +582,11 @@ const ContextCenterArticlesPage = () => {
 
   const renderReflexLayout = () => (
     <ReflexContainer
-      className={classNames('knowledge-center-layout tw:h-full', {
-        'tw:invisible tw:absolute tw:inset-0': showArticlesEmptyState,
-      })}
+      className={classNames(
+        'knowledge-center-layout',
+        isAiMode ? 'tw:h-[calc(100vh-226px)]' : 'tw:h-full',
+        { 'tw:invisible tw:absolute tw:inset-0': showArticlesEmptyState }
+      )}
       orientation="vertical"
       style={showArticlesEmptyState ? { display: 'none' } : undefined}>
       {/* left */}
