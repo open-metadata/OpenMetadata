@@ -76,6 +76,7 @@ import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPi
 import org.openmetadata.schema.api.services.ingestionPipelines.RunIngestionPipelineForEntity;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AgentType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientPlatform;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -988,13 +989,11 @@ public class IngestionPipelineResource
   public PipelineServiceClientResponse getRESTStatus(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     if (pipelineServiceClient == null) {
-      // `platform` is required by the response schema, and it is the only field that separates a
-      // client switched off in the configuration from a healthy one — the code is 200 either way.
-      // Without it the agents tab cannot say that deploying or running an agent will do nothing,
-      // since every one of those calls answers 200 here too.
+      // `platform` is required by the response schema, and on a 200 it is the only thing that tells
+      // the UI there is no client behind the deploy and run actions it offers.
       return new PipelineServiceClientResponse()
           .withCode(200)
-          .withPlatform(PipelineServiceClientInterface.DISABLED_STATUS)
+          .withPlatform(PipelineServiceClientPlatform.DISABLED.value())
           .withReason("Pipeline Client Disabled");
     }
     return pipelineServiceClient.getServiceStatus();

@@ -41,15 +41,6 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 public interface PipelineServiceClientInterface {
   String HEALTHY_STATUS = "healthy";
   String UNHEALTHY_STATUS = "unhealthy";
-
-  /**
-   * Reported as the {@code platform} of the status response when no pipeline service client is
-   * configured. The status itself is a healthy 200 — there is nothing broken about switching the
-   * client off — so this is the only field that tells a caller the difference, and the UI keys its
-   * disabled state off it.
-   */
-  String DISABLED_STATUS = "disabled";
-
   String STATUS_KEY = "status";
   String APP_TRIGGER = "run_application";
 

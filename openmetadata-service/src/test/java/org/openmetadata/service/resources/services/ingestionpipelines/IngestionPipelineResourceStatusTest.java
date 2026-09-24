@@ -20,8 +20,8 @@ import static org.mockito.Mockito.mockStatic;
 import jakarta.ws.rs.core.SecurityContext;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientPlatform;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
-import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.limits.Limits;
@@ -48,7 +48,7 @@ class IngestionPipelineResourceStatusTest {
           resource.getRESTStatus(null, mock(SecurityContext.class));
 
       assertEquals(200, status.getCode());
-      assertEquals(PipelineServiceClientInterface.DISABLED_STATUS, status.getPlatform());
+      assertEquals(PipelineServiceClientPlatform.DISABLED.value(), status.getPlatform());
       assertEquals("Pipeline Client Disabled", status.getReason());
     }
   }
