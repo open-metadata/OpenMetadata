@@ -507,9 +507,9 @@ export const deleteGlossary = async (page: Page, glossary: GlossaryData) => {
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="delete-button"]');
 
-  await page.locator('[role="dialog"]').waitFor();
+  await page.getByTestId('delete-modal').waitFor();
 
-  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  await expect(page.getByTestId('delete-modal')).toBeVisible();
   await expect(page.locator('[data-testid="modal-header"]')).toContainText(
     glossary.displayName
   );
@@ -1309,7 +1309,7 @@ export const deleteGlossaryOrGlossaryTerm = async (
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="delete-button"]');
 
-  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  await expect(page.getByTestId('delete-modal')).toBeVisible();
   await expect(page.locator('[data-testid="modal-header"]')).toContainText(
     entityName
   );

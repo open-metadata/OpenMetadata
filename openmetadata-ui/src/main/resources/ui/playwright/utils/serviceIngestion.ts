@@ -112,7 +112,7 @@ export const deleteService = async (
 
   // Clicking on permanent delete radio button and checking the service name
   await page.click('[data-testid="manage-button"]');
-  await page.locator('[data-menu-id*="delete-button"]').waitFor();
+  await page.getByTestId('delete-button-title').waitFor();
   await page.click('[data-testid="delete-button-title"]');
 
   // Clicking on permanent delete radio button

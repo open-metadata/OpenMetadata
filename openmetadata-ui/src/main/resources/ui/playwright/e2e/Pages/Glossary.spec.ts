@@ -2196,7 +2196,7 @@ test.describe('Glossary tests', () => {
         await page.getByTestId('manage-button').click();
         await page.getByTestId('delete-button').click();
 
-        await page.locator('[role="dialog"]').waitFor();
+        await page.getByTestId('delete-modal').waitFor();
 
         await expect(page.getByTestId('modal-header')).toContainText(
           glossary.data.name
@@ -2882,7 +2882,7 @@ test.describe('Glossary tests', () => {
       await page.click('[data-testid="delete-button"]');
 
       // Verify delete modal is visible
-      await expect(page.locator('[role="dialog"]')).toBeVisible();
+      await expect(page.getByTestId('delete-modal')).toBeVisible();
       await expect(page.locator('[data-testid="modal-header"]')).toContainText(
         glossary.data.name
       );
@@ -2891,7 +2891,7 @@ test.describe('Glossary tests', () => {
       await page.click('[data-testid="cancel-button"]');
 
       // Verify modal is closed
-      await expect(page.locator('[role="dialog"]')).not.toBeVisible();
+      await expect(page.getByTestId('delete-modal')).not.toBeVisible();
 
       // Verify glossary still exists
       await expect(
@@ -2925,7 +2925,7 @@ test.describe('Glossary tests', () => {
       await page.click('[data-testid="delete-button"]');
 
       // Verify delete modal is visible
-      await expect(page.locator('[role="dialog"]')).toBeVisible();
+      await expect(page.getByTestId('delete-modal')).toBeVisible();
       await expect(page.locator('[data-testid="modal-header"]')).toContainText(
         glossaryTerm.data.name
       );
@@ -2934,7 +2934,7 @@ test.describe('Glossary tests', () => {
       await page.click('[data-testid="cancel-button"]');
 
       // Verify modal is closed
-      await expect(page.locator('[role="dialog"]')).not.toBeVisible();
+      await expect(page.getByTestId('delete-modal')).not.toBeVisible();
 
       // Verify term still exists by checking header
       await expect(

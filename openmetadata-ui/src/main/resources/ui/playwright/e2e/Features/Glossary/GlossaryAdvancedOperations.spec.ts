@@ -1273,7 +1273,7 @@ test.describe('Glossary Advanced Operations', () => {
       await page.getByTestId('rename-button').click();
 
       // Wait for rename modal
-      await page.locator('[role="dialog"]').waitFor({ state: 'visible' });
+      await page.getByTestId('entity-name-modal').waitFor({ state: 'visible' });
 
       const newDisplayName = `UpdatedTerm_${Date.now()}`;
       await page.locator('#displayName').fill(newDisplayName);

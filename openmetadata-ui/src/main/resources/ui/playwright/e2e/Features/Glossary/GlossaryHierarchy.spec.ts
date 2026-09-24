@@ -300,7 +300,9 @@ test.describe('Glossary Hierarchy', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('change-parent-button').click();
 
-      await expect(page.locator('[role="dialog"]')).toBeVisible();
+      await expect(
+        page.getByTestId('change-parent-hierarchy-modal')
+      ).toBeVisible();
 
       // Click cancel button
       await page

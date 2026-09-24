@@ -139,7 +139,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await adminPage.getByRole('menuitem', { name: 'Rename' }).click();
 
-    await expect(adminPage.getByRole('dialog')).toBeVisible();
+    await expect(adminPage.getByTestId('entity-name-modal')).toBeVisible();
 
     await adminPage
       .getByPlaceholder('Enter display name')
@@ -149,7 +149,9 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.getByTestId('save-button').click();
     await updateName;
 
-    await expect(adminPage.getByText('TestDisplayName')).toBeVisible();
+    await expect(
+      adminPage.getByTestId('entity-header-display-name')
+    ).toHaveText('TestDisplayName');
   });
 
   test('Restyle Tag', async ({ adminPage }) => {
@@ -164,7 +166,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await adminPage.getByRole('menuitem', { name: 'Style' }).click();
 
-    await expect(adminPage.getByRole('dialog')).toBeVisible();
+    await expect(adminPage.getByTestId('icon-color-modal')).toBeVisible();
 
     await adminPage.getByTestId('icon-picker-btn').click();
     await adminPage
@@ -196,7 +198,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await adminPage.getByRole('menuitem', { name: 'Delete' }).click();
 
-    await expect(adminPage.getByRole('dialog')).toBeVisible();
+    await expect(adminPage.getByTestId('delete-modal')).toBeVisible();
 
     const deleteTag = adminPage.waitForResponse(`/api/v1/tags/*`);
     await adminPage.getByTestId('confirm-button').click();

@@ -125,7 +125,7 @@ export const openDeleteModal = async (page: Page) => {
     .waitFor({ state: 'visible' });
   await page.click('[data-testid="delete-button"]');
 
-  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  await expect(page.getByTestId('delete-modal')).toBeVisible();
 };
 
 /**
