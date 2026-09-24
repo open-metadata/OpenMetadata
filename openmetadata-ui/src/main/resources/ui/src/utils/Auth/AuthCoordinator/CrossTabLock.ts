@@ -71,6 +71,15 @@ export class CrossTabLock {
   // renewer call. Only tracks `done` (a `failed` shouldn't stop a
   // subsequent legitimate refresh attempt).
   private recentDone: { message: LockDoneMessage; at: number } | null = null;
+  // Timestamp of the last `recentDone` this coordinator consumed via
+  // the runExclusive shortcut. Prevents a caller who ALREADY applied
+  // the mint (and had it rejected by the server) from re-consuming
+  // the SAME broadcast on the forced retry — that would hand back
+  // the just-known-bad token without ever calling `renewer()` again
+  // (greptile P1 r4083354131). A NEW `done` broadcast from any tab
+  // bumps `recentDone.at` and unblocks the shortcut for the next
+  // legitimate cross-tab scenario.
+  private consumedRecentDoneAt: number | null = null;
 
   constructor(private readonly lockName: string, channelName: string) {
     this.channel = new BroadcastChannel(channelName);
@@ -121,16 +130,18 @@ export class CrossTabLock {
     // wait starting is not lost — see the docblock on `MessageListener`.
     const listener = this.attachMessageListener();
 
-    // Short-circuit the lock dance when the listener was primed with a
-    // recent `done` from the class-level ring. A probe that acquires
-    // would run `work` again — duplicating the mint we already have
-    // (rotating-refresh IdPs would consume the just-rotated refresh
-    // token). Only honours `done` here; a stale `failed` shouldn't
-    // stop a subsequent legitimate refresh attempt.
-    const primed = listener.received();
-    if (primed?.type === 'done') {
-      listener.cancel();
-
+    // Short-circuit the lock dance when the listener is already
+    // holding a fresh `done` — either from the class-level ring
+    // (seeded synchronously in attachMessageListener) or from a
+    // broadcast that arrived during the microtask between attach and
+    // this check. attachMessageListener refuses to replay a broadcast
+    // this coordinator already consumed (greptile P1 r4083354131), so
+    // by the time we reach here, `primed` is EITHER a first-look
+    // ring entry OR a fresh handler-set message — both worth taking
+    // without touching the lock (rotating-refresh IdPs would consume
+    // the just-rotated refresh token if we ran `work` needlessly).
+    const primed = this.takePrimedDone(listener);
+    if (primed) {
       return { role: 'follower', message: primed };
     }
 
@@ -191,6 +202,7 @@ export class CrossTabLock {
     // was in flight, honor it directly and skip the leader-death race.
     const buffered = listener.received();
     if (buffered) {
+      this.markConsumedIfFromRing(buffered);
       listener.cancel();
 
       return { role: 'follower', message: buffered };
@@ -246,11 +258,42 @@ export class CrossTabLock {
   // Seeded from the class-level `recentDone` ring so a runExclusive slot
   // that opens shortly after a broadcast (during the previous follower's
   // HANDOFF_GRACE_MS hold) doesn't miss the mint.
+  // Short-circuit helper: return a primed `done` and mark the ring
+  // entry as consumed so a forced retry against the same broadcast
+  // falls through to a real refresh (greptile P1 r4083354131).
+  private takePrimedDone(listener: MessageListener): LockDoneMessage | null {
+    const primed = listener.received();
+    if (primed?.type !== 'done') {
+      return null;
+    }
+    this.markConsumedIfFromRing(primed);
+    listener.cancel();
+
+    return primed;
+  }
+
+  private markConsumedIfFromRing(message: LockMessage): void {
+    if (
+      message.type === 'done' &&
+      this.recentDone &&
+      this.recentDone.message === message
+    ) {
+      this.consumedRecentDoneAt = this.recentDone.at;
+    }
+  }
+
   private attachMessageListener(): MessageListener {
-    let buffered: LockMessage | undefined =
-      this.recentDone && Date.now() - this.recentDone.at < DONE_RETAIN_MS
-        ? this.recentDone.message
-        : undefined;
+    // Seed from the class-level ring UNLESS this coordinator already
+    // consumed the same broadcast — otherwise the follower path's
+    // `listener.received()` check below would hand the stale mint
+    // back on a forced retry (greptile P1 r4083354131).
+    const canReplay =
+      this.recentDone &&
+      Date.now() - this.recentDone.at < DONE_RETAIN_MS &&
+      this.recentDone.at !== this.consumedRecentDoneAt;
+    let buffered: LockMessage | undefined = canReplay
+      ? this.recentDone?.message
+      : undefined;
     let subscriber: ((message: LockMessage) => void) | undefined;
     const handler = (event: MessageEvent) => {
       const data = event.data as LockMessage | undefined;
