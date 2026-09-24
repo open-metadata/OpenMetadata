@@ -43,7 +43,10 @@ interface HierarchicalGlossary extends Glossary {
 type GlossaryTreeFetcher = TreeSelectDataFetcher<GlossaryPickerValue>;
 
 // Glossaries at the root, terms lazy-loaded on expand; ids are FQNs to match tagFQN.
-export const useGlossaryTreeData = (): GlossaryTreeFetcher => {
+// `selectableRoots`: keep empty glossaries pickable where the glossary is the value.
+export const useGlossaryTreeData = (
+  selectableRoots = false
+): GlossaryTreeFetcher => {
   const { getExclusivity, setExclusivity } = useGlossaryMutualExclusivity();
 
   return useCallback(
@@ -129,8 +132,8 @@ export const useGlossaryTreeData = (): GlossaryTreeFetcher => {
               label: getEntityName(glossary),
               value: glossary.fullyQualifiedName || glossary.name,
               isLeaf: false,
-              // Checkable to tick its terms; the payload marks it a root.
-              allowSelection: true,
+              // Checkable to tick its terms; with none there is nothing to tick.
+              allowSelection: selectableRoots || glossary.termCount !== 0,
               count: glossary.termCount,
               data: glossaryRootValue(glossary),
               hasExclusiveChildren: isExclusive,
@@ -150,6 +153,6 @@ export const useGlossaryTreeData = (): GlossaryTreeFetcher => {
         return { nodes: [] };
       }
     },
-    [getExclusivity, setExclusivity]
+    [getExclusivity, setExclusivity, selectableRoots]
   );
 };

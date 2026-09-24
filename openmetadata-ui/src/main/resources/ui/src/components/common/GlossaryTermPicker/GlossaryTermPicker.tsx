@@ -82,7 +82,7 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
   selectGlossaries = false,
 }) => {
   const { t } = useTranslation();
-  const fetchGlossaryTree = useGlossaryTreeData();
+  const fetchGlossaryTree = useGlossaryTreeData(selectGlossaries);
 
   const excluded = useMemo(() => new Set(excludeFqns ?? []), [excludeFqns]);
 
@@ -92,24 +92,12 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
       params: Parameters<typeof fetchGlossaryTree>[0]
     ): Promise<TreeSelectDataResponse<GlossaryPickerValue>> => {
       const response = await fetchGlossaryTree(params);
-      // A glossary root is the value only with `selectGlossaries` — then even an
-      // empty one counts. Otherwise it is checkable purely to cascade its terms,
-      // which needs a multi-select and leaves the fetcher's own rule in charge.
-      const nodes = response.nodes.map((node) =>
-        node.data?.isGlossaryRoot
-          ? {
-              ...node,
-              allowSelection:
-                selectGlossaries || (multiple && node.allowSelection !== false),
-            }
-          : node
-      );
 
       return excluded.size === 0
-        ? { ...response, nodes }
-        : { ...response, nodes: pruneNodes(nodes, excluded) };
+        ? response
+        : { ...response, nodes: pruneNodes(response.nodes, excluded) };
     },
-    [fetchGlossaryTree, excluded, selectGlossaries, multiple]
+    [fetchGlossaryTree, excluded]
   );
 
   const selectedValue = useMemo(
