@@ -14,17 +14,17 @@ import { render, screen } from '@testing-library/react';
 import { ReferenceBadge } from './GlossaryTermBadges';
 
 describe('ReferenceBadge', () => {
-  it.each(['https://example.com/docs', 'http://example.com'])(
-    'links to the %s endpoint',
-    (endpoint) => {
-      render(<ReferenceBadge reference={{ name: 'docs', endpoint }} />);
+  it.each([
+    ['https://example.com/docs', 'https://example.com/docs'],
+    ['http://example.com', 'http://example.com/'],
+  ])('links to the %s endpoint as %s', (endpoint, href) => {
+    render(<ReferenceBadge reference={{ name: 'docs', endpoint }} />);
 
-      expect(screen.getByTestId('reference-link-docs')).toHaveAttribute(
-        'href',
-        endpoint
-      );
-    }
-  );
+    expect(screen.getByTestId('reference-link-docs')).toHaveAttribute(
+      'href',
+      href
+    );
+  });
 
   it.each([
     'javascript:alert(1)',
