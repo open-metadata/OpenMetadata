@@ -29,6 +29,7 @@ import {
   convertSecondsToHumanReadableFormat,
   formatDateTime,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { PLACED_KEYS_FIELD } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import { formatNumberWithComma } from '../../../../utils/NumberUtils';
 import './test-summary-custom-tooltip.less';
 
@@ -71,7 +72,16 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
     } else if (status === TestCaseStatus.Success) {
       statusColor = GREEN_3;
     }
-    const data = entries(omit(payloadData, [...OMITTED_TOOLTIP_PAYLOAD_KEYS]));
+    // A placed value only positions a run that recorded nothing on the chart.
+    // Listing it would report a result the run never produced.
+    const placedKeys = (payloadData[PLACED_KEYS_FIELD] as string[]) ?? [];
+    const data = entries(
+      omit(payloadData, [
+        ...OMITTED_TOOLTIP_PAYLOAD_KEYS,
+        PLACED_KEYS_FIELD,
+        ...placedKeys,
+      ])
+    );
 
     return {
       status,

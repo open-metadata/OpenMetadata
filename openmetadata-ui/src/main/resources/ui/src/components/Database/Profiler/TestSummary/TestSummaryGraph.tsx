@@ -64,7 +64,6 @@ import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentMana
 import { getTaskById } from '../../../../rest/tasksAPI';
 import { updateActiveChartFilter } from '../../../../utils/ChartUtils';
 import {
-  ABORTED_PLACEMENT_KEY,
   applyStatusPlacements,
   formatTestSummaryYAxis,
   getStatusDotColor,
@@ -73,7 +72,6 @@ import {
   isSameTooltipPosition,
   isTestSummaryTooltipBoundary,
   prepareChartData,
-  QUEUED_PLACEMENT_KEY,
   TooltipBoundary,
   TooltipSize,
 } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
@@ -414,6 +412,7 @@ function TestSummaryGraph({
           className="test-summary-point"
           cx={STATUS_DOT_RADIUS}
           cy={STATUS_DOT_RADIUS}
+          data-status={payload.status}
           data-testid={`test-summary-point-${pointKey}`}
           fill={isHollow ? 'none' : fill}
           // A hollow circle only hit-tests its stroke; keep the whole disc
@@ -620,16 +619,6 @@ function TestSummaryGraph({
             strokeDasharray="4"
             type="monotone"
           />
-          {[ABORTED_PLACEMENT_KEY, QUEUED_PLACEMENT_KEY].map((placementKey) => (
-            <Line
-              activeDot={false}
-              dataKey={placementKey}
-              dot={renderStatusDot}
-              key={placementKey}
-              legendType="none"
-              stroke="none"
-            />
-          ))}
           {isSingleSeries &&
             chartData.information.map((info) => (
               // The mock shades the area under the line, not a fixed band:
@@ -637,7 +626,6 @@ function TestSummaryGraph({
               // line clear. Only a single series gets it; under several they
               // would overlap and the shading would stop meaning anything.
               <Area
-                connectNulls
                 activeDot={false}
                 data-testid="series-area"
                 dataKey={info.label}
@@ -653,11 +641,7 @@ function TestSummaryGraph({
               />
             ))}
           {chartData?.information?.map((info) => (
-            // An aborted or queued run holds no value here, which would break
-            // the line at it. It is bridged instead: the run keeps its own
-            // point, and the line does not dive to a value it never produced.
             <Line
-              connectNulls
               activeDot={false}
               dataKey={info.label}
               dot={renderStatusDot}

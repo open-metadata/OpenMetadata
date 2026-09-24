@@ -509,7 +509,10 @@ test.describe(
       await openTestCaseDetailsPage(page, chartTestCaseFqn);
 
       const chart = page.getByTestId('graph-container');
-      const abortedPoint = chart.getByTestId('test-summary-point-abortedValue');
+      // The aborted run sits on the value line itself, told apart by status.
+      const abortedPoint = chart.locator(
+        '[data-testid="test-summary-point-value"][data-status="Aborted"]'
+      );
 
       await test.step('The expectation line carries the asserted value', async () => {
         await expect(chart.locator('.recharts-reference-line text')).toHaveText(

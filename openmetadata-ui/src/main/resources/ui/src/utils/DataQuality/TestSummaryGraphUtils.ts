@@ -207,14 +207,18 @@ export const getThresholdReference = (
     : { y: latestResult.maxBound, labelKey: 'label.learned-baseline' };
 };
 
-export const ABORTED_PLACEMENT_KEY = 'abortedValue';
-export const QUEUED_PLACEMENT_KEY = 'queuedValue';
+/**
+ * Keys on a point whose values were placed rather than measured. The tooltip
+ * lists a point's series values, and must not report a placed one as a result.
+ */
+export const PLACED_KEYS_FIELD = 'placedKeys';
 
 /**
  * A run that produced no value carries no key for any series, so recharts drew
- * nothing at all for it and the run was simply missing from the chart. Aborted
- * runs get pinned to the lowest value on the plot and queued runs to the
- * expectation line, both under their own keys so neither joins the line path.
+ * nothing at all for it and the run was missing from the chart. Aborted runs are
+ * placed at the lowest value on the plot and queued runs on the expectation
+ * line, on the series itself, so the line runs through them and the point is
+ * not left floating off it. Which keys were placed is recorded on the point.
  */
 export const applyStatusPlacements = (
   data: TestCaseChartDataType['data'],
@@ -233,16 +237,29 @@ export const applyStatusPlacements = (
 
   const baseline = isEmpty(plotted) ? thresholdY : Math.min(...plotted);
 
+  const placementByStatus: Partial<Record<TestCaseStatus, number | undefined>> =
+    {
+      [TestCaseStatus.Aborted]: baseline,
+      [TestCaseStatus.Queued]: thresholdY ?? baseline,
+    };
+
   return data.map((point) => {
-    if (point.status === TestCaseStatus.Aborted) {
-      return { ...point, [ABORTED_PLACEMENT_KEY]: baseline };
+    const placement = placementByStatus[point.status as TestCaseStatus];
+
+    // A run that did record a value keeps it, whatever its status.
+    const missing = seriesLabels.filter(
+      (label) => typeof point[label] !== 'number'
+    );
+
+    if (isUndefined(placement) || isEmpty(missing)) {
+      return point;
     }
 
-    if (point.status === TestCaseStatus.Queued) {
-      return { ...point, [QUEUED_PLACEMENT_KEY]: thresholdY ?? baseline };
-    }
-
-    return point;
+    return {
+      ...point,
+      ...Object.fromEntries(missing.map((label) => [label, placement])),
+      [PLACED_KEYS_FIELD]: missing,
+    };
   });
 };
 

@@ -680,10 +680,12 @@ describe('applyStatusPlacements', () => {
       series
     );
 
+    // Placed on the series itself, so the line runs through the run.
     expect(data[2]).toEqual({
       name: 3,
       status: TestCaseStatus.Aborted,
-      abortedValue: 90,
+      rowCount: 90,
+      placedKeys: ['rowCount'],
     });
   });
 
@@ -700,8 +702,22 @@ describe('applyStatusPlacements', () => {
     expect(data[1]).toEqual({
       name: 2,
       status: TestCaseStatus.Queued,
-      queuedValue: 10000,
+      rowCount: 10000,
+      placedKeys: ['rowCount'],
     });
+  });
+
+  // An aborted run that did record a value is plotted where it landed; only
+  // a missing value is placed.
+  it('should keep a value an aborted run did record', () => {
+    const point = { name: 1, status: TestCaseStatus.Aborted, rowCount: 42 };
+
+    expect(
+      applyStatusPlacements(
+        [{ name: 0, status: TestCaseStatus.Success, rowCount: 10 }, point],
+        series
+      )[1]
+    ).toEqual(point);
   });
 
   it('should leave a run that plotted a value untouched', () => {
