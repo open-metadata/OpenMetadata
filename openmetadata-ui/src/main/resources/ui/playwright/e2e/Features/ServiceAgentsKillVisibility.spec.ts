@@ -180,11 +180,13 @@ test.describe('Service Agents visibility after a run is killed', () => {
     });
 
     await refetchStarted;
-    // The refetch is held open for REFETCH_HOLD_MS from here. Give React a beat to paint whatever
-    // it renders for a loading list before sampling it — there is no event to wait on, because
-    // the assertion is about what does *not* happen.
-    // eslint-disable-next-line playwright/no-wait-for-timeout -- the assertion is that the list is *not* blanked, so there is no event or state to wait on; a fixed beat is the only way to sample mid-refetch.
-    await page.waitForTimeout(500);
+    // The refetch is held open for REFETCH_HOLD_MS from here. `Ingestion` hands the same in-flight
+    // flag to the group as `isRefreshing` and to the skeleton gate, so the refresh control going
+    // disabled is proof that the loading render has landed — the very render whose card grid the
+    // assertions below have to read. The header keeps that control outside the body that swaps
+    // between skeletons and cards, so it anchors the wait either way: on a blanked list this still
+    // resolves and the assertions fail on the skeletons, rather than timing out here.
+    await expect(page.getByTestId('agent-group-refresh')).toBeDisabled();
 
     await test.step('Both agents are still listed while the refetch is in flight', async () => {
       // `isVisible()` deliberately does not retry, and the web-first matchers are wrong here: they
