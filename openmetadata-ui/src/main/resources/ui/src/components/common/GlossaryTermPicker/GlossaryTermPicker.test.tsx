@@ -103,6 +103,27 @@ describe('GlossaryTermPicker', () => {
     expect(nodes[0].allowSelection).toBe(false);
   });
 
+  // ChangeParent picks a term: a glossary row is expand-only there, so a click
+  // on one could only ever clear the pick.
+  it('makes glossary roots unselectable in a single-select term picker', async () => {
+    mockFetchTree.mockResolvedValue({
+      nodes: [
+        {
+          id: 'Filled',
+          label: 'Filled',
+          value: 'Filled',
+          allowSelection: true,
+          data: { isGlossaryRoot: true },
+        },
+      ],
+    });
+    render(<GlossaryTermPicker multiple={false} />);
+
+    const { nodes } = await lastProps().fetchData({});
+
+    expect(nodes[0].allowSelection).toBe(false);
+  });
+
   it('seeds the tree with the glossary labels only', () => {
     render(<GlossaryTermPicker value={[APPLIED_TERM, CLASSIFICATION_TAG]} />);
 
