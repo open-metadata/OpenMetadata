@@ -11,762 +11,273 @@
  *  limitations under the License.
  */
 
-import { type Browser } from '@playwright/test';
-import { VIEW_ONLY_RULE } from '../../../constant/permission';
-import { PolicyClass } from '../../../support/access-control/PoliciesClass';
-import { RolesClass } from '../../../support/access-control/RolesClass';
-import { TableClass } from '../../../support/entity/TableClass';
-import { expect, test } from '../../../support/fixtures/base';
-import { TeamClass } from '../../../support/team/TeamClass';
-import { UserClass } from '../../../support/user/UserClass';
-import { performAdminLogin } from '../../../utils/admin';
-import { getApiContext } from '../../../utils/common';
-import { waitForPageLoaded } from '../../../utils/polling';
+import { TaskClass } from '../../../support/entity/TaskClass';
+import { createActivityTask } from '../../../support/fixtures/taskActivity';
+import {
+  approveTaskThroughUI,
+  expect,
+  getTaskUserContext,
+  openTaskActions,
+  readTaskTable,
+  test,
+} from '../../../support/fixtures/taskPermissions';
+import { okJson } from '../../../utils/apiResponse';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
-const createTaskAsAdmin = async (
-  browser: Browser,
-  data: Record<string, unknown>
-) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-
-  try {
-    const taskResponse = await apiContext.post('/api/v1/tasks', {
-      data,
+for (const field of ['description', 'tags'] as const) {
+  test(`assignment does not grant permission to edit ${field}`, async ({
+    page,
+    activityData: data,
+    restrictedUser,
+  }) => {
+    const targetBefore = await readTaskTable(data.apiContext, data);
+    const task = new TaskClass({
+      about: `<#E::table::${data.table.entityResponseData.fullyQualifiedName}>`,
+      assignees: [restrictedUser.responseData.name],
+      type: field === 'description' ? 'DescriptionUpdate' : 'TagUpdate',
+      payload: {
+        field,
+        currentValue:
+          field === 'description'
+            ? targetBefore.description
+            : JSON.stringify(targetBefore.tags),
+        suggestedValue:
+          field === 'description'
+            ? 'Forbidden description'
+            : JSON.stringify([
+                {
+                  tagFQN: 'PII.Sensitive',
+                  source: 'Classification',
+                  state: 'Confirmed',
+                  labelType: 'Manual',
+                },
+              ]),
+      },
     });
-
-    expect(taskResponse.ok(), await taskResponse.text()).toBe(true);
-
-    return taskResponse.json();
-  } finally {
-    await afterAction();
-  }
-};
-
-const getUserApiContext = async (browser: Browser, user: UserClass) => {
-  const page = await browser.newPage();
-  await user.login(page);
-  const { apiContext, afterAction } = await getApiContext(page);
-
-  return {
-    apiContext,
-    afterAction: async () => {
-      await afterAction();
-      await page.close();
-    },
-  };
-};
-
-/**
- * Task Permissions Tests
- *
- * CRITICAL: Tests that assignees must have edit permissions on target entity
- *
- * Scenarios tested:
- * - User assigned to task but lacks EditDescription should NOT be able to approve
- * - User assigned to task WITH EditDescription CAN approve
- * - Entity owner can always approve (has implicit edit permissions)
- * - Admin can always approve (has all permissions)
- * - Team member with inherited permissions
- * - Permission bypass prevention (task system should not allow unauthorized edits)
- */
-
-test.describe('Task Permissions - Assignee Must Have Edit Permission', () => {
-  const adminUser = new UserClass();
-  const ownerUser = new UserClass();
-  const assigneeWithoutEdit = new UserClass();
-  const assigneeWithEdit = new UserClass();
-  const table = new TableClass();
-  const viewOnlyPolicy = new PolicyClass();
-  const viewOnlyRole = new RolesClass();
-
-  test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
+    data.tasks.push(task);
+    await task.create(data.apiContext);
+    const actor = await getTaskUserContext(page, restrictedUser);
     try {
-      // Create users
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-      await ownerUser.create(apiContext);
-      await assigneeWithoutEdit.create(apiContext, false);
-      await assigneeWithEdit.create(apiContext);
-      await viewOnlyPolicy.create(apiContext, VIEW_ONLY_RULE);
-      await viewOnlyRole.create(apiContext, [viewOnlyPolicy.responseData.name]);
-      await assigneeWithoutEdit.patch({
-        apiContext,
-        patchData: [
+      const response = await actor.apiContext.post(
+        `/api/v1/tasks/${task.responseData!.id}/resolve`,
+        {
+          data: {
+            resolutionType: 'Approved',
+            newValue: task.data.payload!.suggestedValue,
+          },
+        }
+      );
+      expect(response.status()).toBe(403);
+      expect((await task.get(data.apiContext)).status).toBe('Open');
+      expect((await readTaskTable(data.apiContext, data))[field]).toEqual(
+        targetBefore[field]
+      );
+    } finally {
+      await actor.afterAction();
+    }
+  });
+}
+
+for (const actorRole of ['owner', 'admin'] as const) {
+  test(`${actorRole} can resolve and persist a task through the API`, async ({
+    page,
+    activityData: data,
+  }) => {
+    const user = actorRole === 'admin' ? data.teammate : data.member;
+    if (actorRole === 'admin') await user.setAdminRole(data.apiContext);
+    else
+      await data.table.setOwner(data.apiContext, {
+        id: user.responseData.id,
+        type: 'user',
+      });
+    const task = await createActivityTask(data, data.member.responseData.name);
+    const actor = await getTaskUserContext(page, user);
+    try {
+      await okJson(
+        await actor.apiContext.post(
+          `/api/v1/tasks/${task.responseData!.id}/resolve`,
           {
-            op: 'add',
-            path: '/roles/0',
-            value: {
-              id: viewOnlyRole.responseData.id,
-              type: 'role',
-              name: viewOnlyRole.responseData.name,
+            data: {
+              resolutionType: 'Approved',
+              newValue: task.data.payload!.suggestedValue,
             },
-          },
-        ],
-      });
-
-      // Create table with owner
-      await table.create(apiContext);
-      await apiContext.patch(`/api/v1/tables/${table.entityResponseData?.id}`, {
-        data: [
-          {
-            op: 'add',
-            path: '/owners',
-            value: [{ id: ownerUser.responseData.id, type: 'user' }],
-          },
-        ],
-        headers: { 'Content-Type': 'application/json-patch+json' },
-      });
+          }
+        ),
+        'Resolve authorized task'
+      );
+      expect((await task.get(data.apiContext)).status).toBe('Approved');
+      expect((await readTaskTable(data.apiContext, data)).description).toBe(
+        task.data.payload!.suggestedValue
+      );
     } finally {
-      await afterAction();
+      await actor.afterAction();
     }
   });
 
-  test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await table.delete(apiContext);
-      await assigneeWithEdit.delete(apiContext);
-      await assigneeWithoutEdit.delete(apiContext);
-      await ownerUser.delete(apiContext);
-      await adminUser.delete(apiContext);
-      await viewOnlyRole.delete(apiContext);
-      await viewOnlyPolicy.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('assignee WITHOUT EditDescription should NOT be able to resolve RequestDescription task', async ({
-    browser,
+  test(`${actorRole} sees both approve and reject controls for the exact task`, async ({
+    page,
+    activityData: data,
   }) => {
-    const task = await createTaskAsAdmin(browser, {
-      about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-      type: 'DescriptionUpdate',
-      category: 'MetadataUpdate',
-      assignees: [assigneeWithoutEdit.responseData.name],
-      payload: {
-        suggestedValue: 'Suggested description text',
-      },
-    });
-    const { apiContext, afterAction } = await getUserApiContext(
-      browser,
-      assigneeWithoutEdit
-    );
-
-    try {
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
-          data: {
-            resolutionType: 'Approved',
-            newValue: 'Attempting to update description without permission',
-          },
-        }
-      );
-
-      // Expected behavior: Backend should reject with 403
-      // If permission check not implemented, this will succeed (BUG)
-      const status = resolveResponse.status();
-
-      // Document expected vs actual
-      console.log(
-        `Resolution without EditDescription permission - Status: ${status}`
-      );
-      expect(status).toBe(403);
-    } finally {
-      await afterAction();
-    }
+    const user = actorRole === 'admin' ? data.teammate : data.member;
+    if (actorRole === 'admin') await user.setAdminRole(data.apiContext);
+    else
+      await data.table.setOwner(data.apiContext, {
+        id: user.responseData.id,
+        type: 'user',
+      });
+    const task = await createActivityTask(data, data.member.responseData.name);
+    const card = await openTaskActions(page, data, task, user);
+    await expect(card.getByTestId('approve-button')).toBeVisible();
+    await expect(card.getByTestId('reject-button')).toBeVisible();
   });
+}
 
-  test('owner (has EditDescription) CAN resolve task', async ({ browser }) => {
-    const task = await createTaskAsAdmin(browser, {
-      about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-      type: 'DescriptionUpdate',
-      category: 'MetadataUpdate',
-      assignees: [ownerUser.responseData.name],
-      payload: {
-        suggestedValue: 'Owner suggested description',
-      },
-    });
-    const { apiContext, afterAction } = await getUserApiContext(
-      browser,
-      ownerUser
-    );
-
-    try {
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
-          data: {
-            resolutionType: 'Approved',
-            newValue: 'Description approved by owner',
-          },
-        }
-      );
-
-      expect(resolveResponse.ok()).toBe(true);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('admin CAN resolve any task', async ({ browser }) => {
-    const task = await createTaskAsAdmin(browser, {
-      about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-      type: 'DescriptionUpdate',
-      category: 'MetadataUpdate',
-      assignees: [assigneeWithoutEdit.responseData.name],
-      payload: {
-        suggestedValue: 'Admin will resolve this',
-      },
-    });
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
-          data: {
-            resolutionType: 'Approved',
-            newValue: 'Resolved by admin',
-          },
-        }
-      );
-
-      expect(resolveResponse.ok()).toBe(true);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('assignee WITHOUT EditTags should NOT be able to resolve RequestTag task', async ({
-    browser,
-  }) => {
-    const task = await createTaskAsAdmin(browser, {
-      about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-      type: 'TagUpdate',
-      category: 'MetadataUpdate',
-      assignees: [assigneeWithoutEdit.responseData.name],
-    });
-    const { apiContext, afterAction } = await getUserApiContext(
-      browser,
-      assigneeWithoutEdit
-    );
-
-    try {
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
-          data: {
-            resolutionType: 'Approved',
-            newValue: '["PII.Sensitive"]',
-          },
-        }
-      );
-
-      const status = resolveResponse.status();
-      console.log(`RequestTag resolution without EditTags - Status: ${status}`);
-      expect(status).toBe(403);
-    } finally {
-      await afterAction();
-    }
-  });
+test('an assigned viewer cannot approve a task without edit permission', async ({
+  page,
+  activityData: data,
+  restrictedUser,
+}) => {
+  const task = await createActivityTask(data, restrictedUser.responseData.name);
+  const targetBefore = await readTaskTable(data.apiContext, data);
+  const card = await openTaskActions(page, data, task, restrictedUser);
+  const response = waitForResponseWithStatus(
+    page,
+    (result) =>
+      result.request().method() === 'POST' &&
+      new URL(result.url()).pathname ===
+        `/api/v1/tasks/${task.responseData!.id}/resolve`,
+    403
+  );
+  await card.getByTestId('approve-button').click();
+  await response;
+  expect((await task.get(data.apiContext)).status).toBe('Open');
+  expect(await readTaskTable(data.apiContext, data)).toEqual(targetBefore);
+  await expect(card.getByTestId('approve-button')).toBeVisible();
 });
 
-test.describe('Task Permissions - UI Button Visibility', () => {
-  const adminUser = new UserClass();
-  const ownerUser = new UserClass();
-  const nonOwnerUser = new UserClass();
-  const table = new TableClass();
-
-  test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-      await ownerUser.create(apiContext);
-      await nonOwnerUser.create(apiContext);
-
-      await table.create(apiContext);
-      await apiContext.patch(`/api/v1/tables/${table.entityResponseData?.id}`, {
-        data: [
-          {
-            op: 'add',
-            path: '/owners',
-            value: [{ id: ownerUser.responseData.id, type: 'user' }],
-          },
-        ],
-        headers: { 'Content-Type': 'application/json-patch+json' },
-      });
-
-      // Create task assigned to owner
-      await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            suggestedValue: 'Suggested description',
-          },
-        },
-      });
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await table.delete(apiContext);
-      await nonOwnerUser.delete(apiContext);
-      await ownerUser.delete(apiContext);
-      await adminUser.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('assignee (owner) should see approve/reject buttons', async ({
-    page,
-  }) => {
-    await ownerUser.login(page);
-    await table.visitEntityPage(page);
-
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
-
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-
-    if (await taskCard.isVisible()) {
-      const approveBtn = taskCard.getByTestId('approve-button');
-      const rejectBtn = taskCard.getByTestId('reject-button');
-
-      // Owner should see action buttons
-      await expect(approveBtn).toBeVisible();
-      await expect(rejectBtn).toBeVisible();
-    }
-  });
-
-  test('non-assignee without permissions should NOT see approve/reject buttons', async ({
-    page,
-  }) => {
-    await nonOwnerUser.login(page);
-    await table.visitEntityPage(page);
-
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
-
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-
-    if (await taskCard.isVisible()) {
-      const approveBtn = taskCard.getByTestId('approve-button');
-      const rejectBtn = taskCard.getByTestId('reject-button');
-
-      // Non-assignee should NOT see action buttons
-      await expect(approveBtn).not.toBeVisible();
-      await expect(rejectBtn).not.toBeVisible();
-    }
-  });
-
-  test('admin should always see approve/reject buttons', async ({ page }) => {
-    await adminUser.login(page);
-    await table.visitEntityPage(page);
-
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
-
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-
-    if (await taskCard.isVisible()) {
-      const approveBtn = taskCard.getByTestId('approve-button');
-
-      // Admin should see approve button
-      await expect(approveBtn).toBeVisible();
-    }
-  });
+test('team membership and entity ownership authorize the actual approval', async ({
+  page,
+  activityData: data,
+}) => {
+  const task = await createActivityTask(data);
+  await approveTaskThroughUI(page, data, task, data.member);
 });
 
-test.describe('Task Permissions - Team Assignment', () => {
-  const adminUser = new UserClass();
-  const teamMember = new UserClass();
-  const nonTeamMember = new UserClass();
-  const team = new TeamClass();
-  const table = new TableClass();
-
-  test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-      await teamMember.create(apiContext);
-      await nonTeamMember.create(apiContext);
-
-      await team.create(apiContext);
-
-      // Add user to team
-      await apiContext.patch(`/api/v1/teams/${team.responseData.id}`, {
-        data: [
-          {
-            op: 'add',
-            path: '/users/-',
-            value: { id: teamMember.responseData.id, type: 'user' },
-          },
-        ],
-        headers: { 'Content-Type': 'application/json-patch+json' },
-      });
-
-      // Create table owned by team (so team has edit permissions)
-      await table.create(apiContext);
-      await apiContext.patch(`/api/v1/tables/${table.entityResponseData?.id}`, {
-        data: [
-          {
-            op: 'add',
-            path: '/owners',
-            value: [{ id: team.responseData.id, type: 'team' }],
-          },
-        ],
-        headers: { 'Content-Type': 'application/json-patch+json' },
-      });
-
-      // Create task assigned to team
-      await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          assignees: [team.responseData.name],
-          payload: {
-            suggestedValue: 'Team assigned task',
-          },
-        },
-      });
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await table.delete(apiContext);
-      await team.delete(apiContext);
-      await nonTeamMember.delete(apiContext);
-      await teamMember.delete(apiContext);
-      await adminUser.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('team member CAN resolve task assigned to team (team owns entity)', async ({
-    page,
-  }) => {
-    await teamMember.login(page);
-    await table.visitEntityPage(page);
-
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
-
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-
-    if (await taskCard.isVisible()) {
-      const approveBtn = taskCard.getByTestId('approve-button');
-
-      // Team member should see approve (team owns entity = has edit)
-      await expect(approveBtn).toBeVisible();
-    }
-  });
-
-  test('non-team member should NOT see approve button', async ({ page }) => {
-    await nonTeamMember.login(page);
-    await table.visitEntityPage(page);
-
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
-
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-
-    if (await taskCard.isVisible()) {
-      const approveBtn = taskCard.getByTestId('approve-button');
-
-      // Non-team member should NOT see approve
-      await expect(approveBtn).not.toBeVisible();
-    }
-  });
+test('non-team member has no controls on a team-assigned task', async ({
+  page,
+  activityData: data,
+}) => {
+  const task = await createActivityTask(data);
+  const card = await openTaskActions(page, data, task, data.outsider);
+  await expect(card.getByTestId('approve-button')).toHaveCount(0);
+  await expect(card.getByTestId('reject-button')).toHaveCount(0);
 });
 
-test.describe('Task Permissions - Task Creator', () => {
-  const adminUser = new UserClass();
-  const creatorUser = new UserClass();
-  const assigneeUser = new UserClass();
-  const table = new TableClass();
+test('a non-admin task creator can close their own task', async ({
+  page,
+  activityData: data,
+}) => {
+  const actor = await getTaskUserContext(page, data.outsider);
+  try {
+    const task = new TaskClass({
+      about: `<#E::table::${data.table.entityResponseData.fullyQualifiedName}>`,
+      assignees: [data.member.responseData.name],
+    });
+    data.tasks.push(task);
+    await task.create(actor.apiContext);
+    expect(task.responseData!.createdBy?.name).toBe(
+      data.outsider.responseData.name
+    );
+    await okJson(
+      await actor.apiContext.post(
+        `/api/v1/tasks/${task.responseData!.id}/close`,
+        { params: { comment: 'Creator closing task' } }
+      ),
+      'Close as creator'
+    );
+    expect((await task.get(data.apiContext)).status).toBe('Cancelled');
+  } finally {
+    await actor.afterAction();
+  }
+});
 
-  test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+test('a non-creator and non-assignee cannot close another user’s task', async ({
+  page,
+  activityData: data,
+}) => {
+  const task = await createActivityTask(data, data.member.responseData.name);
+  const actor = await getTaskUserContext(page, data.outsider);
+  try {
+    const response = await actor.apiContext.post(
+      `/api/v1/tasks/${task.responseData!.id}/close`,
+      { params: { comment: 'Forbidden cancellation' } }
+    );
+    expect(response.status()).toBe(403);
+    expect((await task.get(data.apiContext)).status).toBe('Open');
+  } finally {
+    await actor.afterAction();
+  }
+});
 
-    try {
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-      await creatorUser.create(apiContext);
-      await assigneeUser.create(apiContext);
-
-      await table.create(apiContext);
-      await apiContext.patch(`/api/v1/tables/${table.entityResponseData?.id}`, {
-        data: [
-          {
-            op: 'add',
-            path: '/owners',
-            value: [{ id: assigneeUser.responseData.id, type: 'user' }],
-          },
-        ],
-        headers: { 'Content-Type': 'application/json-patch+json' },
-      });
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await table.delete(apiContext);
-      await assigneeUser.delete(apiContext);
-      await creatorUser.delete(apiContext);
-      await adminUser.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('task creator CAN close their own task', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      // Create task as admin (simulating creator)
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          assignees: [assigneeUser.responseData.name],
-        },
-      });
-      const task = await taskResponse.json();
-
-      // Creator closes task
-      const closeResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/close?comment=Creator closing task`
-      );
-
-      expect(closeResponse.ok()).toBe(true);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('non-creator non-assignee CANNOT close task', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    // Create task as admin
-    const taskResponse = await apiContext.post('/api/v1/tasks', {
+test('a cancelled task cannot later apply its suggested value', async ({
+  activityData: data,
+}) => {
+  const task = await createActivityTask(data);
+  await okJson(
+    await data.apiContext.post(`/api/v1/tasks/${task.responseData!.id}/close`),
+    'Cancel task'
+  );
+  expect((await task.get(data.apiContext)).status).toBe('Cancelled');
+  const response = await data.apiContext.post(
+    `/api/v1/tasks/${task.responseData!.id}/resolve`,
+    {
       data: {
-        about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-        type: 'DescriptionUpdate',
-        category: 'MetadataUpdate',
-        assignees: [assigneeUser.responseData.name],
+        resolutionType: 'Approved',
+        newValue: task.data.payload!.suggestedValue,
       },
-    });
-    const task = await taskResponse.json();
-    await afterAction();
-
-    // Try to close as creator user (who did NOT create this task)
-    const page = await browser.newPage();
-    await creatorUser.login(page);
-
-    // Navigate to task and try to close
-    await table.visitEntityPage(page);
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
     }
-
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-
-    if (await taskCard.isVisible()) {
-      // Non-creator should NOT see close button
-      const closeBtn = taskCard.getByTestId('close-task');
-      await expect(closeBtn).not.toBeVisible();
-    }
-
-    await page.close();
-  });
+  );
+  expect(response.status()).toBe(400);
+  expect((await task.get(data.apiContext)).status).toBe('Cancelled');
+  expect((await readTaskTable(data.apiContext, data)).description).toBe(
+    data.table.entityResponseData.description
+  );
 });
 
-test.describe('Task Permissions - Edge Cases', () => {
-  const adminUser = new UserClass();
-  const table = new TableClass();
-
-  test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-      await table.create(apiContext);
-    } finally {
-      await afterAction();
-    }
+test('admin can resolve an unassigned task and persist its value', async ({
+  page,
+  activityData: data,
+}) => {
+  await data.teammate.setAdminRole(data.apiContext);
+  const task = new TaskClass({
+    about: `<#E::table::${data.table.entityResponseData.fullyQualifiedName}>`,
+    payload: {
+      field: 'description',
+      currentValue: data.table.entityResponseData.description,
+      suggestedValue: 'Unassigned task approved',
+    },
   });
-
-  test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await table.delete(apiContext);
-      await adminUser.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('resolving already closed task should preserve closed status', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      // Create and close task
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          assignees: [adminUser.responseData.name],
-        },
-      });
-      const task = await taskResponse.json();
-
-      // Close the task
-      const closeResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/close?comment=Closing for test`
-      );
-      expect(closeResponse.ok()).toBe(true);
-
-      // Verify task is now cancelled
-      const afterCloseResponse = await apiContext.get(
-        `/api/v1/tasks/${task.id}`
-      );
-      const closedTask = await afterCloseResponse.json();
-      expect(closedTask.status).toBe('Cancelled');
-
-      // Try to resolve closed task - should either fail or be ignored
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
+  data.tasks.push(task);
+  await task.create(data.apiContext);
+  const actor = await getTaskUserContext(page, data.teammate);
+  try {
+    await okJson(
+      await actor.apiContext.post(
+        `/api/v1/tasks/${task.responseData!.id}/resolve`,
         {
           data: {
             resolutionType: 'Approved',
-            newValue: 'Trying to resolve closed task',
+            newValue: task.data.payload!.suggestedValue,
           },
         }
-      );
-
-      // Verify task status after resolve attempt - should not become Approved/Completed
-      if (resolveResponse.ok()) {
-        const afterResolveResponse = await apiContext.get(
-          `/api/v1/tasks/${task.id}`
-        );
-        const taskAfterResolve = await afterResolveResponse.json();
-        // Status should indicate task was not approved - either remains Cancelled or becomes Rejected
-        expect(['Cancelled', 'Rejected']).toContain(taskAfterResolve.status);
-        // Most importantly, it should NOT be Approved
-        expect(taskAfterResolve.status).not.toBe('Approved');
-      } else {
-        // If the backend rejects, that's also valid behavior
-        expect(resolveResponse.status()).toBeGreaterThanOrEqual(400);
-      }
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('task without assignees should still allow admin to resolve', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      // Create task without assignees
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          // No assignees specified
-          payload: {
-            suggestedValue: 'No assignee task',
-          },
-        },
-      });
-      const task = await taskResponse.json();
-
-      // Admin should be able to resolve
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
-          data: {
-            resolutionType: 'Approved',
-            newValue: 'Admin resolving unassigned task',
-          },
-        }
-      );
-
-      expect(resolveResponse.ok()).toBe(true);
-    } finally {
-      await afterAction();
-    }
-  });
+      ),
+      'Resolve as admin'
+    );
+    expect((await task.get(data.apiContext)).status).toBe('Approved');
+    expect((await readTaskTable(data.apiContext, data)).description).toBe(
+      task.data.payload!.suggestedValue
+    );
+  } finally {
+    await actor.afterAction();
+  }
 });

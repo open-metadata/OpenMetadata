@@ -99,7 +99,9 @@ async function setupWorkflowApiMocks(page: Page, workflowGetResponse: object) {
 }
 
 async function navigateToMysqlConnectionForm(page: Page) {
-  await page.goto('/databaseServices/add-service');
+  await page.goto('/databaseServices/add-service', {
+    waitUntil: 'domcontentloaded',
+  });
   await waitForAllLoadersToDisappear(page);
   await selectServiceConnector(page, 'Mysql');
   await fillServiceNameAndWaitForValidation(page, `pw-tc-modal-test-${uuid()}`);
@@ -125,7 +127,9 @@ async function fillServiceNameAndWaitForValidation(
 }
 
 async function navigateToMysqlFormWithoutFilling(page: Page) {
-  await page.goto('/databaseServices/add-service');
+  await page.goto('/databaseServices/add-service', {
+    waitUntil: 'domcontentloaded',
+  });
   await waitForAllLoadersToDisappear(page);
   await selectServiceConnector(page, 'Mysql');
   await advanceToServiceConnectionStep(page);

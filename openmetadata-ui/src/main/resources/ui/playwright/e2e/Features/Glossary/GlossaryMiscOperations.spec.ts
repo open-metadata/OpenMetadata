@@ -19,7 +19,6 @@ import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
   fillDeleteConfirmationIfPresent,
   getEncodedFqn,
-  waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
 import {
   dragAndDropTerm,
@@ -28,6 +27,10 @@ import {
   selectActiveGlossaryTerm,
 } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
+import {
+  waitForAntOverlayToOpen,
+  waitForResponseWithStatus,
+} from '../../../utils/waitHelpers';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -187,7 +190,6 @@ test.describe('Glossary Miscellaneous Operations', () => {
     }
   });
 
-  // T-D03: Delete term with assets tagged - verifies tag is removed from assets
   test('should delete term and remove tag from assets', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
@@ -199,8 +201,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
       await glossaryTerm.create(apiContext);
       await tableEntity.create(apiContext);
 
-      // Tag the table with the glossary term
-      await apiContext.patch(
+      const taggedTable = await apiContext.patch(
         `/api/v1/tables/${tableEntity.entityResponseData?.id}`,
         {
           data: [
@@ -219,11 +220,9 @@ test.describe('Glossary Miscellaneous Operations', () => {
         }
       );
 
-      // First verify the table has the glossary term tag
-      await redirectToHomePage(page);
+      expect(taggedTable.status()).toBe(200);
       await tableEntity.visitEntityPage(page);
 
-      // Verify glossary term tag is present on the table (in KnowledgePanel)
       const glossaryTermsPanel = page.getByTestId(
         'KnowledgePanel.GlossaryTerms'
       );
@@ -233,57 +232,82 @@ test.describe('Glossary Miscellaneous Operations', () => {
         glossaryTermsPanel.getByText(glossaryTerm.responseData.displayName)
       ).toBeVisible();
 
-      // Now navigate to glossary and delete the term
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
-
-      await selectActiveGlossaryTerm(
+      const termFqn = glossaryTerm.responseData.fullyQualifiedName;
+      const termResponse = waitForResponseWithStatus(
         page,
+        (response) =>
+          response.request().method() === 'GET' &&
+          new URL(response.url()).pathname ===
+            `/api/v1/glossaryTerms/name/${getEncodedFqn(termFqn)}`,
+        200
+      );
+      await page.goto(`/glossary/${getEncodedFqn(termFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
+      expect((await (await termResponse).json()).id).toBe(
+        glossaryTerm.responseData.id
+      );
+      await expect(page.getByTestId('entity-header-display-name')).toHaveText(
         glossaryTerm.responseData.displayName
       );
 
-      // Click manage button and delete
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button').click();
 
-      // Wait for delete confirmation modal
-      await expect(page.locator('[role="dialog"]')).toBeVisible();
-
-      // Confirm deletion
-
-      const deleteRes = page.waitForResponse('/api/v1/glossaryTerms/async/*');
+      const dialog = page.getByRole('dialog');
+      await waitForAntOverlayToOpen(dialog);
       await fillDeleteConfirmationIfPresent(page);
-      await page.getByTestId('confirm-button').click();
-      await deleteRes;
-
-      const afterDeleteResponse = page.waitForResponse(
-        '/api/v1/glossaryTerms?*'
+      const deleteResponse = waitForResponseWithStatus(
+        page,
+        (response) =>
+          response.request().method() === 'DELETE' &&
+          new URL(response.url()).pathname ===
+            `/api/v1/glossaryTerms/async/${glossaryTerm.responseData.id}`,
+        202
       );
-      await afterDeleteResponse;
+      // The completion event can refresh the list before the DELETE promise resumes.
+      const updatedTerms = waitForResponseWithStatus(
+        page,
+        (response) => {
+          const url = new URL(response.url());
 
-      // Verify term is deleted from glossary
-      await page.goto(
-        `/glossary/${getEncodedFqn(
-          glossary.responseData.fullyQualifiedName as string
-        )}`
+          return (
+            response.request().method() === 'GET' &&
+            url.pathname === '/api/v1/glossaryTerms' &&
+            url.searchParams.get('directChildrenOf') ===
+              glossary.responseData.fullyQualifiedName &&
+            url.searchParams.get('limit') !== '0'
+          );
+        },
+        200
       );
-      await waitForAllLoadersToDisappear(page);
-
+      await dialog.getByTestId('confirm-button').click();
+      expect((await (await deleteResponse).json()).jobId).toBeTruthy();
+      const remainingTerms = await (await updatedTerms).json();
+      expect(remainingTerms.data).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: glossaryTerm.responseData.id }),
+        ])
+      );
       await expect(
         page.locator(`[data-row-key*="${glossaryTerm.responseData.name}"]`)
-      ).not.toBeVisible();
+      ).toBeHidden();
 
-      // Navigate back to the table and verify the glossary term tag has been removed
-      await redirectToHomePage(page);
       await tableEntity.visitEntityPage(page);
 
-      // Verify glossary term tag is no longer present on the table
-      // Either the panel doesn't show the term, or the panel shows empty state
       const termText = page
         .getByTestId('KnowledgePanel.GlossaryTerms')
         .getByText(glossaryTerm.responseData.displayName);
 
+      await expect(glossaryTermsPanel).toBeVisible();
       await expect(termText).not.toBeVisible();
+      const persistedTable = await apiContext.get(
+        `/api/v1/tables/${tableEntity.entityResponseData.id}?fields=tags`
+      );
+      expect(persistedTable.status()).toBe(200);
+      expect((await persistedTable.json()).tags).not.toEqual(
+        expect.arrayContaining([expect.objectContaining({ tagFQN: termFqn })])
+      );
     } finally {
       await glossary.delete(apiContext);
       await tableEntity.delete(apiContext);

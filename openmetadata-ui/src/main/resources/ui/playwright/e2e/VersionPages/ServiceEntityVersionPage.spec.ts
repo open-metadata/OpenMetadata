@@ -94,6 +94,7 @@ const test = base.extend<{ page: Page }>({
 
 test.describe('Service Version pages', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    setupErrors.clear();
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminUser.create(apiContext);
     await adminUser.setAdminRole(apiContext);
@@ -157,9 +158,25 @@ test.describe('Service Version pages', () => {
 
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
-    await adminUser.delete(apiContext);
-
-    await afterAction();
+    try {
+      const results = await Promise.allSettled(
+        Object.values(entities).map((entity) => entity.delete(apiContext))
+      );
+      await adminUser.delete(apiContext);
+      const failures = results.filter(
+        (result): result is PromiseRejectedResult =>
+          result.status === 'rejected'
+      );
+      if (failures.length) {
+        throw new AggregateError(
+          failures.map((failure) => failure.reason),
+          'Service version fixture cleanup failed'
+        );
+      }
+    } finally {
+      setupErrors.clear();
+      await afterAction();
+    }
   });
 
   test.beforeEach('Visit entity details page', async ({ page }) => {
@@ -308,7 +325,7 @@ test.describe('Service Version pages', () => {
           BIG_ENTITY_DELETE_TIMEOUT
         );
 
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         const deletedBadge = page.locator('[data-testid="deleted-badge"]');
 
