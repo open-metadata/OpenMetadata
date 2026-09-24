@@ -259,3 +259,11 @@ button {
     }
   }
 }
+
+// Disabled antd buttons use @disabled-color (fade(@black, 25%)), compiled to a
+// static near-black that vanishes in dark; retint to the disabled text token.
+.dark-mode .ant-btn[disabled],
+.dark-mode .ant-btn[disabled]:hover,
+.dark-mode .ant-btn[disabled]:focus {
+  color: var(--om-color-text-disabled);
+}
