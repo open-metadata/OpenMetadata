@@ -15,6 +15,8 @@ workspace_root=${GITHUB_WORKSPACE:-$(pwd)}
 playwright_root="$workspace_root/openmetadata-ui/src/main/resources/ui/playwright"
 auth_source="$playwright_root/.auth"
 entity_state_source="$playwright_root/output/entity-response-data.json"
+lineage_state_source="$playwright_root/output/lineage-data.json"
+shared_infra_state_source="$playwright_root/output/shared-infra.json"
 fingerprint_script="$workspace_root/.github/scripts/playwright_cache_fingerprint.py"
 
 cleanup() {
@@ -41,7 +43,9 @@ fi
 for state_file in \
   "$auth_source/admin.json" \
   "$auth_source/admin-api-token.json" \
-  "$entity_state_source"; do
+  "$entity_state_source" \
+  "$lineage_state_source" \
+  "$shared_infra_state_source"; do
   if [[ ! -s "$state_file" ]]; then
     echo "Missing seeded Playwright state: $state_file" >&2
     exit 1
@@ -78,6 +82,8 @@ sudo cp -a "$postgres_source/." "$stage_dir/postgres/"
 sudo cp -a "$opensearch_source/." "$stage_dir/opensearch/"
 sudo cp -a "$auth_source/." "$stage_dir/playwright-state/auth/"
 sudo cp -a "$entity_state_source" "$stage_dir/playwright-state/entity-response-data.json"
+sudo cp -a "$lineage_state_source" "$stage_dir/playwright-state/lineage-data.json"
+sudo cp -a "$shared_infra_state_source" "$stage_dir/playwright-state/shared-infra.json"
 
 postgres_image=$(resolve_digest postgres:15)
 opensearch_image=$(resolve_digest "$opensearch_reference")
