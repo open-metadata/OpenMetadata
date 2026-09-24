@@ -166,3 +166,40 @@ export const filterExcludeFields = (
     return true;
   });
 };
+
+export const EXTENSION_FIELD_PREFIX = 'extension.';
+
+/**
+ * Builds the de-duplicated field-option list for a workflow field picker.
+ *
+ * Custom properties are stored under `extension.<name>` and workflow nodes resolve a field path
+ * against the entity, where a custom property is only reachable at that path. The fields API returns
+ * custom properties by their bare name, so prefix those (and only those) with `extension.`, matching
+ * how the trigger/filter field lists are built (see NodeConfigSidebar). Standard fields are left
+ * as-is. The prefix is applied after {@link filterExcludeFields} so the added dot does not exclude
+ * the property.
+ */
+export const buildFieldOptions = (
+  fields: Array<{ name?: string }>,
+  customPropertyNames: Set<string>
+): string[] => {
+  const seen = new Set<string>();
+  const options: string[] = [];
+
+  filterExcludeFields(fields).forEach(({ name }) => {
+    if (!name) {
+      return;
+    }
+
+    const value = customPropertyNames.has(name)
+      ? `${EXTENSION_FIELD_PREFIX}${name}`
+      : name;
+
+    if (!seen.has(value)) {
+      seen.add(value);
+      options.push(value);
+    }
+  });
+
+  return options;
+};

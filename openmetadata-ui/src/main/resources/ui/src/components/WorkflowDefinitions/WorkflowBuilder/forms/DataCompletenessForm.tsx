@@ -28,8 +28,15 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { NodeSubType } from '../../../../generated/governance/workflows/elements/nodeSubType';
 import { NodeType } from '../../../../generated/governance/workflows/elements/nodeType';
 import { useEntityFields } from '../../../../hooks/useEntityFields';
+import { EXTENSION_FIELD_PREFIX } from '../../../../utils/WorkflowConfigUtils';
 import { FormActionButtons } from './FormActionButtons';
 import { MetadataFormSection } from './MetadataFormSection';
+
+// Custom-property options are stored as extension.<name>; show the bare name to the user.
+const getFieldLabel = (value: string): string =>
+  value.startsWith(EXTENSION_FIELD_PREFIX)
+    ? value.slice(EXTENSION_FIELD_PREFIX.length)
+    : value;
 
 interface ScoringLevel {
   threshold: number | string;
@@ -139,7 +146,9 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
     setSelectedFields(fields);
     // Sync useListData with loaded fields
     if (!initDoneRef.current) {
-      fields.forEach((f) => selectedFieldItems.append({ id: f, label: f }));
+      fields.forEach((f) =>
+        selectedFieldItems.append({ id: f, label: getFieldLabel(f) })
+      );
       initDoneRef.current = true;
     }
     setCheckForNull(nodeData.checkForNull || false);
@@ -221,7 +230,7 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
             isRequired
             data-testid="fields-to-check-select"
             isDisabled={isFormDisabled}
-            items={fieldOptions.map((f) => ({ id: f, label: f }))}
+            items={fieldOptions.map((f) => ({ id: f, label: getFieldLabel(f) }))}
             label={t('label.fields')}
             placeholder={t('message.select-fields-to-check')}
             selectedItems={selectedFieldItems}
@@ -232,7 +241,7 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
               );
             }}
             onItemInserted={(key) => {
-              const item = { id: String(key), label: String(key) };
+              const item = { id: String(key), label: getFieldLabel(String(key)) };
               selectedFieldItems.append(item);
               setSelectedFields((prev) => [...prev, String(key)]);
             }}>

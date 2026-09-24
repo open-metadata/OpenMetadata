@@ -13,8 +13,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { EntityType } from '../enums/entity.enum';
-import { getFieldsForEntity } from '../rest/metadataTypeAPI';
-import { filterExcludeFields } from '../utils/WorkflowConfigUtils';
+import {
+  getCustomPropertiesByEntityType,
+  getFieldsForEntity,
+} from '../rest/metadataTypeAPI';
+import { buildFieldOptions } from '../utils/WorkflowConfigUtils';
 
 export const useEntityFields = (entityTypes?: EntityType[]) => {
   const [fieldOptions, setFieldOptions] = useState<string[]>([]);
@@ -32,22 +35,25 @@ export const useEntityFields = (entityTypes?: EntityType[]) => {
     setError(null);
 
     try {
-      const allFieldsPromises = entityTypesArray.map((entityType) =>
-        getFieldsForEntity(entityType)
-      );
-      const allFieldsResults = await Promise.all(allFieldsPromises);
+      const [allFieldsResults, customPropertyResults] = await Promise.all([
+        Promise.all(
+          entityTypesArray.map((entityType) => getFieldsForEntity(entityType))
+        ),
+        // Best-effort: if custom properties can't be fetched, fall back to bare
+        // names rather than breaking the whole field picker.
+        Promise.all(
+          entityTypesArray.map((entityType) =>
+            getCustomPropertiesByEntityType(entityType).catch(() => [])
+          )
+        ),
+      ]);
 
       const allFields = allFieldsResults.flat().filter(Boolean);
-      const filteredFields = filterExcludeFields(allFields);
+      const customPropertyNames = new Set(
+        customPropertyResults.flat().map((property) => property.name)
+      );
 
-      const fieldOptionsMap = new Map();
-      filteredFields.forEach(({ name }) => {
-        if (name && !fieldOptionsMap.has(name)) {
-          fieldOptionsMap.set(name, name);
-        }
-      });
-
-      setFieldOptions(Array.from(fieldOptionsMap.values()));
+      setFieldOptions(buildFieldOptions(allFields, customPropertyNames));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load fields');
       setFieldOptions([]);
