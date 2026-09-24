@@ -2857,7 +2857,7 @@ public class SearchRepository {
         if (entityType.equalsIgnoreCase(Entity.DOMAIN)) {
           propagateToDomainChildren(entityId, indexMapping, updates);
         } else {
-          String parentFieldName = resolveParentFieldName(entityType, updates);
+          String parentFieldName = resolveParentFieldName(entityType);
           Pair<String, String> parentMatch = new ImmutablePair<>(parentFieldName, entityId);
           List<String> entityChildren =
               filterChildAliasesByCapability(
@@ -2975,15 +2975,19 @@ public class SearchRepository {
         .toList();
   }
 
-  private String resolveParentFieldName(
-      String entityType, Pair<String, Map<String, Object>> updates) {
-    if (!updates.getValue().isEmpty()
-        && (updates.getValue().keySet().stream()
-                .anyMatch(key -> key.toLowerCase().contains(FIELD_DOMAINS))
-            || updates.getValue().containsKey(FIELD_DISPLAY_NAME))) {
-      if (SERVICE_ENTITY_SET.stream().anyMatch(s -> s.equalsIgnoreCase(entityType))) {
-        return SERVICE_ID;
-      }
+  /**
+   * The field on a child document that points back at {@code entityType}.
+   *
+   * <p>A service's children always reference it as {@code service.id} — no index anywhere declares a
+   * {@code databaseService}/{@code dashboardService} property — so the answer depends only on
+   * whether the parent is a service, never on which of its fields changed. It used to be gated on
+   * the payload mentioning {@code domains} or {@code displayName}, which silently sent every other
+   * propagated field (tags, owners) to {@code <serviceEntityType>.id} and matched no document at
+   * all, so a tag set on a service never reached its assets in search.
+   */
+  private String resolveParentFieldName(String entityType) {
+    if (SERVICE_ENTITY_SET.stream().anyMatch(s -> s.equalsIgnoreCase(entityType))) {
+      return SERVICE_ID;
     }
     return entityType + ".id";
   }
@@ -3026,7 +3030,7 @@ public class SearchRepository {
                 indexMapping, capability -> capability == null || !capability.isTimeSeries());
     if (!nullOrEmpty(childAliases)) {
       Pair<String, Map<String, Object>> updates = buildInheritedDomainUpdate(newDomains);
-      String parentField = resolveParentFieldName(entityType, updates);
+      String parentField = resolveParentFieldName(entityType);
       List<String> parentIds = assetIds.stream().map(UUID::toString).toList();
       // Chunk so the terms query never approaches Elasticsearch's index.max_terms_count on an
       // extreme bulk move; a normal move stays a single update-by-query.
@@ -3706,9 +3710,12 @@ public class SearchRepository {
   /**
    * Removes a parent's tags from a child doc, but only the labels the system itself propagated. A
    * child that carries the same term MANUAL (a column explicitly tagged with the term the table also
-   * carries) keeps it — matching on tagFQN alone used to strip it. DERIVED is accepted alongside
-   * PROPAGATED so labels written by earlier releases, which stamped DERIVED, are still cleaned up
-   * without requiring a reindex first.
+   * carries) keeps it — matching on tagFQN alone used to strip it.
+   *
+   * <p>Both system label types are removed. PROPAGATED is what the parent-to-child fan-out here
+   * stamps; DERIVED is stamped by the service-level attribute propagation and by releases before
+   * this one, so accepting it keeps those cleaned up without requiring a reindex first. Recognising
+   * only one of the two would leave the other's labels stranded on every child document.
    *
    * <p>An absent {@code labelType} is treated as user-applied, not system-applied: {@code
    * tagLabel.json} defaults the field to {@code Manual}, so a doc missing it most likely carries a

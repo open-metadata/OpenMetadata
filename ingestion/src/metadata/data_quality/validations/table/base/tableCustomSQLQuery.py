@@ -40,6 +40,9 @@ class Strategy(Enum):
 class BaseTableCustomSQLQueryValidator(BaseTestValidator):
     """Validator table custom SQL Query test case"""
 
+    # The user's query is executed as written, so the sampler never sees it.
+    BYPASSES_SAMPLER = True
+
     def _run_validation(self) -> TestCaseResult:
         """Execute the specific test validation logic
 
