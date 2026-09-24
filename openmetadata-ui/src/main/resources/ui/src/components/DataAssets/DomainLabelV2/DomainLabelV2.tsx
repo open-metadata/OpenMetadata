@@ -18,6 +18,7 @@ import {
   Dispatch,
   KeyboardEvent,
   MouseEvent,
+  PointerEvent,
   SetStateAction,
   useCallback,
   useEffect,
@@ -209,18 +210,20 @@ export const DomainLabelV2 = <
         />
       );
 
-      // Toggle on capture so the click drives the picker before the react-aria
+      // Toggle on capture so the press drives the picker before the react-aria
       // button's own press handling can swallow it or fire twice (which opened
       // then immediately re-closed the popover). Mirrors DomainSelectableList.
-      // Keyboard is handled explicitly: react-aria's usePress preventDefaults
-      // Enter/Space and never dispatches a bubbling click, so the capture-phase
-      // click handler alone would leave the picker unreachable by keyboard.
+      // pointerdown, not click: the widget re-renders while a PATCH settles, and
+      // a re-render that replaces the trigger's DOM node between mousedown and
+      // mouseup makes the browser drop the `click` outright, so the press does
+      // nothing at all. Keyboard is handled explicitly: react-aria's usePress
+      // preventDefaults Enter/Space and never dispatches a bubbling click, so
+      // the pointer handler alone would leave the picker unreachable by keyboard.
       return (
         <span
           role="presentation"
           onClickCapture={(e: MouseEvent<HTMLSpanElement>) => {
             e.stopPropagation();
-            toggle();
           }}
           onKeyDownCapture={(e: KeyboardEvent<HTMLSpanElement>) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -228,6 +231,12 @@ export const DomainLabelV2 = <
               e.stopPropagation();
               toggle();
             }
+          }}
+          onPointerDownCapture={(e: PointerEvent<HTMLSpanElement>) => {
+            if (e.button > 0) {
+              return;
+            }
+            toggle();
           }}>
           {trigger}
         </span>
