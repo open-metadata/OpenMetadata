@@ -55,10 +55,7 @@ const GlossaryTermReferences = () => {
     [permissions]
   );
 
-  const handleReferencesSave = async (
-    newReferences: TermReference[],
-    updateState?: boolean
-  ) => {
+  const handleReferencesSave = async (newReferences: TermReference[]) => {
     try {
       const updatedRef = newReferences.filter(
         (ref) => ref.endpoint && ref.name
@@ -71,9 +68,6 @@ const GlossaryTermReferences = () => {
         };
 
         await onGlossaryTermUpdate(updatedGlossaryTerm);
-        if (updateState) {
-          setReferences(updatedRef);
-        }
       }
       setIsViewMode(true);
     } catch (error) {

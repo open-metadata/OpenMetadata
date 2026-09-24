@@ -66,20 +66,27 @@ const GlossaryTermReferencesModal = ({
   });
 
   const validateEndpoint = (value?: string) => {
-    if (!value) {
+    const endpoint = value?.trim();
+
+    if (!endpoint) {
       return t('label.field-required', { field: t('label.endpoint') });
     }
-    if (!validateReferenceURL(value)) {
+    if (!validateReferenceURL(endpoint)) {
       return t('message.url-must-start-with-http-or-https');
     }
 
-    return isParsableURL(value) || t('message.endpoint-should-be-valid');
+    return isParsableURL(endpoint) || t('message.endpoint-should-be-valid');
   };
 
   const onSubmit = async (values: ReferencesFormValues) => {
     try {
       setSaving(true);
-      await onSave(values.references);
+      await onSave(
+        values.references.map(({ name, endpoint }) => ({
+          name: name?.trim(),
+          endpoint: endpoint?.trim(),
+        }))
+      );
     } finally {
       setSaving(false);
     }
@@ -138,9 +145,9 @@ const GlossaryTermReferencesModal = ({
                       />
                     )}
                     rules={{
-                      required: t('label.field-required', {
-                        field: t('label.name'),
-                      }),
+                      validate: (value) =>
+                        Boolean(value?.trim()) ||
+                        t('label.field-required', { field: t('label.name') }),
                     }}
                   />
                   <Controller

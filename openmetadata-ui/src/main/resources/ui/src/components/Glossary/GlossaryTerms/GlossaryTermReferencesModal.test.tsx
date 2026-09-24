@@ -124,6 +124,49 @@ describe('GlossaryTermReferencesModal', () => {
     expect(mockOnSave).not.toHaveBeenCalled();
   });
 
+  it('trims whitespace from references before saving', async () => {
+    const { getAllByPlaceholderText, getByTestId } = render(
+      <GlossaryTermReferencesModal {...{ ...defaultProps, references: [] }} />
+    );
+
+    await act(async () => {
+      fireEvent.change(getAllByPlaceholderText('label.name')[0], {
+        target: { value: '  BBC  ' },
+      });
+      fireEvent.change(getAllByPlaceholderText('label.endpoint')[0], {
+        target: { value: '  http://www.bbc.co.uk  ' },
+      });
+
+      fireEvent.click(getByTestId('save-btn'));
+    });
+
+    expect(mockOnSave).toHaveBeenCalledWith([
+      { name: 'BBC', endpoint: 'http://www.bbc.co.uk' },
+    ]);
+  });
+
+  it.each(['javascript:alert(1)', ' javascript:alert(1)', '   '])(
+    'rejects the %p endpoint on save',
+    async (endpoint) => {
+      const { getAllByPlaceholderText, getByTestId } = render(
+        <GlossaryTermReferencesModal {...{ ...defaultProps, references: [] }} />
+      );
+
+      await act(async () => {
+        fireEvent.change(getAllByPlaceholderText('label.name')[0], {
+          target: { value: 'XSS' },
+        });
+        fireEvent.change(getAllByPlaceholderText('label.endpoint')[0], {
+          target: { value: endpoint },
+        });
+
+        fireEvent.click(getByTestId('save-btn'));
+      });
+
+      expect(mockOnSave).not.toHaveBeenCalled();
+    }
+  );
+
   it('should accept URLs with http:// prefix', async () => {
     const { getAllByPlaceholderText, getByTestId } = render(
       <GlossaryTermReferencesModal {...{ ...defaultProps, references: [] }} />
