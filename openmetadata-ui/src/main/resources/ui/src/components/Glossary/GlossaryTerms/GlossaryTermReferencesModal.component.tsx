@@ -10,20 +10,44 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Form, Input, Modal, Row } from 'antd';
+import {
+  Button,
+  ButtonUtility,
+  Dialog,
+  Input,
+  Modal,
+  ModalOverlay,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Delete, PlusCircle } from '@openmetadata/ui-core-components/icons';
 import { useEffect, useState } from 'react';
+import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { TermReference } from '../../../generated/entity/data/glossaryTerm';
-import { referenceURLValidator } from '../../../utils/GlossaryPureUtils';
+import { validateReferenceURL } from '../../../utils/GlossaryPureUtils';
+
 interface GlossaryTermReferencesModalProps {
   references: TermReference[];
   isVisible: boolean;
   onClose: () => void;
   onSave: (values: TermReference[]) => Promise<void>;
 }
+
+interface ReferencesFormValues {
+  references: TermReference[];
+}
+
+const EMPTY_REFERENCE: TermReference = { name: '', endpoint: '' };
+
+const isParsableURL = (value: string) => {
+  try {
+    new URL(value);
+
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 const GlossaryTermReferencesModal = ({
   references,
@@ -32,14 +56,30 @@ const GlossaryTermReferencesModal = ({
   onSave,
 }: GlossaryTermReferencesModalProps) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm<{ references: TermReference[] }>();
   const [saving, setSaving] = useState<boolean>(false);
+  const { control, handleSubmit, reset } = useForm<ReferencesFormValues>({
+    defaultValues: { references: [EMPTY_REFERENCE] },
+  });
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'references',
+  });
 
-  const handleSubmit = async (obj: { references: TermReference[] }) => {
+  const validateEndpoint = (value?: string) => {
+    if (!value) {
+      return t('label.field-required', { field: t('label.endpoint') });
+    }
+    if (!validateReferenceURL(value)) {
+      return t('message.url-must-start-with-http-or-https');
+    }
+
+    return isParsableURL(value) || t('message.endpoint-should-be-valid');
+  };
+
+  const onSubmit = async (values: ReferencesFormValues) => {
     try {
       setSaving(true);
-      await form.validateFields();
-      await onSave(obj.references);
+      await onSave(values.references);
     } finally {
       setSaving(false);
     }
@@ -47,117 +87,117 @@ const GlossaryTermReferencesModal = ({
 
   useEffect(() => {
     if (isVisible) {
-      const newRefs =
-        references.length > 0
-          ? references
-          : [
-              {
-                name: '',
-                endpoint: '',
-              },
-            ];
-      form.setFieldValue('references', newRefs);
+      reset({
+        references: references.length > 0 ? references : [EMPTY_REFERENCE],
+      });
     }
   }, [isVisible]);
 
   return (
-    <Modal
-      destroyOnClose
-      data-testid="glossary-term-references-modal"
-      footer={[
-        <Button key="cancel-btn" type="link" onClick={onClose}>
-          {t('label.cancel')}
-        </Button>,
-        <Button
-          data-testid="save-btn"
-          key="save-btn"
-          loading={saving}
-          type="primary"
-          onClick={form.submit}>
-          {t('label.save')}
-        </Button>,
-      ]}
-      open={isVisible}
-      title={t('label.reference-plural')}
-      onCancel={onClose}>
-      <Form className="reference-edit-form" form={form} onFinish={handleSubmit}>
-        <Form.List name="references">
-          {(fields, { add, remove }) => (
-            <>
-              {fields.map(({ key, name, ...restField }) => (
-                <Row gutter={8} key={key}>
-                  <Col span={12}>
-                    <Form.Item
-                      className="w-full"
-                      {...restField}
-                      name={[name, 'name']}
-                      rules={[
-                        {
-                          required: true,
-                          message: t('label.field-required', {
-                            field: t('label.name'),
-                          }),
-                        },
-                      ]}>
-                      <Input placeholder={t('label.name')} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={11}>
-                    <Form.Item
-                      className="w-full"
-                      {...restField}
-                      name={[name, 'endpoint']}
-                      rules={[
-                        {
-                          required: true,
-                          message: t('label.field-required', {
-                            field: t('label.endpoint'),
-                          }),
-                        },
-                        {
-                          type: 'url',
-                          message: t('message.endpoint-should-be-valid'),
-                        },
-                        {
-                          validator: referenceURLValidator,
-                        },
-                      ]}>
-                      <Input placeholder={t('label.endpoint')} />
-                    </Form.Item>
-                  </Col>
-
-                  <Col span={1}>
-                    <Button
-                      data-testid="delete-ref-btn"
-                      icon={
-                        <Icon
-                          className="align-middle"
-                          component={IconDelete}
-                          style={{ fontSize: '16px' }}
-                        />
-                      }
-                      size="small"
-                      type="text"
-                      onClick={() => remove(name)}
-                    />
-                  </Col>
-                </Row>
+    <ModalOverlay
+      isDismissable
+      isOpen={isVisible}
+      // The library overlay is `tw:z-50`, which loses to antd overlays
+      // (z-index 1000) still present on the glossary term page.
+      style={{ zIndex: 'var(--om-z-modal)' }}
+      onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <Modal>
+        <Dialog
+          aria-label={t('label.reference-plural')}
+          data-testid="glossary-term-references-modal"
+          width={640}>
+          <Dialog.Header>
+            <Typography
+              as="h3"
+              className="tw:text-primary"
+              size="text-md"
+              weight="semibold">
+              {t('label.reference-plural')}
+            </Typography>
+          </Dialog.Header>
+          <Dialog.Content>
+            <form
+              noValidate
+              className="tw:flex tw:flex-col tw:gap-3"
+              onSubmit={handleSubmit(onSubmit)}>
+              {fields.map((field, index) => (
+                <div className="tw:flex tw:items-start tw:gap-2" key={field.id}>
+                  <Controller
+                    control={control}
+                    name={`references.${index}.name`}
+                    render={({ field: nameField, fieldState }) => (
+                      <Input
+                        className="tw:flex-1"
+                        hint={fieldState.error?.message}
+                        id={`references_${index}_name`}
+                        isInvalid={Boolean(fieldState.error)}
+                        placeholder={t('label.name')}
+                        value={nameField.value ?? ''}
+                        onBlur={nameField.onBlur}
+                        onChange={nameField.onChange}
+                      />
+                    )}
+                    rules={{
+                      required: t('label.field-required', {
+                        field: t('label.name'),
+                      }),
+                    }}
+                  />
+                  <Controller
+                    control={control}
+                    name={`references.${index}.endpoint`}
+                    render={({ field: endpointField, fieldState }) => (
+                      <Input
+                        className="tw:flex-1"
+                        hint={fieldState.error?.message}
+                        id={`references_${index}_endpoint`}
+                        isInvalid={Boolean(fieldState.error)}
+                        placeholder={t('label.endpoint')}
+                        value={endpointField.value ?? ''}
+                        onBlur={endpointField.onBlur}
+                        onChange={endpointField.onChange}
+                      />
+                    )}
+                    rules={{ validate: validateEndpoint }}
+                  />
+                  <ButtonUtility
+                    className="tw:mt-1"
+                    color="tertiary"
+                    data-testid="delete-ref-btn"
+                    icon={Delete}
+                    size="sm"
+                    tooltip={t('label.delete')}
+                    onClick={() => remove(index)}
+                  />
+                </div>
               ))}
-              <Form.Item>
-                <Button
-                  className="text-primary d-flex items-center"
-                  data-testid="add-references-button"
-                  icon={<PlusIcon className="anticon" />}
-                  size="small"
-                  onClick={() => add()}>
-                  {t('label.add')}
-                </Button>
-              </Form.Item>
-            </>
-          )}
-        </Form.List>
-      </Form>
-    </Modal>
+              <Button
+                className="tw:w-fit"
+                color="link-color"
+                data-testid="add-references-button"
+                iconLeading={PlusCircle}
+                size="sm"
+                onClick={() => append(EMPTY_REFERENCE)}>
+                {t('label.add')}
+              </Button>
+            </form>
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button color="secondary" size="md" onClick={onClose}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              data-testid="save-btn"
+              isLoading={saving}
+              size="md"
+              onClick={handleSubmit(onSubmit)}>
+              {t('label.save')}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

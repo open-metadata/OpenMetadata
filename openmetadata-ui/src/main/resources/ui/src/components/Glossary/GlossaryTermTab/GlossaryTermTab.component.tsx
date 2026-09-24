@@ -127,8 +127,8 @@ import {
   ExpandableConfig,
 } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
-import TagButton from '../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import { SynonymBadge } from '../GlossaryTermBadges/GlossaryTermBadges';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import GlossaryTermEmptyPlaceholder from './GlossaryTermEmptyPlaceholder.component';
 import {
@@ -1327,13 +1327,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           return isEmpty(synonyms) ? (
             <div>{NO_DATA_PLACEHOLDER}</div>
           ) : (
-            <div className="d-flex flex-wrap">
+            <div className="tw:flex tw:flex-wrap tw:gap-1">
               {synonyms.map((synonym: string) => (
-                <TagButton
-                  className="glossary-synonym-tag"
-                  key={synonym}
-                  label={synonym}
-                />
+                <SynonymBadge key={synonym} synonym={synonym} />
               ))}
             </div>
           );
