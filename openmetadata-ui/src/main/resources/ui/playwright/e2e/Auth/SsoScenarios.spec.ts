@@ -490,21 +490,19 @@ for (const fixture of FIXTURES) {
             await fixture.performLogin(page);
 
             const cookies = await page.context().cookies();
-            // Filter to the OM auth surface — every OM-issued session
-            // cookie is set on the OM host and its name typically
-            // starts with `OM_` (OM_SESSION, OM_REFRESH_TOKEN). Guards
-            // against noise from OIDC/SAML IdP cookies that Playwright
-            // also captures.
-            const omAuthCookies = cookies.filter(
-              (c) =>
-                /^OM_/.test(c.name) || /session|refresh|jsession/i.test(c.name)
-            );
+            // Filter to the exact OM-emitted cookie name (see
+            // SessionCookieUtil.COOKIE_NAME on the backend — only
+            // `OM_SESSION` today; `OM_*` reserved for the future).
+            // An earlier permissive `/session/i` filter picked up
+            // unrelated cookies like `__session` (docker seed / test
+            // infra) and false-failed on those third-party flags.
+            const omAuthCookies = cookies.filter((c) => /^OM_/.test(c.name));
 
             expect(
               omAuthCookies.length,
               `${
                 fixture.slug
-              } declares hasBackendIssuedRefreshCookie:true but no OM_* / session cookie in the jar after login. Cookies seen: ${JSON.stringify(
+              } declares hasBackendIssuedRefreshCookie:true but no OM_* cookie in the jar after login. Cookies seen: ${JSON.stringify(
                 cookies.map((c) => c.name)
               )}`
             ).toBeGreaterThan(0);
