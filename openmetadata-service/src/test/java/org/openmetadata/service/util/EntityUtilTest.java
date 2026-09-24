@@ -910,7 +910,8 @@ class EntityUtilTest {
       ListFilter explicitFilter = new ListFilter(); // explicit ?domain= keeps control
       explicitFilter.addQueryParam("domainId", "'explicit'");
       ListFilter botFilter = new ListFilter(); // bots are never scoped
-      ListFilter restrictedFilter = new ListFilter(); // domain-only role -> enforcement only
+      ListFilter restrictedFilter =
+          new ListFilter(); // domain-only role -> narrowed within RBAC scope
 
       authorizer
           .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
@@ -937,6 +938,78 @@ class EntityUtilTest {
       assertTrue(botFilter.getQueryParams().isEmpty());
       assertEquals("'" + id + "'", restrictedFilter.getQueryParam("domainId"));
       assertEquals("true", restrictedFilter.getQueryParam("domainAccessControl"));
+    }
+  }
+
+  @Test
+  void addDomainQueryParam_restrictedUserNarrowsToSelectedAllowedDomain() {
+    EntityReference finance =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Finance");
+    EntityReference sales =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Sales");
+    EntityReference other =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Other");
+    EntityReference domainRole =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("role")
+            .withName(DOMAIN_ONLY_ACCESS_ROLE);
+    SecurityContext securityContext = mock(SecurityContext.class);
+
+    org.openmetadata.schema.entity.teams.User withinScope =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("analyst")
+            .withRoles(List.of(domainRole))
+            .withDomains(List.of(finance, sales))
+            .withDefaultDomain(sales);
+    // Only reachable by setting defaultDomain through the API: the navbar never lists it.
+    org.openmetadata.schema.entity.teams.User outsideScope =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("analyst-tampered")
+            .withRoles(List.of(domainRole))
+            .withDomains(List.of(finance))
+            .withDefaultDomain(other);
+    org.openmetadata.schema.entity.teams.User noSelection =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("analyst-none")
+            .withRoles(List.of(domainRole))
+            .withDomains(List.of(finance, sales));
+
+    try (MockedStatic<DefaultAuthorizer> authorizer =
+        org.mockito.Mockito.mockStatic(DefaultAuthorizer.class)) {
+      ListFilter narrowed = new ListFilter();
+      ListFilter guarded = new ListFilter();
+      ListFilter full = new ListFilter();
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(withinScope, null))
+          .thenReturn(new SubjectContext(outsideScope, null))
+          .thenReturn(new SubjectContext(noSelection, null));
+
+      EntityUtil.addDomainQueryParam(securityContext, narrowed, "table");
+      EntityUtil.addDomainQueryParam(securityContext, guarded, "table");
+      EntityUtil.addDomainQueryParam(securityContext, full, "table");
+
+      // The pick narrows the list within the role's scope.
+      assertEquals("'" + sales.getId() + "'", narrowed.getQueryParam("domainId"));
+      assertEquals("true", narrowed.getQueryParam("domainAccessControl"));
+      // A pick outside the role's scope never widens it.
+      assertEquals("'" + finance.getId() + "'", guarded.getQueryParam("domainId"));
+      assertEquals("true", guarded.getQueryParam("domainAccessControl"));
+      // No pick keeps the full scope.
+      String fullScope = full.getQueryParam("domainId");
+      assertTrue(fullScope.contains(finance.getId().toString()));
+      assertTrue(fullScope.contains(sales.getId().toString()));
+      assertEquals("true", full.getQueryParam("domainAccessControl"));
     }
   }
 

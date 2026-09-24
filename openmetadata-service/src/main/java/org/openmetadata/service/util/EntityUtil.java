@@ -1095,9 +1095,15 @@ public final class EntityUtil {
     boolean domainRestricted =
         !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE);
     if (domainRestricted) {
-      if (!nullOrEmpty(subjectContext.getUserDomains())) {
+      List<EntityReference> allowed = subjectContext.getUserDomains();
+      if (!nullOrEmpty(allowed)) {
+        // The navbar selection narrows within the role's scope; it can never widen past it.
+        EntityReference selected = subjectContext.getDefaultDomain();
+        boolean selectedAllowed =
+            selected != null && allowed.stream().anyMatch(d -> d.getId().equals(selected.getId()));
         filter.addQueryParam(
-            "domainId", getCommaSeparatedIdsFromRefs(subjectContext.getUserDomains()));
+            "domainId",
+            getCommaSeparatedIdsFromRefs(selectedAllowed ? List.of(selected) : allowed));
         filter.addQueryParam("domainAccessControl", "true");
       } else {
         filter.addQueryParam("domainId", NULL_PARAM);
