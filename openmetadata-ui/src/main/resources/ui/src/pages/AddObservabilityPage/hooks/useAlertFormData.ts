@@ -38,14 +38,15 @@ import { useObservabilityAlertTemplates } from './useObservabilityAlertTemplates
 
 /**
  * Alert form state, resources, templates and save for a caller that owns the form values,
- * so it needs no antd form. The caller passes the chosen source as selectedTrigger.
+ * so it needs no antd form. The caller passes the chosen sources and the choices so far.
  */
 export function useAlertFormData({
   afterSaveAction,
   alertType,
   fqn: fqnProp,
   onCancel,
-  selectedTrigger,
+  sources,
+  input,
 }: UseAlertFormDataOptions): UseAlertFormDataReturn {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -76,7 +77,7 @@ export function useAlertFormData({
     () => alertsClassBase.getAddAlertFormExtraButtons(),
     []
   );
-  const alertResources = useAlertResources(alertType, selectedTrigger);
+  const alertResources = useAlertResources(alertType, sources, input);
   const alertTemplates = useObservabilityAlertTemplates({
     extraFormWidgets,
     getResourcePermission,
@@ -196,7 +197,6 @@ export function useAlertFormData({
   return {
     alert,
     breadcrumb,
-    containerEntities: alertResources.containerEntities,
     extraFormButtons,
     extraFormWidgets,
     filterResources: alertResources.filterResources,
@@ -211,10 +211,9 @@ export function useAlertFormData({
       templates: alertTemplates.loading,
     },
     saving,
+    selection: alertResources.selection,
     shouldShowActionsSection: alertResources.shouldShowActionsSection,
     shouldShowFiltersSection: alertResources.shouldShowFiltersSection,
-    supportedFilters: alertResources.supportedFilters,
-    supportedTriggers: alertResources.supportedTriggers,
     templateResourcePermission: alertTemplates.templateResourcePermission,
     templates: alertTemplates.templates,
   };
