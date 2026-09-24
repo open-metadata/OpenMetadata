@@ -16,7 +16,6 @@ package org.openmetadata.service.formatter.decorators;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.EntityUtil.encodeEntityFqnSafe;
 
-import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.formatter.util.FeedMessage;
 
 public class FeedMessageDecorator implements MessageDecorator<FeedMessage> {
@@ -68,17 +67,7 @@ public class FeedMessageDecorator implements MessageDecorator<FeedMessage> {
   }
 
   @Override
-  public FeedMessage buildEntityMessage(String publisherName, ChangeEvent event) {
-    return null;
-  }
-
-  @Override
   public FeedMessage buildTestMessage() {
-    return null;
-  }
-
-  @Override
-  public FeedMessage buildThreadMessage(String publisherName, ChangeEvent event) {
     return null;
   }
 }
