@@ -18,22 +18,3 @@
     height: calc(100vh - 226px);
   }
 }
-
-// AI shell padding standard: the header band sits 8px inside the content
-// panel and page content 16px, replacing the classic 20px (tw:px-5) gutters.
-// Unlayered, so it wins over those Tailwind utilities without !important.
-.assistant-content .context-center-layout {
-  .context-center-header-section {
-    padding: 8px 8px 0;
-  }
-
-  .context-center-content-section {
-    padding: 0 16px 16px;
-  }
-
-  [data-testid='context-center-header'],
-  [data-testid='article-detail-header'],
-  [data-testid='article-version-header'] {
-    margin-bottom: 16px;
-  }
-}
