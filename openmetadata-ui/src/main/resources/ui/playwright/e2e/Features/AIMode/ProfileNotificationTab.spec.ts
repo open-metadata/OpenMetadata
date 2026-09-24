@@ -76,15 +76,9 @@ const SOURCE_NAME_3 = 'task';
 const SOURCE_NAME_4 = 'conversation';
 const SOURCE_NAME_5 = 'table';
 
-// Admin page fixture only — notification tab is admin-gated.
-const test = base.extend<{ page: Page }>({
-  page: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await admin.login(page);
-    await use(page);
-    await page.close();
-  },
-});
+// Admin page fixture — notification tab is admin-gated.
+const test = base;
+test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const data: { alertDetails: AlertDetails } = {
   alertDetails: {
