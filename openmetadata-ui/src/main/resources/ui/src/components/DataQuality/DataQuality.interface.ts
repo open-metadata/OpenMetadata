@@ -104,3 +104,6 @@ export interface DataStatisticWidgetProps {
   countValueClassName?: string;
   className?: string;
 }
+
+// Re-exported because consumers outside this repository import it from this path.
+export { IncidentTimeMetricsType } from '../../enums/DataQuality.enum';

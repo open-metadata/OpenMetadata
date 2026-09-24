@@ -106,6 +106,8 @@ export interface ExploreProps {
 
 import type { ExploreQuickFilterField } from '../../interface/quickFilter.interface';
 
+// Re-exported because consumers outside this repository import it from this path.
+export type { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 export type { ExploreQuickFilterField };
 
 // Type for all the explore tab entities

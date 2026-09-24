@@ -46,7 +46,5 @@ export interface PermissionContextType {
   ) => Promise<OperationPermission>;
 }
 
-// The enum now lives in enums/permissions.enum so the REST layer can use it
-// without importing this context module. Re-exported here because consumers
-// outside this repository import it from this path.
+// Re-exported because consumers outside this repository import it from this path.
 export { ResourceEntity };

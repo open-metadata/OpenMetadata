@@ -167,3 +167,6 @@ export const AsyncSelect = ({
     />
   );
 };
+
+// Re-exported because consumers outside this repository import it from this path.
+export type { PagingResponse } from '../../../interface/common/paging.interface';
