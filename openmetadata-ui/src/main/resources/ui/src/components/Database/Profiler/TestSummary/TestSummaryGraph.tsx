@@ -43,6 +43,8 @@ import { Payload } from 'recharts/types/component/DefaultLegendContent';
 import { CartesianViewBox, Coordinate } from 'recharts/types/util/types';
 import { ReactComponent as FilterOffIcon } from '../../../../assets/svg/ic-filter-off.svg';
 import {
+  COLOR_GREY_400,
+  GRAY_700,
   GREEN_3,
   GREEN_3_OPACITY,
   RED_3,
@@ -82,6 +84,9 @@ import {
 import TestSummaryCustomTooltip from '../TestSummaryCustomTooltip/TestSummaryCustomTooltip.component';
 import TestSummaryStatusKey from './TestSummaryStatusKey';
 import {
+  DOT_OUTLINE,
+  PLOT_BACKGROUND,
+  SELECTED_DOT_HALO,
   STATUS_DOT_RADIUS,
   STATUS_DOT_RING_WIDTH,
   STATUS_DOT_SIZE,
@@ -299,17 +304,25 @@ function TestSummaryGraph({
     setShowAILearningBanner(chartData.showAILearningBanner);
   }, [chartData.showAILearningBanner, setShowAILearningBanner]);
 
+  // One series reads as data, not as a category, so it takes the neutral the
+  // mock draws it in. Several need the palette to be told apart.
+  const isSingleSeries = chartData.information.length === 1;
+  const getSeriesColor = useCallback(
+    (color: string) => (isSingleSeries ? COLOR_GREY_400 : color),
+    [isSingleSeries]
+  );
+
   const customLegendPayLoad = useMemo(() => {
     const legendPayload: Payload[] = chartData?.information.map((info) => ({
       value: info.label,
       dataKey: info.label,
       type: 'line',
-      color: info.color,
+      color: getSeriesColor(info.color),
       inactive: !(activeKeys.length === 0 || activeKeys.includes(info.label)),
     }));
 
     return legendPayload;
-  }, [chartData?.information, activeKeys]);
+  }, [chartData?.information, activeKeys, getSeriesColor]);
 
   const handleLegendClick: LegendProps['onClick'] = (event) => {
     setActiveKeys((prevActiveKeys) =>
@@ -363,6 +376,7 @@ function TestSummaryGraph({
     // no value and one that has not run yet must differ by shape, not only by
     // colour. The stroke sits inside the radius so the dot keeps its size.
     const isHollow = payload.status === TestCaseStatus.Aborted;
+    const isSelected = payload.name === activeRunTimestamp;
 
     return (
       // The focus ring extends outside the dot's SVG bounds, so overflow must
@@ -375,6 +389,20 @@ function TestSummaryGraph({
         x={cx - STATUS_DOT_RADIUS}
         xmlns="http://www.w3.org/2000/svg"
         y={cy - STATUS_DOT_RADIUS}>
+        {isSelected && (
+          // Marks the run the details card is showing, so the selection reads
+          // from the point itself rather than only from the guide line.
+          <circle
+            aria-hidden="true"
+            cx={STATUS_DOT_RADIUS}
+            cy={STATUS_DOT_RADIUS}
+            data-testid="selected-point-halo"
+            fill={fill}
+            fillOpacity={SELECTED_DOT_HALO.opacity}
+            pointerEvents="none"
+            r={STATUS_DOT_RADIUS + SELECTED_DOT_HALO.spread}
+          />
+        )}
         <circle
           aria-label={`${formatDateTimeLong(
             payload.name,
@@ -394,8 +422,10 @@ function TestSummaryGraph({
               : STATUS_DOT_RADIUS
           }
           role="img"
-          stroke={isHollow ? fill : undefined}
-          strokeWidth={isHollow ? STATUS_DOT_RING_WIDTH : undefined}
+          // Filled dots take an outline in the surface colour, which lifts them
+          // off the line they sit on; the ring's own stroke is its colour.
+          stroke={isHollow ? fill : DOT_OUTLINE}
+          strokeWidth={isHollow ? STATUS_DOT_RING_WIDTH : 1}
           tabIndex={0}
           onBlur={handleTooltipClose}
           onClick={() => handleRunSelect(payload.name)}
@@ -450,17 +480,18 @@ function TestSummaryGraph({
     return (
       <ReferenceLine
         label={{
-          fill: axis,
+          fill: GRAY_700,
           fontSize: 12,
-          position: 'insideTopRight',
+          fontWeight: 600,
+          position: 'insideBottomRight',
           value: t(reference.labelKey, { value: reference.labelValue }),
         }}
-        stroke={GREEN_3}
+        stroke={GRAY_700}
         strokeDasharray="4"
         y={reference.y}
       />
     );
-  }, [thresholdReference, axis, t]);
+  }, [thresholdReference, t]);
 
   if (isEmpty(testCaseResults)) {
     return (
@@ -484,7 +515,11 @@ function TestSummaryGraph({
         id={`${testCaseName}_graph`}
         minHeight={minHeight ?? 400}>
         <ComposedChart data={plottedData} margin={TEST_SUMMARY_CHART_MARGIN}>
-          <CartesianGrid stroke={grid} />
+          <CartesianGrid
+            fill={PLOT_BACKGROUND}
+            stroke={grid}
+            vertical={false}
+          />
           <XAxis
             angle={-45}
             dataKey="name"
@@ -500,6 +535,7 @@ function TestSummaryGraph({
           />
           <YAxis
             allowDataOverflow
+            axisLine={false}
             domain={['min', 'max']}
             padding={{ top: 8, bottom: 8 }}
             tick={{ fill: axis, fontSize: 12 }}
@@ -579,14 +615,14 @@ function TestSummaryGraph({
                   : false
               }
               key={info.label}
-              stroke={info.color}
+              stroke={getSeriesColor(info.color)}
               strokeOpacity={
                 isEmpty(activeMouseHoverKey) ||
                 info.label === activeMouseHoverKey
                   ? DEFAULT_CHART_OPACITY
                   : HOVER_CHART_OPACITY
               }
-              type="monotone"
+              type="linear"
             />
           ))}
         </ComposedChart>

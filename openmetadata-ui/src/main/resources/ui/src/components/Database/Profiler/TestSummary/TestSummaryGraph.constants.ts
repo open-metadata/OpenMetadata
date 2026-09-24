@@ -22,5 +22,11 @@ export const STATUS_DOT_RADIUS = 4;
 export const STATUS_DOT_SIZE = STATUS_DOT_RADIUS * 2;
 export const STATUS_DOT_RING_WIDTH = 2;
 
+// Surface colour rather than white, so the outline follows dark mode.
+export const DOT_OUTLINE = 'var(--om-color-bg-primary)';
+export const PLOT_BACKGROUND = 'var(--om-color-bg-brand)';
+
+export const SELECTED_DOT_HALO = { spread: 4, opacity: 0.2 } as const;
+
 export const TOOLTIP_GAP = STATUS_DOT_RADIUS;
 export const TOOLTIP_CLOSE_DELAY = 250;

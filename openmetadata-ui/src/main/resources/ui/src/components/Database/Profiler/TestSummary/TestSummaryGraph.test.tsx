@@ -26,6 +26,7 @@ import { getTaskById } from '../../../../rest/tasksAPI';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import TestSummaryGraph from './TestSummaryGraph';
+import { DOT_OUTLINE } from './TestSummaryGraph.constants';
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
 
 jest.mock('../../../../hooks/useChartColors', () => ({
@@ -88,6 +89,10 @@ jest.mock('@tanstack/react-query', () => ({
 jest.mock('../../../../rest/tasksAPI', () => ({
   getTaskById: jest.fn(),
 }));
+
+// The Line mock renders one dot per series from a fixed payload; this is the
+// status that payload carries, so a test can render a run of any status.
+let mockDotStatus = 'Success';
 
 jest.mock('recharts', () => ({
   Area: jest.fn().mockImplementation(() => <div data-testid="area" />),
@@ -210,9 +215,6 @@ jest.mock(
 );
 const mockSetShowAILearningBanner = jest.fn();
 const mockSetSelectedRunTimestamp = jest.fn();
-// The Line mock renders one dot per series from a fixed payload; this is the
-// status that payload carries, so a test can render a run of any status.
-let mockDotStatus = 'Success';
 let mockSelectedRunTimestamp: number | undefined;
 jest.mock(
   '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store',
@@ -429,13 +431,31 @@ describe('TestSummaryGraph', () => {
     expect(abortedPoint).toHaveAttribute('pointer-events', 'all');
   });
 
-  it('should keep a passing run filled', () => {
+  it('should keep a passing run filled, outlined in the surface colour', () => {
     render(<TestSummaryGraph {...mockProps} />);
 
     const [passingPoint] = screen.getAllByTestId(POINT_TEST_ID);
 
     expect(passingPoint).not.toHaveAttribute('fill', 'none');
-    expect(passingPoint).not.toHaveAttribute('stroke');
+    expect(passingPoint).toHaveAttribute('stroke', DOT_OUTLINE);
+  });
+
+  it('should mark only the selected run with a halo', () => {
+    mockSelectedRunTimestamp = 1721036998163;
+
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(screen.getAllByTestId('selected-point-halo').length).toBeGreaterThan(
+      0
+    );
+  });
+
+  it('should draw no halo when another run is selected', () => {
+    mockSelectedRunTimestamp = 1;
+
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(screen.queryByTestId('selected-point-halo')).not.toBeInTheDocument();
   });
 
   it('should publish the clicked run to the store', () => {
