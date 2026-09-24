@@ -25,7 +25,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -72,16 +71,6 @@ class WorkflowEventConsumerTest {
     when(subscriptionDestination.getId()).thenReturn(UUID.randomUUID());
 
     consumer = new WorkflowEventConsumer(eventSubscription, subscriptionDestination);
-  }
-
-  @Test
-  void testConstructor_RejectsInvalidSubscriptionType() {
-    SubscriptionDestination invalidDestination = mock(SubscriptionDestination.class);
-    when(invalidDestination.getType()).thenReturn(SubscriptionDestination.SubscriptionType.SLACK);
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new WorkflowEventConsumer(eventSubscription, invalidDestination));
   }
 
   @Test

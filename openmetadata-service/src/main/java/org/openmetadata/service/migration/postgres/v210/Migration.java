@@ -14,6 +14,7 @@
 package org.openmetadata.service.migration.postgres.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
+import static org.openmetadata.service.migration.utils.v210.AlertBacklogMigration.skipBacklogOfAlertsThePreviousReleaseCouldNotSend;
 import static org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration.rebuildDataContractEntityReferences;
 import static org.openmetadata.service.migration.utils.v210.DataQualityDimensionMigration.backfillTestCaseDimensions;
 import static org.openmetadata.service.migration.utils.v210.DottedServiceFqnMigration.repairDottedServiceChildFqns;
@@ -74,5 +75,8 @@ public class Migration extends MigrationProcessImpl {
     // children. That fires only on write, so features tagged before this upgrade would read back
     // as untagged from any FQN-prefix query. Idempotent. DB-agnostic, so it runs on both engines.
     backfillMlFeatureTags(collectionDAO);
+    // Alerts the previous release stopped sending, because it could not build one of their
+    // destinations, send again from this release; they start from the upgrade, not their backlog.
+    skipBacklogOfAlertsThePreviousReleaseCouldNotSend(collectionDAO);
   }
 }

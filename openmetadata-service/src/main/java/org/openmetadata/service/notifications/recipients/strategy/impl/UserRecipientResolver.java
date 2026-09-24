@@ -64,18 +64,16 @@ public class UserRecipientResolver implements RecipientResolutionStrategy {
       return Collections.emptySet();
     }
 
-    SubscriptionDestination.SubscriptionType notificationType = destination.getType();
     return action.getReceivers().stream()
-        .map(userName -> resolveUserByName(userName, notificationType))
+        .map(userName -> resolveUserByName(userName, destination))
         .filter(Objects::nonNull)
         .collect(Collectors.toUnmodifiableSet());
   }
 
-  private Recipient resolveUserByName(
-      String userName, SubscriptionDestination.SubscriptionType notificationType) {
+  private Recipient resolveUserByName(String userName, SubscriptionDestination destination) {
     try {
       User user = Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, Include.NON_DELETED);
-      return Recipient.fromUser(user, notificationType);
+      return Recipient.fromUser(user, destination);
     } catch (Exception e) {
       LOG.error("Failed to resolve user recipient for user {}", userName, e);
       return null;
@@ -100,18 +98,16 @@ public class UserRecipientResolver implements RecipientResolutionStrategy {
       return Collections.emptySet();
     }
 
-    SubscriptionDestination.SubscriptionType notificationType = destination.getType();
     return userIds.stream()
-        .map(userId -> resolveUserById(userId, notificationType))
+        .map(userId -> resolveUserById(userId, destination))
         .filter(Objects::nonNull)
         .collect(Collectors.toUnmodifiableSet());
   }
 
-  private Recipient resolveUserById(
-      UUID userId, SubscriptionDestination.SubscriptionType notificationType) {
+  private Recipient resolveUserById(UUID userId, SubscriptionDestination destination) {
     try {
       User user = Entity.getEntity(Entity.USER, userId, USER_FIELDS, Include.NON_DELETED);
-      return Recipient.fromUser(user, notificationType);
+      return Recipient.fromUser(user, destination);
     } catch (Exception e) {
       LOG.error("Failed to resolve user recipient for user {}", userId, e);
       return null;

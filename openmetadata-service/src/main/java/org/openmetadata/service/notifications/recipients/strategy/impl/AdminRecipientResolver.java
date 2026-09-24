@@ -65,7 +65,7 @@ public class AdminRecipientResolver implements RecipientResolutionStrategy {
       }
 
       return adminUsers.stream()
-          .map(user -> Recipient.fromUser(user, destination.getType()))
+          .map(user -> Recipient.fromUser(user, destination))
           .filter(Objects::nonNull)
           .collect(Collectors.toSet());
 

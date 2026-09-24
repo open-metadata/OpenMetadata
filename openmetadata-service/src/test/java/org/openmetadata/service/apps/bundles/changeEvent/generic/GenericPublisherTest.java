@@ -69,7 +69,7 @@ class GenericPublisherTest {
     WebhookRecipient recipient = mock(WebhookRecipient.class);
     when(recipient.getConfiguredRequest(any(), any())).thenReturn(builder);
 
-    GenericPublisher publisher = new GenericPublisher(eventSubscription, destination);
+    GenericPublisher publisher = new GenericPublisher(eventSubscription, destination, webhook);
 
     EventPublisherException exception =
         assertThrows(
