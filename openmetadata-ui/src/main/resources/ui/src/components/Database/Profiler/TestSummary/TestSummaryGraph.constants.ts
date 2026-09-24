@@ -20,6 +20,7 @@ export const TEST_SUMMARY_CHART_MARGIN = {
 
 export const STATUS_DOT_RADIUS = 4;
 export const STATUS_DOT_SIZE = STATUS_DOT_RADIUS * 2;
+export const STATUS_DOT_RING_WIDTH = 2;
 
 export const TOOLTIP_GAP = STATUS_DOT_RADIUS;
 export const TOOLTIP_CLOSE_DELAY = 250;

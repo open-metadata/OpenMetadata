@@ -24,6 +24,7 @@ import { Payload } from 'recharts/types/component/DefaultLegendContent';
 import { Task } from '../../../../generated/entity/tasks/task';
 import { getTaskById } from '../../../../rest/tasksAPI';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import TestSummaryGraph from './TestSummaryGraph';
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
 
@@ -128,7 +129,7 @@ jest.mock('recharts', () => ({
               max: 96612,
               min: 90001,
               name: 1721036998163,
-              status: 'Success',
+              status: mockDotStatus,
             },
           })}
         </svg>
@@ -209,6 +210,9 @@ jest.mock(
 );
 const mockSetShowAILearningBanner = jest.fn();
 const mockSetSelectedRunTimestamp = jest.fn();
+// The Line mock renders one dot per series from a fixed payload; this is the
+// status that payload carries, so a test can render a run of any status.
+let mockDotStatus = 'Success';
 let mockSelectedRunTimestamp: number | undefined;
 jest.mock(
   '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store',
@@ -224,6 +228,7 @@ jest.mock(
 describe('TestSummaryGraph', () => {
   beforeEach(() => {
     mockSelectedRunTimestamp = undefined;
+    mockDotStatus = 'Success';
     mockPointCoordinate = { x: 320, y: 120 };
     jest.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
       bottom: 280,
@@ -408,6 +413,29 @@ describe('TestSummaryGraph', () => {
       'data-x',
       '1700000000000'
     );
+  });
+
+  // The status key draws aborted as a ring; the chart has to match it or the
+  // key describes a dot that is not on the plot.
+  it('should draw an aborted run as a ring', () => {
+    mockDotStatus = TestCaseStatus.Aborted;
+
+    render(<TestSummaryGraph {...mockProps} />);
+
+    const [abortedPoint] = screen.getAllByTestId(POINT_TEST_ID);
+
+    expect(abortedPoint).toHaveAttribute('fill', 'none');
+    expect(abortedPoint).toHaveAttribute('stroke');
+    expect(abortedPoint).toHaveAttribute('pointer-events', 'all');
+  });
+
+  it('should keep a passing run filled', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    const [passingPoint] = screen.getAllByTestId(POINT_TEST_ID);
+
+    expect(passingPoint).not.toHaveAttribute('fill', 'none');
+    expect(passingPoint).not.toHaveAttribute('stroke');
   });
 
   it('should publish the clicked run to the store', () => {

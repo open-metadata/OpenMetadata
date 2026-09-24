@@ -83,6 +83,7 @@ import TestSummaryCustomTooltip from '../TestSummaryCustomTooltip/TestSummaryCus
 import TestSummaryStatusKey from './TestSummaryStatusKey';
 import {
   STATUS_DOT_RADIUS,
+  STATUS_DOT_RING_WIDTH,
   STATUS_DOT_SIZE,
   TEST_SUMMARY_CHART_MARGIN,
   TOOLTIP_CLOSE_DELAY,
@@ -358,6 +359,10 @@ function TestSummaryGraph({
 
     const fill = getStatusDotColor(payload.status);
     const pointKey = String(dataKey);
+    // Aborted is drawn as a ring, matching the status key: a run that produced
+    // no value and one that has not run yet must differ by shape, not only by
+    // colour. The stroke sits inside the radius so the dot keeps its size.
+    const isHollow = payload.status === TestCaseStatus.Aborted;
 
     return (
       // The focus ring extends outside the dot's SVG bounds, so overflow must
@@ -379,9 +384,18 @@ function TestSummaryGraph({
           cx={STATUS_DOT_RADIUS}
           cy={STATUS_DOT_RADIUS}
           data-testid={`test-summary-point-${pointKey}`}
-          fill={fill}
-          r={STATUS_DOT_RADIUS}
+          fill={isHollow ? 'none' : fill}
+          // A hollow circle only hit-tests its stroke; keep the whole disc
+          // clickable so the ring is as easy to select as a filled dot.
+          pointerEvents="all"
+          r={
+            isHollow
+              ? STATUS_DOT_RADIUS - STATUS_DOT_RING_WIDTH / 2
+              : STATUS_DOT_RADIUS
+          }
           role="img"
+          stroke={isHollow ? fill : undefined}
+          strokeWidth={isHollow ? STATUS_DOT_RING_WIDTH : undefined}
           tabIndex={0}
           onBlur={handleTooltipClose}
           onClick={() => handleRunSelect(payload.name)}
