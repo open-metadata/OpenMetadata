@@ -4,6 +4,7 @@ import static org.openmetadata.service.Entity.ALL_RESOURCES;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionDenied;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,9 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 import org.springframework.expression.Expression;
+import org.springframework.expression.spel.SpelNode;
+import org.springframework.expression.spel.ast.MethodReference;
+import org.springframework.expression.spel.standard.SpelExpression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.SimpleEvaluationContext;
 
@@ -86,12 +90,46 @@ public class CompiledRule extends Rule {
             .build();
     try {
       expression.getValue(context, clz);
+      validateFunctionArguments(expression, context);
     } catch (Exception exception) {
       // Remove unnecessary class details in the exception message
       String message =
           exception.getMessage().replaceAll("on type .*$", "").replaceAll("on object .*$", "");
       throw new IllegalArgumentException(CatalogExceptionMessage.failedToEvaluate(message));
     }
+  }
+
+  /**
+   * Each function checks its own arguments as a side effect of being called, so evaluating the
+   * condition once only reaches the branches SpEL actually executes. Every function returns false
+   * during validation, so {@code guard() && matchAnyTag('typo')} short-circuits and the tag is
+   * never checked - the rule then saves clean and silently never fires, which on a deny rule is a
+   * hole that looks enforced. Calling each function on its own closes that gap.
+   */
+  private static void validateFunctionArguments(
+      Expression expression, SimpleEvaluationContext context) {
+    if (!(expression instanceof SpelExpression spelExpression)) {
+      return;
+    }
+    for (String functionCall : collectFunctionCalls(spelExpression.getAST())) {
+      parseExpression(functionCall).getValue(context, Object.class);
+    }
+  }
+
+  /**
+   * Only root-level calls are collected, which is all a condition can contain: {@link
+   * ExpressionValidator} rejects compound expressions, so a function call is never nested behind a
+   * target whose own value would change what {@code toStringAST} means.
+   */
+  private static List<String> collectFunctionCalls(SpelNode node) {
+    List<String> calls = new ArrayList<>();
+    if (node instanceof MethodReference) {
+      calls.add(node.toStringAST());
+    }
+    for (int i = 0; i < node.getChildCount(); i++) {
+      calls.addAll(collectFunctionCalls(node.getChild(i)));
+    }
+    return calls;
   }
 
   public Expression getExpression() {

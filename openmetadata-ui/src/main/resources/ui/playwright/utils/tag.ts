@@ -45,7 +45,7 @@ export const NEW_TAG = {
   displayName: `PlaywrightTag-${uuid()}`,
   renamedName: `PlaywrightTag-${uuid()}`,
   description: 'This is the PlaywrightTag',
-  color: '#C11574',
+  color: '#F14C75',
   icon: 'Cube01',
 };
 
@@ -62,24 +62,25 @@ export const visitClassificationPage = async (
   );
   await page.goto(`/tags/${encodeURIComponent(classificationName)}`);
 
+  const response = await fetchTags;
+  expect(response.status()).toBe(200);
+
+  await waitForAllLoadersToDisappear(page);
+
+  const tagsContainer = page.getByTestId('tags-container');
   await expect(
-    page
-      .getByTestId('tags-container')
-      .locator('.table-container')
-      .getByTestId('loader')
+    tagsContainer
+      .getByTestId('table')
+      .or(tagsContainer.getByText('Add the first tag'))
+  ).toBeVisible();
+
+  await expect(
+    tagsContainer.locator('.table-container').getByTestId('loader')
   ).toHaveCount(0, { timeout: 30000 });
 
-  await expect(page.locator('.activeCategory')).toContainText(
+  await expect(tagsContainer.getByTestId('header')).toContainText(
     classificationDisplayName
   );
-
-  await fetchTags;
-  await expect(
-    page
-      .getByTestId('tags-container')
-      .locator('.table-container')
-      .getByTestId('loader')
-  ).toHaveCount(0, { timeout: 30000 });
 };
 
 // Other asset type that should not get from the search in explore, they are not added to the tag

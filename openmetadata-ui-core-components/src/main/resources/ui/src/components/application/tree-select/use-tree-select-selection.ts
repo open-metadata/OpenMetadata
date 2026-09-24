@@ -23,6 +23,8 @@ interface UseTreeSelectSelectionOptions<T> {
 interface UseTreeSelectSelectionReturn<T> {
   selectedData: TreeSelectNode<T>[];
   isNodeSelected: (nodeId: string) => boolean;
+  /** Selected vs selectable descendants, for a parent's checked/partial state. */
+  getDescendantSelection: (node: TreeSelectNode<T>) => DescendantSelection;
   toggleNodeSelection: (
     node: TreeSelectNode<T>,
     parentNode?: TreeSelectNode<T>
@@ -31,6 +33,27 @@ interface UseTreeSelectSelectionReturn<T> {
   clearSelection: () => void;
   removeLastSelectedOption: () => void;
 }
+
+export interface DescendantSelection {
+  selected: number;
+  total: number;
+  hasLoadedChildren: boolean;
+}
+
+// A loaded branch's children decide the row outright; unexpanded, its own membership does.
+export const getNodeSelectionState = (
+  { selected, total, hasLoadedChildren }: DescendantSelection,
+  isSelected: boolean
+) => {
+  const isFullySelected = hasLoadedChildren
+    ? selected === total
+    : isSelected || (total > 0 && selected === total);
+
+  return {
+    isFullySelected,
+    isPartiallySelected: !isFullySelected && selected > 0,
+  };
+};
 
 const getAllChildrenIds = <T>(node: TreeSelectNode<T>): string[] => {
   const ids = [node.id];
@@ -181,6 +204,43 @@ export const useTreeSelectSelection = <T = unknown>({
     setSelectedNodes(new Map(nodes.map((node) => [node.id, node])));
   }, []);
 
+  const getDescendantSelection = useCallback(
+    (node: TreeSelectNode<T>) => {
+      let loadedTotal = 0;
+      const selectedIds = new Set<string>();
+      const walk = (current: TreeSelectNode<T>) => {
+        current.children?.forEach((child) => {
+          if (child.allowSelection !== false) {
+            loadedTotal += 1;
+            if (selectedNodes.has(child.id)) {
+              selectedIds.add(child.id);
+            }
+          }
+          walk(child);
+        });
+      };
+      walk(node);
+
+      // A collapsed branch has nothing to walk, so count selections naming it as parent.
+      selectedNodes.forEach((selected, id) => {
+        if (selected.parentId === node.id) {
+          selectedIds.add(id);
+        }
+      });
+
+      return {
+        selected: selectedIds.size,
+        // Loaded children reflect pruning, but a truncated page must defer to the badge.
+        total:
+          loadedTotal > 0 && !node.hasMoreChildren
+            ? loadedTotal
+            : node.count ?? loadedTotal,
+        hasLoadedChildren: loadedTotal > 0,
+      };
+    },
+    [selectedNodes]
+  );
+
   const clearSelection = useCallback(() => {
     parentOfSelected.current = new Map();
     setSelectedNodes(new Map());
@@ -207,6 +267,7 @@ export const useTreeSelectSelection = <T = unknown>({
   return {
     selectedData,
     isNodeSelected,
+    getDescendantSelection,
     toggleNodeSelection,
     setSelection,
     clearSelection,

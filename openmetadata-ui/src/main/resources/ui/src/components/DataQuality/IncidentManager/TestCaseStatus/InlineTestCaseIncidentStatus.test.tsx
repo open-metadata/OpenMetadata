@@ -312,6 +312,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 jest.mock('../../../../rest/incidentManagerAPI', () => ({
+  // Spread the real module: the transition ids are plain constants the
+  // source reads at import time, and a bare factory leaves them undefined.
+  ...jest.requireActual('../../../../rest/incidentManagerAPI'),
   transitionIncident: jest.fn().mockResolvedValue({}),
   postTestCaseIncidentStatus: jest
     .fn()

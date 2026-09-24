@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
+import { Box, Tabs, Tooltip } from '@openmetadata/ui-core-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Col, Row, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -79,6 +79,7 @@ import { Suggestion, SuggestionType } from '../../types/taskSuggestion';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { defaultFieldsWithColumns } from '../../utils/DatasetDetailsUtils';
@@ -151,9 +152,12 @@ const TableDetailsPageV1: React.FC = () => {
   const alertBadge = useMemo(() => {
     return tableClassBase.getAlertEnableStatus() && dqFailureCount > 0 ? (
       <Tooltip
+        excludeTriggerFromTabOrder
         placement="right"
-        title={t('label.check-active-data-quality-incident-plural')}>
+        title={t('label.check-active-data-quality-incident-plural')}
+        triggerClassName="tw:inline-flex">
         <Link
+          aria-label={t('label.check-active-data-quality-incident-plural')}
           to={getEntityDetailsPath(
             EntityType.TABLE,
             tableFqn,
@@ -965,21 +969,38 @@ const TableDetailsPageV1: React.FC = () => {
 
   const renderTabs = () => (
     <Tabs
-      activeKey={isTourOpen ? activeTabForTourDatasetPage : activeTab}
-      className="tabs-new"
+      className="tw:gap-3"
       data-testid="tabs"
-      items={tabs}
-      tabBarExtraContent={
-        isExpandViewSupported && (
-          <AlignRightIconButton
-            className={isTabExpanded ? 'rotate-180' : ''}
-            title={isTabExpanded ? t('label.collapse') : t('label.expand')}
-            onClick={toggleTabExpanded}
-          />
-        )
-      }
-      onChange={handleTabChange}
-    />
+      selectedKey={getRenderedActiveTab(
+        tabs,
+        isTourOpen ? activeTabForTourDatasetPage : activeTab
+      )}
+      onSelectionChange={(key) => handleTabChange(String(key))}>
+      <Tabs.List
+        actions={
+          isExpandViewSupported && (
+            <AlignRightIconButton
+              className={isTabExpanded ? 'rotate-180' : ''}
+              title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+              onClick={toggleTabExpanded}
+            />
+          )
+        }
+        size="sm"
+        type="underline"
+        variant="card">
+        {tabs.map(({ key, label }) => (
+          <Tabs.Item id={key} key={key}>
+            {label}
+          </Tabs.Item>
+        ))}
+      </Tabs.List>
+      {tabs.map(({ key, children }) => (
+        <Tabs.Panel id={key} key={key}>
+          {children}
+        </Tabs.Panel>
+      ))}
+    </Tabs>
   );
 
   return (
@@ -995,9 +1016,9 @@ const TableDetailsPageV1: React.FC = () => {
         type={EntityType.TABLE}
         onEntitySync={handleTableSync}
         onUpdate={onTableUpdate}>
-        <Row gutter={[0, 12]}>
+        <Box direction="col" gap={3}>
           {/* Entity Heading */}
-          <Col data-testid="entity-page-header" span={24}>
+          <div data-testid="entity-page-header">
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
@@ -1019,15 +1040,13 @@ const TableDetailsPageV1: React.FC = () => {
               onUpdateVote={updateVote}
               onVersionClick={versionHandler}
             />
-          </Col>
+          </div>
           {/* Entity Tabs */}
-          <Col className="entity-details-page-tabs" span={24}>
-            {renderTabs()}
-          </Col>
+          <div className="entity-details-page-tabs">{renderTabs()}</div>
           <LimitWrapper resource="table">
             <></>
           </LimitWrapper>
-        </Row>
+        </Box>
       </GenericProvider>
     </PageLayoutV1>
   );

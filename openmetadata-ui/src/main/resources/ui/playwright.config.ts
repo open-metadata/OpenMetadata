@@ -51,11 +51,16 @@ const entityDependencies = hasPreseededState
   : ['setup', 'entity-data-setup'];
 const entityTeardown = hasPreseededState ? undefined : 'entity-data-teardown';
 const shardGrep = shardPlan?.grep ? new RegExp(shardPlan.grep) : undefined;
+// SearchIndexApplication.spec.ts triggers a full reindex, which swaps the shared search indexes
+// under every co-scheduled worker: an owner change made mid-reindex is missing from the
+// rebuilt index (Teams.spec.ts "Team assets should" read 0 assets). It runs in the
+// single-worker Reindex lane alongside the other reindexing specs.
 const dedicatedStateTestIgnore = hasDedicatedIngestionLane
   ? [
       '**/SearchSettings.spec.ts',
       '**/SearchSeparation/**',
       '**/*AfterReindex.spec.ts',
+      '**/SearchIndexApplication.spec.ts',
     ]
   : [];
 // Tests tagged @quarantine are known-flaky and must not run in any lane, so a
@@ -499,6 +504,7 @@ export default defineConfig({
             testMatch: [
               '**/SearchSeparation/*.spec.ts',
               '**/*AfterReindex.spec.ts',
+              '**/SearchIndexApplication.spec.ts',
             ],
             grep: shardGrep,
             use: { ...devices['Desktop Chrome'] },

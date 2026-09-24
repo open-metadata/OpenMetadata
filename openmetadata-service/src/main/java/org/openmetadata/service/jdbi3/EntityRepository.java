@@ -120,6 +120,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAccessor;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -1033,7 +1034,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * not declare is rejected as an unknown field.
    */
   protected String getInheritableFields(String parentEntityType) {
-    return getInheritableFields();
+    return withPropagatedTags(getInheritableFields(), parentEntityType);
+  }
+
+  /**
+   * Adds {@code tags} to the fields loaded on a parent, but only while tag propagation is enabled
+   * and only when both sides declare the field. Requesting a field the parent type does not declare
+   * is rejected as unknown, and loading the parent's tags on every read would be wasted work for the
+   * deployments — the default — that have propagation switched off.
+   */
+  protected final String withPropagatedTags(String fields, String parentEntityType) {
+    if (!supportsTags || parentEntityType == null) {
+      return fields;
+    }
+    if (!Entity.hasEntityRepository(parentEntityType)
+        || !Entity.entityHasField(parentEntityType, FIELD_TAGS)) {
+      return fields;
+    }
+    return EntityUtil.addField(fields, FIELD_TAGS);
   }
 
   /** Get the list of propagatable fields to child entities in the search index **/
@@ -1058,11 +1076,56 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * whether the entity already has local values.
    */
   protected boolean requiresParentForInheritance(T entity, Fields fields) {
+    return requiresParentForOwnersOrDomains(entity, fields)
+        || requiresParentForPropagatedTags(fields);
+  }
+
+  /**
+   * The owners/domains half of {@link #requiresParentForInheritance}. Repositories that choose for
+   * themselves which fields to project onto the parent need to ask this separately, because needing
+   * the parent's tags does not mean owners and domains have to be loaded as well.
+   */
+  protected final boolean requiresParentForOwnersOrDomains(T entity, Fields fields) {
     boolean needsOwners =
         supportsOwners && fields.contains(FIELD_OWNERS) && nullOrEmpty(entity.getOwners());
     boolean needsDomains =
         supportsDomains && fields.contains(FIELD_DOMAINS) && nullOrEmpty(entity.getDomains());
     return needsOwners || needsDomains;
+  }
+
+  /**
+   * Whether the parent has to be loaded so its propagated tags can be merged in.
+   *
+   * <p>Deliberately without the "only when the entity has none of its own" condition that owners and
+   * domains carry: inherited tags merge rather than fill a gap, so an asset that already carries
+   * tags still needs its ancestors'. Without this the gate stays shut on a {@code ?fields=tags}
+   * read, the parent is never loaded, and propagation silently does nothing.
+   */
+  protected final boolean requiresParentForPropagatedTags(Fields fields) {
+    return supportsTags && fields != null && fields.contains(FIELD_TAGS);
+  }
+
+  private static final String RETENTION_PERIOD_FIELD = "retentionPeriod";
+
+  /**
+   * Field list to project onto a parent, covering only the inheritance kinds that actually need it.
+   * Repositories that load the parent themselves rather than going through {@link
+   * #setInheritedFields(Object, Fields)} share this so a newly inheritable field is wired in once.
+   */
+  protected static String inheritanceParentFields(
+      boolean needsOwnersOrDomains, boolean needsRetentionPeriod, boolean needsTags) {
+    List<String> parentFields = new ArrayList<>();
+    if (needsOwnersOrDomains) {
+      parentFields.add(FIELD_OWNERS);
+      parentFields.add(FIELD_DOMAINS);
+    }
+    if (needsRetentionPeriod) {
+      parentFields.add(RETENTION_PERIOD_FIELD);
+    }
+    if (needsTags) {
+      parentFields.add(FIELD_TAGS);
+    }
+    return String.join(",", parentFields);
   }
 
   public final T getForInheritance(UUID id, Fields fields, Include include) {
@@ -1082,6 +1145,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
           resolveReferencesFromToRecords(
               inheritanceRelations, Relationship.HAS, DOMAIN, NON_DELETED));
     }
+    // find() above does not hydrate tags, so this ancestor would contribute only the tags it
+    // inherits in turn and never its own -- see fetchInheritableRelationships.
+    fetchAndSetTags(List.of(entity), fields);
     if (!requiresParentForInheritance(entity, fields)) {
       return entity;
     }
@@ -1094,7 +1160,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (containerRef != null) {
       // Preserve the requested inheritance shape (e.g. retentionPeriod-only), but only for this
       // repository's declared inheritable fields to avoid leaking invalid fields up the chain.
-      String parentFields = projectInheritanceFields(fields);
+      String parentFields = projectInheritanceFields(fields, containerRef.getType());
       EntityInterface parent =
           Entity.getEntityForInheritance(
               containerRef.getType(), containerRef.getId(), parentFields, ALL);
@@ -1118,13 +1184,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new ArrayList<>(relations);
   }
 
-  private String projectInheritanceFields(Fields fields) {
+  private String projectInheritanceFields(Fields fields, String parentEntityType) {
     String inheritableFields = getInheritableFields();
     if (inheritableFields == null || inheritableFields.isBlank()) {
-      return "";
+      return withPropagatedTags("", parentEntityType);
     }
     if (fields == null || nullOrEmpty(fields.getFieldList())) {
-      return inheritableFields;
+      return withPropagatedTags(inheritableFields, parentEntityType);
     }
 
     List<String> projectedFields = new ArrayList<>();
@@ -1135,13 +1201,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
-    return projectedFields.isEmpty() ? inheritableFields : String.join(",", projectedFields);
+    String projected =
+        projectedFields.isEmpty() ? inheritableFields : String.join(",", projectedFields);
+    return withPropagatedTags(projected, parentEntityType);
   }
 
   public void fetchInheritableRelationships(List<T> entities, Fields fields) {
     if (entities.isEmpty()) return;
     if (fields.contains(FIELD_OWNERS)) fetchAndSetOwners(entities, fields);
     fetchAndSetDomains(entities, fields);
+    // An ancestor loaded for inheritance comes from find(), which reads the entity JSON only --
+    // tags live in tag_usage and so arrive null. Leaving them that way makes each hop contribute
+    // nothing but what it inherited in turn, and a tag set on a service never reaches a table.
+    fetchAndSetTags(entities, fields);
   }
 
   @SuppressWarnings("unchecked")
@@ -1161,6 +1233,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Apply inherited fields from a loaded parent to the entity. Override for custom inheritance logic. */
   protected void applyInheritance(T entity, Fields fields, EntityInterface parent) {
     inheritDomains(entity, fields, parent);
+    inheritTags(entity, fields, parent);
   }
 
   /**
@@ -2516,12 +2589,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // the rows that still exist. Also guards entities.getFirst() from IndexOutOfBounds (500).
         beforeCursor = after;
       } else {
-        beforeCursor = getCursorValue(entities.getFirst());
+        beforeCursor = getCursorValue(entities.getFirst(), filter);
       }
       if (entities.size()
           > limitParam) { // If extra result exists, then next page exists - return after cursor
         entities.remove(limitParam);
-        afterCursor = getCursorValue(entities.get(limitParam - 1));
+        afterCursor = getCursorValue(entities.get(limitParam - 1), filter);
       }
       return getResultList(entities, beforeCursor, afterCursor, total);
     } else {
@@ -2595,7 +2668,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       String afterCursor = null;
       if (hasMoreData && !entities.isEmpty()) {
-        afterCursor = getCursorValue(entities.get(entities.size() - 1));
+        afterCursor = getCursorValue(entities.get(entities.size() - 1), filter);
       }
       return getResultList(entities, errors, null, afterCursor, cachedTotal);
     } else {
@@ -2647,13 +2720,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entities.size()
         > limitParam) { // If extra result exists, then previous page exists - return before cursor
       entities.remove(0);
-      beforeCursor = getCursorValue(entities.getFirst());
+      beforeCursor = getCursorValue(entities.getFirst(), filter);
     }
     // entities can be empty when the caller holds a valid before-cursor but all earlier rows were
     // deleted concurrently, so the page is empty. Echo the caller's cursor as afterCursor rather
     // than null: a null after reads as end-of-pagination and dead-ends forward navigation, whereas
     // echoing lets the caller page forward to rows that still exist. Also guards getLast() (500).
-    afterCursor = entities.isEmpty() ? before : getCursorValue(entities.getLast());
+    afterCursor = entities.isEmpty() ? before : getCursorValue(entities.getLast(), filter);
     return getResultList(entities, beforeCursor, afterCursor, total);
   }
 
@@ -2665,6 +2738,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   public String getCursorValue(T entity) {
     return getCursorValue(entity.getName(), String.valueOf(entity.getId()));
+  }
+
+  /**
+   * The cursor has to be built from the same key the listing is ordered by, so a repository whose
+   * order depends on the request — a caller-chosen sort field, say — needs the filter to know
+   * which key that is. Overriding this instead of {@link #getCursorValue(EntityInterface)} keeps
+   * that choice available; the default ignores the filter, which is correct for every repository
+   * with a single fixed order.
+   */
+  public String getCursorValue(T entity, ListFilter filter) {
+    return getCursorValue(entity);
   }
 
   protected String getCursorValue(String name, String id) {
@@ -4219,6 +4303,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     for (T entity : uniqueEntities) {
       RdfUpdater.updateEntity(entity);
+      CacheBundle.invalidateEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
     }
     ListCountCache.invalidate(entityType);
   }
@@ -4710,6 +4795,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // For example ingestion pipeline deletes a pipeline in AirFlow.
   }
 
+  protected DeleteLifecycle beginDeleteLifecycle(T entity, String deletedBy) {
+    preDelete(entity, deletedBy);
+    return DeleteLifecycle.NOOP;
+  }
+
   protected void postDelete(T entity, boolean hardDelete) {
     // Delete from RDF only on hard delete
     if (hardDelete) {
@@ -4717,6 +4807,67 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     // Both hard and soft delete change the count of non-deleted entities returned by listings.
     ListCountCache.invalidate(entityType);
+  }
+
+  protected void postRestore(T entity) {}
+
+  @FunctionalInterface
+  protected interface DeleteLifecycle extends AutoCloseable {
+    DeleteLifecycle NOOP = () -> {};
+
+    @Override
+    void close();
+  }
+
+  private static final class DeleteLifecycleGroup implements DeleteLifecycle {
+    private final ArrayDeque<DeleteLifecycle> lifecycles = new ArrayDeque<>();
+
+    private void add(DeleteLifecycle lifecycle) {
+      lifecycles.addFirst(lifecycle);
+    }
+
+    private void closeAfter(Throwable originalFailure) {
+      try {
+        close();
+      } catch (RuntimeException | java.lang.Error closeFailure) {
+        originalFailure.addSuppressed(closeFailure);
+      }
+    }
+
+    @Override
+    public void close() {
+      Throwable failure = null;
+      while (!lifecycles.isEmpty()) {
+        try {
+          lifecycles.removeFirst().close();
+        } catch (RuntimeException | java.lang.Error closeFailure) {
+          if (failure == null) {
+            failure = closeFailure;
+          } else {
+            failure.addSuppressed(closeFailure);
+          }
+        }
+      }
+      if (failure instanceof RuntimeException runtimeFailure) {
+        throw runtimeFailure;
+      }
+      if (failure instanceof java.lang.Error error) {
+        throw error;
+      }
+    }
+  }
+
+  private DeleteLifecycle beginDeleteLifecycles(List<T> entities, String deletedBy) {
+    DeleteLifecycleGroup group = new DeleteLifecycleGroup();
+    try {
+      for (T entity : entities) {
+        group.add(beginDeleteLifecycle(entity, deletedBy));
+      }
+      return group;
+    } catch (RuntimeException | java.lang.Error failure) {
+      group.closeAfter(failure);
+      throw failure;
+    }
   }
 
   public final void deleteFromSearch(T entity, boolean hardDelete) {
@@ -4735,7 +4886,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityLifecycleEventDispatcher.getInstance()
           .onEntitySoftDeletedOrRestored(entity, false, null);
     }
+    postRestoreFromSearch(entity);
   }
+
+  /**
+   * Runs after a restored entity's search document is updated. Both synchronous and asynchronous
+   * resource paths invoke {@link #restoreFromSearch(EntityInterface)} only after the database
+   * restore returns, so relationship-derived documents can be rebuilt from committed state here.
+   */
+  protected void postRestoreFromSearch(T entity) {}
 
   public ResultList<T> listFromSearchWithOffset(
       UriInfo uriInfo,
@@ -4790,65 +4949,66 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private DeleteResponse<T> delete(
       String deletedBy, T original, boolean recursive, boolean hardDelete) {
     checkSystemEntityDeletion(original);
-    preDelete(original, deletedBy);
-    setFieldsForDelete(original);
+    try (DeleteLifecycle ignored = beginDeleteLifecycle(original, deletedBy)) {
+      setFieldsForDelete(original);
 
-    // Acquire deletion lock to prevent concurrent modifications
-    DeletionLock lock = null;
-    if (lockManager != null && recursive) {
-      try {
-        lock = lockManager.acquireDeletionLock(original, deletedBy, recursive);
-        LOG.info("Acquired deletion lock for {} {}", entityType, original.getId());
-      } catch (Exception e) {
-        LOG.error(
-            "Failed to acquire deletion lock for {} {}: {}",
-            entityType,
-            original.getId(),
-            e.getMessage());
-        // Continue without lock for backward compatibility
-      }
-    }
-
-    try {
-      deleteChildren(original.getId(), recursive, hardDelete, deletedBy);
-
-      EventType changeType;
-      T updated = loadForDelete(original.getId());
-      if (supportsSoftDelete && !hardDelete) {
-        updated.setUpdatedBy(deletedBy);
-        updated.setUpdatedAt(System.currentTimeMillis());
-        updated.setDeleted(true);
-        EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE, null);
-        updater.update();
-        changeType = ENTITY_SOFT_DELETED;
-        // Run the same hook the bulk path runs — keeps direct-entity soft delete in sync
-        // with bulkSoftDeleteSubtree for repos that link non-CONTAINS entities (e.g.,
-        // dashboard charts).
-        softDeleteAdditionalChildren(original.getId(), deletedBy);
-      } else {
-        // Run hook BEFORE cleanup(): cleanup() deletes this entity's relationship rows
-        // (including HAS), and subclass hooks like DashboardRepository.cascadeChartCleanup
-        // need to walk HAS to discover linked entities. Mirrors bulkHardDeleteSubtree
-        // ordering for direct-entity hard delete.
-        hardDeleteAdditionalChildren(original.getId(), deletedBy);
-        cleanup(updated);
-        changeType = ENTITY_DELETED;
-      }
-      LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
-      return new DeleteResponse<>(updated, changeType);
-
-    } finally {
-      // Always release the lock
-      if (lock != null && lockManager != null) {
+      // Acquire deletion lock to prevent concurrent modifications
+      DeletionLock lock = null;
+      if (lockManager != null && recursive) {
         try {
-          lockManager.releaseDeletionLock(original.getId(), entityType);
-          LOG.info("Released deletion lock for {} {}", entityType, original.getId());
+          lock = lockManager.acquireDeletionLock(original, deletedBy, recursive);
+          LOG.info("Acquired deletion lock for {} {}", entityType, original.getId());
         } catch (Exception e) {
           LOG.error(
-              "Failed to release deletion lock for {} {}: {}",
+              "Failed to acquire deletion lock for {} {}: {}",
               entityType,
               original.getId(),
               e.getMessage());
+          // Continue without lock for backward compatibility
+        }
+      }
+
+      try {
+        deleteChildren(original.getId(), recursive, hardDelete, deletedBy);
+
+        EventType changeType;
+        T updated = loadForDelete(original.getId());
+        if (supportsSoftDelete && !hardDelete) {
+          updated.setUpdatedBy(deletedBy);
+          updated.setUpdatedAt(System.currentTimeMillis());
+          updated.setDeleted(true);
+          EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE, null);
+          updater.update();
+          changeType = ENTITY_SOFT_DELETED;
+          // Run the same hook the bulk path runs — keeps direct-entity soft delete in sync
+          // with bulkSoftDeleteSubtree for repos that link non-CONTAINS entities (e.g.,
+          // dashboard charts).
+          softDeleteAdditionalChildren(original.getId(), deletedBy);
+        } else {
+          // Run hook BEFORE cleanup(): cleanup() deletes this entity's relationship rows
+          // (including HAS), and subclass hooks like DashboardRepository.cascadeChartCleanup
+          // need to walk HAS to discover linked entities. Mirrors bulkHardDeleteSubtree
+          // ordering for direct-entity hard delete.
+          hardDeleteAdditionalChildren(original.getId(), deletedBy);
+          cleanup(updated);
+          changeType = ENTITY_DELETED;
+        }
+        LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
+        return new DeleteResponse<>(updated, changeType);
+
+      } finally {
+        // Always release the lock
+        if (lock != null && lockManager != null) {
+          try {
+            lockManager.releaseDeletionLock(original.getId(), entityType);
+            LOG.info("Released deletion lock for {} {}", entityType, original.getId());
+          } catch (Exception e) {
+            LOG.error(
+                "Failed to release deletion lock for {} {}: {}",
+                entityType,
+                original.getId(),
+                e.getMessage());
+          }
         }
       }
     }
@@ -5161,8 +5321,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Run {@code flushBody} as a single JDBI transaction, wrapped in deadlock retry. The
    * {@code DeadlockRetry.execute} layer is OUTER (each replay opens a fresh handle) and
    * {@code inTransaction} is INNER, matching the {@code DeadlockRetry} contract that the operation
-   * opens its own transaction. Every {@code daoCollection.xDAO()} call inside {@code flushBody}
-   * enrolls in the single thread-bound handle and commits ONCE instead of auto-committing per call.
+   * opens its own transaction. The handle-bound {@link CollectionDAO} is exposed through {@link
+   * RepositoryTransactionContext} for mutations that must share this transaction.
    *
    * <p>No network side effect (RDF/SPARQL, Elasticsearch, Redis L2) may run inside {@code flushBody}
    * — a pooled connection is held for the whole body, so a network round trip there would pin the
@@ -5191,7 +5351,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
               Entity.getJdbi()
                   .inTransaction(
                       handle -> {
-                        flushBody.run();
+                        RepositoryTransactionContext.runWith(
+                            handle.attach(CollectionDAO.class), flushBody);
                         return null;
                       }));
     } finally {
@@ -5611,15 +5772,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
     store(entity, update, null);
   }
 
+  protected EntityDAO<T> entityDAOForWrite() {
+    return dao;
+  }
+
   protected void store(T entity, boolean update, Double expectedVersion) {
     String json = serializeForStorage(entity);
+    EntityDAO<T> writeDAO = entityDAOForWrite();
 
     if (update) {
       if (expectedVersion != null) {
         int rowsUpdated =
-            dao.updateWithVersion(
-                dao.getTableName(),
-                dao.getNameHashColumn(),
+            writeDAO.updateWithVersion(
+                writeDAO.getTableName(),
+                writeDAO.getNameHashColumn(),
                 entity.getFullyQualifiedName(),
                 entity.getId().toString(),
                 json,
@@ -5637,12 +5803,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
             expectedVersion,
             entity.getVersion());
       } else {
-        dao.update(entity.getId(), entity.getFullyQualifiedName(), json);
+        writeDAO.update(entity.getId(), entity.getFullyQualifiedName(), json);
         LOG.info("Updated {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
       }
       invalidate(entity);
     } else {
-      dao.insert(dao.getTableName(), dao.getNameHashColumn(), entity.getFullyQualifiedName(), json);
+      writeDAO.insert(
+          writeDAO.getTableName(),
+          writeDAO.getNameHashColumn(),
+          entity.getFullyQualifiedName(),
+          json);
       LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
     }
     StoredEntityJson pendingCapture = storedEntityJson.get();
@@ -5660,7 +5830,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       fqns.add(entity.getFullyQualifiedName());
       jsons.add(serializeForStorage(entity));
     }
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    EntityDAO<T> writeDAO = entityDAOForWrite();
+    writeDAO.insertMany(writeDAO.getTableName(), writeDAO.getNameHashColumn(), fqns, jsons);
   }
 
   protected void updateMany(List<T> entities) {
@@ -5672,7 +5843,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       ids.add(entity.getId());
       jsons.add(serializeForStorage(entity));
     }
-    dao.updateMany(dao.getTableName(), dao.getNameHashColumn(), fqns, ids, jsons);
+    EntityDAO<T> writeDAO = entityDAOForWrite();
+    writeDAO.updateMany(writeDAO.getTableName(), writeDAO.getNameHashColumn(), fqns, ids, jsons);
   }
 
   @Transaction
@@ -6649,13 +6821,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return RestUtil.getHref(uriInfo, collectionPath, id);
   }
 
-  @Transaction
   public final PutResponse<T> restoreEntity(String updatedBy, UUID id) {
+    // Repositories are instantiated directly rather than as JDBI SQL-object proxies, so an
+    // annotation here would not create a transaction. The explicit boundary also drains deferred
+    // credential/cache work only after the restore commits.
+    return executeInTransaction(() -> restoreEntityInternal(updatedBy, id));
+  }
+
+  private PutResponse<T> restoreEntityInternal(String updatedBy, UUID id) {
     // Confirm the entity exists at all (in any state). If the row is truly gone
     // (e.g., hard-deleted), propagate EntityNotFoundException so the caller surfaces
     // a clean 404 instead of running children / hooks against a non-existent id and
     // potentially surfacing a 500 from a hook side-effect.
-    find(id, ALL);
+    T restoredEntity = find(id, ALL);
 
     // If an entity being restored contains other **deleted** children entities, restore them
     restoreChildren(id, updatedBy);
@@ -6685,6 +6863,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Restore moves the row from deleted=true to deleted=false, changing the listing total.
       ListCountCache.invalidate(entityType);
       response = new PutResponse<>(Status.OK, updated, ENTITY_RESTORED);
+      restoredEntity = updated;
     } catch (EntityNotFoundException e) {
       // Entity exists (verified above) but is not in DELETED state — already restored.
       LOG.info("Entity already restored or not in deleted state {} {}", entityType, id);
@@ -6693,6 +6872,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // that). A re-entered cascade where this level is already restored must still
     // reconcile HAS-related children (e.g., dashboard charts) of nested descendants.
     restoreAdditionalChildren(id, updatedBy);
+    postRestore(restoredEntity);
     return response;
   }
 
@@ -6793,6 +6973,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // a re-entered cascade may still have HAS-related children attached to nested
     // descendants that require reconciliation.
     runRestoreAdditionalChildren(entities, updatedBy);
+    for (T entity : entities) {
+      postRestore(entity);
+    }
   }
 
   private void runRestoreAdditionalChildren(List<T> entities, String updatedBy) {
@@ -6940,17 +7123,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
         allEntities.stream().filter(e -> !Boolean.TRUE.equals(e.getDeleted())).toList();
     for (T entity : entities) {
       checkSystemEntityDeletion(entity);
-      preDelete(entity, updatedBy);
     }
-    dispatchToContainedChildren(
-        allEntities,
-        "bulkSoftDeleteFindChildren",
-        (childRepo, childIds) -> childRepo.bulkSoftDeleteSubtree(childIds, updatedBy));
-    applyBulkSoftDelete(entities, updatedBy);
-    // Always run per-entity hooks even when nothing at THIS level needed flipping —
-    // descendants restored independently before the cascade still need to be re-deleted
-    // by the per-entity hook.
-    runSoftDeleteAdditionalChildren(allEntities, updatedBy);
+    try (DeleteLifecycle ignored = beginDeleteLifecycles(entities, updatedBy)) {
+      dispatchToContainedChildren(
+          allEntities,
+          "bulkSoftDeleteFindChildren",
+          (childRepo, childIds) -> childRepo.bulkSoftDeleteSubtree(childIds, updatedBy));
+      applyBulkSoftDelete(entities, updatedBy);
+      // Always run per-entity hooks even when nothing at THIS level needed flipping —
+      // descendants restored independently before the cascade still need to be re-deleted
+      // by the per-entity hook.
+      runSoftDeleteAdditionalChildren(allEntities, updatedBy);
+    }
   }
 
   // This type can't be soft-deleted, so each entity at this level must be hard
@@ -7069,40 +7253,41 @@ public abstract class EntityRepository<T extends EntityInterface> {
       populateRelationFields(entities);
       for (T entity : entities) {
         checkSystemEntityDeletion(entity);
-        preDelete(entity, updatedBy);
       }
-      dispatchToContainedChildren(
-          entities,
-          "bulkHardDeleteFindChildren",
-          (childRepo, childIds) -> childRepo.bulkHardDeleteSubtree(childIds, updatedBy),
-          true,
-          updatedBy);
-      bulkEntitySpecificCleanup(entities, updatedBy);
-      // Run BEFORE bulkCleanupReferences: hooks like DashboardRepository.cascadeChartCleanup
-      // walk HAS relationships to discover linked entities, and bulkCleanupReferences wipes
-      // those relationship rows.
-      runHardDeleteAdditionalChildren(entities, updatedBy);
-      // This chunk's reference wipes (entity_relationship, extensions, tag_usage, usage,
-      // field_relationship, feed) and its entity-row delete commit together in one transaction.
-      // bulkCleanupReferences skips the FQN-keyed satellite deletes for cascade-covered types
-      // (see descendantsCoveredByAncestorCascade) and batches usage by id-set. Children were
-      // already deleted by the recursion above, so this transaction is bounded to this chunk.
-      bulkDeleteReferencesAndRows(entities);
-      bulkInvalidate(entities);
-      // When an ancestor's deleteFromSearch cascade already removes these docs in a single
-      // delete-by-query (SearchRepository.deleteOrUpdateChildren wipes child indexes by
-      // service.id / parent.id — see the DATABASE_SERVICE / default cases), firing one
-      // onEntityDeleted per descendant is pure overhead: it serializes a snapshot of every
-      // entity and submits a lane task each, which dominated the wall-clock of large recursive
-      // hard deletes (≈ N search dispatches for an N-entity subtree). Repos whose descendants are
-      // covered by that ancestor cascade override descendantsCoveredByAncestorCascade() to
-      // skip the per-entity dispatch; the root entity's own deleteFromSearch (fired by the
-      // top-level delete()) still runs and triggers the covering cascade.
-      boolean skipPerEntitySearch = descendantsCoveredByAncestorCascade;
-      for (T entity : entities) {
-        postDelete(entity, true);
-        if (!skipPerEntitySearch) {
-          deleteFromSearch(entity, true);
+      try (DeleteLifecycle ignored = beginDeleteLifecycles(entities, updatedBy)) {
+        dispatchToContainedChildren(
+            entities,
+            "bulkHardDeleteFindChildren",
+            (childRepo, childIds) -> childRepo.bulkHardDeleteSubtree(childIds, updatedBy),
+            true,
+            updatedBy);
+        bulkEntitySpecificCleanup(entities, updatedBy);
+        // Run BEFORE bulkCleanupReferences: hooks like DashboardRepository.cascadeChartCleanup
+        // walk HAS relationships to discover linked entities, and bulkCleanupReferences wipes
+        // those relationship rows.
+        runHardDeleteAdditionalChildren(entities, updatedBy);
+        // This chunk's reference wipes (entity_relationship, extensions, tag_usage, usage,
+        // field_relationship, feed) and its entity-row delete commit together in one transaction.
+        // bulkCleanupReferences skips the FQN-keyed satellite deletes for cascade-covered types
+        // (see descendantsCoveredByAncestorCascade) and batches usage by id-set. Children were
+        // already deleted by the recursion above, so this transaction is bounded to this chunk.
+        bulkDeleteReferencesAndRows(entities);
+        bulkInvalidate(entities);
+        // When an ancestor's deleteFromSearch cascade already removes these docs in a single
+        // delete-by-query (SearchRepository.deleteOrUpdateChildren wipes child indexes by
+        // service.id / parent.id — see the DATABASE_SERVICE / default cases), firing one
+        // onEntityDeleted per descendant is pure overhead: it serializes a snapshot of every
+        // entity and submits a lane task each, which dominated the wall-clock of large recursive
+        // hard deletes (≈ N search dispatches for an N-entity subtree). Repos whose descendants are
+        // covered by that ancestor cascade override descendantsCoveredByAncestorCascade() to
+        // skip the per-entity dispatch; the root entity's own deleteFromSearch (fired by the
+        // top-level delete()) still runs and triggers the covering cascade.
+        boolean skipPerEntitySearch = descendantsCoveredByAncestorCascade;
+        for (T entity : entities) {
+          postDelete(entity, true);
+          if (!skipPerEntitySearch) {
+            deleteFromSearch(entity, true);
+          }
         }
       }
     } finally {
@@ -8255,6 +8440,109 @@ public abstract class EntityRepository<T extends EntityInterface> {
           mergedInheritedEntityRefs(
               entity.getReviewers(), inheritedEntityReferences(parent.getReviewers())));
     }
+  }
+
+  /**
+   * Merges the parent's tags into the entity's own, when tag propagation is enabled.
+   *
+   * <p>Merge rather than replace, unlike {@link #inheritDomains}: a tag from the service is an
+   * addition to whatever the asset carries, not a fallback for an asset that has none. Applied at
+   * each hop, so a service tag reaches a table through database and schema.
+   *
+   * <p>Inherited labels are stamped {@code DERIVED}, which the platform already treats as
+   * not-user-editable, so a propagated tag cannot be removed from the asset — only from the parent
+   * it came from. Nothing is persisted; this is a read-time view, so turning the setting off
+   * restores the previous answer immediately and no {@code tag_usage} rows are written.
+   */
+  public final void inheritTags(T entity, Fields fields, EntityInterface parent) {
+    if (supportsTags) {
+      applyInheritedTags(entity, fields, parent);
+    }
+  }
+
+  /**
+   * The propagation rules themselves, free of any repository state so they can be exercised
+   * directly. Package-private for {@code InheritTagsTest}.
+   */
+  static void applyInheritedTags(EntityInterface entity, Fields fields, EntityInterface parent) {
+    if (fields == null || !fields.contains(FIELD_TAGS) || parent == null) {
+      return;
+    }
+    List<TagLabel> inherited = inheritedTagLabels(parent.getTags());
+    if (inherited.isEmpty()) {
+      return;
+    }
+    List<TagLabel> merged = new ArrayList<>(listOrEmpty(entity.getTags()));
+    Set<String> existing =
+        merged.stream().map(TagLabel::getTagFQN).collect(Collectors.toCollection(HashSet::new));
+    Set<String> ownParents =
+        merged.stream()
+            .map(tag -> FullyQualifiedName.getParentFQN(tag.getTagFQN()))
+            .collect(Collectors.toSet());
+    for (TagLabel tag : inherited) {
+      // The asset's own label wins; an inherited duplicate would otherwise shadow it as read-only.
+      if (existing.contains(tag.getTagFQN()) || conflictsWithOwnTag(tag, ownParents)) {
+        continue;
+      }
+      existing.add(tag.getTagFQN());
+      merged.add(tag);
+    }
+    entity.setTags(merged);
+  }
+
+  /**
+   * Whether an inherited label would put the entity in two classes at once. Under a mutually
+   * exclusive classification an entity may carry only one tag -- {@code Tier.Tier1} or
+   * {@code Tier.Tier2}, never both -- and the asset's own, more specific choice is the one to keep.
+   *
+   * <p>Inheritance runs on the read path, where {@code checkMutuallyExclusive} never does: that
+   * guard validates writes. Without this, a table tagged {@code Tier.Tier2} under a database tagged
+   * {@code Tier.Tier1} reports both, a combination the write path would have rejected. {@code Tier}
+   * is a system classification and mutually exclusive out of the box, so this needs no unusual
+   * setup to reach.
+   *
+   * <p>The cheap string comparison comes first so the classification lookup behind {@link
+   * TagLabelUtil#mutuallyExclusive} only happens for a label that actually collides.
+   */
+  private static boolean conflictsWithOwnTag(TagLabel inherited, Set<String> ownParents) {
+    return ownParents.contains(FullyQualifiedName.getParentFQN(inherited.getTagFQN()))
+        && TagLabelUtil.mutuallyExclusive(inherited);
+  }
+
+  /** Copies so the parent's own labels are not mutated, and marks the copies as derived. */
+  private static List<TagLabel> inheritedTagLabels(List<TagLabel> tags) {
+    if (nullOrEmpty(tags)) {
+      return Collections.emptyList();
+    }
+    return tags.stream().map(EntityRepository::derivedTagLabel).toList();
+  }
+
+  /**
+   * Field-by-field rather than {@link JsonUtils#deepCopy}, which serializes the label into a token
+   * buffer and parses it back. This runs once per parent label per entity, so a thousand-row list
+   * page under a service carrying a handful of tags would otherwise pay thousands of Jackson round
+   * trips per hop to change one enum. {@code style} and {@code metadata} are the only non-scalar
+   * fields and are copied in turn when set, so the parent still shares nothing mutable with the
+   * copy.
+   */
+  private static TagLabel derivedTagLabel(TagLabel tag) {
+    return new TagLabel()
+        .withTagFQN(tag.getTagFQN())
+        .withName(tag.getName())
+        .withDisplayName(tag.getDisplayName())
+        .withDescription(tag.getDescription())
+        .withStyle(tag.getStyle() == null ? null : JsonUtils.deepCopy(tag.getStyle(), Style.class))
+        .withSource(tag.getSource())
+        .withLabelType(TagLabel.LabelType.DERIVED)
+        .withState(tag.getState())
+        .withHref(tag.getHref())
+        .withReason(tag.getReason())
+        .withAppliedAt(tag.getAppliedAt())
+        .withAppliedBy(tag.getAppliedBy())
+        .withMetadata(
+            tag.getMetadata() == null
+                ? null
+                : JsonUtils.deepCopy(tag.getMetadata(), TagLabelMetadata.class));
   }
 
   private List<EntityReference> inheritedEntityReferences(List<EntityReference> references) {
@@ -9700,7 +9988,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     protected void updateTags(
         String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
-      origTags = listOrEmpty(origTags);
+      // `original` comes off the read path, so it carries its ancestors' tags as DERIVED, while
+      // `updated` has been through prepareInternal, whose addDerivedTags strips that label class.
+      // Diffing the two as-is sees an inherited label on one side only and calls it a deletion:
+      // editing a table's tags under a tagged database recorded the database's tag as removed from
+      // the table in the version history and in the ChangeEvent, on every tag edit. Nothing was
+      // written -- applyTags skips DERIVED as well -- so the tag was still there on the next read
+      // and only the record of it was wrong.
+      //
+      // No DERIVED label is ever persisted, so the persisted state is exactly the non-derived
+      // subset and that is what the diff has to compare. Mirrors how owners and domains are lined
+      // up before comparison.
+      //
+      // Both sides need it. `restoreEntity` builds `updated` as a deep copy of the already
+      // inherited `original` and never runs it through prepareInternal, so there the derived
+      // labels sit on the updated side instead -- and diffing that way records the same inherited
+      // tag as an addition on every restore. `updatedTags` itself is left alone: the PUT branch
+      // merges into that list in place and the entity keeps the result, so only the two diff
+      // reads are narrowed.
+      origTags = getNonDerivedTags(listOrEmpty(origTags));
       // updatedTags cannot be immutable list, as we are adding the origTags to updatedTags even if
       // its empty.
       updatedTags = Optional.ofNullable(updatedTags).orElse(new ArrayList<>());
@@ -9718,7 +10024,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // Calculate what needs to be added (tags in updatedTags but not in origTags)
         // Use Set for O(1) lookup performance instead of O(n) stream().anyMatch()
         Set<String> origTagKeys = createTagKeySet(origTags);
-        for (TagLabel updatedTag : updatedTags) {
+        for (TagLabel updatedTag : getNonDerivedTags(updatedTags)) {
           if (!origTagKeys.contains(createTagKey(updatedTag))) {
             addedTags.add(updatedTag);
           }
@@ -9730,7 +10036,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       } else {
         // PATCH and an explicit PUT override replace tags.
         // Use Set for O(1) lookup performance instead of O(n) stream().anyMatch()
-        Set<String> updatedTagKeys = createTagKeySet(updatedTags);
+        List<TagLabel> persistableUpdatedTags = getNonDerivedTags(updatedTags);
+        Set<String> updatedTagKeys = createTagKeySet(persistableUpdatedTags);
         Set<String> origTagKeys = createTagKeySet(origTags);
 
         // Calculate what needs to be deleted (tags in origTags but not in updatedTags)
@@ -9740,7 +10047,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           }
         }
         // Calculate what needs to be added (tags in updatedTags but not in origTags)
-        for (TagLabel updatedTag : updatedTags) {
+        for (TagLabel updatedTag : persistableUpdatedTags) {
           if (!origTagKeys.contains(createTagKey(updatedTag))) {
             addedTags.add(updatedTag);
           }
@@ -9766,9 +10073,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
             addedTags.stream().map(tag -> tag.withAppliedBy(updatingUser.getName())).toList(), fqn);
       }
 
-      // Record changes for audit trail
+      // Record changes for audit trail.
+      //
+      // This diffs the two lists directly rather than reusing addedTags/deletedTags, so it needs
+      // the same persistable view: the version history and the ChangeEvent are exactly what was
+      // wrong before. Taken after the PUT merge above, so on that path it still sees the request's
+      // tags unioned with what already existed. `updatedTags` itself stays the live list -- the
+      // entity keeps the merged result and the sort below orders it.
       recordListChange(
-          fieldName, origTags, updatedTags, new ArrayList<>(), new ArrayList<>(), tagLabelMatch);
+          fieldName,
+          origTags,
+          getNonDerivedTags(updatedTags),
+          new ArrayList<>(),
+          new ArrayList<>(),
+          tagLabelMatch);
       updatedTags.sort(compareTagLabel);
     }
 
