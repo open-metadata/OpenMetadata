@@ -10,9 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PopoverProps } from 'antd';
 import { ReactNode } from 'react';
 import { EntityReference } from '../../../generated/entity/type';
+
+/**
+ * Minimal controlled-open contract for the picker popover. Replaces the antd
+ * `PopoverProps` the legacy Ant Design version accepted; DomainSelect only
+ * consumes `open`/`onOpenChange` (placement is accepted for call-site
+ * compatibility but the ui-core TreeSelect auto-places its dropdown).
+ */
+export interface DomainSelectablePopoverProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  placement?: string;
+}
 
 export interface DomainSelectableListProps {
   children?: ReactNode;
@@ -22,11 +33,12 @@ export interface DomainSelectableListProps {
   multiple?: boolean;
   onCancel?: () => void;
   onUpdate: (domain: EntityReference | EntityReference[]) => Promise<void>;
-  popoverProps?: PopoverProps;
+  popoverProps?: DomainSelectablePopoverProps;
   restrictedDomains?: EntityReference[];
   selectedDomain?: EntityReference | EntityReference[];
   showAllDomains?: boolean;
   wrapInButton?: boolean;
   overlayClassName?: string;
   isClearable?: boolean;
+  'data-testid'?: string;
 }
