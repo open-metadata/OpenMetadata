@@ -125,7 +125,6 @@ describe('OntologyAuthoringInspector', () => {
         ]}
         relationTypes={[RELATIONSHIP_TYPE]}
         onCreateRelation={jest.fn()}
-        onShowDataAssets={jest.fn()}
       />
     );
 
@@ -211,7 +210,6 @@ describe('OntologyAuthoringInspector', () => {
           }),
         ]}
         onCreateRelation={jest.fn()}
-        onShowDataAssets={jest.fn()}
       />
     );
 
@@ -235,7 +233,6 @@ describe('OntologyAuthoringInspector', () => {
         ]}
         relationTypes={[RELATIONSHIP_TYPE]}
         onCreateRelation={onCreateRelation}
-        onShowDataAssets={jest.fn()}
       />
     );
 

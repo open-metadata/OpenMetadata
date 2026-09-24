@@ -15,21 +15,24 @@ import { Button, Card } from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@untitledui/icons';
 import classNames from 'classnames';
 import {
+  Fragment,
   MouseEvent,
   PointerEvent,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
+import { resolveCssColor } from '../../utils/common/cssColor.utils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import OntologyControlButtons from './OntologyControlButtons';
 import {
   DATA_MODE_MAX_RENDER_COUNT,
-  EDGE_STROKE_COLOR,
+  EDGE_STROKE_COLOR_FALLBACK,
 } from './OntologyExplorer.constants';
 import {
   OntologyEdge,
@@ -37,11 +40,19 @@ import {
   OntologyNode,
 } from './OntologyExplorer.interface';
 import {
+  buildClusterEdgeGeometry,
+  CardBox,
+  CardPosition,
+  CLUSTER_LAYOUT_MARGIN,
+  KeyedClusterLink,
+  layoutDataClusters,
+  Point,
+} from './utils/dataGraphLayout';
+import {
   ASSET_RELATION_TYPE,
   isDataAssetLikeNode,
   isTermNode,
   METRIC_RELATION_TYPE,
-  OBSERVED_LINEAGE_EDGE_KIND,
 } from './utils/graphBuilders';
 import {
   formatRelationLabel,
@@ -61,18 +72,13 @@ interface OntologyDataGraphProps {
   onLoadMoreTerms: () => void;
 }
 
-interface CardPosition {
-  left: number;
-  top: number;
-}
-
 interface DataClusterModel {
   assetsByTerm: Map<string, OntologyNode[]>;
-  termIdsByAsset: Map<string, Set<string>>;
   terms: OntologyNode[];
 }
 
 interface DataEdgeLayout {
+  arrowPath: string;
   edge: OntologyEdge;
   labelLeft: number;
   labelTop: number;
@@ -81,28 +87,26 @@ interface DataEdgeLayout {
 }
 
 const CARD_WIDTH = 236;
-const CARD_HEADER_ANCHOR_X = 115;
-const CARD_HEADER_ANCHOR_Y = 26;
-const EDGE_SLOT_SPACING = 16;
+// Card chrome (padding, border, header) and one compact asset row; the list
+// scrolls past ASSET_LIST_MAX_HEIGHT. Used until the rendered card is measured.
+const CARD_CHROME_HEIGHT = 55;
+const ASSET_ROW_HEIGHT = 44;
+const ASSET_LIST_MAX_HEIGHT = 172;
+const LOAD_MORE_ASSETS_HEIGHT = 26;
 const CANVAS_MIN_HEIGHT = 560;
 const CANVAS_MIN_WIDTH = 996;
-const COLUMN_COUNT = 3;
-const COLUMN_GAP = 74;
-const ROW_STEP = 260;
+const LOAD_MORE_TERMS_GAP = 16;
+const LOAD_MORE_TERMS_HEIGHT = 48;
 const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 2;
 const ZOOM_BUTTON_FACTOR = 1.2;
 const WHEEL_ZOOM_STEP = 0.12;
 const TOOLBAR_CARD_CLASS =
   'tw:z-6 tw:border tw:border-utility-gray-blue-100 tw:shadow-md';
-const CANVAS_BOTTOM_PADDING = 24;
-const MAX_OBSERVED_LINEAGE_CLUSTER_EDGES = 500;
 
 function clampZoom(value: number): number {
   return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value));
 }
-const START_X = 70;
-const START_Y = 50;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -162,7 +166,6 @@ function buildDataClusterModel(data: OntologyGraphData): DataClusterModel {
     data.nodes.filter(isDataAssetLikeNode).map((node) => [node.id, node])
   );
   const assetMapsByTerm = new Map<string, Map<string, OntologyNode>>();
-  const termIdsByAsset = new Map<string, Set<string>>();
 
   data.edges.forEach((edge) => {
     if (
@@ -181,9 +184,6 @@ function buildDataClusterModel(data: OntologyGraphData): DataClusterModel {
     const assets = assetMapsByTerm.get(term.id) ?? new Map();
     assets.set(asset.id, asset);
     assetMapsByTerm.set(term.id, assets);
-    const termIds = termIdsByAsset.get(asset.id) ?? new Set<string>();
-    termIds.add(term.id);
-    termIdsByAsset.set(asset.id, termIds);
   });
 
   const assetsByTerm = new Map(
@@ -204,86 +204,62 @@ function buildDataClusterModel(data: OntologyGraphData): DataClusterModel {
         Number(Boolean(left.isDataModeSeed))
     );
 
-  return { assetsByTerm, termIdsByAsset, terms };
+  return { assetsByTerm, terms };
 }
 
-function getCardPosition(index: number): CardPosition {
-  const column = index % COLUMN_COUNT;
-  const row = Math.floor(index / COLUMN_COUNT);
-
-  return {
-    left: START_X + column * (CARD_WIDTH + COLUMN_GAP),
-    top: START_Y + row * ROW_STEP,
-  };
-}
-
-function* projectObservedLineageEdge(
-  edge: OntologyEdge,
-  termIdsByAsset: Map<string, Set<string>>
-): Generator<OntologyEdge> {
-  const fromTermIds = termIdsByAsset.get(edge.from);
-  const toTermIds = termIdsByAsset.get(edge.to);
-
-  if (!fromTermIds || !toTermIds) {
-    return;
-  }
-
-  for (const fromTermId of fromTermIds) {
-    for (const toTermId of toTermIds) {
-      if (fromTermId !== toTermId) {
-        yield { ...edge, from: fromTermId, to: toTermId };
-      }
-    }
-  }
-}
-
-function buildObservedLineageClusterEdges(
-  data: OntologyGraphData,
-  termIdsByAsset: Map<string, Set<string>>
-): OntologyEdge[] {
-  const edges: OntologyEdge[] = [];
-  const seen = new Set<string>();
-  const lineageEdges = data.edges.filter(
-    (edge) => edge.edgeKind === OBSERVED_LINEAGE_EDGE_KIND
+function estimateCardHeight(term: OntologyNode, loadedAssets: number): number {
+  const totalAssets = Math.max(term.assetCount ?? 0, loadedAssets);
+  const listHeight = Math.min(
+    ASSET_LIST_MAX_HEIGHT,
+    loadedAssets * ASSET_ROW_HEIGHT
   );
+  const hasMoreAssets = totalAssets > loadedAssets || term.isLoadingAssets;
 
-  for (const edge of lineageEdges) {
-    for (const projectedEdge of projectObservedLineageEdge(
-      edge,
-      termIdsByAsset
-    )) {
-      const key = `${projectedEdge.from}-${projectedEdge.to}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        edges.push(projectedEdge);
-      }
-      if (edges.length >= MAX_OBSERVED_LINEAGE_CLUSTER_EDGES) {
-        return edges;
-      }
-    }
-  }
-
-  return edges;
+  return (
+    CARD_CHROME_HEIGHT +
+    listHeight +
+    (hasMoreAssets ? LOAD_MORE_ASSETS_HEIGHT : 0)
+  );
 }
 
-function buildDataEdgeLayout(
+// Returns `current` itself when nothing changed so React skips the re-render.
+function mergeMeasuredHeights(
+  current: Record<string, number>,
+  entries: ResizeObserverEntry[]
+): Record<string, number> {
+  const changed = entries.flatMap((entry): Array<[string, number]> => {
+    const termId = entry.target.getAttribute('data-term-id');
+    const height = Math.round(entry.borderBoxSize?.[0]?.blockSize ?? 0);
+
+    return termId && height > 0 && current[termId] !== height
+      ? [[termId, height]]
+      : [];
+  });
+
+  return changed.length === 0
+    ? current
+    : { ...current, ...Object.fromEntries(changed) };
+}
+
+interface KeyedClusterEdge {
+  edge: OntologyEdge;
+  renderKey: string;
+}
+
+// The Data view shows only the relations between the visible concept cards.
+function collectClusterEdges(
   data: OntologyGraphData,
-  termIdsByAsset: Map<string, Set<string>>,
-  positions: Map<string, CardPosition>
-): DataEdgeLayout[] {
-  const semanticEdges = data.edges.filter(
-    (edge) =>
-      edge.edgeKind !== OBSERVED_LINEAGE_EDGE_KIND &&
-      positions.has(edge.from) &&
-      positions.has(edge.to)
+  cardIds: Set<string>
+): KeyedClusterEdge[] {
+  const relationEdges = data.edges.filter(
+    (edge) => cardIds.has(edge.from) && cardIds.has(edge.to)
   );
-  const lineageEdges = buildObservedLineageClusterEdges(data, termIdsByAsset);
-  const relevantEdges = [...semanticEdges, ...lineageEdges];
   const edgeId = (edge: OntologyEdge) =>
     edge.id ??
     `${edge.from}-${edge.to}-${edge.relationType}-${edge.edgeKind ?? ''}`;
   const edgeOccurrences = new Map<string, number>();
-  const keyedEdges = relevantEdges.map((edge) => {
+
+  return relationEdges.map((edge) => {
     const id = edgeId(edge);
     const occurrence = edgeOccurrences.get(id) ?? 0;
     edgeOccurrences.set(id, occurrence + 1);
@@ -293,56 +269,46 @@ function buildDataEdgeLayout(
       renderKey: occurrence === 0 ? id : `${id}-${occurrence}`,
     };
   });
+}
 
-  // Fan the edges touching each card across its height so that parallel or
-  // converging relations don't overlap on a single anchor point.
-  const cardEdgeIds = new Map<string, string[]>();
-  keyedEdges.forEach(({ edge, renderKey }) => {
-    [edge.from, edge.to].forEach((cardId) => {
-      const list = cardEdgeIds.get(cardId) ?? [];
-      list.push(renderKey);
-      cardEdgeIds.set(cardId, list);
-    });
-  });
-  const slotOffset = (cardId: string, id: string): number => {
-    const list = cardEdgeIds.get(cardId) ?? [];
-    if (list.length <= 1) {
-      return 0;
-    }
+function toClusterLink({
+  edge,
+  renderKey,
+}: KeyedClusterEdge): KeyedClusterLink {
+  return { from: edge.from, key: renderKey, to: edge.to };
+}
 
-    return (list.indexOf(id) - (list.length - 1) / 2) * EDGE_SLOT_SPACING;
-  };
+// A dragged card has left its layout slot, so its links are drawn directly.
+function routesBetweenUnmovedCards(
+  clusterEdges: KeyedClusterEdge[],
+  routes: Map<string, Point[]>,
+  movedCards: Record<string, CardPosition>
+): Map<string, Point[]> {
+  return new Map(
+    clusterEdges.flatMap(({ edge, renderKey }): Array<[string, Point[]]> => {
+      const route = routes.get(renderKey);
+      const isMoved = edge.from in movedCards || edge.to in movedCards;
 
-  return keyedEdges.flatMap(({ edge, renderKey }) => {
-    const from = positions.get(edge.from);
-    const to = positions.get(edge.to);
-    if (!from || !to) {
-      return [];
-    }
+      return route && !isMoved ? [[renderKey, route]] : [];
+    })
+  );
+}
 
-    const x1 = from.left + CARD_HEADER_ANCHOR_X;
-    const y1 =
-      from.top + CARD_HEADER_ANCHOR_Y + slotOffset(edge.from, renderKey);
-    const x2 = to.left + CARD_HEADER_ANCHOR_X;
-    const y2 = to.top + CARD_HEADER_ANCHOR_Y + slotOffset(edge.to, renderKey);
-    const middleX = (x1 + x2) / 2;
-    const middleY = (y1 + y2) / 2;
-    const deltaX = x2 - x1;
-    const deltaY = y2 - y1;
-    const distance = Math.hypot(deltaX, deltaY) || 1;
-    const offset = Math.min(34, distance * 0.16);
-    const controlX = middleX - (deltaY / distance) * offset;
-    const controlY = middleY + (deltaX / distance) * offset;
+function buildDataEdgeLayout(
+  clusterEdges: KeyedClusterEdge[],
+  boxes: Map<string, CardBox>,
+  routes: Map<string, Point[]>
+): DataEdgeLayout[] {
+  const geometry = buildClusterEdgeGeometry(
+    clusterEdges.map(toClusterLink),
+    boxes,
+    routes
+  );
 
-    return [
-      {
-        edge,
-        labelLeft: 0.25 * x1 + 0.5 * controlX + 0.25 * x2,
-        labelTop: 0.25 * y1 + 0.5 * controlY + 0.25 * y2,
-        path: `M ${x1} ${y1} Q ${controlX} ${controlY} ${x2} ${y2}`,
-        renderKey,
-      },
-    ];
+  return clusterEdges.flatMap(({ edge, renderKey }) => {
+    const route = geometry.get(renderKey);
+
+    return route ? [{ edge, renderKey, ...route }] : [];
   });
 }
 
@@ -358,7 +324,7 @@ const OntologyDataGraph = ({
   onLoadMoreTerms,
 }: OntologyDataGraphProps) => {
   const { t } = useTranslation();
-  const { assetsByTerm, termIdsByAsset, terms } = useMemo(
+  const { assetsByTerm, terms } = useMemo(
     () => buildDataClusterModel(data),
     [data]
   );
@@ -370,31 +336,60 @@ const OntologyDataGraph = ({
   const [cardPositions, setCardPositions] = useState<
     Record<string, CardPosition>
   >({});
-  const positionByTermId = useMemo(() => {
-    const map = new Map<string, CardPosition>();
-    visibleTerms.forEach((term, index) => {
-      map.set(term.id, cardPositions[term.id] ?? getCardPosition(index));
+  const [measuredHeights, setMeasuredHeights] = useState<
+    Record<string, number>
+  >({});
+  const cardHeightOf = useCallback(
+    (term: OntologyNode) =>
+      measuredHeights[term.id] ??
+      estimateCardHeight(term, assetsByTerm.get(term.id)?.length ?? 0),
+    [assetsByTerm, measuredHeights]
+  );
+  const clusterEdges = useMemo(
+    () =>
+      collectClusterEdges(data, new Set(visibleTerms.map((term) => term.id))),
+    [data, visibleTerms]
+  );
+  const clusterLayout = useMemo(() => {
+    const heightById = new Map(
+      visibleTerms.map((term) => [term.id, cardHeightOf(term)])
+    );
+
+    return layoutDataClusters(
+      visibleTerms.map((term) => term.id),
+      (id) => ({ height: heightById.get(id) ?? 0, width: CARD_WIDTH }),
+      clusterEdges.map(toClusterLink)
+    );
+  }, [cardHeightOf, clusterEdges, visibleTerms]);
+  const cardBoxes = useMemo(() => {
+    const boxes = new Map<string, CardBox>();
+    visibleTerms.forEach((term) => {
+      const position = cardPositions[term.id] ??
+        clusterLayout.positions.get(term.id) ?? {
+          left: CLUSTER_LAYOUT_MARGIN,
+          top: CLUSTER_LAYOUT_MARGIN,
+        };
+      boxes.set(term.id, {
+        ...position,
+        height: cardHeightOf(term),
+        width: CARD_WIDTH,
+      });
     });
 
-    return map;
-  }, [visibleTerms, cardPositions]);
+    return boxes;
+  }, [cardHeightOf, cardPositions, clusterLayout, visibleTerms]);
   const dataEdges = useMemo(
-    () => buildDataEdgeLayout(data, termIdsByAsset, positionByTermId),
-    [data, positionByTermId, termIdsByAsset]
-  );
-  const semanticEdges = useMemo(
     () =>
-      dataEdges.filter(
-        ({ edge }) => edge.edgeKind !== OBSERVED_LINEAGE_EDGE_KIND
+      buildDataEdgeLayout(
+        clusterEdges,
+        cardBoxes,
+        routesBetweenUnmovedCards(
+          clusterEdges,
+          clusterLayout.routes,
+          cardPositions
+        )
       ),
-    [dataEdges]
-  );
-  const observedLineageEdges = useMemo(
-    () =>
-      dataEdges.filter(
-        ({ edge }) => edge.edgeKind === OBSERVED_LINEAGE_EDGE_KIND
-      ),
-    [dataEdges]
+    [cardBoxes, cardPositions, clusterEdges, clusterLayout]
   );
   const relationshipTypeByName = useMemo(
     () => new Map(relationTypes.map((type) => [type.name, type])),
@@ -402,7 +397,7 @@ const OntologyDataGraph = ({
   );
   const renderedSemanticEdges = useMemo(
     () =>
-      semanticEdges.map((layout) => {
+      dataEdges.map((layout) => {
         const relationshipType = relationshipTypeByName.get(
           layout.edge.relationType
         );
@@ -411,41 +406,55 @@ const OntologyDataGraph = ({
             layout.edge.relationType,
             relationshipType
           ) ?? 'var(--color-border-brand)';
-        let color = EDGE_STROKE_COLOR;
-        if (!effectiveColor.startsWith('var(')) {
-          color = effectiveColor;
-        } else if (relationshipType) {
-          color = getRelationshipHexColor(relationshipType);
-        }
+        const color =
+          effectiveColor.startsWith('var(') && relationshipType
+            ? getRelationshipHexColor(relationshipType)
+            : resolveCssColor(effectiveColor, EDGE_STROKE_COLOR_FALLBACK);
 
         return {
           ...layout,
           color,
         };
       }),
-    [relationshipTypeByName, semanticEdges]
+    [dataEdges, relationshipTypeByName]
   );
-  const rows = Math.ceil(visibleTerms.length / COLUMN_COUNT);
-  const minimumCanvasHeight = Math.max(
-    CANVAS_MIN_HEIGHT,
-    START_Y + rows * ROW_STEP + (hasMoreTerms ? 64 : CANVAS_BOTTOM_PADDING)
+  const contentBottom = useMemo(
+    () =>
+      Math.max(
+        0,
+        ...[...cardBoxes.values()].map((box) => box.top + box.height)
+      ),
+    [cardBoxes]
   );
+  const hasFooter = hasMoreTerms || isRenderCapped;
   const { canvasHeight, canvasWidth } = useMemo(() => {
-    let nextHeight = minimumCanvasHeight;
-    let nextWidth = CANVAS_MIN_WIDTH;
+    let nextHeight = Math.max(CANVAS_MIN_HEIGHT, clusterLayout.height);
+    let nextWidth = Math.max(CANVAS_MIN_WIDTH, clusterLayout.width);
 
-    positionByTermId.forEach((position) => {
+    cardBoxes.forEach((box) => {
       nextHeight = Math.max(
         nextHeight,
-        position.top + ROW_STEP + CANVAS_BOTTOM_PADDING
+        box.top + box.height + CLUSTER_LAYOUT_MARGIN
       );
-      nextWidth = Math.max(nextWidth, position.left + CARD_WIDTH + START_X);
+      nextWidth = Math.max(
+        nextWidth,
+        box.left + box.width + CLUSTER_LAYOUT_MARGIN
+      );
     });
+    if (hasFooter) {
+      nextHeight = Math.max(
+        nextHeight,
+        contentBottom + LOAD_MORE_TERMS_GAP + LOAD_MORE_TERMS_HEIGHT
+      );
+    }
 
     return { canvasHeight: nextHeight, canvasWidth: nextWidth };
-  }, [minimumCanvasHeight, positionByTermId]);
+  }, [cardBoxes, clusterLayout, contentBottom, hasFooter]);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  const cardObserverRef = useRef<ResizeObserver | null>(null);
+  const fittedLayoutKeyRef = useRef<string>();
   const wheelCleanupRef = useRef<(() => void) | null>(null);
   const [view, setView] = useState({ x: 0, y: 0, zoom: 1 });
   const panRef = useRef<{
@@ -500,6 +509,56 @@ const OntologyDataGraph = ({
     wheelCleanupRef.current = () =>
       node.removeEventListener('wheel', handleWheel);
   }, []);
+
+  // Cards grow with their asset list; lay out and anchor edges on the real size.
+  useEffect(() => {
+    if (typeof ResizeObserver === 'undefined') {
+      return undefined;
+    }
+    const observer = new ResizeObserver((entries) =>
+      setMeasuredHeights((current) => mergeMeasuredHeights(current, entries))
+    );
+    cardObserverRef.current = observer;
+
+    return () => {
+      observer.disconnect();
+      cardObserverRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const observer = cardObserverRef.current;
+    canvasRef.current
+      ?.querySelectorAll('[data-term-id]')
+      .forEach((card) => observer?.observe(card));
+  }, [visibleTerms]);
+
+  const layoutKey = useMemo(
+    () => visibleTerms.map((term) => term.id).join('|'),
+    [visibleTerms]
+  );
+  // Frame each new set of clusters once; later pans and zooms are the user's.
+  useEffect(() => {
+    const element = containerRef.current;
+    if (
+      !element ||
+      element.clientWidth === 0 ||
+      fittedLayoutKeyRef.current === layoutKey
+    ) {
+      return;
+    }
+    fittedLayoutKeyRef.current = layoutKey;
+    const fitZoom = Math.min(
+      element.clientWidth / canvasWidth,
+      element.clientHeight / canvasHeight
+    );
+    const zoom = clampZoom(Math.min(1, fitZoom));
+    setView({
+      x: Math.max(0, (element.clientWidth - canvasWidth * zoom) / 2),
+      y: Math.max(0, (element.clientHeight - canvasHeight * zoom) / 2),
+      zoom,
+    });
+  }, [canvasHeight, canvasWidth, layoutKey]);
 
   const zoomAtCenter = (factor: number) => {
     const element = containerRef.current;
@@ -609,7 +668,7 @@ const OntologyDataGraph = ({
     term: OntologyNode
   ) => {
     event.stopPropagation();
-    const position = positionByTermId.get(term.id) ?? { left: 0, top: 0 };
+    const position = cardBoxes.get(term.id) ?? { left: 0, top: 0 };
     cardDragRef.current = {
       originLeft: position.left,
       originTop: position.top,
@@ -714,6 +773,7 @@ const OntologyDataGraph = ({
       <div
         aria-label={t('label.graph')}
         className="tw:relative tw:origin-top-left"
+        ref={canvasRef}
         role="button"
         style={{
           height: canvasHeight,
@@ -736,56 +796,34 @@ const OntologyDataGraph = ({
           className="tw:pointer-events-none tw:absolute tw:inset-0 tw:overflow-visible"
           height={canvasHeight}
           width={canvasWidth}>
-          {observedLineageEdges.map(({ path, renderKey }) => (
-            <path
-              d={path}
-              data-testid="ontology-data-observed-lineage-edge"
-              fill="none"
-              key={`${renderKey}-path`}
-              opacity="0.75"
-              stroke={EDGE_STROKE_COLOR}
-              strokeWidth="1.8"
-            />
-          ))}
-          {renderedSemanticEdges.map(({ color, path, renderKey }) => (
-            <path
-              d={path}
-              data-testid="ontology-data-semantic-edge"
-              fill="none"
-              key={`${renderKey}-path`}
-              opacity="0.85"
-              stroke={color}
-              strokeDasharray="6 5"
-              strokeWidth="1.8"
-            />
-          ))}
+          {renderedSemanticEdges.map(
+            ({ arrowPath, color, path, renderKey }) => (
+              <Fragment key={renderKey}>
+                <path
+                  d={path}
+                  data-testid="ontology-data-semantic-edge"
+                  fill="none"
+                  opacity="0.85"
+                  stroke={color}
+                  strokeDasharray="6 5"
+                  strokeWidth="1.8"
+                />
+                <path
+                  d={arrowPath}
+                  data-testid="ontology-data-edge-arrow"
+                  fill={color}
+                />
+              </Fragment>
+            )
+          )}
         </svg>
 
-        {renderedSemanticEdges.map(
-          ({ color, edge, labelLeft, labelTop, renderKey }) => (
-            <span
-              className={classNames(
-                'tw:pointer-events-none tw:absolute tw:-translate-x-1/2 tw:-translate-y-1/2',
-                'tw:rounded-full tw:border tw:bg-primary tw:px-[7px] tw:py-0.5',
-                'tw:font-body tw:text-[9px] tw:leading-normal tw:font-semibold'
-              )}
-              data-testid="ontology-data-semantic-edge-label"
-              key={`${renderKey}-label`}
-              style={{
-                borderColor: color,
-                color,
-                left: labelLeft,
-                top: labelTop,
-              }}>
-              {formatRelationLabel(edge.relationType).toLocaleLowerCase()}
-            </span>
-          )
-        )}
-
-        {visibleTerms.map((term, index) => {
+        {visibleTerms.map((term) => {
           const assets = assetsByTerm.get(term.id) ?? [];
-          const position =
-            positionByTermId.get(term.id) ?? getCardPosition(index);
+          const position = cardBoxes.get(term.id) ?? {
+            left: CLUSTER_LAYOUT_MARGIN,
+            top: CLUSTER_LAYOUT_MARGIN,
+          };
           const totalAssetCount = Math.max(term.assetCount ?? 0, assets.length);
           const loadedAssetCount = Math.max(
             term.loadedAssetCount ?? 0,
@@ -805,6 +843,7 @@ const OntologyDataGraph = ({
                 'tw:absolute tw:cursor-grab tw:rounded-xl tw:border-[1.5px] tw:border-secondary',
                 'tw:bg-secondary tw:p-3 tw:shadow-xs active:tw:cursor-grabbing'
               )}
+              data-term-id={term.id}
               data-testid={`ontology-data-cluster-${term.id}`}
               key={term.id}
               style={{
@@ -899,13 +938,34 @@ const OntologyDataGraph = ({
           );
         })}
 
+        {renderedSemanticEdges.map(
+          ({ color, edge, labelLeft, labelTop, renderKey }) => (
+            <span
+              className={classNames(
+                'tw:pointer-events-none tw:absolute tw:-translate-x-1/2 tw:-translate-y-1/2',
+                'tw:rounded-full tw:border tw:bg-primary tw:px-[7px] tw:py-0.5',
+                'tw:font-body tw:text-[9px] tw:leading-normal tw:font-semibold'
+              )}
+              data-testid="ontology-data-semantic-edge-label"
+              key={`${renderKey}-label`}
+              style={{
+                borderColor: color,
+                color,
+                left: labelLeft,
+                top: labelTop,
+              }}>
+              {formatRelationLabel(edge.relationType).toLocaleLowerCase()}
+            </span>
+          )
+        )}
+
         {hasMoreTerms ? (
           <Button
             className="tw:absolute tw:left-1/2 tw:-translate-x-1/2"
             color="secondary"
             isDisabled={isLoadingMoreTerms}
             size="sm"
-            style={{ top: START_Y + rows * ROW_STEP }}
+            style={{ top: contentBottom + LOAD_MORE_TERMS_GAP }}
             onPress={onLoadMoreTerms}>
             {isLoadingMoreTerms ? t('label.loading') : t('label.load-more')}
           </Button>
@@ -919,7 +979,7 @@ const OntologyDataGraph = ({
               'tw:font-medium tw:text-quaternary'
             )}
             data-testid="ontology-data-render-cap"
-            style={{ top: START_Y + rows * ROW_STEP }}>
+            style={{ top: contentBottom + LOAD_MORE_TERMS_GAP }}>
             {t('message.data-clusters-render-cap', {
               count: DATA_MODE_MAX_RENDER_COUNT,
             })}
