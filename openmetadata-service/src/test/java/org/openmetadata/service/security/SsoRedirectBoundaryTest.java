@@ -29,6 +29,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +38,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.zip.Inflater;
 import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.eclipse.jetty.server.Server;
@@ -44,14 +46,18 @@ import org.eclipse.jetty.server.ServerConnector;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
+import org.openmetadata.catalog.type.IdentityProviderConfig;
+import org.openmetadata.catalog.type.SamlSecurityConfig;
 import org.openmetadata.catalog.type.ServiceProviderConfig;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.security.auth.SamlAuthServletHandler;
+import org.openmetadata.service.security.saml.MockSamlIdp;
 import org.openmetadata.service.security.saml.SamlAssertionConsumerServlet;
 import org.openmetadata.service.security.saml.SamlLoginServlet;
+import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.security.session.SessionIdGenerator;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
@@ -68,6 +74,10 @@ class SsoRedirectBoundaryTest {
   private static final String PRIMARY_CALLBACK = SERVER_URL + "/callback";
   private static final String DR_CALLBACK = "https://dr.example.com/callback";
   private static final String DR_AUTH_CALLBACK = "https://dr.example.com/auth/callback";
+  private static final String SP_ENTITY_ID = SERVER_URL + "/api/v1/saml/metadata";
+  private static final String PRIMARY_ACS = SERVER_URL + "/api/v1/saml/acs";
+  private static final String DR_ACS = "https://dr.example.com/api/v1/saml/acs";
+  private static final String IDP_ENTITY_ID = "https://idp.example.com/metadata";
 
   private final HttpClient httpClient =
       HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build();
@@ -237,6 +247,38 @@ class SsoRedirectBoundaryTest {
         SERVER_URL + "/signin", onForgedHost.headers().firstValue("Location").orElseThrow());
   }
 
+  @Test
+  void samlLoginSendsTheAcsRegisteredForTheRequestHost() throws Exception {
+    InMemorySessionStore store = new InMemorySessionStore();
+    URI baseUri = startServer(newMultiHostSamlHandler(store));
+
+    HttpResponse<String> response =
+        get(samlLogin(baseUri, DR_AUTH_CALLBACK), null, arrivingVia("dr.example.com"));
+
+    assertEquals(302, response.statusCode());
+    String authnRequest = decodedAuthnRequest(response);
+    assertTrue(
+        authnRequest.contains("AssertionConsumerServiceURL=\"" + DR_ACS + "\""), authnRequest);
+    assertTrue(authnRequest.contains(">" + SP_ENTITY_ID + "</saml:Issuer>"), authnRequest);
+    assertEquals(DR_ACS, store.onlySession().getIdpRedirectUri());
+  }
+
+  @Test
+  void samlLoginKeepsThePrimaryAcsForAnUnregisteredHost() throws Exception {
+    InMemorySessionStore store = new InMemorySessionStore();
+    URI baseUri = startServer(newMultiHostSamlHandler(store));
+
+    HttpResponse<String> response =
+        get(samlLogin(baseUri, TRUSTED_REDIRECT), null, arrivingVia("evil.example.com"));
+
+    assertEquals(302, response.statusCode());
+    String authnRequest = decodedAuthnRequest(response);
+    assertTrue(
+        authnRequest.contains("AssertionConsumerServiceURL=\"" + PRIMARY_ACS + "\""), authnRequest);
+    assertTrue(authnRequest.contains(">" + SP_ENTITY_ID + "</saml:Issuer>"), authnRequest);
+    assertNull(store.onlySession().getIdpRedirectUri());
+  }
+
   private AuthenticationCodeFlowHandler newOidcHandler(InMemorySessionStore store) {
     return newOidcHandler(store, List.of());
   }
@@ -253,6 +295,47 @@ class SsoRedirectBoundaryTest {
     AuthenticationConfiguration authConfig = samlAuthConfig();
     return new SamlAuthServletHandler(
         authConfig, new AuthorizerConfiguration(), new SessionService(authConfig, store));
+  }
+
+  private SamlAuthServletHandler newMultiHostSamlHandler(InMemorySessionStore store)
+      throws Exception {
+    SamlSSOClientConfig samlConfig =
+        new SamlSSOClientConfig()
+            .withIdp(
+                new IdentityProviderConfig()
+                    .withEntityId(IDP_ENTITY_ID)
+                    .withSsoLoginUrl("https://idp.example.com/sso")
+                    .withIdpX509Certificate(new MockSamlIdp(IDP_ENTITY_ID).idpCertificatePem()))
+            .withSp(
+                new ServiceProviderConfig()
+                    .withEntityId(SP_ENTITY_ID)
+                    .withAcs(PRIMARY_ACS)
+                    .withCallback(TRUSTED_REDIRECT)
+                    .withAdditionalAcsUrls(List.of(DR_ACS)))
+            .withSecurity(new SamlSecurityConfig());
+    SamlSettingsHolder.initSettings(samlConfig);
+    AuthenticationConfiguration authConfig =
+        baseAuthConfig(AuthProvider.SAML).withSamlConfiguration(samlConfig);
+    return new SamlAuthServletHandler(
+        authConfig, new AuthorizerConfiguration(), new SessionService(authConfig, store));
+  }
+
+  private static URI samlLogin(URI baseUri, String callback) {
+    return baseUri.resolve(
+        "/api/v1/saml/login?callback=" + URLEncoder.encode(callback, StandardCharsets.UTF_8));
+  }
+
+  /** The HTTP-Redirect binding carries the AuthnRequest raw-deflated and base64-encoded. */
+  private static String decodedAuthnRequest(HttpResponse<String> response) throws Exception {
+    URI location = URI.create(response.headers().firstValue("Location").orElseThrow());
+    byte[] deflated =
+        Base64.getDecoder().decode(formParameter(location.getRawQuery(), "SAMLRequest"));
+    Inflater inflater = new Inflater(true);
+    inflater.setInput(deflated);
+    byte[] buffer = new byte[65536];
+    int length = inflater.inflate(buffer);
+    inflater.end();
+    return new String(buffer, 0, length, StandardCharsets.UTF_8);
   }
 
   private AuthenticationConfiguration oidcAuthConfig(String discoveryUri) {
