@@ -51,9 +51,10 @@ const CELL_ELLIPSIS_CLASS = 'tw:min-w-0 tw:w-full tw:overflow-hidden';
 
 const CHILD_ROW_INDENT_PX = 24;
 const BASE_CELL_PADDING_PX = 24;
-const PARENT_ROW_BG_CLASS = 'tw:bg-secondary_hover';
-const CHILD_ROW_BG_CLASS = 'tw:bg-secondary';
-const RECENTLY_UPDATED_BG_CLASS = 'tw:bg-utility-warning-50';
+const PARENT_ROW_BG_CLASS = 'tw:bg-secondary_hover tw:hover:bg-secondary_hover';
+const CHILD_ROW_BG_CLASS = 'tw:bg-secondary tw:hover:bg-secondary';
+const RECENTLY_UPDATED_BG_CLASS =
+  'tw:bg-utility-warning-50 tw:hover:bg-utility-warning-50';
 const SELECTED_ROW_BG_CLASS = 'tw:bg-active';
 
 const ColumnGridTableRowBase: React.FC<ColumnGridTableRowProps> = ({
