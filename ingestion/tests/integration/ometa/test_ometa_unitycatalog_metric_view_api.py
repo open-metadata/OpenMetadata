@@ -121,7 +121,7 @@ class TestUnitycatalogMetricViewRoundTrip:
         ingest_metrics()
 
         name = build_metric_name("databricks_svc", "samples", "tpch", "orders_metrics", "total_revenue")
-        stored = metadata.get_by_name(entity=Metric, fqn=name, fields=["assets"])
+        stored = metadata.get_by_name(entity=Metric, fqn=name)
 
         assert stored is not None
         assert stored.displayName == "Total Revenue"
@@ -137,7 +137,9 @@ class TestUnitycatalogMetricViewRoundTrip:
             ("total_revenue", "SUM"),
             ("order_count", "COUNT"),
         ]
-        assert [asset.id for asset in stored.assets.root] == [metric_view.id]
+        # assets is not a readable field since #32335; it is served only by the /assets API
+        linked = metadata.client.get(f"/metrics/{model_str(stored.id)}/assets")
+        assert [row["asset"]["id"] for row in linked["data"]] == [model_str(metric_view.id)]
 
     def test_names_stay_unique_across_the_views_measures(self, metadata, ingest_metrics):
         entities = ingest_metrics()
