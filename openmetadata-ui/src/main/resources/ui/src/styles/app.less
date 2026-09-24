@@ -940,6 +940,13 @@ a[href].link-text-grey,
   color: var(--om-color-link);
 }
 
+// Ant secondary text is @text-color-secondary (fade(@black, 45%)), compiled to a
+// static near-black that vanishes on dark surfaces. The variable can't take a
+// var() (antd runs shade() on it), so retint the class in dark only.
+.dark-mode .ant-typography.ant-typography-secondary {
+  color: var(--om-color-text-tertiary);
+}
+
 // Carousel active dot draws with --ant-primary-color (#1570ef) via a `!important`
 // rule in temp.css; match !important to win and re-tint in dark.
 .dark-mode .slick-dots li.slick-active button:before {
