@@ -10,24 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Dropdown, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
+import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
+import {
+  DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
+} from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   getAPIfromSource,
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
+import { renderDomainLink } from '../../../utils/DomainUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
-import DomainTags from '../DomainTags/DomainTags';
 import './domain-label.less';
 import { DomainLabelProps } from './DomainLabel.interface';
 
@@ -113,20 +118,87 @@ export const DomainLabel = ({
   }, [domains]);
 
   const domainLink = useMemo(() => {
-    if (!isEmpty(activeDomain)) {
-      return (
-        <DomainTags
-          domains={activeDomain}
-          labels={
-            Array.isArray(domainDisplayName) ? domainDisplayName : undefined
-          }
-          maxVisible={headerLayout && multiple ? 1 : activeDomain.length}
-        />
-      );
+    if (
+      activeDomain &&
+      Array.isArray(activeDomain) &&
+      activeDomain.length > 0
+    ) {
+      const domains = activeDomain.map((domain) => {
+        const inheritedIcon = domain?.inherited ? (
+          <Tooltip
+            title={t('label.inherited-entity', {
+              entity: t('label.domain-plural'),
+            })}>
+            <InheritIcon className="inherit-icon cursor-pointer" width={14} />
+          </Tooltip>
+        ) : null;
+
+        return (
+          <div
+            className={classNames(
+              'd-flex items-center gap-1 domain-link-container',
+              {
+                'gap-1': !headerLayout || (headerLayout && multiple),
+              }
+            )}
+            key={domain.id}>
+            {/* condition to show icon for new layout perticulary for multiple domains */}
+            {(!headerLayout || (headerLayout && multiple)) && (
+              <Typography.Text className="self-center text-xs whitespace-nowrap">
+                <DomainIcon
+                  className="d-flex"
+                  color={DE_ACTIVE_COLOR}
+                  height={20}
+                  name="folder"
+                  width={20}
+                />
+              </Typography.Text>
+            )}
+            {renderDomainLink(
+              domain,
+              domainDisplayName,
+              showDomainHeading,
+              textClassName
+            )}
+            {inheritedIcon && <div className="d-flex">{inheritedIcon}</div>}
+          </div>
+        );
+      });
+
+      // Show limited domains with "+N more" button when multiple and headerLayout are true
+      if (multiple && headerLayout && domains.length > 1) {
+        const visibleDomains = domains.slice(0, 1);
+        const remainingCount = domains.length - 1;
+        const remainingDomains = domains.slice(1);
+
+        return (
+          <div className="d-flex items-center gap-2 flex-wrap">
+            {visibleDomains}
+            <Dropdown
+              menu={{
+                items: remainingDomains.map((domain, index) => ({
+                  key: index,
+                  label: domain,
+                })),
+                className: 'domain-tooltip-list',
+              }}>
+              <Typography.Text
+                className={`flex-center cursor-pointer align-middle ant-typography-secondary domain-count-button ${
+                  remainingCount <= 9 ? 'h-6 w-6' : ''
+                }`}
+                data-testid="domain-count-button">
+                <span className="ant-typography domain-count-label">{`+${remainingCount}`}</span>
+              </Typography.Text>
+            </Dropdown>
+          </div>
+        );
+      }
+
+      return domains;
     }
 
     return (
-      <Typography
+      <Typography.Text
         className={classNames(
           'domain-link-text',
           { 'font-medium text-sm': !showDomainHeading },
@@ -134,7 +206,7 @@ export const DomainLabel = ({
         )}
         data-testid="no-domain-text">
         {defaultDomainText}
-      </Typography>
+      </Typography.Text>
     );
   }, [
     activeDomain,
@@ -143,7 +215,6 @@ export const DomainLabel = ({
     textClassName,
     multiple,
     headerLayout,
-    defaultDomainText,
   ]);
 
   const selectableList = useMemo(() => {
@@ -168,15 +239,15 @@ export const DomainLabel = ({
             className="d-flex text-sm  font-medium items-center m-b-xs"
             data-testid="header-domain-container">
             {!headerLayout ? (
-              <Typography className="right-panel-label m-r-xss">
+              <Typography.Text className="right-panel-label m-r-xss">
                 {t('label.domain-plural')}
-              </Typography>
+              </Typography.Text>
             ) : (
-              <Typography className="domain-link right-panel-label m-r-xss">
+              <Typography.Text className="domain-link right-panel-label m-r-xss">
                 {activeDomain.length > 0
                   ? t('label.domain-plural')
                   : defaultDomainText}
-              </Typography>
+              </Typography.Text>
             )}
             {selectableList}
           </div>
@@ -194,9 +265,9 @@ export const DomainLabel = ({
           <div
             className="d-flex text-sm gap-1 font-medium items-center "
             data-testid="header-domain-container">
-            <Typography className="domain-link right-panel-label m-r-xss">
+            <Typography.Text className="domain-link right-panel-label m-r-xss">
               {t('label.domain-plural')}
-            </Typography>
+            </Typography.Text>
             {selectableList}
           </div>
         )}
