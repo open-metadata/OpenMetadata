@@ -83,40 +83,18 @@ def provision_classification_models(
     for index, specification in enumerate(specifications):
         current_version = _installed_model_version(specification.name)
         languages = (model_languages or {}).get(specification.name, [])
+        unattempted = list(specifications[index + 1 :])
         try:
-            if current_version == specification.version:
-                try:
-                    _verify_model_load(specification)
-                except Exception as exc:
-                    raise ModelProvisioningError(
-                        specification,
-                        exc,
-                        completed,
-                        list(specifications[index + 1 :]),
-                        languages,
-                        repair=True,
-                    ) from exc
-                _report(
-                    progress,
-                    f"Reusing {specification.name} {specification.version}{_language_note(languages)}",
-                )
-            else:
-                if current_version:
-                    _report(
-                        progress,
-                        f"Reconciling {specification.name}{_language_note(languages)} from "
-                        f"{current_version} to {specification.version}",
-                    )
-                else:
-                    _report(
-                        progress,
-                        f"Installing {specification.name} {specification.version}{_language_note(languages)}",
-                    )
-                _install_model(specification, spacy_version)
-                _verify_installed_model_version(specification)
-                _verify_model_load(specification)
+            if _reconcile_model(
+                specification,
+                current_version,
+                spacy_version,
+                languages,
+                progress,
+                completed,
+                unattempted,
+            ):
                 installed.append(specification)
-                _report(progress, f"Verified {specification.name} {specification.version}{_language_note(languages)}")
         except ModelProvisioningError:
             raise
         except Exception as exc:
@@ -124,12 +102,57 @@ def provision_classification_models(
                 specification,
                 exc,
                 completed,
-                list(specifications[index + 1 :]),
+                unattempted,
                 languages,
             ) from exc
         completed.append(specification)
 
     return ProvisioningResult(completed=completed, installed=installed)
+
+
+def _reconcile_model(
+    specification: ModelSpecification,
+    current_version: str | None,
+    spacy_version: str,
+    languages: Sequence[str],
+    progress: Callable[[str], None] | None,
+    completed: list[ModelSpecification],
+    unattempted: list[ModelSpecification],
+) -> bool:
+    if current_version == specification.version:
+        try:
+            _verify_model_load(specification)
+        except Exception as exc:
+            raise ModelProvisioningError(
+                specification,
+                exc,
+                completed,
+                unattempted,
+                languages,
+                repair=True,
+            ) from exc
+        _report(
+            progress,
+            f"Reusing {specification.name} {specification.version}{_language_note(languages)}",
+        )
+        return False
+
+    if current_version:
+        _report(
+            progress,
+            f"Reconciling {specification.name}{_language_note(languages)} from "
+            f"{current_version} to {specification.version}",
+        )
+    else:
+        _report(
+            progress,
+            f"Installing {specification.name} {specification.version}{_language_note(languages)}",
+        )
+    _install_model(specification, spacy_version)
+    _verify_installed_model_version(specification)
+    _verify_model_load(specification)
+    _report(progress, f"Verified {specification.name} {specification.version}{_language_note(languages)}")
+    return True
 
 
 def _verify_pii_dependencies() -> str:

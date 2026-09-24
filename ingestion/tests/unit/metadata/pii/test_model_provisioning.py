@@ -143,6 +143,41 @@ class TestModelProvisioning:
         assert "wheel unavailable" in str(error.value)
         mock_run.assert_called_once()
 
+    def test_retains_completed_models_when_a_later_installation_fails(self):
+        specifications = resolve_model_specifications(
+            [ClassificationLanguage.en, ClassificationLanguage.es, ClassificationLanguage.fr]
+        )
+
+        def installed_version(package):
+            if package == "en_core_web_md":
+                return "3.8.0"
+            if package == "es_core_news_md":
+                raise PackageNotFoundError
+            return {"spacy": "3.8.16", "presidio-analyzer": "2.2.358"}[package]
+
+        with (
+            patch("metadata.pii.model_provisioning.version", side_effect=installed_version),
+            patch(
+                "metadata.pii.model_provisioning.subprocess.run",
+                side_effect=[
+                    SimpleNamespace(
+                        returncode=0,
+                        stdout='{"spacy_version": "3.8.16", "model_spacy_version": ">=3.8.0,<3.9.0", "version": "3.8.0"}',
+                        stderr="",
+                    ),
+                    SimpleNamespace(returncode=1, stdout="", stderr="wheel unavailable"),
+                ],
+            ) as mock_run,
+            pytest.raises(ModelProvisioningError) as error,
+        ):
+            provision_classification_models(specifications, {"es_core_news_md": ["es"]})
+
+        assert error.value.completed == [specifications[0]]
+        assert error.value.failed == specifications[1]
+        assert error.value.unattempted == [specifications[2]]
+        assert "wheel unavailable" in str(error.value)
+        assert mock_run.call_count == 2
+
     def test_matching_but_corrupt_model_requires_repair(self, english_and_spanish):
         with (
             patch(
