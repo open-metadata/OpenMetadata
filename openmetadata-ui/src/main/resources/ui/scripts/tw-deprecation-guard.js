@@ -21,6 +21,8 @@
  * change. New `.less` files are reported but do NOT fail the guard while the
  * app-mode migration still ships `.less` for the AI shell. Existing usage is
  * untouched and migrates over time.
+ * Regression tests may import the legacy controls they exercise; the guard
+ * applies to application code, so tests can cover existing behavior faithfully.
  *
  * The antd check compares full before/after file contents (via `git show`)
  * rather than raw diff lines. A diff-line scan flags
@@ -164,6 +166,9 @@ function newAntdImports() {
   const hits = [];
   const files = changedTsFiles();
   for (const { before, after } of files) {
+    if (/\.(?:test|spec)\.tsx?$/.test(after)) {
+      continue;
+    }
     const afterContent = getAfterContent(after);
     const afterMap = parseAntdImports(afterContent);
     if (afterMap.size === 0) {

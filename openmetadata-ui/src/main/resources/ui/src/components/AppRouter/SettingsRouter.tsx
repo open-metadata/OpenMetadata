@@ -812,7 +812,8 @@ const SettingsRouter = () => {
       <Route
         element={
           <AdminProtectedRoute
-            hasPermission={userPermissions.hasViewPermissions(
+            hasPermission={checkPermission(
+              Operation.AuditLogs,
               ResourceEntity.AUDIT_LOG,
               permissions
             )}>

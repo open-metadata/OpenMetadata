@@ -80,8 +80,9 @@ import {
   ResourceEntity,
   UIPermission,
 } from '../context/PermissionProvider/PermissionProvider.interface';
+import { Operation } from '../generated/entity/policies/accessControl/resourcePermission';
 import { AuthProvider } from '../generated/settings/settings';
-import { userPermissions } from '../utils/PermissionsUtils';
+import { checkPermission, userPermissions } from '../utils/PermissionsUtils';
 import { isLoginConfigurationApplicable } from './AuthProvider.util';
 import { t } from './i18next/LocalUtil';
 
@@ -392,9 +393,13 @@ class GlobalSettingsClassBase {
           {
             label: t('label.audit-log-plural'),
             description: t('message.page-sub-header-for-audit-logs'),
-            isProtected: userPermissions.hasViewPermissions(
-              ResourceEntity.AUDIT_LOG,
-              permissions
+            isProtected: Boolean(
+              isAdminUser ||
+                checkPermission(
+                  Operation.AuditLogs,
+                  ResourceEntity.AUDIT_LOG,
+                  permissions
+                )
             ),
             key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.AUDIT_LOGS}`,
             icon: ManagementIcon,
