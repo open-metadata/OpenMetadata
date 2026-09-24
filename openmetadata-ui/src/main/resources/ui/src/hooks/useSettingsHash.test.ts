@@ -38,28 +38,28 @@ describe('useSettingsHash', () => {
     expect(result.current.state.params).toEqual({});
   });
 
-  it('should parse #bots correctly', () => {
-    window.location.hash = '#bots';
+  it('should parse #notification correctly', () => {
+    window.location.hash = '#notification';
     const { result } = renderHook(() => useSettingsHash());
 
-    expect(result.current.state.tab).toBe('bots');
+    expect(result.current.state.tab).toBe('notification');
     expect(result.current.state.subPath).toBe('');
     expect(result.current.state.params).toEqual({});
   });
 
-  it('should parse #bots/subpath correctly', () => {
-    window.location.hash = '#bots/autoclassification-bot';
+  it('should parse #notification/subpath correctly', () => {
+    window.location.hash = '#notification/alerts';
     const { result } = renderHook(() => useSettingsHash());
 
-    expect(result.current.state.tab).toBe('bots');
-    expect(result.current.state.subPath).toBe('autoclassification-bot');
+    expect(result.current.state.tab).toBe('notification');
+    expect(result.current.state.subPath).toBe('alerts');
   });
 
   it('should parse hash with query params', () => {
-    window.location.hash = '#bots?page=2&cursorType=after';
+    window.location.hash = '#notification?page=2&cursorType=after';
     const { result } = renderHook(() => useSettingsHash());
 
-    expect(result.current.state.tab).toBe('bots');
+    expect(result.current.state.tab).toBe('notification');
     expect(result.current.state.params).toEqual({
       page: '2',
       cursorType: 'after',
@@ -70,24 +70,24 @@ describe('useSettingsHash', () => {
     const { result } = renderHook(() => useSettingsHash());
 
     act(() => {
-      result.current.setHash('bots', 'my-bot');
+      result.current.setHash('notification', 'my-alert');
     });
 
-    expect(replaceStateSpy).toHaveBeenCalledWith(null, '', '#bots/my-bot');
+    expect(replaceStateSpy).toHaveBeenCalledWith(null, '', '#notification/my-alert');
   });
 
   it('should set hash with params', () => {
     const { result } = renderHook(() => useSettingsHash());
 
     act(() => {
-      result.current.setHash('bots', undefined, { page: '2' });
+      result.current.setHash('notification', undefined, { page: '2' });
     });
 
-    expect(replaceStateSpy).toHaveBeenCalledWith(null, '', '#bots?page=2');
+    expect(replaceStateSpy).toHaveBeenCalledWith(null, '', '#notification?page=2');
   });
 
   it('should clear hash via clearHash', () => {
-    window.location.hash = '#bots';
+    window.location.hash = '#notification';
     const { result } = renderHook(() => useSettingsHash());
 
     act(() => {
