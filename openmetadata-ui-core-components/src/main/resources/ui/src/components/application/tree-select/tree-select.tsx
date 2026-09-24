@@ -727,7 +727,6 @@ export const TreeSelect = <T = unknown,>({
     clearSearch();
     setOpen(false);
     setShowSelectedOnly(false);
-<<<<<<< HEAD
   }, [onChange, multiple, selectedData, clearSearch, setOpen]);
 
   const treeDropdownContent = (
