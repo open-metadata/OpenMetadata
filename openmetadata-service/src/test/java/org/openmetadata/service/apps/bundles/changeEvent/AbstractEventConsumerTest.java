@@ -46,9 +46,9 @@ import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.util.DIContainer;
-import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
 
 @ExtendWith(MockitoExtension.class)
 class AbstractEventConsumerTest {
@@ -56,7 +56,6 @@ class AbstractEventConsumerTest {
   @Mock private DIContainer dependencies;
   @Mock private JobExecutionContext jobExecutionContext;
   @Mock private JobDetail jobDetail;
-  @Mock private JobDataMap jobDataMap;
   @Mock private EventSubscription eventSubscription;
 
   private TestEventConsumer testEventConsumer;
@@ -138,7 +137,6 @@ class AbstractEventConsumerTest {
     destinationId = UUID.randomUUID();
 
     lenient().when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail);
-    lenient().when(jobDetail.getJobDataMap()).thenReturn(jobDataMap);
     lenient().when(eventSubscription.getId()).thenReturn(subscriptionId);
     lenient().when(eventSubscription.getBatchSize()).thenReturn(10);
     lenient().when(eventSubscription.getRetries()).thenReturn(3);
@@ -171,7 +169,7 @@ class AbstractEventConsumerTest {
 
     try {
       testEventConsumer.execute(jobExecutionContext);
-    } catch (RuntimeException expectedInThisHarness) {
+    } catch (RuntimeException | JobExecutionException expectedInThisHarness) {
       // The subscription cannot be resolved here, so the tick either returns early or throws.
       // Either way the cleanup guarantee below must hold.
     }
@@ -253,9 +251,6 @@ class AbstractEventConsumerTest {
   @Test
   void testConstants() {
     assertEquals("SubscriptionMapKey", AbstractEventConsumer.DESTINATION_MAP_KEY);
-    assertEquals("alertOffsetKey", AbstractEventConsumer.ALERT_OFFSET_KEY);
-    assertEquals("alertPendingGapSinceKey", AbstractEventConsumer.ALERT_PENDING_GAP_SINCE_KEY);
-    assertEquals("alertInfoKey", AbstractEventConsumer.ALERT_INFO_KEY);
     assertEquals("eventSubscription.Offset", AbstractEventConsumer.OFFSET_EXTENSION);
     assertEquals("eventSubscription.metrics", AbstractEventConsumer.METRICS_EXTENSION);
     assertEquals("eventSubscription.failedEvent", AbstractEventConsumer.FAILED_EVENT_EXTENSION);

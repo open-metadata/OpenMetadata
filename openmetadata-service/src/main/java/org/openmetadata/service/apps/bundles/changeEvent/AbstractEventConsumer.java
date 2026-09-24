@@ -26,8 +26,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -52,17 +50,14 @@ import org.openmetadata.service.util.DIContainer;
 import org.openmetadata.service.util.PerRequestContextCleaner;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
-import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
 
 @Slf4j
 @DisallowConcurrentExecution
 public abstract class AbstractEventConsumer
     implements Alert<ChangeEvent>, Consumer<ChangeEvent>, Job {
   public static final String DESTINATION_MAP_KEY = "SubscriptionMapKey";
-  public static final String ALERT_OFFSET_KEY = "alertOffsetKey";
-  public static final String ALERT_PENDING_GAP_SINCE_KEY = "alertPendingGapSinceKey";
-  public static final String ALERT_INFO_KEY = "alertInfoKey";
   public static final String OFFSET_EXTENSION = LedgerKeys.POSITION;
   public static final String METRICS_EXTENSION = LedgerKeys.COUNTERS;
   public static final String FAILED_EVENT_EXTENSION = "eventSubscription.failedEvent";
@@ -75,7 +70,6 @@ public abstract class AbstractEventConsumer
   // Offsets of the events the last poll returned, in the same order.
   private List<Long> polledOffsets = List.of();
 
-  @Getter @Setter private JobDetail jobDetail;
   protected EventSubscription eventSubscription;
   protected Map<UUID, Destination<ChangeEvent>> destinationMap;
 
@@ -331,7 +325,7 @@ public abstract class AbstractEventConsumer
   record CursorPlan(long offset, long pendingGapSince, int recordCount, boolean skippedGap) {}
 
   @Override
-  public void execute(JobExecutionContext jobExecutionContext) {
+  public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
     // Quartz worker threads are long lived, shared with every other scheduled job, and never pass
     // through the JAX-RS response filter. Per-request ThreadLocal caches left behind here would be
     // served to whatever runs next on this thread — indefinitely stale. Destinations on this thread
@@ -347,7 +341,6 @@ public abstract class AbstractEventConsumer
 
   /** One tick of this consumer for an alert whose row was just read and whose ledger is open. */
   final void tick(EventSubscription alert, AlertLedger openLedger, JobExecutionContext context) {
-    this.jobDetail = context.getJobDetail();
     this.eventSubscription = alert;
     this.ledger = openLedger;
     this.destinationMap = loadDestinationsMap();

@@ -95,8 +95,14 @@ public final class AlertRecord {
         : new EventSubscriptionOffset().withCurrentOffset(latest).withStartingOffset(latest);
   }
 
+  /** Every id with rows under the ledger's own keys, as stored, including any that name no alert. */
   public static List<String> alertIdsWithRows() {
     return dao().listIdsHavingExtensions(LedgerKeys.all());
+  }
+
+  public static boolean hasRows(UUID alertId) {
+    return dao().listSubscriberExtensions(alertId.toString()).stream()
+        .anyMatch(row -> LedgerKeys.all().contains(row.extension()));
   }
 
   static AlertHealth initialHealth(EventSubscription alert, long now) {
