@@ -35,4 +35,22 @@ describe('ActivityThreadPanel', () => {
 
     expect(await screen.findByTestId('panel-tasks')).toBeInTheDocument();
   });
+
+  it('keeps the conversations panel mounted after switching to tasks', async () => {
+    render(
+      <MemoryRouter>
+        <ActivityThreadPanel open threadLink="<#E::table::table>" />
+      </MemoryRouter>
+    );
+
+    await screen.findByTestId('panel-conversations');
+
+    fireEvent.click(screen.getByText('label.task-plural'));
+
+    await screen.findByTestId('panel-tasks');
+
+    expect(
+      screen.getByTestId('panel-conversations').closest('[data-inert]')
+    ).toHaveAttribute('data-inert', 'true');
+  });
 });

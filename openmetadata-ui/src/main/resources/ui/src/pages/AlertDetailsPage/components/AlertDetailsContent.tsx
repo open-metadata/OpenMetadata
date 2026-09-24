@@ -27,6 +27,7 @@ import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { AlertDetailTabs } from '../../../enums/Alerts.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ProviderType } from '../../../generated/events/eventSubscription';
+import { useVisitedTabs } from '../../../hooks/useVisitedTabs';
 import { getRenderedActiveTab } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { hardDeleteEntity } from '../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -57,6 +58,13 @@ function AlertDetailsContent({
 }: Readonly<AlertDetailsContentProps>) {
   const { t } = useTranslation();
   const [isDeleting, setIsDeleting] = useState(false);
+  const activeTab = getRenderedActiveTab(
+    tabItems,
+    tab,
+    AlertDetailTabs.CONFIGURATION
+  );
+  // Keeps the recent events filter and page when switching tabs.
+  const visitedTabs = useVisitedTabs(activeTab);
 
   const handleAlertHardDelete = useCallback(async () => {
     setIsDeleting(true);
@@ -182,11 +190,7 @@ function AlertDetailsContent({
 
         <Tabs
           className="tw:gap-3"
-          selectedKey={getRenderedActiveTab(
-            tabItems,
-            tab,
-            AlertDetailTabs.CONFIGURATION
-          )}
+          selectedKey={activeTab}
           onSelectionChange={(key) => handleTabChange(String(key))}>
           <Tabs.List size="sm" type="underline" variant="card">
             {tabItems.map(({ key, label }) => (
@@ -196,7 +200,11 @@ function AlertDetailsContent({
             ))}
           </Tabs.List>
           {tabItems.map(({ key, children }) => (
-            <Tabs.Panel id={key} key={key}>
+            <Tabs.Panel
+              className="tw:data-inert:hidden"
+              id={key}
+              key={key}
+              shouldForceMount={visitedTabs.has(key)}>
               {children}
             </Tabs.Panel>
           ))}

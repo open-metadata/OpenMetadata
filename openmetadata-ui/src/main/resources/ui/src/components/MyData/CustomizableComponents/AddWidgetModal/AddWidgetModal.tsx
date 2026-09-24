@@ -25,6 +25,7 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
+import { useVisitedTabs } from '../../../../hooks/useVisitedTabs';
 import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
 import { getWidgetWidthLabelFromKey } from '../../../../utils/CustomizableLandingPagePureUtils';
 import { DetailsTabItem } from '../../../../utils/CustomizePage/CustomizePageEntityTabUtils';
@@ -116,6 +117,11 @@ function AddWidgetModal({
     [widgetsList, addedWidgetsList, getAddWidgetHandler, maxGridSizeSupport]
   );
 
+  const [selectedTab, setSelectedTab] = useState<string>();
+  const activeTab = selectedTab ?? tabItems[0]?.key ?? '';
+  // Keeps the widget size picked on a tab when the user browses other widgets.
+  const visitedTabs = useVisitedTabs(activeTab);
+
   useEffect(() => {
     fetchKnowledgePanels();
   }, []);
@@ -140,7 +146,9 @@ function AddWidgetModal({
       <Tabs
         className="tw:flex-row"
         data-testid="widget-info-tabs"
-        orientation="vertical">
+        orientation="vertical"
+        selectedKey={activeTab}
+        onSelectionChange={(key) => setSelectedTab(String(key))}>
         <Tabs.List
           className="tw:shrink-0 tw:border-r tw:border-secondary tw:p-4"
           type="line">
@@ -152,15 +160,16 @@ function AddWidgetModal({
         </Tabs.List>
         {tabItems.map(({ key, children }) => (
           <Tabs.Panel
-            className="tw:min-w-0 tw:flex-1 tw:p-4"
+            className="tw:min-w-0 tw:flex-1 tw:p-4 tw:data-inert:hidden"
             id={key}
-            key={key}>
+            key={key}
+            shouldForceMount={visitedTabs.has(key)}>
             {children}
           </Tabs.Panel>
         ))}
       </Tabs>
     );
-  }, [loading, widgetsList, tabItems]);
+  }, [loading, widgetsList, tabItems, activeTab, visitedTabs]);
 
   return (
     <Modal

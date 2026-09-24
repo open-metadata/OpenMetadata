@@ -456,17 +456,19 @@ export const verifyNotificationAndClick = async (
   await page.getByRole('tab', { name: 'Mentions' }).click();
   await mentionsTabResponse;
 
-  // Verify the notification contains the mentioned user and entity type
-  await expect(
-    page.getByTestId(`notification-item-${entityName}`).nth(1)
-  ).toContainText(expectedUserName);
+  const mentionsPanel = page
+    .locator('.notification-box')
+    .getByRole('tabpanel', { name: /Mentions/ });
+  const notificationItem = mentionsPanel.getByTestId(
+    `notification-item-${entityName}`
+  );
 
-  await expect(
-    page.getByTestId(`notification-item-${entityName}`).nth(1)
-  ).toContainText(entityName);
+  // Verify the notification contains the mentioned user and entity type
+  await expect(notificationItem).toContainText(expectedUserName);
+  await expect(notificationItem).toContainText(entityName);
 
   // Click on the notification to navigate to the entity
-  await page.getByTestId(`notification-link-${entityName}`).nth(1).click();
+  await mentionsPanel.getByTestId(`notification-link-${entityName}`).click();
 };
 
 export const getKnowledgePageCardByIndex = async (

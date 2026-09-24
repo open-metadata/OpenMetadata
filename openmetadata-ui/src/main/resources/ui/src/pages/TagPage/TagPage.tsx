@@ -896,7 +896,7 @@ const TagPage = () => {
   const renderAiHeader = () => (
     <div>
       <EntityDetailHeader
-        activeKey={activeTab}
+        activeKey={renderedActiveTab}
         badge={
           <>
             {badge}

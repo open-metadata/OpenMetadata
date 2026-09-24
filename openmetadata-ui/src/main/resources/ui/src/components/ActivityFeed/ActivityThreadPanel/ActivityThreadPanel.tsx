@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PanelTab } from '../../../constants/Feeds.constants';
+import { useVisitedTabs } from '../../../hooks/useVisitedTabs';
 import { ActivityThreadPanelProp } from './ActivityThreadPanel.interface';
 import ActivityThreadPanelBody from './ActivityThreadPanelBody';
 
@@ -31,6 +32,9 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   const [activeTab, setActiveTab] = useState<PanelTab>(
     initialView === 'conversations' ? PanelTab.CONVERSATIONS : PanelTab.TASKS
   );
+
+  // Keeps an unsent conversation or task draft when switching tabs.
+  const visitedTabs = useVisitedTabs(activeTab);
 
   const onTabChange = (key: string) => {
     setActiveTab(key as PanelTab);
@@ -64,14 +68,20 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
               {t('label.conversation-plural')}
             </Tabs.Item>
           </Tabs.List>
-          <Tabs.Panel id={PanelTab.TASKS}>
+          <Tabs.Panel
+            className="tw:data-inert:hidden"
+            id={PanelTab.TASKS}
+            shouldForceMount={visitedTabs.has(PanelTab.TASKS)}>
             <ActivityThreadPanelBody
               threadLink={threadLink}
               view="tasks"
               onCancel={onCancel}
             />
           </Tabs.Panel>
-          <Tabs.Panel id={PanelTab.CONVERSATIONS}>
+          <Tabs.Panel
+            className="tw:data-inert:hidden"
+            id={PanelTab.CONVERSATIONS}
+            shouldForceMount={visitedTabs.has(PanelTab.CONVERSATIONS)}>
             <ActivityThreadPanelBody
               threadLink={threadLink}
               view="conversations"

@@ -35,7 +35,7 @@ import { DataQualityPageTabs } from './DataQualityPage.interface';
 import DataQualityProvider from './DataQualityProvider';
 
 const DataQualityPage = () => {
-  const { tab: activeTab = DataQualityClassBase.getDefaultActiveTab() } =
+  const { tab: routeTab = DataQualityClassBase.getDefaultActiveTab() } =
     useParams<{ tab?: DataQualityPageTabs }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -108,6 +108,14 @@ const DataQualityPage = () => {
       };
     });
   }, []);
+
+  // A stale or unknown route tab falls back to a rendered tab; the toolbar must
+  // follow the same tab as the panel.
+  const activeTab = getRenderedActiveTab(
+    menuItems,
+    routeTab,
+    DataQualityClassBase.getDefaultActiveTab()
+  );
 
   const exportDataQualityDashboardButton = useMemo(
     () => DataQualityClassBase.getExportDataQualityDashboardButton(activeTab),
@@ -217,11 +225,7 @@ const DataQualityPage = () => {
         <Tabs
           className="tw:gap-3"
           data-testid="tabs"
-          selectedKey={getRenderedActiveTab(
-            menuItems,
-            activeTab,
-            DataQualityClassBase.getDefaultActiveTab()
-          )}
+          selectedKey={activeTab}
           onSelectionChange={(key) => handleTabChange(String(key))}>
           <Tabs.List size="sm" type="underline" variant="card">
             {menuItems.map(({ key, label }) => (

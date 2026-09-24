@@ -108,6 +108,7 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
+import { useVisitedTabs } from '../../hooks/useVisitedTabs';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getApiCollections } from '../../rest/apiCollectionsAPI';
 import {
@@ -2103,6 +2104,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [serviceDetails.serviceType]
   );
 
+  const renderedActiveTab = getRenderedActiveTab(tabs, activeTab);
+  // Keeps drafts in visited tabs, e.g. unsaved service attributes on the connection tab.
+  const visitedTabs = useVisitedTabs(renderedActiveTab);
+
   if (isLoading) {
     return <PageLoader />;
   }
@@ -2158,7 +2163,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           <Tabs
             className="tw:gap-3"
             data-testid="tabs"
-            selectedKey={getRenderedActiveTab(tabs, activeTab)}
+            selectedKey={renderedActiveTab}
             onSelectionChange={(key) => activeTabHandler(String(key))}>
             <Tabs.List size="sm" type="underline" variant="card">
               {tabs.map(({ key, label }) => (
@@ -2168,7 +2173,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
               ))}
             </Tabs.List>
             {tabs.map(({ key, children }) => (
-              <Tabs.Panel id={key} key={key}>
+              <Tabs.Panel
+                className="tw:data-inert:hidden"
+                id={key}
+                key={key}
+                shouldForceMount={visitedTabs.has(key)}>
                 {children}
               </Tabs.Panel>
             ))}

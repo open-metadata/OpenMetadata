@@ -37,6 +37,7 @@ import {
   TermsOfUse,
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
+import { useVisitedTabs } from '../../../hooks/useVisitedTabs';
 import { createContract, updateContract } from '../../../rest/contractAPI';
 import {
   getContractTabLabel,
@@ -203,16 +204,8 @@ const AddDataContract: React.FC<{
   );
 
   // Each form tab seeds itself from `initialValues` on mount, so a remount would
-  // drop in-progress edits. Keep every visited tab mounted (antd's default).
-  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(
-    () => new Set([activeTab])
-  );
-
-  useEffect(() => {
-    setVisitedTabs((prev) =>
-      prev.has(activeTab) ? prev : new Set(prev).add(activeTab)
-    );
-  }, [activeTab]);
+  // drop in-progress edits.
+  const visitedTabs = useVisitedTabs(activeTab);
 
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key);
