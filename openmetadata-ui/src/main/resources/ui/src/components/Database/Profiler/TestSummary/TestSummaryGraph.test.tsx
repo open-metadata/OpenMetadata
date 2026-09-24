@@ -25,6 +25,7 @@ import { Task } from '../../../../generated/entity/tasks/task';
 import { getTaskById } from '../../../../rest/tasksAPI';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
+import { Line } from 'recharts';
 import TestSummaryGraph from './TestSummaryGraph';
 import { DOT_OUTLINE } from './TestSummaryGraph.constants';
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
@@ -515,6 +516,24 @@ describe('TestSummaryGraph', () => {
     render(<TestSummaryGraph {...mockProps} />);
 
     expect(screen.queryByTestId('series-area')).not.toBeInTheDocument();
+  });
+
+  // A run with no value leaves an empty row in the series, which would break
+  // the line there. The series bridges it; the placement series, which only
+  // hold those runs, must not, or they would draw a path between them.
+  it('should bridge the series over runs that produced no value', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    const lineProps = (Line as unknown as jest.Mock).mock.calls.map(
+      ([props]) => props
+    );
+
+    expect(lineProps.find((props) => props.dataKey === 'min')).toMatchObject({
+      connectNulls: true,
+    });
+    expect(
+      lineProps.find((props) => props.dataKey === 'abortedValue')
+    ).not.toMatchObject({ connectNulls: true });
   });
 
   it('should publish the clicked run to the store', () => {

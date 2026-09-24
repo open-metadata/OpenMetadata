@@ -87,6 +87,7 @@ import {
   DOT_OUTLINE,
   EXPECTATION_LABEL_HALO,
   PLOT_BACKGROUND,
+  PLOT_BACKGROUND_OPACITY,
   SELECTED_DOT_EDGE_PADDING,
   SELECTED_DOT_HALO,
   STATUS_DOT_RADIUS,
@@ -636,12 +637,14 @@ function TestSummaryGraph({
               // line clear. Only a single series gets it; under several they
               // would overlap and the shading would stop meaning anything.
               <Area
+                connectNulls
                 activeDot={false}
                 data-testid="series-area"
                 dataKey={info.label}
                 dot={false}
                 fill={PLOT_BACKGROUND}
-                fillOpacity={1}
+                // Translucent, as in the mock, so the grid reads through it.
+                fillOpacity={PLOT_BACKGROUND_OPACITY}
                 isAnimationActive={false}
                 key={`${info.label}-area`}
                 legendType="none"
@@ -650,7 +653,11 @@ function TestSummaryGraph({
               />
             ))}
           {chartData?.information?.map((info) => (
+            // An aborted or queued run holds no value here, which would break
+            // the line at it. It is bridged instead: the run keeps its own
+            // point, and the line does not dive to a value it never produced.
             <Line
+              connectNulls
               activeDot={false}
               dataKey={info.label}
               dot={renderStatusDot}

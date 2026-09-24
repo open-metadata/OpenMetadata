@@ -25,6 +25,9 @@ export const STATUS_DOT_RING_WIDTH = 2;
 // Surface colour rather than white, so the outline follows dark mode.
 export const DOT_OUTLINE = 'var(--om-color-bg-primary)';
 export const PLOT_BACKGROUND = 'var(--om-color-bg-brand)';
+// Sampled against the mock: 0.7 over the surface lands within two points of
+// its wash on every channel, and leaves the grid visible through it.
+export const PLOT_BACKGROUND_OPACITY = 0.7;
 
 export const SELECTED_DOT_HALO = { spread: 4, opacity: 0.2 } as const;
 
