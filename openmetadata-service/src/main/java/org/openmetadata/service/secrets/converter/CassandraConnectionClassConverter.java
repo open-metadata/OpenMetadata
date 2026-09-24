@@ -14,6 +14,7 @@
 package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
+import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.services.connections.database.CassandraConnection;
 import org.openmetadata.schema.services.connections.database.cassandra.CloudConfig;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
@@ -27,6 +28,8 @@ public class CassandraConnectionClassConverter extends ClassConverter {
   private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
       List.of(basicAuth.class, CloudConfig.class);
 
+  private static final List<Class<?>> SSL_SOURCE_CLASSES = List.of(ValidateSSLClientConfig.class);
+
   public CassandraConnectionClassConverter() {
     super(CassandraConnection.class);
   }
@@ -38,6 +41,8 @@ public class CassandraConnectionClassConverter extends ClassConverter {
 
     tryToConvert(cassandraConnection.getAuthType(), CONFIG_SOURCE_CLASSES)
         .ifPresent(cassandraConnection::setAuthType);
+
+    convertProperty(cassandraConnection, "sslConfig", SSL_SOURCE_CLASSES);
 
     return cassandraConnection;
   }
