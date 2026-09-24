@@ -186,6 +186,7 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
   return (
     <DomainSelectableList
       hasPermission
+      className={variant === 'rail' ? undefined : 'tw:w-full'}
       popoverProps={{
         open: isOpen,
         placement: variant === 'rail' ? 'topLeft' : 'topRight',

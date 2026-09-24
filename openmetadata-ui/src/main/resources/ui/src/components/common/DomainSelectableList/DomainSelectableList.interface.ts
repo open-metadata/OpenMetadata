@@ -40,5 +40,8 @@ export interface DomainSelectableListProps {
   wrapInButton?: boolean;
   overlayClassName?: string;
   isClearable?: boolean;
+  /** Applied to the ui-core TreeSelect trigger wrapper — e.g. `tw:w-full` to
+   * let a full-width custom trigger fill its container. */
+  className?: string;
   'data-testid'?: string;
 }

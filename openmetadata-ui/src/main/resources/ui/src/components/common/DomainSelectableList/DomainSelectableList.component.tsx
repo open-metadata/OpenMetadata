@@ -41,6 +41,7 @@ const DomainSelectableList = ({
   selectedDomain,
   showAllDomains,
   isClearable,
+  className,
   'data-testid': dataTestId = 'domain-selectable-tree',
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
@@ -77,6 +78,7 @@ const DomainSelectableList = ({
       // so any trigger reliably opens the picker.
       return (
         <span
+          className="tw:contents"
           role="presentation"
           onClickCapture={(e: MouseEvent<HTMLSpanElement>) => {
             if (disabled) {
@@ -94,6 +96,7 @@ const DomainSelectableList = ({
 
   return (
     <DomainSelect
+      className={className}
       data-testid={dataTestId}
       disabled={disabled}
       hasPermission={hasPermission}
