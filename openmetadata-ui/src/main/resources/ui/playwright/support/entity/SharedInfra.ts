@@ -110,15 +110,25 @@ export class SharedInfra {
   //     workers hit these directly and skip every network call.
   private static _databaseHierarchyData: DatabaseHierarchy | null = null;
   private static _messagingServiceData: ResponseDataType | null = null;
-  private static _dashboardServiceData: ResponseDataType | null = null;
+  // Keyed slots (dashboardService, driveService, driveDirectory,
+  // driveSpreadsheet): LineageFilters iterates depth-2 entities and asserts
+  // "only THIS entity shows for its service" — but Dashboard+DataModel share
+  // one dashboardService and Directory/File/Spreadsheet/Worksheet share one
+  // driveService when everyone uses the same slot. Passing a per-entity key
+  // gives each its own umbrella service without leaving shared mode; callers
+  // that omit the key stay on 'default' and share as before.
+  private static _dashboardServiceData: Map<string, ResponseDataType> =
+    new Map();
   private static _mlmodelServiceData: ResponseDataType | null = null;
   private static _pipelineServiceData: ResponseDataType | null = null;
   private static _searchIndexServiceData: ResponseDataType | null = null;
   private static _storageServiceData: ResponseDataType | null = null;
   private static _apiCollectionData: ApiCollectionHierarchy | null = null;
-  private static _driveServiceData: ResponseDataType | null = null;
-  private static _driveDirectoryData: DriveDirectoryHierarchy | null = null;
-  private static _driveSpreadsheetData: DriveSpreadsheetHierarchy | null = null;
+  private static _driveServiceData: Map<string, ResponseDataType> = new Map();
+  private static _driveDirectoryData: Map<string, DriveDirectoryHierarchy> =
+    new Map();
+  private static _driveSpreadsheetData: Map<string, DriveSpreadsheetHierarchy> =
+    new Map();
 
   // --- In-flight promise slots. Only meaningful inside the setup process
   //     when two concurrent callers arrive before the first has resolved.
@@ -126,17 +136,23 @@ export class SharedInfra {
   //     already populated the *Data slots.
   private static _databaseHierarchy: Promise<DatabaseHierarchy> | null = null;
   private static _messagingService: Promise<ResponseDataType> | null = null;
-  private static _dashboardService: Promise<ResponseDataType> | null = null;
+  private static _dashboardService: Map<string, Promise<ResponseDataType>> =
+    new Map();
   private static _mlmodelService: Promise<ResponseDataType> | null = null;
   private static _pipelineService: Promise<ResponseDataType> | null = null;
   private static _searchIndexService: Promise<ResponseDataType> | null = null;
   private static _storageService: Promise<ResponseDataType> | null = null;
   private static _apiCollection: Promise<ApiCollectionHierarchy> | null = null;
-  private static _driveService: Promise<ResponseDataType> | null = null;
-  private static _driveDirectory: Promise<DriveDirectoryHierarchy> | null =
-    null;
-  private static _driveSpreadsheet: Promise<DriveSpreadsheetHierarchy> | null =
-    null;
+  private static _driveService: Map<string, Promise<ResponseDataType>> =
+    new Map();
+  private static _driveDirectory: Map<
+    string,
+    Promise<DriveDirectoryHierarchy>
+  > = new Map();
+  private static _driveSpreadsheet: Map<
+    string,
+    Promise<DriveSpreadsheetHierarchy>
+  > = new Map();
 
   /* ---------- database chain: service → database → schema ---------- */
 
@@ -197,20 +213,24 @@ export class SharedInfra {
   }
 
   static async dashboardService(
-    apiContext: APIRequestContext
+    apiContext: APIRequestContext,
+    key = 'default'
   ): Promise<ResponseDataType> {
-    if (this._dashboardServiceData) {
-      return this._dashboardServiceData;
+    const cached = this._dashboardServiceData.get(key);
+    if (cached) {
+      return cached;
     }
-    if (!this._dashboardService) {
+    let inFlight = this._dashboardService.get(key);
+    if (!inFlight) {
       // DashboardServiceClass.create() returns { service, children }; the
       // rest of SharedInfra normalises on the service object alone.
-      this._dashboardService = new DashboardServiceClass()
+      inFlight = new DashboardServiceClass()
         .create(apiContext)
         .then(({ service }) => service);
+      this._dashboardService.set(key, inFlight);
     }
-    const data = await this._dashboardService;
-    this._dashboardServiceData = data;
+    const data = await inFlight;
+    this._dashboardServiceData.set(key, data);
 
     return data;
   }
@@ -278,16 +298,20 @@ export class SharedInfra {
   }
 
   static async driveService(
-    apiContext: APIRequestContext
+    apiContext: APIRequestContext,
+    key = 'default'
   ): Promise<ResponseDataType> {
-    if (this._driveServiceData) {
-      return this._driveServiceData;
+    const cached = this._driveServiceData.get(key);
+    if (cached) {
+      return cached;
     }
-    if (!this._driveService) {
-      this._driveService = new DriveServiceClass().create(apiContext);
+    let inFlight = this._driveService.get(key);
+    if (!inFlight) {
+      inFlight = new DriveServiceClass().create(apiContext);
+      this._driveService.set(key, inFlight);
     }
-    const data = await this._driveService;
-    this._driveServiceData = data;
+    const data = await inFlight;
+    this._driveServiceData.set(key, data);
 
     return data;
   }
@@ -330,24 +354,31 @@ export class SharedInfra {
   }
 
   static async driveDirectory(
-    apiContext: APIRequestContext
+    apiContext: APIRequestContext,
+    key = 'default'
   ): Promise<DriveDirectoryHierarchy> {
-    if (this._driveDirectoryData) {
-      return this._driveDirectoryData;
+    const cached = this._driveDirectoryData.get(key);
+    if (cached) {
+      return cached;
     }
-    if (!this._driveDirectory) {
-      this._driveDirectory = this.buildDriveDirectory(apiContext);
+    let inFlight = this._driveDirectory.get(key);
+    if (!inFlight) {
+      inFlight = this.buildDriveDirectory(apiContext, key);
+      this._driveDirectory.set(key, inFlight);
     }
-    const data = await this._driveDirectory;
-    this._driveDirectoryData = data;
+    const data = await inFlight;
+    this._driveDirectoryData.set(key, data);
 
     return data;
   }
 
   private static async buildDriveDirectory(
-    apiContext: APIRequestContext
+    apiContext: APIRequestContext,
+    key: string
   ): Promise<DriveDirectoryHierarchy> {
-    const service = await this.driveService(apiContext);
+    // Passes `key` through so the driveService this Directory sits in is
+    // itself the caller's own slot — Directory and File must not collide.
+    const service = await this.driveService(apiContext, key);
     const directoryName = `pw-shared-directory-${uuid()}`;
 
     const directory = await createOrFetch<ResponseDataType>(apiContext, {
@@ -361,27 +392,34 @@ export class SharedInfra {
   }
 
   static async driveSpreadsheet(
-    apiContext: APIRequestContext
+    apiContext: APIRequestContext,
+    key = 'default'
   ): Promise<DriveSpreadsheetHierarchy> {
-    if (this._driveSpreadsheetData) {
-      return this._driveSpreadsheetData;
+    const cached = this._driveSpreadsheetData.get(key);
+    if (cached) {
+      return cached;
     }
-    if (!this._driveSpreadsheet) {
-      this._driveSpreadsheet = this.buildDriveSpreadsheet(apiContext);
+    let inFlight = this._driveSpreadsheet.get(key);
+    if (!inFlight) {
+      inFlight = this.buildDriveSpreadsheet(apiContext, key);
+      this._driveSpreadsheet.set(key, inFlight);
     }
-    const data = await this._driveSpreadsheet;
-    this._driveSpreadsheetData = data;
+    const data = await inFlight;
+    this._driveSpreadsheetData.set(key, data);
 
     return data;
   }
 
   private static async buildDriveSpreadsheet(
-    apiContext: APIRequestContext
+    apiContext: APIRequestContext,
+    key: string
   ): Promise<DriveSpreadsheetHierarchy> {
     // Spreadsheet is a direct child of driveService (not under a directory)
     // — see WorksheetClass.create's fqnSegments: [service, spreadsheet]
-    // (2 segments) whereas File uses [service, directory, file] (3).
-    const service = await this.driveService(apiContext);
+    // (2 segments) whereas File uses [service, directory, file] (3). Key
+    // passes through so Spreadsheet and Worksheet each get their own drive
+    // service.
+    const service = await this.driveService(apiContext, key);
     const spreadsheetName = `pw-shared-spreadsheet-${uuid()}`;
 
     const spreadsheet = await createOrFetch<ResponseDataType>(apiContext, {
@@ -408,15 +446,15 @@ export class SharedInfra {
     const payload = {
       databaseHierarchy: this._databaseHierarchyData,
       messagingService: this._messagingServiceData,
-      dashboardService: this._dashboardServiceData,
+      dashboardService: Object.fromEntries(this._dashboardServiceData),
       mlmodelService: this._mlmodelServiceData,
       pipelineService: this._pipelineServiceData,
       searchIndexService: this._searchIndexServiceData,
       storageService: this._storageServiceData,
       apiCollection: this._apiCollectionData,
-      driveService: this._driveServiceData,
-      driveDirectory: this._driveDirectoryData,
-      driveSpreadsheet: this._driveSpreadsheetData,
+      driveService: Object.fromEntries(this._driveServiceData),
+      driveDirectory: Object.fromEntries(this._driveDirectoryData),
+      driveSpreadsheet: Object.fromEntries(this._driveSpreadsheetData),
     };
 
     const filePath = outputFilePath();
@@ -456,7 +494,11 @@ export class SharedInfra {
         this._messagingServiceData = data.messagingService as ResponseDataType;
       }
       if (data.dashboardService) {
-        this._dashboardServiceData = data.dashboardService as ResponseDataType;
+        this._dashboardServiceData = new Map(
+          Object.entries(
+            data.dashboardService as Record<string, ResponseDataType>
+          )
+        );
       }
       if (data.mlmodelService) {
         this._mlmodelServiceData = data.mlmodelService as ResponseDataType;
@@ -475,15 +517,23 @@ export class SharedInfra {
         this._apiCollectionData = data.apiCollection as ApiCollectionHierarchy;
       }
       if (data.driveService) {
-        this._driveServiceData = data.driveService as ResponseDataType;
+        this._driveServiceData = new Map(
+          Object.entries(data.driveService as Record<string, ResponseDataType>)
+        );
       }
       if (data.driveDirectory) {
-        this._driveDirectoryData =
-          data.driveDirectory as DriveDirectoryHierarchy;
+        this._driveDirectoryData = new Map(
+          Object.entries(
+            data.driveDirectory as Record<string, DriveDirectoryHierarchy>
+          )
+        );
       }
       if (data.driveSpreadsheet) {
-        this._driveSpreadsheetData =
-          data.driveSpreadsheet as DriveSpreadsheetHierarchy;
+        this._driveSpreadsheetData = new Map(
+          Object.entries(
+            data.driveSpreadsheet as Record<string, DriveSpreadsheetHierarchy>
+          )
+        );
       }
     } catch {
       // Corrupt or partially-written file — treat as absent. The setup
@@ -510,13 +560,23 @@ export class SharedInfra {
     > = [
       ['databaseServices', this._databaseHierarchyData?.service],
       ['messagingServices', this._messagingServiceData],
-      ['dashboardServices', this._dashboardServiceData],
+      ...Array.from(this._dashboardServiceData.values()).map(
+        (svc): [keyof typeof SERVICE_DELETE_PATHS, ResponseDataType] => [
+          'dashboardServices',
+          svc,
+        ]
+      ),
       ['mlmodelServices', this._mlmodelServiceData],
       ['pipelineServices', this._pipelineServiceData],
       ['searchServices', this._searchIndexServiceData],
       ['storageServices', this._storageServiceData],
       ['apiServices', this._apiCollectionData?.service],
-      ['driveServices', this._driveServiceData],
+      ...Array.from(this._driveServiceData.values()).map(
+        (svc): [keyof typeof SERVICE_DELETE_PATHS, ResponseDataType] => [
+          'driveServices',
+          svc,
+        ]
+      ),
     ];
 
     await Promise.allSettled(
@@ -537,27 +597,27 @@ export class SharedInfra {
     // Clear in-memory state (both data and any in-flight promises).
     this._databaseHierarchyData = null;
     this._messagingServiceData = null;
-    this._dashboardServiceData = null;
+    this._dashboardServiceData.clear();
     this._mlmodelServiceData = null;
     this._pipelineServiceData = null;
     this._searchIndexServiceData = null;
     this._storageServiceData = null;
     this._apiCollectionData = null;
-    this._driveServiceData = null;
-    this._driveDirectoryData = null;
-    this._driveSpreadsheetData = null;
+    this._driveServiceData.clear();
+    this._driveDirectoryData.clear();
+    this._driveSpreadsheetData.clear();
 
     this._databaseHierarchy = null;
     this._messagingService = null;
-    this._dashboardService = null;
+    this._dashboardService.clear();
     this._mlmodelService = null;
     this._pipelineService = null;
     this._searchIndexService = null;
     this._storageService = null;
     this._apiCollection = null;
-    this._driveService = null;
-    this._driveDirectory = null;
-    this._driveSpreadsheet = null;
+    this._driveService.clear();
+    this._driveDirectory.clear();
+    this._driveSpreadsheet.clear();
 
     // Remove the persisted file too so a subsequent run of the setup
     // project starts fresh instead of adopting orphaned FQNs.

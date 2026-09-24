@@ -33,6 +33,7 @@ import { SharedInfra } from './SharedInfra';
 /** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false; the entity routes its parent service/chain through SharedInfra. Pass true only for tests that navigate a per-fixture service page, exercise service-level cascade, or otherwise assert on a unique service name. */
 export type WorksheetClassOptions = {
   createFullHierarchy?: boolean;
+  sharedInfraKey?: string;
 };
 
 export class WorksheetClass extends EntityClass {
@@ -81,6 +82,7 @@ export class WorksheetClass extends EntityClass {
   entityResponseData: Worksheet = {} as Worksheet;
   spreadsheetResponseData: ResponseDataType = {} as ResponseDataType;
   createFullHierarchy: boolean;
+  sharedInfraKey: string | undefined;
 
   constructor(name?: string, options?: WorksheetClassOptions) {
     super(EntityTypeEndpoint.Worksheet);
@@ -89,6 +91,7 @@ export class WorksheetClass extends EntityClass {
     this.serviceCategory = SERVICE_TYPE.DriveService;
     this.serviceType = ServiceTypes.DRIVE_SERVICES;
     this.createFullHierarchy = options?.createFullHierarchy ?? false;
+    this.sharedInfraKey = options?.sharedInfraKey;
 
     this.children = [
       {
@@ -162,7 +165,10 @@ export class WorksheetClass extends EntityClass {
       });
     } else {
       // Shared driveService + shared spreadsheet — only the worksheet is new.
-      const hierarchy = await SharedInfra.driveSpreadsheet(apiContext);
+      const hierarchy = await SharedInfra.driveSpreadsheet(
+        apiContext,
+        this.sharedInfraKey
+      );
       this.serviceResponseData = hierarchy.service;
       this.spreadsheetResponseData = hierarchy.spreadsheet;
       this.service.name = hierarchy.service.name;

@@ -34,6 +34,7 @@ import { SharedInfra } from './SharedInfra';
 /** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false; the entity routes its parent service/chain through SharedInfra. Pass true only for tests that navigate a per-fixture service page, exercise service-level cascade, or otherwise assert on a unique service name. */
 export type FileClassOptions = {
   createFullHierarchy?: boolean;
+  sharedInfraKey?: string;
 };
 
 export class FileClass extends EntityClass {
@@ -82,6 +83,7 @@ export class FileClass extends EntityClass {
   directoryResponseData: ResponseDataType = {} as ResponseDataType;
   entityResponseData: File = {} as File;
   createFullHierarchy: boolean;
+  sharedInfraKey: string | undefined;
 
   constructor(name?: string, options?: FileClassOptions) {
     super(EntityTypeEndpoint.File);
@@ -90,6 +92,7 @@ export class FileClass extends EntityClass {
     this.serviceCategory = SERVICE_TYPE.DriveService;
     this.serviceType = ServiceTypes.DRIVE_SERVICES;
     this.createFullHierarchy = options?.createFullHierarchy ?? false;
+    this.sharedInfraKey = options?.sharedInfraKey;
     this.childrenSelectorId = `${this.service.name}.${this.fileName}`;
     this.children = [
       {
@@ -158,7 +161,10 @@ export class FileClass extends EntityClass {
       });
     } else {
       // Shared driveService + shared directory. Only the file is new.
-      const hierarchy = await SharedInfra.driveDirectory(apiContext);
+      const hierarchy = await SharedInfra.driveDirectory(
+        apiContext,
+        this.sharedInfraKey
+      );
       this.serviceResponseData = hierarchy.service;
       this.directoryResponseData = hierarchy.directory;
       this.service.name = hierarchy.service.name;

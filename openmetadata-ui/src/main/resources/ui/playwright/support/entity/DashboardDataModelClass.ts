@@ -34,6 +34,7 @@ import { SharedInfra } from './SharedInfra';
 /** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false; the entity routes its parent service/chain through SharedInfra. Pass true only for tests that navigate a per-fixture service page, exercise service-level cascade, or otherwise assert on a unique service name. */
 export type DashboardDataModelClassOptions = {
   createFullHierarchy?: boolean;
+  sharedInfraKey?: string;
 };
 
 export interface DashboardDataModel extends ResponseDataWithServiceType {
@@ -86,10 +87,12 @@ export class DashboardDataModelClass extends EntityClass {
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
   entityResponseData: DashboardDataModel = {} as DashboardDataModel;
   createFullHierarchy: boolean;
+  sharedInfraKey: string | undefined;
 
   constructor(name?: string, options?: DashboardDataModelClassOptions) {
     super(EntityTypeEndpoint.DataModel);
     this.createFullHierarchy = options?.createFullHierarchy ?? false;
+    this.sharedInfraKey = options?.sharedInfraKey;
 
     this.dashboardDataModelName = `pw-dashboard-data-model-${uuid()}`;
     this.projectName = `pw-project-${uuid()}`;
@@ -179,7 +182,10 @@ export class DashboardDataModelClass extends EntityClass {
         data: this.service,
       });
     } else {
-      this.serviceResponseData = await SharedInfra.dashboardService(apiContext);
+      this.serviceResponseData = await SharedInfra.dashboardService(
+        apiContext,
+        this.sharedInfraKey
+      );
       this.service = { ...this.service, name: this.serviceResponseData.name };
       this.entity.service = this.serviceResponseData.name;
     }

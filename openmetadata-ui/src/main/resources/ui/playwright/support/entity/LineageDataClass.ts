@@ -118,6 +118,9 @@ export class LineageDataClass {
     undefined,
     {
       createFullHierarchy: false,
+      // Own SharedInfra slot so filter-by-dashboardService selects only
+      // this Dashboard, not the sibling DashboardDataModel.
+      sharedInfraKey: 'lineage-dashboard',
     }
   );
   static readonly mlmodel = new MlModelClass(undefined, {
@@ -134,20 +137,28 @@ export class LineageDataClass {
   });
   static readonly dataModel = new DashboardDataModelClass(undefined, {
     createFullHierarchy: false,
+    sharedInfraKey: 'lineage-dataModel',
   });
   static readonly apiEndpoint = new ApiEndpointClass();
   static readonly metric = new MetricClass();
+  // Each drive-family entity gets its own driveService slot so the
+  // per-entity filter-by-service test in LineageFilters isolates
+  // Directory / File / Spreadsheet / Worksheet from one another.
   static readonly directory = new DirectoryClass(undefined, {
     createFullHierarchy: false,
+    sharedInfraKey: 'lineage-directory',
   });
   static readonly file = new FileClass(undefined, {
     createFullHierarchy: false,
+    sharedInfraKey: 'lineage-file',
   });
   static readonly spreadsheet = new SpreadsheetClass(undefined, {
     createFullHierarchy: false,
+    sharedInfraKey: 'lineage-spreadsheet',
   });
   static readonly worksheet = new WorksheetClass(undefined, {
     createFullHierarchy: false,
+    sharedInfraKey: 'lineage-worksheet',
   });
 
   /** Order-preserving list matching the spec's iteration contract. */
