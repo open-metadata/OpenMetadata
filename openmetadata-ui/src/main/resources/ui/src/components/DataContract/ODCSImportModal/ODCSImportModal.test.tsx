@@ -83,6 +83,35 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       [key: string]: unknown;
     }) => <button onClick={onClick} {...rest} />
   ),
+  Checkbox: jest.fn(
+    ({
+      hint,
+      isDisabled,
+      isSelected,
+      label,
+      onChange,
+      ...rest
+    }: {
+      hint?: React.ReactNode;
+      isDisabled?: boolean;
+      isSelected?: boolean;
+      label?: React.ReactNode;
+      onChange?: (selected: boolean) => void;
+      [key: string]: unknown;
+    }) => (
+      <div>
+        <input
+          aria-label={String(label)}
+          checked={isSelected}
+          disabled={isDisabled}
+          type="checkbox"
+          onChange={(e) => onChange?.(e.target.checked)}
+          {...rest}
+        />
+        <span>{hint}</span>
+      </div>
+    )
+  ),
   Card: Object.assign(
     jest.fn(
       ({
@@ -317,6 +346,22 @@ jest.mock('../../../rest/contractAPI', () => ({
   validateODCSYaml: jest.fn(),
 }));
 
+jest.mock(
+  '../../data-contract/ODCSImportReport/ODCSImportReport',
+  () =>
+    function ODCSImportReportStub() {
+      return <div data-testid="odcs-import-report" />;
+    }
+);
+
+jest.mock(
+  '../../data-contract/ODCSImportSummary/ODCSImportSummary',
+  () =>
+    function ODCSImportSummaryStub() {
+      return <div data-testid="odcs-import-summary" />;
+    }
+);
+
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
@@ -411,6 +456,9 @@ jest.mock('react-i18next', () => ({
         'label.contract-validation': 'Contract Validation',
         'label.validation-failed': 'Validation Failed',
         'label.error-plural': 'Errors',
+        'label.import-with-warnings': 'Import with Warnings',
+        'label.create-test-cases-from-quality-rules':
+          'Create Test Cases from Quality Rules',
       };
 
       return translations[key] || key;
@@ -1536,7 +1584,8 @@ describe('ContractImportModal', () => {
           expect.any(String),
           'table-1',
           'table',
-          'users'
+          'users',
+          true
         );
       });
     });
@@ -1623,7 +1672,8 @@ describe('ContractImportModal', () => {
           expect.any(String),
           'table-1',
           'table',
-          'orders'
+          'orders',
+          true
         );
       });
     });
@@ -1674,7 +1724,8 @@ describe('ContractImportModal', () => {
           validODCSYaml,
           'table-1',
           'table',
-          'users'
+          'users',
+          true
         );
       });
     });
@@ -1724,7 +1775,8 @@ describe('ContractImportModal', () => {
           'table-1',
           'table',
           'merge',
-          'users'
+          'users',
+          true
         );
         expect(deleteContractById).not.toHaveBeenCalled();
       });
@@ -1778,7 +1830,8 @@ describe('ContractImportModal', () => {
           'table-1',
           'table',
           'replace',
-          'users'
+          'users',
+          true
         );
       });
     });
@@ -2437,6 +2490,181 @@ version: 1.0`;
         expect(screen.getByText('Security')).toBeInTheDocument();
         expect(screen.getByText('Semantics')).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('ODCS Import Report', () => {
+    const reportWithWarnings = {
+      odcsVersion: 'v3.1.0',
+      canImport: true,
+      canCreateTestCases: true,
+      issues: [
+        {
+          severity: 'warning',
+          category: 'schema',
+          field: 'businessName',
+          message: '`businessName` is not imported.',
+        },
+      ],
+      qualityRules: [
+        {
+          name: 'Row count range',
+          outcome: 'testCase',
+          testDefinition: 'tableRowCountToBeBetween',
+          testCaseName: 'odcs_row_count_range',
+        },
+      ],
+    };
+
+    const uploadODCSFile = async () => {
+      const file = new File([validODCSYaml], 'contract.yaml', {
+        type: 'application/x-yaml',
+      });
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+    };
+
+    const renderModal = () =>
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          existingContract={null}
+          format="odcs"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+    it('shows the import report and says the import comes with warnings', async () => {
+      (validateODCSYaml as jest.Mock).mockResolvedValue({
+        valid: true,
+        odcsImportReport: reportWithWarnings,
+      });
+
+      renderModal();
+      await uploadODCSFile();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('odcs-import-summary')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('odcs-import-report')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Import with Warnings' })
+      ).toBeEnabled();
+    });
+
+    it('turning test case creation off re-validates and imports without test cases', async () => {
+      (validateODCSYaml as jest.Mock).mockResolvedValue({
+        valid: true,
+        odcsImportReport: reportWithWarnings,
+      });
+      (importContractFromODCSYaml as jest.Mock).mockResolvedValue(
+        mockImportedContract
+      );
+
+      renderModal();
+      await uploadODCSFile();
+
+      const checkbox = await screen.findByTestId('create-test-cases-checkbox');
+
+      await act(async () => {
+        fireEvent.click(checkbox);
+      });
+
+      await waitFor(() => {
+        expect(validateODCSYaml).toHaveBeenLastCalledWith(
+          validODCSYaml,
+          'table-1',
+          'table',
+          'users',
+          false
+        );
+      });
+
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Import with Warnings' })
+        );
+      });
+
+      await waitFor(() => {
+        expect(importContractFromODCSYaml).toHaveBeenCalledWith(
+          validODCSYaml,
+          'table-1',
+          'table',
+          'users',
+          false
+        );
+      });
+    });
+
+    it('does not ask for test cases the user cannot create', async () => {
+      (validateODCSYaml as jest.Mock).mockResolvedValue({
+        valid: true,
+        odcsImportReport: { ...reportWithWarnings, canCreateTestCases: false },
+      });
+      (importContractFromODCSYaml as jest.Mock).mockResolvedValue(
+        mockImportedContract
+      );
+
+      renderModal();
+      await uploadODCSFile();
+
+      const checkbox = await screen.findByTestId('create-test-cases-checkbox');
+
+      expect(checkbox).toBeDisabled();
+      expect(checkbox).not.toBeChecked();
+
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Import with Warnings' })
+        );
+      });
+
+      await waitFor(() => {
+        expect(importContractFromODCSYaml).toHaveBeenCalledWith(
+          validODCSYaml,
+          'table-1',
+          'table',
+          'users',
+          false
+        );
+      });
+    });
+
+    it('disables the import when the report has blocking issues', async () => {
+      (validateODCSYaml as jest.Mock).mockResolvedValue({
+        valid: false,
+        odcsImportReport: {
+          ...reportWithWarnings,
+          canImport: false,
+          issues: [
+            {
+              severity: 'blocking',
+              category: 'document',
+              field: 'apiVersion',
+              message: 'ODCS v9.0.0 is not supported.',
+            },
+          ],
+        },
+      });
+
+      renderModal();
+      await uploadODCSFile();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('odcs-import-summary')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('import-button')).toBeDisabled();
     });
   });
 });
