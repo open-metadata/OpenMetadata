@@ -404,9 +404,9 @@ export const editDomain = async (page: Page, domainName: string) => {
     state: 'visible',
   });
   await page.locator('[data-testid="add-domain"]').click();
-  const tree = page.getByTestId('domain-selectable-tree');
+  const search = page.getByTestId('domain-selectable-tree-search');
 
-  await tree.waitFor({ state: 'visible' });
+  await search.waitFor({ state: 'visible' });
 
   const searchDomainPromise = page.waitForResponse(
     (response) =>
@@ -414,16 +414,13 @@ export const editDomain = async (page: Page, domainName: string) => {
       response.url().includes(`q=`)
   );
 
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domainName);
+  await search.fill(domainName);
 
   const searchDomainResponse = await searchDomainPromise;
   expect(searchDomainResponse.status()).toBe(200);
 
   const tagSelector = page
-    .getByTestId('domain-selectable-tree')
+    .getByTestId('domain-selectable-tree-popover')
     .getByText(domainName);
   await tagSelector.waitFor({ state: 'visible' });
 
@@ -600,8 +597,8 @@ export const removeDomainFromPanel = async (page: Page, domainName: string) => {
   // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
   await page.getByTestId('add-domain').click({ force: true });
 
-  const domainTree = page.getByTestId('domain-selectable-tree');
-  await domainTree.waitFor({ state: 'visible' });
+  const domainSearch = page.getByTestId('domain-selectable-tree-search');
+  await domainSearch.waitFor({ state: 'visible' });
 
   const searchDomainPromise = page.waitForResponse(
     (response) =>
@@ -609,11 +606,13 @@ export const removeDomainFromPanel = async (page: Page, domainName: string) => {
       response.url().includes(`q=`)
   );
 
-  await domainTree.getByTestId('searchbar').fill(domainName);
+  await domainSearch.fill(domainName);
 
   await searchDomainPromise;
 
-  const domainItem = domainTree.getByText(domainName);
+  const domainItem = page
+    .getByTestId('domain-selectable-tree-popover')
+    .getByText(domainName);
   const patchPromise = waitForPatchResponse(page);
 
   await domainItem.click();
