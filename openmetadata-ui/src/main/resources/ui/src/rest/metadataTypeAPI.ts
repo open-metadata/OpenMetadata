@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosResponse, isAxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { Category, Type } from '../generated/entity/type';
@@ -87,6 +87,50 @@ export const updateType = async (entityTypeId: string, data: Operation[]) => {
   );
 
   return response.data;
+};
+
+const MAX_CUSTOM_PROPERTY_DELETE_ATTEMPTS = 3;
+
+/**
+ * Removes one custom property by name. JSON Patch addresses array items by
+ * index, and a type's custom properties are shared and edited concurrently, so
+ * an index taken from an older copy can point past the end (400) or at a
+ * different property (silently deleting it). The patch is therefore built from
+ * a fresh copy and guarded by a `test` op on the name: if the list shifted in
+ * between, the server rejects it and the patch is rebuilt.
+ */
+export const deleteCustomPropertyByName = async (
+  typeFQN: string,
+  propertyName: string
+): Promise<Type> => {
+  for (let attempt = 1; ; attempt++) {
+    const type = await getTypeByFQN(typeFQN);
+    const index = (type.customProperties ?? []).findIndex(
+      (property) => property.name === propertyName
+    );
+
+    if (index === -1) {
+      return type;
+    }
+
+    try {
+      return await updateType(type.id ?? '', [
+        {
+          op: 'test',
+          path: `/customProperties/${index}/name`,
+          value: propertyName,
+        },
+        { op: 'remove', path: `/customProperties/${index}` },
+      ]);
+    } catch (error) {
+      const isStaleIndex =
+        isAxiosError(error) && error.response?.status === 400;
+
+      if (!isStaleIndex || attempt >= MAX_CUSTOM_PROPERTY_DELETE_ATTEMPTS) {
+        throw error;
+      }
+    }
+  }
 };
 
 export const getFieldsForEntity = async (entityType: EntityType) => {
