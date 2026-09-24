@@ -22,6 +22,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/constant/alert.interface.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts"
       ]
     },
@@ -30,6 +31,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/constant/alert.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts"
       ]
     },
@@ -657,6 +659,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeAiPersonaLandsAtRoot.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeCrossDevice.spec.ts",
         "playwright/e2e/Features/AppMode/AppModePageSizeIsolation.spec.ts",
@@ -875,6 +878,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/domain/Domain.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/Announcements/AnnouncementEntity.spec.ts",
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/BulkImport.spec.ts",
@@ -1077,6 +1081,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/entity/DashboardClass.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
@@ -1492,6 +1497,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/entity/TableClass.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
@@ -1929,6 +1935,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
@@ -2473,6 +2480,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/user/AdminClass.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
         "playwright/e2e/Features/DataProductPersonaCustomization.spec.ts",
@@ -2494,6 +2502,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
@@ -2718,6 +2727,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
@@ -2908,6 +2918,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/alert.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Flow/NotificationAlerts.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts"
       ]
@@ -2979,6 +2990,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
@@ -3529,6 +3541,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
@@ -3974,6 +3987,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/observabilityAlert.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Flow/NotificationAlerts.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts"
       ]
@@ -4087,6 +4101,14 @@
         "playwright/e2e/Pages/SubDomainPagination.spec.ts",
         "playwright/e2e/Pages/TaskComments.spec.ts",
         "playwright/e2e/Pages/TasksUIFlow.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/profileNotificationAlert.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts"
       ]
     },
     {
@@ -4828,6 +4850,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Alerts/AlertFormSourceItem/AlertFormSourceItem.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
@@ -4851,6 +4874,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Alerts/DestinationFormItem/DestinationFormItem.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Flow/NotificationAlerts.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts"
       ]
@@ -4883,6 +4907,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Flow/NotificationAlerts.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts"
       ]
@@ -8342,6 +8367,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ContextCenterArchive.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
@@ -8387,6 +8413,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ContextCenterArchive.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
@@ -9338,7 +9365,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/AIUserMenu/AIUserMenu.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts"
       ]
     },
     {
@@ -9367,7 +9395,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/ProfilePage.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts"
       ]
     },
     {
@@ -9479,6 +9508,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/access-control/AccessControlPolicyDetail.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts"
       ]
@@ -9488,6 +9518,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/access-control/AccessControlRoleDetail.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AccessControlSettings.spec.ts"
       ]
     },
@@ -9507,6 +9538,57 @@
       "specs": [
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/notification/NotificationAlertDetail.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
+        "playwright/e2e/Features/AccessControlSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/notification/NotificationAlertsPanel.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/notification/NotificationFiltersEditor.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
+        "playwright/e2e/Flow/NotificationAlerts.spec.ts",
+        "playwright/e2e/Flow/ObservabilityAlerts.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/notification/NotificationLanding.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/notification/NotificationPanel.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/notification/NotificationSourceSelect.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts"
       ]
     },
     {
@@ -9543,8 +9625,17 @@
         "openmetadata-ui/src/main/resources/ui/src/components/observability/Alerts/AlertAiDestinationSection.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Flow/NotificationAlerts.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/Alerts/AlertAiFormFields.component.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts"
       ]
     },
     {
@@ -9627,6 +9718,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ContextCenterArchive.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
@@ -10025,6 +10117,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
@@ -10405,6 +10498,7 @@
         "openmetadata-ui/src/main/resources/ui/src/generated/entity/data/topic.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/AgentLogStreamHandover.spec.ts",
         "playwright/e2e/Features/ArticleReviewerWorkflow.spec.ts",
