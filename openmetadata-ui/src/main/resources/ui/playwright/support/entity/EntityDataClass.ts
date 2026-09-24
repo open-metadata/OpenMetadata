@@ -115,12 +115,12 @@ export class EntityDataClass {
     classification: this.classification1.data.name,
   });
   // EntityDataClass leaf fixtures must own their own service chain: they
-  // are created before `lineage-data-setup` writes the SharedInfra JSON,
-  // so a shared-mode create here would build parents that never get
-  // registered, orphaning them on teardown. table1/table2 (and every
-  // paired fixture) also need distinct services so specs that assume
-  // per-fixture isolation keep working. Opt every leaf into full
-  // hierarchy explicitly.
+  // are created in `preRequisitesForTests` before `seedLineageAndSharedInfra`
+  // populates SharedInfra in the same setup process, so a shared-mode create
+  // here would build parents that never get registered, orphaning them on
+  // teardown. table1/table2 (and every paired fixture) also need distinct
+  // services so specs that assume per-fixture isolation keep working. Opt
+  // every leaf into full hierarchy explicitly.
   static readonly table1 = new TableClass(undefined, undefined, undefined, {
     createFullHierarchy: true,
   });

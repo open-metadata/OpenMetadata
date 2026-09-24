@@ -23,8 +23,9 @@
  *
  * A fixture that opts into shared mode reads its parents from here instead
  * of creating fresh ones. The parents are created ONCE per shard by the
- * setup project (see `lineage-data.setup.ts`), then their FQNs are
- * serialised to disk. Every test worker loads the serialised data on
+ * setup project (`entity-data.setup.ts`, via the `seedLineageAndSharedInfra`
+ * helper), then their FQNs are serialised to disk. Every test worker loads
+ * the serialised data on
  * module import — so the very first `.create()` call in every worker
  * already has the shared parents in hand, with zero network cost for the
  * parent tier.
@@ -41,11 +42,11 @@
  *   Test workers only ever hit the `_*Data` fast path — no network.
  *
  * OWNERSHIP. Shared parents are teardown-owned by whichever setup/teardown
- * pairs with them (today: `lineage-data.setup.ts` creates and saves;
- * `entity-data.teardown.ts` deletes via `SharedInfra.reset()` and cleans
- * up the JSON). Individual leaf entities' `delete()` in shared mode must
- * NEVER cascade to a shared parent, or one test's cleanup orphans every
- * other test's leaves in the shard.
+ * pairs with them (today: `entity-data.setup.ts` creates and saves via
+ * `seedLineageAndSharedInfra`; `entity-data.teardown.ts` deletes via
+ * `SharedInfra.reset()` and cleans up the JSON). Individual leaf entities'
+ * `delete()` in shared mode must NEVER cascade to a shared parent, or one
+ * test's cleanup orphans every other test's leaves in the shard.
  */
 
 import { APIRequestContext } from '@playwright/test';

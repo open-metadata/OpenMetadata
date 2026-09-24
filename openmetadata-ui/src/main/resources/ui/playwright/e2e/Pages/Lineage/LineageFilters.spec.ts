@@ -80,10 +80,10 @@ const getSearchIndexForEntity = (entity: EntityClassUnion) => {
 };
 
 test.describe('Lineage Filters', () => {
-  // Entities + edges + search indexing are all created in
-  // `lineage-data.setup.ts` (a Playwright setup project) so this file's
-  // beforeAll cost has collapsed to zero. See LineageDataClass for the
-  // ordering contract (`depth1Entity` === `allEntities()[0]`).
+  // Entities + edges + search indexing are all created by
+  // `seedLineageAndSharedInfra` inside `entity-data.setup.ts`, so this
+  // file's beforeAll cost has collapsed to zero. See LineageDataClass for
+  // the ordering contract (`depth1Entity` === `allEntities()[0]`).
   //
   // ensureLoaded() defeats a module-import race: Playwright imports every
   // spec during test collection, which can run before the setup project
@@ -755,8 +755,8 @@ test.describe('Lineage Filters', () => {
 
   test.describe('Verify lineage Database service related filters', () => {
     // The 2 column-level edges root → depth1 are now created once per
-    // shard in lineage-data.setup.ts, so this describe no longer needs
-    // its own beforeAll.
+    // shard in seedLineageAndSharedInfra (entity-data.setup.ts), so this
+    // describe no longer needs its own beforeAll.
 
     test('Verify lineage database filter selection', async ({ page }) => {
       await page.locator('[aria-label="Filters"]').click();

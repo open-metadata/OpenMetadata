@@ -46,9 +46,14 @@ const hasDedicatedImportExportLane =
 const isPlannedShard = Boolean(shardPlan);
 const hasPreseededState = process.env.PW_PRESEEDED_STATE === 'true';
 const authDependencies = hasPreseededState ? [] : ['setup'];
+// SharedInfra + LineageDataClass seeding is folded into entity-data.setup.ts
+// (via seedLineageAndSharedInfra in lineage-data.helper.ts). No separate
+// lineage-data-setup project is needed; consolidating means the CI
+// fixture-builder step — which only runs entity-data-setup — captures every
+// JSON file test workers need.
 const entityDependencies = hasPreseededState
   ? []
-  : ['setup', 'entity-data-setup', 'lineage-data-setup'];
+  : ['setup', 'entity-data-setup'];
 const entityTeardown = hasPreseededState ? undefined : 'entity-data-teardown';
 const shardGrep = shardPlan?.grep ? new RegExp(shardPlan.grep) : undefined;
 // SearchIndexApplication.spec.ts triggers a full reindex, which swaps the shared search indexes
@@ -268,17 +273,13 @@ export default defineConfig({
       testMatch: '**/auth.setup.ts',
     },
     {
+      // Also seeds the Lineage graph (16 entities + 15 edges + 2 column
+      // edges) and SharedInfra parents — see the `seedLineageAndSharedInfra`
+      // helper. Consolidated here so the CI fixture cache (produced by this
+      // single seeding step) contains all three JSON files.
       name: 'entity-data-setup',
       testMatch: '**/entity-data.setup.ts',
       dependencies: ['setup'],
-    },
-    {
-      // Creates the Lineage-specific entity graph (16 entities + 15
-      // edges + 2 column edges) once per shard. See
-      // `playwright/support/entity/LineageDataClass.ts` for the design.
-      name: 'lineage-data-setup',
-      testMatch: '**/lineage-data.setup.ts',
-      dependencies: ['setup', 'entity-data-setup'],
     },
     {
       name: 'ontology-rdf-setup',

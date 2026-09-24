@@ -23,7 +23,8 @@
  *
  * New shape: this class holds static instances of every entity type in
  * a stable order that matches the spec's `Object.values(allEntities)`
- * iteration. `lineage-data.setup.ts` calls `create()` once per shard
+ * iteration. `entity-data.setup.ts` calls `create()` (via
+ * `seedLineageAndSharedInfra`) once per shard
  * against the same `apiContext` used by the auth setup; each entity's
  * `createFullHierarchy: false` means parents are pulled from
  * `SharedInfra` and only the leaf is POSTed. Response data is serialised
@@ -427,8 +428,9 @@ export class LineageDataClass {
     if (!this.isLoaded) {
       throw new Error(
         `LineageDataClass.ensureLoaded: lineageEntity FQN still empty ` +
-          `after loadResponseData(). Setup project 'lineage-data-setup' ` +
-          `must run before any Lineage spec.`
+          `after loadResponseData(). Setup project 'entity-data-setup' ` +
+          `must run before any Lineage spec (it invokes ` +
+          `seedLineageAndSharedInfra internally).`
       );
     }
   }
