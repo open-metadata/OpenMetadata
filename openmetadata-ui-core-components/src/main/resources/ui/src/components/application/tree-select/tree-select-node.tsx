@@ -64,6 +64,9 @@ export const TreeSelectTreeItemContent = <T,>({
 }: TreeSelectTreeItemContentProps<T>) => {
   const isSelectable = node.allowSelection !== false;
   const isRowDisabled = disabled || node.disabled || !isSelectable;
+  // One choice at a time reads as a radio: a single-select tree otherwise shows
+  // no control at all, leaving the rows looking inert.
+  const isSingleChoice = !multiple || Boolean(node.isParentMutuallyExclusive);
 
   return (
     <Tree.ItemContent
@@ -85,13 +88,13 @@ export const TreeSelectTreeItemContent = <T,>({
               onNodeClick();
             }
           }}>
-          {showCheckbox && multiple && isSelectable && (
+          {showCheckbox && isSelectable && (
             <span
               data-selected={isSelected}
-              data-testid={`${
-                node.isParentMutuallyExclusive ? 'radio' : 'checkbox'
-              }-${node.id}`}>
-              {node.isParentMutuallyExclusive ? (
+              data-testid={`${isSingleChoice ? 'radio' : 'checkbox'}-${
+                node.id
+              }`}>
+              {isSingleChoice ? (
                 <RadioButtonBase
                   isDisabled={isRowDisabled}
                   isSelected={isSelected}

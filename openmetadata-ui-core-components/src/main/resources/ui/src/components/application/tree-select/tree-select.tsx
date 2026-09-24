@@ -248,6 +248,10 @@ export const TreeSelect = <T = unknown,>({
   const popoverRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const prevValueRef = useRef<typeof value>(undefined);
+  // Closing hands focus back to the trigger, whose onFocus would reopen it. The
+  // restore arrives a frame or more later, so the flag stays armed until a focus
+  // event consumes it — a timed reset loses the race and reopens.
+  const skipNextFocusOpen = useRef(false);
   // What was expanded before a search took over, restored when it clears.
   const preSearchExpandedRef = useRef<Set<Key> | null>(null);
   // Parents already opened for this search, so a later result never reopens one.
@@ -431,6 +435,9 @@ export const TreeSelect = <T = unknown,>({
       // Staged single-select waits for Apply, so the dropdown stays open.
       if (!multiple && !isStaged) {
         clearSearch();
+        // Arm the guard: the pick hands focus back to the trigger, and reopening
+        // there would hide the value behind the search text.
+        skipNextFocusOpen.current = true;
         setOpen(false);
       }
     },
@@ -577,11 +584,6 @@ export const TreeSelect = <T = unknown,>({
       setOpen(true);
     }
   };
-
-  // Dismissing hands focus back to the trigger, whose onFocus would reopen it.
-  // The restore arrives a frame or more later, so the flag has to stay armed
-  // until a focus event consumes it — a timed reset loses the race and reopens.
-  const skipNextFocusOpen = useRef(false);
 
   const openOnFocus = () => {
     if (skipNextFocusOpen.current) {
