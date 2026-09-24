@@ -28,7 +28,7 @@ export const chipTriggerClassName = classNames(
   'tw:relative tw:outline-brand tw:transition tw:duration-100 tw:ease-linear',
   borderAfter,
   'tw:after:outline-primary',
-  'tw:hover:bg-primary_hover tw:hover:text-secondary_hover'
+  'tw:hover:bg-primary_hover tw:dark:hover:bg-raised tw:hover:text-secondary_hover'
 );
 
 /** Brand treatment the FilterSelect trigger takes on once a value is picked. */

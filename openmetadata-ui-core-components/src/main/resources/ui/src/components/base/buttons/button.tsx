@@ -89,7 +89,7 @@ export const styles = sortCx({
     },
     secondary: {
       root: [
-        'tw:bg-surface tw:text-secondary tw:shadow-xs-skeuomorphic tw:hover:bg-primary_hover tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover',
+        'tw:bg-surface tw:text-secondary tw:shadow-xs-skeuomorphic tw:hover:bg-primary_hover tw:dark:hover:bg-raised tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover tw:dark:data-loading:bg-raised',
         `${borderAfter} tw:after:outline-primary`,
         // Disabled styles
         'tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
