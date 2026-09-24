@@ -18,6 +18,7 @@ import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.Entity.USER;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -277,10 +278,9 @@ public class AlertsRuleEvaluator {
     }
 
     // we need to handle both fields updated and fields added
-    List<FieldChange> fieldChanges = changeEvent.getChangeDescription().getFieldsUpdated();
-    if (!changeEvent.getChangeDescription().getFieldsAdded().isEmpty()) {
-      fieldChanges.addAll(changeEvent.getChangeDescription().getFieldsAdded());
-    }
+    List<FieldChange> fieldChanges =
+        new ArrayList<>(changeEvent.getChangeDescription().getFieldsUpdated());
+    fieldChanges.addAll(changeEvent.getChangeDescription().getFieldsAdded());
 
     for (FieldChange fieldChange : fieldChanges) {
       if (fieldChange.getName().equals("testCaseResult") && fieldChange.getNewValue() != null) {
@@ -657,19 +657,25 @@ public class AlertsRuleEvaluator {
         usersOrTeamName.stream().map(EntityInterfaceUtil::unquoteName).collect(Collectors.toSet());
     for (MessageParser.EntityLink entityLink : mentions) {
       String fqn = entityLink.getEntityFQN();
-      if (USER.equals(entityLink.getEntityType())) {
-        User user = Entity.getCollectionDAO().userDAO().findEntityByName(fqn);
-        if (names.contains(user.getName())) {
-          return true;
-        }
-      } else if (TEAM.equals(entityLink.getEntityType())) {
-        Team team = Entity.getCollectionDAO().teamDAO().findEntityByName(fqn);
-        if (names.contains(team.getName())) {
-          return true;
-        }
+      if (names.contains(mentionedName(entityLink.getEntityType(), fqn))) {
+        return true;
       }
     }
     return false;
+  }
+
+  private static String mentionedName(String entityType, String fqn) {
+    String name = null;
+    try {
+      if (USER.equals(entityType)) {
+        name = Entity.getCollectionDAO().userDAO().findEntityByName(fqn).getName();
+      } else if (TEAM.equals(entityType)) {
+        name = Entity.getCollectionDAO().teamDAO().findEntityByName(fqn).getName();
+      }
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Mentioned {} {} no longer exists, so it is not counted", entityType, fqn);
+    }
+    return name;
   }
 
   public static Conversation getConversation(ChangeEvent event) {

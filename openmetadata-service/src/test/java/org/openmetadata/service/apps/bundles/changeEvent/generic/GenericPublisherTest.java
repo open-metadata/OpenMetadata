@@ -18,7 +18,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
 
@@ -35,6 +38,8 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.subscription.AlertingSettings;
+import org.openmetadata.service.events.subscription.AlertingSettings.Sending;
 import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
 
 class GenericPublisherTest {
@@ -82,5 +87,54 @@ class GenericPublisherTest {
     assertNotNull(changeEventWithSubscription);
     assertEquals(destinationId, changeEventWithSubscription.getLeft());
     assertSame(event, changeEventWithSubscription.getRight());
+  }
+
+  // Deliveries have always been a POST, even for a destination configured with PUT.
+  @Test
+  void webhookMethodHonouredOnlyWhenSet() throws Exception {
+    Invocation.Builder whileOff = deliverToAPutDestination(false);
+    verify(whileOff).post(any());
+    verify(whileOff, never()).put(any());
+
+    Invocation.Builder whileOn = deliverToAPutDestination(true);
+    verify(whileOn).put(any());
+    verify(whileOn, never()).post(any());
+  }
+
+  private static Invocation.Builder deliverToAPutDestination(boolean honourWebhookMethod)
+      throws Exception {
+    Webhook webhook =
+        new Webhook()
+            .withEndpoint(URI.create("https://hooks.example.com/put"))
+            .withHttpMethod(Webhook.HttpMethod.PUT);
+    SubscriptionDestination destination =
+        new SubscriptionDestination()
+            .withId(UUID.randomUUID())
+            .withType(WEBHOOK)
+            .withTimeout(10)
+            .withReadTimeout(12)
+            .withEnabled(true)
+            .withConfig(webhook);
+    Response.StatusType ok = mock(Response.StatusType.class);
+    when(ok.getReasonPhrase()).thenReturn("OK");
+    Response response = mock(Response.class);
+    when(response.getStatus()).thenReturn(200);
+    when(response.getStatusInfo()).thenReturn(ok);
+    when(response.getStringHeaders()).thenReturn(new MultivaluedHashMap<>());
+    Invocation.Builder builder = mock(Invocation.Builder.class);
+    lenient().when(builder.post(any())).thenReturn(response);
+    lenient().when(builder.put(any())).thenReturn(response);
+    WebhookRecipient recipient = mock(WebhookRecipient.class);
+    when(recipient.getConfiguredRequest(any(), any())).thenReturn(builder);
+
+    AlertingSettings.use(
+        AlertingSettings.current().withSending(new Sending(honourWebhookMethod, false, 1)));
+    try {
+      GenericPublisher publisher = new GenericPublisher(new EventSubscription(), destination);
+      publisher.sendTo(publisher.prepare(new ChangeEvent().withId(UUID.randomUUID())), recipient);
+    } finally {
+      AlertingSettings.use(AlertingSettings.current().withSending(Sending.AS_BEFORE));
+    }
+    return builder;
   }
 }

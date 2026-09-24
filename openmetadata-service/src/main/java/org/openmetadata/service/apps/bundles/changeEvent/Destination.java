@@ -17,6 +17,7 @@ import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AC
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AWAITING_RETRY;
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.FAILED;
 
+import java.util.Optional;
 import java.util.Set;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.events.EventSubscription;
@@ -26,10 +27,52 @@ import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.notifications.EventContent;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 
 public interface Destination<T> {
   void sendMessage(T event, Set<Recipient> recipients) throws EventPublisherException;
+
+  /**
+   * What this destination sends for an event, made once however many targets receive it. A
+   * destination that does not say otherwise is handed the event itself.
+   */
+  default Object prepare(T event) throws EventPublisherException {
+    return event;
+  }
+
+  /**
+   * As {@link #prepare(Object)}, with the content the alert's channels share for this event, so a
+   * destination that renders a template formats what was rendered once and never renders again.
+   */
+  default Object prepare(T event, EventContent content) throws EventPublisherException {
+    return prepare(event);
+  }
+
+  /**
+   * Sends what {@link #prepare} answered to one recipient, or to the destination itself when it
+   * is its own target and the recipient is null. The outcome is left in the status details.
+   */
+  @SuppressWarnings("unchecked")
+  default void sendTo(Object prepared, Recipient recipient) throws EventPublisherException {
+    sendMessage((T) prepared, recipient == null ? Set.of() : Set.of(recipient));
+  }
+
+  /**
+   * Why nothing can be sent through this destination right now, such as a mail server that is
+   * switched off. Nothing is resolved or rendered for it, and that is not a delivery failure.
+   */
+  default Optional<String> notAttemptedBecause() {
+    return Optional.empty();
+  }
+
+  /**
+   * True for a destination whose message is its file, such as a report. When the file could not
+   * be produced, nothing is sent, which is not a delivery failure.
+   */
+  default boolean requiresAFile() {
+    return false;
+  }
 
   void sendTestMessage() throws EventPublisherException;
 
@@ -66,6 +109,7 @@ public interface Destination<T> {
         AlertUtil.buildSubscriptionStatus(
             ACTIVE, updateTime, null, null, null, updateTime, updateTime);
     getSubscriptionDestination().setStatusDetails(subStatus);
+    SendStatus.left(subStatus);
   }
 
   default void setStatus(
@@ -78,6 +122,7 @@ public interface Destination<T> {
         AlertUtil.buildSubscriptionStatus(
             status, null, attemptTime, statusCode, reason, timestamp, attemptTime);
     getSubscriptionDestination().setStatusDetails(subStatus);
+    SendStatus.left(subStatus);
   }
 
   default void setStatusForTestDestination(
