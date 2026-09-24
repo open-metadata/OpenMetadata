@@ -73,6 +73,7 @@ import NotificationRecentEvents from './NotificationRecentEvents';
 interface NotificationAlertDetailProps {
   fqn: string;
   onNavigate: (view: NotificationView) => void;
+  onNameResolved?: (name: string) => void;
   onSetHeaderActions?: (node: React.ReactNode) => void;
 }
 
@@ -299,6 +300,7 @@ const AlertDetailTabContent: FC<{
 
 const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
   fqn,
+  onNameResolved,
   onNavigate,
   onSetHeaderActions,
 }) => {
@@ -495,6 +497,12 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
   ]);
 
   const alertName = useMemo(() => (alert ? getEntityName(alert) : ''), [alert]);
+
+  useEffect(() => {
+    if (alertName) {
+      onNameResolved?.(alertName);
+    }
+  }, [alertName, onNameResolved]);
 
   if (isLoading) {
     return <Loader />;

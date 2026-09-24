@@ -221,10 +221,10 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
   fetchAlertsRef.current = fetchAlerts;
 
   const handleAfterDeleteAction = useCallback(() => {
-    setHashPage(1);
+    setHashPage(1, undefined, undefined, pageSize);
     setCursorCache(new Map());
     fetchAlertsRef.current(undefined, 1);
-  }, [setHashPage]);
+  }, [setHashPage, pageSize]);
 
   const handleAlertDelete = useCallback(async () => {
     setIsDeleting(true);

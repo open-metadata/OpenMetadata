@@ -28,7 +28,7 @@ import {
 import { Bell01, FilterLines } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
-import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterOffIcon } from '../../../../../../assets/svg/ic-filter-off.svg';
 import {
@@ -170,9 +170,18 @@ function NotificationRecentEvents({
 
   const totalPages = Math.max(1, Math.ceil((paging.total ?? 0) / pageSize));
 
+  const didMountRef = useRef(false);
+
   useEffect(() => {
-    const offset = (currentPage - 1) * pageSize;
-    getAlertRecentEvents(offset);
+    if (didMountRef.current) {
+      setCurrentPage(1);
+      updateParams({ page: '1' });
+      getAlertRecentEvents(0);
+    } else {
+      didMountRef.current = true;
+      const offset = (currentPage - 1) * pageSize;
+      getAlertRecentEvents(offset);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 

@@ -74,6 +74,8 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
     [permissions]
   );
 
+  const [resolvedDetailName, setResolvedDetailName] = useState<string>('');
+
   // Push header updates up to ProfilePage whenever the internal view changes.
   useEffect(() => {
     if (!onHeaderChange) {
@@ -134,7 +136,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
           settingsItem,
           notificationItem,
           alertsItem,
-          { id: 'current', label: view.name },
+          { id: 'current', label: resolvedDetailName || view.name },
         ];
       }
 
@@ -159,7 +161,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
       }
 
       if (view.type === 'detail') {
-        return view.name;
+        return resolvedDetailName || view.name;
       }
 
       return notificationLabel;
@@ -203,7 +205,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
       onBreadcrumbAction,
       title,
     });
-  }, [view, onHeaderChange, t, canAddAlert, detailHeaderActions, onNavigate]);
+  }, [view, onHeaderChange, t, canAddAlert, detailHeaderActions, onNavigate, resolvedDetailName]);
 
   const content = (() => {
     if (view.type === 'landing') {
@@ -226,6 +228,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
       return (
         <NotificationAlertDetail
           fqn={view.fqn}
+          onNameResolved={setResolvedDetailName}
           onNavigate={onNavigate}
           onSetHeaderActions={setDetailHeaderActions}
         />
