@@ -121,7 +121,10 @@ LENGTH_REQUIRED_DATA_TYPES = {
     DataType.BINARY.value,
     DataType.VARBINARY.value,
 }
-DEFAULT_DATA_LENGTH = 1
+# 0, not 1 - a length of 1 renders as e.g. varchar(1) in the UI, implying a real
+# limit that doesn't exist. 0 still satisfies the server's non-null check and
+# matches what Superset reports for the same unknown-length case.
+DEFAULT_DATA_LENGTH = 0
 # Tableau titles database column names when it builds fields (`order_date` becomes
 # `Order Date`), so separators and casing carry no meaning when comparing the two.
 # `\w` is Unicode-aware, and `_` is listed explicitly because `\w` matches it: a name made
