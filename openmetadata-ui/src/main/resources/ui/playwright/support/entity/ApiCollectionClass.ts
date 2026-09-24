@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
@@ -310,7 +310,7 @@ export class ApiCollectionClass extends EntityClass {
       searchTerm: this.apiEndpointResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.service.name}-${this.apiEndpoint.name}`,
     });
-    await expect(page.getByRole('link', { name: owner })).toBeVisible();
+    await page.getByRole('link', { name: owner }).isVisible();
     await this.visitEntityPage(page);
   }
 }
