@@ -24,8 +24,15 @@ import { CommonWidgets } from './CommonWidgets';
 jest.mock('../../Customization/GenericProvider/GenericContext');
 jest.mock('../../common/EntityDescription/Description', () => ({
   __esModule: true,
-  default: ({ removeBlur }: { removeBlur?: boolean }) => (
+  default: ({
+    removeBlur,
+    isDescriptionExpanded,
+  }: {
+    removeBlur?: boolean;
+    isDescriptionExpanded?: boolean;
+  }) => (
     <div
+      data-expanded={String(Boolean(isDescriptionExpanded))}
       data-remove-blur={String(Boolean(removeBlur))}
       data-testid="description-widget">
       Description Widget
@@ -216,6 +223,28 @@ describe('CommonWidgets', () => {
       'data-remove-blur',
       'false'
     );
+  });
+
+  it('keeps the read-more toggle when a small widget opens expanded by default', async () => {
+    // A dashboard without charts auto-expands its description.
+    render(
+      <CommonWidgets
+        entityType={EntityType.DASHBOARD}
+        widgetConfig={{
+          i: DetailPageWidgetKeys.DESCRIPTION,
+          x: 0,
+          y: 0,
+          w: 1,
+          h: 1,
+          config: { size: 'small' },
+        }}
+      />
+    );
+
+    const description = await screen.findByTestId('description-widget');
+
+    expect(description).toHaveAttribute('data-expanded', 'true');
+    expect(description).toHaveAttribute('data-remove-blur', 'false');
   });
 
   it('should render data products widget', async () => {

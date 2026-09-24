@@ -91,8 +91,9 @@ export const DescriptionWidget: CommonWidgetComponent = ({
 
   // Large widgets show the full description; small ones clamp behind "read more".
   const isLarge = widgetConfig.config?.size === 'large';
-  const removeBlur =
-    isLarge || type === EntityType.DOMAIN || isDescriptionExpanded;
+  // removeBlur drops the read-more toggle entirely; isDescriptionExpanded only
+  // opens it expanded, so small widgets can still collapse long text.
+  const removeBlur = isLarge || type === EntityType.DOMAIN;
 
   return (
     <Description
@@ -103,6 +104,7 @@ export const DescriptionWidget: CommonWidgetComponent = ({
       entityName={getEntityName(updatedData)}
       entityType={type}
       hasEditAccess={canEditDescription}
+      isDescriptionExpanded={isDescriptionExpanded}
       owner={data.owners}
       removeBlur={removeBlur}
       showActions={!data.deleted}
