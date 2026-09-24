@@ -3725,7 +3725,7 @@
     "default-persona-removed-successfully": "默认角色已成功移除。",
     "default-persona-set-successfully": "默认角色已成功设置。",
     "default-persona-update-error": "更新默认角色失败。请重试。",
-    "default-view-per-page-description": "为支持两种视图的页面设置起始视图(数据表或网格),可按页面单独设置。用户仍可在自己的会话中切换视图。",
+    "default-view-per-page-description": "为支持两种视图的页面设置起始视图(数据表或网格),可按页面单独设置——域还支持树状视图。用户仍可在自己的会话中切换视图。",
     "define-custom-property-for-column": "为表格和仪表板数据模型中的列级定义自定义属性。",
     "define-custom-property-for-entity": "为{{entity}}添加自定义属性以满足您的组织需求",
     "define-the-action-description": "决定要执行的操作：通知、分配或更新。",

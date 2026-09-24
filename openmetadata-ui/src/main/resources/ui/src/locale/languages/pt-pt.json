@@ -3725,7 +3725,7 @@
     "default-persona-removed-successfully": "Persona predefinida foi removida com sucesso.",
     "default-persona-set-successfully": "Persona predefinida foi definida com sucesso.",
     "default-persona-update-error": "Falha ao actualizar persona predefinida. Tente novamente.",
-    "default-view-per-page-description": "Defina a vista inicial (Tabela ou Grelha) para páginas que suportam ambas, por página. Os utilizadores ainda podem alternar vistas para a sua própria sessão.",
+    "default-view-per-page-description": "Defina a vista inicial (Tabela ou Grelha) para páginas que suportam ambas, por página — Domínios também suporta a vista em Árvore. Os utilizadores ainda podem alternar vistas para a sua própria sessão.",
     "define-custom-property-for-column": "Defina as propriedades personalizadas para o nível da coluna em tabelas e modelos de dados de painel.",
     "define-custom-property-for-entity": "Defina propriedades personalizadas para {{entity}} para atender às necessidades da sua organização.",
     "define-the-action-description": "Decida o que acontece: notificar, atribuir ou atualizar.",

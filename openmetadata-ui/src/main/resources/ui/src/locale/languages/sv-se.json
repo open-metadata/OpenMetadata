@@ -3725,7 +3725,7 @@
     "default-persona-removed-successfully": "Standardpersonan togs bort.",
     "default-persona-set-successfully": "Standardpersonan angavs.",
     "default-persona-update-error": "Det gick inte att uppdatera standardpersonan. Försök igen.",
-    "default-view-per-page-description": "Ställ in startvyn (Tabell eller Rutnät) för sidor som stöder båda, per sida. Användare kan fortfarande växla vy för sin egen session.",
+    "default-view-per-page-description": "Ställ in startvyn (Tabell eller Rutnät) för sidor som stöder båda, per sida — Domäner stöder även Träd. Användare kan fortfarande växla vy för sin egen session.",
     "define-custom-property-for-column": "Definiera de anpassade egenskaperna på kolumnnivå för tabeller och instrumentpanelers datamodeller.",
     "define-custom-property-for-entity": "Definiera de anpassade egenskaperna för din {{entity}} för att tillgodose din organisations behov.",
     "define-the-action-description": "Bestäm vad som händer: meddela, tilldela eller uppdatera.",

@@ -3725,7 +3725,7 @@
     "default-persona-removed-successfully": "기본 페르소나가 성공적으로 제거되었습니다.",
     "default-persona-set-successfully": "기본 페르소나가 성공적으로 설정되었습니다.",
     "default-persona-update-error": "기본 페르소나 업데이트에 실패했습니다. 다시 시도해 주세요.",
-    "default-view-per-page-description": "둘 다 지원하는 페이지에 대해 페이지별로 시작 보기(테이블 또는 그리드)를 설정합니다. 사용자는 자신의 세션에서 계속 보기를 전환할 수 있습니다.",
+    "default-view-per-page-description": "둘 다 지원하는 페이지에 대해 페이지별로 시작 보기(테이블 또는 그리드)를 설정합니다. 도메인들은 트리 보기도 지원합니다. 사용자는 자신의 세션에서 계속 보기를 전환할 수 있습니다.",
     "define-custom-property-for-column": "테이블과 대시보드 데이터 모델의 열 수준에 대한 사용자 정의 속성을 정의하세요.",
     "define-custom-property-for-entity": "조직의 요구 사항을 충족시키기 위해 {{entity}}에 대한 사용자 정의 속성을 정의하세요.",
     "define-the-action-description": "알림, 할당, 업데이트 등 수행할 작업을 결정합니다.",

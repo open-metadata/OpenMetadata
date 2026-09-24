@@ -3725,7 +3725,7 @@
     "default-persona-removed-successfully": "A persona predeterminada elimináronse correctamente.",
     "default-persona-set-successfully": "A persona predeterminada establecéronse correctamente.",
     "default-persona-update-error": "Erro ao actualizar a persona predeterminada. Téntao de novo.",
-    "default-view-per-page-description": "Establece a vista inicial (Táboa ou Grade) para as páxinas que admiten ambas, por páxina. Os usuarios poden seguir cambiando de vista na súa propia sesión.",
+    "default-view-per-page-description": "Establece a vista inicial (Táboa ou Grade) para as páxinas que admiten ambas, por páxina; Dominios tamén admite Árbore. Os usuarios poden seguir cambiando de vista na súa propia sesión.",
     "define-custom-property-for-column": "Defina as propiedades personalizadas para o nivel de columna en táboas e modelos de datos de panel.",
     "define-custom-property-for-entity": "Define as propiedades personalizadas para o teu {{entity}} para satisfacer as necesidades da túa organización.",
     "define-the-action-description": "Decide o que sucede: notificar, asignar ou actualizar.",

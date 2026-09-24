@@ -3725,7 +3725,7 @@
     "default-persona-removed-successfully": "デフォルトペルソナが正常に削除されました。",
     "default-persona-set-successfully": "デフォルトペルソナが正常に設定されました。",
     "default-persona-update-error": "デフォルトペルソナの更新に失敗しました。再試行してください。",
-    "default-view-per-page-description": "両方をサポートするページごとに、開始時のビュー(テーブルまたはグリッド)を設定します。ユーザーは自分のセッションでビューを切り替えることができます。",
+    "default-view-per-page-description": "両方をサポートするページごとに、開始時のビュー(テーブルまたはグリッド)を設定します。ドメインではツリー表示もサポートしています。ユーザーは自分のセッションでビューを切り替えることができます。",
     "define-custom-property-for-column": "テーブルとダッシュボードデータモデルのカラムレベルでカスタムプロパティを定義します。",
     "define-custom-property-for-entity": "{{entity}} にカスタムプロパティを定義して、組織のニーズに対応しましょう。",
     "define-the-action-description": "通知、割り当て、更新など、何を実行するかを決めます。",

@@ -3725,7 +3725,7 @@
     "default-persona-removed-successfully": "Standard-Persona wurde erfolgreich entfernt.",
     "default-persona-set-successfully": "Standard-Persona wurde erfolgreich gesetzt.",
     "default-persona-update-error": "Fehler beim Aktualisieren der Standard-Persona. Bitte versuchen Sie es erneut.",
-    "default-view-per-page-description": "Legt die Startansicht (Tabelle oder Raster) für Seiten fest, die beides unterstützen, pro Seite. Benutzer können die Ansicht weiterhin für ihre eigene Sitzung wechseln.",
+    "default-view-per-page-description": "Legt die Startansicht (Tabelle oder Raster) für Seiten fest, die beides unterstützen, pro Seite – Bereiche unterstützen zusätzlich auch Baum. Benutzer können die Ansicht weiterhin für ihre eigene Sitzung wechseln.",
     "define-custom-property-for-column": "Definieren Sie die benutzerdefinierten Eigenschaften für das Spaltenniveau in Tabellen und Dashboard-Datenmodellen.",
     "define-custom-property-for-entity": "Definieren Sie benutzerdefinierte Eigenschaften für {{entity}}, um Ihren organisatorischen Anforderungen gerecht zu werden.",
     "define-the-action-description": "Legen Sie fest, was passiert: benachrichtigen, zuweisen oder aktualisieren.",

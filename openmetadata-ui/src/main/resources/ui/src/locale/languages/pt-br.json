@@ -3725,7 +3725,7 @@
     "default-persona-removed-successfully": "Persona padrão foi removida com sucesso.",
     "default-persona-set-successfully": "Persona padrão foi definida com sucesso.",
     "default-persona-update-error": "Falha ao atualizar persona padrão. Tente novamente.",
-    "default-view-per-page-description": "Defina a visualização inicial (Tabela ou Grade) para páginas que suportam ambas, por página. Os usuários ainda podem alternar visualizações para sua própria sessão.",
+    "default-view-per-page-description": "Defina a visualização inicial (Tabela ou Grade) para páginas que suportam ambas, por página — Domínios também oferece suporte à visualização em Árvore. Os usuários ainda podem alternar visualizações para sua própria sessão.",
     "define-custom-property-for-column": "Defina as propriedades personalizadas para o nível da coluna em tabelas e modelos de dados de painel.",
     "define-custom-property-for-entity": "Defina propriedades personalizadas para {{entity}} para atender às necessidades da sua organização.",
     "define-the-action-description": "Decida o que acontece: notificar, atribuir ou atualizar.",

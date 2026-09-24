@@ -3725,7 +3725,7 @@
     "default-persona-removed-successfully": "Default persona has been removed successfully.",
     "default-persona-set-successfully": "Default persona has been set successfully.",
     "default-persona-update-error": "Failed to update default persona. Please try again.",
-    "default-view-per-page-description": "Set the starting Table or Grid view for pages that support both, per page. Users can still switch views for their own session.",
+    "default-view-per-page-description": "Set the starting Table or Grid view for pages that support both, per page — Domains also supports Tree. Users can still switch views for their own session.",
     "define-custom-property-for-column": "Define the custom properties for column level on tables and dashboard data models.",
     "define-custom-property-for-entity": "Define the custom properties for your {{entity}} to serve your organizational needs.",
     "define-the-action-description": "Decide what happens: notify, assign, or update.",

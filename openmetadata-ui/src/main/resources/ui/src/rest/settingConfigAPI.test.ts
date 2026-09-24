@@ -98,5 +98,40 @@ describe('settingConfigAPI', () => {
         config_value: { defaultAppMode: DefaultAppMode.AI },
       });
     });
+
+    it('serializes two concurrent calls so the second never reads a stale value', async () => {
+      // A minimal fake backend row: GET always returns whatever the last
+      // PUT wrote. If the two calls below were allowed to race, the second
+      // call's GET would return the pre-first-PUT row and its PUT would
+      // wipe the first call's field — the exact bug this test guards
+      // against (clicking App Mode Save then View Mode Save quickly).
+      let storedConfig: Record<string, unknown> = {
+        defaultAppMode: DefaultAppMode.Classic,
+      };
+
+      mockClient.get.mockImplementation(() =>
+        Promise.resolve({ data: { config_value: storedConfig } })
+      );
+      mockClient.put.mockImplementation((_url, body) => {
+        storedConfig = (body as { config_value: Record<string, unknown> })
+          .config_value;
+
+        return Promise.resolve({ data: { config_value: storedConfig } });
+      });
+
+      // Fired together, not awaited one after the other — this is what
+      // reproduces the race if `patchAppConfiguration` doesn't serialize.
+      await Promise.all([
+        patchAppConfiguration({ defaultAppMode: DefaultAppMode.AI }),
+        patchAppConfiguration({
+          defaultViewModes: { domains: DefaultViewMode.Grid },
+        }),
+      ]);
+
+      expect(storedConfig).toEqual({
+        defaultAppMode: DefaultAppMode.AI,
+        defaultViewModes: { domains: DefaultViewMode.Grid },
+      });
+    });
   });
 });

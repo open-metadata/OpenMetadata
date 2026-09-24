@@ -23,7 +23,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { DefaultViewMode } from '../../../generated/api/configuration/appConfiguration';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDelete } from '../../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../../common/atoms/domain/ui/useDomainCardTemplates';
@@ -37,6 +36,7 @@ import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder
 import ViewToggle, { ViewMode } from '../../common/ViewToggle/ViewToggle';
 import { useSubdomainListingData } from './hooks/useSubdomainListingData';
 import { SubDomainsTableProps } from './SubDomainsTable.interface';
+import { resolveDefaultSubDomainView } from './SubDomainsTable.utils';
 
 const SubDomainsTable = ({
   domainFqn,
@@ -86,9 +86,7 @@ const SubDomainsTable = ({
 
   const { defaultViewModes } = useApplicationStore();
   const [view, setView] = useState<ViewMode>(
-    defaultViewModes.subDomains === DefaultViewMode.Grid
-      ? ViewMode.Card
-      : ViewMode.Table
+    resolveDefaultSubDomainView(defaultViewModes.subDomains)
   );
   const { renderDomainCard } = useDomainCardTemplates();
 

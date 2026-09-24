@@ -3725,7 +3725,7 @@
     "default-persona-removed-successfully": "La persona predeterminada se ha eliminado correctamente.",
     "default-persona-set-successfully": "La persona predeterminada se ha establecido correctamente.",
     "default-persona-update-error": "Error al actualizar la persona predeterminada. Inténtelo de nuevo.",
-    "default-view-per-page-description": "Establece la vista inicial (Tabla o Cuadrícula) para las páginas que admiten ambas, por página. Los usuarios pueden seguir cambiando de vista en su propia sesión.",
+    "default-view-per-page-description": "Establece la vista inicial (Tabla o Cuadrícula) para las páginas que admiten ambas, por página; Dominios también admite Árbol. Los usuarios pueden seguir cambiando de vista en su propia sesión.",
     "define-custom-property-for-column": "Defina las propiedades personalizadas para el nivel de columna en las tablas y modelos de datos de panel.",
     "define-custom-property-for-entity": "Defina propiedades personalizadas para {{entity}} para satisfacer las necesidades de su organización.",
     "define-the-action-description": "Decide qué sucede: notificar, asignar o actualizar.",

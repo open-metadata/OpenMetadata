@@ -20,7 +20,7 @@ import {
   SelectItem,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus, Trash01 } from '@untitledui/icons';
+import { Delete, PlusCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { Key, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -108,6 +108,13 @@ const DefaultAppModePage: React.FC = () => {
   const isViewModesDirty =
     serializeViewModes(buildViewModesMap(rows)) !==
     serializeViewModes(buildViewModesMap(initialRows));
+  // A row with only a page or only a view set is dropped silently by
+  // `buildViewModesMap` — saving while one exists would submit a map that's
+  // missing that row's (and possibly a previously-saved) entry without any
+  // indication to the admin.
+  const hasIncompleteRow = rows.some(
+    (row) => Boolean(row.page) !== Boolean(row.view)
+  );
 
   const handleAddRow = () => {
     setRows((prev) => [
@@ -158,8 +165,14 @@ const DefaultAppModePage: React.FC = () => {
           : (currentValue as DefaultAppMode);
       await patchAppConfiguration({ defaultAppMode });
       setInitialValue(currentValue);
-      // Same translation AuthProvider runs at boot — keeps the in-memory
-      // tenant-default cache live so a save takes effect without a reload.
+      // Same translation AuthProvider runs at boot — keeps the boot-time
+      // fallback cache (`getAppDefaultMode`) current so the *next*
+      // login/reload, for this admin and for everyone else, picks up the
+      // new tenant default. It does NOT change the mode already active in
+      // this tab: that's driven by `useAppModeStore`/`writeAppMode`, which
+      // this call never touches, and a live boot-style write here risks
+      // transiently flipping the active mode mid-session (see
+      // `removeAppModeSession`'s doc comment in useAppMode.ts).
       setAppDefaultMode(translateWireMode(defaultAppMode));
       showSuccessToast(
         t('server.entity-updated-success', { entity: pageTitle })
@@ -273,6 +286,9 @@ const DefaultAppModePage: React.FC = () => {
                     className="tw:flex-1 tw:min-w-0"
                     data-testid={`view-mode-row-page-${row.id}`}
                     items={pageItems}
+                    placeholder={t('label.select-field', {
+                      field: t('label.page'),
+                    })}
                     selectedKey={row.page}
                     onSelectionChange={(key: Key | null) =>
                       key && handleRowPageChange(row.id, String(key))
@@ -284,6 +300,9 @@ const DefaultAppModePage: React.FC = () => {
                     className="tw:flex-1 tw:min-w-0"
                     data-testid={`view-mode-row-view-${row.id}`}
                     items={viewItems}
+                    placeholder={t('label.select-field', {
+                      field: t('label.view'),
+                    })}
                     selectedKey={row.view}
                     onSelectionChange={(key: Key | null) =>
                       key && handleRowViewChange(row.id, key as DefaultViewMode)
@@ -294,7 +313,7 @@ const DefaultAppModePage: React.FC = () => {
                     aria-label={t('label.remove')}
                     color="secondary"
                     data-testid={`remove-view-mode-row-${row.id}`}
-                    iconLeading={Trash01}
+                    iconLeading={Delete}
                     size="xs"
                     onPress={() => handleRemoveRow(row.id)}
                   />
@@ -305,7 +324,7 @@ const DefaultAppModePage: React.FC = () => {
               <Button
                 color="secondary"
                 data-testid="add-view-mode-row"
-                iconLeading={Plus}
+                iconLeading={PlusCircle}
                 isDisabled={rows.length >= PAGE_OPTIONS.length}
                 size="xs"
                 onPress={handleAddRow}>
@@ -318,7 +337,12 @@ const DefaultAppModePage: React.FC = () => {
           <Button
             color="primary"
             data-testid="save-view-modes-settings"
-            isDisabled={!isViewModesDirty || isLoading || isSavingViewModes}
+            isDisabled={
+              !isViewModesDirty ||
+              hasIncompleteRow ||
+              isLoading ||
+              isSavingViewModes
+            }
             isLoading={isSavingViewModes}
             onPress={handleSaveViewModes}>
             {t('label.save')}

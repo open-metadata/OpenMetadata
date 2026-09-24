@@ -312,4 +312,39 @@ describe('DefaultAppModePage', () => {
 
     expect(screen.getByTestId(/^view-mode-row-view-\d+$/)).toHaveValue('');
   });
+
+  it('keeps Save disabled when changing a loaded row away from Domains leaves it incomplete', async () => {
+    mockGetAppConfiguration.mockResolvedValue({
+      defaultViewModes: { domains: 'tree' },
+    });
+
+    await renderPage();
+
+    const viewModesSaveButton = screen.getByTestId('save-view-modes-settings');
+
+    await waitFor(() =>
+      expect(screen.getByTestId(/^view-mode-row-page-\d+$/)).toHaveValue(
+        'domains'
+      )
+    );
+
+    expect(viewModesSaveButton).toBeDisabled();
+
+    // Switching the loaded domains/tree row's Page away from domains resets
+    // its View to null (Tree isn't valid elsewhere) — the row is now
+    // incomplete and would silently drop the saved entry if submitted.
+    fireEvent.change(screen.getByTestId(/^view-mode-row-page-\d+$/), {
+      target: { value: 'dataProducts' },
+    });
+
+    expect(screen.getByTestId(/^view-mode-row-view-\d+$/)).toHaveValue('');
+    expect(viewModesSaveButton).toBeDisabled();
+
+    // Only picking a new View for the now-incomplete row re-enables Save.
+    fireEvent.change(screen.getByTestId(/^view-mode-row-view-\d+$/), {
+      target: { value: 'grid' },
+    });
+
+    expect(viewModesSaveButton).toBeEnabled();
+  });
 });
