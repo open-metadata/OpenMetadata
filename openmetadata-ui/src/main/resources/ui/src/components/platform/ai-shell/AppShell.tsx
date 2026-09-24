@@ -62,9 +62,11 @@ export const AppShell = ({ children }: PropsWithChildren) => {
         </PageLayout.LeftPanel>
 
         {/* Routed pages own the main landmark. A neutral grid cell here avoids
-            nesting a second main around every PageLayout.Content. */}
+            nesting a second main around every PageLayout.Content.
+            Core PageLayout leaves only 8px under its header band; the AI
+            padding standard is 16px, hence the header + main top padding. */}
         <div
-          className="assistant-content tw:my-1.5 tw:mr-1.5 tw:rounded-2xl"
+          className="assistant-content tw:my-1.5 tw:mr-1.5 tw:rounded-2xl tw:[&_[data-scroll]>header+main]:pt-4"
           data-testid="app-shell-content">
           {banners.map(({ key, component: Banner }) => (
             <Banner key={key} />

@@ -38,7 +38,6 @@ import { Intent } from '../../platform/ai-shell/AppModule.types';
 import { LiveRefreshBoundary } from '../../platform/ai-shell/LiveRefreshBoundary/LiveRefreshBoundary';
 import { useIntent } from '../../platform/ai-shell/useIntent';
 import UploadDocumentModal from '../UploadDocumentModal/UploadDocumentModal.component';
-import './ContextCenterLayout.less';
 
 const ADD_QUICK_LINK_PERMISSIONS = {
   EditAll: true,
@@ -110,7 +109,7 @@ const ContextCenterLayout: React.FC<PropsWithChildren> = ({ children }) => {
   );
 
   return (
-    <div className="context-center-layout tw:flex tw:flex-col tw:h-full tw:overflow-auto tw:pt-5">
+    <div className="tw:flex tw:flex-col tw:h-full tw:overflow-auto tw:[&_.knowledge-center-layout]:h-[calc(100vh-226px)]">
       {/* Reloads the embedded page on a contextMemory/page change for the active CC route
           (registry → markRouteDirty); the layout, its modals and intents stay mounted. */}
       <LiveRefreshBoundary>{children}</LiveRefreshBoundary>
