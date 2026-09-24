@@ -79,13 +79,15 @@ const triggerTabFocus = async () => {
 // HTTP round trip.
 const createMockAxios = () => {
   let rejectedHandler: ((error: unknown) => Promise<unknown>) | null = null;
+  let fulfilledHandler: ((value: unknown) => unknown) | null = null;
   const axios = {
     interceptors: {
       response: {
         use: (
-          _fulfilled: (value: unknown) => unknown,
+          fulfilled: (value: unknown) => unknown,
           rejected: (error: unknown) => Promise<unknown>
         ) => {
+          fulfilledHandler = fulfilled;
           rejectedHandler = rejected;
 
           return 1;
@@ -99,6 +101,8 @@ const createMockAxios = () => {
   return {
     axios,
     triggerError: (error: unknown) => rejectedHandler?.(error),
+    triggerSuccess: (response: unknown = { status: 200, data: {} }) =>
+      fulfilledHandler?.(response),
   };
 };
 
@@ -218,21 +222,442 @@ describe('AuthCoordinator', () => {
 
     coordinator.install(axios, isRefreshable, onRefreshStart);
 
-    const error = {
+    // Distinct config objects per triggerError — real axios always
+    // constructs a fresh config per request, so the per-request retry
+    // counter is per-request; sharing one config across three triggers
+    // would erroneously look like a triple-retry of the same request
+    // and trip the per-request cap (which lives above onRefreshStart).
+    const mkError = () => ({
       response: { status: 401, data: {} },
       config: { url: '/api/v1/tables' },
-    };
+    });
 
     // Three concurrent 401s land while the same refresh cycle is in flight.
-    triggerError(error);
-    triggerError(error);
-    triggerError(error);
+    triggerError(mkError());
+    triggerError(mkError());
+    triggerError(mkError());
 
     expect(onRefreshStart).toHaveBeenCalledTimes(1);
 
     resolveRenewer({ expiresAt: Date.now() + 300_000, idToken: 'fresh' });
     await Promise.resolve();
     await Promise.resolve();
+  });
+
+  it('caps per-request retries — a single endpoint that stays 401 past MAX_PER_REQUEST_RETRIES throws without signing out', async () => {
+    const renewer = jest.fn(async () => ({
+      expiresAt: Date.now() + 300_000,
+      idToken: 'fresh',
+    }));
+    coordinator.registerRenewer(renewer);
+    const failures: unknown[] = [];
+    coordinator.on('refresh-failed', (p) => failures.push(p));
+    const { axios, triggerError } = createMockAxios();
+    coordinator.install(axios, () => true);
+    const config = { url: '/api/v1/tables' };
+    const error = { response: { status: 401, data: {} }, config };
+
+    triggerError(error);
+    await Promise.resolve();
+    triggerError(error);
+    await Promise.resolve();
+
+    await expect(triggerError(error)).rejects.toBe(error);
+    // A single misbehaving endpoint must not sign the whole app out —
+    // that's the sliding-window breaker's job when the storm is global.
+    expect(failures).toHaveLength(0);
+  });
+
+  it('circuit-breaks when > MAX_REFRESH_CYCLES_PER_WINDOW cycles fire inside the sliding window', async () => {
+    const renewer = jest.fn(async () => ({
+      expiresAt: Date.now() + 300_000,
+      idToken: 'fresh',
+    }));
+    coordinator.registerRenewer(renewer);
+    const failures: unknown[] = [];
+    coordinator.on('refresh-failed', (p) => failures.push(p));
+    const { axios, triggerError } = createMockAxios();
+    coordinator.install(axios, () => true);
+
+    // shouldCountNewCycle compares the failing request's Bearer to
+    // `lastMintedToken`. Bearer=`fresh` matches what the renewer
+    // above mints, so once the first cycle completes every subsequent
+    // 401 looks like "the just-minted token is still being rejected".
+    const mkError = (path: string) => ({
+      response: { status: 401, data: {} },
+      config: {
+        headers: { Authorization: 'Bearer fresh' },
+        url: `/api/v1/${path}`,
+      },
+    });
+
+    for (let i = 0; i < 3; i++) {
+      await triggerError(mkError(`endpoint-${i}`));
+    }
+
+    expect(failures).toEqual([]);
+
+    await expect(triggerError(mkError('endpoint-4'))).rejects.toBeDefined();
+    expect(failures).toHaveLength(1);
+    expect(failures[0]).toEqual({
+      reason: expect.stringMatching(/circuit-breaker tripped/),
+    });
+  });
+
+  // Greptile P1 r4070169658: N requests sent with the SAME stale token
+  // return 401 sequentially — each after a refresh has completed and
+  // updated storage. Without the stale-vs-stored comparison, each 401
+  // would see no in-flight refresh, start a new cycle, and the 4th
+  // one would wrongly trip the breaker even though every refresh
+  // succeeded.
+  it('does not count stragglers carrying pre-refresh tokens as cycles', async () => {
+    const renewer = jest.fn(async () => ({
+      expiresAt: Date.now() + 300_000,
+      idToken: 'fresh',
+    }));
+    coordinator.registerRenewer(renewer);
+    const failures: unknown[] = [];
+    coordinator.on('refresh-failed', (p) => failures.push(p));
+    const { axios, triggerError } = createMockAxios();
+    coordinator.install(axios, () => true);
+
+    // Straggler pump takes the fast-path (force:false). Seed one
+    // fast-path pair per straggler so it short-circuits with the
+    // already-minted 'fresh' token without calling the renewer.
+    for (let i = 0; i < 6; i++) {
+      mockedGetOidcToken.mockResolvedValueOnce('fresh');
+      mockedExtractDetailsFromToken.mockReturnValueOnce({
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        isExpired: false,
+        timeoutExpiry: 3600 * 1000,
+      });
+    }
+
+    // First 401 seeds lastMintedToken via its refresh. It has no
+    // Authorization yet (nothing to compare against), so it counts
+    // as the first cycle.
+    await triggerError({
+      config: { url: '/api/v1/first' },
+      response: { status: 401, data: {} },
+    });
+
+    // Every subsequent request was sent with the OLD stale token
+    // before the refresh finished. Their 401s arrive AFTER the
+    // refresh — Bearer=`stale` !== lastMintedToken=`fresh` — so
+    // they must retry silently and not be counted as new cycles.
+    for (let i = 0; i < 6; i++) {
+      await triggerError({
+        config: {
+          headers: { Authorization: 'Bearer stale' },
+          url: `/api/v1/straggler-${i}`,
+        },
+        response: { status: 401, data: {} },
+      });
+    }
+
+    expect(failures).toEqual([]);
+    // Greptile P1 r4072893165: stragglers must also not force a
+    // redundant IdP refresh each — they retry through the fast-path
+    // with the already-minted fresh token. Only the first legitimate
+    // 401 should have hit the renewer.
+    expect(renewer).toHaveBeenCalledTimes(1);
+  });
+
+  // Code-review follow-up: when a sibling tab refreshes, its
+  // CrossTabLock `done` broadcast must update THIS tab's
+  // `lastMintedToken` — otherwise a persistent 401 storm against a
+  // sibling-minted token would look like an endless straggler stream
+  // and never trip the breaker.
+  it('picks up sibling-tab mints via the CrossTabLock done broadcast', async () => {
+    // Renewer mints the same token the sibling broadcast — so each
+    // cycle keeps `lastMintedToken` on `sibling-minted` and the
+    // matching Bearer keeps counting cycles until the breaker trips.
+    const renewer = jest.fn(async () => ({
+      expiresAt: Date.now() + 300_000,
+      idToken: 'sibling-minted',
+    }));
+    coordinator.registerRenewer(renewer);
+    const failures: unknown[] = [];
+    coordinator.on('refresh-failed', (p) => failures.push(p));
+    const { axios, triggerError } = createMockAxios();
+    coordinator.install(axios, () => true);
+
+    // Simulate a sibling tab broadcasting its refresh completion.
+    // AuthCoordinator subscribes to the same CrossTabLock channel in
+    // install(), so this posts through the shared BroadcastChannel
+    // and updates lastMintedToken here.
+    const siblingLock = new (
+      jest.requireActual('../CrossTabLock') as typeof import('../CrossTabLock')
+    ).CrossTabLock('om-refresh', 'om-auth');
+    siblingLock.notifyDone({
+      expiresAt: Date.now() + 300_000,
+      idToken: 'sibling-minted',
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const mkError = (path: string) => ({
+      response: { status: 401, data: {} },
+      config: {
+        headers: { Authorization: 'Bearer sibling-minted' },
+        url: `/api/v1/${path}`,
+      },
+    });
+
+    for (let i = 0; i < 3; i++) {
+      await triggerError(mkError(`endpoint-${i}`));
+    }
+
+    expect(failures).toEqual([]);
+
+    await expect(triggerError(mkError('endpoint-4'))).rejects.toBeDefined();
+    expect(failures).toHaveLength(1);
+    expect(failures[0]).toEqual({
+      reason: expect.stringMatching(/circuit-breaker tripped/),
+    });
+  });
+
+  // Regression for the code-review finding on the straggler fix: a
+  // 401 that arrives while OUR refresh is in flight must not resolve
+  // its retry against the stale stored token (storage isn't updated
+  // until the refresh completes). The fast-path in ensureFreshToken
+  // must defer to `this.inflight` in that window.
+  it('a straggler during an in-flight refresh awaits the fresh token instead of reusing stale storage', async () => {
+    let resolveRenewer!: (r: { expiresAt: number; idToken: string }) => void;
+    const renewer = jest.fn(
+      () =>
+        new Promise<{ expiresAt: number; idToken: string }>((r) => {
+          resolveRenewer = r;
+        })
+    );
+    coordinator.registerRenewer(renewer);
+    const failures: unknown[] = [];
+    coordinator.on('refresh-failed', (p) => failures.push(p));
+    const { axios, triggerError } = createMockAxios();
+    coordinator.install(axios, () => true);
+
+    // Storage still holds the stale token during the in-flight window.
+    // The fast-path must NOT return it — it must defer to `this.inflight`.
+    mockedGetOidcToken.mockResolvedValue('stale');
+    mockedExtractDetailsFromToken.mockReturnValue({
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      isExpired: false,
+      timeoutExpiry: 3600 * 1000,
+    });
+
+    try {
+      // First 401 kicks off the refresh cycle (counted, `inflight` set).
+      triggerError({
+        config: {
+          headers: { Authorization: 'Bearer stale' },
+          url: '/api/v1/first',
+        },
+        response: { status: 401, data: {} },
+      });
+      await Promise.resolve();
+
+      // Straggler arrives WHILE the renewer promise is still pending.
+      // shouldCountNewCycle returns false (inflight is set), so pump
+      // fires with force:false. The fast-path's inflight guard must
+      // prevent it from returning 'stale' from storage.
+      const straggler = triggerError({
+        config: {
+          headers: { Authorization: 'Bearer stale' },
+          url: '/api/v1/straggler',
+        },
+        response: { status: 401, data: {} },
+      });
+      // Directly assert what ensureFreshToken(force:false) resolves to
+      // in this exact window: without the guard it would return 'stale'
+      // from storage; with the guard it awaits `inflight`.
+      const strandedFreshTokenPromise = coordinator.ensureFreshToken();
+
+      // Now the renewer settles.
+      resolveRenewer({ expiresAt: Date.now() + 300_000, idToken: 'fresh' });
+
+      await expect(strandedFreshTokenPromise).resolves.toBe('fresh');
+
+      await straggler;
+
+      expect(failures).toEqual([]);
+      expect(renewer).toHaveBeenCalledTimes(1);
+    } finally {
+      mockedGetOidcToken.mockReset();
+      mockedGetOidcToken.mockImplementation(async () => 'stale-token');
+      mockedExtractDetailsFromToken.mockReset();
+    }
+  });
+
+  // Regression for the code-review finding on the fast-path guard: a
+  // concurrent forced call can set `this.inflight` DURING an unforced
+  // caller's `await getOidcToken()`. The fast-path must re-check
+  // `inflight` after the await, not just before, or the unforced
+  // caller hands back the just-known-stale stored token.
+  // Greptile P1 r4073450836: the post-await `!this.inflight` check
+  // alone is not enough — a refresh that STARTS AND COMPLETES inside
+  // the storage-read window leaves `inflight` back to null, so the
+  // check would accept the stale snapshot. `refreshGeneration`
+  // catches that: any delta between the read's start and end means
+  // "don't trust this read; return the just-minted token".
+  it('unforced ensureFreshToken discards its snapshot when a refresh completes during the storage read', async () => {
+    const renewer = jest.fn(async () => ({
+      expiresAt: Date.now() + 300_000,
+      idToken: 'fresh',
+    }));
+    coordinator.registerRenewer(renewer);
+
+    // Defer the fast-path's storage read. While it's pending, we
+    // fire and fully complete a forced refresh — inflight is set
+    // and cleared before we release the read below.
+    let releaseFirstRead!: (value: string) => void;
+    mockedGetOidcToken.mockReturnValueOnce(
+      new Promise<string>((r) => {
+        releaseFirstRead = r;
+      })
+    );
+    mockedExtractDetailsFromToken.mockReturnValueOnce({
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      isExpired: false,
+      timeoutExpiry: 3600 * 1000,
+    });
+
+    try {
+      const unforced = coordinator.ensureFreshToken();
+      await Promise.resolve();
+
+      // Forced call runs its renewer and completes in microtasks —
+      // inflight goes back to null. The naive post-await
+      // `!inflight` check alone would let the stale snapshot slip
+      // through; the generation delta blocks it.
+      await coordinator.ensureFreshToken({ force: true });
+
+      expect(renewer).toHaveBeenCalledTimes(1);
+
+      // Release the fast-path's storage read with the stale value.
+      releaseFirstRead('stale');
+
+      await expect(unforced).resolves.toBe('fresh');
+      expect(renewer).toHaveBeenCalledTimes(1);
+    } finally {
+      mockedGetOidcToken.mockReset();
+      mockedGetOidcToken.mockImplementation(async () => 'stale-token');
+      mockedExtractDetailsFromToken.mockReset();
+    }
+  });
+
+  it('unforced ensureFreshToken awaits an inflight refresh that starts during its storage read', async () => {
+    let resolveRenewer!: (r: { expiresAt: number; idToken: string }) => void;
+    const renewer = jest.fn(
+      () =>
+        new Promise<{ expiresAt: number; idToken: string }>((r) => {
+          resolveRenewer = r;
+        })
+    );
+    coordinator.registerRenewer(renewer);
+
+    // getOidcToken deferred so the fast-path is guaranteed to be
+    // mid-await when the concurrent force:true call fires.
+    let releaseStorageRead!: (value: string) => void;
+    mockedGetOidcToken.mockReturnValueOnce(
+      new Promise<string>((r) => {
+        releaseStorageRead = r;
+      })
+    );
+    mockedExtractDetailsFromToken.mockReturnValueOnce({
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      isExpired: false,
+      timeoutExpiry: 3600 * 1000,
+    });
+
+    try {
+      const unforced = coordinator.ensureFreshToken();
+      await Promise.resolve();
+
+      // Concurrent forced caller starts a real refresh — `inflight`
+      // is now set. Without the post-await re-check the pending
+      // unforced caller would still return the stale storage read.
+      const forced = coordinator.ensureFreshToken({ force: true });
+      await Promise.resolve();
+
+      releaseStorageRead('stale');
+      resolveRenewer({ expiresAt: Date.now() + 300_000, idToken: 'fresh' });
+
+      await expect(unforced).resolves.toBe('fresh');
+      await expect(forced).resolves.toBe('fresh');
+      expect(renewer).toHaveBeenCalledTimes(1);
+    } finally {
+      mockedGetOidcToken.mockReset();
+      mockedGetOidcToken.mockImplementation(async () => 'stale-token');
+      mockedExtractDetailsFromToken.mockReset();
+    }
+  });
+
+  // Regression: a persistently-failing endpoint polled while unrelated
+  // requests succeed used to slip past the "reset on 2xx" breaker.
+  it('interleaved 2xx responses do NOT reset the rate-limit window', async () => {
+    const renewer = jest.fn(async () => ({
+      expiresAt: Date.now() + 300_000,
+      idToken: 'fresh',
+    }));
+    coordinator.registerRenewer(renewer);
+    const failures: unknown[] = [];
+    coordinator.on('refresh-failed', (p) => failures.push(p));
+    const { axios, triggerError, triggerSuccess } = createMockAxios();
+    coordinator.install(axios, () => true);
+
+    // Bearer=`fresh` matches the renewer's mint so each 401 counts
+    // as "the just-minted token is still being rejected".
+    for (let i = 0; i < 3; i++) {
+      await triggerError({
+        response: { status: 401, data: {} },
+        config: {
+          headers: { Authorization: 'Bearer fresh' },
+          url: `/api/v1/poll-${i}`,
+        },
+      });
+      triggerSuccess();
+    }
+
+    expect(failures).toEqual([]);
+
+    await expect(
+      triggerError({
+        response: { status: 401, data: {} },
+        config: {
+          headers: { Authorization: 'Bearer fresh' },
+          url: '/api/v1/poll-4',
+        },
+      })
+    ).rejects.toBeDefined();
+    expect(failures).toHaveLength(1);
+  });
+
+  it('concurrent 401s during a single refresh cycle share one window entry', async () => {
+    let resolveRenewer!: (r: { expiresAt: number; idToken: string }) => void;
+    const renewer = jest.fn(
+      () =>
+        new Promise<{ expiresAt: number; idToken: string }>((r) => {
+          resolveRenewer = r;
+        })
+    );
+    coordinator.registerRenewer(renewer);
+    const failures: unknown[] = [];
+    coordinator.on('refresh-failed', (p) => failures.push(p));
+    const { axios, triggerError } = createMockAxios();
+    coordinator.install(axios, () => true);
+
+    for (let i = 0; i < 5; i++) {
+      triggerError({
+        response: { status: 401, data: {} },
+        config: { url: `/api/v1/burst-${i}` },
+      });
+    }
+
+    await Promise.resolve();
+    resolveRenewer({ expiresAt: Date.now() + 300_000, idToken: 'fresh' });
+    await Promise.resolve();
+
+    expect(failures).toEqual([]);
   });
 
   it('does not fire onRefreshStart for a 401 that isRefreshable filters out', async () => {
@@ -720,6 +1145,44 @@ describe('AuthCoordinator', () => {
 
       expect(token).toBe('renewer-fresh');
       expect(renewer).toHaveBeenCalledTimes(1);
+    });
+
+    // Regression: server-rejected but time-fresh stored token — the
+    // interceptor's `force:true` must skip the fast-path, and an
+    // unforced call on the same shape must still short-circuit.
+    it('force:true skips the fast-path even when the stored token is time-fresh; unforced still short-circuits', async () => {
+      const renewer = jest.fn(async () => ({
+        expiresAt: Date.now() + 300_000,
+        idToken: 'renewer-fresh',
+      }));
+      coordinator.registerRenewer(renewer);
+      mockedGetOidcToken.mockResolvedValueOnce(
+        'server-rejected-but-time-fresh'
+      );
+      mockedExtractDetailsFromToken.mockReturnValueOnce({
+        exp: Math.floor(Date.now() / 1000) + 600,
+        isExpired: false,
+        timeoutExpiry: 600_000,
+      });
+
+      const token = await coordinator.ensureFreshToken({ force: true });
+
+      expect(token).toBe('renewer-fresh');
+      expect(renewer).toHaveBeenCalledTimes(1);
+
+      mockedGetOidcToken.mockResolvedValueOnce(
+        'server-rejected-but-time-fresh'
+      );
+      mockedExtractDetailsFromToken.mockReturnValueOnce({
+        exp: Math.floor(Date.now() / 1000) + 600,
+        isExpired: false,
+        timeoutExpiry: 600_000,
+      });
+      renewer.mockClear();
+      const unforced = await coordinator.ensureFreshToken();
+
+      expect(unforced).toBe('server-rejected-but-time-fresh');
+      expect(renewer).not.toHaveBeenCalled();
     });
   });
 });

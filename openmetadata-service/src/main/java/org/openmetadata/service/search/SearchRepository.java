@@ -2737,7 +2737,7 @@ public class SearchRepository {
         if (entityType.equalsIgnoreCase(Entity.DOMAIN)) {
           propagateToDomainChildren(entityId, indexMapping, updates);
         } else {
-          String parentFieldName = resolveParentFieldName(entityType, updates);
+          String parentFieldName = resolveParentFieldName(entityType);
           Pair<String, String> parentMatch = new ImmutablePair<>(parentFieldName, entityId);
           List<String> entityChildren =
               filterChildAliasesByCapability(
@@ -2763,15 +2763,19 @@ public class SearchRepository {
         .toList();
   }
 
-  private String resolveParentFieldName(
-      String entityType, Pair<String, Map<String, Object>> updates) {
-    if (!updates.getValue().isEmpty()
-        && (updates.getValue().keySet().stream()
-                .anyMatch(key -> key.toLowerCase().contains(FIELD_DOMAINS))
-            || updates.getValue().containsKey(FIELD_DISPLAY_NAME))) {
-      if (SERVICE_ENTITY_SET.stream().anyMatch(s -> s.equalsIgnoreCase(entityType))) {
-        return SERVICE_ID;
-      }
+  /**
+   * The field on a child document that points back at {@code entityType}.
+   *
+   * <p>A service's children always reference it as {@code service.id} — no index anywhere declares a
+   * {@code databaseService}/{@code dashboardService} property — so the answer depends only on
+   * whether the parent is a service, never on which of its fields changed. It used to be gated on
+   * the payload mentioning {@code domains} or {@code displayName}, which silently sent every other
+   * propagated field (tags, owners) to {@code <serviceEntityType>.id} and matched no document at
+   * all, so a tag set on a service never reached its assets in search.
+   */
+  private String resolveParentFieldName(String entityType) {
+    if (SERVICE_ENTITY_SET.stream().anyMatch(s -> s.equalsIgnoreCase(entityType))) {
+      return SERVICE_ID;
     }
     return entityType + ".id";
   }
@@ -2814,7 +2818,7 @@ public class SearchRepository {
                 indexMapping, capability -> capability == null || !capability.isTimeSeries());
     if (!nullOrEmpty(childAliases)) {
       Pair<String, Map<String, Object>> updates = buildInheritedDomainUpdate(newDomains);
-      String parentField = resolveParentFieldName(entityType, updates);
+      String parentField = resolveParentFieldName(entityType);
       List<String> parentIds = assetIds.stream().map(UUID::toString).toList();
       // Chunk so the terms query never approaches Elasticsearch's index.max_terms_count on an
       // extreme bulk move; a normal move stays a single update-by-query.
@@ -3486,34 +3490,46 @@ public class SearchRepository {
         + SearchClient.TAG_RESEPARATION_SCRIPT;
   }
 
-  private String generateDeleteTagLabelListScript() {
-    return """
-        if (ctx._source.tags != null && params.tagDeleted != null) {
-          for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
-            for (int j = 0; j < params.tagDeleted.size(); j++) {
-              if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
-                ctx._source.tags.remove(i);
-                break;
-              }
+  /**
+   * Removes the labels a parent stopped carrying, but only where the child's own copy is itself
+   * {@code Derived}.
+   *
+   * <p>A propagated label always lands as {@code Derived} — the cascade stamps every payload label
+   * that way and the add script copies it verbatim — while a label the asset carries in its own
+   * right is {@code Manual}, {@code Automated} or {@code Propagated}. Matching on {@code tagFQN}
+   * alone cannot tell them apart, so un-tagging a parent used to delete the child's own identically
+   * named tag from the index, leaving search reporting fewer tags than the API for every colliding
+   * asset beneath that parent until a reindex. A label with no {@code labelType} at all is left
+   * alone: it cannot be shown to be propagated, and wrongly keeping a stale inherited tag is a far
+   * smaller harm than wrongly deleting one the user applied.
+   */
+  private static final String REMOVE_DERIVED_TAG_LABELS_SCRIPT =
+      """
+      if (ctx._source.tags != null && params.tagDeleted != null) {
+        for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
+          def existingTag = ctx._source.tags[i];
+          if (!existingTag.containsKey('labelType')
+              || existingTag.labelType == null
+              || !existingTag.labelType.equalsIgnoreCase('Derived')) {
+            continue;
+          }
+          for (int j = 0; j < params.tagDeleted.size(); j++) {
+            if (existingTag.tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
+              ctx._source.tags.remove(i);
+              break;
             }
           }
         }
-        """
-        + SearchClient.TAG_RESEPARATION_SCRIPT;
+      }
+      """;
+
+  private String generateDeleteTagLabelListScript() {
+    return REMOVE_DERIVED_TAG_LABELS_SCRIPT + SearchClient.TAG_RESEPARATION_SCRIPT;
   }
 
   private String generateUpdateTagLabelListScript() {
-    return """
-        if (ctx._source.tags != null && params.tagDeleted != null) {
-          for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
-            for (int j = 0; j < params.tagDeleted.size(); j++) {
-              if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
-                ctx._source.tags.remove(i);
-                break;
-              }
-            }
-          }
-        }
+    return REMOVE_DERIVED_TAG_LABELS_SCRIPT
+        + """
         if (ctx._source.tags == null) {
           ctx._source.tags = [];
         }

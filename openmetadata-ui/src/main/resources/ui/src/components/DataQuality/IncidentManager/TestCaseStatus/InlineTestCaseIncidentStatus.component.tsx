@@ -37,6 +37,7 @@ import {
 import { Option } from '../../../../pages/TasksPage/TasksPage.interface';
 import {
   getListTestCaseIncidentByStateId,
+  INCIDENT_TRANSITION_ID,
   transitionIncident,
 } from '../../../../rest/incidentManagerAPI';
 import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
@@ -68,8 +69,8 @@ const buildAssignedResolveRequest = (
 ): ResolveTask => {
   const transitionId =
     currentStatus === TestCaseResolutionStatusTypes.Assigned
-      ? 'reassign'
-      : 'assign';
+      ? INCIDENT_TRANSITION_ID.Reassign
+      : INCIDENT_TRANSITION_ID.Assign;
   const assignee = additionalData?.assignee;
 
   return {
@@ -98,14 +99,18 @@ const buildResolveRequest = (
   const requestByStatus: Partial<
     Record<TestCaseResolutionStatusTypes, ResolveTask>
   > = {
-    [TestCaseResolutionStatusTypes.New]: { transitionId: 'new' },
-    [TestCaseResolutionStatusTypes.ACK]: { transitionId: 'ack' },
+    [TestCaseResolutionStatusTypes.New]: {
+      transitionId: INCIDENT_TRANSITION_ID.New,
+    },
+    [TestCaseResolutionStatusTypes.ACK]: {
+      transitionId: INCIDENT_TRANSITION_ID.Ack,
+    },
     [TestCaseResolutionStatusTypes.Assigned]: buildAssignedResolveRequest(
       currentStatus,
       additionalData
     ),
     [TestCaseResolutionStatusTypes.Resolved]: {
-      transitionId: 'resolve',
+      transitionId: INCIDENT_TRANSITION_ID.Resolve,
       resolutionType: TaskResolutionType.Completed,
       comment: additionalData?.comment,
       payload: additionalData?.reason

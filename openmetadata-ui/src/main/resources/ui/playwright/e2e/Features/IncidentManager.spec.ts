@@ -394,17 +394,10 @@ const openIncidentResolveDialog = async (
       return openIncidentResolveDialog(page, false);
     } else {
       await expect(resolveMenuItem).toBeVisible();
+      await resolveMenuItem.click();
     }
-
-    if (!(await isVisible(resolveModal))) {
-      await expect
-        .poll(async () => (await primaryActionButton.textContent())?.trim(), {
-          timeout: 5_000,
-        })
-        .toContain('Resolve');
-      await page.keyboard.press('Escape').catch(() => undefined);
-      await primaryActionButton.click();
-    }
+    // The resolve menu item opens the modal itself; it renders asynchronously, so wait for it
+    // below. Clicking the primary action while it mounts lands behind its mask and never resolves.
   }
 
   await expect(resolveModal).toBeVisible({

@@ -923,8 +923,9 @@ test.describe(
         const incident = banner.getByTestId('test-case-last-run-incident');
 
         await expect(incident).toBeVisible();
+        // The id is its own element now, so it carries no trailing separator.
         await expect(incident.getByTestId('test-case-incident-id')).toHaveText(
-          /INC.*\d,/
+          /^INC-\d+$/
         );
         await expect(
           incident.getByTestId('test-case-incident-description')
