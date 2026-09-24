@@ -57,6 +57,7 @@ import { SharedInfra } from './SharedInfra';
  */
 export type TableClassOptions = {
   createFullHierarchy?: boolean;
+  sharedInfraKey?: string;
 };
 
 /**
@@ -100,6 +101,7 @@ export class TableClass extends EntityClass {
   additionalEntityTableResponseData: ResponseDataType[] = [];
 
   createFullHierarchy: boolean;
+  sharedInfraKey: string | undefined;
 
   constructor(
     name?: string,
@@ -113,6 +115,7 @@ export class TableClass extends EntityClass {
     this.type = 'Table';
     this.childrenTabId = 'schema';
     this.createFullHierarchy = options?.createFullHierarchy ?? false;
+    this.sharedInfraKey = options?.sharedInfraKey;
 
     // Names are always generated eagerly so full-hierarchy mode (the
     // default) keeps its current shape. In shared mode (opt-in via
@@ -378,7 +381,10 @@ export class TableClass extends EntityClass {
     // Parents (databaseService, database, databaseSchema) come from
     // SharedInfra — created lazily once per worker, cached. Only the table
     // itself is POSTed here.
-    const hierarchy = await SharedInfra.databaseHierarchy(apiContext);
+    const hierarchy = await SharedInfra.databaseHierarchy(
+      apiContext,
+      this.sharedInfraKey
+    );
     const service = hierarchy.service;
     // SharedInfra returns plain ResponseDataType; upcast to the with-service
     // shape TableClass records for the database/schema slots. The extra

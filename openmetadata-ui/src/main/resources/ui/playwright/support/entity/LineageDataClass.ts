@@ -102,9 +102,13 @@ export class LineageDataClass {
   // depth-1 entity + 14 depth-2 entities. Order MUST match the spec's
   // `Object.values(allEntities).map(E => new E())` iteration, because the
   // spec does `[depth1Entity, ...depth2ndEntities] = entities` and depth1
-  // is a second Table by contract.
+  // is a second Table by contract. Each entity gets its own SharedInfra
+  // slot so LineageFilters' filter-by-service/database/schema assertions
+  // isolate one entity at a time (see LineageFilters.spec.ts:761,810,912
+  // for the database/schema/search-select tests).
   static readonly table = new TableClass(undefined, undefined, undefined, {
     createFullHierarchy: false,
+    sharedInfraKey: 'lineage-table',
   });
   static readonly container = new ContainerClass(undefined, {
     createFullHierarchy: false,
@@ -131,6 +135,7 @@ export class LineageDataClass {
   });
   static readonly storedProcedure = new StoredProcedureClass(undefined, {
     createFullHierarchy: false,
+    sharedInfraKey: 'lineage-storedProcedure',
   });
   static readonly searchIndex = new SearchIndexClass(undefined, {
     createFullHierarchy: false,

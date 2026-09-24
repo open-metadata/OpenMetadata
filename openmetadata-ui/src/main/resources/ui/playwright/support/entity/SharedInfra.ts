@@ -108,7 +108,8 @@ export class SharedInfra {
   // --- Resolved data slots. Populated by loadResponseData() at import
   //     (test workers) or by an in-process create (setup process). Test
   //     workers hit these directly and skip every network call.
-  private static _databaseHierarchyData: DatabaseHierarchy | null = null;
+  private static _databaseHierarchyData: Map<string, DatabaseHierarchy> =
+    new Map();
   private static _messagingServiceData: ResponseDataType | null = null;
   // Keyed slots (dashboardService, driveService, driveDirectory,
   // driveSpreadsheet): LineageFilters iterates depth-2 entities and asserts
@@ -134,7 +135,8 @@ export class SharedInfra {
   //     when two concurrent callers arrive before the first has resolved.
   //     Test workers never touch these because loadResponseData() has
   //     already populated the *Data slots.
-  private static _databaseHierarchy: Promise<DatabaseHierarchy> | null = null;
+  private static _databaseHierarchy: Map<string, Promise<DatabaseHierarchy>> =
+    new Map();
   private static _messagingService: Promise<ResponseDataType> | null = null;
   private static _dashboardService: Map<string, Promise<ResponseDataType>> =
     new Map();
@@ -157,16 +159,20 @@ export class SharedInfra {
   /* ---------- database chain: service → database → schema ---------- */
 
   static async databaseHierarchy(
-    apiContext: APIRequestContext
+    apiContext: APIRequestContext,
+    key = 'default'
   ): Promise<DatabaseHierarchy> {
-    if (this._databaseHierarchyData) {
-      return this._databaseHierarchyData;
+    const cached = this._databaseHierarchyData.get(key);
+    if (cached) {
+      return cached;
     }
-    if (!this._databaseHierarchy) {
-      this._databaseHierarchy = this.buildDatabaseHierarchy(apiContext);
+    let inFlight = this._databaseHierarchy.get(key);
+    if (!inFlight) {
+      inFlight = this.buildDatabaseHierarchy(apiContext);
+      this._databaseHierarchy.set(key, inFlight);
     }
-    const data = await this._databaseHierarchy;
-    this._databaseHierarchyData = data;
+    const data = await inFlight;
+    this._databaseHierarchyData.set(key, data);
 
     return data;
   }
@@ -444,7 +450,7 @@ export class SharedInfra {
    */
   static saveResponseData(): void {
     const payload = {
-      databaseHierarchy: this._databaseHierarchyData,
+      databaseHierarchy: Object.fromEntries(this._databaseHierarchyData),
       messagingService: this._messagingServiceData,
       dashboardService: Object.fromEntries(this._dashboardServiceData),
       mlmodelService: this._mlmodelServiceData,
@@ -487,8 +493,11 @@ export class SharedInfra {
       >;
 
       if (data.databaseHierarchy) {
-        this._databaseHierarchyData =
-          data.databaseHierarchy as DatabaseHierarchy;
+        this._databaseHierarchyData = new Map(
+          Object.entries(
+            data.databaseHierarchy as Record<string, DatabaseHierarchy>
+          )
+        );
       }
       if (data.messagingService) {
         this._messagingServiceData = data.messagingService as ResponseDataType;
@@ -558,7 +567,12 @@ export class SharedInfra {
     const services: Array<
       [keyof typeof SERVICE_DELETE_PATHS, ResponseDataType | null | undefined]
     > = [
-      ['databaseServices', this._databaseHierarchyData?.service],
+      ...Array.from(this._databaseHierarchyData.values()).map(
+        (h): [keyof typeof SERVICE_DELETE_PATHS, ResponseDataType] => [
+          'databaseServices',
+          h.service,
+        ]
+      ),
       ['messagingServices', this._messagingServiceData],
       ...Array.from(this._dashboardServiceData.values()).map(
         (svc): [keyof typeof SERVICE_DELETE_PATHS, ResponseDataType] => [
@@ -595,7 +609,7 @@ export class SharedInfra {
     );
 
     // Clear in-memory state (both data and any in-flight promises).
-    this._databaseHierarchyData = null;
+    this._databaseHierarchyData.clear();
     this._messagingServiceData = null;
     this._dashboardServiceData.clear();
     this._mlmodelServiceData = null;
@@ -607,7 +621,7 @@ export class SharedInfra {
     this._driveDirectoryData.clear();
     this._driveSpreadsheetData.clear();
 
-    this._databaseHierarchy = null;
+    this._databaseHierarchy.clear();
     this._messagingService = null;
     this._dashboardService.clear();
     this._mlmodelService = null;
