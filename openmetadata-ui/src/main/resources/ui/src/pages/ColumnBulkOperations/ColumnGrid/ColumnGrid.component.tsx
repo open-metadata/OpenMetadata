@@ -12,53 +12,54 @@
  */
 
 import {
-  Badge,
-  Button,
-  ButtonUtility,
-  Card,
-  EmptyPlaceholder,
-  GlossaryTag,
-  Input,
-  Table,
-  Toggle,
-  Tooltip,
-  Typography,
+    Badge,
+    Button,
+    ButtonUtility,
+    Card,
+    EmptyPlaceholder,
+    FeaturedIcon,
+    GlossaryTag,
+    Input,
+    Table,
+    Toggle,
+    Tooltip,
+    Typography
 } from '@openmetadata/ui-core-components';
 import {
-  NoFilterFunnel,
-  NoSearch,
+    NoFilterFunnel,
+    NoSearch,
+    PendingChanges,
+    TotalOccurrences,
+    TotalUniqueColumn
 } from '@openmetadata/ui-core-components/icons';
 import {
-  ArrowRight,
-  ChevronRight,
-  SearchLg,
-  Table as TableIcon,
-  XClose,
+    ArrowRight,
+    ChevronRight,
+    SearchLg,
+    Table as TableIcon,
+    XClose
 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined, some } from 'lodash';
 import React, {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-  useState,
+    forwardRef,
+    useCallback,
+    useEffect,
+    useImperativeHandle,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as OccurrencesIcon } from '../../../assets/svg/ic_occurrences.svg';
-import { ReactComponent as PendingChangesIcon } from '../../../assets/svg/ic_pending-changes.svg';
-import { ReactComponent as UniqueColumnsIcon } from '../../../assets/svg/ic_unique-column.svg';
 import AsyncSelectList from '../../../components/common/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSelectList.interface';
 import { useFormDrawerWithRef } from '../../../components/common/atoms/drawer/useFormDrawer';
 import { useFilterSelection } from '../../../components/common/atoms/filters/useFilterSelection';
 import {
-  CellRenderer,
-  ColumnConfig,
+    CellRenderer,
+    ColumnConfig
 } from '../../../components/common/atoms/shared/types';
 import GlossaryTermPicker from '../../../components/common/GlossaryTermPicker/GlossaryTermPicker';
 import Loader from '../../../components/common/Loader/Loader';
@@ -67,29 +68,29 @@ import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEd
 import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
 import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-  SOCKET_EVENTS,
+    PAGE_SIZE_BASE,
+    PAGE_SIZE_LARGE,
+    PAGE_SIZE_MEDIUM,
+    SOCKET_EVENTS
 } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
-  BulkColumnUpdateRequest,
-  ColumnUpdate,
+    BulkColumnUpdateRequest,
+    ColumnUpdate
 } from '../../../generated/api/data/bulkColumnUpdateRequest';
 import {
-  ColumnChild,
-  ColumnGridItem,
-  ColumnOccurrenceRef,
-  MetadataStatus,
+    ColumnChild,
+    ColumnGridItem,
+    ColumnOccurrenceRef,
+    MetadataStatus
 } from '../../../generated/api/data/columnGridResponse';
 import { BulkOperationResult } from '../../../generated/type/bulkOperationResult';
 import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
+    LabelType,
+    State,
+    TagLabel,
+    TagSource
 } from '../../../generated/type/tagLabel';
 import { bulkUpdateColumnsAsync } from '../../../rest/columnAPI';
 import { formatClientContent } from '../../../utils/BlockEditorPureUtils';
@@ -102,9 +103,9 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ColumnGridProps, ColumnGridRowData } from './ColumnGrid.interface';
 import ColumnGridRow from './components/ColumnGridRow';
 import {
-  RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS,
-  SCROLL_TO_ROW_MAX_RETRIES,
-  SCROLL_TO_ROW_RETRY_DELAY_MS,
+    RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS,
+    SCROLL_TO_ROW_MAX_RETRIES,
+    SCROLL_TO_ROW_RETRY_DELAY_MS
 } from './constants/ColumnGrid.constants';
 import { useColumnGridFilters } from './hooks/useColumnGridFilters';
 import { useColumnGridListingData } from './hooks/useColumnGridListingData';
@@ -2673,7 +2674,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             <div
               className="tw:flex tw:min-w-0 tw:flex-1 tw:shrink-0 tw:items-center tw:gap-4 tw:pl-6 first:tw:pl-0 last:tw:pr-0"
               data-testid="total-unique-columns-card">
-              <UniqueColumnsIcon height={47} width={47} />
+              <FeaturedIcon color="brand" icon={TotalUniqueColumn} size="lg" />
               <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-0.5">
                 <Typography
                   as="p"
@@ -2699,7 +2700,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             <div
               className="tw:flex tw:min-w-0 tw:flex-1 tw:shrink-0 tw:items-center tw:gap-4 tw:pl-6 first:tw:pl-0 last:tw:pr-0"
               data-testid="total-occurrences-card">
-              <OccurrencesIcon height={47} width={47} />
+              <FeaturedIcon color="success" icon={TotalOccurrences} size="lg" />
               <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-0.5">
                 <Typography
                   as="p"
@@ -2725,7 +2726,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             <div
               className="tw:flex tw:min-w-0 tw:flex-1 tw:shrink-0 tw:items-center tw:gap-4 tw:pl-6 first:tw:pl-0 last:tw:pr-0"
               data-testid="pending-changes-card">
-              <PendingChangesIcon height={47} width={47} />
+              <FeaturedIcon color="warning" icon={PendingChanges} size="lg" />
               <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-0.5">
                 <Typography
                   as="p"
