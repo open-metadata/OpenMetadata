@@ -57,6 +57,11 @@ reprocessed while its identity is unrecorded, and dropped again afterwards. Over
 `getDataMigrationRevision()` when you change an existing migration's behaviour and deployments
 that already ran it have to run it again.
 
+This applies to the current release train's latest version only. The previous train's latest
+version is reprocessed for appended SQL alone: its data migration was written against that
+train's schema, so it never runs again on a database that has moved to a newer train. Ship Java
+work that newer-train deployments need in the current train's version instead.
+
 ## Migration Logic
 
 The migration workflow follows this decision tree:

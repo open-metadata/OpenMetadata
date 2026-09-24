@@ -173,9 +173,7 @@ public class MigrationWorkflow {
       for (MigrationFile file : applyMigrations) {
         file.parseSQLFiles();
         MigrationProcess process = resolveMigrationProcess(file, extensionProviders);
-        if (file.isReprocessing()
-            && !file.hasNewStatements()
-            && !hasPendingDataMigration(process)) {
+        if (file.isReprocessing() && !hasPendingWork(file, process)) {
           LOG.debug(
               "[MigrationWorkflow] Skipping version {} - reprocessing with no new SQL statements"
                   + " and no pending data migration",
@@ -465,9 +463,14 @@ public class MigrationWorkflow {
             runSchemaChanges(row, process);
 
             if (shouldRunDataMigration(process)) {
-              if (runStepAndAddStatus(row, process::runDataMigration)) {
-                recordDataMigration(process);
-              }
+              // Recording inside the step makes a failed marker write fail the step, so the run is
+              // retried instead of being reported as a success the next startup calls pending.
+              runStepAndAddStatus(
+                  row,
+                  () -> {
+                    process.runDataMigration();
+                    recordDataMigration(process);
+                  });
             } else {
               LOG.info(
                   "[MigrationWorkflow] Skipping data migration for reprocessed previous release train version: {}",
@@ -502,12 +505,20 @@ public class MigrationWorkflow {
     LOG.info("[MigrationWorkflow] WorkFlow Completed");
   }
 
+  private boolean hasPendingWork(MigrationFile file, MigrationProcess process) {
+    return file.hasNewStatements()
+        || (shouldRunDataMigration(process) && hasPendingDataMigration(process));
+  }
+
+  // A reprocessed version from the previous release train only picks up appended SQL. Its data
+  // migration was written against that train's schema, which the database has since moved past,
+  // so it never runs again, whether or not its identity was ever recorded.
   private boolean shouldRunDataMigration(MigrationProcess process) {
-    if (!process.isReprocessing() || currentMaxMigrationVersion.isEmpty()) {
-      return true;
+    boolean result = true;
+    if (process.isReprocessing() && currentMaxMigrationVersion.isPresent()) {
+      result = compareVersions(process.getVersion(), currentMaxMigrationVersion.get()) == 0;
     }
-    return hasPendingDataMigration(process)
-        || compareVersions(process.getVersion(), currentMaxMigrationVersion.get()) == 0;
+    return result;
   }
 
   /**
@@ -530,24 +541,15 @@ public class MigrationWorkflow {
     }
   }
 
-  // Package-private for testing
-  void recordDataMigration(MigrationProcess process) {
+  private void recordDataMigration(MigrationProcess process) {
     String identity = process.getDataMigrationIdentity();
-    if (identity == null) {
-      return;
-    }
-    try {
+    if (identity != null) {
       migrationDAO.upsertServerMigrationSQL(
           process.getVersion(),
           String.format(
               "-- data migration %s revision %s",
               process.getClass().getName(), process.getDataMigrationRevision()),
           identity);
-    } catch (Exception e) {
-      LOG.warn(
-          "[MigrationWorkflow] Could not record the data migration run for version {}",
-          process.getVersion(),
-          e);
     }
   }
 
@@ -608,18 +610,16 @@ public class MigrationWorkflow {
     }
   }
 
-  // Package-private for testing
-  boolean runStepAndAddStatus(List<String> row, MigrationProcess.MigrationProcessCallback process) {
+  private void runStepAndAddStatus(
+      List<String> row, MigrationProcess.MigrationProcessCallback process) {
     try {
       process.call();
       row.add(SUCCESS_MSG);
-      return true;
     } catch (Exception e) {
       row.add(FAILED_MSG + e.getMessage());
       if (!forceMigrations) {
         throw e;
       }
-      return false;
     }
   }
 

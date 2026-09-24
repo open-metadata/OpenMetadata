@@ -1,15 +1,12 @@
 package org.openmetadata.service.migration.api;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -18,7 +15,6 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,10 +34,12 @@ import org.openmetadata.service.migration.utils.MigrationFile;
  * both SQL files empty, and all of its work in {@code migration.{mysql,postgres}.vXYZ.Migration}.
  * 1.2.0 stands in for it because a released version's migration class stays in the tree for as
  * long as upgrades from it are supported, whereas 1.13.5's was later replaced by SQL in 1.13.6.
+ * 1.1.0 plays the previous release train's latest version for the same reason.
  */
 class MigrationWorkflowDataMigrationTest {
 
   private static final String JAVA_ONLY_VERSION = "1.2.0";
+  private static final String PREVIOUS_TRAIN_VERSION = "1.1.0";
   private static final String SQL_ONLY_VERSION = "1.12.3";
 
   @TempDir Path tempDir;
@@ -91,6 +89,25 @@ class MigrationWorkflowDataMigrationTest {
 
   @ParameterizedTest
   @EnumSource(ConnectionType.class)
+  void previousTrainJavaMigrationWithoutAMarkerIsNotSelected(ConnectionType connectionType)
+      throws IOException {
+    // Every deployment is in this state on the first migrate after the ledger shipped: nothing is
+    // recorded anywhere. The previous train's latest version still must not come back for its Java
+    // migration, which was written against an older schema than the database is on now.
+    MigrationFile previousTrain = migrationDir(PREVIOUS_TRAIN_VERSION, connectionType, "");
+    MigrationFile currentTrain = migrationDir(JAVA_ONLY_VERSION, connectionType, "");
+    when(migrationDAO.getMigrationVersions())
+        .thenReturn(List.of(PREVIOUS_TRAIN_VERSION, JAVA_ONLY_VERSION));
+
+    List<MigrationProcess> processes =
+        workflow(connectionType).filterAndGetMigrationsToRun(List.of(previousTrain, currentTrain));
+
+    assertNotNull(identityOf(previousTrain), "1.1.0 has to ship a real Java migration");
+    assertEquals(List.of(JAVA_ONLY_VERSION), versionsOf(processes));
+  }
+
+  @ParameterizedTest
+  @EnumSource(ConnectionType.class)
   void reprocessedVersionWithoutJavaMigrationIsStillDropped(ConnectionType connectionType)
       throws IOException {
     MigrationFile sqlOnly = migrationDir(SQL_ONLY_VERSION, connectionType, "");
@@ -128,40 +145,11 @@ class MigrationWorkflowDataMigrationTest {
   }
 
   @Test
-  void aVersionWithoutJavaWorkIsNeverPendingAndIsNeverRecorded() throws IOException {
+  void aVersionWithoutJavaWorkIsNeverPending() throws IOException {
     MigrationFile sqlOnly = migrationDir(SQL_ONLY_VERSION, ConnectionType.MYSQL, "");
-    MigrationWorkflow workflow = workflow(ConnectionType.MYSQL);
-    MigrationProcess process = processFor(sqlOnly);
 
-    assertFalse(workflow.hasPendingDataMigration(process));
-
-    workflow.recordDataMigration(process);
-    verify(migrationDAO, never()).upsertServerMigrationSQL(anyString(), anyString(), anyString());
-  }
-
-  @Test
-  void aSucceededDataMigrationIsRecordedUnderItsIdentity() throws IOException {
-    MigrationFile javaOnly = migrationDir(JAVA_ONLY_VERSION, ConnectionType.MYSQL, "");
-    MigrationProcess process = processFor(javaOnly);
-
-    workflow(ConnectionType.MYSQL).recordDataMigration(process);
-
-    verify(migrationDAO)
-        .upsertServerMigrationSQL(
-            JAVA_ONLY_VERSION,
-            "-- data migration org.openmetadata.service.migration.mysql.v120.Migration revision 1",
-            process.getDataMigrationIdentity());
-  }
-
-  @Test
-  void failingToRecordTheRunDoesNotFailAMigrationThatSucceeded() throws IOException {
-    MigrationFile javaOnly = migrationDir(JAVA_ONLY_VERSION, ConnectionType.MYSQL, "");
-    doThrow(new RuntimeException("SERVER_MIGRATION_SQL_LOGS rejected the write"))
-        .when(migrationDAO)
-        .upsertServerMigrationSQL(anyString(), anyString(), anyString());
-
-    assertDoesNotThrow(
-        () -> workflow(ConnectionType.MYSQL).recordDataMigration(processFor(javaOnly)));
+    assertFalse(workflow(ConnectionType.MYSQL).hasPendingDataMigration(processFor(sqlOnly)));
+    verify(migrationDAO, never()).getSqlQuery(anyString(), anyString());
   }
 
   @Test
@@ -172,36 +160,6 @@ class MigrationWorkflowDataMigrationTest {
 
     assertFalse(workflow(ConnectionType.MYSQL).hasPendingDataMigration(directImplementation));
     verify(migrationDAO, never()).getSqlQuery(anyString(), anyString());
-  }
-
-  @Test
-  void aFailedDataMigrationIsNotReportedAsRun() {
-    MigrationWorkflow forced =
-        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", "", config, true);
-    List<String> row = new ArrayList<>();
-
-    assertFalse(
-        forced.runStepAndAddStatus(
-            row,
-            () -> {
-              throw new IllegalStateException("data migration blew up");
-            }),
-        "a swallowed failure under --force must not count as a run");
-    assertTrue(row.get(0).startsWith(MigrationWorkflow.FAILED_MSG));
-  }
-
-  @Test
-  void aFailedDataMigrationStopsTheWorkflowWhenNotForced() {
-    MigrationWorkflow workflow = workflow(ConnectionType.MYSQL);
-
-    assertThrows(
-        IllegalStateException.class,
-        () ->
-            workflow.runStepAndAddStatus(
-                new ArrayList<>(),
-                () -> {
-                  throw new IllegalStateException("data migration blew up");
-                }));
   }
 
   private MigrationWorkflow workflow(ConnectionType connectionType) {

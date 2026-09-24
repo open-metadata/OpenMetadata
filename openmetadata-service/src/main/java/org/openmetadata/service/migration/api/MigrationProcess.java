@@ -94,9 +94,9 @@ public interface MigrationProcess {
 
   /**
    * Stable identity of this version's Java data migration, or {@code null} when the version ships
-   * no Java work. The workflow records the identity once the migration succeeds, so a version that
-   * is reprocessed on every deployment runs its data migration only while that identity is still
-   * unrecorded.
+   * no Java work. The workflow records the identity once the migration succeeds, so the current
+   * release train's latest version, which is reprocessed on every deployment, runs its data
+   * migration only while that identity is still unrecorded.
    */
   default String getDataMigrationIdentity() {
     return null;
