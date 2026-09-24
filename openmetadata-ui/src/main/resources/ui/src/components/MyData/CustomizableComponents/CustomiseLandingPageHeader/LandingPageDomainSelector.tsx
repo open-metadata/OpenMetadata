@@ -12,7 +12,7 @@
  */
 import { Typography } from 'antd';
 import classNames from 'classnames';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down.svg';
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domain.svg';
@@ -36,12 +36,9 @@ const LandingPageDomainSelector = ({
     updateActiveDomain,
     isDomainRestricted,
   } = useDomainStore();
-  const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
-
   const handleDomainChange = useCallback(
     async (domain: EntityReference | EntityReference[]) => {
       updateActiveDomain(domain as EntityReference);
-      setIsDomainDropdownOpen(false);
       navigate(0);
     },
     [updateActiveDomain, navigate]
@@ -56,16 +53,9 @@ const LandingPageDomainSelector = ({
     <DomainSelectableList
       hasPermission
       disabled={disabled}
-      popoverProps={{
-        open: isDomainDropdownOpen,
-        onOpenChange: (open) => {
-          setIsDomainDropdownOpen(open);
-        },
-      }}
       selectedDomain={activeDomainEntityRef}
       showAllDomains={!isDomainRestricted}
       wrapInButton={false}
-      onCancel={() => setIsDomainDropdownOpen(false)}
       onUpdate={handleDomainChange}>
       <div
         className={classNames(
@@ -78,12 +68,11 @@ const LandingPageDomainSelector = ({
         data-testid="domain-selector"
         role="button"
         tabIndex={0}
-        onClick={() => {
-          setIsDomainDropdownOpen(!isDomainDropdownOpen);
-        }}
         onKeyDown={(e) => {
+          // The picker opens via DomainSelectableList's click-capture wrapper;
+          // synthesize a click so keyboard users get the same behaviour.
           if (e.key === 'Enter' || e.key === ' ') {
-            setIsDomainDropdownOpen(!isDomainDropdownOpen);
+            e.currentTarget.click();
           }
         }}>
         <DomainIcon
