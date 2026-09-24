@@ -164,8 +164,8 @@ button {
   border: 1px solid @grey-300;
   background-color: var(--om-color-bg-surface);
 
-  // Dark: bg-primary is darker than the surfaces these sit on (black boxes);
-  // let the host surface show through.
+  // Dark: a filled box reads as a patch on surface/secondary hosts (e.g. the
+  // entity summary header); let the host surface show through.
   .dark-mode & {
     background-color: transparent;
   }
