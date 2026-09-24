@@ -120,6 +120,11 @@ import org.openmetadata.service.util.UserUtil;
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
   private static final int PAGE_SIZE = 500;
+  // Users seeded from the authorizer configuration at startup skip the email domain check: the
+  // operator listed them explicitly, and the login path exempts them for the same reason, so a
+  // domain restriction that excludes the seeded admin cannot lock the deployment out of it
+  private static final ThreadLocal<Boolean> SEEDING_CONFIGURED_USERS =
+      ThreadLocal.withInitial(() -> Boolean.FALSE);
   private static final int MAX_TASK_CLEANUP_RETRIES = 3;
   private static final long INITIAL_TASK_CLEANUP_RETRY_DELAY_MILLIS = 100L;
   private static final long MAX_TASK_CLEANUP_RETRY_DELAY_MILLIS = 1000L;
@@ -280,6 +285,17 @@ public class UserRepository extends EntityRepository<User> {
       validateGroupTeams(user.getTeams());
     }
     validateRoles(user.getRoles());
+  }
+
+  @Override
+  protected User createNewEntity(User user) {
+    // Not in prepare(): PUT calls prepare with update=true even when it creates the user, and
+    // createOrUpdate never calls prepare, so this is the one point every new user passes through.
+    // Updates need no check because UserUpdater restores the stored email on every update.
+    if (!SEEDING_CONFIGURED_USERS.get()) {
+      UserUtil.validateEmailDomain(user, SecurityConfigurationManager.getCurrentAuthzConfig());
+    }
+    return super.createNewEntity(user);
   }
 
   @Override
@@ -585,13 +601,19 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public void initializeUsers(OpenMetadataApplicationConfig config) {
-    AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
+    SEEDING_CONFIGURED_USERS.set(Boolean.TRUE);
+    try {
+      AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
 
-    UserUtil.createOrUpdateAdminUsers(authProvider, config.getAuthorizerConfiguration());
+      UserUtil.createOrUpdateAdminUsers(authProvider, config.getAuthorizerConfiguration());
 
-    String domain = SecurityUtil.getDomain(config);
-    Set<String> testUsers = new HashSet<>(config.getAuthorizerConfiguration().getTestPrincipals());
-    UserUtil.addUsers(authProvider, testUsers, domain, null);
+      String domain = SecurityUtil.getDomain(config);
+      Set<String> testUsers =
+          new HashSet<>(config.getAuthorizerConfiguration().getTestPrincipals());
+      UserUtil.addUsers(authProvider, testUsers, domain, null);
+    } finally {
+      SEEDING_CONFIGURED_USERS.remove();
+    }
   }
 
   private List<EntityReference> getOwns(User user) {

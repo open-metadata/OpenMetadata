@@ -58,6 +58,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.exception.EmailDomainNotAllowedException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -866,6 +867,41 @@ public final class UserUtil {
       throw new IllegalArgumentException("Bot domain cannot be null or empty");
     }
     return String.format("%s@%s", botName.toLowerCase(), botDomain.toLowerCase());
+  }
+
+  /**
+   * Rejects a new user whose email domain the configured domain rules would refuse at sign-in, so
+   * the problem surfaces when the user is created rather than at their first login (issue #19306).
+   * Uses {@link SecurityUtil#configuredEmailDomains}, the rule the login path applies.
+   */
+  public static void validateEmailDomain(User user, AuthorizerConfiguration authorizerConfig) {
+    List<String> allowedDomains = allowedEmailDomainsFor(user, authorizerConfig);
+    String emailDomain = emailDomainOf(user.getEmail());
+    if (!allowedDomains.isEmpty()
+        && allowedDomains.stream().noneMatch(emailDomain::equalsIgnoreCase)) {
+      throw new EmailDomainNotAllowedException(emailDomain, allowedDomains);
+    }
+  }
+
+  /** Empty when no domain rule applies. Bots are exempt, as they are at login. */
+  private static List<String> allowedEmailDomainsFor(
+      User user, AuthorizerConfiguration authorizerConfig) {
+    if (Boolean.TRUE.equals(user.getIsBot()) || authorizerConfig == null) {
+      return List.of();
+    }
+    Set<String> allowedEmailDomains = authorizerConfig.getAllowedEmailDomains();
+    return SecurityUtil.configuredEmailDomains(
+        allowedEmailDomains == null ? List.of() : new ArrayList<>(allowedEmailDomains),
+        authorizerConfig.getPrincipalDomain(),
+        authorizerConfig.getAllowedDomains(),
+        authorizerConfig.getEnforcePrincipalDomain());
+  }
+
+  private static String emailDomainOf(String email) {
+    if (nullOrEmpty(email) || !email.contains("@")) {
+      return "";
+    }
+    return email.substring(email.indexOf('@') + 1);
   }
 
   public static void validateUserPersonaPreferencesImage(LandingPageSettings settings) {

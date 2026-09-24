@@ -14,6 +14,7 @@
 package org.openmetadata.service.exception;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -79,6 +80,8 @@ public final class CatalogExceptionMessage {
       "You have entered an invalid email or password.";
 
   public static final String EMAIL_EXISTS = "EMAIL_EXISTS";
+
+  public static final String EMAIL_DOMAIN_NOT_ALLOWED = "EMAIL_DOMAIN_NOT_ALLOWED";
 
   public static final String SELF_SIGNUP_NOT_ENABLED = "SELF_SIGNUP_NOT_ENABLED";
   public static final String SELF_SIGNUP_ERROR = "Signup is not supported.";
@@ -202,6 +205,12 @@ public final class CatalogExceptionMessage {
     return String.format(
         "Invalid queryParameters - glossary term `parent` %s is not in the `glossary` %s",
         parentId, glossaryId);
+  }
+
+  public static String invalidEmailDomain(String emailDomain, Collection<String> allowedDomains) {
+    return String.format(
+        "Email domain '%s' is not allowed. Allowed email domains: %s",
+        emailDomain, String.join(", ", allowedDomains));
   }
 
   public static String notAdmin(String name) {

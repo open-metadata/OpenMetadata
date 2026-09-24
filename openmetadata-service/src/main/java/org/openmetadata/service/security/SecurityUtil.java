@@ -810,22 +810,33 @@ public final class SecurityUtil {
       String principalDomain,
       Set<String> allowedDomains,
       Boolean enforcePrincipalDomain) {
-    if (allowedEmailDomains != null && !allowedEmailDomains.isEmpty()) {
-      validateEmailDomain(email, allowedEmailDomains);
-      return;
-    }
+    validateEmailDomain(
+        email,
+        configuredEmailDomains(
+            allowedEmailDomains, principalDomain, allowedDomains, enforcePrincipalDomain));
+  }
 
+  /**
+   * The email domains a principal may belong to, or an empty list when every domain is allowed.
+   * {@code allowedEmailDomains} wins; otherwise the deprecated {@code enforcePrincipalDomain}
+   * restricts to {@code allowedDomains}, falling back to {@code principalDomain}. Shared by the
+   * login-time check above and the check applied when a user is created, so both accept exactly
+   * the same domains.
+   */
+  public static List<String> configuredEmailDomains(
+      List<String> allowedEmailDomains,
+      String principalDomain,
+      Set<String> allowedDomains,
+      Boolean enforcePrincipalDomain) {
+    if (!nullOrEmpty(allowedEmailDomains)) {
+      return allowedEmailDomains;
+    }
     if (!Boolean.TRUE.equals(enforcePrincipalDomain)) {
-      return;
+      return List.of();
     }
-
-    if (allowedDomains != null && !allowedDomains.isEmpty()) {
-      validateEmailDomain(email, new ArrayList<>(allowedDomains));
-      return;
+    if (!nullOrEmpty(allowedDomains)) {
+      return new ArrayList<>(allowedDomains);
     }
-
-    String effectivePrincipalDomain =
-        nullOrEmpty(principalDomain) ? DEFAULT_PRINCIPAL_DOMAIN : principalDomain;
-    validateEmailDomain(email, List.of(effectivePrincipalDomain));
+    return List.of(nullOrEmpty(principalDomain) ? DEFAULT_PRINCIPAL_DOMAIN : principalDomain);
   }
 }

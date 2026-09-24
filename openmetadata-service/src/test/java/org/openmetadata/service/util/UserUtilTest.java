@@ -1,5 +1,6 @@
 package org.openmetadata.service.util;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -51,6 +52,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.exception.EmailDomainNotAllowedException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
@@ -1045,5 +1047,121 @@ class UserUtilTest {
   void testIsConfiguredAdmin_handlesNullConfigAndNullFields() {
     assertFalse(UserUtil.isConfiguredAdmin(null, "a@b.com", "a"));
     assertFalse(UserUtil.isConfiguredAdmin(new AuthorizerConfiguration(), "a@b.com", "a"));
+  }
+
+  @Test
+  void validateEmailDomainRejectsEmailOutsideAllowedEmailDomains() {
+    // allowedEmailDomains restricts on its own: the deprecated enforcePrincipalDomain is not needed
+    EmailDomainNotAllowedException exception =
+        assertThrows(
+            EmailDomainNotAllowedException.class,
+            () ->
+                UserUtil.validateEmailDomain(
+                    userWithEmail("alice@gmail.com"), allowedEmailDomains("getcollate.io")));
+
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), exception.getResponse().getStatus());
+    assertTrue(exception.getMessage().contains("gmail.com"));
+    assertTrue(exception.getMessage().contains("getcollate.io"));
+  }
+
+  @Test
+  void validateEmailDomainAcceptsAllowedEmailDomainIgnoringCase() {
+    AuthorizerConfiguration config = allowedEmailDomains("getcollate.io");
+
+    assertDoesNotThrow(
+        () -> UserUtil.validateEmailDomain(userWithEmail("alice@getcollate.io"), config));
+    assertDoesNotThrow(
+        () -> UserUtil.validateEmailDomain(userWithEmail("alice@GetCollate.IO"), config));
+  }
+
+  @Test
+  void validateEmailDomainPrefersAllowedEmailDomainsOverDeprecatedSettings() {
+    AuthorizerConfiguration config =
+        allowedEmailDomains("partner.io")
+            .withEnforcePrincipalDomain(true)
+            .withPrincipalDomain("getcollate.io");
+
+    assertDoesNotThrow(() -> UserUtil.validateEmailDomain(userWithEmail("bob@partner.io"), config));
+    assertThrows(
+        EmailDomainNotAllowedException.class,
+        () -> UserUtil.validateEmailDomain(userWithEmail("alice@getcollate.io"), config));
+  }
+
+  @Test
+  void validateEmailDomainAppliesDeprecatedEnforcePrincipalDomain() {
+    AuthorizerConfiguration principalOnly = enforcingPrincipalDomain("getcollate.io", Set.of());
+    assertDoesNotThrow(
+        () -> UserUtil.validateEmailDomain(userWithEmail("alice@getcollate.io"), principalOnly));
+    assertThrows(
+        EmailDomainNotAllowedException.class,
+        () -> UserUtil.validateEmailDomain(userWithEmail("alice@gmail.com"), principalOnly));
+
+    // allowedDomains replaces principalDomain rather than extending it, as it does at login
+    AuthorizerConfiguration withAllowedDomains =
+        enforcingPrincipalDomain("getcollate.io", Set.of("partner.io"));
+    assertDoesNotThrow(
+        () -> UserUtil.validateEmailDomain(userWithEmail("bob@partner.io"), withAllowedDomains));
+    assertThrows(
+        EmailDomainNotAllowedException.class,
+        () ->
+            UserUtil.validateEmailDomain(userWithEmail("alice@getcollate.io"), withAllowedDomains));
+  }
+
+  @Test
+  void validateEmailDomainFallsBackToDefaultPrincipalDomainWhenBlank() {
+    // Same as the login rule: under enforcement a blank principalDomain means openmetadata.org
+    AuthorizerConfiguration blank = enforcingPrincipalDomain("", Set.of());
+
+    assertDoesNotThrow(
+        () -> UserUtil.validateEmailDomain(userWithEmail("admin@openmetadata.org"), blank));
+    assertThrows(
+        EmailDomainNotAllowedException.class,
+        () -> UserUtil.validateEmailDomain(userWithEmail("alice@gmail.com"), blank));
+  }
+
+  @Test
+  void validateEmailDomainAllowsEveryDomainWhenNothingRestricts() {
+    AuthorizerConfiguration unrestricted =
+        new AuthorizerConfiguration()
+            .withPrincipalDomain("getcollate.io")
+            .withEnforcePrincipalDomain(false);
+
+    assertDoesNotThrow(
+        () -> UserUtil.validateEmailDomain(userWithEmail("alice@gmail.com"), unrestricted));
+    assertDoesNotThrow(() -> UserUtil.validateEmailDomain(userWithEmail("alice@gmail.com"), null));
+  }
+
+  @Test
+  void validateEmailDomainSkipsBots() {
+    // Every app bot is created as <name>@openmetadata.org whatever the configured domains are
+    User bot = userWithEmail("searchIndexingApplicationBot@openmetadata.org").withIsBot(true);
+
+    assertDoesNotThrow(
+        () -> UserUtil.validateEmailDomain(bot, allowedEmailDomains("getcollate.io")));
+  }
+
+  @Test
+  void validateEmailDomainRejectsMalformedEmailWhenRestricted() {
+    assertThrows(
+        EmailDomainNotAllowedException.class,
+        () ->
+            UserUtil.validateEmailDomain(
+                userWithEmail("no-at-sign"), allowedEmailDomains("getcollate.io")));
+  }
+
+  private static User userWithEmail(String email) {
+    return new User().withId(UUID.randomUUID()).withName(email.split("@")[0]).withEmail(email);
+  }
+
+  private static AuthorizerConfiguration allowedEmailDomains(String... domains) {
+    return new AuthorizerConfiguration().withAllowedEmailDomains(Set.of(domains));
+  }
+
+  private static AuthorizerConfiguration enforcingPrincipalDomain(
+      String principalDomain, Set<String> allowedDomains) {
+    return new AuthorizerConfiguration()
+        .withPrincipalDomain(principalDomain)
+        .withAllowedDomains(allowedDomains)
+        .withEnforcePrincipalDomain(true);
   }
 }

@@ -1288,4 +1288,24 @@ class SecurityUtilTest {
     String token = JWT.create().withPayload(values).sign(Algorithm.none());
     return JWT.decode(token).getClaims();
   }
+
+  @Test
+  void testConfiguredEmailDomainsFollowsLoginPrecedence() {
+    // allowedEmailDomains wins over every deprecated setting
+    assertEquals(
+        List.of("a.io"),
+        SecurityUtil.configuredEmailDomains(List.of("a.io"), "p.io", Set.of("b.io"), true));
+    // without it, nothing restricts unless the deprecated enforcePrincipalDomain is on
+    assertTrue(
+        SecurityUtil.configuredEmailDomains(List.of(), "p.io", Set.of("b.io"), false).isEmpty());
+    assertTrue(SecurityUtil.configuredEmailDomains(null, "p.io", Set.of("b.io"), null).isEmpty());
+    // under enforcement allowedDomains replaces principalDomain, which falls back to the default
+    assertEquals(
+        List.of("b.io"), SecurityUtil.configuredEmailDomains(null, "p.io", Set.of("b.io"), true));
+    assertEquals(
+        List.of("p.io"), SecurityUtil.configuredEmailDomains(null, "p.io", Set.of(), true));
+    assertEquals(
+        List.of(SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN),
+        SecurityUtil.configuredEmailDomains(null, "", null, true));
+  }
 }
