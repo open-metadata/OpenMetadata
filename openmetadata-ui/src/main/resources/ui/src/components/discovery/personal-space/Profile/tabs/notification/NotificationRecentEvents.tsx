@@ -114,17 +114,17 @@ function NotificationRecentEvents({
   );
 
   const getAlertRecentEvents = useCallback(
-    async (paginationOffset = 0) => {
+    async (paginationOffset = 0, limit = pageSize) => {
       try {
         setLoading(true);
         const { data, paging } = await getAlertEventsFromId({
           id,
           params: {
             ...(filter === AlertRecentEventFilters.ALL
-              ? { limit: pageSize, paginationOffset }
+              ? { limit, paginationOffset }
               : {
                   status: filter as Status,
-                  limit: pageSize,
+                  limit,
                   paginationOffset,
                 }),
           },
@@ -155,7 +155,7 @@ function NotificationRecentEvents({
       setCurrentPage(1);
       setPageSize(size);
       updateParams({ page: '1', pageSize: String(size) });
-      getAlertRecentEvents(0);
+      getAlertRecentEvents(0, size);
     },
     [updateParams, getAlertRecentEvents]
   );

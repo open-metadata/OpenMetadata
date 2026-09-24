@@ -147,6 +147,7 @@ jest.mock(
 jest.mock('../../../../../../utils/PermissionDerivation', () => ({
   getDerivedPermissionFlags: jest.fn().mockReturnValue({
     canEditAll: true,
+    canDelete: true,
   }),
 }));
 
@@ -161,6 +162,16 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
 jest.mock('../../../../../../utils/EntityNameUtils', () => ({
   getEntityName: (entity: { name?: string; displayName?: string }) =>
     entity?.displayName ?? entity?.name ?? '',
+}));
+
+jest.mock('../../../../../../hooks/useSettingsHash', () => ({
+  useHashPagingParams: () => ({
+    page: 1,
+    pageSize: 10,
+    cursorType: undefined,
+    cursor: undefined,
+    setPage: jest.fn(),
+  }),
 }));
 
 jest.mock('../../../../../common/DeleteModal/DeleteModal', () =>
@@ -189,8 +200,8 @@ jest.mock('../../../../../../constants/constants', () => ({
 describe('NotificationAlertsPanel', () => {
   const mockOnNavigate = jest.fn();
 
-  beforeEach(() => {
-    jest.clearAllMocks();
+  afterEach(() => {
+    jest.clearAllTimers();
   });
 
   it('should render alerts table after loading', async () => {
@@ -216,40 +227,30 @@ describe('NotificationAlertsPanel', () => {
   });
 
   it('should show edit and delete buttons for user alerts', async () => {
-    await act(async () => {
-      render(<NotificationAlertsPanel onNavigate={mockOnNavigate} />);
-    });
+    render(<NotificationAlertsPanel onNavigate={mockOnNavigate} />);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('alert-edit-user-alert')).toBeInTheDocument();
-      expect(screen.getByTestId('alert-delete-user-alert')).toBeInTheDocument();
-    });
+    expect(await screen.findByTestId('alert-edit-user-alert')).toBeInTheDocument();
+    expect(screen.getByTestId('alert-delete-user-alert')).toBeInTheDocument();
   });
 
   it('should show placeholder for system alert actions', async () => {
-    await act(async () => {
-      render(<NotificationAlertsPanel onNavigate={mockOnNavigate} />);
-    });
+    render(<NotificationAlertsPanel onNavigate={mockOnNavigate} />);
 
-    await waitFor(() => {
-      const dashes = screen.getAllByText('--');
-
-      expect(dashes.length).toBeGreaterThanOrEqual(1);
+    await screen.findByTestId('alert-edit-user-alert', undefined, {
+      timeout: 5000,
     });
+    const dashes = screen.getAllByText('--');
+
+    expect(dashes.length).toBeGreaterThanOrEqual(1);
   });
 
   it('should open delete modal when delete button is clicked', async () => {
-    await act(async () => {
-      render(<NotificationAlertsPanel onNavigate={mockOnNavigate} />);
-    });
+    render(<NotificationAlertsPanel onNavigate={mockOnNavigate} />);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('alert-delete-user-alert')).toBeInTheDocument();
+    const deleteBtn = await screen.findByTestId('alert-delete-user-alert', undefined, {
+      timeout: 5000,
     });
-
-    act(() => {
-      screen.getByTestId('alert-delete-user-alert').click();
-    });
+    act(() => deleteBtn.click());
 
     expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
   });

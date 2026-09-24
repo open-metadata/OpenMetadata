@@ -209,12 +209,15 @@ export const useSettingsHashSync = (
 ) => {
   const { state, clearHash } = useSettingsHash();
   const wasOpenRef = useRef(isOpen);
+  const prevTabRef = useRef<string | null>(null);
 
-  // Open modal if hash is present and modal is closed
+  // Only auto-open when the hash itself changes (deep link or refresh),
+  // not when isOpen flips (which would fight the close path).
   useEffect(() => {
-    if (state.tab && !isOpen) {
+    if (state.tab && state.tab !== prevTabRef.current && !isOpen) {
       openModal('profile');
     }
+    prevTabRef.current = state.tab;
   }, [state.tab, isOpen, openModal]);
 
   // Clear hash only when modal transitions from open → closed (not on mount)
