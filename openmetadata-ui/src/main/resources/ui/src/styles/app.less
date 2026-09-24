@@ -1118,6 +1118,15 @@ a[href].link-text-grey,
   align-items: center;
   flex-direction: column;
   height: 100%;
+
+  // antd Result hardcodes rgba(0,0,0,…) text, unreadable on the dark surface.
+  .ant-result-title {
+    color: var(--om-color-text-primary);
+  }
+
+  .ant-result-subtitle {
+    color: var(--om-color-text-tertiary);
+  }
 }
 
 .alert-icon {
