@@ -80,7 +80,10 @@ import {
   ResourceEntity,
   UIPermission,
 } from '../context/PermissionProvider/PermissionProvider.interface';
-import { userPermissions } from '../utils/PermissionsUtils';
+import {
+  hasCustomPropertyViewPermission,
+  userPermissions,
+} from '../utils/PermissionsUtils';
 import { t } from './i18next/LocalUtil';
 
 class GlobalSettingsClassBase {
@@ -160,6 +163,10 @@ class GlobalSettingsClassBase {
     permissions: UIPermission,
     isAdminUser?: boolean
   ): Array<SettingMenuItem> {
+    const canViewCustomProperties = (entityResource: ResourceEntity) =>
+      Boolean(isAdminUser) ||
+      hasCustomPropertyViewPermission(entityResource, permissions);
+
     return [
       {
         category: t('label.service-plural'),
@@ -708,7 +715,7 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.api-collection'),
             }),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(ResourceEntity.API_COLLECTION),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.API_COLLECTIONS}`,
             icon: APICollectionIcon,
           },
@@ -717,7 +724,7 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.api-endpoint'),
             }),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(ResourceEntity.API_ENDPOINT),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.API_ENDPOINTS}`,
             icon: APIEndpointIcon,
           },
@@ -726,7 +733,7 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.data-product'),
             }),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(ResourceEntity.DATA_PRODUCT),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DATA_PRODUCT}`,
             icon: DataProductIcon,
           },
@@ -735,7 +742,9 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.dashboard-data-model-plural'),
             }),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(
+              ResourceEntity.DASHBOARD_DATA_MODEL
+            ),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DASHBOARD_DATA_MODEL}`,
             icon: DashboardDataModelIcon,
           },
@@ -744,7 +753,7 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.database'),
             }),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(ResourceEntity.DATABASE),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DATABASES}`,
             icon: DatabaseIcon,
           },
@@ -753,7 +762,9 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.database-schema'),
             }),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(
+              ResourceEntity.DATABASE_SCHEMA
+            ),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DATABASE_SCHEMA}`,
             icon: SchemaIcon,
           },
@@ -762,7 +773,7 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.metric'),
             }),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(ResourceEntity.METRIC),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.METRICS}`,
             icon: MetricIcon,
           },
@@ -771,7 +782,7 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.table-plural'),
             }),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(ResourceEntity.TABLE),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.TABLES}`,
             icon: TableIcon,
           },
@@ -780,7 +791,9 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.stored-procedure-plural'),
             }),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(
+              ResourceEntity.STORED_PROCEDURE
+            ),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.STORED_PROCEDURES}`,
             icon: StoredProcedureIcon,
           },
@@ -789,7 +802,7 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.dashboard-plural'),
             }),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(ResourceEntity.DASHBOARD),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DASHBOARDS}`,
             icon: DashboardIcon,
           },
@@ -798,7 +811,7 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.pipeline-plural'),
             }),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(ResourceEntity.PIPELINE),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.PIPELINES}`,
             icon: PipelineIcon,
           },
@@ -807,7 +820,7 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.topic-plural'),
             }),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(ResourceEntity.TOPIC),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.TOPICS}`,
             icon: MessagingIcon,
           },
@@ -816,7 +829,7 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.container-plural'),
             }),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(ResourceEntity.CONTAINER),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.CONTAINERS}`,
             icon: StorageIcon,
           },
@@ -825,7 +838,7 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.ml-model-plural'),
             }),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(ResourceEntity.ML_MODEL),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.MLMODELS}`,
             icon: MlModelIcon,
           },
@@ -834,14 +847,14 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.search-index-plural'),
             }),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(ResourceEntity.SEARCH_INDEX),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.SEARCH_INDEXES}`,
             icon: SearchIndexIcon,
           },
           {
             label: t('label.column-plural'),
             description: t('message.define-custom-property-for-column'),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(ResourceEntity.TABLE_COLUMN),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.COLUMN}`,
             icon: ColumnIcon,
           },
@@ -850,7 +863,7 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.glossary-term'),
             }),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(ResourceEntity.GLOSSARY_TERM),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.GLOSSARY_TERM}`,
             icon: GlossaryIcon,
           },
@@ -859,7 +872,7 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.domain'),
             }),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(ResourceEntity.DOMAIN),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DOMAINS}`,
             icon: DomainIcon,
           },
@@ -868,7 +881,7 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.chart-plural'),
             }),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(ResourceEntity.CHART),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.CHARTS}`,
             icon: ChartIcon,
           },
@@ -877,7 +890,7 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.directory-plural'),
             }),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(ResourceEntity.DIRECTORY),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DIRECTORIES}`,
             icon: DirectoryIcon,
           },
@@ -886,7 +899,7 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.file-plural'),
             }),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(ResourceEntity.FILE),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.FILES}`,
             icon: FileIcon,
           },
@@ -895,7 +908,7 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.spreadsheet-plural'),
             }),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(ResourceEntity.SPREADSHEET),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.SPREADSHEETS}`,
             icon: SpreadsheetIcon,
           },
@@ -904,7 +917,7 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.worksheet-plural'),
             }),
-            isProtected: userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+            isProtected: canViewCustomProperties(ResourceEntity.WORKSHEET),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.WORKSHEETS}`,
             icon: WorksheetIcon,
           },

@@ -318,6 +318,68 @@ describe('GlobalSettingsClassBase', () => {
       }
     });
 
+    it('should gate each custom property item on ViewCustomFields of its entity for non-admins', () => {
+      const typeViewer = {
+        [ResourceEntity.TYPE]: { ViewBasic: true },
+        [ResourceEntity.TABLE]: { ViewCustomFields: true },
+        [ResourceEntity.TOPIC]: { ViewCustomFields: false },
+      } as unknown as UIPermission;
+
+      (userPermissions.hasViewPermissions as jest.Mock).mockReturnValue(false);
+
+      const result =
+        globalSettingsClassBase.getGlobalSettingsMenuWithPermission(
+          typeViewer,
+          false
+        );
+
+      const items =
+        result.find((item) => item.key === 'customProperties')?.items ?? [];
+
+      expect(
+        items.find((item) => item.key === 'customProperties.tables')
+          ?.isProtected
+      ).toBe(true);
+      expect(
+        items.find((item) => item.key === 'customProperties.topics')
+          ?.isProtected
+      ).toBe(false);
+    });
+
+    it('should hide custom property items for non-admins without TYPE view access', () => {
+      const noTypeAccess = {
+        [ResourceEntity.TABLE]: { ViewCustomFields: true },
+      } as unknown as UIPermission;
+
+      (userPermissions.hasViewPermissions as jest.Mock).mockReturnValue(false);
+
+      const result =
+        globalSettingsClassBase.getGlobalSettingsMenuWithPermission(
+          noTypeAccess,
+          false
+        );
+
+      const items =
+        result.find((item) => item.key === 'customProperties')?.items ?? [];
+
+      expect(items.every((item) => item.isProtected === false)).toBe(true);
+    });
+
+    it('should keep custom property items accessible for admins', () => {
+      (userPermissions.hasViewPermissions as jest.Mock).mockReturnValue(false);
+
+      const result =
+        globalSettingsClassBase.getGlobalSettingsMenuWithPermission(
+          mockNoPermissions,
+          true
+        );
+
+      const items =
+        result.find((item) => item.key === 'customProperties')?.items ?? [];
+
+      expect(items.every((item) => item.isProtected === true)).toBe(true);
+    });
+
     it('should include bots category for admin only', () => {
       (userPermissions.hasViewPermissions as jest.Mock).mockReturnValue(false);
 

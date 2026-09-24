@@ -29,10 +29,13 @@ import AddCustomProperty from '../../components/Settings/CustomProperty/AddCusto
 import { CustomPropertyTable } from '../../components/Settings/CustomProperty/CustomPropertyTable';
 import { ENTITY_PATH } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Type } from '../../generated/entity/type';
 import { CustomProperty } from '../../generated/type/customProperty';
+import { useAuth } from '../../hooks/authHooks';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   addPropertyToEntity,
@@ -41,6 +44,7 @@ import {
 } from '../../rest/metadataTypeAPI';
 import { getCustomPropertyPageHeaderFromEntity } from '../../utils/CustomProperty.utils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { hasCustomPropertyViewPermission } from '../../utils/PermissionsUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -66,6 +70,21 @@ const CustomEntityDetailV1 = () => {
 
   const tabAttributePath = useMemo(() => ENTITY_PATH[tab], [tab]);
 
+  const { isAdminUser } = useAuth();
+  const { permissions } = usePermissionProvider();
+
+  // The type-by-name read with `customProperties` is authorized on the target entity
+  // (ViewCustomFields on e.g. `table`), so gate per tab instead of on TYPE alone.
+  const hasViewPermission = useMemo(
+    () =>
+      Boolean(isAdminUser) ||
+      hasCustomPropertyViewPermission(
+        tabAttributePath as ResourceEntity,
+        permissions
+      ),
+    [isAdminUser, tabAttributePath, permissions]
+  );
+
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
@@ -78,12 +97,17 @@ const CustomEntityDetailV1 = () => {
   // Fetch-owner, by id — old code fetched only once selectedEntityTypeDetail.id was known
   // (an effect gated on `selectedEntityTypeDetail?.id`); `enabled` mirrors that gate.
   // Ungated: the old raw `EditAll` read never referenced `deleted`.
-  const { canEditAll: editPermission, error: permissionsError } =
-    useEntityPermissions(
-      ResourceEntity.TYPE,
-      { id: selectedEntityTypeDetail.id ?? '' },
-      { enabled: Boolean(selectedEntityTypeDetail?.id) }
-    );
+  // PATCH /types/{id} (edit existing properties) is EditAll, while
+  // PUT /types/{id} (add a property) is authorized as Create on `type`.
+  const {
+    canEditAll: editPermission,
+    canCreate: createPermission,
+    error: permissionsError,
+  } = useEntityPermissions(
+    ResourceEntity.TYPE,
+    { id: selectedEntityTypeDetail.id ?? '' },
+    { enabled: Boolean(selectedEntityTypeDetail?.id) }
+  );
 
   useEffect(() => {
     if (permissionsError) {
@@ -186,19 +210,19 @@ const CustomEntityDetailV1 = () => {
     titleKey: customPageHeader.header,
     descriptionMessageKey: customPageHeader.subHeader,
     createPermission:
-      activeTab === EntityTabs.CUSTOM_PROPERTIES && editPermission,
+      activeTab === EntityTabs.CUSTOM_PROPERTIES && createPermission,
     addButtonLabelKey: t('label.add-entity', { entity: t('label.property') }),
     addButtonTestId: 'add-field-button',
     onAddClick: handleAddProperty,
   });
 
   useEffect(() => {
-    if (!isUndefined(tab)) {
+    if (!isUndefined(tab) && hasViewPermission) {
       setActiveTab(EntityTabs.CUSTOM_PROPERTIES);
       setIsError(false);
       fetchTypeDetail(tabAttributePath);
     }
-  }, [tabAttributePath]);
+  }, [tabAttributePath, hasViewPermission]);
 
   const tabs = useMemo(() => {
     const { customProperties, schema } = selectedEntityTypeDetail;
@@ -248,6 +272,16 @@ const CustomEntityDetailV1 = () => {
     handleAddProperty,
     updateEntityType,
   ]);
+
+  if (!hasViewPermission) {
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view')}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
+  }
 
   if (isError) {
     return <ErrorPlaceHolder />;

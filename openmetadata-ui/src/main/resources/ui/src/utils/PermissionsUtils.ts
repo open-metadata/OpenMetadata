@@ -166,6 +166,29 @@ export const userPermissions = {
 };
 
 /**
+ * Checks whether the user can view the Custom Properties settings page of an entity type.
+ *
+ * Mirrors the backend: `GET /metadata/types/name/{entity}?fields=customProperties` authorizes
+ * `ViewCustomFields` on the target entity resource (e.g. `table`), not on `type`. The TYPE
+ * view check keeps the settings area scoped to users who can see type definitions at all.
+ *
+ * @param entityResource - The entity resource whose custom properties are managed (e.g. table)
+ * @param permissions - Resource-level UIPermission
+ * @returns boolean - true if the user can load that entity's custom properties
+ */
+export const hasCustomPropertyViewPermission = (
+  entityResource: ResourceEntity,
+  permissions: UIPermission
+): boolean =>
+  Boolean(
+    userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions)
+  ) &&
+  Boolean(
+    checkPermission(Operation.ViewCustomFields, entityResource, permissions) ||
+      checkPermission(Operation.ViewAll, entityResource, permissions)
+  );
+
+/**
  * Prioritizes field-level edit permissions over EditAll permission
  * @param permissions - The operation permissions object
  * @param fieldEditPermission - The specific field edit permission to check first

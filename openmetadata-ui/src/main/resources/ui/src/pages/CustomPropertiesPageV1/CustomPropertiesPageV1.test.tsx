@@ -99,13 +99,36 @@ const mockUseEntityPermissions = jest.fn();
 
 const setMockPermissions = (
   canEditAll = true,
-  { error = null as unknown } = {}
+  { error = null as unknown, canCreate = true } = {}
 ) => {
   mockUseEntityPermissions.mockReturnValue({
     canEditAll,
+    canCreate,
     error,
   });
 };
+
+const mockHasCustomPropertyViewPermission = jest.fn().mockReturnValue(true);
+const mockResourcePermissions = { type: { ViewBasic: true } };
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  ...jest.requireActual('../../utils/PermissionsUtils'),
+  hasCustomPropertyViewPermission: jest.fn((...args: unknown[]) =>
+    mockHasCustomPropertyViewPermission(...args)
+  ),
+}));
+
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn(() => ({
+    permissions: mockResourcePermissions,
+  })),
+}));
+
+const mockUseAuth = jest.fn().mockReturnValue({ isAdminUser: false });
+
+jest.mock('../../hooks/authHooks', () => ({
+  useAuth: jest.fn(() => mockUseAuth()),
+}));
 
 jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
   useEntityPermissions: (...args: unknown[]) =>
@@ -142,6 +165,8 @@ jest.mock('../../utils/ToastUtils', () => ({
 describe('CustomPropertiesPageV1 component', () => {
   beforeEach(() => {
     setMockPermissions();
+    mockHasCustomPropertyViewPermission.mockReturnValue(true);
+    mockUseAuth.mockReturnValue({ isAdminUser: false });
   });
 
   it('actions check during render', async () => {
@@ -157,22 +182,57 @@ describe('CustomPropertiesPageV1 component', () => {
     );
   });
 
-  it('shows the add-property button when EditAll is granted', async () => {
-    setMockPermissions(true);
+  it('shows the add-property button when TYPE Create is granted', async () => {
+    setMockPermissions(false, { canCreate: true });
 
     render(<CustomEntityDetailV1 />);
 
     expect(await screen.findByTestId('add-field-button')).toBeInTheDocument();
   });
 
-  it('hides the add-property button when EditAll is denied', async () => {
-    setMockPermissions(false);
+  it('hides the add-property button when TYPE Create is denied, even with EditAll', async () => {
+    setMockPermissions(true, { canCreate: false });
 
     await act(async () => {
       render(<CustomEntityDetailV1 />);
     });
 
     expect(screen.queryByTestId('add-field-button')).not.toBeInTheDocument();
+  });
+
+  it('checks ViewCustomFields against the entity of the current tab', async () => {
+    mockTab.mockReturnValueOnce('tables');
+
+    await act(async () => {
+      render(<CustomEntityDetailV1 />);
+    });
+
+    expect(mockHasCustomPropertyViewPermission).toHaveBeenCalledWith(
+      ResourceEntity.TABLE,
+      mockResourcePermissions
+    );
+  });
+
+  it('shows a permission placeholder and skips the fetch without view access', async () => {
+    mockHasCustomPropertyViewPermission.mockReturnValue(false);
+
+    await act(async () => {
+      render(<CustomEntityDetailV1 />);
+    });
+
+    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(mockGetTypeByFQN).not.toHaveBeenCalled();
+  });
+
+  it('lets admins through regardless of resource permissions', async () => {
+    mockHasCustomPropertyViewPermission.mockReturnValue(false);
+    mockUseAuth.mockReturnValue({ isAdminUser: true });
+
+    await act(async () => {
+      render(<CustomEntityDetailV1 />);
+    });
+
+    expect(mockGetTypeByFQN).toHaveBeenCalled();
   });
 
   it('tab change should work properly', async () => {

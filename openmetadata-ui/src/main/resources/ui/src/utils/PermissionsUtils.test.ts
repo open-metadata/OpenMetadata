@@ -13,7 +13,15 @@
 
 import { Access } from '../generated/entity/policies/accessControl/resourcePermission';
 import { Operation } from '../generated/entity/policies/policy';
-import { getOperationPermissions, getUIPermission } from './PermissionsUtils';
+import {
+  ResourceEntity,
+  UIPermission,
+} from '../context/PermissionProvider/PermissionProvider.interface';
+import {
+  getOperationPermissions,
+  getUIPermission,
+  hasCustomPropertyViewPermission,
+} from './PermissionsUtils';
 
 const resourcePermission = (access: Access) => ({
   resource: 'databaseService',
@@ -83,5 +91,51 @@ describe('conditionalAllow translation (#31783)', () => {
     );
 
     expect(ui.databaseService[Operation.ViewAll]).toBe(true);
+  });
+});
+
+describe('hasCustomPropertyViewPermission', () => {
+  const build = (perms: Record<string, Record<string, boolean>>) =>
+    perms as unknown as UIPermission;
+
+  it('requires TYPE view and ViewCustomFields on the target entity', () => {
+    const permissions = build({
+      type: { ViewBasic: true },
+      table: { ViewCustomFields: true },
+    });
+
+    expect(
+      hasCustomPropertyViewPermission(ResourceEntity.TABLE, permissions)
+    ).toBe(true);
+    expect(
+      hasCustomPropertyViewPermission(ResourceEntity.TOPIC, permissions)
+    ).toBe(false);
+  });
+
+  it('accepts ViewAll on the target entity', () => {
+    const permissions = build({
+      type: { ViewAll: true },
+      table: { ViewCustomFields: false, ViewAll: true },
+    });
+
+    expect(
+      hasCustomPropertyViewPermission(ResourceEntity.TABLE, permissions)
+    ).toBe(true);
+  });
+
+  it('denies when TYPE view is missing', () => {
+    const permissions = build({ table: { ViewCustomFields: true } });
+
+    expect(
+      hasCustomPropertyViewPermission(ResourceEntity.TABLE, permissions)
+    ).toBe(false);
+  });
+
+  it('falls back to the `all` resource', () => {
+    const permissions = build({ all: { ViewAll: true } });
+
+    expect(
+      hasCustomPropertyViewPermission(ResourceEntity.TABLE, permissions)
+    ).toBe(true);
   });
 });
