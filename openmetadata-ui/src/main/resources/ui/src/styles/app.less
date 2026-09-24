@@ -370,6 +370,12 @@ a[href].link-text-grey,
   }
 }
 
+// @primary-1 is the light brand-100 tint (never flips); use the dark selected
+// surface instead.
+.dark-mode .activeCategory {
+  background: var(--tw-background-color-brand-primary);
+}
+
 .shadow-custom {
   box-shadow: 1px 1px 8px var(--om-legacy-color-0-0-0-0-06);
 }
@@ -1119,6 +1125,15 @@ a[href].link-text-grey,
   align-items: center;
   flex-direction: column;
   height: 100%;
+
+  // antd Result hardcodes rgba(0,0,0,…) text, unreadable on the dark surface.
+  .ant-result-title {
+    color: var(--om-color-text-primary);
+  }
+
+  .ant-result-subtitle {
+    color: var(--om-color-text-tertiary);
+  }
 }
 
 .alert-icon {
