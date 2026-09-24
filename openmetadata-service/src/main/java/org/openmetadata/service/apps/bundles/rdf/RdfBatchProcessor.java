@@ -538,9 +538,8 @@ public class RdfBatchProcessor {
   }
 
   /**
-   * Persist failed entity identities so the end-of-run retry pass (and operators) can act on them.
-   * No-op on the legacy path (no job identity) and never throws — a failure-recording failure must
-   * not fail the write path it is describing.
+   * Persist failed entity identities so operators can act on them. No-op without a run identity,
+   * and never throws — a failure-recording failure must not fail the write path it is describing.
    */
   private void recordEntityWriteFailures(
       String entityType, List<? extends EntityInterface> entities, String message) {

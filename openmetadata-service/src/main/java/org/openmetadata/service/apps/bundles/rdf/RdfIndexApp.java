@@ -1,6 +1,5 @@
 package org.openmetadata.service.apps.bundles.rdf;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_CONFIG;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_STATS;
@@ -17,21 +16,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CancellationException;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
@@ -41,48 +31,33 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
-import org.openmetadata.service.apps.bundles.rdf.distributed.DistributedRdfIndexExecutor;
-import org.openmetadata.service.apps.bundles.rdf.distributed.RdfDistributedJobStatsAggregator;
-import org.openmetadata.service.apps.bundles.rdf.distributed.RdfIndexJob;
 import org.openmetadata.service.apps.bundles.rdf.sink.RdfBulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
-import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.monitoring.OntologyMetrics;
 import org.openmetadata.service.rdf.RdfBackgroundScheduler;
 import org.openmetadata.service.rdf.RdfExcludedEntities;
-import org.openmetadata.service.rdf.RdfIndexingFields;
 import org.openmetadata.service.rdf.RdfProjectionHealth;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.RestUtil;
 import org.quartz.JobExecutionContext;
 
 @Slf4j
 public class RdfIndexApp extends AbstractNativeApplication {
   private static final String ALL = "all";
-  private static final String POISON_PILL = "__POISON_PILL__";
   private static final int DEFAULT_BATCH_SIZE = 100;
-  private static final int DEFAULT_QUEUE_SIZE = 5000;
-  private static final int MAX_PRODUCER_THREADS = 10;
-  private static final int MAX_CONSUMER_THREADS = 5;
+  private static final int DEFAULT_READER_THREADS = 4;
+  private static final int MAX_READER_THREADS = 10;
   private static final long WEBSOCKET_UPDATE_INTERVAL_MS = 2000;
+  private static final long HEARTBEAT_INTERVAL_SECONDS = 30;
 
-  private static final List<Integer> ALL_RELATIONSHIPS = RdfBatchProcessor.ALL_RELATIONSHIPS;
-  private static final Set<String> EXCLUDED_RELATIONSHIP_ENTITY_TYPES =
-      RdfBatchProcessor.EXCLUDED_RELATIONSHIP_ENTITY_TYPES;
-  private static final Set<Integer> EXCLUDED_RELATIONSHIP_TYPES =
-      RdfBatchProcessor.EXCLUDED_RELATIONSHIP_TYPES;
   private static final Set<String> EXCLUDED_ENTITY_TYPES =
       RdfExcludedEntities.EXCLUDED_ENTITY_TYPES;
 
@@ -102,13 +77,13 @@ public class RdfIndexApp extends AbstractNativeApplication {
   // The repository used by the current run, retained so run teardown can clear the
   // auto-tune payload-budget override on exactly the instance that received it.
   private volatile RdfRepository runRepository;
-  // Single-writer sink for the legacy (non-distributed) path; the distributed path creates its
-  // own inside DistributedRdfIndexExecutor.runWorkers.
-  private volatile RdfBulkSink legacySink;
   // Non-null only while a blue/green rebuild is populating an idle dataset; cleared once the
   // rebuild is promoted or abandoned.
   private volatile String buildDataset;
-  private volatile ScheduledFuture<?> rebuildHeartbeat;
+  // Identifies this run in the reindex lock and in its failure records.
+  private volatile UUID runId;
+  private volatile RdfReindexRunLock runLock;
+  private volatile ScheduledFuture<?> heartbeat;
   private volatile RuntimeException rebuildLeaseFailure;
   private long initialProjectionFailureVersion;
   private boolean rebuildsEntireProjection;
@@ -116,25 +91,8 @@ public class RdfIndexApp extends AbstractNativeApplication {
   private volatile long lastWebSocketUpdate = 0;
 
   @Getter private EventPublisherJob jobData;
-  private ExecutorService producerExecutor;
-  private ExecutorService consumerExecutor;
-  private ExecutorService jobExecutor;
   private JobExecutionContext jobExecutionContext;
   private final AtomicReference<Stats> rdfIndexStats = new AtomicReference<>();
-  private final AtomicBoolean producersDone = new AtomicBoolean(false);
-  private BlockingQueue<IndexingTask> taskQueue;
-  private volatile DistributedRdfIndexExecutor distributedExecutor;
-
-  record IndexingTask(
-      String entityType, List<? extends EntityInterface> entities, int offset, int retryCount) {
-    IndexingTask(String entityType, List<? extends EntityInterface> entities, int offset) {
-      this(entityType, entities, offset, 0);
-    }
-
-    boolean isPoisonPill() {
-      return POISON_PILL.equals(entityType);
-    }
-  }
 
   public RdfIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -176,7 +134,6 @@ public class RdfIndexApp extends AbstractNativeApplication {
   private void executeInternal(JobExecutionContext jobExecutionContext) {
     this.jobExecutionContext = jobExecutionContext;
     stopped = false;
-    producersDone.set(false);
 
     if (jobData == null) {
       String appConfigJson =
@@ -226,6 +183,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
     }
 
     try {
+      acquireRunLock();
       initialProjectionFailureVersion = RdfProjectionHealth.failureVersion();
       jobData.setRdfBuildDataset(null);
       jobData.setRdfRebuildId(null);
@@ -242,13 +200,12 @@ public class RdfIndexApp extends AbstractNativeApplication {
       RdfRepository indexingRepository = rdf().forRun(buildDataset, jobData.getRdfRebuildId(), 0);
       runRepository = indexingRepository;
       RdfAutoTune.applyTo(jobData, indexingRepository);
-      startRebuildHeartbeat();
+      startHeartbeat();
       batchProcessor =
           new RdfBatchProcessor(
-              collectionDAO, indexingRepository, RdfIndexingRunContext.forJob(jobData));
-      if (!Boolean.TRUE.equals(jobData.getUseDistributedIndexing())) {
-        legacySink = new RdfBulkSink(indexingRepository, batchProcessor, () -> stopped);
-      }
+              collectionDAO,
+              indexingRepository,
+              RdfIndexingRunContext.forJob(jobData).withJobIdentity(runId, serverId()));
 
       LOG.info(
           "RDF Index Job Started for Entities: {}, RecreateIndex: {}, BuildDataset: {}",
@@ -266,11 +223,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
       }
 
       updateJobStatus(EventPublisherJob.Status.RUNNING);
-      if (Boolean.TRUE.equals(jobData.getUseDistributedIndexing())) {
-        reIndexDistributed();
-      } else {
-        reIndexFromStartToEnd();
-      }
+      reindex(indexingRepository);
 
       if (stopped) {
         updateJobStatus(EventPublisherJob.Status.STOPPED);
@@ -294,11 +247,10 @@ public class RdfIndexApp extends AbstractNativeApplication {
         handleJobFailure(ex);
       }
     } finally {
-      stopRebuildHeartbeat();
+      stopHeartbeat();
+      releaseRunLock();
       clearAutoTuneOverride();
-      closeLegacySink();
       sendUpdates(jobExecutionContext, true);
-      cleanupExecutors();
     }
   }
 
@@ -310,12 +262,23 @@ public class RdfIndexApp extends AbstractNativeApplication {
     }
   }
 
-  private void closeLegacySink() {
-    RdfBulkSink sink = legacySink;
-    legacySink = null;
-    if (sink != null) {
-      sink.close();
+  private void acquireRunLock() {
+    runId = UUID.randomUUID();
+    runLock =
+        RdfReindexRunLock.forRun(collectionDAO.rdfReindexLockDAO(), runId.toString(), serverId());
+    runLock.acquire();
+  }
+
+  private void releaseRunLock() {
+    final RdfReindexRunLock lock = runLock;
+    runLock = null;
+    if (lock != null) {
+      lock.release();
     }
+  }
+
+  private static String serverId() {
+    return ServerIdentityResolver.getInstance().getServerId();
   }
 
   /**
@@ -400,27 +363,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
       rdf().clearAllGlossaryTermRelations();
     }
 
-    if (Boolean.TRUE.equals(jobData.getUseDistributedIndexing())) {
-      sendUpdates(jobExecutionContext, true);
-      return;
-    }
-
-    int queueSize = jobData.getQueueSize() != null ? jobData.getQueueSize() : DEFAULT_QUEUE_SIZE;
-    int effectiveQueueSize = calculateMemoryAwareQueueSize(queueSize);
-    taskQueue = new LinkedBlockingQueue<>(effectiveQueueSize);
-    LOG.info("Initialized task queue with size: {}", effectiveQueueSize);
-
     sendUpdates(jobExecutionContext, true);
-  }
-
-  private int calculateMemoryAwareQueueSize(int requestedSize) {
-    Runtime runtime = Runtime.getRuntime();
-    long maxMemory = runtime.maxMemory();
-    long estimatedEntitySize = 10 * 1024L;
-    int batchSize = jobData.getBatchSize() != null ? jobData.getBatchSize() : DEFAULT_BATCH_SIZE;
-    long maxQueueMemory = (long) (maxMemory * 0.15);
-    int memoryBasedLimit = (int) (maxQueueMemory / (estimatedEntitySize * batchSize));
-    return Math.min(requestedSize, Math.max(100, memoryBasedLimit));
   }
 
   /**
@@ -440,7 +383,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
     }
   }
 
-  /** The coordinator persists one target and generation for every worker in this run. */
+  /** Picks the idle dataset and generation every write of this run targets. */
   private String resolveBlueGreenBuildDataset() {
     if (!Boolean.TRUE.equals(jobData.getRecreateIndex())
         || !Boolean.TRUE.equals(jobData.getBlueGreenRebuild())) {
@@ -456,31 +399,42 @@ public class RdfIndexApp extends AbstractNativeApplication {
     return target.dataset();
   }
 
-  private void startRebuildHeartbeat() {
-    if (buildDataset == null) {
-      return;
-    }
-    final BuildTarget target = new BuildTarget(jobData.getRdfRebuildId(), buildDataset);
-    rebuildHeartbeat =
+  /** Renews the run lock, and a blue/green run's dataset lease, until the run ends. */
+  private void startHeartbeat() {
+    final RdfReindexRunLock lock = runLock;
+    final BuildTarget target =
+        buildDataset == null ? null : new BuildTarget(jobData.getRdfRebuildId(), buildDataset);
+    heartbeat =
         RdfBackgroundScheduler.getInstance()
             .scheduleWithFixedDelay(
-                () -> {
-                  try {
-                    rdf().renewBuild(target);
-                  } catch (RuntimeException exception) {
-                    rebuildLeaseFailure = exception;
-                    LOG.error("RDF rebuild lost its dataset lease", exception);
-                  }
-                },
-                30,
-                30,
+                () -> renewLeases(lock, target),
+                HEARTBEAT_INTERVAL_SECONDS,
+                HEARTBEAT_INTERVAL_SECONDS,
                 TimeUnit.SECONDS);
   }
 
-  private void stopRebuildHeartbeat() {
-    if (rebuildHeartbeat != null) {
-      rebuildHeartbeat.cancel(false);
-      rebuildHeartbeat = null;
+  private void renewLeases(final RdfReindexRunLock lock, final BuildTarget target) {
+    try {
+      lock.renew();
+    } catch (RuntimeException exception) {
+      LOG.warn(
+          "Could not renew the RDF reindex lock; it expires unless a later renewal succeeds",
+          exception);
+    }
+    if (target != null) {
+      try {
+        rdf().renewBuild(target);
+      } catch (RuntimeException exception) {
+        rebuildLeaseFailure = exception;
+        LOG.error("RDF rebuild lost its dataset lease", exception);
+      }
+    }
+  }
+
+  private void stopHeartbeat() {
+    if (heartbeat != null) {
+      heartbeat.cancel(false);
+      heartbeat = null;
     }
   }
 
@@ -619,243 +573,66 @@ public class RdfIndexApp extends AbstractNativeApplication {
     }
   }
 
-  private void reIndexDistributed() throws InterruptedException {
-    int partitionSize = jobData.getPartitionSize() != null ? jobData.getPartitionSize() : 10000;
-    String createdBy =
-        getApp() != null && getApp().getName() != null ? getApp().getName() : "system";
-
-    distributedExecutor = new DistributedRdfIndexExecutor(collectionDAO, partitionSize);
-    distributedExecutor.performStartupRecovery();
-
-    RdfIndexJob distributedJob =
-        distributedExecutor.createJob(jobData.getEntities(), jobData, createdBy);
-
-    ExecutorService distributedExecutionExecutor =
-        Executors.newSingleThreadExecutor(
-            Thread.ofVirtual().name("rdf-distributed-execution-", 0).factory());
-    Future<?> distributedExecution =
-        distributedExecutionExecutor.submit(
-            () -> {
-              distributedExecutor.execute(jobData);
-              return null;
-            });
-
-    try {
-      monitorDistributedJob(distributedJob.getId(), distributedExecution);
-      awaitDistributedExecution(distributedExecution);
-    } finally {
-      distributedExecutionExecutor.shutdownNow();
+  private void reindex(final RdfRepository indexingRepository) throws InterruptedException {
+    try (RdfBulkSink sink = new RdfBulkSink(indexingRepository, batchProcessor, () -> stopped)) {
+      new RdfReindexer(
+              sink::submit,
+              RdfReindexer::repositoryPages,
+              new RunListener(),
+              batchSize(),
+              readerThreads())
+          .index(jobData.getEntities());
     }
   }
 
-  private void reIndexFromStartToEnd() throws InterruptedException {
-    long totalEntities = rdfIndexStats.get().getJobStats().getTotalRecords();
-    int numProducers =
-        jobData.getProducerThreads() != null
-            ? Math.clamp(jobData.getProducerThreads(), 1, MAX_PRODUCER_THREADS)
-            : Math.clamp((int) (totalEntities / 5000), 2, MAX_PRODUCER_THREADS);
-    int numConsumers =
-        jobData.getConsumerThreads() != null
-            ? Math.min(jobData.getConsumerThreads(), MAX_CONSUMER_THREADS)
-            : Math.min(3, MAX_CONSUMER_THREADS);
-
-    LOG.info(
-        "Starting RDF indexing with {} producer threads, {} consumer threads",
-        numProducers,
-        numConsumers);
-
-    jobExecutor =
-        Executors.newFixedThreadPool(
-            jobData.getEntities().size(), Thread.ofPlatform().name("rdf-job-", 0).factory());
-    producerExecutor =
-        Executors.newFixedThreadPool(
-            numProducers, Thread.ofPlatform().name("rdf-producer-", 0).factory());
-    consumerExecutor =
-        Executors.newFixedThreadPool(
-            numConsumers, Thread.ofPlatform().name("rdf-consumer-", 0).factory());
-
-    CountDownLatch consumerLatch = new CountDownLatch(numConsumers);
-    for (int i = 0; i < numConsumers; i++) {
-      final int consumerId = i;
-      consumerExecutor.submit(() -> runConsumer(consumerId, consumerLatch));
-    }
-
-    try {
-      processEntityTypes();
-      signalConsumersToStop(numConsumers);
-      consumerLatch.await();
-      LOG.info("All consumers have finished processing tasks");
-    } catch (InterruptedException e) {
-      LOG.info("Reindexing interrupted - stopping immediately");
-      stopped = true;
-      Thread.currentThread().interrupt();
-      throw e;
-    }
+  private int batchSize() {
+    return jobData.getBatchSize() != null ? jobData.getBatchSize() : DEFAULT_BATCH_SIZE;
   }
 
-  private void monitorDistributedJob(UUID jobId, Future<?> distributedExecution)
-      throws InterruptedException {
-    RdfDistributedJobStatsAggregator statsAggregator = new RdfDistributedJobStatsAggregator();
-
-    while (!stopped) {
-      RdfIndexJob latestJob =
-          distributedExecutor != null ? distributedExecutor.getJobWithFreshStats() : null;
-      if (latestJob != null) {
-        Stats aggregatedStats = statsAggregator.toStats(latestJob);
-        rdfIndexStats.set(aggregatedStats);
-        jobData.setStats(aggregatedStats);
-        if (latestJob.getStatus()
-            != org.openmetadata
-                .service
-                .apps
-                .bundles
-                .searchIndex
-                .distributed
-                .IndexJobStatus
-                .STOPPING) {
-          sendUpdates(jobExecutionContext, false);
-        }
-
-        if (latestJob.isTerminal()) {
-          handleTerminalDistributedJob(latestJob);
-          return;
-        }
-      }
-
-      if (distributedExecution.isDone()) {
-        return;
-      }
-
-      TimeUnit.SECONDS.sleep(2);
-    }
+  /** {@code producerThreads} is the configured number of threads loading entities to index. */
+  private int readerThreads() {
+    return jobData.getProducerThreads() != null
+        ? Math.clamp(jobData.getProducerThreads(), 1, MAX_READER_THREADS)
+        : DEFAULT_READER_THREADS;
   }
 
-  private void handleTerminalDistributedJob(RdfIndexJob latestJob) {
-    org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus jobStatus =
-        latestJob.getStatus();
-    if (jobStatus
-        == org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus.STOPPED) {
-      stopped = true;
-      return;
+  private final class RunListener implements RdfReindexer.Listener {
+    @Override
+    public boolean isStopRequested() {
+      return stopped;
     }
 
-    boolean failedOutright =
-        jobStatus
-            == org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus.FAILED;
-    // The coordinator marks a job COMPLETED_WITH_ERRORS when any partition is
-    // FAILED or CANCELLED, which can happen even with failedRecords == 0 (e.g.
-    // user-initiated stop that cancels in-flight partitions before any record
-    // failures accrue). Surface that case too so the run record reflects
-    // partition-level outcomes, not just record-level ones.
-    boolean completedWithErrors =
-        jobStatus
-            == org.openmetadata
-                .service
-                .apps
-                .bundles
-                .searchIndex
-                .distributed
-                .IndexJobStatus
-                .COMPLETED_WITH_ERRORS;
-
-    if (!failedOutright && !completedWithErrors) {
-      return;
-    }
-
-    String message = latestJob.getErrorMessage();
-    if (message == null || message.isBlank()) {
-      message =
-          latestJob.getFailedRecords() > 0
-              ? String.format(
-                  "RDF index job completed with %d failed record(s)", latestJob.getFailedRecords())
-              : "RDF index job completed with errors at the partition level";
-    }
-    LOG.error("RDF index job {} terminated with errors: {}", latestJob.getId(), message);
-    jobData.setFailure(
-        new IndexingError().withErrorSource(IndexingError.ErrorSource.JOB).withMessage(message));
-  }
-
-  private void awaitDistributedExecution(Future<?> distributedExecution)
-      throws InterruptedException {
-    try {
-      distributedExecution.get();
-    } catch (CancellationException e) {
-      if (!stopped) {
-        throw new RuntimeException("Distributed RDF execution was cancelled unexpectedly", e);
-      }
-    } catch (ExecutionException e) {
-      Throwable cause = e.getCause();
-      if (cause instanceof RuntimeException runtimeException) {
-        throw runtimeException;
-      }
-      throw new RuntimeException("Distributed RDF execution failed", cause);
-    }
-  }
-
-  private void runConsumer(int consumerId, CountDownLatch consumerLatch) {
-    LOG.info("Consumer {} started", consumerId);
-    try {
-      while (!stopped && (!producersDone.get() || !taskQueue.isEmpty())) {
-        try {
-          IndexingTask task = taskQueue.poll(100, TimeUnit.MILLISECONDS);
-          if (task != null && !task.isPoisonPill()) {
-            processTask(task);
-          }
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          break;
-        }
-      }
-    } finally {
-      LOG.info("Consumer {} stopped", consumerId);
-      consumerLatch.countDown();
-    }
-  }
-
-  private void processTask(IndexingTask task) {
-    String entityType = task.entityType();
-    List<? extends EntityInterface> entities = task.entities();
-
-    if (entities == null || entities.isEmpty()) {
-      return;
-    }
-
-    try {
-      // Consumers submit through the shared single-writer sink and block on their
-      // own acknowledgement: multiple consumers still translate concurrently (the
-      // sink's translate pool), but storage writes are serialized so this process
-      // never queues two requests on Fuseki's writer lock. When no sink exists
-      // (defensive), fall back to the inline path.
-      long sinkStartNanos = System.nanoTime();
-      RdfBatchProcessor.BatchProcessingResult result =
-          legacySink != null
-              ? legacySink.submit(entityType, entities).join()
-              : batchProcessor.processEntities(entityType, entities, () -> stopped);
-      long sinkTimeMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - sinkStartNanos);
-
-      // failedRecords stays an entity-level stat (relationship failures are
-      // per-edge, not per-record). But for surfacing failures on the run
-      // record we want either kind of failure to count, so use hasAnyFailure().
-      StepStats currentStats =
-          new StepStats()
-              .withSuccessRecords(result.successCount())
-              .withFailedRecords(result.failedCount())
-              .withProcessTimeMs(result.processTimeMs())
-              .withSinkTimeMs(sinkTimeMs);
-      updateEntityStats(entityType, currentStats);
-      if (result.hasAnyFailure() && result.lastError() != null) {
-        recordIndexingFailure(
-            entityType,
-            result.failedCount() + result.relationshipFailureCount(),
-            result.lastError());
-      }
+    @Override
+    public void onPageRead() {
       sendUpdates(jobExecutionContext, false);
+    }
 
-    } catch (Exception e) {
-      LOG.error("Error processing batch for entity type {}", entityType, e);
+    @Override
+    public void onBatchWritten(final String entityType, final StepStats batch) {
+      updateEntityStats(entityType, batch);
+    }
+
+    @Override
+    public void onBatchFailed(
+        final String entityType, final int failedRecords, final String reason) {
+      recordIndexingFailure(entityType, failedRecords, reason);
+    }
+
+    @Override
+    public void onRowDropped(final String entityType, final String reason) {
+      batchProcessor.recordReaderFailure(entityType, reason);
+    }
+
+    @Override
+    public void onEntityTypeUnreadable(
+        final String entityType, final long rowsRead, final String reason) {
+      final StepStats entityStats =
+          rdfIndexStats.get().getEntityStats().getAdditionalProperties().get(entityType);
+      final int unread =
+          entityStats == null ? 0 : (int) Math.max(0, entityStats.getTotalRecords() - rowsRead);
       updateEntityStats(
-          entityType, new StepStats().withSuccessRecords(0).withFailedRecords(entities.size()));
-      recordIndexingFailure(entityType, entities.size(), e.getMessage());
+          entityType, new StepStats().withSuccessRecords(0).withFailedRecords(unread));
+      recordIndexingFailure(entityType, unread, "could not read them: " + reason);
     }
   }
 
@@ -867,161 +644,6 @@ public class RdfIndexApp extends AbstractNativeApplication {
     if (jobData.getFailure() == null) {
       jobData.setFailure(
           new IndexingError().withErrorSource(IndexingError.ErrorSource.JOB).withMessage(message));
-    }
-  }
-
-  private void processBatchRelationships(
-      String entityType, List<? extends EntityInterface> entities) {
-    batchProcessor.processBatchRelationships(entityType, entities);
-  }
-
-  private void processLineageRelationship(EntityRelationshipObject rel) {
-    batchProcessor.processLineageRelationship(rel);
-  }
-
-  private void processGlossaryTermRelations(List<? extends EntityInterface> entities) {
-    batchProcessor.processGlossaryTermRelations(entities, () -> stopped);
-  }
-
-  private org.openmetadata.schema.type.EntityRelationship convertToEntityRelationship(
-      EntityRelationshipObject rel) {
-    return batchProcessor.convertToEntityRelationship(rel);
-  }
-
-  private void processEntityTypes() throws InterruptedException {
-    int batchSize = jobData.getBatchSize() != null ? jobData.getBatchSize() : DEFAULT_BATCH_SIZE;
-    int totalBatches = calculateTotalBatches(jobData.getEntities(), batchSize);
-    CountDownLatch producerLatch = new CountDownLatch(totalBatches);
-
-    for (String entityType : jobData.getEntities()) {
-      jobExecutor.submit(() -> processEntityType(entityType, batchSize, producerLatch));
-    }
-
-    while (!producerLatch.await(1, TimeUnit.SECONDS)) {
-      if (stopped || Thread.currentThread().isInterrupted()) {
-        LOG.info("Stop signal or interrupt received during reindexing - exiting");
-        if (producerExecutor != null) {
-          producerExecutor.shutdownNow();
-        }
-        if (jobExecutor != null) {
-          jobExecutor.shutdownNow();
-        }
-        return;
-      }
-    }
-    producersDone.set(true);
-  }
-
-  private int calculateTotalBatches(Set<String> entities, int batchSize) {
-    int total = 0;
-    for (String entityType : entities) {
-      int entityTotal = getTotalRecordsFromStats(entityType);
-      total += (entityTotal + batchSize - 1) / batchSize;
-    }
-    return total;
-  }
-
-  /**
-   * Per-type totals are counted against the database exactly once, by initializeTotalRecords();
-   * every later consumer reads the seeded stats instead of re-issuing COUNT(*) (three extra
-   * full-table counts per entity type on large catalogs otherwise).
-   */
-  private int getTotalRecordsFromStats(String entityType) {
-    int result;
-    Stats stats = rdfIndexStats.get();
-    StepStats entityStats =
-        stats != null && stats.getEntityStats() != null
-            ? stats.getEntityStats().getAdditionalProperties().get(entityType)
-            : null;
-    if (entityStats != null && entityStats.getTotalRecords() != null) {
-      result = entityStats.getTotalRecords();
-    } else {
-      result = getTotalEntityRecords(entityType);
-    }
-    return result;
-  }
-
-  private void processEntityType(String entityType, int batchSize, CountDownLatch producerLatch) {
-    LOG.info("Processing entity type: {}", entityType);
-
-    try {
-      EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-      int totalRecords = getTotalRecordsFromStats(entityType);
-      int numBatches = (totalRecords + batchSize - 1) / batchSize;
-
-      for (int batch = 0; batch < numBatches; batch++) {
-        if (stopped) {
-          for (int i = batch; i < numBatches; i++) {
-            producerLatch.countDown();
-          }
-          break;
-        }
-
-        int offset = batch * batchSize;
-        producerExecutor.submit(
-            () -> {
-              try {
-                processBatch(entityType, repository, offset, batchSize);
-              } finally {
-                producerLatch.countDown();
-              }
-            });
-      }
-    } catch (Exception e) {
-      LOG.error("Error processing entity type {}", entityType, e);
-      updateEntityStats(
-          entityType,
-          new StepStats()
-              .withSuccessRecords(0)
-              .withFailedRecords(getTotalRecordsFromStats(entityType)));
-    }
-  }
-
-  private void processBatch(
-      String entityType, EntityRepository<?> repository, int offset, int batchSize) {
-    if (stopped) {
-      return;
-    }
-
-    try {
-      EntityDAO<?> entityDAO = repository.getDao();
-      String cursor = RestUtil.encodeCursor(String.valueOf(offset));
-
-      ResultList<? extends EntityInterface> result =
-          repository.listWithOffset(
-              entityDAO::listAfter,
-              entityDAO::listCount,
-              new ListFilter(Include.ALL),
-              batchSize,
-              cursor,
-              true,
-              Entity.getFields(entityType, RdfIndexingFields.forEntityType(entityType)),
-              null);
-
-      if (!listOrEmpty(result.getData()).isEmpty() && !stopped) {
-        IndexingTask task = new IndexingTask(entityType, result.getData(), offset);
-        try {
-          taskQueue.put(task);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          LOG.warn("Interrupted while queueing task for entityType: {}", entityType);
-        }
-      }
-
-    } catch (Exception e) {
-      LOG.error("Error processing batch for entity type {} at offset {}", entityType, offset, e);
-      updateEntityStats(
-          entityType, new StepStats().withSuccessRecords(0).withFailedRecords(batchSize));
-    }
-  }
-
-  private void signalConsumersToStop(int numConsumers) {
-    producersDone.set(true);
-    for (int i = 0; i < numConsumers; i++) {
-      boolean offered = taskQueue.offer(new IndexingTask(POISON_PILL, null, -1));
-      if (!offered) {
-        LOG.debug("Could not add poison pill to queue - queue may be full");
-      }
     }
   }
 
@@ -1078,17 +700,17 @@ public class RdfIndexApp extends AbstractNativeApplication {
           entityStats.getSuccessRecords() + currentEntityStats.getSuccessRecords());
       entityStats.withFailedRecords(
           entityStats.getFailedRecords() + currentEntityStats.getFailedRecords());
-      // Without this the non-distributed path reports 0ms for every stage, which reads
-      // as "instantaneous" on the run record rather than "never measured".
+      entityStats.withReaderTimeMs(
+          nullSafe(entityStats.getReaderTimeMs()) + nullSafe(currentEntityStats.getReaderTimeMs()));
       entityStats.withSinkTimeMs(
           nullSafe(entityStats.getSinkTimeMs()) + nullSafe(currentEntityStats.getSinkTimeMs()));
       entityStats.withProcessTimeMs(
           nullSafe(entityStats.getProcessTimeMs())
               + nullSafe(currentEntityStats.getProcessTimeMs()));
-      // Sum of the stages actually measured here, matching RdfDistributedJobStatsAggregator.
-      // This path has no reader instrumentation, so reader time is absent rather than zero.
       entityStats.withTotalTimeMs(
-          nullSafe(entityStats.getProcessTimeMs()) + nullSafe(entityStats.getSinkTimeMs()));
+          nullSafe(entityStats.getReaderTimeMs())
+              + nullSafe(entityStats.getProcessTimeMs())
+              + nullSafe(entityStats.getSinkTimeMs()));
     }
 
     StepStats jobStats = stats.getJobStats();
@@ -1099,6 +721,11 @@ public class RdfIndexApp extends AbstractNativeApplication {
     int totalFailed =
         stats.getEntityStats().getAdditionalProperties().values().stream()
             .mapToInt(StepStats::getFailedRecords)
+            .sum();
+
+    long totalReaderTimeMs =
+        stats.getEntityStats().getAdditionalProperties().values().stream()
+            .mapToLong(stat -> nullSafe(stat.getReaderTimeMs()))
             .sum();
 
     long totalSinkTimeMs =
@@ -1114,9 +741,10 @@ public class RdfIndexApp extends AbstractNativeApplication {
     jobStats
         .withSuccessRecords(totalSuccess)
         .withFailedRecords(totalFailed)
+        .withReaderTimeMs(totalReaderTimeMs)
         .withProcessTimeMs(totalProcessTimeMs)
         .withSinkTimeMs(totalSinkTimeMs)
-        .withTotalTimeMs(totalProcessTimeMs + totalSinkTimeMs);
+        .withTotalTimeMs(totalReaderTimeMs + totalProcessTimeMs + totalSinkTimeMs);
 
     rdfIndexStats.set(stats);
     jobData.setStats(stats);
@@ -1205,60 +833,13 @@ public class RdfIndexApp extends AbstractNativeApplication {
     jobData.setFailure(indexingError);
   }
 
-  private void cleanupExecutors() {
-    shutdownExecutor(consumerExecutor, "RDF Consumer Executor", 30, TimeUnit.SECONDS);
-    shutdownExecutor(producerExecutor, "RDF Producer Executor", 30, TimeUnit.SECONDS);
-    shutdownExecutor(jobExecutor, "RDF Job Executor", 20, TimeUnit.SECONDS);
-  }
-
-  private void shutdownExecutor(
-      ExecutorService executor, String name, long timeout, TimeUnit unit) {
-    if (executor != null && !executor.isShutdown()) {
-      executor.shutdown();
-      try {
-        if (!executor.awaitTermination(timeout, unit)) {
-          executor.shutdownNow();
-          LOG.warn("{} did not terminate within the specified timeout.", name);
-        }
-      } catch (InterruptedException e) {
-        LOG.error("Interrupted while waiting for {} to terminate.", name, e);
-        executor.shutdownNow();
-        Thread.currentThread().interrupt();
-      }
-    }
-  }
-
   @Override
   public void stop() {
     LOG.info("RDF indexing job is being stopped.");
     stopped = true;
-    producersDone.set(true);
-
     if (jobData != null) {
       jobData.setStatus(EventPublisherJob.Status.STOP_IN_PROGRESS);
     }
-
-    if (taskQueue != null) {
-      taskQueue.clear();
-      for (int i = 0; i < MAX_CONSUMER_THREADS; i++) {
-        taskQueue.offer(new IndexingTask(POISON_PILL, null, -1));
-      }
-    }
-
-    if (producerExecutor != null) {
-      producerExecutor.shutdownNow();
-    }
-    if (consumerExecutor != null) {
-      consumerExecutor.shutdownNow();
-    }
-    if (jobExecutor != null) {
-      jobExecutor.shutdownNow();
-    }
-    if (distributedExecutor != null) {
-      distributedExecutor.stop();
-    }
-
-    LOG.info("RDF indexing job stopped successfully.");
   }
 
   @Override

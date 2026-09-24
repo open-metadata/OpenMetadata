@@ -184,12 +184,13 @@ write is retried while that process remains alive. This is not a transactional m
 
 ## Write throughput
 
-TDB2 is a single-writer store, and the indexing pipeline is built around that fact: partition
-workers read and translate entities in parallel, but all writes for a dataset funnel through a
+TDB2 is a single-writer store, and the indexing pipeline is built around that fact: reader
+threads load and translate entities in parallel, but all writes for a dataset funnel through a
 single sink writer with **exactly one in-flight request**. Adding client threads does not add
 write throughput by design — reader parallelism keeps the writer fed, and the writer keeps exactly
 one transaction open on Fuseki at a time, so client timeouts measure actual server work instead of
-queue position.
+queue position. For the same reason a reindex runs on one server: spreading it across servers
+would add readers, but every write would still wait for the same Fuseki writer.
 
 Live metadata hooks persist replayable operations in `rdf_live_write_queue` after the metadata
 transaction commits, then execute asynchronously. A database fence permits one live writer across
@@ -277,46 +278,42 @@ memory-mapped, so starving page cache is a common cause of slow reads and writes
 ### Reading the run record's stage timings
 
 `readerTimeMs`, `processTimeMs` and `sinkTimeMs` on a run record are **aggregate work summed across
-concurrent workers**, not elapsed time. Reading runs on one worker per partition and translation on
-a pool of up to 50 threads, so those two stages overlap both each other and the writer. The
-consequence is deliberate but easy to misread: **the stage times can add up to more than the run
-actually took.** In the two-partition measurement below, the stages summed to 19.8 s for a run whose
-wall clock was 12.0 s — that gap is the parallelism working, not an error.
+concurrent threads**, not elapsed time. Reading runs on the reader threads and translation on a pool
+of up to 50 threads, so those two stages overlap both each other and the writer. The consequence is
+deliberate but easy to misread: **the stage times can add up to more than the run actually took.**
+In the four-reader measurement below, reading alone summed to 70 s in a run that took 41.5 s —
+that gap is the parallelism working, not an error.
 
 Read them as "where did this run spend its effort", and take elapsed time from the run record's
 `startTime`/`endTime`. The one stage that does approximate wall clock is `sinkTimeMs`: RDF writes are
 serialized to a single in-flight request, so there is nothing for it to overlap with.
 
-### Partition size decides read concurrency
+### Reader threads decide read concurrency
 
-Measured end to end (`RdfIndexAppScaleIT`, 2,000 tables, Fuseki 6.2.0), the **read stage is about
-three quarters of a run** — 11.6 s of a 15.5 s job, against 3.1 s of RDF writes and 0.6 s of
-translation. Reading is not wasteful: the RDF mapper needs an entity's full field set, because a
-search-index-style subset silently drops triples. It is simply the largest stage.
+A reindex pages each entity type by keyset, which fetches stored rows only, and hands each page to
+one of `producerThreads` reader threads, which load the entity's full field set — the expensive
+part of a read, because the RDF mapper needs every field — and pass it to the writer. A type of any
+size is read by every reader thread at once.
 
-A partition is the unit of read concurrency — one worker reads one partition at a time — so the
-number of partitions caps how much of that stage runs in parallel:
+Measured end to end on one catalog of 10,000 tables, every hundredth of them 500 columns wide, with
+Fuseki 6.2.0 on a 4 GiB heap. Each time is the mean of three runs and includes clearing and
+compacting the dataset, about 11.5 s of every run:
 
-| `partitionSize` | Effective size | Partitions | App wall clock |
-| ---: | ---: | ---: | ---: |
-| `10000` (default) | 6,666 after the entity complexity factor | 1 | 15.5 s |
-| `1000` (the floor) | 1,000 | 2 | **12.0 s** |
+| Reindex | App wall clock | Records / s |
+| --- | ---: | ---: |
+| `producerThreads: 4` (default) | 43.3 s | 231 |
+| `producerThreads: 8` | 42.9 s | 233 |
+| The distributed mode this replaced, at its defaults | 77.4 s | 129 |
 
-Going from one reader to two cut wall clock 23%, and the summed stage time (19.8 s) exceeding wall
-clock (12.0 s) is the proof that partitions really did run concurrently.
-
-The practical consequence: **with the default, any entity type holding fewer than ~6,700 rows gets a
-single partition and reindexes single-threaded**, however many servers or cores are available. If a
-catalog is small or mid-sized and a rebuild looks slower than these numbers suggest, lower
-`partitionSize` (1,000 is the floor) so the type spans several partitions. Large catalogs already
-produce plenty of partitions and need no change — and more partitions are not free, since each
-carries claim and heartbeat traffic.
+Beyond four readers the single writer is busy most of the run, so more readers help only a little.
+Raise `producerThreads` when `readerTimeMs` dominates and `sinkTimeMs` is well below the run's
+duration; otherwise the writer, not reading, is the limit.
 
 ### What not to tune
 
-- **Do not raise `consumerThreads` or `producerThreads` to fix slow indexing.** Writes are
-  single-file by design; extra workers only speed up the read/translate side, which is rarely the
-  bottleneck.
+- **Do not raise `producerThreads` past the point where `sinkTimeMs` approaches the run's
+  duration.** Writes are single-file by design; extra readers only speed up the read/translate
+  side, and once the writer is saturated they add database load without making the run faster.
 - **Do not raise `RDF_WRITE_MAX_RETRIES` when requests are timing out.** The client-side deadline
   does not cancel the server-side update — Fuseki keeps parsing and committing the abandoned
   request, so each same-size retry multiplies server load. (The server-side `arq:updateTimeout` in
@@ -371,8 +368,8 @@ configured endpoint. The original `openmetadata` directory remains present too: 
 up to three dataset copies plus compaction headroom until an operator retires the unused original.
 Custom endpoint names need matching base, `_a`, and `_b` assembler declarations.
 
-The coordinator persists the selected dataset, rebuild generation, and payload budget on the job.
-Workers use those immutable values. Live writes commit a mutation journal entry before contacting
+The run records the selected dataset, rebuild generation, and payload budget on the job, and
+every write of the run uses those immutable values. Live writes commit a mutation journal entry before contacting
 Fuseki and route under the shared SQL fence. Promotion replays the journal into the completed
 snapshot, then atomically checks the final watermark and changes the pointer. Each pod consults
 that pointer when routing; there is no polling delay after cutover. Promotion also marks
@@ -380,7 +377,7 @@ materialized inference rules dirty in the same transaction so their output can b
 
 The journal is bounded to 256 MiB or 100,000 mutations. Exhaustion or inability to capture a
 mutation fails the rebuild while allowing the live mutation to proceed against the serving graph.
-A 120-second lease, renewed every 30 seconds, fences abandoned workers. A new run can reclaim an
+A 120-second lease, renewed every 30 seconds, fences an abandoned run. A new run can reclaim an
 expired target; stale generation handles cannot write to it. Catch-up has a five-minute budget.
 An uncertain **build** write quarantines its generation to prevent a delayed request corrupting
 an immediately reused target. After restarting Fuseki to terminate outstanding requests, an

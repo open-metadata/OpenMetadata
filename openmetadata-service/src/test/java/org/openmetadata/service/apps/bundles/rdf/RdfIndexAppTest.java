@@ -4,14 +4,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.TRIGGER_TYPE_KEY;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -30,20 +25,16 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.rdf.distributed.RdfIndexJob;
-import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfReindexLockDAO;
 import org.openmetadata.service.rdf.RdfProjectionHealth;
 import org.openmetadata.service.rdf.RdfRepository;
-import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
 import org.openmetadata.service.search.SearchRepository;
 import org.quartz.JobDataMap;
@@ -58,6 +49,7 @@ class RdfIndexAppTest {
   @Mock private CollectionDAO collectionDAO;
   @Mock private SearchRepository searchRepository;
   @Mock private EntityRelationshipDAO relationshipDAO;
+  @Mock private RdfReindexLockDAO reindexLockDAO;
 
   private static MockedStatic<RdfRepository> rdfRepositoryMockedStatic;
   private static RdfRepository mockRdfRepository;
@@ -120,6 +112,12 @@ class RdfIndexAppTest {
   @BeforeEach
   void setUp() {
     lenient().when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
+    lenient().when(collectionDAO.rdfReindexLockDAO()).thenReturn(reindexLockDAO);
+    lenient()
+        .when(
+            reindexLockDAO.tryAcquireLock(
+                anyString(), anyString(), anyString(), anyLong(), anyLong()))
+        .thenReturn(true);
     lenient().when(mockRdfRepository.isEnabled()).thenReturn(true);
     lenient().when(mockRdfRepository.forRun(null, null, 0)).thenReturn(mockRdfRepository);
     lenient().when(mockRdfRepository.configuredAppendPayloadBytes()).thenReturn(16L << 20);
@@ -426,87 +424,6 @@ class RdfIndexAppTest {
   }
 
   @Nested
-  @DisplayName("Configuration Tests")
-  class ConfigurationTests {
-
-    @Test
-    @DisplayName("Should have correct default batch size")
-    void testDefaultBatchSize() {
-      assertEquals(100, getDefaultBatchSize());
-    }
-
-    @Test
-    @DisplayName("Should have correct max producer threads")
-    void testMaxProducerThreads() {
-      assertEquals(10, getMaxProducerThreads());
-    }
-
-    @Test
-    @DisplayName("Should have correct max consumer threads")
-    void testMaxConsumerThreads() {
-      assertEquals(5, getMaxConsumerThreads());
-    }
-
-    @Test
-    @DisplayName("Should have all relationship types defined for complete reindexing")
-    void testAllRelationshipTypes() {
-      List<Integer> actualRelationships = getAllRelationships();
-      // Should include ALL relationship types for complete bootstrap/reindex
-      assertEquals(Relationship.values().length, actualRelationships.size());
-      for (Relationship rel : Relationship.values()) {
-        assertTrue(
-            actualRelationships.contains(rel.ordinal()),
-            "Should contain " + rel.name() + " relationship");
-      }
-    }
-
-    private int getDefaultBatchSize() {
-      try {
-        var field = RdfIndexApp.class.getDeclaredField("DEFAULT_BATCH_SIZE");
-        field.setAccessible(true);
-        return (int) field.get(null);
-      } catch (Exception e) {
-        fail("Could not access DEFAULT_BATCH_SIZE field");
-        return -1;
-      }
-    }
-
-    private int getMaxProducerThreads() {
-      try {
-        var field = RdfIndexApp.class.getDeclaredField("MAX_PRODUCER_THREADS");
-        field.setAccessible(true);
-        return (int) field.get(null);
-      } catch (Exception e) {
-        fail("Could not access MAX_PRODUCER_THREADS field");
-        return -1;
-      }
-    }
-
-    private int getMaxConsumerThreads() {
-      try {
-        var field = RdfIndexApp.class.getDeclaredField("MAX_CONSUMER_THREADS");
-        field.setAccessible(true);
-        return (int) field.get(null);
-      } catch (Exception e) {
-        fail("Could not access MAX_CONSUMER_THREADS field");
-        return -1;
-      }
-    }
-
-    @SuppressWarnings("unchecked")
-    private List<Integer> getAllRelationships() {
-      try {
-        var field = RdfIndexApp.class.getDeclaredField("ALL_RELATIONSHIPS");
-        field.setAccessible(true);
-        return (List<Integer>) field.get(null);
-      } catch (Exception e) {
-        fail("Could not access ALL_RELATIONSHIPS field");
-        return List.of();
-      }
-    }
-  }
-
-  @Nested
   @DisplayName("Initialization Tests")
   class InitializationTests {
 
@@ -542,6 +459,9 @@ class RdfIndexAppTest {
   @Nested
   @DisplayName("Entity Relationship Conversion Tests")
   class EntityRelationshipConversionTests {
+    private RdfBatchProcessor batchProcessor() {
+      return new RdfBatchProcessor(collectionDAO, mockRdfRepository);
+    }
 
     @Test
     @DisplayName("Should convert EntityRelationshipObject to EntityRelationship")
@@ -558,13 +478,8 @@ class RdfIndexAppTest {
               .relation(Relationship.CONTAINS.ordinal())
               .build();
 
-      var method =
-          RdfIndexApp.class.getDeclaredMethod(
-              "convertToEntityRelationship", EntityRelationshipObject.class);
-      method.setAccessible(true);
-
       org.openmetadata.schema.type.EntityRelationship result =
-          (org.openmetadata.schema.type.EntityRelationship) method.invoke(rdfIndexApp, relObj);
+          batchProcessor().convertToEntityRelationship(relObj);
 
       assertNotNull(result);
       assertEquals(fromId, result.getFromId());
@@ -590,13 +505,8 @@ class RdfIndexAppTest {
               .relation(Relationship.HAS.ordinal())
               .build();
 
-      var method =
-          RdfIndexApp.class.getDeclaredMethod(
-              "convertToEntityRelationship", EntityRelationshipObject.class);
-      method.setAccessible(true);
-
       org.openmetadata.schema.type.EntityRelationship result =
-          (org.openmetadata.schema.type.EntityRelationship) method.invoke(rdfIndexApp, relObj);
+          batchProcessor().convertToEntityRelationship(relObj);
 
       assertEquals(UUID.fromString(fromIdStr), result.getFromId());
       assertEquals(UUID.fromString(toIdStr), result.getToId());
@@ -605,11 +515,6 @@ class RdfIndexAppTest {
     @Test
     @DisplayName("Should handle all relationship types correctly")
     void testAllRelationshipTypes() throws Exception {
-      var method =
-          RdfIndexApp.class.getDeclaredMethod(
-              "convertToEntityRelationship", EntityRelationshipObject.class);
-      method.setAccessible(true);
-
       for (Relationship relationship : Relationship.values()) {
         UUID fromId = UUID.randomUUID();
         UUID toId = UUID.randomUUID();
@@ -624,53 +529,11 @@ class RdfIndexAppTest {
                 .build();
 
         org.openmetadata.schema.type.EntityRelationship result =
-            (org.openmetadata.schema.type.EntityRelationship) method.invoke(rdfIndexApp, relObj);
+            batchProcessor().convertToEntityRelationship(relObj);
 
         assertEquals(relationship, result.getRelationshipType());
         assertEquals(relationship.ordinal(), result.getRelation());
       }
-    }
-  }
-
-  @Nested
-  @DisplayName("Memory-Aware Queue Size Tests")
-  class MemoryAwareQueueSizeTests {
-
-    @Test
-    @DisplayName("Should calculate memory-aware queue size")
-    void testCalculateMemoryAwareQueueSize() throws Exception {
-      // Initialize just the jobData without calling init() to avoid Entity repository lookup
-      var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
-      jobDataField.setAccessible(true);
-      EventPublisherJob jobConfig = new EventPublisherJob();
-      jobConfig.setBatchSize(100);
-      jobDataField.set(rdfIndexApp, jobConfig);
-
-      var method = RdfIndexApp.class.getDeclaredMethod("calculateMemoryAwareQueueSize", int.class);
-      method.setAccessible(true);
-
-      int result = (int) method.invoke(rdfIndexApp, 10000);
-
-      assertTrue(result >= 100, "Queue size should be at least 100");
-      assertTrue(result <= 10000, "Queue size should not exceed requested size");
-    }
-
-    @Test
-    @DisplayName("Should return minimum queue size when memory is constrained")
-    void testMinimumQueueSize() throws Exception {
-      // Initialize just the jobData without calling init() to avoid Entity repository lookup
-      var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
-      jobDataField.setAccessible(true);
-      EventPublisherJob jobConfig = new EventPublisherJob();
-      jobConfig.setBatchSize(1000);
-      jobDataField.set(rdfIndexApp, jobConfig);
-
-      var method = RdfIndexApp.class.getDeclaredMethod("calculateMemoryAwareQueueSize", int.class);
-      method.setAccessible(true);
-
-      int result = (int) method.invoke(rdfIndexApp, 50);
-
-      assertTrue(result >= 50, "Queue size should be at least the requested size when small");
     }
   }
 
@@ -693,25 +556,6 @@ class RdfIndexAppTest {
       var stoppedField = RdfIndexApp.class.getDeclaredField("stopped");
       stoppedField.setAccessible(true);
       assertTrue((boolean) stoppedField.get(rdfIndexApp));
-    }
-
-    @Test
-    @DisplayName("Should set producersDone flag when stop is called")
-    void testStopSetsProducersDone() throws Exception {
-      // Initialize just the jobData without calling init() to avoid Entity repository lookup
-      var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
-      jobDataField.setAccessible(true);
-      EventPublisherJob jobConfig = new EventPublisherJob();
-      jobConfig.setStatus(EventPublisherJob.Status.RUNNING);
-      jobDataField.set(rdfIndexApp, jobConfig);
-
-      rdfIndexApp.stop();
-
-      var producersDoneField = RdfIndexApp.class.getDeclaredField("producersDone");
-      producersDoneField.setAccessible(true);
-      var producersDone =
-          (java.util.concurrent.atomic.AtomicBoolean) producersDoneField.get(rdfIndexApp);
-      assertTrue(producersDone.get());
     }
 
     @Test
@@ -746,38 +590,6 @@ class RdfIndexAppTest {
               rdfIndexApp.validateConfig(
                   org.openmetadata.schema.utils.JsonUtils.convertValue(
                       validConfig, java.util.Map.class)));
-    }
-  }
-
-  @Nested
-  @DisplayName("Distributed Job Serialization Tests")
-  class DistributedJobSerializationTests {
-
-    @Test
-    @DisplayName("Should deserialize distributed RDF entity stats from JSON")
-    void testDistributedEntityStatsJsonRoundTrip() {
-      Map<String, RdfIndexJob.EntityTypeStats> original =
-          Map.of(
-              "app",
-              RdfIndexJob.EntityTypeStats.builder()
-                  .entityType("app")
-                  .totalRecords(12)
-                  .processedRecords(4)
-                  .successRecords(3)
-                  .failedRecords(1)
-                  .totalPartitions(2)
-                  .completedPartitions(1)
-                  .failedPartitions(0)
-                  .build());
-
-      String json = JsonUtils.pojoToJson(original);
-      Map<String, RdfIndexJob.EntityTypeStats> roundTrip =
-          JsonUtils.readValue(
-              json, new TypeReference<Map<String, RdfIndexJob.EntityTypeStats>>() {});
-
-      assertEquals(12, roundTrip.get("app").getTotalRecords());
-      assertEquals(3, roundTrip.get("app").getSuccessRecords());
-      assertEquals(2, roundTrip.get("app").getTotalPartitions());
     }
   }
 
@@ -913,8 +725,7 @@ class RdfIndexAppTest {
 
       EventPublisherJob jobConfig = new EventPublisherJob();
       jobConfig.setStatus(EventPublisherJob.Status.FAILED);
-      jobConfig.setFailure(
-          new IndexingError().withMessage("distributed rdf job initialization failed"));
+      jobConfig.setFailure(new IndexingError().withMessage("rdf job initialization failed"));
       Stats stats = new Stats();
       stats.setJobStats(new StepStats().withTotalRecords(5).withFailedRecords(5));
       jobConfig.setStats(stats);
@@ -937,71 +748,7 @@ class RdfIndexAppTest {
     }
 
     @Test
-    @DisplayName("Should publish distributed RDF progress before job completion")
-    void testMonitorDistributedJobPublishesRunningProgress() throws Exception {
-      TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
-
-      EventPublisherJob jobConfig = new EventPublisherJob();
-      jobConfig.setStatus(EventPublisherJob.Status.RUNNING);
-
-      var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
-      jobDataField.setAccessible(true);
-      jobDataField.set(testApp, jobConfig);
-
-      JobExecutionContext context = mock(JobExecutionContext.class);
-      JobDetail jobDetail = mock(JobDetail.class);
-      JobDataMap jobDataMap = new JobDataMap();
-      when(context.getJobDetail()).thenReturn(jobDetail);
-      when(jobDetail.getJobDataMap()).thenReturn(jobDataMap);
-
-      var jobExecutionContextField = RdfIndexApp.class.getDeclaredField("jobExecutionContext");
-      jobExecutionContextField.setAccessible(true);
-      jobExecutionContextField.set(testApp, context);
-
-      testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
-
-      var distributedExecutorField = RdfIndexApp.class.getDeclaredField("distributedExecutor");
-      distributedExecutorField.setAccessible(true);
-      var mockDistributedExecutor =
-          mock(
-              org.openmetadata.service.apps.bundles.rdf.distributed.DistributedRdfIndexExecutor
-                  .class);
-      when(mockDistributedExecutor.getJobWithFreshStats())
-          .thenReturn(
-              RdfIndexJob.builder()
-                  .id(UUID.randomUUID())
-                  .status(
-                      org.openmetadata
-                          .service
-                          .apps
-                          .bundles
-                          .searchIndex
-                          .distributed
-                          .IndexJobStatus
-                          .RUNNING)
-                  .totalRecords(10)
-                  .processedRecords(7)
-                  .successRecords(7)
-                  .failedRecords(0)
-                  .build());
-      distributedExecutorField.set(testApp, mockDistributedExecutor);
-
-      var method =
-          RdfIndexApp.class.getDeclaredMethod(
-              "monitorDistributedJob", UUID.class, java.util.concurrent.Future.class);
-      method.setAccessible(true);
-      method.invoke(testApp, UUID.randomUUID(), CompletableFuture.completedFuture(null));
-
-      assertNotNull(testApp.getJobData().getStats());
-      assertEquals(10, testApp.getJobData().getStats().getJobStats().getTotalRecords());
-      assertEquals(7, testApp.getJobData().getStats().getJobStats().getSuccessRecords());
-      assertSame(context, testApp.pushedContext);
-      assertNotNull(testApp.appRunRecord.getSuccessContext());
-      assertEquals(AppRunRecord.Status.RUNNING, testApp.appRunRecord.getStatus());
-    }
-
-    @Test
-    @DisplayName("Should clear RDF data when recreateIndex is enabled before distributed indexing")
+    @DisplayName("Should clear RDF data when recreateIndex is enabled before indexing")
     void testExecuteClearsRdfDataWhenRecreateIndexEnabled() throws Exception {
       TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
       testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
@@ -1009,7 +756,6 @@ class RdfIndexAppTest {
       EventPublisherJob jobConfig = new EventPublisherJob();
       jobConfig.setEntities(Set.of("table"));
       jobConfig.setRecreateIndex(true);
-      jobConfig.setUseDistributedIndexing(true);
       jobConfig.setStatus(EventPublisherJob.Status.STARTED);
 
       var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
@@ -1030,20 +776,9 @@ class RdfIndexAppTest {
       when(jobDetail.getJobDataMap()).thenReturn(jobDataMap);
       when(jobDetail.getKey()).thenReturn(JobKey.jobKey("rdf-index-test"));
 
-      RdfIndexJob completedJob =
-          RdfIndexJob.builder().id(UUID.randomUUID()).status(IndexJobStatus.COMPLETED).build();
       RdfProjectionHealth.markDegraded();
 
-      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
-          var ignored =
-              mockConstruction(
-                  org.openmetadata.service.apps.bundles.rdf.distributed.DistributedRdfIndexExecutor
-                      .class,
-                  (mock, mockContext) -> {
-                    when(mock.createJob(eq(Set.of("table")), eq(jobConfig), anyString()))
-                        .thenReturn(completedJob);
-                    when(mock.getJobWithFreshStats()).thenReturn(completedJob);
-                  })) {
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
         entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(repository);
 
         testApp.execute(context);
@@ -1070,7 +805,6 @@ class RdfIndexAppTest {
       EventPublisherJob jobConfig = new EventPublisherJob();
       jobConfig.setEntities(Set.of("table"));
       jobConfig.setRecreateIndex(false);
-      jobConfig.setUseDistributedIndexing(true);
       jobConfig.setStatus(EventPublisherJob.Status.STARTED);
 
       var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
@@ -1091,19 +825,7 @@ class RdfIndexAppTest {
       when(jobDetail.getJobDataMap()).thenReturn(jobDataMap);
       when(jobDetail.getKey()).thenReturn(JobKey.jobKey("rdf-index-test"));
 
-      RdfIndexJob completedJob =
-          RdfIndexJob.builder().id(UUID.randomUUID()).status(IndexJobStatus.COMPLETED).build();
-
-      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
-          var ignored =
-              mockConstruction(
-                  org.openmetadata.service.apps.bundles.rdf.distributed.DistributedRdfIndexExecutor
-                      .class,
-                  (mock, mockContext) -> {
-                    when(mock.createJob(anySet(), eq(jobConfig), anyString()))
-                        .thenReturn(completedJob);
-                    when(mock.getJobWithFreshStats()).thenReturn(completedJob);
-                  })) {
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
         entityMock.when(() -> Entity.getEntityRepository(anyString())).thenReturn(repository);
 
         testApp.execute(context);
@@ -1124,7 +846,6 @@ class RdfIndexAppTest {
       EventPublisherJob jobConfig = new EventPublisherJob();
       jobConfig.setEntities(Set.of(Entity.GLOSSARY_TERM, "table"));
       jobConfig.setRecreateIndex(false);
-      jobConfig.setUseDistributedIndexing(true);
       jobConfig.setStatus(EventPublisherJob.Status.STARTED);
 
       var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
@@ -1145,19 +866,7 @@ class RdfIndexAppTest {
       when(jobDetail.getJobDataMap()).thenReturn(jobDataMap);
       when(jobDetail.getKey()).thenReturn(JobKey.jobKey("rdf-index-test"));
 
-      RdfIndexJob completedJob =
-          RdfIndexJob.builder().id(UUID.randomUUID()).status(IndexJobStatus.COMPLETED).build();
-
-      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
-          var ignored =
-              mockConstruction(
-                  org.openmetadata.service.apps.bundles.rdf.distributed.DistributedRdfIndexExecutor
-                      .class,
-                  (mock, mockContext) -> {
-                    when(mock.createJob(anySet(), eq(jobConfig), anyString()))
-                        .thenReturn(completedJob);
-                    when(mock.getJobWithFreshStats()).thenReturn(completedJob);
-                  })) {
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
         entityMock.when(() -> Entity.getEntityRepository(anyString())).thenReturn(repository);
 
         testApp.execute(context);
@@ -1181,7 +890,6 @@ class RdfIndexAppTest {
       EventPublisherJob jobConfig = new EventPublisherJob();
       jobConfig.setEntities(Set.of("table", "dashboard"));
       jobConfig.setRecreateIndex(false);
-      jobConfig.setUseDistributedIndexing(true);
       jobConfig.setStatus(EventPublisherJob.Status.STARTED);
 
       var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
@@ -1202,339 +910,13 @@ class RdfIndexAppTest {
       when(jobDetail.getJobDataMap()).thenReturn(jobDataMap);
       when(jobDetail.getKey()).thenReturn(JobKey.jobKey("rdf-index-test"));
 
-      RdfIndexJob completedJob =
-          RdfIndexJob.builder().id(UUID.randomUUID()).status(IndexJobStatus.COMPLETED).build();
-
-      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
-          var ignored =
-              mockConstruction(
-                  org.openmetadata.service.apps.bundles.rdf.distributed.DistributedRdfIndexExecutor
-                      .class,
-                  (mock, mockContext) -> {
-                    when(mock.createJob(anySet(), eq(jobConfig), anyString()))
-                        .thenReturn(completedJob);
-                    when(mock.getJobWithFreshStats()).thenReturn(completedJob);
-                  })) {
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
         entityMock.when(() -> Entity.getEntityRepository(anyString())).thenReturn(repository);
 
         testApp.execute(context);
       }
 
       verify(mockRdfRepository, never()).clearAllGlossaryTermRelations();
-    }
-  }
-
-  @Nested
-  @DisplayName("IndexingTask Record Tests")
-  class IndexingTaskTests {
-
-    @Test
-    @DisplayName("Should identify poison pill correctly")
-    void testPoisonPillIdentification() {
-      var poisonPill = new RdfIndexApp.IndexingTask("__POISON_PILL__", null, -1, 0);
-      assertTrue(poisonPill.isPoisonPill());
-    }
-
-    @Test
-    @DisplayName("Should not identify regular task as poison pill")
-    void testRegularTaskNotPoisonPill() {
-      List<EntityInterface> entities = new ArrayList<>();
-      var regularTask = new RdfIndexApp.IndexingTask("table", entities, 0, 0);
-      assertFalse(regularTask.isPoisonPill());
-    }
-
-    @Test
-    @DisplayName("Should create task with default retry count")
-    void testTaskWithDefaultRetryCount() {
-      List<EntityInterface> entities = new ArrayList<>();
-      var task = new RdfIndexApp.IndexingTask("table", entities, 100);
-      assertEquals(0, task.retryCount());
-      assertEquals("table", task.entityType());
-      assertEquals(100, task.offset());
-    }
-
-    @Test
-    @DisplayName("Should preserve entity list in task")
-    void testTaskPreservesEntities() {
-      List<EntityInterface> entities = new ArrayList<>();
-      var task = new RdfIndexApp.IndexingTask("column", entities, 50, 2);
-      assertSame(entities, task.entities());
-      assertEquals("column", task.entityType());
-      assertEquals(50, task.offset());
-      assertEquals(2, task.retryCount());
-    }
-  }
-
-  @Nested
-  @DisplayName("Relationship Storage Tests")
-  class RelationshipStorageTests {
-
-    @Test
-    @DisplayName("Should query ALL relationship types when processing batch relationships")
-    void testProcessBatchRelationshipsQueriesAllTypes() throws Exception {
-      // Setup mock entities
-      List<EntityInterface> mockEntities = new ArrayList<>();
-      EntityInterface mockEntity = mock(EntityInterface.class);
-      UUID entityId = UUID.randomUUID();
-      when(mockEntity.getId()).thenReturn(entityId);
-      mockEntities.add(mockEntity);
-
-      // Setup mock relationship results (empty list is fine - we're testing the query params)
-      when(relationshipDAO.findToBatchWithRelations(anyList(), anyString(), anyList()))
-          .thenReturn(new ArrayList<>());
-      when(relationshipDAO.findFromBatch(anyList(), anyInt(), any(Include.class)))
-          .thenReturn(new ArrayList<>());
-
-      // Call processBatchRelationships via reflection
-      var method =
-          RdfIndexApp.class.getDeclaredMethod(
-              "processBatchRelationships", String.class, List.class);
-      method.setAccessible(true);
-      method.invoke(rdfIndexApp, "table", mockEntities);
-
-      // Verify findToBatchWithRelations was called with ALL relationship types
-      var captor = org.mockito.ArgumentCaptor.forClass(List.class);
-      verify(relationshipDAO).findToBatchWithRelations(anyList(), eq("table"), captor.capture());
-
-      @SuppressWarnings("unchecked")
-      List<Integer> queriedRelationships = captor.getValue();
-
-      // Should include ALL relationship types
-      assertEquals(
-          Relationship.values().length,
-          queriedRelationships.size(),
-          "Should query ALL relationship types, not a subset");
-
-      for (Relationship rel : Relationship.values()) {
-        assertTrue(
-            queriedRelationships.contains(rel.ordinal()),
-            "Should include " + rel.name() + " relationship in query");
-      }
-    }
-
-    @Test
-    @DisplayName("Should store relationships returned from batch query")
-    void testProcessBatchRelationshipsStoresResults() throws Exception {
-      // Setup mock entities
-      List<EntityInterface> mockEntities = new ArrayList<>();
-      EntityInterface mockEntity = mock(EntityInterface.class);
-      UUID entityId = UUID.randomUUID();
-      when(mockEntity.getId()).thenReturn(entityId);
-      mockEntities.add(mockEntity);
-
-      // Create mock relationship results
-      UUID fromId = UUID.randomUUID();
-      UUID toId = UUID.randomUUID();
-      List<EntityRelationshipObject> mockRelationships = new ArrayList<>();
-      mockRelationships.add(
-          EntityRelationshipObject.builder()
-              .fromId(fromId.toString())
-              .toId(toId.toString())
-              .fromEntity("table")
-              .toEntity("database")
-              .relation(Relationship.CONTAINS.ordinal())
-              .build());
-      mockRelationships.add(
-          EntityRelationshipObject.builder()
-              .fromId(fromId.toString())
-              .toId(UUID.randomUUID().toString())
-              .fromEntity("table")
-              .toEntity("user")
-              .relation(Relationship.OWNS.ordinal())
-              .build());
-
-      when(relationshipDAO.findToBatchWithRelations(anyList(), anyString(), anyList()))
-          .thenReturn(mockRelationships);
-      when(relationshipDAO.findFromBatch(anyList(), anyInt(), any(Include.class)))
-          .thenReturn(new ArrayList<>());
-
-      // Call processBatchRelationships
-      var method =
-          RdfIndexApp.class.getDeclaredMethod(
-              "processBatchRelationships", String.class, List.class);
-      method.setAccessible(true);
-      method.invoke(rdfIndexApp, "table", mockEntities);
-
-      // Verify bulkAddRelationships was called with the relationships +
-      // batchSources (Fix-I — RdfBatchProcessor now passes its batchSources
-      // to scope the per-source DELETE inside JenaFusekiStorage).
-      var captor = org.mockito.ArgumentCaptor.forClass(List.class);
-      verify(mockRdfRepository)
-          .bulkAddRelationships(captor.capture(), anySet(), eq(RdfWriteMode.RECONCILE));
-
-      @SuppressWarnings("unchecked")
-      List<org.openmetadata.schema.type.EntityRelationship> storedRelationships = captor.getValue();
-
-      assertEquals(2, storedRelationships.size(), "Should store all relationships");
-      assertTrue(
-          storedRelationships.stream()
-              .anyMatch(r -> r.getRelationshipType() == Relationship.CONTAINS),
-          "Should include CONTAINS relationship");
-      assertTrue(
-          storedRelationships.stream().anyMatch(r -> r.getRelationshipType() == Relationship.OWNS),
-          "Should include OWNS relationship");
-    }
-
-    @Test
-    @DisplayName("Should handle lineage relationships with details separately")
-    void testProcessBatchRelationshipsHandlesLineageWithDetails() throws Exception {
-      // Setup mock entities
-      List<EntityInterface> mockEntities = new ArrayList<>();
-      EntityInterface mockEntity = mock(EntityInterface.class);
-      UUID entityId = UUID.randomUUID();
-      when(mockEntity.getId()).thenReturn(entityId);
-      mockEntities.add(mockEntity);
-
-      // Create mock lineage relationship with JSON details
-      UUID fromId = UUID.randomUUID();
-      UUID toId = UUID.randomUUID();
-      String lineageJson = "{\"sqlQuery\":\"SELECT * FROM source\"}";
-
-      List<EntityRelationshipObject> mockOutgoing = new ArrayList<>();
-      mockOutgoing.add(
-          EntityRelationshipObject.builder()
-              .fromId(fromId.toString())
-              .toId(toId.toString())
-              .fromEntity("table")
-              .toEntity("table")
-              .relation(Relationship.UPSTREAM.ordinal())
-              .json(lineageJson)
-              .build());
-
-      when(relationshipDAO.findToBatchWithRelations(anyList(), anyString(), anyList()))
-          .thenReturn(mockOutgoing);
-      when(relationshipDAO.findFromBatch(anyList(), anyInt(), any(Include.class)))
-          .thenReturn(new ArrayList<>());
-
-      // Call processBatchRelationships
-      var method =
-          RdfIndexApp.class.getDeclaredMethod(
-              "processBatchRelationships", String.class, List.class);
-      method.setAccessible(true);
-      method.invoke(rdfIndexApp, "table", mockEntities);
-
-      @SuppressWarnings("unchecked")
-      org.mockito.ArgumentCaptor<List<RdfRepository.LineageEdgeData>> captor =
-          org.mockito.ArgumentCaptor.forClass(List.class);
-      verify(mockRdfRepository).bulkAddLineage(captor.capture(), eq(RdfWriteMode.RECONCILE));
-      assertEquals(1, captor.getValue().size());
-      assertEquals(fromId, captor.getValue().get(0).fromId());
-      assertEquals(toId, captor.getValue().get(0).toId());
-    }
-
-    @Test
-    @DisplayName("Should skip event subscription relationships using canonical entity type")
-    void testProcessBatchRelationshipsSkipsEventSubscriptionEntities() throws Exception {
-      List<EntityInterface> mockEntities = new ArrayList<>();
-      EntityInterface mockEntity = mock(EntityInterface.class);
-      UUID entityId = UUID.randomUUID();
-      when(mockEntity.getId()).thenReturn(entityId);
-      mockEntities.add(mockEntity);
-
-      List<EntityRelationshipObject> mockRelationships = new ArrayList<>();
-      mockRelationships.add(
-          EntityRelationshipObject.builder()
-              .fromId(entityId.toString())
-              .toId(UUID.randomUUID().toString())
-              .fromEntity("table")
-              .toEntity(Entity.EVENT_SUBSCRIPTION)
-              .relation(Relationship.HAS.ordinal())
-              .build());
-
-      when(relationshipDAO.findToBatchWithRelations(anyList(), anyString(), anyList()))
-          .thenReturn(mockRelationships);
-      when(relationshipDAO.findFromBatch(anyList(), anyInt(), any(Include.class)))
-          .thenReturn(new ArrayList<>());
-
-      var method =
-          RdfIndexApp.class.getDeclaredMethod(
-              "processBatchRelationships", String.class, List.class);
-      method.setAccessible(true);
-      method.invoke(rdfIndexApp, "table", mockEntities);
-
-      // The eventSubscription edge is filtered out, so no relationships make it
-      // into the bulk insert. The batch's source entity still gets reconciled
-      // (any stale RDF state from prior runs cleared) — bulkAddRelationships
-      // takes an empty list + batchSources and emits the DELETE in the same
-      // SPARQL update. The separate clearOutgoingEntityRelationships call
-      // was retired when the clear was folded into bulkAddRelationships'
-      // atomic transaction; verify the 2-arg overload instead.
-      verify(mockRdfRepository)
-          .bulkAddRelationships(eq(java.util.List.of()), anySet(), eq(RdfWriteMode.RECONCILE));
-      verify(mockRdfRepository, never())
-          .addRelationship(any(org.openmetadata.schema.type.EntityRelationship.class));
-    }
-
-    @Test
-    @DisplayName("Should skip event subscription relationships using legacy camelCase entity type")
-    void testProcessBatchRelationshipsSkipsLegacyEventSubscriptionEntities() throws Exception {
-      List<EntityInterface> mockEntities = new ArrayList<>();
-      EntityInterface mockEntity = mock(EntityInterface.class);
-      UUID entityId = UUID.randomUUID();
-      when(mockEntity.getId()).thenReturn(entityId);
-      mockEntities.add(mockEntity);
-
-      List<EntityRelationshipObject> mockRelationships = new ArrayList<>();
-      mockRelationships.add(
-          EntityRelationshipObject.builder()
-              .fromId(entityId.toString())
-              .toId(UUID.randomUUID().toString())
-              .fromEntity("table")
-              .toEntity("eventSubscription")
-              .relation(Relationship.HAS.ordinal())
-              .build());
-
-      when(relationshipDAO.findToBatchWithRelations(anyList(), anyString(), anyList()))
-          .thenReturn(mockRelationships);
-      when(relationshipDAO.findFromBatch(anyList(), anyInt(), any(Include.class)))
-          .thenReturn(new ArrayList<>());
-
-      var method =
-          RdfIndexApp.class.getDeclaredMethod(
-              "processBatchRelationships", String.class, List.class);
-      method.setAccessible(true);
-      method.invoke(rdfIndexApp, "table", mockEntities);
-
-      // Same expectation as the canonical-type variant: filtered relationships
-      // never reach the insert side; bulkAddRelationships is still invoked
-      // with an empty list + batchSources so the atomic clear+insert reconciles
-      // the source entity's existing RDF state.
-      verify(mockRdfRepository)
-          .bulkAddRelationships(eq(java.util.List.of()), anySet(), eq(RdfWriteMode.RECONCILE));
-      verify(mockRdfRepository, never())
-          .addRelationship(any(org.openmetadata.schema.type.EntityRelationship.class));
-    }
-  }
-
-  @Nested
-  @DisplayName("Producer-Consumer Architecture Tests")
-  class ProducerConsumerTests {
-
-    @Test
-    @DisplayName("Should have poison pill constant defined")
-    void testPoisonPillConstant() throws Exception {
-      var field = RdfIndexApp.class.getDeclaredField("POISON_PILL");
-      field.setAccessible(true);
-      String poisonPill = (String) field.get(null);
-      assertEquals("__POISON_PILL__", poisonPill);
-    }
-
-    @Test
-    @DisplayName("Should have default queue size defined")
-    void testDefaultQueueSize() throws Exception {
-      var field = RdfIndexApp.class.getDeclaredField("DEFAULT_QUEUE_SIZE");
-      field.setAccessible(true);
-      int defaultQueueSize = (int) field.get(null);
-      assertEquals(5000, defaultQueueSize);
-    }
-
-    @Test
-    @DisplayName("Should have websocket update interval defined")
-    void testWebsocketUpdateInterval() throws Exception {
-      var field = RdfIndexApp.class.getDeclaredField("WEBSOCKET_UPDATE_INTERVAL_MS");
-      field.setAccessible(true);
-      long interval = (long) field.get(null);
-      assertEquals(2000L, interval);
     }
   }
 }

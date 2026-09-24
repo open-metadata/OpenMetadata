@@ -30,7 +30,7 @@ import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 
 /**
- * Buffering sink between partition readers and the RDF store, mirroring the search bulk sink's
+ * Buffering sink between the reindex readers and the RDF store, mirroring the search bulk sink's
  * shape but adapted to a single-writer backend.
  *
  * <p>Why this exists: TDB2 allows exactly one write transaction, and Fuseki acquires that writer
@@ -46,8 +46,7 @@ import org.openmetadata.service.rdf.storage.RdfStorageInterface;
  * reader. Translation uses a shared bounded pool with {@link ThreadPoolExecutor.CallerRunsPolicy},
  * so a translate backlog also slows submitters rather than growing memory.
  *
- * <p>Delivery/ordering: futures complete in submission order (single FIFO drain), which lets
- * partition workers advance their cursor on acknowledgement with no watermark bookkeeping.
+ * <p>Delivery/ordering: futures complete in submission order (single FIFO drain).
  */
 @Slf4j
 public class RdfBulkSink implements AutoCloseable {

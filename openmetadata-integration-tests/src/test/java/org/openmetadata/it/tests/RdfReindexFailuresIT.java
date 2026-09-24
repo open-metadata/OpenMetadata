@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -43,6 +44,9 @@ import org.openmetadata.service.Entity;
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class RdfReindexFailuresIT {
+  // The envelope test compares the row count with the rows returned, so a row inserted by the
+  // contract test between those two reads must not land in the middle.
+  private static final String FAILURE_ROWS = "rdf_index_failures";
 
   private static final String FAILURES_PATH = "/v1/rdf/reindex/failures";
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -103,6 +107,7 @@ public class RdfReindexFailuresIT {
   }
 
   @Test
+  @ResourceLock(FAILURE_ROWS)
   void listFailures_admin_returnsPaginatedEnvelope() throws Exception {
     HttpResponse<String> response = get("?limit=10&offset=0", adminJwt());
 
@@ -122,6 +127,7 @@ public class RdfReindexFailuresIT {
   }
 
   @Test
+  @ResourceLock(FAILURE_ROWS)
   void listFailures_preservesTheGeneratedFailureContract() throws Exception {
     String id = UUID.randomUUID().toString();
     String jobId = UUID.randomUUID().toString();
