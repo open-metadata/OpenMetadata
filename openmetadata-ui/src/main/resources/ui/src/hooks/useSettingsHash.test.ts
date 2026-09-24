@@ -73,7 +73,11 @@ describe('useSettingsHash', () => {
       result.current.setHash('notification', 'my-alert');
     });
 
-    expect(replaceStateSpy).toHaveBeenCalledWith(null, '', '#notification/my-alert');
+    expect(replaceStateSpy).toHaveBeenCalledWith(
+      null,
+      '',
+      '#notification/my-alert'
+    );
   });
 
   it('should set hash with params', () => {
@@ -83,7 +87,11 @@ describe('useSettingsHash', () => {
       result.current.setHash('notification', undefined, { page: '2' });
     });
 
-    expect(replaceStateSpy).toHaveBeenCalledWith(null, '', '#notification?page=2');
+    expect(replaceStateSpy).toHaveBeenCalledWith(
+      null,
+      '',
+      '#notification?page=2'
+    );
   });
 
   it('should clear hash via clearHash', () => {
