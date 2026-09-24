@@ -51,7 +51,7 @@ const CELL_ELLIPSIS_CLASS = 'tw:min-w-0 tw:w-full tw:overflow-hidden';
 
 const CHILD_ROW_INDENT_PX = 24;
 const BASE_CELL_PADDING_PX = 24;
-const PARENT_ROW_BG_CLASS = 'tw:bg-tertiary tw:dark:bg-raised';
+const PARENT_ROW_BG_CLASS = 'tw:bg-secondary_hover';
 const CHILD_ROW_BG_CLASS = 'tw:bg-secondary';
 const RECENTLY_UPDATED_BG_CLASS = 'tw:bg-utility-warning-50';
 const SELECTED_ROW_BG_CLASS = 'tw:bg-active';
@@ -82,7 +82,7 @@ const ColumnGridTableRowBase: React.FC<ColumnGridTableRowProps> = ({
     return map;
   }, [children]);
 
-  const { rowClassName, cellClassName, rowType } = useMemo(() => {
+  const { rowClassName, rowType } = useMemo(() => {
     const type = isChildRow ? 'child' : 'parent';
 
     if (isRecentlyUpdated) {
@@ -93,7 +93,6 @@ const ColumnGridTableRowBase: React.FC<ColumnGridTableRowProps> = ({
           RECENTLY_UPDATED_BG_CLASS,
           isSelected && RECENTLY_UPDATED_BG_CLASS
         ),
-        cellClassName: classNames(RECENTLY_UPDATED_BG_CLASS),
       };
     }
 
@@ -117,7 +116,6 @@ const ColumnGridTableRowBase: React.FC<ColumnGridTableRowProps> = ({
         isSelected && bgClass,
         'tw:hover:opacity-95'
       ),
-      cellClassName: classNames(bgClass),
     };
   }, [isRecentlyUpdated, showParentChildColors, isChildRow, isSelected]);
 
@@ -183,7 +181,7 @@ const ColumnGridTableRowBase: React.FC<ColumnGridTableRowProps> = ({
       id={entity.id}>
       {(column) => (
         <Table.Cell
-          className={classNames(cellClassName, 'tw:overflow-hidden')}
+          className="tw:overflow-hidden"
           data-testid={cellTestIdMap[column.id]}
           style={getCellStyle(column.id)}>
           {renderCellContent(column.id)}
