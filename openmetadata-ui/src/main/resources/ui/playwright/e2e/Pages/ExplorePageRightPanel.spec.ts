@@ -158,13 +158,6 @@ test.describe('Right Panel Test Suite', () => {
 
   test.describe('Explore page right panel tests', () => {
     test.describe('Overview panel CRUD and Removal operations', () => {
-      // Nightly EKS/RDS infra runs every test body in this group at 72-84 s
-      // (run 32560604531 in openmetadata-nightly; PR infra ~45 s) — genuine
-      // remote-server latency, uniform across all 10 tests. Budget for that
-      // infra explicitly instead of the old suite-wide test.slow(true),
-      // which tripled EVERY test in the file and let failures grind for
-      // minutes. Applies to all tests in this describe only.
-      test.setTimeout(120_000);
       const crudEntityMap = {
         table: new TableClass(),
         dashboard: new DashboardClass(),
@@ -179,6 +172,8 @@ test.describe('Right Panel Test Suite', () => {
       };
 
       test.beforeAll(async ({ browser }) => {
+        // Bounded hook budget — see the suite-level beforeAll comment.
+        test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await Promise.all(
@@ -206,6 +201,14 @@ test.describe('Right Panel Test Suite', () => {
           rightPanel,
           overview,
         }) => {
+          // Each body runs 50-73 s on healthy PR infra (run 35820419064) and
+          // 72-84 s on nightly EKS/RDS: seven full Explore round-trips, each
+          // paying an unfiltered /explore load before the search even starts.
+          // A degraded runner stretches every action 1.5-3x (run 35826885658,
+          // shard chromium-23 — median 1.54x across 147 tests), which pushed
+          // two of these bodies past the old flat 120 s cap. slow() gives 3x
+          // the 60 s default, scoped to this one test rather than the file.
+          test.slow();
           const fqn = getEntityFqn(entityInstance);
 
           await test.step('Navigate to entity', async () => {

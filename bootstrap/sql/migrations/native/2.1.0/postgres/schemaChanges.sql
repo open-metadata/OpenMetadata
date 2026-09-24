@@ -67,6 +67,28 @@ CREATE INDEX IF NOT EXISTS idx_tci_fqn ON test_case_incident (entityFQNHash);
 CREATE INDEX IF NOT EXISTS idx_tci_assignee ON test_case_incident (assignee, testCaseResolutionStatusType);
 CREATE INDEX IF NOT EXISTS idx_tci_updated ON test_case_incident (updatedAt);
 
+-- Metric hierarchy is stored as CONTAINS rows in entity_relationship. Metric Group
+-- membership is stored as HAS relationships so deleting a group leaves metrics intact.
+CREATE TABLE IF NOT EXISTS metric_group_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    fqnHash VARCHAR(768) DEFAULT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
+
+CREATE INDEX IF NOT EXISTS metric_group_entity_name_index ON metric_group_entity (name);
+CREATE INDEX IF NOT EXISTS idx_metric_group_entity_deleted_name_id ON metric_group_entity (deleted, name, id);
+
+-- A Metric can have only one active Metric Group membership. Soft-deleted memberships and every
+-- other HAS relationship remain unconstrained by this partial index.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_metric_group_single_membership
+    ON entity_relationship (toId)
+    WHERE fromEntity = 'metricGroup' AND toEntity = 'metric' AND relation = 10 AND deleted = FALSE;
 -- Ontology Studio: governed relationship types, OWL annex, drafts, and edit locks.
 CREATE TABLE IF NOT EXISTS relationship_type_entity (
   id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
@@ -261,6 +283,7 @@ CREATE INDEX IF NOT EXISTS idx_conversation_domain_lookup
     ON conversation_domain (domainId, conversationId);
 
 ALTER TABLE conversation_entity DROP COLUMN IF EXISTS activityTimestamp;
+
 -- Pipeline-backed lineage is the only relationship lookup whose selective identifier lives in JSON.
 -- The partial index avoids write amplification for relationships that have no pipeline metadata.
 CREATE INDEX IF NOT EXISTS idx_entity_relationship_pipeline_relation
@@ -324,3 +347,32 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_entity_type_ts
 -- test connection, query runner and reverse ingestion runs.
 CREATE INDEX IF NOT EXISTS idx_automations_workflow_updated_at
   ON automations_workflow (updatedat);
+
+-- Email-first identity: email/name lookups on the authentication hot path compare LOWER()
+-- values. Postgres columns are case-sensitive, so functional indexes are required to avoid a
+-- full table scan per login. Uniqueness is not restated here: user_entity already has UNIQUE
+-- constraints on email and name, and every write normalizes to lowercase, so the plain
+-- constraints already bound each lowercased value to one row.
+CREATE INDEX IF NOT EXISTS idx_user_entity_email_lower ON user_entity (LOWER(email));
+CREATE INDEX IF NOT EXISTS idx_user_entity_name_lower ON user_entity (LOWER(name));
+
+-- audit_log_event.entity_fqn stores the raw FQN. For lineage events that FQN is two
+-- entity FQNs joined by the relationship marker, so ordinary deeply-nested entities
+-- push it past 768 characters; the insert then fails and AuditLogRepository drops the
+-- row with only a WARN, losing audit history silently. Nothing indexes entity_fqn --
+-- lookups go through entity_fqn_hash (idx_audit_log_event_entity_hash_ts), an
+-- MD5-per-segment digest that stays far inside its own bound -- so the column has no
+-- reason to be length-capped. varchar -> text is binary-coercible here, so this is a
+-- catalogue change rather than a table rewrite.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'audit_log_event'
+      AND column_name = 'entity_fqn'
+      AND data_type = 'character varying'
+  ) THEN
+    ALTER TABLE audit_log_event ALTER COLUMN entity_fqn TYPE TEXT;
+  END IF;
+END $$;

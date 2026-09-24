@@ -14,9 +14,13 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { ServiceHealth } from '../../../generated/api/services/servicesOverview';
 import { queryClient } from '../../../queryClient';
-import { LIST_PAGE_SIZE_OPTIONS } from './ConnectionsPage.constants';
+import {
+  GRID_PAGE_SIZE_OPTIONS,
+  LIST_PAGE_SIZE_OPTIONS,
+} from './ConnectionsPage.constants';
 import { ConnectionsCategory, useConnectionsData } from './useConnectionsData';
 
 const mockGetServicesOverview = jest.fn();
@@ -32,10 +36,18 @@ jest.mock('../../platform/ai-shell/context/useRouteActivation', () => ({
   },
 }));
 
+// Lets the page-size cases below run against the real hook while every other case keeps the
+// stand-in. Both are evaluated on every render and the result picked afterwards — branching before
+// the hooks would make hook order depend on the flag.
+let mockUseRealPaging = false;
+
 // Minimal stand-in for the real usePaging hook: mirrors its externally observable behavior
 // (current page, page size, reset-to-page-1 on resize) without its URL/user-preference machinery.
 jest.mock('../../../hooks/paging/usePaging', () => ({
-  usePaging: (defaultPageSize?: number) => {
+  usePaging: (defaultPageSize?: number, pageSizeOptions?: number[]) => {
+    const realPaging = jest
+      .requireActual('../../../hooks/paging/usePaging')
+      .usePaging(defaultPageSize, pageSizeOptions);
     const { useCallback, useState } = jest.requireActual('react');
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(defaultPageSize ?? 10);
@@ -52,17 +64,26 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
       setCurrentPage(1);
     }, []);
 
-    return {
-      currentPage,
-      handlePageChange,
-      handlePageSizeChange,
-      handlePagingChange: jest.fn(),
-      paging: { total: 0 },
-      pageSize,
-      pagingCursor: {},
-      showPagination: true,
-    };
+    return mockUseRealPaging
+      ? realPaging
+      : {
+          currentPage,
+          handlePageChange,
+          handlePageSizeChange,
+          handlePagingChange: jest.fn(),
+          paging: { total: 0 },
+          pageSize,
+          pagingCursor: {},
+          showPagination: true,
+        };
   },
+}));
+
+// The real hook resolves the page-size preference against the current user.
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn((selector) =>
+    selector({ currentUser: { name: 'connections-user' } })
+  ),
 }));
 
 interface ServiceSpec {
@@ -107,8 +128,22 @@ const overview = (specs: ServiceSpec[], total?: number) => {
   };
 };
 
-const withQueryClient = ({ children }: { children: React.ReactNode }) =>
-  React.createElement(QueryClientProvider, { client: queryClient }, children);
+// The real hook navigates and reads the query string, so every case needs a router — it runs on
+// every render even when the stand-in's result is the one returned.
+const withProvidersAt =
+  (entry: string) =>
+  ({ children }: { children: React.ReactNode }) =>
+    React.createElement(
+      MemoryRouter,
+      { initialEntries: [entry] },
+      React.createElement(
+        QueryClientProvider,
+        { client: queryClient },
+        children
+      )
+    );
+
+const withQueryClient = withProvidersAt('/connections');
 
 const defaultArgs = {
   category: 'all' as ConnectionsCategory,
@@ -297,6 +332,60 @@ describe('useConnectionsData', () => {
     );
 
     expect(mockGetServicesOverview).not.toHaveBeenCalled();
+  });
+
+  // Driven through the real usePaging: the size this page ends up paging by is the thing at
+  // stake, and a check on what it passed the stand-in would stay green while the grid rendered
+  // 15 rows.
+  describe('page size', () => {
+    const ESTATE_SIZE = 20;
+
+    beforeEach(() => {
+      mockUseRealPaging = true;
+      mockGetServicesOverview.mockResolvedValue(
+        overview(
+          Array.from({ length: ESTATE_SIZE }, (_, index) => ({
+            name: `svc-${index}`,
+          }))
+        )
+      );
+    });
+
+    afterEach(() => {
+      mockUseRealPaging = false;
+    });
+
+    // The grid view, whose 12/24/48 differs from the app-wide scale the list view and every other
+    // page use — so a size reaching it from the shared param is one its picker cannot offer.
+    const renderGridAt = (entry: string) =>
+      renderHook(
+        () =>
+          useConnectionsData({
+            ...defaultArgs,
+            pageSizeOptions: GRID_PAGE_SIZE_OPTIONS,
+          }),
+        { wrapper: withProvidersAt(entry) }
+      );
+
+    it('pages by a size its picker offers, not one another page left in the URL', async () => {
+      const { result } = renderGridAt('/connections?pageSize=15');
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      // 15 belongs to the app-wide scale. Adopted here it reaches the rows-per-page Select as a
+      // selectedKey matching no item, which renders as the placeholder.
+      expect(result.current.pageSize).toBe(GRID_PAGE_SIZE_OPTIONS[0]);
+      expect(result.current.rows).toHaveLength(GRID_PAGE_SIZE_OPTIONS[0]);
+    });
+
+    it('keeps a size the URL carries when its picker does offer it', async () => {
+      const { result } = renderGridAt('/connections?pageSize=24');
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      expect(result.current.pageSize).toBe(24);
+      expect(result.current.rows).toHaveLength(ESTATE_SIZE);
+    });
   });
 
   describe('page reset', () => {

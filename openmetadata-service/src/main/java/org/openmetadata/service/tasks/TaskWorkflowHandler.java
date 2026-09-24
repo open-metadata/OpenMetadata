@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -42,7 +43,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskComment;
-import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
@@ -56,6 +56,7 @@ import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionAction;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionBinding;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionPlan;
@@ -80,12 +81,26 @@ import org.openmetadata.service.util.RestUtil.PatchResponse;
 @Slf4j
 public class TaskWorkflowHandler {
 
+  static final int DEFAULT_RUNTIME_TASK_READINESS_ATTEMPTS = 6;
+  static final long DEFAULT_RUNTIME_TASK_READINESS_DELAY_MILLIS = 50L;
+  static final long DEFAULT_RUNTIME_TASK_READINESS_WAIT_MILLIS =
+      (DEFAULT_RUNTIME_TASK_READINESS_ATTEMPTS - 1) * DEFAULT_RUNTIME_TASK_READINESS_DELAY_MILLIS;
+
   /** Suggestion payload {@code source} marking a suggestion an agent produced. */
   private static final String AGENT_SUGGESTION_SOURCE = "Agent";
 
   private static TaskWorkflowHandler instance;
+  private final int runtimeTaskReadinessAttempts;
+  private final long runtimeTaskReadinessDelayMillis;
 
-  private TaskWorkflowHandler() {}
+  private TaskWorkflowHandler() {
+    this(DEFAULT_RUNTIME_TASK_READINESS_ATTEMPTS, DEFAULT_RUNTIME_TASK_READINESS_DELAY_MILLIS);
+  }
+
+  TaskWorkflowHandler(int runtimeTaskReadinessAttempts, long runtimeTaskReadinessDelayMillis) {
+    this.runtimeTaskReadinessAttempts = Math.max(1, runtimeTaskReadinessAttempts);
+    this.runtimeTaskReadinessDelayMillis = Math.max(0L, runtimeTaskReadinessDelayMillis);
+  }
 
   public static synchronized TaskWorkflowHandler getInstance() {
     if (instance == null) {
@@ -160,6 +175,13 @@ public class TaskWorkflowHandler {
     }
   }
 
+  private static boolean isMetricApprovalTask(Task task) {
+    return task != null
+        && task.getType() == TaskEntityType.RequestApproval
+        && task.getAbout() != null
+        && Entity.METRIC.equals(task.getAbout().getType());
+  }
+
   /**
    * Resolve a task that is managed by a Flowable workflow.
    */
@@ -176,6 +198,18 @@ public class TaskWorkflowHandler {
     WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     List<EntityReference> payloadAssignees = extractAssigneesFromPayload(resolvedPayload);
+    boolean requiresRuntimeTaskReadiness = isMetricApprovalTask(task);
+
+    if (requiresRuntimeTaskReadiness && TaskRepository.isTerminalStatus(task.getStatus())) {
+      throw new IllegalStateException(
+          String.format("Task '%s' is already in status '%s'", taskId, task.getStatus()));
+    }
+    if (requiresRuntimeTaskReadiness && !awaitActiveRuntimeTask(workflowHandler, taskId)) {
+      throw new IllegalStateException(
+          String.format(
+              "Flowable runtime task for workflow-managed task '%s' is unavailable; retry the resolution",
+              taskId));
+    }
 
     if (payloadAssignees != null && !payloadAssignees.isEmpty()) {
       task = persistWorkflowAssignees(taskRepository, task, payloadAssignees, user);
@@ -219,12 +253,15 @@ public class TaskWorkflowHandler {
 
     if (!workflowSuccess) {
       if (!workflowHandler.hasActiveRuntimeTask(taskId)) {
-        // Report M1: two clients racing the same task, or a stale resolve arriving after
-        // Flowable already advanced past this node. Return a 409 CONFLICT via a typed
-        // WebServiceException so the caller learns the state changed under them — the
-        // generic exception mapper would otherwise surface these as 500s. Kept narrow
-        // (only these two resolve-race sites) so unrelated IllegalStateException bugs
-        // still surface as 500.
+        // Workflow-managed Metric tasks must not bypass their approval workflow when the runtime
+        // task disappears between the readiness check and resolution.
+        if (requiresRuntimeTaskReadiness) {
+          throw TaskStateConflictException.of(
+              String.format(
+                  "Flowable runtime task for workflow-managed Metric task '%s' disappeared while resolving transition '%s'; the task was not finalized",
+                  taskId,
+                  transitionId != null ? transitionId : defaultWorkflowResult(resolutionType)));
+        }
         if (resolutionType == null) {
           throw TaskStateConflictException.of(
               String.format(
@@ -254,7 +291,7 @@ public class TaskWorkflowHandler {
           "[TaskWorkflowHandler] Non-terminal transition '{}' for task '{}' — workflow advanced, no resolution applied",
           transitionId,
           taskId);
-      if (isApproveTransition(selectedTransition)) {
+      if (TaskWorkflowLifecycleResolver.isApproveTransition(selectedTransition)) {
         captureApprover(taskRepository, taskId, user);
       }
       return refreshTask(taskId);
@@ -271,6 +308,29 @@ public class TaskWorkflowHandler {
     // Task threshold met, apply resolution
     return applyTaskResolution(
         task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user);
+  }
+
+  private boolean awaitActiveRuntimeTask(WorkflowHandler workflowHandler, UUID taskId) {
+    boolean isActive = workflowHandler.hasActiveRuntimeTask(taskId);
+    int attempt = 1;
+    while (!isActive && attempt < runtimeTaskReadinessAttempts && waitForRuntimeTaskRetry(taskId)) {
+      isActive = workflowHandler.hasActiveRuntimeTask(taskId);
+      attempt++;
+    }
+    return isActive;
+  }
+
+  private boolean waitForRuntimeTaskRetry(UUID taskId) {
+    boolean completed = true;
+    try {
+      TimeUnit.MILLISECONDS.sleep(runtimeTaskReadinessDelayMillis);
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      completed = false;
+      LOG.warn(
+          "[TaskWorkflowHandler] Interrupted while waiting for Flowable runtime task '{}'", taskId);
+    }
+    return completed;
   }
 
   private Task persistWorkflowAssignees(
@@ -302,16 +362,6 @@ public class TaskWorkflowHandler {
       // production approver-capture failures effectively undiagnosable.
       LOG.warn("[TaskWorkflowHandler] Failed to capture approver for task '{}'", taskId, e);
     }
-  }
-
-  /**
-   * Identify an approval transition by its target status rather than its `id` string. Every
-   * approve transition in our seeded workflows has `targetTaskStatus=Approved`, so this avoids
-   * coupling the handler to the literal `"approve"` id that the workflow JSON happens to use.
-   */
-  private static boolean isApproveTransition(TaskAvailableTransition selectedTransition) {
-    return selectedTransition != null
-        && selectedTransition.getTargetTaskStatus() == TaskEntityStatus.Approved;
   }
 
   /**
@@ -380,18 +430,7 @@ public class TaskWorkflowHandler {
             .withComment(comment)
             .withPayload(resolvedPayload);
 
-    if (selectedTransition != null) {
-      task.setWorkflowStageId(selectedTransition.getTargetStageId());
-      task.setWorkflowStageDisplayName(selectedTransition.getTargetStageId());
-      task.setAvailableTransitions(List.of());
-      if (isApproveTransition(selectedTransition)) {
-        task.setApprovedBy(resolvedByRef);
-        task.setApprovedById(resolvedByRef.getId().toString());
-        task.setApprovedAt(System.currentTimeMillis());
-      }
-    }
-
-    task = taskRepository.resolveTask(task, resolution, user);
+    task = taskRepository.resolveTask(task, resolution, selectedTransition, user);
 
     LOG.info(
         "[TaskWorkflowHandler] Task '{}' resolved: status={}, resolution={}",
@@ -687,6 +726,7 @@ public class TaskWorkflowHandler {
         if (tagsToAdd != null && !tagsToAdd.isEmpty()) {
           repository.applyTags(tagsToAdd, targetFqn);
         }
+        RdfUpdater.updateEntity(entity);
       }
     } catch (Exception e) {
       LOG.error("[TaskWorkflowHandler] Failed to apply TagUpdate", e);
@@ -951,6 +991,7 @@ public class TaskWorkflowHandler {
 
       String targetFqn = entity.getFullyQualifiedName();
       repository.applyTags(List.of(newTier), targetFqn);
+      RdfUpdater.updateEntity(entity);
       LOG.info(
           "[TaskWorkflowHandler] Applied TierUpdate for entity '{}': tier={}",
           entity.getName(),
@@ -1103,6 +1144,7 @@ public class TaskWorkflowHandler {
             applyEntityLevelTags(entity, repository, user, tags);
           } else if (!patchFieldTags(entity, repository, user, fieldPath, tags, null)) {
             repository.applyTags(tags, resolveTagTargetFqn(entity, fieldPath));
+            RdfUpdater.updateEntity(entity);
           }
           LOG.info(
               "[TaskWorkflowHandler] Applied tag suggestion: {} tags for entity '{}'",
@@ -1211,29 +1253,6 @@ public class TaskWorkflowHandler {
         user,
         approved ? "approve" : "reject",
         task.getId());
-  }
-
-  /**
-   * Reopen a previously resolved task.
-   */
-  public Task reopenTask(Task task, String user) {
-    if (task.getStatus() == TaskEntityStatus.Open
-        || task.getStatus() == TaskEntityStatus.InProgress) {
-      LOG.warn("[TaskWorkflowHandler] Task '{}' is already open", task.getId());
-      return task;
-    }
-
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-
-    task.setStatus(TaskEntityStatus.Open);
-    task.setResolution(null);
-    task.setUpdatedBy(user);
-    task.setUpdatedAt(System.currentTimeMillis());
-
-    taskRepository.createOrUpdate(null, task, user);
-
-    LOG.info("[TaskWorkflowHandler] Task '{}' reopened by '{}'", task.getId(), user);
-    return task;
   }
 
   /**

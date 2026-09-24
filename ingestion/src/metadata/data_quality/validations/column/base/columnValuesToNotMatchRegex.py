@@ -63,7 +63,7 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
 
             metric_values = {Metrics.notRegexCount.name: not_match_count}
 
-            if self.test_case.computePassedFailedRowCount:
+            if self._needs_row_count():
                 metric_values[Metrics.rowCount.name] = self.get_row_count()
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
@@ -120,7 +120,7 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
             Metrics.notRegexCount.name: Metrics.notRegexCount,
         }
 
-        if self.test_case.computePassedFailedRowCount:
+        if self._needs_row_count():
             metrics[Metrics.rowCount.name] = Metrics.rowCount
 
         return metrics
@@ -128,8 +128,18 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
     def _evaluate_test_condition(self, metric_values: dict, test_params: dict | None = None) -> TestEvaluation:
         """Evaluate the not regex match test condition
 
-        For not regex match test, pass if NO values match the forbidden regex pattern
-        (not_match_count == 0).
+        For not regex match test, pass if the values matching the forbidden regex pattern
+        stay within the failure threshold, counted against the table row count. With the
+        default threshold, that means not_match_count == 0.
+
+        The denominator is the table row count here while columnValuesToMatchRegex counts
+        against the non-null values, and that asymmetry is intended. NULLs violate neither
+        test, but they sit on opposite sides of the two metric pairs: notRegexCount only
+        counts the rows that actually match the forbidden pattern, so keeping NULLs in the
+        denominator leaves them as non-violating rows, exactly as the passed/failed row
+        counts below report them. columnValuesToMatchRegex instead counts the values that
+        failed to match, which NULLs never do, so dividing those by the row count would
+        report a mostly NULL column as mostly failing.
 
         Args:
             metric_values: Dictionary with keys from Metrics enum names
@@ -149,7 +159,7 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
         not_match_count = metric_values[Metrics.notRegexCount.name]
         total_rows = metric_values.get(Metrics.rowCount.name)
 
-        matched = not_match_count == 0
+        matched = self._apply_row_threshold(not_match_count, total_rows)
         failed_count = not_match_count
         if total_rows is not None:
             passed_count = total_rows - failed_count
@@ -179,15 +189,13 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
         Returns:
             str: Formatted result message
         """
-        not_match_count = metric_values[Metrics.notRegexCount.name]
-
-        if dimension_info:
-            return (
-                f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
-                f"Found {not_match_count} value(s) matching the forbidden regex pattern."
-            )
-        else:  # noqa: RET505
-            return f"Found {not_match_count} value(s) matching the forbidden regex pattern."
+        return self.format_violation_message(
+            violations=metric_values[Metrics.notRegexCount.name],
+            population=metric_values.get(Metrics.rowCount.name),
+            violation_noun="values matching the forbidden regex",
+            matched=self._matched(metric_values, test_params),
+            dimension_info=dimension_info,
+        )
 
     def _get_test_result_values(self, metric_values: dict) -> list[TestResultValue]:
         """Get test result values for not regex match test

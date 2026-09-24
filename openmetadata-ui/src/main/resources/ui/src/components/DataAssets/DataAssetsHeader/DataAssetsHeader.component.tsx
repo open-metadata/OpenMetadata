@@ -12,12 +12,14 @@
  */
 import {
   Button,
+  ClassificationTag,
   Owner,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Activity,
   Copy01,
   File02,
   RefreshCcw01,
@@ -29,11 +31,9 @@ import classNames from 'classnames';
 import { get, isEmpty, isUndefined, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
-import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconTeams } from '../../../assets/svg/common/teams.svg';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { ReactComponent as TriggerIcon } from '../../../assets/svg/trigger.svg';
@@ -54,7 +54,6 @@ import {
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
-import { OwnerType } from '../../../enums/user.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import {
   ContractExecutionStatus,
@@ -87,8 +86,6 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
-import { getOwnerPath } from '../../../utils/ownerUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtils';
@@ -100,21 +97,18 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Certification from '../../Certification/Certification.component';
 import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
-import ClassificationTag from '../../common/atoms/Tag/ClassificationTag';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
-import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import TitleBreadcrumbSkeleton from '../../common/Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import MetricHeaderInfo from '../../Metric/MetricHeaderInfo/MetricHeaderInfo';
-import IconColorModal from '../../Modals/IconColorModal';
+import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import './data-asset-header.less';
@@ -173,7 +167,6 @@ export const DataAssetsHeader = ({
   onProfilerSettingUpdate,
   onUpdateRetentionPeriod,
   extraDropdownContent,
-  onMetricUpdate,
   badge,
   isDqAlertSupported = false,
   isCustomizedView = false,
@@ -546,31 +539,6 @@ export const DataAssetsHeader = ({
     [dataAsset]
   );
 
-  const toOwnersWithHref = useCallback(
-    (refs: typeof dataAsset.owners) =>
-      toOwnerRefs(refs ?? []).map((o) => ({
-        ...o,
-        href: getOwnerPath({
-          id: o.id,
-          name: o.name,
-          type: o.type,
-        } as EntityReference),
-        icon: o.type === 'team' ? IconTeams : undefined,
-      })),
-    []
-  );
-
-  const renderOwnerContent = useCallback(
-    (owner: { name?: string; type?: string }, chip: ReactNode) => (
-      <UserPopOverCard
-        type={owner.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
-        userName={owner.name ?? ''}>
-        {chip}
-      </UserPopOverCard>
-    ),
-    []
-  );
-
   const handleStyleUpdate = useCallback(
     async (style: Style) => {
       const updatedStyle: Style = {
@@ -856,7 +824,14 @@ export const DataAssetsHeader = ({
   };
 
   const renderServiceLogo = () => {
-    if (!serviceLogoUrl) {
+    // Metrics have no owning service, so fall back to the metric entity icon so
+    // the header still shows a leading glyph next to the title.
+    const entityIcon =
+      !serviceLogoUrl && entityType === EntityType.METRIC ? (
+        <Activity aria-hidden="true" className="tw:size-5" />
+      ) : null;
+
+    if (!serviceLogoUrl && !entityIcon) {
       return null;
     }
 
@@ -868,11 +843,17 @@ export const DataAssetsHeader = ({
             'tw:justify-center tw:overflow-hidden tw:rounded-full',
             'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
           )}>
-          <img
-            alt={get(dataAsset, 'service.displayName', '')}
-            className="tw:size-5 tw:object-contain"
-            src={serviceLogoUrl}
-          />
+          {serviceLogoUrl ? (
+            <img
+              alt={get(dataAsset, 'service.displayName', '')}
+              className="tw:size-5 tw:object-contain"
+              src={serviceLogoUrl}
+            />
+          ) : (
+            <span className="tw:flex tw:size-5 tw:items-center tw:justify-center tw:text-blue-700">
+              {entityIcon}
+            </span>
+          )}
         </div>
         {editStylePermission && (
           <EditIconButton
@@ -1016,9 +997,8 @@ export const DataAssetsHeader = ({
         hasPermission={editOwnerPermission}
         isCompactView={false}
         maxVisibleOwners={3}
-        owners={toOwnersWithHref(dataAsset?.owners)}
+        owners={dataAsset?.owners}
         placeHolder={t('label.owners')}
-        renderOwnerContent={renderOwnerContent}
         selectorContent={
           <UserTeamSelectableList
             hasPermission={Boolean(editOwnerPermission)}
@@ -1190,14 +1170,6 @@ export const DataAssetsHeader = ({
             onUpdate={onUpdateRetentionPeriod}
           />
         </>
-      )}
-
-      {entityType === EntityType.METRIC && onMetricUpdate && (
-        <MetricHeaderInfo
-          metricDetails={dataAsset}
-          metricPermissions={permissions}
-          onUpdateMetricDetails={onMetricUpdate}
-        />
       )}
     </>
   );

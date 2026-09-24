@@ -67,8 +67,12 @@ export interface AlertProps
   extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
   /** success, warning, error, brand or gray */
   variant: AlertVariant;
-  /** Bold heading text */
-  title: string;
+  /**
+   * Bold heading text. Optional: an alert may carry only a body, which is how
+   * antd's `description`-only alerts are shaped, and requiring a title there
+   * would mean inventing user-facing copy at the call site.
+   */
+  title?: ReactNode;
   /** Body content and optional action buttons */
   children?: ReactNode;
   /** Override the default variant icon */
@@ -109,20 +113,25 @@ export const Alert = ({
 }: AlertProps) => {
   const styles = variantStyles[variant];
   const Icon = icon ?? styles.defaultIcon;
+  // Only stack (and top-align the icon) when there is a heading above a body.
+  // A body on its own reads as a single block, so it stays centred next to the
+  // icon exactly as a title on its own already did.
+  const hasTitle = title !== undefined && title !== null && title !== '';
+  const isStacked = Boolean(children) && hasTitle;
 
   return (
     <div
       {...props}
       className={cx(
         'tw:flex tw:w-full tw:gap-3 tw:rounded-xl tw:border tw:px-4',
-        children ? 'tw:items-start tw:py-4' : 'tw:items-center tw:py-2',
+        isStacked ? 'tw:items-start tw:py-4' : 'tw:items-center tw:py-2',
         styles.root,
         className
       )}
       role="alert">
       <FeaturedIcon
         bgColor={iconBgColor}
-        className={cx('tw:shrink-0', children && 'tw:self-start')}
+        className={cx('tw:shrink-0', isStacked && 'tw:self-start')}
         color={styles.iconColor}
         data-testid="alert-icon"
         icon={Icon}
@@ -133,11 +142,16 @@ export const Alert = ({
       />
 
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:text-sm">
-        <p
-          className="tw:font-semibold tw:text-secondary"
-          data-testid="alert-title">
-          {title}
-        </p>
+        {hasTitle && (
+          // A div rather than a p: `title` takes a ReactNode now, and block
+          // content inside a <p> is invalid nesting that React will warn on
+          // and the parser will silently restructure.
+          <div
+            className="tw:font-semibold tw:text-secondary"
+            data-testid="alert-title">
+            {title}
+          </div>
+        )}
 
         {children && (
           <div className="tw:text-tertiary" data-testid="alert-children">
