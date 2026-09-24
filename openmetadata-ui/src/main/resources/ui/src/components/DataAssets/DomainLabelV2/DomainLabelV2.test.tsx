@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { EntityReference } from '../../../generated/entity/type';
 import { DomainLabelV2 } from './DomainLabelV2';
 
@@ -61,6 +61,23 @@ jest.mock(
     jest.fn().mockImplementation(() => <div data-testid="selectable-list" />)
 );
 
+const mockToggle = jest.fn();
+
+jest.mock('../../common/DomainSelect/DomainSelect', () => ({
+  __esModule: true,
+  default: (props: Record<string, unknown>) => {
+    const renderTrigger = props.renderTrigger as (p: {
+      toggle: () => void;
+    }) => React.ReactNode;
+
+    return (
+      <div data-testid="domain-select-mock">
+        {renderTrigger({ toggle: mockToggle })}
+      </div>
+    );
+  },
+}));
+
 jest.mock('../../../utils/DomainUtils', () => ({
   renderDomainLink: jest.fn().mockReturnValue(<span>domain-link</span>),
 }));
@@ -96,5 +113,46 @@ describe('DomainLabelV2 heading label', () => {
     render(<DomainLabelV2 showDomainHeading />);
 
     expect(screen.getByTestId('widget-title')).toHaveTextContent('Domain');
+  });
+});
+
+describe('DomainLabelV2 picker trigger', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  // The widget re-renders while a PATCH settles; a re-render that replaces the
+  // trigger's DOM node between mousedown and mouseup makes the browser drop the
+  // click outright, so the press must land on pointerdown instead.
+  it('opens the picker on pointerdown', () => {
+    render(<DomainLabelV2 />);
+
+    fireEvent.pointerDown(screen.getByTestId('edit-domain'), { button: 0 });
+
+    expect(mockToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not toggle again on the click that follows a pointerdown', () => {
+    render(<DomainLabelV2 />);
+
+    const trigger = screen.getByTestId('edit-domain');
+    fireEvent.pointerDown(trigger, { button: 0 });
+    fireEvent.click(trigger, { detail: 1 });
+
+    expect(mockToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the picker on a click with no pointerdown (screen reader, programmatic)', () => {
+    render(<DomainLabelV2 />);
+
+    fireEvent.click(screen.getByTestId('edit-domain'), { detail: 0 });
+
+    expect(mockToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the picker on Enter', () => {
+    render(<DomainLabelV2 />);
+
+    fireEvent.keyDown(screen.getByTestId('edit-domain'), { key: 'Enter' });
+
+    expect(mockToggle).toHaveBeenCalledTimes(1);
   });
 });

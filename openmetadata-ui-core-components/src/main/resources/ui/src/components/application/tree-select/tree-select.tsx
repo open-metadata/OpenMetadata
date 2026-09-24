@@ -900,7 +900,19 @@ export const TreeSelect = <T = unknown,>({
           : { width: triggerWidth }
       }
       triggerRef={triggerRef}
-      onOpenChange={setOpen}>
+      // `isNonModal` makes react-aria close the popover on any ancestor scroll
+      // (`usePopover` passes `onClose: state.close` to `useOverlayPosition`).
+      // Opening the dropdown scrolls the trigger into view, and a page still
+      // settling after an unrelated save scrolls too, so the picker closed
+      // itself ~100ms after it opened and the next press only reopened it. This
+      // component owns dismissal — Escape and outside-pointerdown listeners
+      // above, plus the explicit apply/select/cancel paths — so a close request
+      // from react-aria is dropped and only its open request is honoured.
+      onOpenChange={(open: boolean) => {
+        if (open) {
+          setOpen(true);
+        }
+      }}>
       {treeDropdownContent}
     </Dropdown.Popover>
   );
