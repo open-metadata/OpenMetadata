@@ -13,6 +13,10 @@
 import { render, screen } from '@testing-library/react';
 import { Form, FormInstance } from 'antd';
 import { EventFilterRule } from '../../../generated/events/eventSubscription';
+import {
+  AlertSelection,
+  AlertSelectionProvider,
+} from '../../../hooks/useAlertSelection';
 import { MOCK_FILTER_RESOURCES } from '../../../test/unit/mocks/observability.mock';
 import ObservabilityFormTriggerItem from './ObservabilityFormTriggerItem';
 
@@ -32,6 +36,19 @@ const mockSupportedTriggers = MOCK_FILTER_RESOURCES.reduce(
   [] as EventFilterRule[]
 );
 
+const selectionOf = (sources: string[]): AlertSelection => ({
+  sources,
+  support: { supportedTriggers: mockSupportedTriggers },
+  capabilities: { loading: false },
+  loading: false,
+  search: {
+    indexes: [],
+    containerEntities: [],
+    byName: jest.fn(),
+    byId: jest.fn(),
+  },
+});
+
 describe('ObservabilityFormTriggerItem', () => {
   it('should renders without crashing', () => {
     const setFieldValue = jest.fn();
@@ -49,9 +66,9 @@ describe('ObservabilityFormTriggerItem', () => {
 
     render(
       <Form>
-        <ObservabilityFormTriggerItem
-          supportedTriggers={mockSupportedTriggers}
-        />
+        <AlertSelectionProvider value={selectionOf(['container'])}>
+          <ObservabilityFormTriggerItem />
+        </AlertSelectionProvider>
       </Form>
     );
 
@@ -80,9 +97,9 @@ describe('ObservabilityFormTriggerItem', () => {
 
     render(
       <Form>
-        <ObservabilityFormTriggerItem
-          supportedTriggers={mockSupportedTriggers}
-        />
+        <AlertSelectionProvider value={selectionOf([])}>
+          <ObservabilityFormTriggerItem />
+        </AlertSelectionProvider>
       </Form>
     );
 
@@ -107,9 +124,9 @@ describe('ObservabilityFormTriggerItem', () => {
 
     render(
       <Form>
-        <ObservabilityFormTriggerItem
-          supportedTriggers={mockSupportedTriggers}
-        />
+        <AlertSelectionProvider value={selectionOf(['container'])}>
+          <ObservabilityFormTriggerItem />
+        </AlertSelectionProvider>
       </Form>
     );
 
@@ -156,9 +173,9 @@ describe('ObservabilityFormTriggerItem', () => {
           input: { actions: [{ name: 'trigger1', effect: 'include' }] },
           resources: ['container'],
         }}>
-        <ObservabilityFormTriggerItem
-          supportedTriggers={mockSupportedTriggers}
-        />
+        <AlertSelectionProvider value={selectionOf(['container'])}>
+          <ObservabilityFormTriggerItem />
+        </AlertSelectionProvider>
       </Form>
     );
 

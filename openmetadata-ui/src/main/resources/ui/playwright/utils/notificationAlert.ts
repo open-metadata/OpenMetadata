@@ -26,7 +26,9 @@ import {
   addMultipleFilters,
   checkRecentEventDetails,
   inputBasicAlertInformation,
+  replaceAlertSource,
   saveAlertAndVerifyResponse,
+  sourceLabelOf,
   visitAlertDetailsPage,
   visitEditAlertPage,
   waitForRecentEventsToFinishExecution,
@@ -247,11 +249,7 @@ export const editSingleFilterAlert = async ({
   await fillDescriptionBox(page, ALERT_UPDATED_DESCRIPTION);
 
   // Update source
-  await page.click('[data-testid="source-select"]');
-  await page
-    .getByTestId(`${sourceName}-option`)
-    .getByText(sourceDisplayName)
-    .click();
+  await replaceAlertSource({ page, sourceName, sourceDisplayName });
 
   // Filters should reset after source change
   await expect(page.getByTestId('filter-select-0')).not.toBeAttached();
@@ -457,7 +455,9 @@ export const checkAlertConfigDetails = async ({
   sourceName: string;
 }) => {
   // Verify alert configs
-  await expect(page.getByTestId('source-select')).toHaveText(sourceName);
+  await expect(page.getByTestId('source-select')).toHaveText(
+    sourceLabelOf(sourceName)
+  );
 
   await expect(page.getByTestId('filter-select-0')).toHaveText('Event Type');
   await expect(

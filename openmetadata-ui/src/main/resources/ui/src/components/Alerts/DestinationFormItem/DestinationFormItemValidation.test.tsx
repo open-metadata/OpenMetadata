@@ -108,7 +108,6 @@ function ParentFormFocusHarness() {
 function ParentFormDestinationChangeHarness() {
   const [values, setValues] = useState<Partial<DestinationFormFields>>({
     destinations: OAUTH_DESTINATION_VALUES.destinations,
-    resources: ['table'],
   });
 
   return <DestinationFormItemFormBridge values={values} onChange={setValues} />;

@@ -13,15 +13,15 @@
 
 import { CloseOutlined } from '@ant-design/icons';
 import { Button, Col, Form, Row, Select, Switch, Typography } from 'antd';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
-import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
 import {
   Effect,
   EventFilterRule,
 } from '../../../generated/events/eventSubscription';
+import { useAlertSelectionContext } from '../../../hooks/useAlertSelection';
 import {
   getConditionalField,
   getSupportedFilterOptions,
@@ -29,10 +29,11 @@ import {
 import { ObservabilityFormTriggerItemProps } from './ObservabilityFormTriggerItem.interface';
 
 function ObservabilityFormTriggerItem({
-  supportedTriggers,
   isViewMode = false,
 }: Readonly<ObservabilityFormTriggerItemProps>) {
   const { t } = useTranslation();
+  const { sources, support, search } = useAlertSelectionContext();
+  const { supportedTriggers } = support;
   const form = Form.useFormInstance();
 
   // Watchers
@@ -40,10 +41,6 @@ function ObservabilityFormTriggerItem({
     ['input', 'actions'],
     form
   );
-  const [selectedTrigger] =
-    Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
-    [];
-
   // Run time values needed for conditional rendering
   const triggerOptions = useMemo(() => {
     return getSupportedFilterOptions(selectedTriggers, supportedTriggers);
@@ -108,7 +105,7 @@ function ObservabilityFormTriggerItem({
                             getConditionalField(
                               selectedTriggers[name].name ?? '',
                               name,
-                              selectedTrigger,
+                              search,
                               supportedTriggers
                             )}
                         </Row>
@@ -143,9 +140,7 @@ function ObservabilityFormTriggerItem({
                 <Col span={24}>
                   <Button
                     data-testid="add-trigger"
-                    disabled={
-                      isEmpty(selectedTrigger) || isNil(selectedTrigger)
-                    }
+                    disabled={isEmpty(sources)}
                     type="primary"
                     onClick={() =>
                       add({

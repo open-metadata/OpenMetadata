@@ -21,7 +21,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Controller,
@@ -32,6 +32,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { DEFAULT_READ_TIMEOUT } from '../../../constants/Alerts.constants';
+import { useAlertSelectionContext } from '../../../hooks/useAlertSelection';
 import type { ModifiedDestination } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import {
@@ -67,13 +68,10 @@ function DestinationFormItem({
     Set<number>
   >(new Set());
 
-  const selectedResources: string[] =
-    useWatch({ name: 'resources', control }) ?? [];
+  const { sources } = useAlertSelectionContext();
   const destinations: ModifiedDestination[] =
     (useWatch({ name: 'destinations', control }) as ModifiedDestination[]) ??
     [];
-
-  const selectedSource = selectedResources[0];
 
   // Submit owns required validation; this only removes its stale error after
   // the user adds a destination, avoiding an error on untouched create forms.
@@ -89,11 +87,8 @@ function DestinationFormItem({
   );
 
   const disableTestDestinationButton = useMemo(
-    () =>
-      isEmpty(selectedSource) ||
-      isNil(selectedSource) ||
-      !isExternalDestinationSelected,
-    [selectedSource, isExternalDestinationSelected]
+    () => isEmpty(sources) || !isExternalDestinationSelected,
+    [sources, isExternalDestinationSelected]
   );
 
   const handleDestinationConfigExpandedChange = useCallback(
@@ -297,7 +292,7 @@ function DestinationFormItem({
                 <Button
                   color="primary"
                   data-testid="add-destination-button"
-                  isDisabled={isEmpty(selectedSource) || isNil(selectedSource)}
+                  isDisabled={isEmpty(sources)}
                   onPress={() => append({})}>
                   {t('label.add-entity', { entity: t('label.destination') })}
                 </Button>
