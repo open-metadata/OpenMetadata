@@ -335,20 +335,19 @@ public class TableRepository extends EntityRepository<Table> {
       return;
     }
 
-    boolean needsOwnersOrDomains = super.requiresParentForInheritance(table, fields);
+    boolean needsOwnersOrDomains = requiresParentForOwnersOrDomains(table, fields);
     boolean needsRetention =
         shouldResolveRetentionInheritance(fields) && table.getRetentionPeriod() == null;
-    if (!needsOwnersOrDomains && !needsRetention) {
+    boolean needsTags = requiresParentForPropagatedTags(fields);
+    if (!needsOwnersOrDomains && !needsRetention && !needsTags) {
       return;
     }
 
-    String inheritanceFields =
-        needsOwnersOrDomains
-            ? (needsRetention ? "owners,domains,retentionPeriod" : "owners,domains")
-            : "retentionPeriod";
     DatabaseSchema schema =
         loadInheritanceParentLeniently(
-            table.getDatabaseSchema(), inheritanceFields, DatabaseSchema.class);
+            table.getDatabaseSchema(),
+            inheritanceParentFields(needsOwnersOrDomains, needsRetention, needsTags),
+            DatabaseSchema.class);
     if (schema == null) {
       return;
     }
@@ -359,6 +358,9 @@ public class TableRepository extends EntityRepository<Table> {
     if (needsRetention) {
       table.withRetentionPeriod(schema.getRetentionPeriod());
     }
+    // The schema was loaded through the inheritance path, so its own tags already carry the
+    // database's and the service's -- that is what makes propagation transitive.
+    inheritTags(table, fields, schema);
   }
 
   private void setDefaultFields(Table table) {
@@ -1837,6 +1839,7 @@ public class TableRepository extends EntityRepository<Table> {
   protected void applyInheritance(Table entity, Fields fields, EntityInterface parent) {
     inheritOwners(entity, fields, parent);
     inheritDomains(entity, fields, parent);
+    inheritTags(entity, fields, parent);
     if (parent instanceof DatabaseSchema schema) {
       entity.withRetentionPeriod(
           entity.getRetentionPeriod() == null

@@ -51,7 +51,7 @@ class FieldNamesAggregationIT {
   @Container
   static OpensearchContainer<?> opensearch =
       new OpensearchContainer<>(
-              SearchTestImages.openSearchWithAnalysisPlugins("opensearchproject/opensearch:3.4.0"))
+              SearchTestImages.openSearchWithAnalysisPlugins(SearchTestImages.OPENSEARCH_IMAGE))
           .withStartupTimeout(Duration.ofMinutes(5))
           .withEnv("discovery.type", "single-node")
           .withEnv("OPENSEARCH_INITIAL_ADMIN_PASSWORD", "Test@12345")
