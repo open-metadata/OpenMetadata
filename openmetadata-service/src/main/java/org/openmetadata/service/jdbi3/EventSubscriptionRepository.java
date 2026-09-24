@@ -16,7 +16,6 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.OFFSET_EXTENSION;
-import static org.openmetadata.service.events.subscription.AlertUtil.validateAndBuildFilteringConditions;
 import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
@@ -34,7 +33,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
-import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
@@ -48,7 +46,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
-import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.events.subscription.AlertDefinitionPolicy;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -137,10 +135,9 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
                   listOrEmpty(filter.getArguments()).sort(Comparator.comparing(Argument::getName)));
     }
 
-    if (update && !nullOrEmpty(entity.getFilteringRules())) {
-      entity.setFilteringRules(
-          validateAndBuildFilteringConditions(
-              entity.getFilteringRules().getResources(), entity.getAlertType(), entity.getInput()));
+    // An update is validated by the updater, which knows what the alert looked like before.
+    if (!update) {
+      AlertDefinitionPolicy.ofNew(entity).prepareNew(entity);
     }
 
     // Validate custom template if assigned
@@ -157,7 +154,6 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     }
 
     validateDestinationEndpoints(entity, update);
-    validateFilterRules(entity);
   }
 
   /**
@@ -200,23 +196,6 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     return webhook == null || webhook.getEndpoint() == null
         ? null
         : webhook.getEndpoint().toString();
-  }
-
-  private void validateFilterRules(EventSubscription entity) {
-    // Resolve JSON blobs into Rule object and perform schema based validation
-    if (entity.getFilteringRules() != null) {
-      List<EventFilterRule> rules = entity.getFilteringRules().getRules();
-      // Validate all the expressions in the rule
-      for (EventFilterRule rule : rules) {
-        AlertUtil.validateExpression(rule.getCondition(), Boolean.class);
-      }
-      rules.sort(Comparator.comparing(EventFilterRule::getName));
-      if (!rules.isEmpty()) {
-        // Validate the combined condition too (each rule is validated above), so a bad
-        // combination is caught here instead of when it is first compiled at runtime.
-        AlertUtil.validateExpression(AlertUtil.buildCompleteCondition(rules), Boolean.class);
-      }
-    }
   }
 
   private void ensureDestinationIds(EventSubscription entity) {
@@ -303,6 +282,11 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     public EventSubscriptionUpdater(
         EventSubscription original, EventSubscription updated, Operation operation) {
       super(original, updated, operation);
+      // Once, against the alert as it is stored, before any comparison: edits merged within the
+      // session window are later compared with an older version, and only the final definition
+      // may be judged.
+      AlertDefinitionPolicy.ofUpdate(original, updated)
+          .settle(original, updated, operation.isPut());
     }
 
     @Override

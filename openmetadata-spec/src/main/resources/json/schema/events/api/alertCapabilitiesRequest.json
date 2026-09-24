@@ -1,0 +1,26 @@
+{
+  "$id": "https://open-metadata.org/schema/events/api/alertCapabilitiesRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AlertCapabilitiesRequest",
+  "description": "A selection of sources, and optionally what has been chosen so far, for which the form asks what can still be chosen.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.events.AlertCapabilitiesRequest",
+  "properties": {
+    "alertType": {
+      "$ref": "../eventSubscription.json#/definitions/alertType"
+    },
+    "sources": {
+      "description": "Names of the selected sources. Empty to ask what can be selected at all.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "input": {
+      "description": "The filters and triggers chosen so far, so that a source they can never reach is pointed out.",
+      "$ref": "../eventSubscription.json#/definitions/alertFilteringInput"
+    }
+  },
+  "required": ["alertType"],
+  "additionalProperties": false
+}
