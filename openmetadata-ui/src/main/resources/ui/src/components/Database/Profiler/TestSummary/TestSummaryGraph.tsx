@@ -609,20 +609,6 @@ function TestSummaryGraph({
             onMouseEnter={handleLegendMouseEnter}
             onMouseLeave={handleLegendMouseLeave}
           />
-          {/* The allowed range, drawn as the mock does: a faint wash with no
-              edges. Stroked edges put a second dashed line on top of the
-              expectation line wherever the range and the expectation meet. */}
-          <Area
-            connectNulls
-            activeDot={false}
-            dataKey="boundArea"
-            dot={false}
-            fill={GREEN_3}
-            fillOpacity={BOUND_AREA_OPACITY}
-            isAnimationActive={false}
-            stroke="none"
-            type="linear"
-          />
           {isSingleSeries &&
             chartData.information.map((info) => (
               // The mock shades the area under the line, not a fixed band:
@@ -644,6 +630,21 @@ function TestSummaryGraph({
                 type="linear"
               />
             ))}
+          {/* The allowed range, drawn as the mock does: a faint wash with no
+              edges. It paints over the area under the series, or the area
+              would hide it wherever a run sits inside the range and leave
+              only a sliver between the line and the bound. */}
+          <Area
+            connectNulls
+            activeDot={false}
+            dataKey="boundArea"
+            dot={false}
+            fill={GREEN_3}
+            fillOpacity={BOUND_AREA_OPACITY}
+            isAnimationActive={false}
+            stroke="none"
+            type="linear"
+          />
           {chartData?.information?.map((info) => (
             <Line
               activeDot={false}
