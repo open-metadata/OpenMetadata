@@ -18,6 +18,7 @@ import type {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
+import type { NotificationTemplate } from '../../generated/entity/events/notificationTemplate';
 import { EventFilterRule } from '../../generated/events/eventSubscription';
 import type { AddAlertFormWidgetProps } from '../../utils/AlertsClassBase';
 import type {
