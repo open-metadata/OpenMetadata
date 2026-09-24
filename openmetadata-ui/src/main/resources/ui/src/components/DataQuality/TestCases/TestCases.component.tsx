@@ -294,7 +294,7 @@ export const TestCases = () => {
     <Row data-testid="test-case-container" gutter={[16, 16]}>
       <Col span={24}>
         <Form<TestCaseSearchParams>
-          className="new-form-style surface-filters"
+          className="new-form-style"
           form={form}
           layout="horizontal"
           onValuesChange={handleFilterChange}>

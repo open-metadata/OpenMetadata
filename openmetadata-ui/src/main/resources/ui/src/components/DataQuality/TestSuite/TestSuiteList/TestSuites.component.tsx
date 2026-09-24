@@ -103,7 +103,7 @@ export const TestSuites = () => {
   return (
     <Row data-testid="test-suite-container" gutter={[16, 16]}>
       <Col span={24}>
-        <Form className="new-form-style surface-filters" layout="inline">
+        <Form className="new-form-style" layout="inline">
           <Space align="center" className="w-full justify-between" size={16}>
             <Form.Item className="m-0" label={t('label.owner')} name="owner">
               <UserTeamSelectableList
