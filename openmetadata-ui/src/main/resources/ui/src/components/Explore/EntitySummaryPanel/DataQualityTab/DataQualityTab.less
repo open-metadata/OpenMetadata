@@ -411,6 +411,24 @@
               color: @yellow-11;
               border: 1px solid @grey-15;
             }
+
+            // Dark: keep the custom light tints frozen, swap only the fills to
+            // the utility scale (auto-flips in dark) so these override-styled
+            // pills gain dark support. Border is @grey-15 (bridged, flips).
+            .dark-mode & {
+              &.failure {
+                background-color: var(--color-utility-error-50);
+                color: var(--color-utility-error-700);
+              }
+              &.success {
+                background-color: var(--color-utility-success-50);
+                color: var(--color-utility-success-700);
+              }
+              &.aborted {
+                background-color: var(--color-utility-warning-50);
+                color: var(--color-utility-warning-700);
+              }
+            }
           }
         }
         .status-badge.status-badge-v2 {

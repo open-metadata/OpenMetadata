@@ -944,8 +944,9 @@ test.describe(
         const incident = banner.getByTestId('test-case-last-run-incident');
 
         await expect(incident).toBeVisible();
+        // The id is its own element now, so it carries no trailing separator.
         await expect(incident.getByTestId('test-case-incident-id')).toHaveText(
-          /INC.*\d,/
+          /^INC-\d+$/
         );
         await expect(
           incident.getByTestId('test-case-incident-description')
@@ -1381,7 +1382,7 @@ test.describe(
         await page.getByTestId('domain-dropdown').click();
 
         // Wait for the domain select dropdown to be visible
-        await page.getByTestId('domain-selectable-tree').waitFor({
+        await page.getByTestId('domain-dropdown-search').waitFor({
           state: 'visible',
         });
 
@@ -1393,14 +1394,13 @@ test.describe(
         );
 
         await page
-          .getByTestId('domain-selectable-tree')
-          .getByTestId('searchbar')
+          .getByTestId('domain-dropdown-search')
           .fill(domain.responseData.name);
 
         await domainSearchResponse;
 
         await page
-          .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
+          .getByTestId(`tree-node-${domain.responseData.fullyQualifiedName}`)
           .click();
 
         await sidebarClick(page, SidebarItem.DATA_QUALITY);

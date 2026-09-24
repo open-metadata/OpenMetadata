@@ -277,23 +277,13 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if self.sample_query:
             return self._rdn_sample_from_user_query()
 
-        static = self._resolve_sample_config
-
-        if (
-            not static
-            or not static.profileSample
-            or (
-                static.profileSampleType == ProfileSampleType.PERCENTAGE
-                and static.profileSample == 100
-                and self.sample_config.randomizedSample is not True
-            )
-        ):
+        if not self.applies_sampling:
             if self.partition_details:
                 return self._partitioned_table()
 
             return self.raw_dataset
 
-        return self.get_sample_query(static, column=column)  # type: ignore
+        return self.get_sample_query(self._resolve_sample_config, column=column)  # type: ignore
 
     def fetch_sample_data(self, columns: list[Column] | None = None) -> TableData:
         """

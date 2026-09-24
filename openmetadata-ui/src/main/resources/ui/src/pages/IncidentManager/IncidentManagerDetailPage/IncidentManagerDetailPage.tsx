@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { useQuery } from '@tanstack/react-query';
 import { RefreshCcw01 } from '@untitledui/icons';
-import { Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import { useCallback, useMemo } from 'react';
@@ -39,6 +38,10 @@ import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import {
+  DetailsTabItem,
+  getRenderedActiveTab,
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import Fqn from '../../../utils/Fqn';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
@@ -47,7 +50,6 @@ import {
   getServiceDetailsPath,
 } from '../../../utils/RouterUtils';
 import { TestCasePageTabs } from '../IncidentManager.interface';
-import './incident-manager-details.less';
 import { TEST_CASE_NEXT_RUN_QUERY_KEY } from './IncidentManagerDetailPage.constants';
 import {
   fetchNextTestCaseRunTimestamp,
@@ -119,7 +121,7 @@ const IncidentManagerDetailPage = ({
     }),
   });
 
-  const tabItems: TabsProps['items'] = useMemo(
+  const tabItems: DetailsTabItem[] = useMemo(
     () =>
       tabs.map(({ LabelComponent, labelProps, key, Tab, isBeta }) => ({
         key,
@@ -138,6 +140,9 @@ const IncidentManagerDetailPage = ({
                   className="tw:px-4 tw:pt-4"
                   data-testid="test-case-last-run-banner-tab-container">
                   <TestCaseLastRunBanner
+                    hasEditStatusPermission={
+                      incidentHeaderData.hasEditStatusPermission
+                    }
                     incidentTask={incidentHeaderData.incidentTask}
                     nextRunTimestamp={nextRunTimestamp}
                     parameterValues={testCase?.parameterValues}
@@ -145,6 +150,7 @@ const IncidentManagerDetailPage = ({
                     testCaseResult={testCase?.testCaseResult}
                     testCaseStatus={testCase?.testCaseStatus}
                     testCaseStatusData={incidentHeaderData.testCaseStatusData}
+                    onAcknowledge={incidentHeaderData.handleAcknowledgeIncident}
                   />
                 </div>
               )}
@@ -154,6 +160,8 @@ const IncidentManagerDetailPage = ({
       })),
     [
       dimensionKey,
+      incidentHeaderData.handleAcknowledgeIncident,
+      incidentHeaderData.hasEditStatusPermission,
       incidentHeaderData.incidentTask,
       incidentHeaderData.taskLinkInfo,
       incidentHeaderData.testCaseStatusData,
@@ -379,20 +387,33 @@ const IncidentManagerDetailPage = ({
         </Box>
         <div className="incident-manager-details-tabs">
           <Tabs
-            destroyInactiveTabPane
-            activeKey={activeTab}
-            className="tabs-new"
+            className="tw:gap-3"
             data-testid="tabs"
-            items={tabItems}
-            tabBarExtraContent={
-              <TestCaseTabBarExtraContent
-                isExpandViewSupported={isExpandViewSupported}
-                isTabExpanded={isTabExpanded}
-                toggleTabExpanded={toggleTabExpanded}
-              />
-            }
-            onChange={handleTabChange}
-          />
+            selectedKey={getRenderedActiveTab(tabItems, activeTab)}
+            onSelectionChange={(key) => handleTabChange(String(key))}>
+            <Tabs.List
+              actions={
+                <TestCaseTabBarExtraContent
+                  isExpandViewSupported={isExpandViewSupported}
+                  isTabExpanded={isTabExpanded}
+                  toggleTabExpanded={toggleTabExpanded}
+                />
+              }
+              size="sm"
+              type="underline"
+              variant="card">
+              {tabItems.map(({ key, label }) => (
+                <Tabs.Item id={key} key={key}>
+                  {label}
+                </Tabs.Item>
+              ))}
+            </Tabs.List>
+            {tabItems.map(({ key, children }) => (
+              <Tabs.Panel id={key} key={key}>
+                {children}
+              </Tabs.Panel>
+            ))}
+          </Tabs>
         </div>
       </Box>
       {isVersionPage && (
