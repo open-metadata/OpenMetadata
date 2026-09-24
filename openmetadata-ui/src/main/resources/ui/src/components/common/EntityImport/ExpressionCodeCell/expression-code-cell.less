@@ -24,7 +24,7 @@
 // Rendered in a portal with fixed positioning so it floats above the grid rows
 // (like the design) instead of being clipped by the grid's scroll container.
 .bulk-edit-code-editor {
-  background: @white;
+  background: var(--om-color-bg-surface);
   border: 2px solid @primary-6;
   border-radius: 10px;
   box-shadow: @box-shadow-base;
@@ -101,7 +101,7 @@
   overflow: auto;
 
   .bulk-edit-code-editor-cm,
-  .CodeMirror {
+  .cm-editor {
     font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
     font-size: 12.5px;
   }

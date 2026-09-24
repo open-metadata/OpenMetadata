@@ -36,4 +36,6 @@ export interface ExploreQuickFiltersProps {
   // Helper text shown at the bottom of each filter dropdown when immediateApply is enabled.
   helperText?: string;
   untitledDropdown?: boolean;
+  // Draw a visible border around each filter trigger instead of the borderless look.
+  bordered?: boolean;
 }
