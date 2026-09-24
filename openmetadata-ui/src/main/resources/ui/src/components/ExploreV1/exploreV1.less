@@ -46,29 +46,6 @@
     background: var(--om-color-bg-secondary);
   }
 
-  // Result cards: border, elevation and hover match the AI Automations
-  // template card. Scoped here — ExploreSearchCard is reused elsewhere.
-  [data-testid='search-results'] .explore-search-card {
-    border-radius: var(--om-radius-2xl);
-    border-color: var(--om-color-border-secondary);
-    box-shadow: var(--om-shadow-xs);
-    transition: border-color var(--om-duration-160) cubic-bezier(0.4, 0, 0.2, 1),
-      box-shadow var(--om-duration-160) cubic-bezier(0.4, 0, 0.2, 1),
-      transform var(--om-duration-160) cubic-bezier(0.4, 0, 0.2, 1);
-
-    &:hover {
-      border-color: var(--om-color-brand-300);
-      box-shadow: var(--om-shadow-lg);
-      transform: translateY(-2px);
-    }
-
-    // Keep the selected border; this rule outranks the component's
-    // .highlight-card, so restate it.
-    &.highlight-card {
-      border-color: @primary-color;
-    }
-  }
-
   .content-height-with-resizable-panel {
     // 86px quick-filters bar (@quick-filters-container-height) + 8px gap
     --content-panel-offset: 94px;
