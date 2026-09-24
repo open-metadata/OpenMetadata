@@ -129,6 +129,41 @@ describe('useTreeSelectSelection', () => {
     });
   });
 
+  describe('toggleNodeSelection', () => {
+    // A stripped parent still renders checked, so clicking it must clear the branch.
+    it('clears a parent that reads as checked through a collapsed child', () => {
+      const collapsed = glossary(1, []);
+      const { result } = renderSelection([collapsed]);
+
+      act(() => result.current.setSelection([term('t1', 'g')]));
+
+      expect(
+        getNodeSelectionState(
+          result.current.getDescendantSelection(collapsed),
+          result.current.isNodeSelected('g')
+        ).isFullySelected
+      ).toBe(true);
+
+      act(() => result.current.toggleNodeSelection(collapsed));
+
+      expect(result.current.selectedData).toEqual([]);
+    });
+
+    it('still selects the whole branch when only some of it is selected', () => {
+      const node = glossary(2, [term('t1', 'g'), term('t2', 'g')]);
+      const { result } = renderSelection([node]);
+
+      act(() => result.current.toggleNodeSelection(node.children![0]));
+      act(() => result.current.toggleNodeSelection(node));
+
+      expect(result.current.selectedData.map(({ id }) => id)).toEqual([
+        't1',
+        'g',
+        't2',
+      ]);
+    });
+  });
+
   describe('getNodeSelectionState', () => {
     it('demotes a selected parent whose loaded terms are not all selected', () => {
       const state = getNodeSelectionState(

@@ -230,6 +230,7 @@ export const TreeSelect = <T = unknown,>({
   bordered = false,
   showSelectAll = false,
   commitMode = 'immediate',
+  offset,
   isOpen: controlledIsOpen,
   onOpenChange,
   renderTrigger,
@@ -406,11 +407,16 @@ export const TreeSelect = <T = unknown,>({
       }
 
       let nodeForSelection = node;
+      // Rendered state, not membership: a parent checked via descendants deselects.
+      const { isFullySelected } = getNodeSelectionState(
+        getDescendantSelection(node),
+        isNodeSelected(node.id)
+      );
 
       if (
         cascadeSelection &&
         multiple &&
-        !isNodeSelected(node.id) &&
+        !isFullySelected &&
         node.isLeaf !== true
       ) {
         try {
@@ -435,6 +441,7 @@ export const TreeSelect = <T = unknown,>({
       clearSearch,
       cascadeSelection,
       isNodeSelected,
+      getDescendantSelection,
       loadAllDescendants,
       isStaged,
       setOpen,
@@ -819,6 +826,7 @@ export const TreeSelect = <T = unknown,>({
       // Stops a dismissable ancestor reading clicks here as outside ones.
       data-react-aria-top-layer="true"
       isOpen={isOpen}
+      offset={offset}
       placement={placement}
       // No DialogTrigger, so the pointerdown effect above owns dismissal.
       shouldCloseOnInteractOutside={() => false}

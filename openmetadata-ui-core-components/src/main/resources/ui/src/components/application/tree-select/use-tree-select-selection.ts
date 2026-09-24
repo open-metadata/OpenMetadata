@@ -82,6 +82,53 @@ const collectNodes = <T>(node: TreeSelectNode<T>): TreeSelectNode<T>[] => {
   return nodes;
 };
 
+// Selected vs selectable descendants of a node, for its checked/partial state.
+const computeDescendantSelection = <T>(
+  node: TreeSelectNode<T>,
+  selected: Map<string, TreeSelectNode<T>>
+): DescendantSelection => {
+  let loadedTotal = 0;
+  const selectedIds = new Set<string>();
+  const walk = (current: TreeSelectNode<T>) => {
+    current.children?.forEach((child) => {
+      if (child.allowSelection !== false) {
+        loadedTotal += 1;
+        if (selected.has(child.id)) {
+          selectedIds.add(child.id);
+        }
+      }
+      walk(child);
+    });
+  };
+  walk(node);
+
+  // A collapsed branch has nothing to walk, so count selections naming it as parent.
+  selected.forEach((child, id) => {
+    if (child.parentId === node.id) {
+      selectedIds.add(id);
+    }
+  });
+
+  return {
+    selected: selectedIds.size,
+    // Loaded children reflect pruning, but a truncated page must defer to the badge.
+    total:
+      loadedTotal > 0 && !node.hasMoreChildren
+        ? loadedTotal
+        : node.count ?? loadedTotal,
+    hasLoadedChildren: loadedTotal > 0,
+  };
+};
+
+// Children of a collapsed branch are absent from the tree but still selected.
+const getClaimedChildIds = <T>(
+  node: TreeSelectNode<T>,
+  selected: Map<string, TreeSelectNode<T>>
+): string[] =>
+  Array.from(selected.values())
+    .filter((child) => child.parentId === node.id)
+    .map((child) => child.id);
+
 const findParentNode = <T>(
   nodeId: string,
   nodes: TreeSelectNode<T>[]
@@ -166,8 +213,17 @@ export const useTreeSelectSelection = <T = unknown>({
           next.set(node.id, node);
         }
       } else if (cascadeSelection) {
-        if (isSelected) {
-          getAllChildrenIds(node).forEach((id) => next.delete(id));
+        // A consumer can drop this node from `value`, so go by the rendered state.
+        const { isFullySelected } = getNodeSelectionState(
+          computeDescendantSelection(node, selectedNodes),
+          isSelected
+        );
+
+        if (isFullySelected) {
+          [
+            ...getAllChildrenIds(node),
+            ...getClaimedChildIds(node, selectedNodes),
+          ].forEach((id) => next.delete(id));
         } else {
           collectNodes(node).forEach((n) => next.set(n.id, n));
         }
@@ -205,39 +261,8 @@ export const useTreeSelectSelection = <T = unknown>({
   }, []);
 
   const getDescendantSelection = useCallback(
-    (node: TreeSelectNode<T>) => {
-      let loadedTotal = 0;
-      const selectedIds = new Set<string>();
-      const walk = (current: TreeSelectNode<T>) => {
-        current.children?.forEach((child) => {
-          if (child.allowSelection !== false) {
-            loadedTotal += 1;
-            if (selectedNodes.has(child.id)) {
-              selectedIds.add(child.id);
-            }
-          }
-          walk(child);
-        });
-      };
-      walk(node);
-
-      // A collapsed branch has nothing to walk, so count selections naming it as parent.
-      selectedNodes.forEach((selected, id) => {
-        if (selected.parentId === node.id) {
-          selectedIds.add(id);
-        }
-      });
-
-      return {
-        selected: selectedIds.size,
-        // Loaded children reflect pruning, but a truncated page must defer to the badge.
-        total:
-          loadedTotal > 0 && !node.hasMoreChildren
-            ? loadedTotal
-            : node.count ?? loadedTotal,
-        hasLoadedChildren: loadedTotal > 0,
-      };
-    },
+    (node: TreeSelectNode<T>) =>
+      computeDescendantSelection(node, selectedNodes),
     [selectedNodes]
   );
 
