@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
+import { PageHeader } from '@openmetadata/ui-core-components';
 import { Icon as EntityStyleIcon } from '@openmetadata/ui-core-components/icon';
 import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
@@ -34,7 +35,6 @@ import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { useEntityExportModalProvider } from '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
@@ -61,6 +61,7 @@ import {
   getGlossariesById,
   getGlossaryTermsById,
 } from '../../../rest/glossaryAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityImportPath } from '../../../utils/EntityPureUtils';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import Fqn from '../../../utils/Fqn';
@@ -73,10 +74,12 @@ import {
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { DEFAULT_GLOSSARY_TERM_ICON } from '../../common/IconPicker/IconPicker.constants';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
+import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
@@ -791,7 +794,7 @@ const GlossaryHeader = ({
     const dataFQN: Array<string> = [];
     const newData = [
       {
-        name: 'Glossaries',
+        name: t('label.glossary-plural'),
         url: getGlossaryPath(arr[0]),
         activeTitle: false,
       },
@@ -814,6 +817,19 @@ const GlossaryHeader = ({
     handleBreadcrumb(fullyQualifiedName ?? name);
   }, [selectedData]);
 
+  // Same shape DataAssetsHeader hands HeaderBreadcrumb: ancestors link, the
+  // current entity closes the trail unlinked.
+  const breadcrumbItems = useMemo(
+    () => [
+      ...breadcrumb.map((link) => ({
+        label: link.name,
+        href: link.url ? String(link.url) : undefined,
+      })),
+      { label: getEntityName(selectedData) },
+    ],
+    [breadcrumb, selectedData]
+  );
+
   useEffect(() => {
     if (isVersionView) {
       fetchCurrentGlossaryInfo();
@@ -822,38 +838,48 @@ const GlossaryHeader = ({
 
   return (
     <>
-      <div className="glossary-header flex gap-4 justify-between no-wrap ">
-        <div className="flex w-min-0 flex-auto">
-          <EntityHeader
+      <PageHeader
+        actions={
+          <GlossaryHeaderActions
+            createButtons={createButtons}
+            entityVersion={selectedData?.version}
+            handleVersionClick={handleVersionClick}
+            isGlossary={isGlossary}
+            isVersionView={isVersionView}
+            manageButtonContent={manageButtonContent}
+            setShowActions={setShowActions}
+            showActions={showActions}
+            t={t}
+            updateVote={updateVote}
+            version={version}
+            voteStatus={voteStatus}
+            votes={selectedData.votes}
+          />
+        }
+        breadcrumb={
+          <HeaderBreadcrumb
+            autoCollapse
+            className="tw:mb-0"
+            items={breadcrumbItems}
+            showHome={false}
+            size="xs"
+          />
+        }
+        className="glossary-header"
+        data-testid="glossary-header"
+        title={
+          <EntityHeaderTitle
             badge={statusBadge}
-            breadcrumb={breadcrumb}
-            entityData={selectedData}
-            entityType={EntityType.GLOSSARY_TERM}
+            color={getGlossaryTitleColor(isGlossary, selectedData.style?.color)}
+            deleted={selectedData.deleted}
+            displayName={selectedData.displayName}
             icon={icon}
+            name={selectedData.name}
             serviceName=""
             suffix={getGlossaryHeaderSuffix(isGlossary)}
-            titleColor={getGlossaryTitleColor(
-              isGlossary,
-              selectedData.style?.color
-            )}
           />
-        </div>
-        <GlossaryHeaderActions
-          createButtons={createButtons}
-          entityVersion={selectedData?.version}
-          handleVersionClick={handleVersionClick}
-          isGlossary={isGlossary}
-          isVersionView={isVersionView}
-          manageButtonContent={manageButtonContent}
-          setShowActions={setShowActions}
-          showActions={showActions}
-          t={t}
-          updateVote={updateVote}
-          version={version}
-          voteStatus={voteStatus}
-          votes={selectedData.votes}
-        />
-      </div>
+        }
+      />
       <GlossaryHeaderModals
         handleDelete={handleDelete}
         isDelete={isDelete}

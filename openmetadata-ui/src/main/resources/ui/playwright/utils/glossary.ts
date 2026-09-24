@@ -181,17 +181,15 @@ export const selectActiveGlossary = async (
   bWaitForResponse = true
 ) => {
   const sidebar = page.getByTestId('glossary-left-panel');
-  await sidebar.locator('[role="menuitem"]').first().waitFor();
+  await sidebar.getByRole('link').first().waitFor();
 
-  const menuItem = sidebar.getByRole('menuitem', {
+  const menuItem = sidebar.getByRole('link', {
     name: glossaryLabel,
     exact: true,
   });
   await menuItem.waitFor({ state: 'visible' });
 
-  const isSelected = await menuItem.evaluate((element) => {
-    return element.classList.contains('ant-menu-item-selected');
-  });
+  const isSelected = (await menuItem.getAttribute('aria-current')) === 'page';
   if (!isSelected) {
     if (bWaitForResponse) {
       const glossaryResponse = page.waitForResponse('/api/v1/glossaryTerms*');
@@ -1235,9 +1233,7 @@ export const confirmationDragAndDropGlossary = async (
   isHeader = false,
   tickCheckbox = false
 ) => {
-  await expect(
-    page.locator('[data-testid="confirmation-modal"] .ant-modal-body')
-  ).toContainText(
+  await expect(page.getByTestId('confirmation-modal')).toContainText(
     `Click on Confirm if you’d like to move ${
       isHeader
         ? `${dragElement} under ${dropElement} .`

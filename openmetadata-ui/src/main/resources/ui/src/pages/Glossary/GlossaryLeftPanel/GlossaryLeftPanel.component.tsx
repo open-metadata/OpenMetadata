@@ -11,14 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Menu, MenuProps, Row } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Button, NavList } from '@openmetadata/ui-core-components';
+import { Glossary as GlossaryIcon } from '@openmetadata/ui-core-components/icons';
+import { Plus } from '@untitledui/icons';
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
-import LeftPanelCard from '../../../components/common/LeftPanelCard/LeftPanelCard';
 import GlossaryV1Skeleton from '../../../components/common/Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
 import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -36,7 +34,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
   const { permissions } = usePermissionProvider();
   const { fqn: glossaryFqn } = useFqn();
   const navigate = useNavigate();
-  const menuRef = useRef<Menu>(null);
+  const navRef = useRef<HTMLElement>(null);
 
   const createGlossaryPermission = useMemo(
     () =>
@@ -48,107 +46,79 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
       return Fqn.split(glossaryFqn)[0];
     }
 
-    return glossaries[0].fullyQualifiedName;
-  }, [glossaryFqn]);
+    return glossaries[0]?.fullyQualifiedName;
+  }, [glossaryFqn, glossaries]);
 
-  const menuItems: ItemType[] = useMemo(() => {
-    return glossaries.reduce((acc, glossary) => {
-      return [
-        ...acc,
-        {
-          key: glossary.fullyQualifiedName ?? '',
-          label: getEntityName(glossary),
-          icon: <GlossaryIcon height={16} width={16} />,
-        },
-      ];
-    }, [] as ItemType[]);
-  }, [glossaries]);
+  const navItems = useMemo(
+    () =>
+      glossaries.map((glossary) => ({
+        label: getEntityName(glossary),
+        href: getGlossaryPath(glossary.fullyQualifiedName),
+        icon: GlossaryIcon,
+      })),
+    [glossaries]
+  );
 
   const handleAddGlossaryClick = () => {
     navigate(ROUTES.ADD_GLOSSARY);
   };
-  const handleMenuClick: MenuProps['onClick'] = (event) => {
-    navigate(getGlossaryPath(event.key));
-  };
 
   useEffect(() => {
-    if (menuRef.current && glossaryFqn) {
-      const items = document?.querySelectorAll(
-        `[data-testid="glossary-left-panel"] > li > span`
-      );
-      const menuItem = glossaries.find(
-        (item) => item.fullyQualifiedName === glossaryFqn
-      );
+    const activeItem = navRef.current?.querySelector<HTMLElement>(
+      '[aria-current="page"]'
+    );
 
-      const itemToScroll = Array.from(items).find(
-        (item) =>
-          item.textContent === menuItem?.name ||
-          item.textContent === menuItem?.displayName
+    if (!glossaryFqn || !activeItem) {
+      return;
+    }
+
+    const rect = activeItem.getBoundingClientRect();
+    const isVisible =
+      rect.top >= 0 &&
+      rect.bottom <=
+        (window.innerHeight || document.documentElement.clientHeight);
+
+    if (!isVisible) {
+      const index = glossaries.findIndex(
+        (glossary) => glossary.fullyQualifiedName === selectedKey
       );
-
-      if (itemToScroll) {
-        const rect = itemToScroll.getBoundingClientRect();
-        const isVisible =
-          rect.top >= 0 &&
-          rect.bottom <=
-            (window.innerHeight || document.documentElement.clientHeight);
-
-        if (!isVisible) {
-          const itemIndex = Array.from(items).findIndex(
-            (item) => item === itemToScroll
-          );
-          const blockPosition =
-            itemIndex > Array.from(items).length - 10 ? 'nearest' : 'center';
-          itemToScroll.scrollIntoView({
-            behavior: 'smooth',
-            block: blockPosition,
-          });
-        }
-      }
+      // Near the end of the list "center" would scroll past the last item.
+      activeItem.scrollIntoView({
+        behavior: 'smooth',
+        block: index > glossaries.length - 10 ? 'nearest' : 'center',
+      });
     }
   }, [glossaryFqn]);
 
   return (
-    <LeftPanelCard id="glossary">
+    <div className="tw:h-full" data-testid="glossary-left-panel">
       <GlossaryV1Skeleton loading={glossaries.length === 0}>
-        <Row gutter={[0, 16]}>
+        <div className="tw:flex tw:flex-col tw:gap-4">
           {createGlossaryPermission && (
-            <Col className="p-x-sm" span={24}>
+            <div className="tw:px-3">
               <Button
-                block
-                className="text-primary"
+                className="tw:w-full"
+                color="secondary"
                 data-testid="add-glossary"
-                onClick={handleAddGlossaryClick}>
-                <div className="flex-center">
-                  <PlusIcon className="anticon m-r-xss" />
-                  {t('label.add')}
-                </div>
+                iconLeading={Plus}
+                size="sm"
+                onPress={handleAddGlossaryClick}>
+                {t('label.add')}
               </Button>
-            </Col>
+            </div>
           )}
 
-          <Col span={24}>
-            {menuItems.length ? (
-              <Menu
-                className="custom-menu"
-                data-testid="glossary-left-panel"
-                items={menuItems}
-                mode="inline"
-                ref={menuRef}
-                selectedKeys={[selectedKey]}
-                onClick={handleMenuClick}
-              />
-            ) : (
-              <p className="text-grey-muted text-center">
-                <span>
-                  {t('label.no-entity', { entity: t('label.glossary') })}
-                </span>
-              </p>
-            )}
-          </Col>
-        </Row>
+          <nav aria-label={t('label.glossary-plural')} ref={navRef}>
+            <NavList
+              activeUrl={getGlossaryPath(selectedKey)}
+              className="tw:mt-0 tw:px-2 tw:lg:px-2"
+              items={navItems}
+              size="sm"
+            />
+          </nav>
+        </div>
       </GlossaryV1Skeleton>
-    </LeftPanelCard>
+    </div>
   );
 };
 

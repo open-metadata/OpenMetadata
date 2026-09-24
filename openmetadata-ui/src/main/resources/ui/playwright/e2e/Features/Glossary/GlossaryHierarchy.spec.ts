@@ -417,17 +417,13 @@ test.describe('Glossary Hierarchy', () => {
       );
 
       // Wait for confirmation modal content to be visible
-      await expect(
-        page.getByTestId('confirmation-modal').locator('.ant-modal-content')
-      ).toBeVisible();
+      await expect(page.getByTestId('confirmation-modal')).toBeVisible();
 
       // Click Cancel button
       await page.getByRole('button', { name: 'Cancel' }).click();
 
       // Verify modal content is closed
-      await expect(
-        page.getByTestId('confirmation-modal').locator('.ant-modal-content')
-      ).toBeHidden();
+      await expect(page.getByTestId('confirmation-modal')).toBeHidden();
 
       // Verify terms are still at root level (no hierarchy change)
       await expect(

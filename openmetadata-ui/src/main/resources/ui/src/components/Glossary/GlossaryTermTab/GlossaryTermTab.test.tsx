@@ -1122,31 +1122,90 @@ describe('Test GlossaryTermTab component', () => {
       mockUseGlossaryStore.glossaryChildTerms = mockedGlossaryTerms;
     });
 
-    it('should handle status selection save action', async () => {
+    const reopenStatusFilter = () => {
+      fireEvent.click(screen.getByTestId('glossary-status-dropdown'));
+
+      return screen.findByTestId('glossary-status-dropdown-menu');
+    };
+
+    const openStatusFilter = async () => {
       render(<GlossaryTermTab isGlossary={false} />, {
         wrapper: MemoryRouter,
       });
 
       await waitFor(() => {
-        const statusDropdown = screen.getByTestId('glossary-status-dropdown');
-        fireEvent.click(statusDropdown);
+        expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalled();
+      });
 
-        // The dropdown menu should be rendered but we can't easily test the save action
-        // due to the complex dropdown structure
-        expect(statusDropdown).toBeInTheDocument();
+      return reopenStatusFilter();
+    };
+
+    const getStatusCheckbox = (value: string) =>
+      within(screen.getByTestId(`glossary-status-option-${value}`)).getByRole(
+        'checkbox'
+      );
+
+    it('should reflect the default status selection in the filter popover', async () => {
+      await openStatusFilter();
+
+      expect(getStatusCheckbox(EntityStatus.Approved)).toBeChecked();
+      expect(getStatusCheckbox(EntityStatus.Draft)).toBeChecked();
+      expect(getStatusCheckbox(EntityStatus.InReview)).toBeChecked();
+      expect(getStatusCheckbox(EntityStatus.Rejected)).not.toBeChecked();
+      expect(getStatusCheckbox('all')).not.toBeChecked();
+    });
+
+    it('should refetch with the saved status selection', async () => {
+      await openStatusFilter();
+      mockGetFirstLevelGlossaryTermsPaginated.mockClear();
+
+      fireEvent.click(getStatusCheckbox(EntityStatus.Draft));
+      fireEvent.click(screen.getByTestId('glossary-status-save-btn'));
+
+      await waitFor(() => {
+        expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledWith(
+          mockedGlossaryTerms[0].fullyQualifiedName,
+          expect.any(Number),
+          undefined,
+          `${EntityStatus.Approved},${EntityStatus.InReview}`,
+          undefined
+        );
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId('glossary-status-dropdown-menu')
+        ).not.toBeInTheDocument();
       });
     });
 
-    it('should handle status selection cancel action', async () => {
-      render(<GlossaryTermTab isGlossary={false} />, {
-        wrapper: MemoryRouter,
-      });
+    it('should discard unsaved status changes on cancel', async () => {
+      await openStatusFilter();
+      mockGetFirstLevelGlossaryTermsPaginated.mockClear();
+
+      fireEvent.click(getStatusCheckbox(EntityStatus.Draft));
+      fireEvent.click(screen.getByTestId('glossary-status-cancel-btn'));
 
       await waitFor(() => {
-        const statusDropdown = screen.getByTestId('glossary-status-dropdown');
-        fireEvent.click(statusDropdown);
+        expect(
+          screen.queryByTestId('glossary-status-dropdown-menu')
+        ).not.toBeInTheDocument();
+      });
 
-        expect(statusDropdown).toBeInTheDocument();
+      expect(mockGetFirstLevelGlossaryTermsPaginated).not.toHaveBeenCalled();
+
+      await reopenStatusFilter();
+
+      expect(getStatusCheckbox(EntityStatus.Draft)).toBeChecked();
+    });
+
+    it('should select every status when "all" is checked', async () => {
+      await openStatusFilter();
+
+      fireEvent.click(getStatusCheckbox('all'));
+
+      Object.values(EntityStatus).forEach((status) => {
+        expect(getStatusCheckbox(status)).toBeChecked();
       });
     });
   });
