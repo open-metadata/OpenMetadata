@@ -424,13 +424,15 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
     def _get_column_object(self, column: GlueColumn) -> Column:
         if column.Type.lower().startswith("union"):
             column.Type = column.Type.replace(" ", "")
-        parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
+        parsed = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
             column.Type.lower()
         )
-        if isinstance(parsed_string, list):
-            parsed_string = {}
-            parsed_string["dataTypeDisplay"] = str(column.Type)
-            parsed_string["dataType"] = "UNION"
+        # A union parses to a list of its member types, which has no single dataType to report.
+        parsed_string: dict[str, Any] = (
+            {"dataTypeDisplay": str(column.Type), "dataType": "UNION"}
+            if isinstance(parsed, list)
+            else cast("dict[str, Any]", parsed)
+        )
         parsed_string["name"] = truncate_column_name(column.Name)
         parsed_string["displayName"] = column.Name
         # A numeric carries precision and scale instead, so defaulting a length here would
@@ -472,7 +474,8 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
         """
         table = self.context.get().table_data
         is_iceberg = bool(table.Parameters and table.Parameters.table_type == "ICEBERG")
-        for column in [*column_data.Columns, *table.PartitionKeys]:
+        # Glue sends an explicit null rather than an empty list for a table with neither.
+        for column in [*(column_data.Columns or []), *(table.PartitionKeys or [])]:
             if is_iceberg and not column.is_current_iceberg_field():
                 logger.debug("Table [%s]: dropping retired Iceberg column [%s].", table.Name, column.Name)
                 continue

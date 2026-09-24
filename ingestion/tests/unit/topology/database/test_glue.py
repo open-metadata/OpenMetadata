@@ -559,6 +559,35 @@ class TestGlueColumnDeduplication:
         assert caplog.records == []
 
 
+class TestGlueNullColumnLists:
+    """Glue sends an explicit null, not an empty list, for a table with no columns or no
+    partition keys - the same shape yield_table already guards against for StorageDescriptor.
+    Unpacking that null raises TypeError and loses the whole table."""
+
+    @staticmethod
+    def _names(glue_source, table) -> list[str]:
+        glue_source.context.get().__dict__["table_data"] = table
+        return [column.name.root for column in glue_source.get_columns(table.StorageDescriptor)]
+
+    @pytest.mark.parametrize(
+        "columns,partition_keys,expected",
+        [
+            (None, None, []),
+            (None, [GlueColumn(Name="load_date", Type="string")], ["load_date"]),
+            ([GlueColumn(Name="event_id", Type="string")], None, ["event_id"]),
+        ],
+        ids=["both_null", "columns_null", "partition_keys_null"],
+    )
+    def test_a_null_list_is_read_as_empty(self, glue_source, columns, partition_keys, expected):
+        table = GlueTable(
+            Name="events",
+            StorageDescriptor=StorageDetails(Columns=columns),
+            PartitionKeys=partition_keys,
+        )
+
+        assert self._names(glue_source, table) == expected
+
+
 class TestGlueIcebergRetiredColumns:
     """Iceberg keeps a dropped field in the table schema flagged iceberg.field.current=false.
 
