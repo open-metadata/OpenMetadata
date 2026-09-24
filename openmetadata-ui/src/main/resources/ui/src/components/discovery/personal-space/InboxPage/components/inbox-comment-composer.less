@@ -11,87 +11,64 @@
  *  limitations under the License.
  */
 
-// Figma restyle of the OSS ActivityFeedEditorNew, scoped to the Inbox composer
+// Design restyle of the OSS ActivityFeedEditorNew, scoped to the Inbox composer
 // only (this class is never on the chat editor, so chat is unaffected). The
-// editor behaviour is untouched — these are purely visual overrides.
+// editor behaviour is untouched — these are purely visual overrides: one white
+// input line with the send button inside it on the right.
 .inbox-comment-composer__editor {
-  // Quill renders `.ql-toolbar` before `.ql-container` inside `.editor-container`.
-  // Reverse the column so the toolbar sits at the bottom (figma), and wrap the
-  // whole thing in a single light gray rounded box.
+  // `--om-*` tokens, not the raw `--color-*` theme vars: those are
+  // self-referential in this plain-CSS/Quill context and resolve to nothing,
+  // while the `--om-*` aliases carry a fallback and still follow dark mode.
+  @composer-border: var(--om-color-border-primary);
+  @composer-bg: var(--om-color-bg-primary);
+  @send-bg: var(--om-color-bg-brand-solid);
+
   .editor-container {
-    display: flex;
-    flex-direction: column-reverse;
-    // Literal gray-blue-200. The `--color-*` theme vars don't resolve in this
-    // plain-CSS/Quill context (the utility aliases are self-referential and the
-    // theme block isn't in this stylesheet's cascade), so a `var()` border
-    // collapses and only appears on focus when Quill paints its own. Use the
-    // literal so the box border is always visible, matching the figma.
-    border: 1px solid rgb(213 217 235);
+    border: 1px solid @composer-border;
     border-radius: 10px;
+    background-color: @composer-bg;
   }
 
-  // Drop Quill's own borders/background; only a hairline separates the bottom
-  // toolbar from the typing area.
   .ql-container.ql-snow {
     border: none;
     background: transparent;
   }
 
+  // Markdown and @mentions work by typing, so the format bar only adds noise.
   .ql-toolbar.ql-snow {
-    border: none;
-    // Literal gray-blue-50 — the token var resolves to `unset` here (see
-    // `.editor-container` note), which would leave the toolbar transparent.
-    background-color: rgb(248 249 252);
-    // Bottom of the box (column-reverse puts the toolbar last) — round its
-    // corners since the container no longer clips via overflow.
-    border-bottom-left-radius: 10px;
-    border-bottom-right-radius: 10px;
-    // Reserve room on the right so the absolute send button (bottom-right, over
-    // this toolbar band) doesn't overlap the last format icons.
-    padding-right: 48px;
-
-    // Literal gray (== gray-700) — the token aliases are self-referential and
-    // resolve to `unset` in this plain-CSS context, dropping the icon strokes.
-    @toolbar-icon-color: #414651;
-
-    button,
-    .ql-picker-label {
-      color: @toolbar-icon-color;
-      font-weight: 400;
-    }
-    .ql-stroke {
-      stroke: @toolbar-icon-color;
-      stroke-width: 1.5;
-    }
-    .ql-fill {
-      fill: @toolbar-icon-color;
-    }
+    display: none;
   }
 
-  .ql-editor {
-    min-height: 48px;
+  .ql-editor,
+  .ql-editor.ql-blank {
+    min-height: 44px;
+    padding: 12px 48px 12px 14px;
+    background-color: transparent;
+    border-radius: 10px;
   }
-  .ql-editor.ql-blank,
-  .ql-editor {
-    background-color: rgb(248 249 252);
-    padding-bottom: 0px;
-    // Top of the box (the typing area sits above the toolbar) — round its
-    // corners to match the container now that overflow no longer clips.
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
-  }
-  // FeedEditor hard-codes the "Use @mention…" placeholder; swap in the figma
+
+  // FeedEditor hard-codes the "Use @mention…" placeholder; swap in the design
   // copy (passed as a CSS variable from the component, so it stays i18n-aware).
   .ql-editor.ql-blank::before {
     content: var(--inbox-composer-placeholder, 'Add Comment');
     font-style: normal;
+    left: 14px;
   }
 
-  // Keep the explicit send button — users expect a clear affordance to post a
-  // comment (Enter also sends). Only the redundant "Shift+Enter" keyboard hint
-  // is dropped in this compact layout.
+  // Enter also sends; the "Shift+Enter" hint is dropped in this compact layout.
   [data-testid='key-help'] {
     display: none;
+  }
+
+  .ant-btn.send-button {
+    top: 50%;
+    bottom: auto;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: @send-bg;
+    transform: translateY(-50%);
   }
 
   // The OSS link bubble is a fixed 300px with nowrap content, so its

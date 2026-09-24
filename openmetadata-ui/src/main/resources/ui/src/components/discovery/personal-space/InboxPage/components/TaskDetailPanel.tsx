@@ -27,6 +27,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -62,10 +63,7 @@ import {
   getTaskDetailDescriptor,
   resolveIncidentTestCaseFqn,
 } from '../taskDetail.utils';
-import {
-  getTaskStatusLabel,
-  isTaskPendingViewer,
-} from '../taskResolution.utils';
+import { getTaskStatusLabel } from '../taskResolution.utils';
 import {
   applyActionLabels,
   buildResolveBody,
@@ -138,6 +136,11 @@ const matchAssetToken = (
   return null;
 };
 
+// The title reads as plain text in the heading's weight and colour; only the
+// hover underline says it links to the asset.
+const TITLE_LINK_CLASS =
+  'tw:font-semibold! tw:text-inherit tw:no-underline! tw:hover:underline!';
+
 interface AssetSpan {
   index: number;
   end: number;
@@ -195,7 +198,7 @@ const resolveTaskAboutTitle = (task: Task, titleText: string): ReactNode => {
       <>
         {titleText.slice(0, assetIndex)}
         <Link
-          className="tw:text-utility-blue-dark-500 tw:no-underline! tw:font-medium! tw:hover:underline!"
+          className={TITLE_LINK_CLASS}
           data-testid="task-about-link"
           to={aboutPath}>
           {titleText.slice(assetIndex, assetEnd)}
@@ -210,7 +213,7 @@ const resolveTaskAboutTitle = (task: Task, titleText: string): ReactNode => {
     // (still clickable), so the header never turns fully blue.
     return (
       <Link
-        className="tw:text-inherit tw:no-underline! tw:hover:underline!"
+        className={TITLE_LINK_CLASS}
         data-testid="task-about-link"
         to={aboutPath}>
         {titleText}
@@ -219,6 +222,33 @@ const resolveTaskAboutTitle = (task: Task, titleText: string): ReactNode => {
   }
 
   return titleText;
+};
+
+/** Who raised the task and when, led by their avatar. */
+const TaskByline: React.FC<{ task: Task; subtitleKey: string }> = ({
+  task,
+  subtitleKey,
+}) => {
+  const { t } = useTranslation();
+  const requester = task.createdBy;
+
+  return (
+    <Box align="center" gap={2}>
+      {requester && (
+        <ProfilePicture
+          displayName={getEntityName(requester)}
+          name={requester.name ?? ''}
+          width="20"
+        />
+      )}
+      <Typography className="tw:text-tertiary" size="text-sm">
+        {t(subtitleKey, {
+          user: getEntityName(requester),
+          time: getRelativeTime(task.createdAt),
+        })}
+      </Typography>
+    </Box>
+  );
 };
 
 const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
@@ -587,7 +617,6 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   }
 
   const statusBadge = getTaskStatusLabel(task, actions, currentUserIds, t);
-  const isWaitingOnViewer = isTaskPendingViewer(task, actions, currentUserIds);
   // Titleless tasks (governance workflows) carry the taskId as their name, so
   // getTaskTitle composes a title from the task type and the entity it is about
   // instead of repeating the id.
@@ -610,12 +639,10 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       className="tw:h-full tw:w-full tw:min-h-0"
       data-testid="task-detail-panel"
       direction="col">
-      {/* Sections keep their height and the body scrolls: a flex child with
-          overflow-hidden (the asset card) would otherwise shrink to nothing. */}
       <Box
-        className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:*:shrink-0"
+        className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-6 tw:py-5"
         direction="col"
-        gap={5}>
+        gap={4}>
         <TaskDetailHeader
           actions={actions}
           loadingTransitionId={loadingTransitionId}
@@ -626,19 +653,18 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
           onTransition={handleTransition}
         />
 
-        <Box direction="col" gap={1}>
+        <Box direction="col" gap={2}>
           {title}
-          <Box align="center" gap={2}>
-            <Typography className="tw:text-secondary" size="text-sm">
-              {t(descriptor.subtitleKey, {
-                user: getEntityName(task.createdBy),
-                time: getRelativeTime(task.createdAt),
-              })}
-              {isWaitingOnViewer && ` · ${t('label.waiting-on-you')}`}
-            </Typography>
-          </Box>
+          <TaskByline subtitleKey={descriptor.subtitleKey} task={task} />
         </Box>
+      </Box>
 
+      {/* Sections keep their height and the body scrolls: a flex child with
+          overflow-hidden (the asset card) would otherwise shrink to nothing. */}
+      <Box
+        className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-6 tw:py-5 tw:*:shrink-0"
+        direction="col"
+        gap={6}>
         <TaskAssetCard
           StatTiles={contribution?.stats}
           about={about}
@@ -662,15 +688,15 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       </Box>
 
       <Box
-        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:pt-4"
+        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-6 tw:py-4"
         direction="col"
-        gap={1}>
+        gap={2}>
         <InboxCommentComposer onSave={handleAddComment} />
-        <Box align="center" className="tw:justify-between tw:gap-2">
-          <Typography className="tw:text-quaternary" size="text-xs">
+        <Box align="center" className="tw:justify-between tw:gap-2 tw:pl-8">
+          <Typography className="tw:text-tertiary" size="text-xs">
             {t('message.markdown-supported-mention-hint')}
           </Typography>
-          <Typography className="tw:text-quaternary" size="text-xs">
+          <Typography className="tw:text-tertiary" size="text-xs">
             {t('message.commenting-does-not-change-status')}
           </Typography>
         </Box>

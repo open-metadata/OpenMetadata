@@ -12,7 +12,7 @@
  */
 
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
-import { MessageDotsCircle } from '@untitledui/icons';
+import { MessageCircle01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,58 +29,61 @@ export interface InboxTaskListItemProps {
   onClick: (task: Task) => void;
 }
 
-const Dot: React.FC = () => (
-  <span className="tw:h-1 tw:w-1 tw:shrink-0 tw:rounded-full tw:bg-utility-gray-blue-300" />
-);
+// The list reads ids as a short reference ("#00357"); the detail header keeps
+// the full "TASK-00357".
+const TASK_ID_PREFIX = 'TASK-';
 
 /**
  * The card's second line: task id, who raised it and the asset it concerns,
- * with the comment count at the far end.
+ * with the comment count, when there is one, at the far end.
  */
 const TaskCardMeta: React.FC<{ task: Task }> = ({ task }) => {
   const requester = task.createdBy;
   const requesterName = requester?.displayName ?? requester?.name;
   const assetName = task.about ? getEntityName(task.about) : '';
+  const commentCount = task.commentCount ?? task.comments?.length ?? 0;
+  const shortId = (task.taskId ?? '').replace(TASK_ID_PREFIX, '');
 
   return (
     <Box align="center" className="tw:flex-wrap tw:gap-x-2 tw:gap-y-1">
-      <Typography
-        className="tw:font-mono tw:text-utility-blue-dark-500"
-        size="text-xs"
-        weight="medium">
-        {`#${task.taskId ?? ''}`}
+      <Typography className="tw:font-mono tw:text-tertiary" size="text-xs">
+        {`#${shortId}`}
       </Typography>
       {requesterName && (
-        <>
-          <Dot />
+        <Box align="center" className="tw:gap-1.5">
           <ProfilePicture
             displayName={requester?.name}
             name={requester?.name ?? ''}
-            width="18"
+            width="16"
           />
-          <Typography
-            className="tw:text-secondary"
-            size="text-xs"
-            weight="medium">
+          <Typography className="tw:text-tertiary" size="text-xs">
             {requesterName}
           </Typography>
-        </>
+        </Box>
       )}
       {assetName && (
-        <Badge className="tw:shrink-0 tw:font-mono" size="sm" type="modern">
-          {assetName}
+        <Badge
+          className="tw:max-w-40 tw:font-mono tw:text-tertiary"
+          size="sm"
+          type="modern">
+          <span className="tw:truncate">{assetName}</span>
         </Badge>
       )}
-      <Box align="center" className="tw:ml-auto tw:shrink-0 tw:gap-1">
-        <MessageDotsCircle
-          className="tw:text-secondary"
-          height={14}
-          width={14}
-        />
-        <Typography className="tw:text-secondary" size="text-xs">
-          {task.commentCount ?? task.comments?.length ?? 0}
-        </Typography>
-      </Box>
+      {commentCount > 0 && (
+        <Box
+          align="center"
+          className="tw:ml-auto tw:shrink-0 tw:gap-1"
+          data-testid="inbox-task-comment-count">
+          <MessageCircle01
+            className="tw:text-fg-quaternary"
+            height={14}
+            width={14}
+          />
+          <Typography className="tw:text-tertiary" size="text-xs">
+            {commentCount}
+          </Typography>
+        </Box>
+      )}
     </Box>
   );
 };
@@ -104,10 +107,10 @@ const InboxTaskListItem: React.FC<InboxTaskListItemProps> = ({
     <Box
       align="start"
       className={classNames(
-        'tw:cursor-pointer tw:rounded-xl tw:border tw:px-4 tw:py-3 tw:transition',
+        'tw:cursor-pointer tw:rounded-xl tw:border tw:p-3 tw:transition',
         isActive
-          ? 'tw:border-utility-brand-300 tw:bg-utility-brand-50'
-          : 'tw:border-transparent tw:hover:bg-utility-gray-blue-50'
+          ? 'tw:border-utility-brand-300 tw:bg-primary tw:shadow-xs'
+          : 'tw:border-transparent tw:hover:bg-secondary'
       )}
       data-testid={`inbox-task-${task.id}`}
       gap={3}
@@ -124,10 +127,9 @@ const InboxTaskListItem: React.FC<InboxTaskListItemProps> = ({
       <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={2}>
         {taskTitle && (
           <Typography
-            className="tw:text-left tw:text-primary-900"
+            className="tw:text-left tw:text-primary"
             ellipsis={{ rows: 2 }}
-            size="text-sm"
-            weight="medium">
+            size="text-sm">
             {taskTitle}
           </Typography>
         )}

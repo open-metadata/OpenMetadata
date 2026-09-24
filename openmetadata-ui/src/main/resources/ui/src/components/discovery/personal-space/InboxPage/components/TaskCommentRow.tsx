@@ -217,7 +217,7 @@ const TaskCommentRow: React.FC<TaskCommentRowProps> = ({
           <Typography size="text-sm" weight="semibold">
             {authorName}
           </Typography>
-          <Typography className="tw:text-secondary" size="text-xs">
+          <Typography className="tw:text-tertiary" size="text-xs">
             {formatInboxDateTime(comment.createdAt)}
           </Typography>
         </Box>

@@ -55,7 +55,7 @@ const RowValue: React.FC<{ value: TaskDetailRowValue }> = ({ value }) => {
   switch (value.kind) {
     case 'date':
       return (
-        <Typography size="text-sm" weight="medium">
+        <Typography size="text-sm">
           {formatInboxDate(value.timestamp)}
         </Typography>
       );
@@ -70,9 +70,7 @@ const RowValue: React.FC<{ value: TaskDetailRowValue }> = ({ value }) => {
                 name={ref.name ?? ''}
                 width="20"
               />
-              <Typography size="text-sm" weight="medium">
-                {getEntityName(ref)}
-              </Typography>
+              <Typography size="text-sm">{getEntityName(ref)}</Typography>
             </Box>
           ))}
         </Box>
@@ -81,7 +79,7 @@ const RowValue: React.FC<{ value: TaskDetailRowValue }> = ({ value }) => {
     // The full tag FQN, as a reviewer searches for it: "PII.Sensitive".
     case 'tags':
       return (
-        <Typography className="tw:font-mono" size="text-sm" weight="medium">
+        <Typography className="tw:font-mono" size="text-xs">
           {value.tags.map((tag) => tag.tagFQN).join(', ')}
         </Typography>
       );
@@ -89,24 +87,21 @@ const RowValue: React.FC<{ value: TaskDetailRowValue }> = ({ value }) => {
     case 'link':
       return (
         <Link
-          className="tw:font-medium! tw:text-utility-blue-dark-500 tw:no-underline! tw:hover:underline!"
+          className="tw:text-sm tw:font-semibold! tw:text-brand-secondary tw:no-underline! tw:hover:underline!"
           to={value.to}>
           {value.label}
         </Link>
       );
 
     default:
-      return (
-        <Typography size="text-sm" weight="medium">
-          {value.text}
-        </Typography>
-      );
+      return <Typography size="text-sm">{value.text}</Typography>;
   }
 };
 
 /**
  * The task's key/value summary and its rationale callout, drawn from the
- * type's descriptor. Two columns on a wide pane, one when it is narrow.
+ * type's descriptor: each row an icon and label, then its value on the same
+ * line. Two columns on a wide pane, one when it is narrow.
  */
 const TaskDetailSummary: React.FC<TaskDetailSummaryProps> = ({
   rows,
@@ -114,7 +109,7 @@ const TaskDetailSummary: React.FC<TaskDetailSummaryProps> = ({
 }) => (
   <Box data-testid="task-detail-summary" direction="col" gap={5}>
     {rows.length > 0 && (
-      <div className="tw:grid tw:grid-cols-1 tw:gap-x-8 tw:gap-y-4 tw:sm:grid-cols-2">
+      <div className="tw:grid tw:grid-cols-1 tw:gap-x-8 tw:gap-y-3 tw:sm:grid-cols-2">
         {rows.map((row) => {
           const Icon = ROW_ICON[row.icon];
 
@@ -125,14 +120,14 @@ const TaskDetailSummary: React.FC<TaskDetailSummaryProps> = ({
                 height={16}
                 width={16}
               />
-              <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
-                <Typography className="tw:text-secondary" size="text-sm">
-                  {row.label}
-                </Typography>
-                <div className="tw:min-w-0 tw:break-words">
-                  <RowValue value={row.value} />
-                </div>
-              </Box>
+              <Typography
+                className="tw:w-28 tw:shrink-0 tw:text-tertiary"
+                size="text-sm">
+                {row.label}
+              </Typography>
+              <div className="tw:min-w-0 tw:flex-1 tw:break-words">
+                <RowValue value={row.value} />
+              </div>
             </Box>
           );
         })}
@@ -141,12 +136,12 @@ const TaskDetailSummary: React.FC<TaskDetailSummaryProps> = ({
 
     {callout && (
       <Box
-        className="tw:rounded-lg tw:border-l-2 tw:border-brand-solid tw:bg-secondary tw:px-4 tw:py-3"
+        className="tw:rounded-xl tw:border tw:border-l-2 tw:border-secondary tw:border-l-utility-brand-300 tw:bg-secondary tw:px-4 tw:py-3"
         data-testid="task-detail-callout"
         direction="col"
         gap={1}>
         <Typography
-          className="tw:uppercase tw:text-quaternary tw:tracking-wide"
+          className="tw:uppercase tw:text-tertiary tw:tracking-wide"
           size="text-xs"
           weight="semibold">
           {callout.label}

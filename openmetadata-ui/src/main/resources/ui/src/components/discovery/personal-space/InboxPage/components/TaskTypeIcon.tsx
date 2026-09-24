@@ -73,11 +73,11 @@ const TaskTypeIcon: React.FC<TaskTypeIconProps> = ({ badge }) => {
     <span
       aria-hidden
       className={classNames(
-        'tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg',
+        'tw:flex tw:size-7 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg',
         TINT_CLASS[badge.color] ?? TINT_CLASS.gray
       )}
       data-testid="task-type-icon">
-      <Icon height={16} width={16} />
+      <Icon height={14} width={14} />
     </span>
   );
 };

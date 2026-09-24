@@ -17,7 +17,8 @@ import {
   Input,
   SearchInputIcon,
 } from '@openmetadata/ui-core-components';
-import React, { useMemo } from 'react';
+import { FilterFunnel01, FilterLines } from '@untitledui/icons';
+import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Task, TaskType } from '../../../../../generated/entity/tasks/task';
 import { getTaskTypeBadge } from '../taskDetail.utils';
@@ -26,6 +27,8 @@ import { getTaskTypeBadge } from '../taskDetail.utils';
 export type InboxTaskGrouping = 'none' | 'type';
 
 export interface InboxTaskListToolbarProps {
+  /** The All / Open / Closed control, sharing the first row with grouping. */
+  statusFilter: ReactNode;
   search: string;
   onSearchChange: (value: string) => void;
   grouping: InboxTaskGrouping;
@@ -37,12 +40,14 @@ export interface InboxTaskListToolbarProps {
 }
 
 /**
- * Search, grouping and type filter for the task list.
+ * The list column's controls: status and grouping on one row, search and the
+ * type filter on the next.
  *
  * The type options come from the tasks on screen rather than the full enum, so
  * the filter never offers a type the queue does not contain.
  */
 const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
+  statusFilter,
   search,
   onSearchChange,
   grouping,
@@ -53,11 +58,17 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  // The trigger shows the chosen option's `textValue` ("Group: Type"); the menu
+  // rows show the bare option.
   const groupingOptions = useMemo(
-    () => [
-      { value: 'type', label: t('label.type') },
-      { value: 'none', label: t('label.none') },
-    ],
+    () =>
+      [
+        { value: 'type', label: t('label.type') },
+        { value: 'none', label: t('label.none') },
+      ].map((option) => ({
+        ...option,
+        textValue: t('label.group-with-value', { value: option.label }),
+      })),
     [t]
   );
 
@@ -76,40 +87,47 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
 
   return (
     <Box
-      align="center"
-      className="tw:flex-wrap tw:gap-2"
-      data-testid="inbox-tasks-toolbar">
-      <Input
-        className="tw:min-w-56 tw:flex-1"
-        icon={SearchInputIcon}
-        inputDataTestId="inbox-tasks-search"
-        placeholder={t('label.search')}
-        size="sm"
-        value={search}
-        onChange={onSearchChange}
-      />
-      <FilterSelect
-        bordered
-        data-testid="inbox-tasks-group-by"
-        label={t('label.group')}
-        options={groupingOptions}
-        selectedValues={[grouping]}
-        selectionMode="single"
-        triggerVariant="button"
-        onChange={([value]) =>
-          onGroupingChange((value as InboxTaskGrouping) ?? 'none')
-        }
-      />
-      <FilterSelect
-        bordered
-        data-testid="inbox-tasks-type-filter"
-        label={t('label.filter')}
-        options={typeOptions}
-        selectedValues={typeFilter}
-        selectionMode="multiple"
-        triggerVariant="button"
-        onChange={(values) => onTypeFilterChange(values as TaskType[])}
-      />
+      className="tw:shrink-0 tw:gap-3 tw:px-4 tw:pt-4 tw:pb-3"
+      data-testid="inbox-tasks-toolbar"
+      direction="col">
+      <Box align="center" className="tw:justify-between tw:gap-2">
+        {statusFilter}
+        <FilterSelect
+          data-testid="inbox-tasks-group-by"
+          label={t('label.group')}
+          options={groupingOptions}
+          selectedValues={[grouping]}
+          selectionMode="single"
+          triggerIcon={FilterLines}
+          triggerVariant="button"
+          typography="regular"
+          onChange={([value]) =>
+            onGroupingChange((value as InboxTaskGrouping) ?? 'none')
+          }
+        />
+      </Box>
+      <Box align="center" className="tw:gap-2">
+        <Input
+          className="tw:min-w-0 tw:flex-1"
+          icon={SearchInputIcon}
+          inputDataTestId="inbox-tasks-search"
+          placeholder={t('label.search-this-queue')}
+          size="sm"
+          value={search}
+          onChange={onSearchChange}
+        />
+        <FilterSelect
+          bordered
+          data-testid="inbox-tasks-type-filter"
+          label={t('label.filter')}
+          options={typeOptions}
+          selectedValues={typeFilter}
+          selectionMode="multiple"
+          triggerIcon={FilterFunnel01}
+          triggerVariant="button"
+          onChange={(values) => onTypeFilterChange(values as TaskType[])}
+        />
+      </Box>
     </Box>
   );
 };

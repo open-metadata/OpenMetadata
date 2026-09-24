@@ -76,9 +76,9 @@ const TaskAssetCard: React.FC<TaskAssetCardProps> = ({
       className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary"
       data-testid="task-asset-card"
       direction="col">
-      <Box align="start" className="tw:justify-between tw:gap-3 tw:p-4">
-        <Box align="start" className="tw:min-w-0" gap={3}>
-          <span className="tw:mt-0.5 tw:shrink-0">
+      <Box align="center" className="tw:justify-between tw:gap-3 tw:p-4">
+        <Box align="center" className="tw:min-w-0" gap={3}>
+          <span className="tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:border-secondary tw:text-fg-quaternary">
             {getEntityIcon(aboutRef.type)}
           </span>
           <Box className="tw:min-w-0" direction="col" gap={1}>
@@ -100,7 +100,7 @@ const TaskAssetCard: React.FC<TaskAssetCardProps> = ({
                 </Badge>
               )}
             </Box>
-            <Typography className="tw:text-secondary" size="text-xs">
+            <Typography className="tw:text-tertiary" size="text-xs">
               {[formatEntityType(aboutRef.type), parentPath]
                 .filter(Boolean)
                 .join(' · ')}
@@ -108,7 +108,7 @@ const TaskAssetCard: React.FC<TaskAssetCardProps> = ({
           </Box>
         </Box>
         <Link
-          className="tw:shrink-0 tw:font-medium! tw:text-utility-blue-dark-500 tw:no-underline! tw:hover:underline!"
+          className="tw:shrink-0 tw:text-sm tw:font-semibold! tw:text-brand-secondary tw:no-underline! tw:hover:underline!"
           data-testid="task-open-asset"
           to={getEntityLinkFromType(
             aboutRef.fullyQualifiedName,

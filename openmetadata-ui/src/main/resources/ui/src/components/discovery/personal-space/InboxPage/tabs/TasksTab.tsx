@@ -12,7 +12,6 @@
  */
 
 import {
-  Badge,
   Box,
   EmptyPlaceholder,
   Tabs,
@@ -22,7 +21,6 @@ import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle, Inbox01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
-import { DateRangeObject } from 'Models';
 import React, {
   ReactNode,
   RefObject,
@@ -41,7 +39,6 @@ import {
   TaskStatusGroup,
 } from '../../../../../rest/tasksAPI';
 import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../inbox.constants';
-import InboxFilterBar from '../components/InboxFilterBar';
 import InboxTaskListItem from '../components/InboxTaskListItem';
 import InboxTaskListSkeleton from '../components/InboxTaskListSkeleton';
 import InboxTaskListToolbar, {
@@ -50,7 +47,7 @@ import InboxTaskListToolbar, {
 import TaskDetailPanel from '../components/TaskDetailPanel';
 import TaskDetailSkeleton from '../components/TaskDetailSkeleton';
 import { TASK_TYPE_DOT_CLASS } from '../components/TaskTypeIcon';
-import { InboxDateRange, isTaskOpen } from '../inbox.utils';
+import { isTaskOpen } from '../inbox.utils';
 import { getTaskTypeBadge } from '../taskDetail.utils';
 import { filterTasksByTypes, groupTasksByType } from '../taskList.utils';
 import { INBOX_COUNTS_QUERY_KEY } from '../useInboxCounts';
@@ -69,6 +66,12 @@ const TASK_COUNTS_STALE_TIME = 30_000;
 
 type TaskStatusFilter = 'all' | 'open' | 'closed';
 
+const STATUS_FILTERS: { id: TaskStatusFilter; labelKey: string }[] = [
+  { id: 'all', labelKey: 'label.all' },
+  { id: 'open', labelKey: 'label.open' },
+  { id: 'closed', labelKey: 'label.closed' },
+];
+
 // Pulls the three per-status totals out of the useQueries results array.
 const getStatusCounts = (
   countQueries: { data?: number }[]
@@ -86,10 +89,6 @@ const STATUS_GROUP: Record<TaskStatusFilter, TaskStatusGroup | undefined> = {
 };
 
 export interface TasksTabProps {
-  // Server-side time window applied to the loaded tasks.
-  dateRange?: InboxDateRange;
-  defaultDateRange: DateRangeObject;
-  onDateRangeChange: (value: DateRangeObject) => void;
   // When set, lists all tasks about this entity FQN (entity-page usage). Without
   // it the tab shows the current user's *visible* tasks (assigned to me/my teams
   // or about entities I own) — never every task in the system.
@@ -99,6 +98,10 @@ export interface TasksTabProps {
 }
 
 interface TasksTabBodyProps {
+  // Status, search and filter controls, heading the list column.
+  toolbar: ReactNode;
+  // Shown in place of the detail when no task matches.
+  emptyState?: ReactNode;
   isLoading: boolean;
   isLoadingMore: boolean;
   tasks: Task[];
@@ -112,9 +115,11 @@ interface TasksTabBodyProps {
   handleTaskUpdated: () => void;
 }
 
-// The two-pane task list + detail panel, rendered once tasks have loaded (or
-// while the initial/subsequent pages are loading).
+// The two panes: the list column (its controls over the grouped rows) and the
+// selected task's detail, each scrolling on its own.
 const TasksTabBody: React.FC<TasksTabBodyProps> = ({
+  toolbar,
+  emptyState,
   isLoading,
   isLoadingMore,
   tasks,
@@ -191,39 +196,39 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
 
   return (
     <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[2fr_3fr]">
-      <div
-        className="tw:h-full tw:overflow-y-auto tw:border-r tw:border-utility-gray-blue-100"
-        data-testid="inbox-tasks-scroll"
-        ref={scrollRef}>
-        {isLoading ? (
-          <InboxTaskListSkeleton />
-        ) : (
-          <div className="tw:flex tw:flex-col tw:gap-3 tw:p-3">
-            {grouping === 'type' ? groupedList : tasks.map(renderRow)}
-          </div>
-        )}
-
-        <div ref={sentinelRef} />
-        {isLoadingMore && (
-          <div className="tw:flex tw:justify-center tw:py-4">
-            <Loader />
-          </div>
-        )}
-      </div>
-
       <Box
-        className="tw:h-full tw:w-full tw:overflow-y-auto tw:p-5"
+        className="tw:min-h-0 tw:border-r tw:border-secondary"
         direction="col">
-        {isLoading ? <TaskDetailSkeleton /> : detailContent}
+        {toolbar}
+        <div
+          className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto"
+          data-testid="inbox-tasks-scroll"
+          ref={scrollRef}>
+          {isLoading ? (
+            <InboxTaskListSkeleton />
+          ) : (
+            <div className="tw:flex tw:flex-col tw:gap-4 tw:px-3 tw:pb-3">
+              {grouping === 'type' ? groupedList : tasks.map(renderRow)}
+            </div>
+          )}
+
+          <div ref={sentinelRef} />
+          {isLoadingMore && (
+            <div className="tw:flex tw:justify-center tw:py-4">
+              <Loader />
+            </div>
+          )}
+        </div>
+      </Box>
+
+      <Box className="tw:relative tw:min-h-0 tw:w-full" direction="col">
+        {isLoading ? <TaskDetailSkeleton /> : emptyState ?? detailContent}
       </Box>
     </Box>
   );
 };
 
 const TasksTab: React.FC<TasksTabProps> = ({
-  dateRange,
-  defaultDateRange,
-  onDateRangeChange,
   aboutEntity,
   className,
   onCountChange,
@@ -243,25 +248,18 @@ const TasksTab: React.FC<TasksTabProps> = ({
 
   // Per-status totals for the All / Open / Closed badges, fetched cheaply
   // (limit=1, server paging.total) and cached by React Query keyed on the active
-  // scope + date window. The keyed cache dedupes the fetch across tab-switch
-  // remounts and StrictMode's dev double-invoke; mutations invalidate the key.
+  // scope. A work queue has no date window: an open task never ages out. The
+  // keyed cache dedupes the fetch across tab-switch remounts and StrictMode's
+  // dev double-invoke; mutations invalidate the key.
   const scope = aboutEntity ?? 'me';
   const countQueries = useQueries({
     queries: [undefined, TaskStatusGroup.Open, TaskStatusGroup.Closed].map(
       (statusGroup) => ({
-        queryKey: [
-          TASK_STATUS_COUNTS_QUERY_KEY,
-          scope,
-          dateRange?.startTs,
-          dateRange?.endTs,
-          statusGroup ?? 'all',
-        ],
+        queryKey: [TASK_STATUS_COUNTS_QUERY_KEY, scope, statusGroup ?? 'all'],
         queryFn: () =>
           (aboutEntity ? listTasks : listMyVisibleTasks)({
             statusGroup,
             limit: 1,
-            startTs: dateRange?.startTs,
-            endTs: dateRange?.endTs,
             ...(aboutEntity ? { aboutEntity } : {}),
           }).then((res) => res.paging?.total ?? 0),
         staleTime: TASK_COUNTS_STALE_TIME,
@@ -295,8 +293,6 @@ const TasksTab: React.FC<TasksTabProps> = ({
         fields: TASK_FIELDS,
         limit: TASK_LIMIT,
         after,
-        startTs: dateRange?.startTs,
-        endTs: dateRange?.endTs,
         q: searchQuery || undefined,
       };
 
@@ -306,7 +302,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
         ? listTasks({ ...params, aboutEntity })
         : listMyVisibleTasks(params);
     },
-    [status, aboutEntity, dateRange?.startTs, dateRange?.endTs, searchQuery]
+    [status, aboutEntity, searchQuery]
   );
 
   const {
@@ -321,7 +317,6 @@ const TasksTab: React.FC<TasksTabProps> = ({
     setTotal,
   } = useInboxInfiniteList<Task>(fetchPage);
 
-  // The server now filters by the date window and returns an accurate total.
   useEffect(() => {
     onCountChange?.(total);
   }, [total, onCountChange]);
@@ -406,42 +401,32 @@ const TasksTab: React.FC<TasksTabProps> = ({
     [setItems]
   );
 
-  // Render the count as a pill next to the tab label; the selected tab's badge
-  // gets a white bg + blue border/text (mirrors the AI Analytics scope tabs),
-  // while unselected tabs keep the default gray pill.
-  const renderCountBadge = (id: TaskStatusFilter, count: number) =>
-    count ? (
-      <Badge
-        className={
-          status === id
-            ? 'tw:border tw:border-blue-200 tw:bg-white tw:text-blue-700 tw:dark:bg-brand-950 tw:dark:border-brand-800'
-            : ''
-        }
-        color="gray"
-        size="sm"
-        type="pill-color">
-        {count}
-      </Badge>
-    ) : null;
-
+  // A segmented control, each option carrying its total; the selected one's
+  // total takes the brand colour.
   const statusFilter = (
     <Tabs
       className="tw:w-fit"
       selectedKey={status}
       onSelectionChange={(key) => setStatus(key as TaskStatusFilter)}>
-      <Tabs.List size="sm" type="button-brand">
-        <Tabs.Item id="all">
-          {t('label.all')}
-          {renderCountBadge('all', statusCounts.all)}
-        </Tabs.Item>
-        <Tabs.Item id="open">
-          {t('label.open')}
-          {renderCountBadge('open', statusCounts.open)}
-        </Tabs.Item>
-        <Tabs.Item id="closed">
-          {t('label.closed')}
-          {renderCountBadge('closed', statusCounts.closed)}
-        </Tabs.Item>
+      <Tabs.List size="sm" type="button-minimal">
+        {STATUS_FILTERS.map(({ id, labelKey }) => (
+          <Tabs.Item
+            className="tw:gap-1 tw:px-3 tw:py-1.5 tw:text-xs"
+            id={id}
+            key={id}>
+            {({ isSelected }) => (
+              <>
+                {t(labelKey)}
+                <span
+                  className={
+                    isSelected ? 'tw:text-brand-secondary' : 'tw:text-tertiary'
+                  }>
+                  {statusCounts[id]}
+                </span>
+              </>
+            )}
+          </Tabs.Item>
+        ))}
       </Tabs.List>
     </Tabs>
   );
@@ -482,48 +467,39 @@ const TasksTab: React.FC<TasksTabProps> = ({
   return (
     <Box
       className={classNames(
-        'tw:mt-4 tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary',
+        'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden',
         className
       )}
       data-testid="inbox-tasks-tab"
       direction="col">
-      <InboxFilterBar
-        bordered
-        dateRange={dateRange}
-        defaultDateRange={defaultDateRange}
-        left={statusFilter}
-        onDateRangeChange={onDateRangeChange}
+      <TasksTabBody
+        emptyState={
+          !isLoading && visibleTasks.length === 0 ? emptyState : undefined
+        }
+        grouping={grouping}
+        handleCommentsChanged={handleCommentsChanged}
+        handleResolved={handleResolved}
+        handleTaskUpdated={handleTaskUpdated}
+        isLoading={isLoading}
+        isLoadingMore={isLoadingMore}
+        scrollRef={scrollRef}
+        selectedTaskId={selectedTaskId}
+        sentinelRef={sentinelRef}
+        setSelectedTaskId={setSelectedTaskId}
+        tasks={visibleTasks}
+        toolbar={
+          <InboxTaskListToolbar
+            grouping={grouping}
+            search={search}
+            statusFilter={statusFilter}
+            tasks={tasks}
+            typeFilter={typeFilter}
+            onGroupingChange={setGrouping}
+            onSearchChange={handleSearchChange}
+            onTypeFilterChange={setTypeFilter}
+          />
+        }
       />
-
-      <Box className="tw:border-b tw:border-secondary tw:px-3 tw:py-2">
-        <InboxTaskListToolbar
-          grouping={grouping}
-          search={search}
-          tasks={tasks}
-          typeFilter={typeFilter}
-          onGroupingChange={setGrouping}
-          onSearchChange={handleSearchChange}
-          onTypeFilterChange={setTypeFilter}
-        />
-      </Box>
-
-      {!isLoading && visibleTasks.length === 0 ? (
-        <Box className="tw:relative tw:min-h-0 tw:flex-1">{emptyState}</Box>
-      ) : (
-        <TasksTabBody
-          grouping={grouping}
-          handleCommentsChanged={handleCommentsChanged}
-          handleResolved={handleResolved}
-          handleTaskUpdated={handleTaskUpdated}
-          isLoading={isLoading}
-          isLoadingMore={isLoadingMore}
-          scrollRef={scrollRef}
-          selectedTaskId={selectedTaskId}
-          sentinelRef={sentinelRef}
-          setSelectedTaskId={setSelectedTaskId}
-          tasks={visibleTasks}
-        />
-      )}
     </Box>
   );
 };

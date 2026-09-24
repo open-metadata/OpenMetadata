@@ -51,9 +51,9 @@ const EVENT_ICON: Record<TaskTimelineIcon, typeof CheckCircle> = {
 };
 
 const TONE_TEXT_CLASS: Record<TaskTimelineTone, string> = {
-  default: 'tw:text-secondary',
+  default: 'tw:text-tertiary',
   error: 'tw:text-error-primary',
-  success: 'tw:text-secondary',
+  success: 'tw:text-tertiary',
 };
 
 const TONE_ICON_CLASS: Record<TaskTimelineTone, string> = {
@@ -77,22 +77,19 @@ const TimelineEventRow: React.FC<{ event: TaskTimelineEvent }> = ({
             'tw:mt-0.5 tw:flex tw:size-5 tw:shrink-0 tw:items-center tw:justify-center',
             TONE_ICON_CLASS[event.tone]
           )}>
-          <Icon height={16} width={16} />
+          <Icon height={14} width={14} />
         </span>
         <Typography
           className={TONE_TEXT_CLASS[event.tone]}
           data-testid="task-timeline-event"
-          size="text-sm">
+          size="text-xs">
           {t(event.textKey, {
             user: event.actor ? getEntityName(event.actor) : '',
           })}
         </Typography>
       </Box>
       {event.timestamp && (
-        <Typography
-          className="tw:shrink-0 tw:text-secondary"
-          size="text-xs"
-          weight="medium">
+        <Typography className="tw:shrink-0 tw:text-tertiary" size="text-xs">
           {formatInboxDateTime(event.timestamp)}
         </Typography>
       )}
@@ -123,7 +120,7 @@ const TaskActivityTimeline: React.FC<TaskActivityTimelineProps> = ({
         <ProfilePicture
           displayName={getEntityName(entry.comment.author)}
           name={entry.comment.author?.name ?? ''}
-          width="28"
+          width="24"
         />
         <Box className="tw:min-w-0 tw:flex-1" direction="col">
           <TaskCommentRow
@@ -148,12 +145,12 @@ const TaskActivityTimeline: React.FC<TaskActivityTimelineProps> = ({
           </Badge>
         </Box>
         <span className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
-        <Typography className="tw:shrink-0 tw:text-secondary" size="text-xs">
+        <Typography className="tw:shrink-0 tw:text-tertiary" size="text-xs">
           {t('label.comments-and-events')}
         </Typography>
       </Box>
 
-      <Box direction="col" gap={5}>
+      <Box direction="col" gap={4}>
         {entries.map((entry) => (
           <div key={entry.id}>{renderEntry(entry)}</div>
         ))}

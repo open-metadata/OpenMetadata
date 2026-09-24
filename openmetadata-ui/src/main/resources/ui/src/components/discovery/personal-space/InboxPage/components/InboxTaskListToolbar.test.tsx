@@ -16,7 +16,12 @@ import { ReactNode } from 'react';
 
 interface MockFilterSelectProps {
   label: string;
-  options: { value: string; label: ReactNode; count?: number }[];
+  options: {
+    value: string;
+    label: ReactNode;
+    count?: number;
+    textValue?: string;
+  }[];
   selectedValues: string[];
   onChange: (values: string[]) => void;
   'data-testid'?: string;
@@ -43,6 +48,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         <button
           data-count={option.count}
           data-testid={`${testId}-${option.value}`}
+          data-text={option.textValue}
           key={option.value}
           onClick={() => onChange([option.value])}>
           {option.label}
@@ -70,7 +76,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string, options?: { value?: string }) =>
+      options?.value ? `${key}:${options.value}` : key,
+  }),
 }));
 
 import { Task, TaskType } from '../../../../../generated/entity/tasks/task';
@@ -83,6 +92,7 @@ const TASKS = [
 ] as unknown as Task[];
 
 const props = {
+  statusFilter: <div data-testid="status-filter" />,
   search: '',
   onSearchChange: jest.fn(),
   grouping: 'type' as const,
@@ -142,6 +152,22 @@ describe('InboxTaskListToolbar', () => {
     expect(screen.getByTestId('inbox-tasks-group-by')).toHaveAttribute(
       'data-selected',
       'type'
+    );
+  });
+
+  it('heads the list with the status control', () => {
+    render(<InboxTaskListToolbar {...props} />);
+
+    expect(screen.getByTestId('status-filter')).toBeInTheDocument();
+  });
+
+  // The trigger reads "Group: Type" while the menu rows stay bare.
+  it('names the grouping on the trigger', () => {
+    render(<InboxTaskListToolbar {...props} />);
+
+    expect(screen.getByTestId('inbox-tasks-group-by-type')).toHaveAttribute(
+      'data-text',
+      'label.group-with-value:label.type'
     );
   });
 

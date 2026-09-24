@@ -19,9 +19,9 @@ import {
   Dropdown,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { CheckCircle, DotsVertical, XCircle } from '@untitledui/icons';
+import { DotsVertical } from '@untitledui/icons';
 import classNames from 'classnames';
-import React, { ComponentProps, ReactNode, useState } from 'react';
+import React, { ComponentProps, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UserTeamSelectableList } from '../../../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { Task } from '../../../../../generated/entity/tasks/task';
@@ -63,17 +63,6 @@ const getTaskActionTestId = (action: TaskResolveAction): string => {
   }
 
   return `task-transition-${action.id}`;
-};
-
-const getTaskActionIcon = (action: TaskResolveAction): ReactNode => {
-  if (action.kind === 'approve') {
-    return <CheckCircle height={16} width={16} />;
-  }
-  if (action.kind === 'reject') {
-    return <XCircle height={16} width={16} />;
-  }
-
-  return undefined;
 };
 
 interface TaskActionButtonProps {
@@ -129,7 +118,6 @@ const TaskActionButton = ({
     <Button
       color={color}
       data-testid={getTaskActionTestId(action)}
-      iconLeading={getTaskActionIcon(action)}
       isDisabled={isDisabled}
       isLoading={isBusy}
       size="sm"
@@ -172,23 +160,23 @@ const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
         <Badge
           color={typeBadge.color}
           data-testid="task-type-badge"
-          size="sm"
+          size="md"
           type="color">
-          <Box align="center" gap={1}>
-            <TypeIcon height={12} width={12} />
+          <Box align="center" className="tw:gap-1.5">
+            <TypeIcon height={14} width={14} />
             {typeBadge.label}
           </Box>
         </Badge>
-        <Typography
-          className="tw:font-mono tw:text-secondary"
-          size="text-sm"
-          weight="medium">
+        <Typography className="tw:font-mono tw:text-tertiary" size="text-xs">
           {task.taskId ?? ''}
         </Typography>
         {statusBadge && (
+          <span aria-hidden className="tw:h-3.5 tw:w-px tw:bg-border-primary" />
+        )}
+        {statusBadge && (
           <span
             className={classNames(
-              'tw:inline-flex tw:items-center tw:gap-1.5 tw:text-sm tw:font-medium',
+              'tw:inline-flex tw:items-center tw:gap-1.5 tw:text-xs tw:font-medium',
               STATUS_TONE_CLASS[statusBadge.tone]
             )}
             data-color={statusBadge.tone}
@@ -203,11 +191,7 @@ const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
         {secondary && (
           <TaskActionButton
             action={secondary}
-            color={
-              secondary.kind === 'reject'
-                ? 'secondary-destructive'
-                : 'secondary'
-            }
+            color="secondary"
             key={secondary.id}
             loadingTransitionId={loadingTransitionId}
             task={task}
@@ -242,7 +226,7 @@ const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           <Dropdown.Root isOpen={isMenuOpen} onOpenChange={setIsMenuOpen}>
             <Button
               aria-label={t('label.more-action-plural')}
-              color="tertiary"
+              color="secondary"
               data-testid="task-actions-menu"
               iconLeading={<DotsVertical className="tw:size-4" />}
               size="sm"

@@ -25,12 +25,12 @@ export interface InboxCommentComposerProps {
 }
 
 /**
- * Figma-styled comment composer shared by the Inbox (Activity drawer + Task
- * detail). It reuses the OSS {@link ActivityFeedEditorNew} verbatim — so
- * mention (@), hashtag (#), markdown, the send button and Enter-to-send all keep
- * working — and only restyles it via the scoped `inbox-comment-composer__editor`
- * class: toolbar moved to the bottom, a light gray box, and the keyboard hint
- * dropped. The current user's avatar sits on the left.
+ * Comment composer shared by the Inbox (Activity drawer + Task detail). It
+ * reuses the OSS {@link ActivityFeedEditorNew} verbatim — so mention (@),
+ * hashtag (#), markdown, the send button and Enter-to-send all keep working —
+ * and only restyles it via the scoped `inbox-comment-composer__editor` class:
+ * one white input line, the send button inside it, no format bar. The current
+ * user's avatar sits on the left.
  */
 const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
   onSave,
@@ -49,7 +49,7 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
       <ProfilePicture
         displayName={currentUser?.displayName ?? currentUser?.name}
         name={currentUser?.name ?? ''}
-        width="28"
+        width="24"
       />
       {/* FeedEditor hard-codes its Quill placeholder, so feed it the figma
           copy through a CSS variable the scoped style reads. */}

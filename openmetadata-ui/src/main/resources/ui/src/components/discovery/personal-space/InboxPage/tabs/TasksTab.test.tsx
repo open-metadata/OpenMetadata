@@ -63,26 +63,24 @@ jest.mock('rest/tasksAPI', () => ({
   TaskStatusGroup: { Open: 'open', Closed: 'closed' },
 }));
 
-jest.mock('../components/InboxFilterBar', () => ({
-  __esModule: true,
-  default: ({ left }: { left?: ReactNode }) => <div>{left}</div>,
-}));
-
 // The toolbar has its own suite; here it only has to report what the user
 // chose, so the tab's own contract (a searched query reaching the server, a
 // type narrowing the list) can be asserted.
 jest.mock('../components/InboxTaskListToolbar', () => ({
   __esModule: true,
   default: ({
+    statusFilter,
     onSearchChange,
     onGroupingChange,
     onTypeFilterChange,
   }: {
+    statusFilter: ReactNode;
     onSearchChange: (value: string) => void;
     onGroupingChange: (value: string) => void;
     onTypeFilterChange: (value: string[]) => void;
   }) => (
     <div>
+      {statusFilter}
       <button
         data-testid="toolbar-search"
         onClick={() => onSearchChange('customer')}>
@@ -171,12 +169,22 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const TabsList = ({ children }: { children?: ReactNode }) => (
     <div>{children}</div>
   );
-  const TabsItem = ({ id, label }: { id: string; label?: ReactNode }) => (
+  const TabsItem = ({
+    id,
+    label,
+    children,
+  }: {
+    id: string;
+    label?: ReactNode;
+    children?: ReactNode | ((state: { isSelected: boolean }) => ReactNode);
+  }) => (
     <button
       data-testid={`task-status-${id}`}
       type="button"
       onClick={() => tabsOnChange?.(id)}>
-      {label}
+      {typeof children === 'function'
+        ? children({ isSelected: false })
+        : children ?? label}
     </button>
   );
 
@@ -227,16 +235,8 @@ jest.mock('react-i18next', () => ({
 
 import TasksTab, { TasksTabProps } from './TasksTab';
 
-// defaultDateRange / onDateRangeChange are required by the shared filter bar;
-// the tests only care about scope / aboutEntity / className, so stub the rest.
 const renderTab = (props: Partial<TasksTabProps> = {}) =>
-  render(
-    <TasksTab
-      defaultDateRange={{ startTs: 0, endTs: 0 }}
-      onDateRangeChange={jest.fn()}
-      {...props}
-    />
-  );
+  render(<TasksTab {...props} />);
 
 describe('TasksTab', () => {
   beforeEach(() => {
@@ -308,6 +308,16 @@ describe('TasksTab', () => {
       limit: 25,
       after: 'cur',
     });
+  });
+
+  // A work queue: an open task must never age out of it.
+  it('sends no date window', () => {
+    renderTab();
+
+    capturedFetchPage(undefined);
+
+    expect(mockListVisibleTasks.mock.calls[0][0]).not.toHaveProperty('startTs');
+    expect(mockListVisibleTasks.mock.calls[0][0]).not.toHaveProperty('endTs');
   });
 
   it('lists all entity tasks (listTasks) when scoped to an entity', () => {

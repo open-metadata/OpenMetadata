@@ -69,12 +69,12 @@ const TASK_TYPE_BADGE: Record<
     icon: 'incident',
   },
   [TaskType.DataAccessRequest]: {
-    labelKey: 'label.data-access-request',
+    labelKey: 'label.access-request',
     color: 'blue',
     icon: 'access',
   },
   [TaskType.TagUpdate]: {
-    labelKey: 'label.tag',
+    labelKey: 'label.tag-request',
     color: 'purple',
     icon: 'tag',
   },

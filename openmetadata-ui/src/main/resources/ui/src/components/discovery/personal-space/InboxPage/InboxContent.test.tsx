@@ -55,6 +55,18 @@ jest.mock('./tabs/TasksTab', () => ({
   ),
 }));
 
+// The shell is presentational; render its two slots so the tabs and the active
+// surface this component supplies stay observable.
+jest.mock('./InboxPage', () => ({
+  __esModule: true,
+  default: ({ tabs, content }: { tabs?: ReactNode; content?: ReactNode }) => (
+    <div>
+      {tabs}
+      {content}
+    </div>
+  ),
+}));
+
 let tabsOnChange: ((key: string) => void) | undefined;
 
 jest.mock('@openmetadata/ui-core-components', () => {

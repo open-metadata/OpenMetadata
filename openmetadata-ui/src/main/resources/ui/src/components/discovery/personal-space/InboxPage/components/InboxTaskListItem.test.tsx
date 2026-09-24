@@ -149,6 +149,31 @@ describe('InboxTaskListItem', () => {
     expect(screen.getByText('Approval request for orders')).toBeInTheDocument();
   });
 
+  // The list shows a short reference; the detail header keeps "TASK-…".
+  it('drops the TASK- prefix from the id', () => {
+    render(
+      <InboxTaskListItem
+        task={{ ...task, taskId: 'TASK-00357' } as Task}
+        onClick={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('#00357')).toBeInTheDocument();
+  });
+
+  it('shows no comment count when there are none', () => {
+    render(
+      <InboxTaskListItem
+        task={{ ...task, commentCount: 0 } as Task}
+        onClick={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('inbox-task-comment-count')
+    ).not.toBeInTheDocument();
+  });
+
   it('fires onClick with the task', () => {
     const onClick = jest.fn();
     render(<InboxTaskListItem task={task} onClick={onClick} />);

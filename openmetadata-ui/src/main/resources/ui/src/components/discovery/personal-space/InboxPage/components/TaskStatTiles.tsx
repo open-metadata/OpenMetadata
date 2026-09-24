@@ -63,7 +63,7 @@ const TileValue: React.FC<{ tile: StatTile }> = ({ tile }) => {
   return (
     <Typography
       className={classNames(tile.tone && TONE_CLASS[tile.tone])}
-      size={tile.layout === 'field' ? 'text-sm' : 'text-lg'}
+      size={tile.layout === 'field' ? 'text-sm' : 'text-md'}
       weight="semibold">
       {tile.value}
     </Typography>
@@ -117,7 +117,7 @@ export const TaskStatTileGrid: React.FC<TaskStatTileGridProps> = ({
       data-testid={`${testIdPrefix}-tiles`}>
       {tiles.map((tile) => {
         const label = (
-          <Typography className="tw:text-secondary" size="text-xs">
+          <Typography className="tw:text-tertiary" size="text-xs">
             {tile.label}
           </Typography>
         );
@@ -126,7 +126,7 @@ export const TaskStatTileGrid: React.FC<TaskStatTileGridProps> = ({
         return (
           <Box
             align="start"
-            className="tw:bg-primary tw:p-4"
+            className="tw:bg-secondary tw:px-4 tw:py-3"
             data-testid={`${testIdPrefix}-${tile.key}`}
             direction="col"
             gap={1}

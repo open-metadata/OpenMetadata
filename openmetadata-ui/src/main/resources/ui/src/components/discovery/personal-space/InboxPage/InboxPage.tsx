@@ -23,35 +23,34 @@ import { ReactComponent as InboxIcon } from '../../../../assets/svg/ask-collate-
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 
 export interface InboxPageProps {
-  /**
-   * The inbox body: the Activity / Triage switcher and the active surface.
-   * Optional so the shell can mount without it; a consumer contributes the
-   * real surface.
-   */
+  /** The Activity / Triage tab strip, drawn along the header's bottom edge. */
+  tabs?: ReactNode;
+  /** The active tab's surface. */
   content?: ReactNode;
 }
 
 /**
- * The routed shell for `/inbox`: a header and the inbox body.
- *
- * The inbox holds Activity and Triage, and those tabs live with the body that
- * owns their counts and shared date filter, so this shell contributes no tab
- * bar of its own. My Data is a separate surface, not an inbox tab.
+ * The routed shell for `/inbox`: a header carrying the Activity / Triage tabs,
+ * over the active surface, edge to edge. My Data is a separate surface, not an
+ * inbox tab.
  *
  * The brand-tinted "gradient" header is app-mode chrome — gated on
  * {@link useIsAiMode} so a classic mount renders the flat header.
  */
-const InboxPage: React.FC<InboxPageProps> = ({ content }) => {
+const InboxPage: React.FC<InboxPageProps> = ({ tabs, content }) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
 
   return (
     <Box
-      className="inbox-page tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:gap-4 tw:overflow-hidden tw:p-2"
+      className="inbox-page tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:overflow-hidden"
       data-testid="inbox-page"
       direction="col">
+      {/* Flush with the page card: the header's own card edge would otherwise
+          draw a second frame inside it. Only the rule under the tabs stays. */}
       <PageLayout.PageHeader
-        className="tw:mb-0! tw:pb-0"
+        className="tw:mb-0! tw:shrink-0 tw:rounded-none tw:border-0! tw:border-b! tw:border-secondary! tw:shadow-none"
+        footer={tabs}
         icon={
           <FeaturedIcon
             color="brand"
@@ -67,7 +66,7 @@ const InboxPage: React.FC<InboxPageProps> = ({ content }) => {
       />
 
       <Box
-        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-[10px] tw:bg-primary"
+        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:bg-primary"
         direction="col">
         {content ?? (
           <EmptyPlaceholder
