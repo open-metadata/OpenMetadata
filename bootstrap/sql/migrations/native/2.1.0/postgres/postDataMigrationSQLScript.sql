@@ -303,3 +303,104 @@ WHERE name IN (
 UPDATE user_entity
 SET json = jsonb_set(json, '{email}', to_jsonb(lower(json ->> 'email')))
 WHERE json ->> 'email' <> lower(json ->> 'email');
+-- External S3 sample-data storage support was removed (collate#5995), and with it the
+-- whole sampleDataStorageConfig property: once the external branch was gone the field
+-- could only ever hold an empty object, so it carried no information and was dropped
+-- from every connection and profiler schema. Connection schemas set
+-- "additionalProperties": false, so any stored row that still carries the key -- the
+-- legacy S3 shape or the empty OpenMetadata-hosted object alike -- stops deserializing
+-- on upgrade. Remove the node outright wherever it appears. The field was optional, so
+-- removing it is the same as never having set it, and OpenMetadata-hosted sample data
+-- (stored under the table.sampleData extension) is untouched. Idempotent: #- of an
+-- absent path is a no-op, and re-running finds nothing left to remove.
+--
+-- Hive nests its metastore connection, so a database service can hold the key at two
+-- depths.
+UPDATE dbservice_entity
+SET json = json::jsonb
+      #- '{connection,config,sampleDataStorageConfig}'
+      #- '{connection,config,metastoreConnection,sampleDataStorageConfig}'
+WHERE json::jsonb #> '{connection,config,sampleDataStorageConfig}' IS NOT NULL
+   OR json::jsonb #> '{connection,config,metastoreConnection,sampleDataStorageConfig}' IS NOT NULL;
+
+-- Superset reaches its database through a nested connection, and a dashboard service is
+-- not stored in dbservice_entity.
+UPDATE dashboard_service_entity
+SET json = json::jsonb #- '{connection,config,connection,sampleDataStorageConfig}'
+WHERE json::jsonb #> '{connection,config,connection,sampleDataStorageConfig}' IS NOT NULL;
+
+-- Airflow nests under connection; SSIS and Wherescape under databaseConnection.
+UPDATE pipeline_service_entity
+SET json = json::jsonb
+      #- '{connection,config,connection,sampleDataStorageConfig}'
+      #- '{connection,config,databaseConnection,sampleDataStorageConfig}'
+WHERE json::jsonb #> '{connection,config,connection,sampleDataStorageConfig}' IS NOT NULL
+   OR json::jsonb #> '{connection,config,databaseConnection,sampleDataStorageConfig}' IS NOT NULL;
+
+-- Alation, same nesting, metadata service table.
+UPDATE metadata_service_entity
+SET json = json::jsonb #- '{connection,config,connection,sampleDataStorageConfig}'
+WHERE json::jsonb #> '{connection,config,connection,sampleDataStorageConfig}' IS NOT NULL;
+
+-- Test Connection stores the submitted form as a workflow request. The UI deletes the
+-- row once the check finishes, but rows survive an interrupted test, and a row that no
+-- longer deserializes is also a row the retention sweep cannot delete.
+UPDATE automations_workflow
+SET json = json::jsonb
+      #- '{request,connection,config,sampleDataStorageConfig}'
+      #- '{request,connection,config,connection,sampleDataStorageConfig}'
+      #- '{request,connection,config,metastoreConnection,sampleDataStorageConfig}'
+      #- '{request,connection,config,databaseConnection,sampleDataStorageConfig}'
+WHERE json::jsonb #> '{request,connection,config,sampleDataStorageConfig}' IS NOT NULL
+   OR json::jsonb #> '{request,connection,config,connection,sampleDataStorageConfig}' IS NOT NULL
+   OR json::jsonb #> '{request,connection,config,metastoreConnection,sampleDataStorageConfig}' IS NOT NULL
+   OR json::jsonb #> '{request,connection,config,databaseConnection,sampleDataStorageConfig}' IS NOT NULL;
+
+UPDATE database_entity
+SET json = json::jsonb #- '{databaseProfilerConfig,sampleDataStorageConfig}'
+WHERE json::jsonb #> '{databaseProfilerConfig,sampleDataStorageConfig}' IS NOT NULL;
+
+UPDATE database_schema_entity
+SET json = json::jsonb #- '{databaseSchemaProfilerConfig,sampleDataStorageConfig}'
+WHERE json::jsonb #> '{databaseSchemaProfilerConfig,sampleDataStorageConfig}' IS NOT NULL;
+
+-- Version history keeps a second copy of the same JSON. `EntityRepository.getVersion`
+-- deserializes an entity_extension row straight into the generated POJO, so a snapshot
+-- still carrying the key fails GET .../versions/{version} -- 400 for a service
+-- connection (the secrets-manager decrypt rejects the unrecognized field) and 500 for a
+-- profiler config (raw Jackson). The live rows above are only half the copies.
+--
+-- One statement covers every versioned entity the key can reach: the four service
+-- types, database, databaseSchema, and the automations workflow (Test Connection
+-- requests are versioned too). A path a snapshot does not have is a no-op, so the paths
+-- apply uniformly; the extension prefixes stay explicit so the scan can use
+-- `extension_index` instead of a leading wildcard.
+UPDATE entity_extension
+SET json = json::jsonb
+      #- '{connection,config,sampleDataStorageConfig}'
+      #- '{connection,config,metastoreConnection,sampleDataStorageConfig}'
+      #- '{connection,config,connection,sampleDataStorageConfig}'
+      #- '{connection,config,databaseConnection,sampleDataStorageConfig}'
+      #- '{request,connection,config,sampleDataStorageConfig}'
+      #- '{request,connection,config,connection,sampleDataStorageConfig}'
+      #- '{request,connection,config,metastoreConnection,sampleDataStorageConfig}'
+      #- '{request,connection,config,databaseConnection,sampleDataStorageConfig}'
+      #- '{databaseProfilerConfig,sampleDataStorageConfig}'
+      #- '{databaseSchemaProfilerConfig,sampleDataStorageConfig}'
+WHERE (extension LIKE 'databaseService.version.%'
+    OR extension LIKE 'dashboardService.version.%'
+    OR extension LIKE 'pipelineService.version.%'
+    OR extension LIKE 'metadataService.version.%'
+    OR extension LIKE 'database.version.%'
+    OR extension LIKE 'databaseSchema.version.%'
+    OR extension LIKE 'workflow.version.%')
+  AND (json::jsonb #> '{connection,config,sampleDataStorageConfig}' IS NOT NULL
+    OR json::jsonb #> '{connection,config,metastoreConnection,sampleDataStorageConfig}' IS NOT NULL
+    OR json::jsonb #> '{connection,config,connection,sampleDataStorageConfig}' IS NOT NULL
+    OR json::jsonb #> '{connection,config,databaseConnection,sampleDataStorageConfig}' IS NOT NULL
+    OR json::jsonb #> '{request,connection,config,sampleDataStorageConfig}' IS NOT NULL
+    OR json::jsonb #> '{request,connection,config,connection,sampleDataStorageConfig}' IS NOT NULL
+    OR json::jsonb #> '{request,connection,config,metastoreConnection,sampleDataStorageConfig}' IS NOT NULL
+    OR json::jsonb #> '{request,connection,config,databaseConnection,sampleDataStorageConfig}' IS NOT NULL
+    OR json::jsonb #> '{databaseProfilerConfig,sampleDataStorageConfig}' IS NOT NULL
+    OR json::jsonb #> '{databaseSchemaProfilerConfig,sampleDataStorageConfig}' IS NOT NULL);

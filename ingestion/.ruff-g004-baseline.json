@@ -2885,10 +2885,6 @@
       "809a56b7eebeae73782abbfb597be701e8a6bcf54c6dfd03051a6b6bc57e6e23": 1,
       "94c342c05b3faff877de82976780a7a080069a72ea7cbff7345a3561a4873fd7": 1
     },
-    "ingestion/src/metadata/profiler/processor/sample_data_handler.py": {
-      "641b73a84dde75185d71467f7f24cbe50901a432f8a4c069ac69217f87d14f39": 1,
-      "952b719987a486d58601b773c82090aacdf2f273a73c8edc2453708c65172d79": 1
-    },
     "ingestion/src/metadata/profiler/source/database/base/profiler_source.py": {
       "6e4760511c3fb0f7e6acf5cd8a7fb2e9c2d43cd891ccd2793549d86316536916": 1,
       "9449f1883b42fada9225ab897781b5ddba0956b418cd9bb13020c4d8cbf375fc": 1
@@ -2898,13 +2894,6 @@
     },
     "ingestion/src/metadata/profiler/source/metadata.py": {
       "960a66a6c1400a4eb603ab621a633bbb4d30d5515e35c6bbd413bb9cbab688a2": 1
-    },
-    "ingestion/src/metadata/profiler/source/metadata_ext.py": {
-      "2d65f7e813141ba075354d43d48953be2b74874eb59eab171dd6b44ef551d21c": 1,
-      "64686e7daa1b6a31362611089f0bdf495f0c5671c55f888b9e3fdd2e913c9cd8": 1,
-      "aaad3dbab4f1fe104bd893b699f6085e2c2c4f063acfb00cc1a1b258924d8f0b": 1,
-      "d7388bc5cda881fc2ed9df0d5c481f856bf466f8aa506f63efb4a087a397b60b": 1,
-      "db2a33d21eaed0d1c181e1b832e8900ae6d8e9ba20282607c1d083ba816c28e5": 1
     },
     "ingestion/src/metadata/readers/archive.py": {
       "0a4f177c9a98ecd74e85e43cc53735c0881f8b5eecbf9496dae2aee880cd948f": 1,
