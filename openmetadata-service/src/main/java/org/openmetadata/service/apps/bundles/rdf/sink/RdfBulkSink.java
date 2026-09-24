@@ -100,6 +100,8 @@ public class RdfBulkSink implements AutoCloseable {
       new LinkedBlockingQueue<>(SUBMISSION_QUEUE_CAPACITY);
   private final Thread writerThread;
   private final AtomicBoolean closed = new AtomicBoolean(false);
+  // Set when an Error stopped the writer, so later submissions can say why the sink closed.
+  private volatile Throwable writerFailure;
 
   /** Translation output plus the time the translate task itself spent, excluding queue wait. */
   private record TranslatedBatch(
@@ -127,13 +129,11 @@ public class RdfBulkSink implements AutoCloseable {
    * Enqueue a batch. Blocks when the submission queue is full (backpressure to the reader).
    * Translation starts immediately on the shared pool; the returned future completes — in
    * submission order — once the batch has been written (or terminally failed) by the writer
-   * thread. After {@link #close()} the future completes exceptionally.
+   * thread. After {@link #close()}, or once the writer has stopped, it completes exceptionally.
    */
   public CompletableFuture<BatchProcessingResult> submit(
       String entityType, List<? extends EntityInterface> entities) throws InterruptedException {
-    if (closed.get()) {
-      throw new IllegalStateException("RdfBulkSink is closed");
-    }
+    requireOpen();
     CompletableFuture<TranslatedBatch> translation =
         CompletableFuture.supplyAsync(
             () -> {
@@ -148,16 +148,70 @@ public class RdfBulkSink implements AutoCloseable {
             TRANSLATE_EXECUTOR);
     SubmittedBatch batch =
         new SubmittedBatch(entityType, entities, translation, new CompletableFuture<>());
-    submissionQueue.put(batch);
+    enqueue(batch);
     return batch.ack();
   }
 
+  /**
+   * Waits for queue space, but never on a writer that has stopped: its queued batches would never
+   * be acknowledged, so the submission fails instead of blocking the reader for good.
+   */
+  private void enqueue(SubmittedBatch batch) throws InterruptedException {
+    while (!submissionQueue.offer(batch, WRITER_POLL_MS, TimeUnit.MILLISECONDS)) {
+      requireOpen();
+    }
+    if (closed.get()) {
+      failQueued();
+    }
+  }
+
+  private void requireOpen() {
+    if (closed.get()) {
+      throw new IllegalStateException("RdfBulkSink is closed", writerFailure);
+    }
+  }
+
+  /**
+   * An Error such as running out of memory on a large batch ends the writer. The sink then closes
+   * and fails everything still queued, so no reader or run waits on an acknowledgement for ever.
+   */
   private void drainLoop() {
-    while (!closed.get() || !submissionQueue.isEmpty()) {
-      SubmittedBatch batch = pollNext();
-      if (batch != null) {
-        completeBatch(batch);
+    try {
+      while (!closed.get() || !submissionQueue.isEmpty()) {
+        SubmittedBatch batch = pollNext();
+        if (batch != null) {
+          completeBatch(batch);
+        }
       }
+    } catch (RuntimeException | Error stopped) {
+      writerFailure = stopped;
+      LOG.error("RDF sink writer stopped; failing the batches it had not written", stopped);
+      throw stopped;
+    } finally {
+      closed.set(true);
+      failQueued();
+    }
+  }
+
+  /** Whether the writer stopped on an error, so nothing submitted since can be written. */
+  public boolean writerFailed() {
+    return writerFailure != null;
+  }
+
+  /** Fails the caller when the writer stopped on an error, so a run cannot report completion. */
+  public void throwIfWriterFailed() {
+    final Throwable failure = writerFailure;
+    if (failure != null) {
+      throw new IllegalStateException("The RDF sink writer stopped: " + failure, failure);
+    }
+  }
+
+  private void failQueued() {
+    SubmittedBatch orphan;
+    while ((orphan = submissionQueue.poll()) != null) {
+      orphan
+          .ack()
+          .completeExceptionally(new IllegalStateException("RdfBulkSink closed", writerFailure));
     }
   }
 
@@ -195,6 +249,9 @@ public class RdfBulkSink implements AutoCloseable {
               ? wrapped.getCause()
               : e;
       batch.ack().completeExceptionally(cause);
+    } catch (Error fatal) {
+      batch.ack().completeExceptionally(fatal);
+      throw fatal;
     }
   }
 
@@ -215,10 +272,7 @@ public class RdfBulkSink implements AutoCloseable {
         LOG.warn("RDF sink writer did not drain within 10 minutes; interrupting");
         writerThread.interrupt();
       }
-      SubmittedBatch orphan;
-      while ((orphan = submissionQueue.poll()) != null) {
-        orphan.ack().completeExceptionally(new IllegalStateException("RdfBulkSink closed"));
-      }
+      failQueued();
     }
   }
 }

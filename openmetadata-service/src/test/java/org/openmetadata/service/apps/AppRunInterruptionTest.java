@@ -25,6 +25,23 @@ class AppRunInterruptionTest {
   }
 
   @Test
+  void lockFailureNamesTheServerThatStoppedAndTheServerThatNoticed() throws Exception {
+    final IndexingError failure =
+        JsonUtils.readValue(
+            AppRunInterruption.lockNoLongerRenewed("om-server-0"), IndexingError.class);
+
+    assertEquals(IndexingError.ErrorSource.JOB, failure.getErrorSource());
+    assertTrue(
+        failure.getMessage().contains("server 'om-server-0' stopped renewing the lock"),
+        failure.getMessage());
+    assertTrue(
+        failure
+            .getMessage()
+            .contains("server '" + InetAddress.getLocalHost().getHostName() + "' marked it failed"),
+        failure.getMessage());
+  }
+
+  @Test
   void failureCarriesTheGivenReasonAsAJobError() {
     final IndexingError failure =
         JsonUtils.readValue(

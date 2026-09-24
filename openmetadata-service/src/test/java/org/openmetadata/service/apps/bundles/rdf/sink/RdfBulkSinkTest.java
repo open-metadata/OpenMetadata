@@ -14,6 +14,8 @@ package org.openmetadata.service.apps.bundles.rdf.sink;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -182,6 +184,7 @@ class RdfBulkSinkTest {
 
     assertEquals(1, first.join().successCount());
     assertEquals(1, second.join().successCount());
+    assertFalse(sink.writerFailed(), "a writer that drained and closed has not failed");
   }
 
   @Test
@@ -246,5 +249,50 @@ class RdfBulkSinkTest {
     assertTrue(
         result.processTimeMs() >= 10,
         "translation time must be measured, saw " + result.processTimeMs() + "ms");
+  }
+
+  @Test
+  @DisplayName("a writer stopped by an Error fails every waiting batch instead of hanging them")
+  void writerStoppedByAnErrorFailsWaitingBatches() throws Exception {
+    CountDownLatch writing = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
+    when(batchProcessor.processEntitiesPreTranslated(anyString(), anyList(), anyList(), any()))
+        .thenAnswer(
+            invocation -> {
+              writing.countDown();
+              release.await();
+              throw new OutOfMemoryError("simulated: batch too large to write");
+            });
+    CompletableFuture<RdfBatchProcessor.BatchProcessingResult> writingBatch =
+        sink.submit("table", batchOf(1));
+    assertTrue(writing.await(10, TimeUnit.SECONDS));
+    List<CompletableFuture<RdfBatchProcessor.BatchProcessingResult>> queued =
+        new CopyOnWriteArrayList<>();
+    for (int batch = 0; batch < 4; batch++) {
+      queued.add(sink.submit("table", batchOf(1)));
+    }
+    // The queue is full, so this submission waits for space. When the writer stops it must fail
+    // one way or the other, by refusing the batch or by acknowledging it as failed, never hang.
+    CompletableFuture<CompletableFuture<RdfBatchProcessor.BatchProcessingResult>> waiting =
+        CompletableFuture.supplyAsync(this::submitOrFail);
+
+    release.countDown();
+
+    assertThrows(CompletionException.class, writingBatch::join);
+    queued.forEach(ack -> assertThrows(CompletionException.class, ack::join));
+    assertThrows(CompletionException.class, () -> waiting.get(10, TimeUnit.SECONDS).join());
+    assertThrows(IllegalStateException.class, () -> sink.submit("table", batchOf(1)));
+    assertTrue(sink.writerFailed());
+    IllegalStateException runFailure =
+        assertThrows(IllegalStateException.class, sink::throwIfWriterFailed);
+    assertInstanceOf(OutOfMemoryError.class, runFailure.getCause());
+  }
+
+  private CompletableFuture<RdfBatchProcessor.BatchProcessingResult> submitOrFail() {
+    try {
+      return sink.submit("table", batchOf(1));
+    } catch (IllegalStateException | InterruptedException refused) {
+      return CompletableFuture.failedFuture(refused);
+    }
   }
 }

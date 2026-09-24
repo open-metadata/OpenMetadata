@@ -25,6 +25,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.bundles.rdf.RdfIndexRunRecovery;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheConfig;
@@ -130,15 +131,23 @@ public class ApplicationHandler {
   public void cleanupStaleJobs() {
     try {
       LOG.info("Cleaning up stale application jobs from previous server runs");
+      final long startedAt = System.currentTimeMillis();
       final CollectionDAO.AppExtensionTimeSeries runs =
           Entity.getCollectionDAO().appExtensionTimeSeriesDao();
+      final List<String> running = runs.listAppNamesWithRunningStatus();
+      // Search and RDF indexing runs can still be executing on another server; their own
+      // recovery reads the run's lock to tell a live run from one whose server stopped.
       final List<String> appNames =
-          runs.listAppNamesWithRunningStatus().stream()
+          running.stream()
               .filter(appName -> !SEARCH_INDEXING_APPLICATION.equals(appName))
+              .filter(appName -> !RdfIndexRunRecovery.APP_NAME.equals(appName))
               .toList();
       if (!appNames.isEmpty()) {
         runs.markRunningEntriesInterrupted(
-            appNames, AppRunInterruption.stillRunningAtStartup(), System.currentTimeMillis());
+            appNames, AppRunInterruption.stillRunningAtStartup(), startedAt, startedAt);
+      }
+      if (running.contains(RdfIndexRunRecovery.APP_NAME)) {
+        RdfIndexRunRecovery.forServer().recover(startedAt);
       }
       LOG.info("Stale application jobs cleanup completed successfully");
     } catch (Exception e) {

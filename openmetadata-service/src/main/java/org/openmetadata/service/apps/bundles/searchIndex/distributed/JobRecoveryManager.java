@@ -506,7 +506,7 @@ public class JobRecoveryManager {
       collectionDAO
           .appExtensionTimeSeriesDao()
           .markRunningEntriesInterrupted(
-              List.of(SEARCH_INDEX_APP_NAME), AppRunInterruption.failure(errorMessage), now);
+              List.of(SEARCH_INDEX_APP_NAME), AppRunInterruption.failure(errorMessage), now, now);
     } catch (Exception e) {
       LOG.warn("Failed to update app_extension_time_series for failed job {}", job.getId(), e);
     }

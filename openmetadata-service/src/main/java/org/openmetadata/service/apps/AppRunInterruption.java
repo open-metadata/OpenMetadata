@@ -17,11 +17,21 @@ public final class AppRunInterruption {
           + " executing it stops (restart, crash or redeploy), and that server's logs and restart"
           + " history show why. A run still executing on another server reports its own status.";
 
+  private static final String LOCK_NO_LONGER_RENEWED =
+      "Ended without reporting its status: server '%s' stopped renewing the lock this run held, so"
+          + " server '%s' marked it failed. A run ends when the server executing it stops (restart,"
+          + " crash or redeploy), and that server's logs and restart history show why.";
+
   private AppRunInterruption() {}
 
   /** The failure for runs this server finds still running as it starts. */
   public static String stillRunningAtStartup() {
     return failure(STILL_RUNNING_AT_STARTUP.formatted(localHostName()));
+  }
+
+  /** The failure for a run whose server stopped renewing the lock that marked it live. */
+  public static String lockNoLongerRenewed(final String lockHolderServer) {
+    return failure(LOCK_NO_LONGER_RENEWED.formatted(lockHolderServer, localHostName()));
   }
 
   /** The failure, as JSON, for a run that ended because of {@code reason}. */

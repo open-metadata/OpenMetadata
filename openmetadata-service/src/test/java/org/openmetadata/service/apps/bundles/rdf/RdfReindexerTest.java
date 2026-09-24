@@ -13,6 +13,7 @@
 package org.openmetadata.service.apps.bundles.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -24,12 +25,14 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.ResultList;
@@ -112,6 +115,55 @@ class RdfReindexerTest {
         listener.failures.contains("table: 3: Fuseki unavailable"), listener.failures::toString);
   }
 
+  @Test
+  void pageWithNoReadableRowSkipsTheRestOfTheTypeAndTheNextTypeIsStillIndexed() throws Exception {
+    final InMemoryPages table = pages(rows("t", 9));
+    table.unreadableCursorOnPage = 2;
+
+    reindexer(Map.of("table", table, "topic", pages(rows("p", 4))))
+        .index(List.of("table", "topic"));
+
+    assertEquals(
+        List.of("table after 6 rows: No readable row in a page of table to continue after"),
+        listener.unreadableTypes);
+    assertEquals(rows("t", 6), writer.written("table"));
+    assertEquals(rows("p", 4), writer.written("topic"));
+  }
+
+  @Test
+  void pageWhoseOutcomeCannotBeRecordedIsNotAlsoCountedAsFailed() throws Exception {
+    listener.failNextBatchWritten.set(true);
+
+    reindexer(Map.of("table", pages(rows("t", 6)))).index(List.of("table"));
+
+    assertEquals(3, listener.succeeded("table"));
+    assertEquals(0, listener.failed("table"));
+    assertEquals(List.of(), listener.failures);
+  }
+
+  @Test
+  void cursorWalksBackPastRowsThatDoNotDeserialize() {
+    final KeysetCursor cursor =
+        RdfReindexer.cursorAfterLastReadable(
+            "table", List.of("t0", "t1", "bad"), InMemoryPages::cursorOf);
+
+    assertEquals(new KeysetCursor("t1", "t1"), cursor);
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            RdfReindexer.cursorAfterLastReadable(
+                "table", List.of("bad", "bad"), InMemoryPages::cursorOf));
+  }
+
+  @Test
+  void pagesInFlightShrinkAsPagesGrowSoMemoryStaysBounded() {
+    assertEquals(8, RdfReindexer.maxPagesInFlight(100, 4));
+    assertEquals(4, RdfReindexer.maxPagesInFlight(1_000, 4));
+    assertEquals(4, RdfReindexer.maxPagesInFlight(1_000, 10));
+    assertEquals(2, RdfReindexer.maxPagesInFlight(5_000, 4));
+    assertEquals(2, RdfReindexer.maxPagesInFlight(100, 1));
+  }
+
   private RdfReindexer reindexer(final Map<String, EntityPages> types) {
     return new RdfReindexer(writer, types::get, listener, PAGE, 2);
   }
@@ -134,6 +186,7 @@ class RdfReindexerTest {
     private final Set<String> storedDataOnly = ConcurrentHashMap.newKeySet();
     private final Set<String> unreadable = ConcurrentHashMap.newKeySet();
     private int failOnPage = -1;
+    private int unreadableCursorOnPage = -1;
     private int pagesRead;
 
     private InMemoryPages(final List<String> rows) {
@@ -167,8 +220,17 @@ class RdfReindexerTest {
 
     @Override
     public KeysetCursor cursorAfter(final List<String> page) {
-      final String last = page.getLast();
-      return new KeysetCursor(last, last);
+      return pagesRead == unreadableCursorOnPage
+          ? RdfReindexer.cursorAfterLastReadable("table", List.of("bad"), InMemoryPages::cursorOf)
+          : cursorOf(page.getLast());
+    }
+
+    /** Rows named "bad" stand in for rows that do not deserialize. */
+    private static KeysetCursor cursorOf(final String row) {
+      if (row.equals("bad")) {
+        throw new JsonParsingException("unreadable row");
+      }
+      return new KeysetCursor(row, row);
     }
   }
 
@@ -209,6 +271,7 @@ class RdfReindexerTest {
     private final List<String> unreadableTypes = Collections.synchronizedList(new ArrayList<>());
     private final AtomicInteger pagesRead = new AtomicInteger();
     private int stopAfterPages = Integer.MAX_VALUE;
+    private final AtomicBoolean failNextBatchWritten = new AtomicBoolean();
 
     @Override
     public boolean isStopRequested() {
@@ -222,6 +285,9 @@ class RdfReindexerTest {
 
     @Override
     public void onBatchWritten(final String entityType, final StepStats batch) {
+      if (failNextBatchWritten.compareAndSet(true, false)) {
+        throw new IllegalStateException("stats store unavailable");
+      }
       totals.merge(
           entityType,
           batch,

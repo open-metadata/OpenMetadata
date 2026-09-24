@@ -47,11 +47,18 @@ public final class RdfReindexRunLock {
     return new RdfReindexRunLock(locks, LOCK_KEY, runId, serverId);
   }
 
-  /** Takes the lock, or throws naming the run that holds it. */
+  /** Takes the lock, or throws {@link HeldByAnotherRun} naming the run that holds it. */
   public void acquire() {
     final long now = System.currentTimeMillis();
     if (!locks.tryAcquireLock(lockKey, runId, serverId, now, now + EXPIRY_MS)) {
-      throw new IllegalStateException(describeHolder(locks.findByKey(lockKey)));
+      throw new HeldByAnotherRun(describeHolder(locks.findByKey(lockKey)));
+    }
+  }
+
+  /** Another run holds the lock, so this one should not start. */
+  public static final class HeldByAnotherRun extends IllegalStateException {
+    HeldByAnotherRun(final String message) {
+      super(message);
     }
   }
 
@@ -67,9 +74,10 @@ public final class RdfReindexRunLock {
 
   private static String describeHolder(final RdfReindexLockRecord holder) {
     return holder == null
-        ? "Another RDF reindex is starting; try again once it finishes"
+        ? "Skipped: another RDF reindex is starting. Run it again once that one finishes."
         : String.format(
-            "Another RDF reindex is running on server '%s' (run %s); try again once it finishes",
+            "Skipped: another RDF reindex is running on server '%s' (run %s). Run it again once"
+                + " that one finishes.",
             holder.serverId(), holder.jobId());
   }
 }

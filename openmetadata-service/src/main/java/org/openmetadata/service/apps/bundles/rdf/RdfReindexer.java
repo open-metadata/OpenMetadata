@@ -51,6 +51,16 @@ import org.openmetadata.service.util.FullyQualifiedName;
  */
 @Slf4j
 final class RdfReindexer {
+  /**
+   * Loaded entities and their translated models all live in memory until written, so pages in
+   * flight are capped by entity count as well as by reader count: raising {@code batchSize} then
+   * lowers the number of pages instead of multiplying memory. Two pages is the floor, one being
+   * written while the next loads.
+   */
+  static final int MAX_ENTITIES_IN_FLIGHT = 4_000;
+
+  private static final int MIN_PAGES_IN_FLIGHT = 2;
+
   private final BatchWriter writer;
   private final Function<String, EntityPages> pagesOf;
   private final Listener listener;
@@ -117,8 +127,10 @@ final class RdfReindexer {
   /** Indexes {@code entityTypes} in order and returns once every page read has been written. */
   void index(final Collection<String> entityTypes) throws InterruptedException {
     final ExecutorService pool =
-        Executors.newFixedThreadPool(readers, Thread.ofPlatform().name("rdf-reader-", 0).factory());
-    final Semaphore pagesInFlight = new Semaphore(maxPagesInFlight());
+        Executors.newFixedThreadPool(
+            readers, Thread.ofPlatform().name("rdf-reader-", 0).daemon().factory());
+    final int maxPagesInFlight = maxPagesInFlight(batchSize, readers);
+    final Semaphore pagesInFlight = new Semaphore(maxPagesInFlight);
     try {
       for (final String entityType : entityTypes) {
         if (listener.isStopRequested()) {
@@ -126,15 +138,17 @@ final class RdfReindexer {
         }
         indexEntityType(entityType, pool, pagesInFlight);
       }
-      pagesInFlight.acquire(maxPagesInFlight());
+      pagesInFlight.acquire(maxPagesInFlight);
     } finally {
       pool.shutdownNow();
     }
   }
 
-  /** Enough pages to keep every reader and the sink's lookahead busy, and no more in memory. */
-  private int maxPagesInFlight() {
-    return readers * 2;
+  /** Enough pages to keep every reader and the writer busy, within the in-memory entity cap. */
+  static int maxPagesInFlight(final int batchSize, final int readers) {
+    final int byReaders = Math.max(MIN_PAGES_IN_FLIGHT, readers * 2);
+    return Math.clamp(
+        MAX_ENTITIES_IN_FLIGHT / Math.max(1, batchSize), MIN_PAGES_IN_FLIGHT, byReaders);
   }
 
   /**
@@ -162,7 +176,8 @@ final class RdfReindexer {
       rows = read.pages.readPage(cursor, batchSize);
       if (!rows.isEmpty()) {
         pagesInFlight.acquire();
-        submitPage(read, rows, pool).whenComplete((done, failure) -> pagesInFlight.release());
+        submitPage(read, rows, pool)
+            .whenComplete((done, failure) -> released(read.entityType, pagesInFlight, failure));
         read.rows += rows.size();
         cursor = read.pages.cursorAfter(rows);
         listener.onPageRead();
@@ -182,24 +197,39 @@ final class RdfReindexer {
     }
   }
 
+  private static void released(
+      final String entityType, final Semaphore pagesInFlight, final Throwable failure) {
+    pagesInFlight.release();
+    if (failure != null) {
+      LOG.error("RDF reindex could not record the outcome of a {} page", entityType, failure);
+    }
+  }
+
+  /** Reports each page exactly once: written, or not written with the reason. */
   private CompletableFuture<Void> submitPage(
       final TypeRead read, final List<String> rows, final ExecutorService pool) {
     return CompletableFuture.supplyAsync(() -> load(read, rows), pool)
         .thenCompose(page -> write(read.entityType, page))
-        .exceptionally(
-            failure -> {
-              reportUnwritten(read.entityType, rows.size(), failure);
+        .handle(
+            (written, failure) -> {
+              if (failure == null) {
+                report(read.entityType, written.page(), written.result());
+              } else {
+                reportUnwritten(read.entityType, rows.size(), failure);
+              }
               return null;
             });
   }
 
-  private CompletableFuture<Void> write(final String entityType, final LoadedPage page) {
+  private CompletableFuture<WrittenPage> write(final String entityType, final LoadedPage page) {
     final CompletableFuture<BatchProcessingResult> written =
         page.entities().isEmpty()
             ? CompletableFuture.completedFuture(new BatchProcessingResult(0, 0))
             : submitToWriter(entityType, page.entities());
-    return written.thenAccept(result -> report(entityType, page, result));
+    return written.thenApply(result -> new WrittenPage(page, result));
   }
+
+  private record WrittenPage(LoadedPage page, BatchProcessingResult result) {}
 
   private CompletableFuture<BatchProcessingResult> submitToWriter(
       final String entityType, final List<EntityInterface> entities) {
@@ -247,27 +277,67 @@ final class RdfReindexer {
     final ResultList<? extends EntityInterface> loaded = read.pages.load(rows);
     final List<EntityInterface> entities = new ArrayList<>(loaded.getData());
     final List<EntityError> errors = listOrEmpty(loaded.getErrors());
-    int dropped = 0;
-    for (final EntityError error : errors) {
-      if (error.getEntity() instanceof EntityInterface storedOnly) {
-        LOG.warn(
-            "RDF reindex indexes {} {} with its stored data only: {}",
-            read.entityType,
-            storedOnly.getId(),
-            error.getMessage());
-        entities.add(storedOnly);
-      } else {
-        dropped++;
-        listener.onRowDropped(read.entityType, error.getMessage());
-      }
-    }
+    final int dropped = keepStoredData(read.entityType, errors, entities);
     final String firstError = errors.isEmpty() ? null : errors.getFirst().getMessage();
     final long readerTimeMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
     return new LoadedPage(entities, dropped, firstError, readerTimeMs);
   }
 
+  /**
+   * Adds each entity that carries its stored data to {@code entities} and reports each row that
+   * does not; returns the number of rows dropped. One summary line per page keeps catalogs with
+   * many stale references from logging a warning per entity.
+   */
+  private int keepStoredData(
+      final String entityType,
+      final List<EntityError> errors,
+      final List<EntityInterface> entities) {
+    int storedOnly = 0;
+    String storedOnlyReason = null;
+    for (final EntityError error : errors) {
+      if (error.getEntity() instanceof EntityInterface entity) {
+        LOG.debug(
+            "RDF reindex indexes {} {} with its stored data only", entityType, entity.getId());
+        entities.add(entity);
+        storedOnly++;
+        storedOnlyReason = storedOnlyReason == null ? error.getMessage() : storedOnlyReason;
+      } else {
+        listener.onRowDropped(entityType, error.getMessage());
+      }
+    }
+    if (storedOnly > 0) {
+      LOG.warn(
+          "RDF reindex indexed {} {} entities with their stored data only; first reason: {}",
+          storedOnly,
+          entityType,
+          storedOnlyReason);
+    }
+    return errors.size() - storedOnly;
+  }
+
   private record LoadedPage(
       List<EntityInterface> entities, int dropped, String firstError, long readerTimeMs) {}
+
+  /**
+   * The cursor after the last row of {@code rows} that deserializes. Walks back past rows that do
+   * not, which the load drops; a page with no readable row cannot be continued, so the type is
+   * reported unreadable and skipped.
+   */
+  static KeysetCursor cursorAfterLastReadable(
+      final String entityType,
+      final List<String> rows,
+      final Function<String, KeysetCursor> cursorOfRow) {
+    for (int index = rows.size() - 1; index >= 0; index--) {
+      try {
+        return cursorOfRow.apply(rows.get(index));
+      } catch (JsonParsingException unreadable) {
+        LOG.debug(
+            "Skipping an unreadable {} row while advancing the RDF reindex cursor", entityType);
+      }
+    }
+    throw new IllegalStateException(
+        "No readable row in a page of " + entityType + " to continue after");
+  }
 
   /** An entity type's rows in its repository, paged by the same keyset its list API uses. */
   private record RepositoryPages(EntityRepository<?> repository, Fields fields, ListFilter filter)
@@ -291,22 +361,14 @@ final class RdfReindexer {
 
     @Override
     public KeysetCursor cursorAfter(final List<String> rows) {
-      return cursorAfter(repository, filter, rows);
+      return cursorAfterLastReadable(
+          repository.getEntityType(), rows, row -> cursorOf(repository, filter, row));
     }
 
-    /** Walks back past any row that does not deserialize; those are dropped by the load. */
-    private static <T extends EntityInterface> KeysetCursor cursorAfter(
-        final EntityRepository<T> repository, final ListFilter filter, final List<String> rows) {
-      for (int index = rows.size() - 1; index >= 0; index--) {
-        try {
-          final T last = JsonUtils.readValue(rows.get(index), repository.getEntityClass());
-          return cursorOf(JsonUtils.readTree(repository.getCursorValue(last, filter)));
-        } catch (JsonParsingException unreadable) {
-          LOG.debug("Skipping an unreadable row while advancing the RDF reindex cursor");
-        }
-      }
-      throw new IllegalStateException(
-          "No readable row in a page of " + repository.getEntityType() + " to continue after");
+    private static <T extends EntityInterface> KeysetCursor cursorOf(
+        final EntityRepository<T> repository, final ListFilter filter, final String row) {
+      final T entity = JsonUtils.readValue(row, repository.getEntityClass());
+      return cursorOf(JsonUtils.readTree(repository.getCursorValue(entity, filter)));
     }
 
     private static KeysetCursor cursorOf(final JsonNode cursor) {

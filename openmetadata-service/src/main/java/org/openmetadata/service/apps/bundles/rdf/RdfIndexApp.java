@@ -163,6 +163,20 @@ public class RdfIndexApp extends AbstractNativeApplication {
       return;
     }
 
+    if (!acquireRunLockOrSkip(jobExecutionContext)) {
+      return;
+    }
+    startHeartbeat();
+    try {
+      runHoldingLock(jobExecutionContext);
+    } finally {
+      stopHeartbeat();
+      releaseRunLock();
+    }
+  }
+
+  /** Everything a run does once it holds the reindex lock, which the heartbeat keeps renewed. */
+  private void runHoldingLock(JobExecutionContext jobExecutionContext) {
     if (!admitAgainstSearchReindex(jobExecutionContext)) {
       return;
     }
@@ -187,7 +201,6 @@ public class RdfIndexApp extends AbstractNativeApplication {
     }
 
     try {
-      acquireRunLock();
       initialProjectionFailureVersion = RdfProjectionHealth.failureVersion();
       jobData.setRdfBuildDataset(null);
       jobData.setRdfRebuildId(null);
@@ -204,7 +217,6 @@ public class RdfIndexApp extends AbstractNativeApplication {
       RdfRepository indexingRepository = rdf().forRun(buildDataset, jobData.getRdfRebuildId(), 0);
       runRepository = indexingRepository;
       RdfAutoTune.applyTo(jobData, indexingRepository);
-      startHeartbeat();
       batchProcessor =
           new RdfBatchProcessor(
               collectionDAO,
@@ -223,6 +235,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
         prepareBuildDataset(indexingRepository, buildDataset);
       } else if (Boolean.TRUE.equals(jobData.getRecreateIndex())) {
         LOG.info("Clearing existing RDF data");
+        markIncompleteDuringInPlaceRebuild();
         clearRdfData();
       }
 
@@ -252,11 +265,24 @@ public class RdfIndexApp extends AbstractNativeApplication {
         handleJobFailure(ex);
       }
     } finally {
-      stopHeartbeat();
-      releaseRunLock();
       clearAutoTuneOverride();
       sendUpdates(jobExecutionContext, true);
     }
+  }
+
+  /**
+   * An in-place rebuild empties the serving graph before refilling it, so the graph is incomplete
+   * until the run completes, and a run cut short by a restart leaves it so until the next full
+   * rebuild. Marking the projection degraded first makes the RDF status say so. Re-reading the
+   * failure version afterwards lets a completed full rebuild clear this marker, while live-write
+   * failures during the run stay recorded.
+   */
+  private void markIncompleteDuringInPlaceRebuild() {
+    RdfProjectionHealth.markDegraded(
+        new IllegalStateException(
+            "An in-place RDF rebuild cleared the graph, so it is incomplete until a full rebuild"
+                + " completes"));
+    initialProjectionFailureVersion = RdfProjectionHealth.failureVersion();
   }
 
   private void clearAutoTuneOverride() {
@@ -267,12 +293,43 @@ public class RdfIndexApp extends AbstractNativeApplication {
     }
   }
 
+  /**
+   * A run that finds another run holding the lock is redundant rather than broken, so it ends
+   * STOPPED with the holder named, as a deferred run does, and does not trip failure alerting.
+   */
+  private boolean acquireRunLockOrSkip(JobExecutionContext jobExecutionContext) {
+    boolean acquired = false;
+    try {
+      acquireRunLock();
+      acquired = true;
+    } catch (RdfReindexRunLock.HeldByAnotherRun held) {
+      LOG.warn(held.getMessage());
+      endBeforeIndexing(jobExecutionContext, EventPublisherJob.Status.STOPPED, held.getMessage());
+    } catch (RuntimeException lockUnavailable) {
+      LOG.error("Could not take the RDF reindex lock", lockUnavailable);
+      endBeforeIndexing(
+          jobExecutionContext,
+          EventPublisherJob.Status.FAILED,
+          "Could not take the RDF reindex lock: " + lockUnavailable.getMessage());
+    }
+    return acquired;
+  }
+
+  private void endBeforeIndexing(
+      JobExecutionContext jobExecutionContext, EventPublisherJob.Status status, String reason) {
+    updateJobStatus(status);
+    jobData.setFailure(
+        new IndexingError().withErrorSource(IndexingError.ErrorSource.JOB).withMessage(reason));
+    sendUpdates(jobExecutionContext, true);
+  }
+
   private void acquireRunLock() {
     runLockLoss = null;
     runId = UUID.randomUUID();
-    runLock =
+    final RdfReindexRunLock lock =
         RdfReindexRunLock.forRun(collectionDAO.rdfReindexLockDAO(), runId.toString(), serverId());
-    runLock.acquire();
+    lock.acquire();
+    runLock = lock;
   }
 
   private void releaseRunLock() {
@@ -405,25 +462,34 @@ public class RdfIndexApp extends AbstractNativeApplication {
     return target.dataset();
   }
 
-  /** Renews the run lock, and a blue/green run's dataset lease, until the run ends. */
+  /**
+   * Renews the run lock until the run ends, and a blue/green run's dataset lease while its build
+   * dataset is being filled; the lease is looked up on each renewal because the run chooses its
+   * build dataset after the heartbeat starts.
+   */
   private void startHeartbeat() {
     final RdfReindexRunLock lock = runLock;
-    final BuildTarget target =
-        buildDataset == null ? null : new BuildTarget(jobData.getRdfRebuildId(), buildDataset);
     heartbeat =
         RdfBackgroundScheduler.getInstance()
             .scheduleWithFixedDelay(
-                () -> renewLeases(lock, target),
+                () -> renewLeases(lock),
                 HEARTBEAT_INTERVAL_SECONDS,
                 HEARTBEAT_INTERVAL_SECONDS,
                 TimeUnit.SECONDS);
   }
 
-  private void renewLeases(final RdfReindexRunLock lock, final BuildTarget target) {
+  private void renewLeases(final RdfReindexRunLock lock) {
     renewRunLock(lock);
+    final BuildTarget target = currentBuildTarget();
     if (target != null) {
       renewBuildLease(target);
     }
+  }
+
+  private BuildTarget currentBuildTarget() {
+    final String dataset = buildDataset;
+    final String rebuildId = jobData == null ? null : jobData.getRdfRebuildId();
+    return dataset == null || rebuildId == null ? null : new BuildTarget(rebuildId, dataset);
   }
 
   /**
@@ -570,17 +636,19 @@ public class RdfIndexApp extends AbstractNativeApplication {
    * reuse.
    */
   private void abandonBuildDataset() {
-    if (buildDataset != null) {
+    final String dataset = buildDataset;
+    // Cleared first so the heartbeat stops renewing a lease that is about to be released.
+    buildDataset = null;
+    if (dataset != null) {
       try {
-        rdf().abandonBuild(new BuildTarget(jobData.getRdfRebuildId(), buildDataset));
+        rdf().abandonBuild(new BuildTarget(jobData.getRdfRebuildId(), dataset));
       } catch (RuntimeException exception) {
         LOG.error("Could not release the failed RDF rebuild; its lease will expire", exception);
       }
       LOG.warn(
           "RDF rebuild did not complete; serving dataset unchanged and build dataset '{}' left "
               + "in place for inspection",
-          buildDataset);
-      buildDataset = null;
+          dataset);
     }
   }
 
@@ -612,10 +680,11 @@ public class RdfIndexApp extends AbstractNativeApplication {
       new RdfReindexer(
               sink::submit,
               RdfReindexer::repositoryPages,
-              new RunListener(),
+              new RunListener(sink),
               batchSize(),
               readerThreads())
           .index(jobData.getEntities());
+      sink.throwIfWriterFailed();
     }
   }
 
@@ -631,9 +700,16 @@ public class RdfIndexApp extends AbstractNativeApplication {
   }
 
   private final class RunListener implements RdfReindexer.Listener {
+    private final RdfBulkSink sink;
+
+    private RunListener(final RdfBulkSink sink) {
+      this.sink = sink;
+    }
+
+    /** Paging also stops once the writer has failed, since no page read after it can be written. */
     @Override
     public boolean isStopRequested() {
-      return isStopRequestedOrLockLost();
+      return isStopRequestedOrLockLost() || sink.writerFailed();
     }
 
     @Override

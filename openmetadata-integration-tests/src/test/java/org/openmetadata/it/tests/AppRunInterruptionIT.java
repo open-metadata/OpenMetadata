@@ -54,7 +54,7 @@ public class AppRunInterruptionIT {
 
     final int ended =
         runs.markRunningEntriesInterrupted(
-            List.of(appName), AppRunInterruption.failure("the server stopped"), 5_000L);
+            List.of(appName), AppRunInterruption.failure("the server stopped"), 5_000L, 5_000L);
 
     assertEquals(1, ended);
     final AppRunRecord interrupted = read(1_000L);
@@ -77,11 +77,26 @@ public class AppRunInterruptionIT {
                         new IndexingError().withMessage("partial").withStackTrace("old trace"))));
 
     runs.markRunningEntriesInterrupted(
-        List.of(appName), AppRunInterruption.failure("the server stopped"), 5_000L);
+        List.of(appName), AppRunInterruption.failure("the server stopped"), 5_000L, 5_000L);
 
     final IndexingError failure = failure(read(1_000L));
     assertEquals("the server stopped", failure.getMessage());
     assertNull(failure.getStackTrace());
+  }
+
+  @Test
+  void runThatStartedOnceTheServerWasUpIsLeftRunning() {
+    insert(run(1_000L, AppRunRecord.Status.RUNNING));
+    insert(run(3_000L, AppRunRecord.Status.RUNNING));
+
+    final int ended =
+        runs.markRunningEntriesInterrupted(
+            List.of(appName), AppRunInterruption.failure("the server stopped"), 5_000L, 3_000L);
+
+    assertEquals(1, ended);
+    assertEquals(AppRunRecord.Status.FAILED, read(1_000L).getStatus());
+    assertEquals(AppRunRecord.Status.RUNNING, read(3_000L).getStatus());
+    assertNull(read(3_000L).getEndTime());
   }
 
   private AppRunRecord run(final long timestamp, final AppRunRecord.Status status) {

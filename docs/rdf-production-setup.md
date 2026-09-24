@@ -309,6 +309,11 @@ Beyond four readers the single writer is busy most of the run, so more readers h
 Raise `producerThreads` when `readerTimeMs` dominates and `sinkTimeMs` is well below the run's
 duration; otherwise the writer, not reading, is the limit.
 
+Loaded pages wait in memory for the writer, so a run reads ahead at most two pages per reader
+thread and at most about 4,000 loaded entities, never fewer than two pages. A larger `batchSize`
+therefore shortens the read-ahead rather than multiplying memory: at `batchSize: 1000` four pages
+are in flight whatever `producerThreads` is.
+
 ### What not to tune
 
 - **Do not raise `producerThreads` past the point where `sinkTimeMs` approaches the run's
@@ -349,6 +354,12 @@ thrashes the database. Two mechanisms keep them apart:
   and defers, re-checking every 60 s for up to 30 minutes. If the search run still hasn't finished,
   the RDF run ends `STOPPED` with an explanatory message and waits for its next scheduled slot.
   **On-demand runs bypass the guard** (operator intent wins) with a warning in the logs.
+- **One run at a time.** Every run takes the `rdf_reindex_lock` row before anything else, including
+  the admission-guard wait, and renews it every 30 s until it has reported its final status. A run
+  that finds the lock held, such as a scheduled run meeting an on-demand run, ends `STOPPED` with a
+  message naming the run that holds it, rather than failing. An on-demand run triggered while a
+  scheduled run waits for the guard is skipped the same way; stop the waiting run to start at once.
+  The lock of a run whose server stopped expires after five minutes.
 
 Upgrades migrate an RDF app that still has the former exact daily default (`0 0 * * *`) to the
 weekly schedule. Custom schedules and applications with scheduling disabled are not changed.
@@ -357,7 +368,11 @@ weekly schedule. Custom schedules and applications with scheduling disabled are 
 
 By default a `recreateIndex` run clears the served dataset before it starts repopulating it, so
 every query returns partial results until the run finishes — on a large catalog that window is
-measured in hours. Enabling **Blue/Green Rebuild** in the RDF Indexing application's configuration
+measured in hours. From the clear until a complete rebuild finishes, `GET /v1/rdf/status` reports
+`DEGRADED`. The rebuild runs on the one server that started it and is not resumed elsewhere: if that
+server stops mid-run (a rolling deploy, an OOM kill, a node drain), the graph stays partial, and
+`DEGRADED`, until the next rebuild completes. Use blue/green for catalogs whose rebuild takes long
+enough to overlap a deploy; an interrupted blue/green run leaves the previous graph serving. Enabling **Blue/Green Rebuild** in the RDF Indexing application's configuration
 (alongside *Recreate RDF Store*) changes the shape of a rebuild:
 the run builds into an idle second dataset and switches to it only after the build succeeds, so the
 previous graph keeps serving until cutover, and its dataset is retained until the next rebuild
@@ -483,6 +498,9 @@ On the OpenMetadata side:
 - Per-record indexing failures persist in the `rdf_index_failures` table, are wiped at the start of
   each run, and are queryable at `GET /v1/rdf/reindex/failures` (also surfaced by the RDF app's
   "View Reindex Failures" button in the UI).
+- A server that starts while an RDF run is executing on another server leaves that run alone. When
+  the run's own server stopped, its run record is marked failed once its reindex lock expires,
+  within about six minutes, with a message naming the server that stopped renewing the lock.
 
 Monitor indexing records per second, SPARQL update latency, container RSS, page-cache availability,
 persistent-volume usage, and journal growth. OpenMetadata logs `RDF circuit breaker is open` after

@@ -53,8 +53,8 @@ public class RdfReindexRunLockIT {
     final RdfReindexRunLock first = lock("run-1", "server-a");
     first.acquire();
 
-    final IllegalStateException refused =
-        assertThrows(IllegalStateException.class, lock("run-2", "server-b")::acquire);
+    final RdfReindexRunLock.HeldByAnotherRun refused =
+        assertThrows(RdfReindexRunLock.HeldByAnotherRun.class, lock("run-2", "server-b")::acquire);
 
     assertTrue(refused.getMessage().contains("server 'server-a'"), refused.getMessage());
     assertTrue(refused.getMessage().contains("run-1"), refused.getMessage());
@@ -77,7 +77,7 @@ public class RdfReindexRunLockIT {
 
     lock("run-2", "server-b").release();
 
-    assertThrows(IllegalStateException.class, lock("run-3", "server-c")::acquire);
+    assertThrows(RdfReindexRunLock.HeldByAnotherRun.class, lock("run-3", "server-c")::acquire);
   }
 
   @Test
