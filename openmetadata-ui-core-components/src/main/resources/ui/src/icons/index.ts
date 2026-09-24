@@ -97,6 +97,7 @@ export { Help } from './Help';
 export { Hint } from './Hint';
 export { Home } from './Home';
 export { InactivePipeline } from './InactivePipeline';
+export { Inherit } from './Inherit';
 export { Integrity } from './Integrity';
 export { Kill } from './Kill';
 export { Language } from './Language';

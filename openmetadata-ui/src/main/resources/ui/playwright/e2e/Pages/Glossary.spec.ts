@@ -2083,12 +2083,11 @@ test.describe('Glossary tests', () => {
           `/api/v1/search/query?q=*${encodeURIComponent(domain.data.name)}*`
         );
         await page1
-          .getByTestId('domain-selectable-tree')
-          .getByTestId('searchbar')
+          .getByTestId('domain-dropdown-search')
           .fill(domain.data.name);
         await searchDomain;
 
-        await page1.getByTestId(`tag-"${domain.data.name}"`).click();
+        await page1.getByTestId(`tree-node-"${domain.data.name}"`).click();
 
         await waitForAllLoadersToDisappear(page1);
       });
@@ -2406,13 +2405,14 @@ test.describe('Glossary tests', () => {
 
       await page.getByTestId('add-domain').click();
       await page
-        .getByTestId('domain-selectable-tree')
-        .getByTestId('searchbar')
+        .getByTestId('domain-selectable-tree-search')
         .fill(domain.data.name);
 
-      await expect(page.getByTestId(`tag-"${domain.data.name}"`)).toBeVisible();
+      await expect(
+        page.getByTestId(`tree-node-"${domain.data.name}"`)
+      ).toBeVisible();
 
-      await page.getByTestId(`tag-"${domain.data.name}"`).click();
+      await page.getByTestId(`tree-node-"${domain.data.name}"`).click();
 
       const glossaryResponse = page.waitForResponse(
         (response) =>
