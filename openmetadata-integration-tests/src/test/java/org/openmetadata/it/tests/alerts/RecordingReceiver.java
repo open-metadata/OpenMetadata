@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /** A local HTTP endpoint that records every request the alert pipeline sends to it. */
 final class RecordingReceiver implements AutoCloseable {
 
-  record Received(String path, String method, String body, boolean signed) {}
+  record Received(String path, String query, String method, String body, boolean signed) {}
 
   private static final String SIGNATURE_HEADER = "X-OM-Signature";
   private static final byte[] EMPTY_JSON = "{}".getBytes(StandardCharsets.UTF_8);
@@ -65,7 +65,8 @@ final class RecordingReceiver implements AutoCloseable {
     String path = exchange.getRequestURI().getPath();
     String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
     boolean signed = exchange.getRequestHeaders().containsKey(SIGNATURE_HEADER);
-    received.add(new Received(path, exchange.getRequestMethod(), body, signed));
+    String query = exchange.getRequestURI().getQuery();
+    received.add(new Received(path, query, exchange.getRequestMethod(), body, signed));
     waitIfSlow(path);
     exchange.getResponseHeaders().add("Content-Type", "application/json");
     exchange.sendResponseHeaders(statusByPath.getOrDefault(path, 200), EMPTY_JSON.length);

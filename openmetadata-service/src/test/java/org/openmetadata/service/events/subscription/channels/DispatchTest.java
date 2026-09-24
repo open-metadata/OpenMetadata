@@ -74,12 +74,14 @@ class DispatchTest {
 
   // A destination meant for one channel must never go out through the channel of its type.
   @Test
-  void namedChannelThatIsNotRegisteredIsNotAttempted() throws EventPublisherException {
+  void namedChannelThatIsNotRegisteredIsNotAttempted() {
     SubscriptionDestination named = destination.withChannel("not.registered.here");
 
     ChannelResolution served = ChannelResolution.of(named);
     Destination<ChangeEvent> publisher = AlertFactory.getAlert(alert, named);
-    publisher.sendMessage(new ChangeEvent().withId(UUID.randomUUID()), Set.of());
+    assertThrows(
+        EventPublisherException.class,
+        () -> publisher.sendMessage(new ChangeEvent().withId(UUID.randomUUID()), Set.of()));
 
     assertTrue(served.channel().isEmpty());
     assertFalse(publisher.requiresRecipients());

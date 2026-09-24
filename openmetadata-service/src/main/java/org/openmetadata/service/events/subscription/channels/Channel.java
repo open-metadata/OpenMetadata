@@ -30,9 +30,22 @@ public interface Channel {
   /** The id it is registered under. A built-in channel uses the value of its destination type. */
   String id();
 
-  /** Empty while the channel can send, otherwise the reason it cannot. */
+  /**
+   * Empty while the channel can send, otherwise the reason it cannot. Asked once for each event
+   * before anything is looked up or rendered, and a channel that cannot send is not attempted,
+   * which is not a delivery failure.
+   */
   default Optional<String> unavailableBecause() {
     return Optional.empty();
+  }
+
+  /**
+   * True for a channel that carries the file an alert produces, such as a report's PDF. Only such
+   * a channel sends nothing when a required file could not be produced; the others send their
+   * message as they always do.
+   */
+  default boolean acceptsFiles() {
+    return false;
   }
 
   /**
