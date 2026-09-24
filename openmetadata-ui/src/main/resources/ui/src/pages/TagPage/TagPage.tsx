@@ -10,20 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, PageHeader } from '@openmetadata/ui-core-components';
+import { Box, Button, PageHeader } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  Button,
-  Col,
-  Divider,
-  Dropdown,
-  Row,
-  Space,
-  Tabs,
-  Tooltip,
-} from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Col, Divider, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
@@ -34,7 +24,6 @@ import { ReactComponent as IconTag } from '../../assets/svg/classification.svg';
 import { ReactComponent as IconDisableTag } from '../../assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../assets/svg/style.svg';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import {
@@ -46,6 +35,10 @@ import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallbac
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
 import EntityDetailHeader from '../../components/common/EntityDetailHeader/EntityDetailHeader.component';
 import { EntityDetailTab } from '../../components/common/EntityDetailHeader/EntityDetailHeader.interface';
+import {
+  ManageMenu,
+  ManageMenuItem,
+} from '../../components/common/EntityPageInfos/ManageButton/ManageMenu';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
@@ -515,7 +508,7 @@ const TagPage = () => {
     }
   }, [assetTabRef, activeTab, activeTabHandler, fetchClassificationTagAssets]);
 
-  const getManageButtonContent = (): ItemType[] => [
+  const getManageButtonContent = (): ManageMenuItem[] => [
     ...(editTagsPermission
       ? [
           {
@@ -609,7 +602,7 @@ const TagPage = () => {
       : []),
   ];
 
-  const manageButtonContent: ItemType[] = getManageButtonContent();
+  const manageButtonContent: ManageMenuItem[] = getManageButtonContent();
 
   const tabItems = useMemo(() => {
     if (!tagItem) {
@@ -860,9 +853,10 @@ const TagPage = () => {
   const renderAddAssetsButton = () =>
     !isCertificationClassification && !tagItem.disabled ? (
       <Button
+        color="primary"
         data-testid="data-classification-add-button"
-        type="primary"
-        onClick={() => setAssetModalVisible(true)}>
+        size="sm"
+        onPress={() => setAssetModalVisible(true)}>
         {t('label.add-entity', {
           entity: t('label.asset-plural'),
         })}
@@ -871,30 +865,14 @@ const TagPage = () => {
 
   const manageDropdown =
     manageButtonContent.length > 0 ? (
-      <Dropdown
-        align={{ targetOffset: [-12, 0] }}
-        className="m-l-xs"
-        menu={{
-          items: manageButtonContent,
-        }}
-        open={showActions}
-        overlayStyle={{ width: '350px' }}
-        placement="bottomRight"
-        trigger={['click']}
-        onOpenChange={setShowActions}>
-        <Tooltip
-          placement="topRight"
-          title={t('label.manage-entity', {
-            entity: t('label.tag-lowercase'),
-          })}>
-          <Button
-            className="flex-center"
-            data-testid="manage-button"
-            icon={<IconDropdown className="manage-dropdown-icon" />}
-            onClick={() => setShowActions(true)}
-          />
-        </Tooltip>
-      </Dropdown>
+      <ManageMenu
+        isOpen={showActions}
+        items={manageButtonContent}
+        label={t('label.manage-entity', {
+          entity: t('label.tag-lowercase'),
+        })}
+        onOpenChange={setShowActions}
+      />
     ) : null;
 
   const renderAiHeader = () => (

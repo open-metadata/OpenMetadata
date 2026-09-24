@@ -10,17 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
+  Button,
   Card,
   EmptyPlaceholder,
   Owner,
   PageHeader,
+  Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Plus, Tag01 } from '@untitledui/icons';
-import { Button, Tooltip, Typography } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
+import { Plus, RefreshCcw01, Tag01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, isUndefined, toString } from 'lodash';
 import {
@@ -38,7 +37,6 @@ import { ReactComponent as IconTag } from '../../../assets/svg/classification.sv
 import { ReactComponent as LockIcon } from '../../../assets/svg/closed-lock.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
-import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { DE_ACTIVE_COLOR, ROUTES } from '../../../constants/constants';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { ExportTypes } from '../../../constants/Export.constants';
@@ -94,6 +92,7 @@ import {
 } from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
+import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
@@ -608,14 +607,17 @@ const ClassificationDetails = forwardRef(
       return (
         <PageHeader
           actions={
-            <Box align="center" gap={3}>
+            <Box align="center" gap={4}>
               {createPermission && (
-                <Tooltip title={addTagButtonToolTip}>
+                <Tooltip
+                  isDisabled={!addTagButtonToolTip}
+                  title={addTagButtonToolTip ?? ''}>
                   <Button
+                    color="primary"
                     data-testid="add-new-tag-button"
-                    disabled={isClassificationDisabled}
-                    type="primary"
-                    onClick={handleAddNewTagClick}>
+                    isDisabled={isClassificationDisabled}
+                    size="sm"
+                    onPress={handleAddNewTagClick}>
                     {t('label.add-entity', {
                       entity: t('label.tag'),
                     })}
@@ -623,38 +625,34 @@ const ClassificationDetails = forwardRef(
                 </Tooltip>
               )}
 
-              <ButtonGroup className="spaced" size="small">
-                <Tooltip
-                  title={t(
-                    `label.${
-                      isVersionView
-                        ? 'exit-version-history'
-                        : 'version-plural-history'
-                    }`
-                  )}>
-                  <Button
-                    className="w-16 p-0"
-                    data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
-                    onClick={versionHandler}>
-                    <Typography.Text>{currentVersion}</Typography.Text>
-                  </Button>
-                </Tooltip>
-                {showManageButton && (
-                  <ManageButton
-                    isRecursiveDelete
-                    afterDeleteAction={handleAfterDeleteAction}
-                    allowSoftDelete={false}
-                    canDelete={deletePermission && !isClassificationDisabled}
-                    displayName={getEntityName(currentClassification)}
-                    entityFQN={currentClassification?.fullyQualifiedName}
-                    entityId={currentClassification.id}
-                    entityName={currentClassification.name}
-                    entityType={EntityType.CLASSIFICATION}
-                    extraDropdownContent={extraDropdownContent}
-                  />
+              <StatItem
+                count={currentVersion}
+                icon={RefreshCcw01}
+                testId="version-button"
+                tooltip={t(
+                  `label.${
+                    isVersionView
+                      ? 'exit-version-history'
+                      : 'version-plural-history'
+                  }`
                 )}
-              </ButtonGroup>
+                onClick={versionHandler}
+              />
+
+              {showManageButton && (
+                <ManageButton
+                  isRecursiveDelete
+                  afterDeleteAction={handleAfterDeleteAction}
+                  allowSoftDelete={false}
+                  canDelete={deletePermission && !isClassificationDisabled}
+                  displayName={getEntityName(currentClassification)}
+                  entityFQN={currentClassification?.fullyQualifiedName}
+                  entityId={currentClassification.id}
+                  entityName={currentClassification.name}
+                  entityType={EntityType.CLASSIFICATION}
+                  extraDropdownContent={extraDropdownContent}
+                />
+              )}
             </Box>
           }
           breadcrumb={

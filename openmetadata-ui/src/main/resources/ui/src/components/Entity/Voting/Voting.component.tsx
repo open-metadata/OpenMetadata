@@ -11,26 +11,19 @@
  *  limitations under the License.
  */
 
-import { Button, Tooltip, Typography } from 'antd';
-import classNames from 'classnames';
+import { ThumbsDown, ThumbsUp } from '@untitledui/icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ThumbsUpOutline } from '../../../assets/svg/thumbs-up-outline.svg';
+import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import { VotingProps } from './voting.interface';
-import './voting.less';
 
 const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState<QueryVoteType | null>(null);
 
   const handleVoteChange = async (type: QueryVoteType) => {
-    let updatedVoteType;
-    if (voteStatus === type) {
-      updatedVoteType = QueryVoteType.unVoted;
-    } else {
-      updatedVoteType = type;
-    }
+    const updatedVoteType = voteStatus === type ? QueryVoteType.unVoted : type;
     setLoading(type);
     await onUpdateVote({ updatedVoteType });
     setLoading(null);
@@ -38,42 +31,28 @@ const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
 
   return (
     <>
-      <Tooltip title={t('label.up-vote')}>
-        <Button
-          className={classNames('ant-button-vote flex-center', {
-            'ant-button-vote-active': voteStatus === QueryVoteType.votedUp,
-          })}
-          data-testid="up-vote-btn"
-          disabled={disabled}
-          icon={<ThumbsUpOutline height={15} width={15} />}
-          loading={loading === QueryVoteType.votedUp}
-          onClick={() => handleVoteChange(QueryVoteType.votedUp)}>
-          <Typography.Text className="m-l-xs" data-testid="up-vote-count">
-            {votes?.upVotes ?? 0}
-          </Typography.Text>
-        </Button>
-      </Tooltip>
-      <Tooltip title={t('label.down-vote')}>
-        <Button
-          className={classNames('ant-button-vote flex-center', {
-            'ant-button-vote-active': voteStatus === QueryVoteType.votedDown,
-          })}
-          data-testid="down-vote-btn"
-          disabled={disabled}
-          icon={
-            <ThumbsUpOutline
-              className="rotate-inverse"
-              height={15}
-              width={15}
-            />
-          }
-          loading={loading === QueryVoteType.votedDown}
-          onClick={() => handleVoteChange(QueryVoteType.votedDown)}>
-          <Typography.Text className="m-l-xs" data-testid="down-vote-count">
-            {votes?.downVotes ?? 0}
-          </Typography.Text>
-        </Button>
-      </Tooltip>
+      <StatItem
+        count={votes?.upVotes ?? 0}
+        countTestId="up-vote-count"
+        disabled={disabled}
+        icon={ThumbsUp}
+        isActive={voteStatus === QueryVoteType.votedUp}
+        loading={loading === QueryVoteType.votedUp}
+        testId="up-vote-btn"
+        tooltip={t('label.up-vote')}
+        onClick={() => handleVoteChange(QueryVoteType.votedUp)}
+      />
+      <StatItem
+        count={votes?.downVotes ?? 0}
+        countTestId="down-vote-count"
+        disabled={disabled}
+        icon={ThumbsDown}
+        isActive={voteStatus === QueryVoteType.votedDown}
+        loading={loading === QueryVoteType.votedDown}
+        testId="down-vote-btn"
+        tooltip={t('label.down-vote')}
+        onClick={() => handleVoteChange(QueryVoteType.votedDown)}
+      />
     </>
   );
 };

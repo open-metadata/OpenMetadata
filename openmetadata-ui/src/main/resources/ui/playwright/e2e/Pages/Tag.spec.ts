@@ -134,7 +134,7 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.getByTestId('manage-button').click();
 
     await expect(
-      adminPage.locator('.ant-dropdown-placement-bottomRight')
+      adminPage.getByTestId('manage-dropdown-list-container')
     ).toBeVisible();
 
     await adminPage.getByRole('menuitem', { name: 'Rename' }).click();
@@ -159,7 +159,7 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.getByTestId('manage-button').click();
 
     await expect(
-      adminPage.locator('.ant-dropdown-placement-bottomRight')
+      adminPage.getByTestId('manage-dropdown-list-container')
     ).toBeVisible();
 
     await adminPage.getByRole('menuitem', { name: 'Style' }).click();
@@ -191,7 +191,7 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.getByTestId('manage-button').click();
 
     await expect(
-      adminPage.locator('.ant-dropdown-placement-bottomRight')
+      adminPage.getByTestId('manage-dropdown-list-container')
     ).toBeVisible();
 
     await adminPage.getByRole('menuitem', { name: 'Delete' }).click();

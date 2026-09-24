@@ -307,12 +307,14 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Button: ({
     children,
     onClick,
+    onPress,
     isDisabled,
     'data-testid': testId,
     className,
   }: {
     children: React.ReactNode;
     onClick?: () => void;
+    onPress?: () => void;
     isDisabled?: boolean;
     'data-testid'?: string;
     className?: string;
@@ -321,7 +323,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       className={className}
       data-testid={testId}
       disabled={isDisabled}
-      onClick={onClick}>
+      onClick={onClick ?? onPress}>
       {children}
     </button>
   ),

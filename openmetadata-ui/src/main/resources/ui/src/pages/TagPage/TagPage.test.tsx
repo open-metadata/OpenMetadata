@@ -78,6 +78,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </nav>
       )
     ),
+  Dropdown: {
+    Root: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+    Popover: jest.fn().mockImplementation(() => null),
+    Menu: jest.fn().mockImplementation(() => null),
+    Item: jest.fn().mockImplementation(() => null),
+  },
   PageHeader: jest
     .fn()
     .mockImplementation(
@@ -91,9 +97,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     ),
   Button: jest
     .fn()
-    .mockImplementation(({ children, onClick }) => (
-      <button onClick={onClick}>{children}</button>
-    )),
+    .mockImplementation(
+      ({ children, onClick, onPress, 'data-testid': testId }) => (
+        <button data-testid={testId} onClick={onClick ?? onPress}>
+          {children}
+        </button>
+      )
+    ),
   ButtonUtility: jest
     .fn()
     .mockImplementation(

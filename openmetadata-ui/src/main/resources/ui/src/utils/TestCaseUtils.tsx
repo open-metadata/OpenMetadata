@@ -146,12 +146,12 @@ export const ExtraTestCaseDropdownOptions = (
         icon={item.icon}
         id={item.key}
         name={item.title}
-        onClick={item.onClick}
       />
     );
 
     return {
       key: item.key,
       label: item.wrapper ? item.wrapper(label) : label,
+      onClick: item.onClick,
     };
   });
