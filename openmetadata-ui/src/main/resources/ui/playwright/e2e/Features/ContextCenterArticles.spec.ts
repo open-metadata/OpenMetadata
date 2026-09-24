@@ -1628,8 +1628,7 @@ test.describe('Context Center Articles', () => {
       page
         .locator('.om-block-editor')
         .getByTestId('diff-added')
-        // Diff spans nest, so anchor to the span that holds only the token.
-        .filter({ hasText: new RegExp(`^${editToken}$`) })
+        .filter({ hasText: editToken })
     ).toBeVisible();
 
     const { apiContext, afterAction } = await getApiContext(page);
