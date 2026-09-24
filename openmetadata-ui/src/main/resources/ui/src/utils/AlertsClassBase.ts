@@ -198,8 +198,9 @@ class AlertsClassBase {
         alertDetails = await createAlertAPI(finalData);
       }
 
+      const action = fqn && !isUndefined(initialData) ? 'update' : 'create';
       showSuccessToast(
-        t(`server.${'create'}-entity-success`, {
+        t(`server.${action}-entity-success`, {
           entity: t('label.alert-plural'),
         })
       );

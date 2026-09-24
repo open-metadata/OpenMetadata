@@ -24,6 +24,7 @@ import { TabSpecificField } from '../../../../enums/entity.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { Include } from '../../../../generated/type/include';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useSettingsHash } from '../../../../hooks/useSettingsHash';
 import { getUserByName, updateUserDetail } from '../../../../rest/userAPI';
 import {
   EXTENSION_POINTS,
@@ -35,6 +36,7 @@ import { useApplicationsProvider } from '../../../Settings/Applications/Applicat
 import './profile-page.less';
 import ProfileContentHeader from './ProfileContentHeader';
 import {
+  APPLICATION_NAV_ITEMS,
   DEFAULT_PROFILE_NAV_ID,
   ProfileHeaderOverride,
   ProfileNavGroup,
@@ -61,9 +63,19 @@ const ProfilePage: React.FC = () => {
   // detail cards in a skeleton state until getUserByName backfills them so
   // the sections do not flash empty before the fetch resolves.
   const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const { state: hashState, setHash } = useSettingsHash();
+
   const [selectedId, setSelectedId] = useState<ProfileNavId>(
-    DEFAULT_PROFILE_NAV_ID
+    (hashState.tab as ProfileNavId) || DEFAULT_PROFILE_NAV_ID
   );
+
+  // Follow hash tab changes (e.g. deep link, back navigation).
+  useEffect(() => {
+    if (hashState.tab && hashState.tab !== selectedId) {
+      setSelectedId(hashState.tab as ProfileNavId);
+    }
+  }, [hashState.tab]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Allows panels (e.g. Access Control) to override the header breadcrumbs
   // and title without needing a separate route.
   const [headerOverride, setHeaderOverride] =
@@ -175,7 +187,11 @@ const ProfilePage: React.FC = () => {
       (item) => !item.isVisible || item.isVisible(permissions, isAdmin)
     );
 
-    return [...coreItems, ...workspaceItems, ...contributed];
+    const applicationItems = APPLICATION_NAV_ITEMS.filter(
+      (item) => !item.isVisible || item.isVisible(permissions, isAdmin)
+    );
+
+    return [...coreItems, ...workspaceItems, ...applicationItems, ...contributed];
   }, [currentUser?.isAdmin, extensionRegistry, permissions, userData]);
 
   // Clear header override whenever the user switches nav items.
@@ -186,8 +202,9 @@ const ProfilePage: React.FC = () => {
       }
       setSelectedId(id);
       setHeaderOverride(null);
+      setHash(id);
     },
-    [selectedId]
+    [selectedId, setHash]
   );
 
   const activeItem =
