@@ -826,22 +826,34 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   protected boolean deleteDeployedPipeline(
       IngestionPipeline entity, boolean allowUnavailableRunner) {
-    // For pipelines that never fully deployed, still ATTEMPT runner cleanup — a
-    // first-deploy attempt can write DAG/config files to Airflow before the
-    // scheduler-readiness check times out (deployed stays false but files
-    // exist). Tolerate an unavailable runner in that case: the caller couldn't
-    // observe a deploy anyway, so blocking the delete on runner availability
-    // would leave the pipeline unreachable. When the runner IS reachable, the
-    // cleanup call safely no-ops if there's nothing to remove.
-    boolean effectiveAllowUnavailableRunner =
-        allowUnavailableRunner || Boolean.FALSE.equals(entity.getDeployed());
+    // Always ATTEMPT runner cleanup when the client is configured: a failed
+    // first-deploy can leave DAG/config files on the runner even though
+    // `deployed=false` (the deployer writes the files before the readiness
+    // check runs; a timeout there returns 500 but does not roll back the
+    // filesystem write). Skipping the runner call entirely would silently
+    // orphan those files.
+    //
+    // Exception handling splits by caller intent (allowUnavailableRunner):
+    //   * cascade / force delete: opt in to skipping unavailable runners
+    //   * direct hard delete of a DEPLOYED pipeline: surface the unavailable
+    //     runner (caller needs to know cleanup didn't happen)
+    //   * direct hard delete of an UNDEPLOYED pipeline: return false rather
+    //     than throwing — the pipeline may never have touched Airflow at all
+    //     (metadata-only intent), and requiring a live runner just to hard-
+    //     delete a metadata-only entity would leave it stuck. This is a
+    //     documented residual risk: a partially-deployed pipeline (files on
+    //     disk, deployed=false) can still be orphaned on this path when the
+    //     runner happens to be unreachable. The proper fix is a compensating
+    //     cleanup at deploy-readiness-timeout time, tracked separately.
     boolean wasRunnerCleanupSkipped = false;
     if (pipelineServiceClient != null) {
       try {
         pipelineServiceClient.deletePipeline(entity);
       } catch (IngestionRunnerUnavailableException exception) {
-        if (effectiveAllowUnavailableRunner) {
+        if (allowUnavailableRunner) {
           wasRunnerCleanupSkipped = true;
+        } else if (Boolean.FALSE.equals(entity.getDeployed())) {
+          return false;
         } else {
           throw exception;
         }

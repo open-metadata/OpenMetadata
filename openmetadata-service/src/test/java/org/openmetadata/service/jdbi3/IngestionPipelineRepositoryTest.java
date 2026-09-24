@@ -67,17 +67,19 @@ class IngestionPipelineRepositoryTest {
 
   @Test
   void deleteUndeployedPipelineDoesNotRequireRunner() {
-    // For an undeployed pipeline, cleanup is attempted (a failed first-deploy
-    // can still have left DAG/config files in the runner) but an unavailable
-    // runner is tolerated: the caller couldn't observe a successful deploy, so
-    // blocking the delete on runner availability would leave the pipeline
-    // unreachable. The method returns true to indicate cleanup was skipped
-    // (runner unreachable) rather than confirmed complete.
+    // Direct hard delete of an undeployed pipeline: the runner call is
+    // ATTEMPTED (a failed first-deploy can still have left files on the
+    // runner) but a resulting IngestionRunnerUnavailableException is
+    // swallowed rather than thrown — the pipeline may be metadata-only and
+    // never have touched Airflow, so requiring a live runner just to
+    // hard-delete it would leave it stuck. Returns false because no cleanup
+    // was actually "skipped" from a completed deploy — the caller's intent
+    // was metadata-only.
     IngestionPipeline pipeline = createBasicPipeline().withDeployed(false);
     IngestionPipelineRepository cleanupRepository =
         repositoryWithClient(unavailableRunnerClient(pipeline));
 
-    assertTrue(cleanupRepository.deleteDeployedPipeline(pipeline, false));
+    assertFalse(cleanupRepository.deleteDeployedPipeline(pipeline, false));
   }
 
   @Test
