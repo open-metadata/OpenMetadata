@@ -117,6 +117,7 @@ export const keycloakOidcPublicProviderFixture: SsoProviderFixture = {
   supportsSilentCallback: true,
   usesBackendRefresh: false,
   hasBackendIssuedRefreshCookie: false,
+  usesPkce: true,
   supportsColdLoadRefresh: true,
 
   expectedResponseType: 'code',

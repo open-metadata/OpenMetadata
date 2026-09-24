@@ -273,6 +273,7 @@ export const msalMockProviderFixture: SsoProviderFixture = {
   supportsSilentCallback: false,
   usesBackendRefresh: false,
   hasBackendIssuedRefreshCookie: false,
+  usesPkce: true,
   supportsColdLoadRefresh: true,
 
   isAvailable: () => true,

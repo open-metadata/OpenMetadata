@@ -114,6 +114,7 @@ export const auth0ProviderFixture: SsoProviderFixture = {
   supportsSilentCallback: false,
   usesBackendRefresh: false,
   hasBackendIssuedRefreshCookie: false,
+  usesPkce: true,
   // false because @auth0/auth0-react's default `cacheLocation: "memory"`
   // (the setting OM ships in AuthProvider.tsx, `renderAzureAuthenticator`
   // sibling) is wiped by a page reload — after `forceTokenExpiry` mangles

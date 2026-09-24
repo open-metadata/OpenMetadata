@@ -253,15 +253,18 @@ for (const fixture of FIXTURES) {
         });
       });
 
-      // Scenario 1a — public OIDC clients MUST request the authorization-code
-      // flow with PKCE. Regressing to the implicit flow (no `code_challenge`)
-      // or dropping `S256` for `plain` would silently downgrade security on
-      // every public-OIDC provider — public clients have no `client_secret`
-      // to bind the code exchange, so PKCE is the only proof-of-possession
-      // the token endpoint has. Gated on `expectedResponseType === 'code'`
-      // because that's the metadata each public-OIDC fixture already
-      // declares (see keycloak-oidc-public / auth0 / okta / msal-mock).
-      if (fixture.clientType === 'public' && fixture.expectedResponseType) {
+      // Scenario 1a — every fixture with `usesPkce: true` MUST request
+      // its OIDC /authorize with `code_challenge` + `code_challenge_method=S256`.
+      // Regressing to the implicit flow (no `code_challenge`) or
+      // dropping S256 for `plain` silently downgrades security on
+      // every browser-driven OIDC flow — public clients have no
+      // `client_secret` to bind the code exchange, so PKCE is the
+      // only proof-of-possession the token endpoint has. Gated on a
+      // dedicated `usesPkce` capability rather than
+      // `expectedResponseType` (which only keycloak-oidc-public
+      // declares) so Auth0 / Okta / MSAL SDK paths are also covered
+      // (gitar-bot r4084334634).
+      if (fixture.usesPkce) {
         test('public OIDC /authorize request carries PKCE code_challenge + S256', async ({
           page,
         }) => {
@@ -388,7 +391,15 @@ for (const fixture of FIXTURES) {
       // scenario is the tripwire. Gated to public + SDK-driven:
       // backend-refresh providers keep their refresh_token in an
       // HttpOnly cookie the browser can't see, so localStorage is a
-      // non-issue for them (and Scenario 2b covers the cookie flags).
+      // non-issue for them (Scenario 3c covers the cookie flags).
+      //
+      // Detection: EITHER the literal `refresh_token` substring
+      // (SDK's structured JSON dumps) OR a known OM-owned key
+      // (`app_state`, `oidcIdToken`) — the OM SW/IndexedDB fallback
+      // serialises tokens as `{"primary":"<opaque>","secondary":"<opaque>"}`
+      // where the opaque strings contain no `refresh_token` substring
+      // (greptile P2 r4084367161). The tripwire has to catch the
+      // structural presence, not just the string.
       if (fixture.clientType === 'public' && !fixture.usesBackendRefresh) {
         test('SDK-driven public providers do not leak refresh_token into localStorage', async ({
           page,
@@ -409,15 +420,23 @@ for (const fixture of FIXTURES) {
             return dump;
           });
 
+          // OM's SwTokenStorageUtils falls back to `localStorage['app_state']`
+          // when SW+IDB aren't available; that key holds `{primary, secondary}`
+          // where either slot can be a refresh_token. Legacy `oidcIdToken`
+          // is on the same list — nothing should write it anymore.
+          const OM_TOKEN_KEYS = new Set(['app_state', 'oidcIdToken']);
           const offenders = Object.entries(localStorageDump).filter(
-            ([, value]) => /refresh_?token/i.test(value)
+            ([key, value]) =>
+              OM_TOKEN_KEYS.has(key) || /refresh_?token/i.test(value)
           );
 
           expect(
             offenders,
-            `refresh_token surfaced in localStorage keys: ${offenders
+            `token-shaped values surfaced in localStorage keys: ${offenders
               .map(([k]) => k)
-              .join(', ')}`
+              .join(', ')}. Full dump keys: ${Object.keys(
+              localStorageDump
+            ).join(', ')}`
           ).toEqual([]);
         });
       }
@@ -752,16 +771,29 @@ for (const fixture of FIXTURES) {
         test('silent-callback iframe does not load the full app', async ({
           page,
         }) => {
+          // Track each `resp.body()` promise so we can wait on the
+          // batch BEFORE asserting. Without this, a large-bundle load
+          // whose body-read resolves AFTER `goto` returns can slip
+          // past the check silently (greptile P2 r4084367151).
           const responses: Array<{ url: string; size: number }> = [];
-          page.on('response', async (resp) => {
+          const bodyReads: Promise<void>[] = [];
+          page.on('response', (resp) => {
+            const url = resp.url();
             if (
-              resp.url().endsWith('.js') ||
-              resp.url().endsWith('.js.map') ||
-              resp.url().endsWith('.css')
+              !url.endsWith('.js') &&
+              !url.endsWith('.js.map') &&
+              !url.endsWith('.css')
             ) {
-              const body = await resp.body().catch(() => null);
-              responses.push({ url: resp.url(), size: body?.length ?? 0 });
+              return;
             }
+            bodyReads.push(
+              resp
+                .body()
+                .then((body) => {
+                  responses.push({ url, size: body?.length ?? 0 });
+                })
+                .catch(() => undefined)
+            );
           });
 
           // `waitUntil: 'load'` fires once every top-level resource — the
@@ -778,6 +810,8 @@ for (const fixture of FIXTURES) {
             page.getByTestId(APP_BAR_HOME_TESTID)
           ).not.toBeAttached();
           await expect(page.locator('#appbar')).not.toBeAttached();
+
+          await Promise.all(bodyReads);
 
           // Bundle-size budget: no single JS chunk larger than 500 KB should
           // load for this route. The full-app bundle is >2 MB, so exceeding
@@ -882,16 +916,30 @@ for (const fixture of FIXTURES) {
         }) => {
           test.slow();
 
+          // Track each `resp.body()` promise and wait on the batch
+          // BEFORE asserting on `responses`, so a large-bundle load
+          // that resolves after `goto` returns can't slip past the
+          // check (greptile P2 r4084367151 — the same pattern lives
+          // in Scenario 7; fixing both together in follow-up work).
           const responses: Array<{ url: string; size: number }> = [];
-          page.on('response', async (resp) => {
+          const bodyReads: Promise<void>[] = [];
+          page.on('response', (resp) => {
+            const url = resp.url();
             if (
-              resp.url().endsWith('.js') ||
-              resp.url().endsWith('.js.map') ||
-              resp.url().endsWith('.css')
+              !url.endsWith('.js') &&
+              !url.endsWith('.js.map') &&
+              !url.endsWith('.css')
             ) {
-              const body = await resp.body().catch(() => null);
-              responses.push({ url: resp.url(), size: body?.length ?? 0 });
+              return;
             }
+            bodyReads.push(
+              resp
+                .body()
+                .then((body) => {
+                  responses.push({ url, size: body?.length ?? 0 });
+                })
+                .catch(() => undefined)
+            );
           });
 
           await page.goto('/silent-callback', { waitUntil: 'load' });
@@ -900,6 +948,8 @@ for (const fixture of FIXTURES) {
             page.getByTestId(APP_BAR_HOME_TESTID)
           ).not.toBeAttached();
           await expect(page.locator('#appbar')).not.toBeAttached();
+
+          await Promise.all(bodyReads);
 
           const largeChunks = responses.filter((r) => r.size > 500_000);
           expect(largeChunks).toEqual([]);
