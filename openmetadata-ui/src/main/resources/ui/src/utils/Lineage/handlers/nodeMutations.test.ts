@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { Node } from 'reactflow';
-import { SourceType } from '../../../interface/source.interface';
 import { useLineageStore } from '../../../hooks/useLineageStore';
+import { SourceType } from '../../../interface/source.interface';
 import { onPaneClick } from './nodeMutations';
 
 describe('onPaneClick', () => {

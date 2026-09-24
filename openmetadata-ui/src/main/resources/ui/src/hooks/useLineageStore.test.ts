@@ -870,11 +870,9 @@ describe('data slice (extra actions)', () => {
   beforeEach(() => useLineageStore.getState().reset());
 
   it('resetData clears data slice and preserves other slices', () => {
-    useLineageStore
-      .getState()
-      .setLineageData({
-        entity: { id: 'e' },
-      } as unknown as EntityLineageResponse);
+    useLineageStore.getState().setLineageData({
+      entity: { id: 'e' },
+    } as unknown as EntityLineageResponse);
     useLineageStore
       .getState()
       .setNodes([{ id: 'n1', position: { x: 0, y: 0 }, data: {} }]);
