@@ -69,6 +69,7 @@ class EntityFieldUtilsTest {
               eq("alice"),
               any(JsonPatch.class),
               isNull(),
+              eq("*"),
               eq("workflow-bot"));
 
       ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { isUndefined, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -22,7 +23,6 @@ import { EntityTabs, EntityType, FqnPart } from '../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { Tag } from '../../../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
-import { Operation } from '../../../../generated/entity/policies/policy';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomPages } from '../../../../hooks/useCustomPages';
 import { useFqn } from '../../../../hooks/useFqn';
@@ -32,6 +32,7 @@ import connectionsRouterClassBase from '../../../../utils/ConnectionsRouterClass
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import dashboardDataModelClassBase from '../../../../utils/DashboardDataModelClassBase';
@@ -42,7 +43,7 @@ import {
   getFeedCounts,
 } from '../../../../utils/FeedUtilsPure';
 import { getPartialNameFromTableFQN } from '../../../../utils/FqnUtils';
-import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import {
   getEntityDetailsPath,
   getVersionPath,
@@ -206,10 +207,8 @@ const DataModelDetails = ({
   const { editLineagePermission } = useMemo(() => {
     return {
       editLineagePermission:
-        getPrioritizedEditPermission(
-          dataModelPermissions,
-          Operation.EditLineage
-        ) && !deleted,
+        getDerivedPermissionFlags(dataModelPermissions).canEditLineage &&
+        !deleted,
     };
   }, [dataModelPermissions, deleted]);
 
@@ -281,8 +280,8 @@ const DataModelDetails = ({
     <PageLayoutV1
       pageTitle={getEntityName(dataModelData)}
       title="Data Model Details">
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
+      <Box direction="col" gap={3}>
+        <div>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -301,7 +300,7 @@ const DataModelDetails = ({
             onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
-        </Col>
+        </div>
         <GenericProvider<DashboardDataModel>
           customizedPage={customizedPage}
           data={dataModelData}
@@ -309,30 +308,44 @@ const DataModelDetails = ({
           permissions={dataModelPermissions}
           type={EntityType.DASHBOARD_DATA_MODEL}
           onUpdate={onUpdateDataModel}>
-          <Col className="entity-details-page-tabs" span={24}>
+          <div className="entity-details-page-tabs">
             <Tabs
-              activeKey={activeTab}
-              className="tabs-new"
+              className="tw:gap-3"
               data-testid="tabs"
-              items={tabs}
-              tabBarExtraContent={
-                isExpandViewSupported && (
-                  <AlignRightIconButton
-                    className={isTabExpanded ? 'rotate-180' : ''}
-                    title={
-                      isTabExpanded ? t('label.collapse') : t('label.expand')
-                    }
-                    onClick={toggleTabExpanded}
-                  />
-                )
-              }
-              onChange={(activeKey: string) =>
-                handleTabChange(activeKey as EntityTabs)
-              }
-            />
-          </Col>
+              selectedKey={getRenderedActiveTab(tabs, activeTab)}
+              onSelectionChange={(key) =>
+                handleTabChange(String(key) as EntityTabs)
+              }>
+              <Tabs.List
+                actions={
+                  isExpandViewSupported && (
+                    <AlignRightIconButton
+                      className={isTabExpanded ? 'rotate-180' : ''}
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
+                      onClick={toggleTabExpanded}
+                    />
+                  )
+                }
+                size="sm"
+                type="underline"
+                variant="card">
+                {tabs.map(({ key, label }) => (
+                  <Tabs.Item id={key} key={key}>
+                    {label}
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
+              {tabs.map(({ key, children }) => (
+                <Tabs.Panel id={key} key={key}>
+                  {children}
+                </Tabs.Panel>
+              ))}
+            </Tabs>
+          </div>
         </GenericProvider>
-      </Row>
+      </Box>
     </PageLayoutV1>
   );
 };
