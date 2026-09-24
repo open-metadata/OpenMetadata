@@ -13,7 +13,12 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SidebarItem } from '../../constant/sidebar';
-import { createOrFetch, okJson } from '../../utils/apiResponse';
+import {
+  createOrFetch,
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { selectDomain } from '../../utils/domain';
 import { sidebarClick } from '../../utils/sidebar';
@@ -94,16 +99,14 @@ export class Domain extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/domains/${this.responseData?.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/domains/${this.responseData?.id}`, {
         data: patchData,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
-
     this.responseData = await okJson(response, 'Domain.patch');
 
     return {
@@ -111,5 +114,3 @@ export class Domain extends EntityClass {
     };
   }
 }
-
-import { deleteFixtureEntity } from '../../utils/apiResponse';
