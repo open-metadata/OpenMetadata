@@ -3,15 +3,18 @@ package org.openmetadata.service.search.opensearch;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.security.policyevaluator.ServiceAttributeResolver;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
@@ -68,7 +71,33 @@ class OpenSearchRbacCacheKeyTest {
   void testKeyToleratesNullCollections() {
     SubjectContext bareSubject = subject(null, null, null);
 
-    assertEquals(USER_ID + ":::", OpenSearchSearchManager.rbacCacheKey(bareSubject));
+    assertEquals(
+        ServiceAttributeResolver.generation() + ":" + USER_ID + ":::",
+        OpenSearchSearchManager.rbacCacheKey(bareSubject));
+  }
+
+  /**
+   * The {@code matchAnyService*} conditions compile the ids of the matching services into the query
+   * as literals. That is global state, not a subject field, so without the resolver generation in
+   * the key a service tag change would keep serving the old ids for the rest of the five-minute
+   * TTL — and nothing invalidates this cache.
+   */
+  @Test
+  @DisplayName("A change in the resolved service state produces a different key")
+  void testServiceStateChangeChangesTheKey() {
+    SubjectContext subjectContext = subject(List.of(ROLE_ID), List.of(UUID.randomUUID()));
+
+    String beforeKey;
+    String afterKey;
+    try (MockedStatic<ServiceAttributeResolver> resolver =
+        mockStatic(ServiceAttributeResolver.class)) {
+      resolver.when(ServiceAttributeResolver::generation).thenReturn(1L);
+      beforeKey = OpenSearchSearchManager.rbacCacheKey(subjectContext);
+      resolver.when(ServiceAttributeResolver::generation).thenReturn(2L);
+      afterKey = OpenSearchSearchManager.rbacCacheKey(subjectContext);
+    }
+
+    assertNotEquals(beforeKey, afterKey);
   }
 
   private static SubjectContext subject(List<UUID> roleIds, List<UUID> domainIds) {

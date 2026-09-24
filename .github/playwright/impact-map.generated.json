@@ -3513,6 +3513,7 @@
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseIncidentPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseResultPermissions.spec.ts",
         "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
@@ -5771,7 +5772,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/IncidentManager/IncidentManagerPageHeader/IncidentDetails.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/DataQuality/DataQuality.spec.ts"
+        "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts"
       ]
     },
     {
@@ -6896,28 +6898,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/ContextCenterPermission.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/KnowledgeGraph/KnowledgeGraph.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/Lineage/LineageControls.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/KnowledgeGraph/KnowledgeGraphViewControls.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/Glossary/GlossaryRelationsGraph.spec.ts",
-        "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
-        "playwright/e2e/Features/OntologyStudioIntegration.spec.ts",
-        "playwright/e2e/Features/OntologyStudioInteractions.spec.ts",
-        "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
-        "playwright/e2e/Pages/Lineage/LineageControls.spec.ts",
-        "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts"
       ]
     },
     {
@@ -9372,6 +9352,28 @@
       ],
       "specs": [
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/knowledge-graph/KnowledgeGraph.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Lineage/LineageControls.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/knowledge-graph/KnowledgeGraphViewControls.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Glossary/GlossaryRelationsGraph.spec.ts",
+        "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
+        "playwright/e2e/Features/OntologyStudioIntegration.spec.ts",
+        "playwright/e2e/Features/OntologyStudioInteractions.spec.ts",
+        "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageControls.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts"
       ]
     },
     {

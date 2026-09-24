@@ -10,13 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Space, Tabs, TabsProps } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/data/metric';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { getRenderedActiveTab } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
@@ -29,6 +31,7 @@ import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomProp
 import Description from '../../common/EntityDescription/Description';
 import Loader from '../../common/Loader/Loader';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { TabProps } from '../../common/TabsLabel/TabsLabel.interface';
 import { TitleLink } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
@@ -117,7 +120,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
     );
   };
 
-  const tabItems: TabsProps['items'] = useMemo(
+  const tabItems: TabProps[] = useMemo(
     () => [
       {
         key: EntityTabs.OVERVIEW,
@@ -125,28 +128,27 @@ const MetricVersion: FC<MetricVersionProp> = ({
           <TabsLabel id={EntityTabs.OVERVIEW} name={t('label.overview')} />
         ),
         children: (
-          <Row className="h-full" gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <Row gutter={[0, 16]}>
-                <Col span={24}>
+          <Box className="h-full">
+            <div className="p-t-sm m-x-lg tw:min-w-0 tw:flex-auto">
+              <Box direction="col" gap={4}>
+                <div>
                   <Description
                     description={description}
                     entityType={EntityType.METRIC}
                     showActions={false}
                   />
-                </Col>
-                <Col span={24}>
+                </div>
+                <div>
                   <MetricDefinitionCard
                     changeDescription={changeDescription}
                     metric={currentVersionData}
                   />
-                </Col>
-              </Row>
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="220px">
+                </div>
+              </Box>
+            </div>
+            <div
+              className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
+              data-testid="entity-right-panel">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
@@ -165,8 +167,8 @@ const MetricVersion: FC<MetricVersionProp> = ({
                   />
                 ))}
               </Space>
-            </Col>
-          </Row>
+            </div>
+          </Box>
         ),
       },
       {
@@ -205,8 +207,8 @@ const MetricVersion: FC<MetricVersionProp> = ({
   return (
     <>
       <div className="version-data">
-        <Row gutter={[0, 12]}>
-          <Col span={24}>
+        <Box direction="col" gap={3}>
+          <div>
             <DataAssetsVersionHeader
               breadcrumbLinks={slashedMetricName as unknown as TitleLink[]}
               currentVersionData={currentVersionData}
@@ -220,27 +222,36 @@ const MetricVersion: FC<MetricVersionProp> = ({
               version={version}
               onVersionClick={backHandler}
             />
-          </Col>
-          <Col span={24}>
-            <GenericProvider
-              isVersionView
-              currentVersionData={currentVersionData}
-              data={currentVersionData}
-              permissions={entityPermissions}
-              type={EntityType.METRIC}
-              onUpdate={() => Promise.resolve()}>
-              <Col className="entity-version-page-tabs" span={24}>
-                <Tabs
-                  className="tabs-new"
-                  data-testid="tabs"
-                  defaultActiveKey={tab}
-                  items={tabItems}
-                  onChange={handleTabChange}
-                />
-              </Col>
-            </GenericProvider>
-          </Col>
-        </Row>
+          </div>
+          <GenericProvider
+            isVersionView
+            currentVersionData={currentVersionData}
+            data={currentVersionData}
+            permissions={entityPermissions}
+            type={EntityType.METRIC}
+            onUpdate={() => Promise.resolve()}>
+            <div className="entity-version-page-tabs">
+              <Tabs
+                className="tw:gap-3"
+                data-testid="tabs"
+                defaultSelectedKey={getRenderedActiveTab(tabItems, tab)}
+                onSelectionChange={(key) => handleTabChange(String(key))}>
+                <Tabs.List size="sm" type="underline" variant="card">
+                  {tabItems.map(({ key, label }) => (
+                    <Tabs.Item id={key} key={key}>
+                      {label}
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
+                {tabItems.map(({ key, children }) => (
+                  <Tabs.Panel id={key} key={key}>
+                    {children}
+                  </Tabs.Panel>
+                ))}
+              </Tabs>
+            </div>
+          </GenericProvider>
+        </Box>
       </div>
 
       <EntityVersionTimeLine

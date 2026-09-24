@@ -764,7 +764,9 @@ test.describe('Glossary tests', () => {
         await page.getByTestId('assets').click();
         await queryRes;
         await waitForAllLoadersToDisappear(page);
-        await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
+        await page
+          .getByRole('tab', { name: 'Assets', selected: true })
+          .waitFor();
 
         await expect(
           page.getByTestId('assets').getByTestId('filter-count')
@@ -830,7 +832,9 @@ test.describe('Glossary tests', () => {
         );
         await page.getByTestId('assets').click();
         await queryRes;
-        await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
+        await page
+          .getByRole('tab', { name: 'Assets', selected: true })
+          .waitFor();
 
         await expect(
           page.getByTestId('assets').getByTestId('filter-count')
@@ -1154,7 +1158,7 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossary(page, glossary1.data.displayName);
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
       await page.getByTestId('assets').click();
-      await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
+      await page.getByRole('tab', { name: 'Assets', selected: true }).waitFor();
       await expect
         .poll(async () =>
           Number(
@@ -2164,18 +2168,23 @@ test.describe('Glossary tests', () => {
           name: 'Deutsch - DE',
         });
         await expect(germanOption).toBeVisible();
-        await germanOption.click();
 
+        // NavBar calls navigate(0) after language change, which triggers a
+        // full-page reload followed by a client-side navigation to the
+        // selected glossary. Wait for both to settle before proceeding.
+        const reloadPromise = page.waitForEvent('domcontentloaded');
+        await germanOption.click();
+        await reloadPromise;
         await waitForAllLoadersToDisappear(page);
+
+        // After reload the app auto-navigates to the selected glossary.
+        // Wait for the entity header to confirm the page has fully settled.
+        await expect(page.getByTestId('entity-header-display-name')).toHaveText(
+          glossary.data.displayName
+        );
       });
 
       await test.step('Open delete modal and verify delete confirmation', async () => {
-        await page.goto(GLOSSARY_ROUTE, { waitUntil: 'commit' });
-        await waitForAllLoadersToDisappear(page);
-
-        await selectActiveGlossary(page, glossary.data.displayName);
-        await waitForAllLoadersToDisappear(page);
-
         await page.getByTestId('manage-button').click();
         await page.getByTestId('delete-button').click();
 
@@ -2202,7 +2211,13 @@ test.describe('Glossary tests', () => {
           name: 'English - EN',
         });
         await expect(englishOption).toBeVisible();
+
+        // NavBar calls navigate(0) after language change — hoist the load listener
+        // before the click so the full-page reload is properly awaited.
+        const reloadPromise = page.waitForEvent('domcontentloaded');
         await englishOption.click();
+        await reloadPromise;
+        await waitForAllLoadersToDisappear(page);
       });
     } finally {
       await afterAction();
