@@ -13,6 +13,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -86,9 +87,21 @@ public class RdfReindexRunLockIT {
     final long firstExpiry = locks.findByKey(lockKey).expiresAt();
     TimeUnit.MILLISECONDS.sleep(5);
 
-    holder.renew();
+    assertTrue(holder.renew());
 
     assertTrue(locks.findByKey(lockKey).expiresAt() > firstExpiry);
+  }
+
+  @Test
+  void renewalTellsARunItsExpiredLockWasTakenOver() {
+    final long longAgo = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(10);
+    locks.tryAcquireLock(
+        lockKey, "run-1", "server-a", longAgo, longAgo + RdfReindexRunLock.EXPIRY_MS);
+    final RdfReindexRunLock takeover = lock("run-2", "server-b");
+    takeover.acquire();
+
+    assertFalse(lock("run-1", "server-a").renew());
+    assertTrue(takeover.renew());
   }
 
   private RdfReindexRunLock lock(final String runId, final String serverId) {

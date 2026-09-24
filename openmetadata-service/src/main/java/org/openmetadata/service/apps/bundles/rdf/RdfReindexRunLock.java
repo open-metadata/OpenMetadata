@@ -55,9 +55,10 @@ public final class RdfReindexRunLock {
     }
   }
 
-  public void renew() {
+  /** Extends the lock, or returns false once it expired and another run took it over. */
+  public boolean renew() {
     final long now = System.currentTimeMillis();
-    locks.updateHeartbeat(lockKey, runId, now, now + EXPIRY_MS);
+    return locks.updateHeartbeat(lockKey, runId, now, now + EXPIRY_MS) > 0;
   }
 
   public void release() {

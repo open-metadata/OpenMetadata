@@ -57,6 +57,9 @@ public class RdfIndexApp extends AbstractNativeApplication {
   private static final int MAX_READER_THREADS = 10;
   private static final long WEBSOCKET_UPDATE_INTERVAL_MS = 2000;
   private static final long HEARTBEAT_INTERVAL_SECONDS = 30;
+  private static final String RUN_LOCK_LOST =
+      "The RDF reindex lock expired before it could be renewed and another run took it over, so"
+          + " this run stopped instead of rewriting the graph alongside that run";
 
   private static final Set<String> EXCLUDED_ENTITY_TYPES =
       RdfExcludedEntities.EXCLUDED_ENTITY_TYPES;
@@ -83,6 +86,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
   // Identifies this run in the reindex lock and in its failure records.
   private volatile UUID runId;
   private volatile RdfReindexRunLock runLock;
+  private volatile IllegalStateException runLockLoss;
   private volatile ScheduledFuture<?> heartbeat;
   private volatile RuntimeException rebuildLeaseFailure;
   private long initialProjectionFailureVersion;
@@ -224,6 +228,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
 
       updateJobStatus(EventPublisherJob.Status.RUNNING);
       reindex(indexingRepository);
+      requireRunLock();
 
       if (stopped) {
         updateJobStatus(EventPublisherJob.Status.STOPPED);
@@ -263,6 +268,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
   }
 
   private void acquireRunLock() {
+    runLockLoss = null;
     runId = UUID.randomUUID();
     runLock =
         RdfReindexRunLock.forRun(collectionDAO.rdfReindexLockDAO(), runId.toString(), serverId());
@@ -414,21 +420,47 @@ public class RdfIndexApp extends AbstractNativeApplication {
   }
 
   private void renewLeases(final RdfReindexRunLock lock, final BuildTarget target) {
+    renewRunLock(lock);
+    if (target != null) {
+      renewBuildLease(target);
+    }
+  }
+
+  /**
+   * Renewals that keep failing past the lock's expiry, through a database outage say, let another
+   * run take the lock over. This run then stops writing and fails rather than rebuilding the graph
+   * alongside it. A renewal that lands after this run released its own lock is not a loss.
+   */
+  private void renewRunLock(final RdfReindexRunLock lock) {
     try {
-      lock.renew();
+      if (!lock.renew() && lock == runLock) {
+        runLockLoss = new IllegalStateException(RUN_LOCK_LOST);
+        LOG.error(RUN_LOCK_LOST);
+      }
     } catch (RuntimeException exception) {
       LOG.warn(
           "Could not renew the RDF reindex lock; it expires unless a later renewal succeeds",
           exception);
     }
-    if (target != null) {
-      try {
-        rdf().renewBuild(target);
-      } catch (RuntimeException exception) {
-        rebuildLeaseFailure = exception;
-        LOG.error("RDF rebuild lost its dataset lease", exception);
-      }
+  }
+
+  private void renewBuildLease(final BuildTarget target) {
+    try {
+      rdf().renewBuild(target);
+    } catch (RuntimeException exception) {
+      rebuildLeaseFailure = exception;
+      LOG.error("RDF rebuild lost its dataset lease", exception);
     }
+  }
+
+  private void requireRunLock() {
+    if (runLockLoss != null) {
+      throw runLockLoss;
+    }
+  }
+
+  private boolean isStopRequestedOrLockLost() {
+    return stopped || runLockLoss != null;
   }
 
   private void stopHeartbeat() {
@@ -480,6 +512,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
   }
 
   private void checkBuildCanPromote() {
+    requireRunLock();
     if (stopped) {
       throw new CancellationException("RDF rebuild was stopped before promotion");
     }
@@ -574,7 +607,8 @@ public class RdfIndexApp extends AbstractNativeApplication {
   }
 
   private void reindex(final RdfRepository indexingRepository) throws InterruptedException {
-    try (RdfBulkSink sink = new RdfBulkSink(indexingRepository, batchProcessor, () -> stopped)) {
+    try (RdfBulkSink sink =
+        new RdfBulkSink(indexingRepository, batchProcessor, this::isStopRequestedOrLockLost)) {
       new RdfReindexer(
               sink::submit,
               RdfReindexer::repositoryPages,
@@ -599,7 +633,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
   private final class RunListener implements RdfReindexer.Listener {
     @Override
     public boolean isStopRequested() {
-      return stopped;
+      return isStopRequestedOrLockLost();
     }
 
     @Override

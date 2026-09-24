@@ -538,6 +538,64 @@ class RdfIndexAppTest {
   }
 
   @Nested
+  @DisplayName("Run lock tests")
+  class RunLockTests {
+    @Test
+    @DisplayName("A lock another run took over stops indexing and fails the run")
+    void lockTakenOverStopsIndexingAndFailsTheRun() throws Exception {
+      when(reindexLockDAO.updateHeartbeat(anyString(), anyString(), anyLong(), anyLong()))
+          .thenReturn(0);
+      final RdfReindexRunLock lock = lock();
+      setField("runLock", lock);
+
+      renewLeases(lock);
+
+      assertTrue((boolean) invoke("isStopRequestedOrLockLost"));
+      var failure =
+          assertThrows(
+              java.lang.reflect.InvocationTargetException.class, () -> invoke("requireRunLock"));
+      assertTrue(
+          failure.getCause().getMessage().contains("another run took it over"),
+          failure.getCause().getMessage());
+    }
+
+    @Test
+    @DisplayName("A renewal landing after the run released its lock is not a loss")
+    void renewalAfterReleaseIsNotALoss() throws Exception {
+      when(reindexLockDAO.updateHeartbeat(anyString(), anyString(), anyLong(), anyLong()))
+          .thenReturn(0);
+
+      renewLeases(lock());
+
+      assertFalse((boolean) invoke("isStopRequestedOrLockLost"));
+    }
+
+    private RdfReindexRunLock lock() {
+      return new RdfReindexRunLock(reindexLockDAO, "RDF_REINDEX_LOCK", "run-1", "server-a");
+    }
+
+    private void renewLeases(RdfReindexRunLock lock) throws Exception {
+      var method =
+          RdfIndexApp.class.getDeclaredMethod(
+              "renewLeases", RdfReindexRunLock.class, BuildTarget.class);
+      method.setAccessible(true);
+      method.invoke(rdfIndexApp, lock, null);
+    }
+
+    private Object invoke(String name) throws Exception {
+      var method = RdfIndexApp.class.getDeclaredMethod(name);
+      method.setAccessible(true);
+      return method.invoke(rdfIndexApp);
+    }
+
+    private void setField(String name, Object value) throws Exception {
+      var field = RdfIndexApp.class.getDeclaredField(name);
+      field.setAccessible(true);
+      field.set(rdfIndexApp, value);
+    }
+  }
+
+  @Nested
   @DisplayName("Stop Functionality Tests")
   class StopFunctionalityTests {
 
