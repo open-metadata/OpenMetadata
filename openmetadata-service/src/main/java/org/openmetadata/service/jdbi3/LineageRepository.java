@@ -271,6 +271,7 @@ public class LineageRepository {
     }
 
     applyTemporalFields(lineageDetails, priorDetails, updatedBy, System.currentTimeMillis());
+    preserveAssetEdges(lineageDetails, priorDetails);
 
     // Validate lineage details
     String detailsJson = validateLineageDetails(from, to, lineageDetails);
@@ -583,7 +584,7 @@ public class LineageRepository {
           JsonUtils.readValue(existingRelation.getJson(), LineageDetails.class)
               .withPipeline(entityLineageDetails.getPipeline());
       if (!childRelationExists) {
-        lineageDetails.withAssetEdges(lineageDetails.getAssetEdges() + 1);
+        lineageDetails.withAssetEdges(nullOrDefault(lineageDetails.getAssetEdges(), 0) + 1);
       }
       return lineageDetails;
     }
@@ -1515,12 +1516,13 @@ public class LineageRepository {
     if (relation == null) return;
 
     LineageDetails lineageDetails = JsonUtils.readValue(relation.getJson(), LineageDetails.class);
-    if (lineageDetails.getAssetEdges() - 1 < 1) {
+    final int assetEdges = nullOrDefault(lineageDetails.getAssetEdges(), 0);
+    if (assetEdges - 1 < 1) {
       deleteLineageRelationshipWithRetry(
           fromRef.getId(), fromRef.getType(), toRef.getId(), toRef.getType());
       deleteLineageFromSearch(fromRef, toRef, lineageDetails);
     } else {
-      lineageDetails.withAssetEdges(lineageDetails.getAssetEdges() - 1);
+      lineageDetails.withAssetEdges(assetEdges - 1);
       dao.relationshipDAO()
           .insert(
               fromRef.getId(),
@@ -2059,6 +2061,16 @@ public class LineageRepository {
     incoming.setCreatedBy(resolveCreatedBy(incoming, prior, fallbackUser));
     incoming.setUpdatedAt(resolveUpdatedAt(incoming, prior, now));
     incoming.setUpdatedBy(incoming.getUpdatedBy() != null ? incoming.getUpdatedBy() : fallbackUser);
+  }
+
+  /**
+   * A service, domain or data product edge refcounts the child edges rolled up into it. A caller
+   * writing that edge directly cannot know the count, so the stored one survives the write.
+   */
+  static void preserveAssetEdges(LineageDetails incoming, LineageDetails prior) {
+    if (prior != null) {
+      incoming.setAssetEdges(prior.getAssetEdges());
+    }
   }
 
   private static long resolveCreatedAt(LineageDetails incoming, LineageDetails prior, long now) {
