@@ -50,9 +50,12 @@ const test = base.extend<{ adminPage: Page; restrictedUserPage: Page }>({
 
 const openDomainDropdown = async (page: Page) => {
   await redirectToHomePage(page);
+  // The home page exposes the domain scope switcher via the landing-page
+  // selector (the navbar one is hidden on home); it renders DomainSelectableList
+  // whose picker uses the `domain-selectable-tree` base test id.
   await page.getByTestId('domain-selector').click();
   await page
-    .getByTestId('domain-selectable-tree')
+    .getByTestId('domain-selectable-tree-search')
     .waitFor({ state: 'visible' });
 };
 
@@ -126,21 +129,21 @@ test('Restricted user sees only their own domains in the navbar dropdown', async
   await openDomainDropdown(restrictedUserPage);
 
   await expect(
-    restrictedUserPage.getByTestId('all-domains-selector')
+    restrictedUserPage.getByTestId('tree-node-All Domains')
   ).toHaveCount(0);
   await expect(
     restrictedUserPage.getByTestId(
-      `tag-${ownedDomainA.responseData.fullyQualifiedName}`
+      `tree-node-${ownedDomainA.responseData.fullyQualifiedName}`
     )
   ).toBeVisible();
   await expect(
     restrictedUserPage.getByTestId(
-      `tag-${ownedDomainB.responseData.fullyQualifiedName}`
+      `tree-node-${ownedDomainB.responseData.fullyQualifiedName}`
     )
   ).toBeVisible();
   await expect(
     restrictedUserPage.getByTestId(
-      `tag-${foreignDomain.responseData.fullyQualifiedName}`
+      `tree-node-${foreignDomain.responseData.fullyQualifiedName}`
     )
   ).toHaveCount(0);
 });
@@ -152,17 +155,19 @@ test('Admin sees every domain and the All Domains option', async ({
 
   await openDomainDropdown(adminPage);
 
-  await expect(adminPage.getByTestId('all-domains-selector')).toBeVisible();
+  await expect(adminPage.getByTestId('tree-node-All Domains')).toBeVisible();
 
   await searchDomainInDropdownTree(adminPage, ownedDomainA);
   await expect(
-    adminPage.getByTestId(`tag-${ownedDomainA.responseData.fullyQualifiedName}`)
+    adminPage.getByTestId(
+      `tree-node-${ownedDomainA.responseData.fullyQualifiedName}`
+    )
   ).toBeVisible();
 
   await searchDomainInDropdownTree(adminPage, foreignDomain);
   await expect(
     adminPage.getByTestId(
-      `tag-${foreignDomain.responseData.fullyQualifiedName}`
+      `tree-node-${foreignDomain.responseData.fullyQualifiedName}`
     )
   ).toBeVisible();
 });
