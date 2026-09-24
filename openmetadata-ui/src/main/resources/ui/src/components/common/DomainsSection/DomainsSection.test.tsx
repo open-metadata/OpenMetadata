@@ -154,7 +154,7 @@ describe('DomainsSection', () => {
     it('renders header, title and no-data when empty', () => {
       const { container } = render(<DomainsSection {...defaultProps} />);
 
-      expect(container.querySelector('.domains-title')).toBeInTheDocument();
+      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
       expect(screen.getByText('label.domain-plural')).toBeInTheDocument();
       expect(container.querySelector('.domains-section')).toBeInTheDocument();
       expect(container.querySelector('.domains-header')).toBeInTheDocument();
@@ -167,7 +167,7 @@ describe('DomainsSection', () => {
       ).toBeInTheDocument();
     });
 
-    it('renders existing domains as DomainTag chips when provided', () => {
+    it('renders existing domains via custom domain cards when provided', () => {
       const { container } = render(
         <DomainsSection
           {...defaultProps}
@@ -176,7 +176,6 @@ describe('DomainsSection', () => {
               id: 'd1',
               name: 'd1',
               displayName: 'Domain 1',
-              fullyQualifiedName: 'd1',
               type: EntityType.DOMAIN,
             },
           ]}
@@ -184,7 +183,7 @@ describe('DomainsSection', () => {
       );
 
       expect(container.querySelector('.domains-display')).toBeInTheDocument();
-      expect(screen.getByTestId('domain-tag-d1')).toBeInTheDocument();
+      expect(container.querySelector('.domain-item')).toBeInTheDocument();
       expect(screen.getByText('Domain 1')).toBeInTheDocument();
     });
   });

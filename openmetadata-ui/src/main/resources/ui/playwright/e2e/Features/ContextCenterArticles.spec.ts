@@ -579,9 +579,7 @@ test.describe('Context Center Articles', () => {
       description
     );
     await expect(card.getByTestId('owner-label')).not.toBeVisible();
-    await expect(
-      card.locator('[data-testid^="domain-tag-"]')
-    ).not.toBeVisible();
+    await expect(card.getByTestId('domain-link')).not.toBeVisible();
 
     await card.click();
     await page.getByTestId('edit-domain-btn').click();
@@ -594,12 +592,13 @@ test.describe('Context Center Articles', () => {
     );
 
     await page
-      .getByTestId('domain-selectable-tree-search')
+      .getByTestId('domain-selectable-tree')
+      .getByTestId('searchbar')
       .fill(domain.responseData.name);
     await searchDomain;
 
     const domainTagSelector = page.getByTestId(
-      `tree-node-${domain.responseData.fullyQualifiedName}`
+      `tag-${domain.responseData.fullyQualifiedName}`
     );
     await domainTagSelector.waitFor({ state: 'visible' });
 
@@ -815,12 +814,13 @@ test.describe('Context Center Articles', () => {
               .includes(encodeURIComponent(domain.responseData.name as string))
         );
         await page
-          .getByTestId('domain-selectable-tree-search')
+          .getByTestId('domain-selectable-tree')
+          .getByTestId('searchbar')
           .fill(domain.responseData.name as string);
         await searchResponse;
 
         const domainTagSelector = page.getByTestId(
-          `tree-node-${domain.responseData.fullyQualifiedName}`
+          `tag-${domain.responseData.fullyQualifiedName}`
         );
         await domainTagSelector.waitFor({ state: 'visible' });
 
