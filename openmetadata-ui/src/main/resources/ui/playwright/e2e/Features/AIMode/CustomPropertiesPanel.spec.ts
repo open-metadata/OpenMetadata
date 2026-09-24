@@ -45,8 +45,8 @@ import {
   uuid,
 } from '../../../utils/common';
 import {
+  recordCustomPropertySaves,
   removeCustomPropertyViaApi,
-  waitForCustomPropertySave,
 } from '../../../utils/customProperty';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { enableAiAppMode } from '../../Utils/appMode';
@@ -328,7 +328,7 @@ test.describe('Custom Properties Panel — AI Mode', () => {
 
     await fillDescriptionBox(page, 'Updated description');
 
-    const saveResponse = waitForCustomPropertySave(page);
+    const saves = recordCustomPropertySaves(page);
     await page.getByTestId('edit-custom-property-save').click();
 
     // Back on detail page — updated display name is visible.
@@ -336,7 +336,7 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     await expect(
       page.locator('tr').filter({ hasText: updatedDisplayName })
     ).toBeVisible();
-    expect((await saveResponse).status()).toBe(200);
+    await saves.expectSaved();
 
     // Cleanup (property name key is unchanged; display name is cosmetic).
     await deletePropertyViaApi(page, name);
@@ -371,7 +371,7 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     // Wait for the confirmation modal.
     await page.getByTestId('delete-modal').waitFor();
 
-    const saveResponse = waitForCustomPropertySave(page);
+    const saves = recordCustomPropertySaves(page);
     await page.getByTestId('confirm-button').click();
 
     await page.getByTestId('delete-modal').waitFor({ state: 'hidden' });
@@ -380,7 +380,7 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     await expect(
       page.locator('tr').filter({ hasText: name })
     ).not.toBeVisible();
-    expect((await saveResponse).status()).toBe(200);
+    await saves.expectSaved();
   });
 });
 

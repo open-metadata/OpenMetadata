@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page, Response } from '@playwright/test';
 import {
   CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
@@ -823,19 +823,37 @@ export const addCustomPropertiesForEntity = async ({
 };
 
 /**
- * Waits for the custom-property save to succeed. The UI patches a property by
- * name with a `test` guard and retries when a concurrent edit shifted the list,
- * so a rejected (400) attempt before the successful one is expected. Register
- * before the click, and assert the visible outcome before awaiting this so a
- * failed save reports on that assertion rather than timing out here.
+ * Records every custom-property save PATCH from before the click. The UI
+ * patches a property by name with a `test` guard and retries when a concurrent
+ * edit shifted the list, so a save can be one or more stale-index rejections
+ * (400) followed by the attempt that lands. Call `expectSaved` after asserting
+ * the visible outcome, so a failed save reports on that assertion first.
  */
-export const waitForCustomPropertySave = (page: Page) =>
-  page.waitForResponse(
-    (res) =>
+export const recordCustomPropertySaves = (page: Page) => {
+  const saves: Response[] = [];
+  const onResponse = (res: Response) => {
+    if (
       res.url().includes('/api/v1/metadata/types/') &&
-      res.request().method() === 'PATCH' &&
-      res.ok()
-  );
+      res.request().method() === 'PATCH'
+    ) {
+      saves.push(res);
+    }
+  };
+  page.on('response', onResponse);
+
+  return {
+    expectSaved: async () => {
+      await expect.poll(() => saves.at(-1)?.status()).toBe(200);
+      page.off('response', onResponse);
+
+      // Anything before the successful save must be a rejected attempt the UI
+      // retried, not a failure that was silently dropped.
+      expect(saves.slice(0, -1).map((res) => res.status())).toEqual(
+        saves.slice(0, -1).map(() => 400)
+      );
+    },
+  };
+};
 
 /**
  * Removes one custom property by name without touching the others. Replacing
@@ -939,12 +957,12 @@ export const editCreatedProperty = async (
     await clickOutside(page);
   }
 
-  const saveResponse = waitForCustomPropertySave(page);
+  const saves = recordCustomPropertySaves(page);
 
   await page.locator('button[type="submit"]').click();
 
   await expect(page.locator('.ant-modal-wrap')).not.toBeVisible();
-  expect((await saveResponse).status()).toBe(200);
+  await saves.expectSaved();
 
   // Fetching for updated descriptions for the created custom property
   await expect(
@@ -990,14 +1008,14 @@ export const deleteCreatedProperty = async (
   // Ensure the save button is visible before clicking
   await expect(page.locator('[data-testid="save-button"]')).toBeVisible();
 
-  const saveResponse = waitForCustomPropertySave(page);
+  const saves = recordCustomPropertySaves(page);
 
   await page.locator('[data-testid="save-button"]').click();
 
   // ConfirmationModal is destroyOnClose: assert the body text unmounts so
   // the modal mask is gone before the next sidebar click in callers' loops.
   await expect(page.locator('[data-testid="body-text"]')).not.toBeAttached();
-  expect((await saveResponse).status()).toBe(200);
+  await saves.expectSaved();
   await expect(
     page.locator(`[data-row-key="${propertyName}"]`)
   ).not.toBeVisible();
