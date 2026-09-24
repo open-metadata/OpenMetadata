@@ -54,7 +54,7 @@ type StorageStateFile = {
  * Resolves to true when the app decides it is signed out, false when it loads
  * the signed-in user. Must be started before the navigation it observes.
  */
-export const watchAuthBoot = (page: Page): Promise<boolean> => {
+const watchAuthBoot = (page: Page): Promise<boolean> => {
   const signedOut = page
     .waitForURL('**/signin', { timeout: BOOT_DECISION_TIMEOUT_MS })
     .then(() => true);
@@ -179,94 +179,101 @@ const annotateRecovery = (description: string) => {
   }
 };
 
+// A test that deliberately lands here (to log in as another user) is not a
+// failed restore, whatever state its storage happens to be in.
+const AUTH_ROUTES = ['/signin', '/signup', '/forgot-password', '/callback'];
+
+const isAuthRoute = (url: string) => {
+  const { pathname } = new URL(url, 'http://localhost');
+
+  return AUTH_ROUTES.some((route) => pathname.startsWith(route));
+};
+
 const recover = async (
   page: Page,
   bootedSignedOut: Promise<boolean>,
   reloadUrl: string
 ): Promise<boolean> => {
-  if (!(await bootedSignedOut) || (await getToken(page))) {
+  try {
+    if (!(await bootedSignedOut) || (await getToken(page))) {
+      return false;
+    }
+
+    const token = await findStateTokenForSession(page.context());
+
+    if (!token) {
+      return false;
+    }
+
+    annotateRecovery(
+      'storageState token missing from IndexedDB at boot; re-seeded from ' +
+        `${AUTH_STATE_DIR} and reloaded ${reloadUrl} (landed on ${page.url()})`
+    );
+    await writeTokenThroughServiceWorker(page, token);
+    await page.goto(reloadUrl, { waitUntil: 'domcontentloaded' });
+
+    return true;
+  } catch (error) {
+    // The test navigated or closed the page mid-check. That is not a failure
+    // of this guard, and the guard must never fail a test on its own.
+    if (!page.isClosed()) {
+      console.warn(`[auth] storageState recovery skipped: ${error}`);
+    }
+
     return false;
   }
-
-  const token = await findStateTokenForSession(page.context());
-
-  if (!token) {
-    return false;
-  }
-
-  annotateRecovery(
-    'storageState token missing from IndexedDB at boot; re-seeded from ' +
-      `${AUTH_STATE_DIR} and reloaded ${reloadUrl} (landed on ${page.url()})`
-  );
-  await writeTokenThroughServiceWorker(page, token);
-  await page.goto(reloadUrl, { waitUntil: 'domcontentloaded' });
-
-  return true;
 };
-
-// Both the context fixture and redirectToHomePage watch the same first boot.
-// Whichever asks first runs the recovery (and its single reload); the other
-// awaits that outcome, so a page is never reloaded twice.
-const recoveries = new WeakMap<Page, Promise<boolean>>();
 
 /**
- * Re-seeds the token and reloads `reloadUrl` when the boot landed on /signin
- * only because the storageState token was lost. Returns whether this page was
- * recovered, by this call or a concurrent one.
+ * Only a context's very first navigation can observe a failed storageState
+ * restore — nothing else has touched its storage yet. Any later signed-out
+ * boot follows something the test did (cleared the token to log in as another
+ * user, logged out, ...) and must fail or pass exactly as written, so every
+ * context is claimed once, by whichever entry point sees that navigation first.
  */
-export const recoverLostStorageStateToken = (
-  page: Page,
-  bootedSignedOut: Promise<boolean>,
-  reloadUrl: string
-): Promise<boolean> => {
-  const inFlight = recoveries.get(page);
+const claimedContexts = new WeakSet<BrowserContext>();
 
-  if (inFlight) {
-    return inFlight;
+/**
+ * Call synchronously before starting the navigation to `reloadUrl`. Returns
+ * undefined when that navigation is not the context's first boot; otherwise a
+ * promise (never rejecting) of whether the lost token was re-seeded and
+ * `reloadUrl` reloaded.
+ */
+export const claimFirstBoot = (
+  page: Page,
+  reloadUrl: string
+): Promise<boolean> | undefined => {
+  const context = page.context();
+  const isFirstBoot =
+    !claimedContexts.has(context) && page.url() === 'about:blank';
+
+  claimedContexts.add(context);
+
+  if (!isFirstBoot || isAuthRoute(reloadUrl)) {
+    return undefined;
   }
 
-  const recovery = recover(page, bootedSignedOut, reloadUrl);
-  recoveries.set(page, recovery);
-
-  return recovery;
-};
-
-const guardFirstBoot = (page: Page) => {
-  const onRequest = (request: Request) => {
-    if (
-      !request.isNavigationRequest() ||
-      request.frame() !== page.mainFrame()
-    ) {
-      return;
-    }
-    page.off('request', onRequest);
-
-    // Runs alongside the test: by the time it acts, the test is on /signin
-    // and would fail anyway. Reloading the URL the test asked for lets its
-    // pending locator and response waits resolve against the signed-in app.
-    recoverLostStorageStateToken(
-      page,
-      watchAuthBoot(page),
-      request.url()
-    ).catch((error) => {
-      // A test that closes or navigates the page mid-check is not a failure
-      // of this guard; it must never fail a test on its own.
-      if (!page.isClosed()) {
-        console.warn(`[auth] storageState recovery skipped: ${error}`);
-      }
-    });
-  };
-
-  page.on('request', onRequest);
+  return recover(page, watchAuthBoot(page), reloadUrl);
 };
 
 /**
  * Covers specs whose first navigation is not redirectToHomePage (a direct
- * `page.goto('/observability')` etc.). Watches only each page's first main
- * frame navigation — the only boot that can observe a lost restore — and adds
- * no wait to the test itself.
+ * `page.goto('/observability')` etc.). Watches only the context's first main
+ * frame navigation and adds no wait to the test itself: by the time it acts
+ * the test is stuck on /signin and would fail anyway, and reloading the URL
+ * the test asked for lets its pending locator and response waits resolve
+ * against the signed-in app.
  */
 export const guardStorageStateBoot = (context: BrowserContext) => {
-  context.pages().forEach(guardFirstBoot);
-  context.on('page', guardFirstBoot);
+  const onRequest = (request: Request) => {
+    const frame = request.frame();
+
+    if (!request.isNavigationRequest() || frame.parentFrame()) {
+      return;
+    }
+    context.off('request', onRequest);
+    claimFirstBoot(frame.page(), request.url());
+  };
+
+  context.on('request', onRequest);
 };
