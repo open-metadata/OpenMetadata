@@ -31,6 +31,13 @@ export const DynamicHeightWidget = ({
   useEffect(() => {
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
+        // A 0x0 rect means the widget is not rendered (e.g. an inactive tab pane
+        // under display:none that still reads the shared layout). Its height is
+        // unknown, not zero — reporting it collapses the visible pane's widget
+        // and ping-pongs with the visible observer.
+        if (entry.contentRect.width === 0 && entry.contentRect.height === 0) {
+          continue;
+        }
         const newHeight = entry.contentRect.height / 100; // Convert to grid units (100px per unit)
         if (newHeight !== height) {
           setHeight(newHeight);
