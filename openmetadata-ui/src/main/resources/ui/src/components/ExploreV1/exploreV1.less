@@ -28,7 +28,7 @@
 
   // Dark: the containers (filters, browse tree, results, summary) used
   // bg-primary — the canvas tone — so they didn't read as surfaces. Put them on
-  // bg-surface, matching the search card; result cards stay separated by border.
+  // bg-surface, matching the search card.
   .dark-mode & .ant-card,
   .dark-mode & .explore-tree,
   .dark-mode
@@ -38,6 +38,12 @@
     .content-area,
   .dark-mode & .entity-summary-panel-container .title-section {
     background: var(--om-color-bg-surface);
+  }
+
+  // Dark: result cards sit on bg-secondary, a step below the bg-surface
+  // containers (the page background is set by the AI-mode wrapper).
+  .dark-mode & [data-testid='search-results'] .explore-search-card {
+    background: var(--om-color-bg-secondary);
   }
 
   .content-height-with-resizable-panel {
