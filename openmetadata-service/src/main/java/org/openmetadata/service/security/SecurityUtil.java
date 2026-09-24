@@ -751,6 +751,59 @@ public final class SecurityUtil {
   }
 
   /**
+   * The configured callback URL to send the identity provider for a request that arrived on {@code
+   * requestOrigin}, or {@code null} when the caller should keep {@code primaryCallbackUrl}.
+   *
+   * <p>An additional entry qualifies only when it is same-origin with the request <em>and</em> has
+   * the same path as the primary, so the selection changes which host the identity provider returns
+   * to but never which endpoint. The entry is returned exactly as configured: the token request must
+   * repeat the authorization request's {@code redirect_uri} byte for byte (RFC 6749 §4.1.3), and the
+   * identity provider compares it with what the operator registered.
+   *
+   * <p>{@code requestOrigin} is client-influenced (see {@link #requestOrigin}), so a forged host can
+   * only select a URL the operator already registered with the identity provider.
+   */
+  public static String sameOriginCallbackUrl(
+      String requestOrigin, String primaryCallbackUrl, List<String> additionalCallbackUrls) {
+    URI origin = parseOrNull(requestOrigin);
+    URI primary = parseOrNull(primaryCallbackUrl);
+    if (origin == null || primary == null || sameOrigin(origin, primary)) {
+      return null;
+    }
+    String primaryPath = normalizedPath(primary);
+    return listOrEmpty(additionalCallbackUrls).stream()
+        .filter(StringUtils::isNotBlank)
+        .map(String::trim)
+        .filter(candidate -> isCallbackFor(origin, primaryPath, candidate))
+        .findFirst()
+        .orElse(null);
+  }
+
+  /**
+   * One malformed entry must not disable the others, so it is skipped rather than failing the login
+   * it would otherwise have been compared against.
+   */
+  private static boolean isCallbackFor(URI origin, String primaryPath, String candidate) {
+    try {
+      URI candidateUri = parseTrustedRedirectUri(candidate);
+      return sameOrigin(origin, candidateUri)
+          && StringUtils.equals(primaryPath, normalizedPath(candidateUri));
+    } catch (IllegalArgumentException e) {
+      LOG.warn("Ignoring unusable additional callback URL [{}]: {}", candidate, e.getMessage());
+      return false;
+    }
+  }
+
+  private static URI parseOrNull(String value) {
+    try {
+      return StringUtils.isBlank(value) ? null : new URI(value.trim());
+    } catch (URISyntaxException e) {
+      LOG.warn("Ignoring unparseable URL [{}]", value);
+      return null;
+    }
+  }
+
+  /**
    * The scheme-and-authority the client actually reached this deployment on, or {@code null} when it
    * cannot be determined.
    *
@@ -891,15 +944,19 @@ public final class SecurityUtil {
   }
 
   private static boolean sameRedirect(URI trustedUri, URI candidate) {
-    if (StringUtils.isBlank(trustedUri.getHost()) || StringUtils.isBlank(candidate.getHost())) {
-      return false;
-    }
-    return StringUtils.equalsIgnoreCase(trustedUri.getScheme(), candidate.getScheme())
-        && StringUtils.equalsIgnoreCase(trustedUri.getHost(), candidate.getHost())
-        && normalizedPort(trustedUri) == normalizedPort(candidate)
+    return sameOrigin(trustedUri, candidate)
         && StringUtils.equals(normalizedPath(trustedUri), normalizedPath(candidate))
         && StringUtils.equals(trustedUri.getRawQuery(), candidate.getRawQuery())
         && StringUtils.equals(trustedUri.getRawFragment(), candidate.getRawFragment());
+  }
+
+  private static boolean sameOrigin(URI left, URI right) {
+    if (StringUtils.isBlank(left.getHost()) || StringUtils.isBlank(right.getHost())) {
+      return false;
+    }
+    return StringUtils.equalsIgnoreCase(left.getScheme(), right.getScheme())
+        && StringUtils.equalsIgnoreCase(left.getHost(), right.getHost())
+        && normalizedPort(left) == normalizedPort(right);
   }
 
   private static String normalizedPath(URI uri) {

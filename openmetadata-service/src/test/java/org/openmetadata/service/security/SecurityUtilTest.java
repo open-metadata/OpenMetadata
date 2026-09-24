@@ -1421,6 +1421,96 @@ class SecurityUtilTest {
     assertEquals("https://om.example.org", SecurityUtil.requestOrigin(request));
   }
 
+  private static final String PRIMARY_CALLBACK = "https://om.example.com/callback";
+  private static final String DR_CALLBACK = "https://dr.example.com/callback";
+
+  @Test
+  void sameOriginCallbackUrl_selectsEntryOnTheRequestOrigin() {
+    assertEquals(
+        DR_CALLBACK,
+        SecurityUtil.sameOriginCallbackUrl(
+            "https://dr.example.com",
+            PRIMARY_CALLBACK,
+            List.of("https://lb.example.com/callback", DR_CALLBACK)));
+  }
+
+  @Test
+  void sameOriginCallbackUrl_returnsNullForUnregisteredOrigin() {
+    assertNull(
+        SecurityUtil.sameOriginCallbackUrl(
+            "https://evil.example.com", PRIMARY_CALLBACK, List.of(DR_CALLBACK)));
+  }
+
+  @Test
+  void sameOriginCallbackUrl_keepsPrimaryOnItsOwnOrigin() {
+    assertNull(
+        SecurityUtil.sameOriginCallbackUrl(
+            "https://om.example.com",
+            PRIMARY_CALLBACK,
+            List.of("https://om.example.com:443/callback", DR_CALLBACK)));
+  }
+
+  /** The identity provider compares the registered spelling, so it must come back untouched. */
+  @Test
+  void sameOriginCallbackUrl_matchesDefaultPortButReturnsConfiguredSpelling() {
+    assertEquals(
+        "https://dr.example.com:443/callback",
+        SecurityUtil.sameOriginCallbackUrl(
+            "https://dr.example.com",
+            PRIMARY_CALLBACK,
+            List.of("https://dr.example.com:443/callback")));
+  }
+
+  @Test
+  void sameOriginCallbackUrl_ignoresEntryWhosePathDiffersFromPrimary() {
+    assertNull(
+        SecurityUtil.sameOriginCallbackUrl(
+            "https://dr.example.com",
+            PRIMARY_CALLBACK,
+            List.of("https://dr.example.com/auth/callback")));
+  }
+
+  @Test
+  void sameOriginCallbackUrl_ignoresSchemeMismatch() {
+    assertNull(
+        SecurityUtil.sameOriginCallbackUrl(
+            "http://dr.example.com", PRIMARY_CALLBACK, List.of(DR_CALLBACK)));
+  }
+
+  @Test
+  void sameOriginCallbackUrl_comparesSchemeAndHostCaseInsensitively() {
+    assertEquals(
+        DR_CALLBACK,
+        SecurityUtil.sameOriginCallbackUrl(
+            "HTTPS://DR.Example.COM", PRIMARY_CALLBACK, List.of(DR_CALLBACK)));
+  }
+
+  @Test
+  void sameOriginCallbackUrl_skipsUnusableEntriesAndKeepsScanning() {
+    assertEquals(
+        DR_CALLBACK,
+        SecurityUtil.sameOriginCallbackUrl(
+            "https://dr.example.com",
+            PRIMARY_CALLBACK,
+            List.of(
+                "not a url",
+                "https://user@dr.example.com/callback",
+                "https://dr.example.com/callback#fragment",
+                " ",
+                DR_CALLBACK)));
+  }
+
+  @Test
+  void sameOriginCallbackUrl_returnsNullWithoutOriginPrimaryOrEntries() {
+    assertNull(SecurityUtil.sameOriginCallbackUrl(null, PRIMARY_CALLBACK, List.of(DR_CALLBACK)));
+    assertNull(
+        SecurityUtil.sameOriginCallbackUrl("https://dr.example.com", null, List.of(DR_CALLBACK)));
+    assertNull(
+        SecurityUtil.sameOriginCallbackUrl("https://dr.example.com", PRIMARY_CALLBACK, null));
+    assertNull(
+        SecurityUtil.sameOriginCallbackUrl("https://dr.example.com", PRIMARY_CALLBACK, List.of()));
+  }
+
   private static Map<String, Claim> jwtClaims(Map<String, Object> values) {
     String token = JWT.create().withPayload(values).sign(Algorithm.none());
     return JWT.decode(token).getClaims();
