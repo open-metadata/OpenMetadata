@@ -6895,6 +6895,53 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Lineage/LineageOverlays/LineageOverlays.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
+        "playwright/e2e/Features/ContextCenterArchive.spec.ts",
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
+        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemories.spec.ts",
+        "playwright/e2e/Features/ContextCenterPermission.spec.ts",
+        "playwright/e2e/Features/Dashboards.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
+        "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryMiscOperations.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts",
+        "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
+        "playwright/e2e/Features/PersonaAIContext.spec.ts",
+        "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
+        "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
+        "playwright/e2e/Features/TeamsHierarchy.spec.ts",
+        "playwright/e2e/Flow/ApiServiceRest.spec.ts",
+        "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
+        "playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts",
+        "playwright/e2e/Flow/PersonaFlow.spec.ts",
+        "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
+        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataInsight.spec.ts",
+        "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
+        "playwright/e2e/Pages/DataProducts.spec.ts",
+        "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
+        "playwright/e2e/Pages/Domains.spec.ts",
+        "playwright/e2e/Pages/Glossary.spec.ts",
+        "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
+        "playwright/e2e/Pages/Policies.spec.ts",
+        "playwright/e2e/Pages/Roles.spec.ts",
+        "playwright/e2e/Pages/Tag.spec.ts",
+        "playwright/e2e/Pages/Tags.spec.ts",
+        "playwright/e2e/Pages/TestSuite.spec.ts",
+        "playwright/e2e/VersionPages/EntityVersionPages.spec.ts",
+        "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/LineageTable/LineageTable.tsx"
       ],
       "specs": [
@@ -9619,53 +9666,6 @@
         "playwright/e2e/Features/AppMode/AppModePrecedence.spec.ts",
         "playwright/e2e/Features/AppMode/AppModePreferenceRoundTrip.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeResolver.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/context/LineageProvider/LineageProvider.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
-        "playwright/e2e/Features/AccessControlSettings.spec.ts",
-        "playwright/e2e/Features/ContextCenterArchive.spec.ts",
-        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
-        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
-        "playwright/e2e/Features/ContextCenterMemories.spec.ts",
-        "playwright/e2e/Features/ContextCenterPermission.spec.ts",
-        "playwright/e2e/Features/Dashboards.spec.ts",
-        "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
-        "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
-        "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryMiscOperations.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts",
-        "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
-        "playwright/e2e/Features/PersonaAIContext.spec.ts",
-        "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
-        "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
-        "playwright/e2e/Features/TeamsHierarchy.spec.ts",
-        "playwright/e2e/Flow/ApiServiceRest.spec.ts",
-        "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
-        "playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts",
-        "playwright/e2e/Flow/PersonaFlow.spec.ts",
-        "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
-        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
-        "playwright/e2e/Pages/DataInsight.spec.ts",
-        "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
-        "playwright/e2e/Pages/DataProducts.spec.ts",
-        "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
-        "playwright/e2e/Pages/Domains.spec.ts",
-        "playwright/e2e/Pages/Glossary.spec.ts",
-        "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
-        "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
-        "playwright/e2e/Pages/Policies.spec.ts",
-        "playwright/e2e/Pages/Roles.spec.ts",
-        "playwright/e2e/Pages/Tag.spec.ts",
-        "playwright/e2e/Pages/Tags.spec.ts",
-        "playwright/e2e/Pages/TestSuite.spec.ts",
-        "playwright/e2e/VersionPages/EntityVersionPages.spec.ts",
-        "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
       ]
     },
     {
