@@ -65,6 +65,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
+import org.openmetadata.service.security.session.PendingLoginState;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
@@ -114,10 +115,7 @@ class SamlAuthServletHandlerTest {
             eq(request),
             eq(response),
             eq("saml"),
-            eq("https://example.com/callback"),
-            any(),
-            any(),
-            any()))
+            eq(redirectOnly("https://example.com/callback"))))
         .thenReturn(new UserSession());
 
     try (MockedStatic<SamlSettingsHolder> samlSettingsHolder =
@@ -129,7 +127,7 @@ class SamlAuthServletHandlerTest {
 
     verify(sessionService)
         .createPendingSession(
-            request, response, "saml", "https://example.com/callback", null, null, null);
+            request, response, "saml", redirectOnly("https://example.com/callback"));
   }
 
   @Test
@@ -140,10 +138,7 @@ class SamlAuthServletHandlerTest {
             eq(request),
             eq(response),
             eq("saml"),
-            eq("https://example.com/callback"),
-            any(),
-            any(),
-            any()))
+            eq(redirectOnly("https://example.com/callback"))))
         .thenReturn(new UserSession());
 
     try (MockedStatic<SamlSettingsHolder> samlSettingsHolder =
@@ -155,7 +150,7 @@ class SamlAuthServletHandlerTest {
 
     verify(sessionService)
         .createPendingSession(
-            request, response, "saml", "https://example.com/callback", null, null, null);
+            request, response, "saml", redirectOnly("https://example.com/callback"));
   }
 
   @Test
@@ -176,10 +171,7 @@ class SamlAuthServletHandlerTest {
             eq(request),
             eq(response),
             eq("saml"),
-            eq("https://app.example.com/auth/callback"),
-            any(),
-            any(),
-            any()))
+            eq(redirectOnly("https://app.example.com/auth/callback"))))
         .thenReturn(new UserSession());
 
     try (MockedStatic<SamlSettingsHolder> samlSettingsHolder =
@@ -191,7 +183,7 @@ class SamlAuthServletHandlerTest {
 
     verify(sessionService)
         .createPendingSession(
-            request, response, "saml", "https://app.example.com/auth/callback", null, null, null);
+            request, response, "saml", redirectOnly("https://app.example.com/auth/callback"));
   }
 
   @Test
@@ -203,10 +195,7 @@ class SamlAuthServletHandlerTest {
             eq(request),
             eq(response),
             eq("saml"),
-            eq("http://[::1]:8585/auth/callback"),
-            any(),
-            any(),
-            any()))
+            eq(redirectOnly("http://[::1]:8585/auth/callback"))))
         .thenReturn(new UserSession());
 
     try (MockedStatic<SamlSettingsHolder> samlSettingsHolder =
@@ -218,7 +207,7 @@ class SamlAuthServletHandlerTest {
 
     verify(sessionService)
         .createPendingSession(
-            request, response, "saml", "http://[::1]:8585/auth/callback", null, null, null);
+            request, response, "saml", redirectOnly("http://[::1]:8585/auth/callback"));
   }
 
   @Test
@@ -230,10 +219,7 @@ class SamlAuthServletHandlerTest {
             eq(request),
             eq(response),
             eq("saml"),
-            eq("https://saml.example.com/callback"),
-            any(),
-            any(),
-            any()))
+            eq(redirectOnly("https://saml.example.com/callback"))))
         .thenReturn(new UserSession());
 
     try (MockedStatic<SamlSettingsHolder> samlSettingsHolder =
@@ -245,7 +231,7 @@ class SamlAuthServletHandlerTest {
 
     verify(sessionService)
         .createPendingSession(
-            request, response, "saml", "https://saml.example.com/callback", null, null, null);
+            request, response, "saml", redirectOnly("https://saml.example.com/callback"));
   }
 
   @Test
@@ -256,10 +242,7 @@ class SamlAuthServletHandlerTest {
             eq(request),
             eq(response),
             eq("saml"),
-            eq("https://example.com/callback"),
-            any(),
-            any(),
-            any()))
+            eq(redirectOnly("https://example.com/callback"))))
         .thenReturn(pending);
 
     try (MockedStatic<SamlSettingsHolder> samlSettingsHolder =
@@ -579,5 +562,9 @@ class SamlAuthServletHandlerTest {
       }
       throw e;
     }
+  }
+
+  private static PendingLoginState redirectOnly(String redirectUri) {
+    return PendingLoginState.builder().redirectUri(redirectUri).build();
   }
 }

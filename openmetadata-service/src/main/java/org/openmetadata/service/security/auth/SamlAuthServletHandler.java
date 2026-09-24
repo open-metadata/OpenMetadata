@@ -52,6 +52,7 @@ import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
+import org.openmetadata.service.security.session.PendingLoginState;
 import org.openmetadata.service.security.session.SessionRefreshInProgressException;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
@@ -179,7 +180,10 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       callbackUrl = requireSamlRedirectUri(callbackUrl);
       UserSession pendingSession =
           sessionService.createPendingSession(
-              req, resp, authConfig.getProvider().value(), callbackUrl, null, null, null);
+              req,
+              resp,
+              authConfig.getProvider().value(),
+              PendingLoginState.builder().redirectUri(callbackUrl).build());
 
       javax.servlet.http.HttpServletRequest wrappedRequest = new HttpServletRequestWrapper(req);
       javax.servlet.http.HttpServletResponse wrappedResponse = new HttpServletResponseWrapper(resp);

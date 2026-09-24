@@ -96,6 +96,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
+import org.openmetadata.service.security.session.PendingLoginState;
 import org.openmetadata.service.security.session.SessionRefreshInProgressException;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
@@ -432,10 +433,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
           req,
           resp,
           authenticationConfiguration.getProvider().value(),
-          redirectUri,
-          pendingLoginContext.state(),
-          pendingLoginContext.nonce(),
-          pendingLoginContext.pkceVerifier());
+          pendingLoginContext.toPendingLoginState(redirectUri, null));
 
       // prompt=none asks the IdP to authenticate only if it can do so with no user interaction.
       // That is a web-SSO optimization, and it is self-defeating on the MCP path: an MCP client
@@ -1340,7 +1338,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     }
   }
 
-  private record PendingLoginContext(String state, String nonce, String pkceVerifier) {}
+  private record PendingLoginContext(String state, String nonce, String pkceVerifier) {
+    PendingLoginState toPendingLoginState(String redirectUri, String idpRedirectUri) {
+      return new PendingLoginState(redirectUri, idpRedirectUri, state, nonce, pkceVerifier);
+    }
+  }
 
   public static void validateConfig(
       AuthenticationConfiguration authConfig, AuthorizerConfiguration authzConfig) {
