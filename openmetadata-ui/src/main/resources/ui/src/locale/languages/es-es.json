@@ -3102,6 +3102,7 @@
     "trigger": "Desencadenador",
     "trigger-entity": "Activar {{entity}}",
     "trigger-type": "tipo de Desencadenador",
+    "triggered-by": "Desencadenado por",
     "triggered-lowercase": "desencadenado",
     "triggering-lowercase": "desencadenamiento",
     "true": "VERDADERO",

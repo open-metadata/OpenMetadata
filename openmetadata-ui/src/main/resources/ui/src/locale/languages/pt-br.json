@@ -3102,6 +3102,7 @@
     "trigger": "Gatilho",
     "trigger-entity": "Acionar {{entity}}",
     "trigger-type": "Tipo de Gatilho",
+    "triggered-by": "Disparado por",
     "triggered-lowercase": "disparado",
     "triggering-lowercase": "disparando",
     "true": "TRUE",

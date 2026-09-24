@@ -3102,6 +3102,7 @@
     "trigger": "Tetikleyici",
     "trigger-entity": "{{entity}} tetikle",
     "trigger-type": "Tetikleyici türü",
+    "triggered-by": "Tetikleyen",
     "triggered-lowercase": "tetiklendi",
     "triggering-lowercase": "tetikliyor",
     "true": "TRUE",

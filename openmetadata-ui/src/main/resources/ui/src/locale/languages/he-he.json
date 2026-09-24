@@ -3102,6 +3102,7 @@
     "trigger": "הפעל",
     "trigger-entity": "הפעל {{entity}}",
     "trigger-type": "סוג הפעלה",
+    "triggered-by": "הופעל על ידי",
     "triggered-lowercase": "הופעל",
     "triggering-lowercase": "מפעיל",
     "true": "TRUE",

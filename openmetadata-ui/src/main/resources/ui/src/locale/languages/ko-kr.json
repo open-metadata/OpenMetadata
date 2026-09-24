@@ -3102,6 +3102,7 @@
     "trigger": "트리거",
     "trigger-entity": "{{entity}} 트리거",
     "trigger-type": "트리거 유형",
+    "triggered-by": "트리거한 사람",
     "triggered-lowercase": "트리거됨",
     "triggering-lowercase": "트리거 중",
     "true": "TRUE",

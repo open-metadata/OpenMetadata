@@ -3102,6 +3102,7 @@
     "trigger": "ट्रिगर",
     "trigger-entity": "{{entity}} ट्रिगर करा",
     "trigger-type": "ट्रिगर प्रकार",
+    "triggered-by": "द्वारे ट्रिगर केले",
     "triggered-lowercase": "ट्रिगर केले",
     "triggering-lowercase": "ट्रिगर करत आहे",
     "true": "TRUE",

@@ -3102,6 +3102,7 @@
     "trigger": "กระตุ้น",
     "trigger-entity": "กระตุ้น {{entity}}",
     "trigger-type": "ประเภทการกระตุ้น",
+    "triggered-by": "กระตุ้นโดย",
     "triggered-lowercase": "ถูกกระตุ้น",
     "triggering-lowercase": "การกระตุ้น",
     "true": "TRUE",

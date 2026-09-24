@@ -3102,6 +3102,7 @@
     "trigger": "Триггер",
     "trigger-entity": "Запустить {{entity}}",
     "trigger-type": "Тип триггера",
+    "triggered-by": "Кем запущено",
     "triggered-lowercase": "запущен",
     "triggering-lowercase": "триггер",
     "true": "ИСТИНА",

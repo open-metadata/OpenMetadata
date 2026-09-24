@@ -3102,6 +3102,7 @@
     "trigger": "触发器",
     "trigger-entity": "触发 {{entity}}",
     "trigger-type": "触发器类型",
+    "triggered-by": "触发者",
     "triggered-lowercase": "已触发",
     "triggering-lowercase": "触发",
     "true": "TRUE",

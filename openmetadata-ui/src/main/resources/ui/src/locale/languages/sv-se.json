@@ -3102,6 +3102,7 @@
     "trigger": "Utlösare",
     "trigger-entity": "Utlös {{entity}}",
     "trigger-type": "Utlösartyp",
+    "triggered-by": "Utlöst av",
     "triggered-lowercase": "utlöst",
     "triggering-lowercase": "utlöser",
     "true": "TRUE",

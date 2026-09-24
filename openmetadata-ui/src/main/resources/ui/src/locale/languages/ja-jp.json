@@ -3102,6 +3102,7 @@
     "trigger": "トリガー",
     "trigger-entity": "{{entity}}をトリガー",
     "trigger-type": "トリガータイプ",
+    "triggered-by": "トリガー実行者",
     "triggered-lowercase": "トリガー済み",
     "triggering-lowercase": "トリガー中",
     "true": "TRUE",

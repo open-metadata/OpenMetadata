@@ -58,6 +58,7 @@ import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHol
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
 import LogViewerModal from '../../../common/LogViewerModal/LogViewerModal.component';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
+import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import { ColumnsType } from '../../../common/Table/Table.interface';
@@ -281,6 +282,21 @@ const AppRunsHistory = forwardRef(
                 : runType ?? NO_DATA_PLACEHOLDER}
             </Typography.Text>
           ),
+        },
+        {
+          title: t('label.triggered-by'),
+          dataIndex: 'triggeredBy',
+          key: 'triggeredBy',
+          render: (triggeredBy: AppRunRecord['triggeredBy'], record) =>
+            !record.isSynthetic && triggeredBy ? (
+              <UserPopOverCard
+                showUserName
+                profileWidth={24}
+                userName={triggeredBy}
+              />
+            ) : (
+              NO_DATA_PLACEHOLDER
+            ),
         },
         {
           title: t('label.duration'),
