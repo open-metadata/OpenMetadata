@@ -343,14 +343,17 @@ const serveStaticAsset = async (route: Route) => {
  * whichever test owns the route. Losing the target mid-flight is routine here
  * rather than exceptional: boot config is fetched on every navigation, so any
  * test that navigates away or ends while one is in flight would otherwise fail
- * on a request nothing asserts on. Anything else still propagates — a cache
- * that is broken for a real reason must not be silent.
+ * on a request nothing asserts on. Closing the context also disposes the
+ * `route.fetch()` response it owns, so a `body()` read racing teardown fails
+ * with "Response has been disposed" rather than "has been closed". Anything
+ * else still propagates — a cache that is broken for a real reason must not be
+ * silent.
  */
 const ignoreClosedTarget = async (serve: () => Promise<void>) => {
   try {
     await serve();
   } catch (error) {
-    if (!/has been closed/.test(String(error))) {
+    if (!/has been closed|Response has been disposed/.test(String(error))) {
       throw error;
     }
   }

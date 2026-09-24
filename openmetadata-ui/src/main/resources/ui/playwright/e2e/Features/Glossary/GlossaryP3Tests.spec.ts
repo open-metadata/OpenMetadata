@@ -655,28 +655,21 @@ test.describe('Glossary P3 Tests', () => {
     try {
       await glossary.create(apiContext);
 
-      // Make multiple rapid API calls
-      const calls = [];
+      // The FQN contains `%'`, an invalid percent-escape. Sent raw, the server
+      // rejects the URI and closes the keep-alive sockets, so the cleanup
+      // DELETE reuses a dead socket and fails with "socket hang up".
+      const fqn = encodeURIComponent(glossary.responseData.fullyQualifiedName);
+      const responses = await Promise.all(
+        Array.from({ length: 5 }, () =>
+          apiContext.get(`/api/v1/glossaries/name/${fqn}`)
+        )
+      );
 
-      for (let i = 0; i < 5; i++) {
-        calls.push(
-          apiContext.get(
-            `/api/v1/glossaries/${glossary.responseData.fullyQualifiedName}`
-          )
-        );
+      expect(responses).toHaveLength(5);
+
+      for (const response of responses) {
+        expect(response.status()).toBe(200);
       }
-
-      const responses = await Promise.all(calls);
-
-      // Verify we got responses (any status code is acceptable - the test verifies the API doesn't crash)
-      expect(responses.length).toBe(5);
-
-      // At least some calls should have been processed (either success or known error)
-      const processedCount = responses.filter(
-        (r) => r.status() >= 200 && r.status() < 600
-      ).length;
-
-      expect(processedCount).toBeGreaterThan(0);
     } finally {
       await glossary.delete(apiContext);
       await afterAction();
