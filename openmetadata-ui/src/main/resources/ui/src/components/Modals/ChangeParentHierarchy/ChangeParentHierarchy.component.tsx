@@ -41,7 +41,6 @@ import {
 const MAX_BUFFERED_EVENTS = 100;
 
 // `Form.Item` injects a string value; the picker takes `TagLabel[]`.
-// Glossaries are expand-only here: a term moves under another term.
 const ParentPicker = ({
   excludeFqn,
   placeholder,
@@ -56,6 +55,8 @@ const ParentPicker = ({
   onChange?: (value?: string) => void;
 }) => (
   <GlossaryTermPicker
+    // A glossary is a valid parent: picking one promotes the term to its root.
+    selectGlossaries
     data-testid="change-parent-select"
     // A term cannot be moved under itself.
     excludeFqns={[excludeFqn]}
