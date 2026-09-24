@@ -4678,7 +4678,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/AppMode/AppModeSettings.spec.ts",
-        "playwright/e2e/Features/IncidentManager.spec.ts"
+        "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Pages/ODCSImportExport.spec.ts"
       ]
     },
     {
@@ -9416,6 +9417,22 @@
       ],
       "specs": [
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/data-contract/ODCSImportReport/ODCSImportReport.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/ODCSImportExport.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/data-contract/ODCSImportSummary/ODCSImportSummary.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/ODCSImportExport.spec.ts"
       ]
     },
     {
