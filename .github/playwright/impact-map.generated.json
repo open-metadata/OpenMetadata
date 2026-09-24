@@ -10941,6 +10941,7 @@
       "specs": [
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryDisplayNameEdit.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryMutualExclusivity.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts",
         "playwright/e2e/Features/Permissions/GlossaryPermissions.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
