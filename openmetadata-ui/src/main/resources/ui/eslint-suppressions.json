@@ -869,7 +869,7 @@
   },
   "playwright/utils/KnowledgeCenter.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 11
+      "count": 8
     },
     "playwright/no-wait-for-selector": {
       "count": 7
