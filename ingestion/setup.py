@@ -180,7 +180,7 @@ base_requirements = {
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
-    "Jinja2>=2.11.3",
+    "Jinja2>=3.1.6",  # 3.1.5/3.1.6 close sandbox escapes; the Rule Library relies on the sandbox
     "idna>=3.15",  # CVE-2026-45409 idna.encode() bypass of CVE-2024-3651 fix
     "jsonpatch<2.0, >=1.24",
     "kubernetes>=21.0.0,<36",  # 36.0.0 regressed in-cluster auth (https://github.com/kubernetes-client/python/issues/2582)
