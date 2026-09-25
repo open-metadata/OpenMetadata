@@ -83,7 +83,7 @@ export const RevertBackForm: React.FC<RevertBackFormProps> = ({
         <div className="tw:bg-utility-brand-50 tw:rounded-md tw:p-1.5">
           <Typography
             as="p"
-            className="tw:m-0 tw:mb-1.5 tw:px-3 tw:py-2.5 tw:text-utility-brand-700 tw:bg-utility-brand-50 tw:rounded"
+            className="tw:m-0 tw:mb-1.5 tw:px-3 tw:py-2.5 tw:text-brand-secondary tw:bg-utility-brand-50 tw:rounded"
             size="text-xs"
             weight="semibold">
             {t('label.revert-changes')}
