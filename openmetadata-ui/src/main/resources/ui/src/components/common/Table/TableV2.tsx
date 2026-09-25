@@ -1803,11 +1803,9 @@ const TableV2 = <T extends object>(
                 'tw:table-auto': tableLayoutClasses.auto,
               })}
               containerClassName={rest.scrollContainerClassName}
-              containerStyle={{
-                ...getTableContainerStyle(
-                  scroll?.y as string | number | undefined
-                ),
-              }}
+              containerStyle={getTableContainerStyle(
+                scroll?.y as string | number | undefined
+              )}
               disabledBehavior="selection"
               disabledKeys={disabledRowKeys}
               dragAndDropHooks={

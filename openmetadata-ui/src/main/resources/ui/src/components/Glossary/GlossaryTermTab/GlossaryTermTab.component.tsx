@@ -1922,9 +1922,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         <Table
           cellClassName="tw:p-2 tw:align-middle"
           columns={columns}
-          // `tw:flex tw:flex-col` turns this outer container into a flex column so
-          // its inner scroll region (`scrollContainerClassName`, below) has an
-          // actual box to grow into instead of collapsing to nothing.
+          // Flex column so the scroll region below has a bounded box to fill.
           containerClassName="glossary-terms-table drop-over-background tw:border-0 tw:rounded-none tw:flex tw:flex-col tw:min-h-0 tw:flex-1"
           data-testid="glossary-terms-table"
           dataSource={filteredGlossaryTerms}
@@ -1937,12 +1935,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           rowClassName={getRowClassName}
           rowKey="fullyQualifiedName"
           scroll={GLOSSARY_TABLE_SCROLL}
-          // Stretches the table's own scroll region to fill this panel so a
-          // short result set doesn't leave the horizontal scrollbar floating
-          // above empty space. The outer wrapper is a bounded flex column
-          // (`tw:flex tw:flex-col tw:flex-1 tw:min-h-0`), so this region takes
-          // the remaining height and scrolls both axes itself (overflow-y comes
-          // from scroll.y's inline style); the sticky header pins against it.
+          // Fill the panel rather than the rows' height, so the horizontal
+          // scrollbar sits at the bottom instead of floating above empty space.
           scrollContainerClassName="tw:flex-1 tw:min-h-0 tw:max-h-none"
           size="small"
           staticVisibleColumns={STATIC_VISIBLE_COLUMNS}

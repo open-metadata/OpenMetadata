@@ -40,12 +40,9 @@ export type {
 export interface TableComponentProps<T> extends TableProps<T> {
   containerClassName?: string; // Applied to the table container
   /**
-   * Applied to the div `ui-core-components`' `Table` wraps its own `<table>`
-   * element in (the div that owns `scroll.x`/`scroll.y`'s overflow and that
-   * the sticky header is positioned against). Only pass this together with
-   * `tw:flex tw:flex-col` on `containerClassName` and a bounded-height
-   * ancestor — otherwise the flex chain has nothing to grow into and
-   * collapses instead of stretching.
+   * Applied to the inner div that owns `scroll.x`/`scroll.y`'s overflow.
+   * Only pass this alongside `tw:flex tw:flex-col` on `containerClassName`
+   * and a bounded-height ancestor, or the flex chain collapses.
    */
   scrollContainerClassName?: string;
   resizableColumns?: boolean;
