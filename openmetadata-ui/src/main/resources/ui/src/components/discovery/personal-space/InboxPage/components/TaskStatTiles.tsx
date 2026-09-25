@@ -46,7 +46,7 @@ const TileValue: React.FC<{ tile: StatTile }> = ({ tile }) => {
   if (tile.to) {
     return (
       <Link
-        className="tw:font-mono tw:text-sm tw:text-utility-blue-dark-500 tw:underline!"
+        className="tw:text-sm tw:text-utility-blue-dark-500 tw:underline!"
         to={tile.to}>
         {tile.value}
       </Link>

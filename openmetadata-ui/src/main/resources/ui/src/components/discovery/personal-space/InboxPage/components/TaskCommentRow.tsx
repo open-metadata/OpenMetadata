@@ -208,7 +208,7 @@ const TaskCommentRow: React.FC<TaskCommentRowProps> = ({
 
   return (
     <Box
-      className="tw:group tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:px-4 tw:py-3.5 tw:shadow-xs"
+      className="tw:group tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-3 tw:shadow-xs"
       data-testid="task-comment-card"
       direction="col"
       gap={2}>
