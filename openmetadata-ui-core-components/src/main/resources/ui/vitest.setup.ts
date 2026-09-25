@@ -44,3 +44,25 @@ if (typeof globalThis.DataTransfer === 'undefined') {
   globalThis.DataTransfer =
     DataTransferPolyfill as unknown as typeof DataTransfer;
 }
+
+// jsdom ships no `ResizeObserver`, which the dropdown placement hook
+// (`useDropdownPlacement`) instantiates whenever an overlay opens. Without this
+// shim, any test that opens a TreeSelect/Dropdown throws `ResizeObserver is not
+// defined` during commit. A no-op observer is enough — the hook also listens to
+// `resize` and measures on open.
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  class ResizeObserverPolyfill {
+    observe() {
+      // no-op
+    }
+    unobserve() {
+      // no-op
+    }
+    disconnect() {
+      // no-op
+    }
+  }
+
+  globalThis.ResizeObserver =
+    ResizeObserverPolyfill as unknown as typeof ResizeObserver;
+}
