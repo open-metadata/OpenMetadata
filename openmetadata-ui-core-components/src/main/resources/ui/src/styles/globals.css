@@ -1109,14 +1109,16 @@
     --color-utility-success-600: theme(--color-success-400);
     --color-utility-success-700: theme(--color-success-400);
 
-    --color-utility-orange-50: theme(--color-orange-950);
-    --color-utility-orange-100: theme(--color-orange-900);
-    --color-utility-orange-200: theme(--color-orange-800);
+    /* Same status-chip recipe as success/warning/error: the solid 950/800 steps
+       read as a heavy filled block on dark surfaces. */
+    --color-utility-orange-50: --alpha(theme(--color-orange-500) / 16%);
+    --color-utility-orange-100: --alpha(theme(--color-orange-500) / 16%);
+    --color-utility-orange-200: --alpha(theme(--color-orange-500) / 35%);
     --color-utility-orange-300: theme(--color-orange-700);
     --color-utility-orange-400: theme(--color-orange-600);
-    --color-utility-orange-500: theme(--color-orange-500);
+    --color-utility-orange-500: theme(--color-orange-400);
     --color-utility-orange-600: theme(--color-orange-400);
-    --color-utility-orange-700: theme(--color-orange-300);
+    --color-utility-orange-700: theme(--color-orange-400);
 
     --color-utility-blue-dark-50: theme(--color-blue-dark-950);
     --color-utility-blue-dark-100: theme(--color-blue-dark-900);

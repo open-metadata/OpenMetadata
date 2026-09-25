@@ -18,7 +18,13 @@ import {
   icons,
   STATUS_TYPE_TO_BADGE_COLOR,
 } from '../../../constants/StatusBadge.constant';
-import { StatusBadgeProps } from './StatusBadge.interface';
+import { StatusBadgeProps, StatusType } from './StatusBadge.interface';
+
+// Test-case results arrive as `failed` (lower-cased TestCaseStatus), not
+// StatusType.Failure; the legacy LESS styled both as the error colour.
+const STATUS_ALIASES: Partial<Record<string, StatusType>> = {
+  failed: StatusType.Failure,
+};
 
 const StatusBadge = ({
   label,
@@ -34,7 +40,9 @@ const StatusBadge = ({
   return (
     <Badge
       className={classNames('status-badge tw:gap-1', status, className)}
-      color={STATUS_TYPE_TO_BADGE_COLOR[status] ?? 'gray'}
+      color={
+        STATUS_TYPE_TO_BADGE_COLOR[STATUS_ALIASES[status] ?? status] ?? 'gray'
+      }
       data-testid={dataTestId}
       size="sm"
       type="color">

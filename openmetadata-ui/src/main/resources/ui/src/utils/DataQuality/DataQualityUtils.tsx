@@ -40,6 +40,8 @@ export const getPieChartLabel = (label: string, value = 0) => {
   return (
     <>
       <text
+        // The fill attribute stays for light; a CSS class outranks it in dark.
+        className="tw:dark:fill-white"
         dy={8}
         fill="#1D2939"
         fontSize={20}
