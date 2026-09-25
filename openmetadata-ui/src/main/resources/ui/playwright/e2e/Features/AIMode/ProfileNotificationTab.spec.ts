@@ -76,9 +76,17 @@ const SOURCE_NAME_3 = 'task';
 const SOURCE_NAME_4 = 'conversation';
 const SOURCE_NAME_5 = 'table';
 
-// Admin page fixture — notification tab is admin-gated.
-const test = base;
-test.use({ storageState: 'playwright/.auth/admin.json' });
+// Admin page fixture — tests call getApiContext(page) for backend operations
+// (delete/restore table), which reads the OIDC token from IndexedDB. storageState
+// only restores cookies/localStorage, not IndexedDB, so we need a real login.
+const test = base.extend<{ page: Page }>({
+  page: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await admin.login(page);
+    await use(page);
+    await page.close();
+  },
+});
 
 const data: { alertDetails: AlertDetails } = {
   alertDetails: {
