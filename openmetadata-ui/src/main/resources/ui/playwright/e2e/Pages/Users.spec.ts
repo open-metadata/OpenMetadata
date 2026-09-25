@@ -12,15 +12,15 @@
  */
 import { Page } from '@playwright/test';
 import {
-  DATA_CONSUMER_RULES,
-  DATA_STEWARD_RULES,
-  EDIT_DESCRIPTION_RULE,
-  EDIT_GLOSSARY_TERM_RULE,
-  EDIT_TAGS_RULE,
-  EDIT_USER_FOR_TEAM_RULES,
-  OWNER_TEAM_RULES,
-  VIEW_ALL_RULE,
-  VIEW_ALL_WITH_MATCH_TAG_CONDITION,
+    DATA_CONSUMER_RULES,
+    DATA_STEWARD_RULES,
+    EDIT_DESCRIPTION_RULE,
+    EDIT_GLOSSARY_TERM_RULE,
+    EDIT_TAGS_RULE,
+    EDIT_USER_FOR_TEAM_RULES,
+    OWNER_TEAM_RULES,
+    VIEW_ALL_RULE,
+    VIEW_ALL_WITH_MATCH_TAG_CONDITION
 } from '../../constant/permission';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
@@ -36,37 +36,37 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext, performAdminLogin } from '../../utils/admin';
 import {
-  redirectToHomePage,
-  toastNotification,
-  uuid,
-  visitOwnProfilePage,
+    redirectToHomePage,
+    toastNotification,
+    uuid,
+    visitOwnProfilePage
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { visitClassificationPage } from '../../utils/tag';
 import {
-  addUser,
-  checkDataConsumerPermissions,
-  checkEditOwnerButtonPermission,
-  checkForUserExistError,
-  checkStewardPermissions,
-  checkStewardServicesPermissions,
-  generateToken,
-  hardDeleteUserProfilePage,
-  performUserLogin,
-  permanentDeleteUser,
-  resetPassword,
-  restoreUser,
-  restoreUserProfilePage,
-  revokeToken,
-  searchUserByEmail,
-  settingPageOperationPermissionCheck,
-  softDeleteUser,
-  softDeleteUserProfilePage,
-  updateExpiration,
-  updateUserDetails,
-  visitUserListPage,
-  visitUserProfilePage,
+    addUser,
+    checkDataConsumerPermissions,
+    checkEditOwnerButtonPermission,
+    checkForUserExistError,
+    checkStewardPermissions,
+    checkStewardServicesPermissions,
+    generateToken,
+    hardDeleteUserProfilePage,
+    performUserLogin,
+    permanentDeleteUser,
+    resetPassword,
+    restoreUser,
+    restoreUserProfilePage,
+    revokeToken,
+    searchUserByEmail,
+    settingPageOperationPermissionCheck,
+    softDeleteUser,
+    softDeleteUserProfilePage,
+    updateExpiration,
+    updateUserDetails,
+    visitUserListPage,
+    visitUserProfilePage
 } from '../../utils/user';
 
 const userName = `pw-user-${uuid()}`;

@@ -19,24 +19,24 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import {
-  dismissToasts,
-  fillDescriptionBox,
-  getApiContext,
-  redirectToHomePage,
+    dismissToasts,
+    fillDescriptionBox,
+    getApiContext,
+    redirectToHomePage
 } from '../../../utils/common';
 import { assignDomainWidget, removeDomainWidget } from '../../../utils/domain';
 import {
-  addMultiOwner,
-  waitForAllLoadersToDisappear,
+    addMultiOwner,
+    waitForAllLoadersToDisappear
 } from '../../../utils/entity';
 import {
-  addMultiOwnerInDialog,
-  fillStyleIconUrl,
-  openAddGlossaryTermModal,
-  selectActiveGlossary,
-  selectActiveGlossaryTerm,
-  selectStyleColor,
-  selectStyleIcon,
+    addMultiOwnerInDialog,
+    fillStyleIconUrl,
+    openAddGlossaryTermModal,
+    selectActiveGlossary,
+    selectActiveGlossaryTerm,
+    selectStyleColor,
+    selectStyleIcon
 } from '../../../utils/glossary';
 import { pickGlossaryTermInField } from '../../../utils/glossaryPicker';
 import { sidebarClick } from '../../../utils/sidebar';

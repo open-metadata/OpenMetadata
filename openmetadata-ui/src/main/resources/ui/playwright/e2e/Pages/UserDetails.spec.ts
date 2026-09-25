@@ -21,9 +21,9 @@ import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  getApiContext,
-  uuid,
-  waitForAntdModalToSettle,
+    getApiContext,
+    uuid,
+    waitForAntdModalToSettle
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { visitUserProfilePage } from '../../utils/user';

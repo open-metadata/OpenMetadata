@@ -14,9 +14,9 @@ import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import {
-  createNewPage,
-  redirectToHomePage,
-  toastNotification,
+    createNewPage,
+    redirectToHomePage,
+    toastNotification
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 

@@ -15,22 +15,22 @@ import { DataType } from '../../../src/generated/entity/data/table';
 import { CONTAINER_CHILDREN } from '../../constant/contianer';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import {
-  getDefaultAdminAPIContext,
-  redirectToHomePage,
-  uuid,
+    getDefaultAdminAPIContext,
+    redirectToHomePage,
+    uuid
 } from '../../utils/common';
 import {
-  assignTagToChildren,
-  copyAndGetClipboardText,
-  removeTagsFromChildren,
-  testCopyLinkButton,
-  validateCopiedLinkFormat,
-  waitForAllLoadersToDisappear,
+    assignTagToChildren,
+    copyAndGetClipboardText,
+    removeTagsFromChildren,
+    testCopyLinkButton,
+    validateCopiedLinkFormat,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import {
-  clickBreadcrumbAncestor,
-  expectBreadcrumbToContainAncestor,
-  openBreadcrumbOverflowMenu,
+    clickBreadcrumbAncestor,
+    expectBreadcrumbToContainAncestor,
+    openBreadcrumbOverflowMenu
 } from '../../utils/headerBreadcrumbUtils';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';

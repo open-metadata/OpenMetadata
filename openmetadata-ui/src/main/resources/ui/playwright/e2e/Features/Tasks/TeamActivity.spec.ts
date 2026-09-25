@@ -12,11 +12,11 @@
  */
 import { Page } from '@playwright/test';
 import {
-  createActivityTask,
-  expect,
-  openAssignedTasks,
-  selectActivityFilter,
-  test,
+    createActivityTask,
+    expect,
+    openAssignedTasks,
+    selectActivityFilter,
+    test
 } from '../../../support/fixtures/taskActivity';
 import { okJson } from '../../../utils/apiResponse';
 import { getTaskCard, getTaskDisplayId } from '../../../utils/task';

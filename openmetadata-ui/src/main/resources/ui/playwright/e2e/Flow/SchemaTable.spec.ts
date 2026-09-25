@@ -17,12 +17,12 @@ import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import {
-  addOwner,
-  copyAndGetClipboardText,
-  testCopyLinkButton,
-  updateDisplayNameForEntityChildren,
-  validateCopiedLinkFormat,
-  waitForAllLoadersToDisappear,
+    addOwner,
+    copyAndGetClipboardText,
+    testCopyLinkButton,
+    updateDisplayNameForEntityChildren,
+    validateCopiedLinkFormat,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 

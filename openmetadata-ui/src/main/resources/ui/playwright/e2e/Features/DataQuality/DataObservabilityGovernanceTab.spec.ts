@@ -21,11 +21,11 @@ import { ClassificationClass } from '../../../support/tag/ClassificationClass';
 import { TagClass } from '../../../support/tag/TagClass';
 import { createNewPage } from '../../../utils/common';
 import {
-  DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID,
-  ENTITY_HEALTH_PIE_CHART_TEST_ID,
-  goToDataQualityDashboard,
-  isDashboardReportBatchResponse,
-  TEST_CASE_STATUS_PIE_CHART_TEST_ID,
+    DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID,
+    ENTITY_HEALTH_PIE_CHART_TEST_ID,
+    goToDataQualityDashboard,
+    isDashboardReportBatchResponse,
+    TEST_CASE_STATUS_PIE_CHART_TEST_ID
 } from '../../../utils/dataQuality';
 import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';

@@ -13,16 +13,16 @@
 
 import { APIRequestContext } from '@playwright/test';
 import {
-  DOMAIN_TAGS,
-  PLAYWRIGHT_INGESTION_TAG_OBJ,
+    DOMAIN_TAGS,
+    PLAYWRIGHT_INGESTION_TAG_OBJ
 } from '../../constant/config';
 import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, uuid } from '../../utils/common';
 import { getEncodedFqn } from '../../utils/entity';
 import { triggerIngestionPipeline } from '../../utils/ingestionExecution';
 import {
-  getLogViewerLineCount,
-  waitForRunningPipelineStatus,
+    getLogViewerLineCount,
+    waitForRunningPipelineStatus
 } from '../../utils/logsViewer';
 import { getAgentCard } from '../../utils/serviceIngestion';
 

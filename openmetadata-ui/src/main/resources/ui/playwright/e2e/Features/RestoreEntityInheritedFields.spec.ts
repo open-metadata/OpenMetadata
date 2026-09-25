@@ -27,15 +27,15 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  assignDataProduct,
-  assignSingleSelectDomain,
-  getApiContext,
-  redirectToHomePage,
-  searchDataProductOptions,
+    assignDataProduct,
+    assignSingleSelectDomain,
+    getApiContext,
+    redirectToHomePage,
+    searchDataProductOptions
 } from '../../utils/common';
 import {
-  softDeleteEntity,
-  waitForAllLoadersToDisappear,
+    softDeleteEntity,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import { clickBreadcrumbAncestor } from '../../utils/headerBreadcrumbUtils';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';

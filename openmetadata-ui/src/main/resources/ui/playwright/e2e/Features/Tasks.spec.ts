@@ -24,13 +24,13 @@ import { performAdminLogin } from '../../utils/admin';
 import { okJson, settleAll } from '../../utils/apiResponse';
 import { dismissHoverPopovers, getApiContext } from '../../utils/common';
 import {
-  assignDomainToEntity,
-  selectDomainFromNavbar,
+    assignDomainToEntity,
+    selectDomainFromNavbar
 } from '../../utils/domain';
 import {
-  getTaskCard,
-  getTaskDisplayId,
-  waitForTaskCreateResponse,
+    getTaskCard,
+    getTaskDisplayId,
+    waitForTaskCreateResponse
 } from '../../utils/task';
 import { addTagSuggestion, selectAssignee } from '../../utils/taskWorkflow';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';

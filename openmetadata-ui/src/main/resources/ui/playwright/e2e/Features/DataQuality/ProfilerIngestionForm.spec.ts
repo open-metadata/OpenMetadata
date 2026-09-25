@@ -15,9 +15,9 @@ import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseSe
 import { performAdminLogin } from '../../../utils/admin';
 import { chooseSelectOption } from '../../../utils/common';
 import {
-  openProfilerForm,
-  selectSampleConfigType,
-  submitAndCaptureCreatePayload,
+    openProfilerForm,
+    selectSampleConfigType,
+    submitAndCaptureCreatePayload
 } from '../../../utils/profilerForm';
 import { test } from '../../fixtures/pages';
 

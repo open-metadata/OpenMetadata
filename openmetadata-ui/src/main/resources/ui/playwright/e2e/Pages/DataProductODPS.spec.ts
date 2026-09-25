@@ -16,10 +16,10 @@ import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  chooseSelectOption,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    chooseSelectOption,
+    redirectToHomePage,
+    toastNotification,
+    uuid
 } from '../../utils/common';
 import { test } from '../fixtures/pages';
 

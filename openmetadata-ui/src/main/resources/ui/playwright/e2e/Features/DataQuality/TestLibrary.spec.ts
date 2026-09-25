@@ -13,10 +13,10 @@
 import test, { expect, Locator, Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification,
+    uuid
 } from '../../../utils/common';
 import { fillDeleteConfirmationIfPresent } from '../../../utils/entity';
 import { findSystemTestDefinition } from '../../../utils/testCases';

@@ -17,9 +17,9 @@ import { SubDomain } from '../../support/domain/SubDomain';
 import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import {
-  checkSubDomainCount,
-  createSubDomain,
-  selectDomain,
+    checkSubDomainCount,
+    createSubDomain,
+    selectDomain
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { waitForSearchIndexed } from '../../utils/polling';

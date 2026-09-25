@@ -14,25 +14,25 @@ import { EntityTypeEndpoint } from '../../../support/entity/Entity.interface';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test as countTest } from '../../../support/fixtures/base';
 import {
-  createActivityTask,
-  openAssignedTasks,
-  selectActivityFilter,
-  test,
+    createActivityTask,
+    openAssignedTasks,
+    selectActivityFilter,
+    test
 } from '../../../support/fixtures/taskActivity';
 import { UserClass } from '../../../support/user/UserClass';
 import {
-  ACTIVITY_TEST_TIMEOUT,
-  createConversationThread,
-  getTableFqn,
-  insertActivityEventForTest,
-  visitTableActivityFeed,
-  waitForActivityEvent,
+    ACTIVITY_TEST_TIMEOUT,
+    createConversationThread,
+    getTableFqn,
+    insertActivityEventForTest,
+    visitTableActivityFeed,
+    waitForActivityEvent
 } from '../../../utils/activityAPI';
 import { okJson } from '../../../utils/apiResponse';
 import {
-  getDefaultAdminAPIContext,
-  redirectToHomePage,
-  uuid,
+    getDefaultAdminAPIContext,
+    redirectToHomePage,
+    uuid
 } from '../../../utils/common';
 import { followEntity } from '../../../utils/entity';
 import { waitForPageLoaded } from '../../../utils/polling';

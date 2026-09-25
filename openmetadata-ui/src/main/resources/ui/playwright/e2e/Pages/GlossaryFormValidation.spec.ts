@@ -14,14 +14,14 @@ import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Glossary } from '../../support/glossary/Glossary';
 import {
-  dismissToasts,
-  fillDescriptionBox,
-  getApiContext,
-  redirectToHomePage,
+    dismissToasts,
+    fillDescriptionBox,
+    getApiContext,
+    redirectToHomePage
 } from '../../utils/common';
 import {
-  openAddGlossaryTermModal,
-  selectActiveGlossary,
+    openAddGlossaryTermModal,
+    selectActiveGlossary
 } from '../../utils/glossary';
 import { sidebarClick } from '../../utils/sidebar';
 

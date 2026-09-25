@@ -17,14 +17,14 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';
 import { okJson } from '../../../utils/apiResponse';
 import {
-  dismissToasts,
-  fillDescriptionBox,
-  getApiContext,
-  redirectToHomePage,
+    dismissToasts,
+    fillDescriptionBox,
+    getApiContext,
+    redirectToHomePage
 } from '../../../utils/common';
 import {
-  selectActiveGlossary,
-  verifyWorkflowInstanceExists,
+    selectActiveGlossary,
+    verifyWorkflowInstanceExists
 } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';

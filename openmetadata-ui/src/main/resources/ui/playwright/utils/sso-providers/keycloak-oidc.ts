@@ -13,20 +13,20 @@
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { OM_BASE_URL, SSO_ENV } from '../../constant/ssoAuth';
 import {
-  applyProviderConfig,
-  fetchSecurityConfig,
-  ProviderConfigOverride,
-  restoreSecurityConfig,
+    applyProviderConfig,
+    fetchSecurityConfig,
+    ProviderConfigOverride,
+    restoreSecurityConfig
 } from '../ssoAuth';
 import { SsoProviderFixture } from './fixture';
 import { forceTokenExpiry } from './force-token-expiry';
 import { ProviderHelper } from './index';
 import {
-  assertSupportedBaseUrl,
-  escapeRegExp,
-  KEYCLOAK_SAML,
-  KEYCLOAK_SEEDED_CREDS,
-  performProviderLogin,
+    assertSupportedBaseUrl,
+    escapeRegExp,
+    KEYCLOAK_SAML,
+    KEYCLOAK_SEEDED_CREDS,
+    performProviderLogin
 } from './keycloak-saml';
 
 // Throwaway fixture credentials, committed like the realm user's password.

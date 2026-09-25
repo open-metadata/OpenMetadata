@@ -18,16 +18,16 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
-  descriptionBox,
-  fillDescriptionBox,
-  getApiContext,
-  redirectToHomePage,
+    descriptionBox,
+    fillDescriptionBox,
+    getApiContext,
+    redirectToHomePage
 } from '../../../utils/common';
 import { fillDeleteConfirmationIfPresent } from '../../../utils/entity';
 import {
-  openAddGlossaryTermModal,
-  performExpandAll,
-  selectActiveGlossary,
+    openAddGlossaryTermModal,
+    performExpandAll,
+    selectActiveGlossary
 } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
 

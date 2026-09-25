@@ -18,32 +18,32 @@ import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  addTestCaseListFilterByColumn,
-  addTestCaseListFilterByStatus,
-  addTestCaseListFilterByTable,
-  addTestCaseListFilterByTestType,
-  addTestCaseListResetFilters,
-  addTestCaseListToggleSelectAll,
+    addTestCaseListFilterByColumn,
+    addTestCaseListFilterByStatus,
+    addTestCaseListFilterByTable,
+    addTestCaseListFilterByTestType,
+    addTestCaseListResetFilters,
+    addTestCaseListToggleSelectAll
 } from '../../utils/addTestCaseList';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  assignSingleSelectDomain,
-  fillDescriptionBox,
-  getApiContext,
-  redirectToHomePage,
-  removeSingleSelectDomain,
-  toastNotification,
-  uuid,
+    assignSingleSelectDomain,
+    fillDescriptionBox,
+    getApiContext,
+    redirectToHomePage,
+    removeSingleSelectDomain,
+    toastNotification,
+    uuid
 } from '../../utils/common';
 import {
-  addTestCaseToLogicalTestSuite,
-  addTestSuitePipeline,
-  removeFirstNTestCasesFromLogicalTestSuite,
+    addTestCaseToLogicalTestSuite,
+    addTestSuitePipeline,
+    removeFirstNTestCasesFromLogicalTestSuite
 } from '../../utils/dataQuality';
 import {
-  addMultiOwner,
-  removeOwnersFromList,
-  waitForAllLoadersToDisappear,
+    addMultiOwner,
+    removeOwnersFromList,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 

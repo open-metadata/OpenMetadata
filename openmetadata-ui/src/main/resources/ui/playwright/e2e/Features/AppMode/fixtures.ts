@@ -37,8 +37,8 @@
 import { Browser, expect, Page, test as base } from '@playwright/test';
 import { UserClass } from '../../../support/user/UserClass';
 import {
-  createNewPage,
-  getDefaultAdminAPIContext,
+    createNewPage,
+    getDefaultAdminAPIContext
 } from '../../../utils/common';
 
 type WorkerFixtures = {

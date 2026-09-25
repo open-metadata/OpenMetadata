@@ -16,9 +16,9 @@ import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-  selectScheduleFrequency,
-  selectScheduleType,
-  setCustomCron,
+    selectScheduleFrequency,
+    selectScheduleType,
+    setCustomCron
 } from '../../utils/scheduleInterval';
 
 // use the admin user to login

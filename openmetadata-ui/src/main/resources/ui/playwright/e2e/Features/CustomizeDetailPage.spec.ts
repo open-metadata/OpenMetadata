@@ -13,9 +13,9 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import {
-  ECustomizedDataAssets,
-  ECustomizedGovernance,
-  EntityTabs,
+    ECustomizedDataAssets,
+    ECustomizedGovernance,
+    EntityTabs
 } from '../../constant/customizeDetail';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
@@ -25,23 +25,23 @@ import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  clickOutside,
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
-  waitForAntdModalToSettle,
+    clickOutside,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification,
+    waitForAntdModalToSettle
 } from '../../utils/common';
 import {
-  getCustomizeDetailsDefaultTabs,
-  getCustomizeDetailsEntity,
+    getCustomizeDetailsDefaultTabs,
+    getCustomizeDetailsEntity
 } from '../../utils/customizeDetails';
 import {
-  checkDefaultStateForNavigationTree,
-  validateLeftSidebarWithHiddenItems,
+    checkDefaultStateForNavigationTree,
+    validateLeftSidebarWithHiddenItems
 } from '../../utils/customizeNavigation';
 import {
-  getEncodedFqn,
-  waitForAllLoadersToDisappear,
+    getEncodedFqn,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';

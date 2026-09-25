@@ -14,14 +14,14 @@
 import { type Page } from '@playwright/test';
 import { DataContract } from '../../../src/generated/entity/data/dataContract';
 import {
-  INGESTION_PIPELINE_NAME,
-  TEST_CASE_NAME,
-  TEST_SUITE_NAME,
-  WEBHOOK_DELIVERY_COLUMN_NAME,
+    INGESTION_PIPELINE_NAME,
+    TEST_CASE_NAME,
+    TEST_SUITE_NAME,
+    WEBHOOK_DELIVERY_COLUMN_NAME
 } from '../../constant/alert';
 import {
-  AlertDetails,
-  ObservabilityCreationDetails,
+    AlertDetails,
+    ObservabilityCreationDetails
 } from '../../constant/alert.interface';
 import { Domain } from '../../support/domain/Domain';
 import { PipelineClass } from '../../support/entity/PipelineClass';
@@ -29,34 +29,34 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  commonCleanup,
-  commonPrerequisites,
-  createAlert,
-  deleteAlert,
-  generateAlertName,
-  inputBasicAlertInformation,
-  saveAlertAndVerifyResponse,
-  verifyAlertDetails,
-  visitAlertDetailsPage,
+    commonCleanup,
+    commonPrerequisites,
+    createAlert,
+    deleteAlert,
+    generateAlertName,
+    inputBasicAlertInformation,
+    saveAlertAndVerifyResponse,
+    verifyAlertDetails,
+    visitAlertDetailsPage
 } from '../../utils/alert';
 import { getApiContext, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-  addExternalDestination,
-  checkAlertDetailsForWithPermissionUser,
-  checkAlertFlowForWithoutPermissionUser,
-  createCommonObservabilityAlert,
-  editObservabilityAlert,
-  getObservabilityCreationDetails,
-  visitObservabilityAlertPage,
+    addExternalDestination,
+    checkAlertDetailsForWithPermissionUser,
+    checkAlertFlowForWithoutPermissionUser,
+    createCommonObservabilityAlert,
+    editObservabilityAlert,
+    getObservabilityCreationDetails,
+    visitObservabilityAlertPage
 } from '../../utils/observabilityAlert';
 import { waitForSearchIndexed } from '../../utils/polling';
 import {
-  clearCapturedWebhookRequests,
-  findWebhookDelivery,
-  getAddedColumnNames,
-  startWebhookReceiver,
-  stopWebhookReceiver,
+    clearCapturedWebhookRequests,
+    findWebhookDelivery,
+    getAddedColumnNames,
+    startWebhookReceiver,
+    stopWebhookReceiver
 } from '../../utils/webhook';
 import { test as base } from '../fixtures/pages';
 

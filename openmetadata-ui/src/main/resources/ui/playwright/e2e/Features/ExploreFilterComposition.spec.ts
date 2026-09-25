@@ -22,8 +22,8 @@ import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { TagClass } from '../../support/tag/TagClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
-  searchAndExpectEntityNotVisible,
-  searchAndExpectEntityVisible,
+    searchAndExpectEntityNotVisible,
+    searchAndExpectEntityVisible
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { clickUpdateButtonIfVisible } from '../../utils/explore';

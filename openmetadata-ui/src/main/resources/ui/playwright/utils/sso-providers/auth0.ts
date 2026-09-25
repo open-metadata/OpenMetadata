@@ -26,15 +26,15 @@
 //
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import {
-  MOCK_AUTH0_CLIENT_ID,
-  MOCK_AUTH0_DOMAIN,
-  MOCK_OIDC_INTERNAL_JWKS_URL,
-  waitForMockOidcReady,
+    MOCK_AUTH0_CLIENT_ID,
+    MOCK_AUTH0_DOMAIN,
+    MOCK_OIDC_INTERNAL_JWKS_URL,
+    waitForMockOidcReady
 } from '../mockOidc';
 import {
-  applyProviderConfig,
-  fetchSecurityConfig,
-  restoreSecurityConfig,
+    applyProviderConfig,
+    fetchSecurityConfig,
+    restoreSecurityConfig
 } from '../ssoAuth';
 import { SsoProviderFixture } from './fixture';
 import { forceTokenExpiry } from './force-token-expiry';

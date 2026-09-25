@@ -13,8 +13,8 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import {
-  CUSTOM_PROPERTIES_TYPES,
-  FIELD_VALUES_CUSTOM_PROPERTIES,
+    CUSTOM_PROPERTIES_TYPES,
+    FIELD_VALUES_CUSTOM_PROPERTIES
 } from '../../constant/glossaryImportExport';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
@@ -25,27 +25,27 @@ import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext } from '../../utils/admin';
 import {
-  closeFirstPopupAlert,
-  fetchCompletedCsvAsyncJobResult,
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    closeFirstPopupAlert,
+    fetchCompletedCsvAsyncJobResult,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification,
+    uuid
 } from '../../utils/common';
 import {
-  addCustomPropertiesForEntity,
-  deleteCreatedProperty,
+    addCustomPropertiesForEntity,
+    deleteCreatedProperty
 } from '../../utils/customProperty';
 import {
-  addMultiOwner,
-  waitForAllLoadersToDisappear,
+    addMultiOwner,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import { selectActiveGlossary } from '../../utils/glossary';
 import {
-  createGlossaryTermRowDetails,
-  fillGlossaryRowDetails,
-  startCsvPreviewAndWaitForGrid,
-  validateImportStatus,
+    createGlossaryTermRowDetails,
+    fillGlossaryRowDetails,
+    startCsvPreviewAndWaitForGrid,
+    validateImportStatus
 } from '../../utils/importUtils';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 

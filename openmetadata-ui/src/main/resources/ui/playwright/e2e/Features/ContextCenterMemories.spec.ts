@@ -14,25 +14,25 @@
 import { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-  chooseSelectOption,
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
-  uuid,
+    chooseSelectOption,
+    createNewPage,
+    getApiContext,
+    redirectToHomePage,
+    uuid
 } from '../../utils/common';
 import {
-  createMemoryViaApi,
-  getLoggedInUser,
-  LoggedInUser,
-  MEMORIES_API,
-  MEMORIES_URL,
-  navigateToMemories,
-  patchMemory,
-  searchAndGetMemoryRow,
+    createMemoryViaApi,
+    getLoggedInUser,
+    LoggedInUser,
+    MEMORIES_API,
+    MEMORIES_URL,
+    navigateToMemories,
+    patchMemory,
+    searchAndGetMemoryRow
 } from '../../utils/ContextCenterUtil';
 import {
-  copyAndGetClipboardText,
-  waitForAllLoadersToDisappear,
+    copyAndGetClipboardText,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { test as base } from '../fixtures/pages';

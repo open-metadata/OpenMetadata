@@ -25,20 +25,20 @@ import { TagClass } from '../../../support/tag/TagClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { createNewPage, getApiContext, uuid } from '../../../utils/common';
 import {
-  applyDashboardCertificationFilter,
-  applyDashboardTagFilter,
-  applyDashboardTierFilter,
-  assertDimensionCard,
-  assertEsFieldInReports,
-  assertPieChartLegendCounts,
-  captureReports,
-  clickPieChartSegmentByIndex,
-  DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID,
-  ENTITY_HEALTH_PIE_CHART_TEST_ID,
-  goToDataQualityDashboard,
-  isDashboardReportBatchResponse,
-  TEST_CASE_STATUS_PIE_CHART_TEST_ID,
-  waitForIncidentToBeIndexed,
+    applyDashboardCertificationFilter,
+    applyDashboardTagFilter,
+    applyDashboardTierFilter,
+    assertDimensionCard,
+    assertEsFieldInReports,
+    assertPieChartLegendCounts,
+    captureReports,
+    clickPieChartSegmentByIndex,
+    DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID,
+    ENTITY_HEALTH_PIE_CHART_TEST_ID,
+    goToDataQualityDashboard,
+    isDashboardReportBatchResponse,
+    TEST_CASE_STATUS_PIE_CHART_TEST_ID,
+    waitForIncidentToBeIndexed
 } from '../../../utils/dataQuality';
 import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';

@@ -17,13 +17,13 @@ import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
-  getEncodedFqn,
-  waitForAllLoadersToDisappear,
+    getEncodedFqn,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import {
-  expandDatabaseInExploreTree,
-  expandSchemaInExploreTree,
-  expandServiceInExploreTree,
+    expandDatabaseInExploreTree,
+    expandSchemaInExploreTree,
+    expandServiceInExploreTree
 } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 

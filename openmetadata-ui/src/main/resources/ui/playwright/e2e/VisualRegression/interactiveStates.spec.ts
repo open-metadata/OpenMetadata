@@ -12,10 +12,10 @@
  */
 import { expect, test } from '../../support/fixtures/base';
 import {
-  gotoForScreenshot,
-  gotoVisualGlossary,
-  SCREENSHOT_OPTS,
-  VISUAL_GLOSSARY_NAME,
+    gotoForScreenshot,
+    gotoVisualGlossary,
+    SCREENSHOT_OPTS,
+    VISUAL_GLOSSARY_NAME
 } from '../../utils/visualRegression';
 
 test('add-service connector config form (RJSF) matches baseline', async ({

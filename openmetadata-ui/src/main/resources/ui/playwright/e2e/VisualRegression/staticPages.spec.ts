@@ -12,9 +12,9 @@
  */
 import { expect, test } from '../../support/fixtures/base';
 import {
-  gotoForScreenshot,
-  gotoVisualGlossary,
-  SCREENSHOT_OPTS,
+    gotoForScreenshot,
+    gotoVisualGlossary,
+    SCREENSHOT_OPTS
 } from '../../utils/visualRegression';
 
 /**

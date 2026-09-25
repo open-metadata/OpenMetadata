@@ -18,18 +18,18 @@ import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, uuid } from '../../utils/common';
 import { getEncodedFqn } from '../../utils/entity';
 import {
-  assertLogViewerShowsLogs,
-  buildLogStreamFrames,
-  buildMarkerLogText,
-  dragLogViewerUpWithoutGesture,
-  focusLogViewerScroller,
-  getLogViewerLineCount,
-  getLogViewerScrollState,
-  LogStreamFrame,
-  LOG_STREAM_RESPONSE_HEADERS,
-  LOG_VIEWER_MARKER,
-  scrollLogViewerAwayFromTail,
-  scrollLogViewerToTail,
+    assertLogViewerShowsLogs,
+    buildLogStreamFrames,
+    buildMarkerLogText,
+    dragLogViewerUpWithoutGesture,
+    focusLogViewerScroller,
+    getLogViewerLineCount,
+    getLogViewerScrollState,
+    LogStreamFrame,
+    LOG_STREAM_RESPONSE_HEADERS,
+    LOG_VIEWER_MARKER,
+    scrollLogViewerAwayFromTail,
+    scrollLogViewerToTail
 } from '../../utils/logsViewer';
 import { getAgentCard } from '../../utils/serviceIngestion';
 

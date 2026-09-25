@@ -15,9 +15,9 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import {
-  createNewPage,
-  redirectToHomePage,
-  toastNotification,
+    createNewPage,
+    redirectToHomePage,
+    toastNotification
 } from '../../utils/common';
 import { getRowByName } from '../../utils/scopedLocators';
 import { settingClick } from '../../utils/sidebar';

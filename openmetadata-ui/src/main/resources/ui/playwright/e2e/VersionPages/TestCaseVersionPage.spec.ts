@@ -13,9 +13,9 @@
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import {
-  createNewPage,
-  descriptionBox,
-  redirectToHomePage,
+    createNewPage,
+    descriptionBox,
+    redirectToHomePage
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { verifyTestCaseLastRunBanner } from '../../utils/testCases';

@@ -21,10 +21,10 @@ import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass'
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import {
-  getApiContext,
-  redirectToHomePage,
-  testTableSearch,
-  uuid,
+    getApiContext,
+    redirectToHomePage,
+    testTableSearch,
+    uuid
 } from '../../utils/common';
 import { test } from '../fixtures/pages';
 

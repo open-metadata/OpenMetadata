@@ -18,8 +18,8 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import {
-  searchAndExpectEntityNotVisible,
-  searchAndExpectEntityVisible,
+    searchAndExpectEntityNotVisible,
+    searchAndExpectEntityVisible
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { clickUpdateButtonIfVisible } from '../../utils/explore';

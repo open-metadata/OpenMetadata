@@ -19,8 +19,8 @@ import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { getEntityDisplayName } from '../../utils/entity';
 import {
-  editDisplayNameFromPanel,
-  navigateToExploreAndSelectTable,
+    editDisplayNameFromPanel,
+    navigateToExploreAndSelectTable
 } from '../../utils/entityPanel';
 import { selectDataAssetFilter } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';

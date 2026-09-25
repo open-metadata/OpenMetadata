@@ -47,16 +47,16 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { authenticateAdminPage, performAdminLogin } from '../../utils/admin';
 import {
-  assignDataProduct,
-  clickOutside,
-  searchDataProductOptions,
+    assignDataProduct,
+    clickOutside,
+    searchDataProductOptions
 } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
 import { assignDomainWidget } from '../../utils/domain';
 import {
-  addOwner,
-  assignGlossaryTerm,
-  waitForAllLoadersToDisappear,
+    addOwner,
+    assignGlossaryTerm,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 

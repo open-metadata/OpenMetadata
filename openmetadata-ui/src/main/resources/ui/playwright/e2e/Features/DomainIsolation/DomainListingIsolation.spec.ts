@@ -18,9 +18,9 @@ import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';
 import {
-  assignDomainOnlyAccess,
-  safeDelete,
-  searchDomainInListing,
+    assignDomainOnlyAccess,
+    safeDelete,
+    searchDomainInListing
 } from '../../../utils/domainIsolationUtils';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { waitForSearchIndexed } from '../../../utils/polling';

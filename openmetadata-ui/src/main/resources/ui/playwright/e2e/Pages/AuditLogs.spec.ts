@@ -14,14 +14,14 @@ import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { expect, test } from '../../support/fixtures/base';
 import {
-  navigateToAuditLogsPage,
-  verifyAuditEntryHasValidUUIDs,
-  waitForAuditLogEntry,
+    navigateToAuditLogsPage,
+    verifyAuditEntryHasValidUUIDs,
+    waitForAuditLogEntry
 } from '../../utils/auditLogs';
 import {
-  getApiContext,
-  redirectToHomePage,
-  waitForAntdModalToSettle,
+    getApiContext,
+    redirectToHomePage,
+    waitForAntdModalToSettle
 } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 

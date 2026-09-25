@@ -17,14 +17,14 @@ import { performAdminLogin } from '../../utils/admin';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-  closeSubscriptionModal,
-  configureWebhook,
-  fillEndpointAndSave,
-  openSubscriptionModal,
-  removeSubscription,
-  selectWebhookType,
-  verifyNoSubscription,
-  verifyWebhookIcon,
+    closeSubscriptionModal,
+    configureWebhook,
+    fillEndpointAndSave,
+    openSubscriptionModal,
+    removeSubscription,
+    selectWebhookType,
+    verifyNoSubscription,
+    verifyWebhookIcon
 } from '../../utils/teamSubscription';
 
 let team: TeamClass;

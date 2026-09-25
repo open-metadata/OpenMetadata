@@ -19,24 +19,24 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { TopicClass } from '../../../support/entity/TopicClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
-  getApiContext,
-  getDefaultAdminAPIContext,
-  redirectToHomePage,
-  toastNotification,
+    getApiContext,
+    getDefaultAdminAPIContext,
+    redirectToHomePage,
+    toastNotification
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-  activateColumnLayer,
-  addColumnLineage,
-  addPipelineBetweenNodes,
-  clickEdgeBetweenNodes,
-  connectEdgeBetweenNodesViaAPI,
-  editLineage,
-  editLineageClick,
-  expectLineageNodeVisible,
-  fitToScreen,
-  removeColumnLineage,
-  visitLineageTab,
+    activateColumnLayer,
+    addColumnLineage,
+    addPipelineBetweenNodes,
+    clickEdgeBetweenNodes,
+    connectEdgeBetweenNodesViaAPI,
+    editLineage,
+    editLineageClick,
+    expectLineageNodeVisible,
+    fitToScreen,
+    removeColumnLineage,
+    visitLineageTab
 } from '../../../utils/lineage';
 import { test } from '../../fixtures/pages';
 

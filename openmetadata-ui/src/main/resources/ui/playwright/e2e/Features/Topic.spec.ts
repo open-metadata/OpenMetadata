@@ -14,10 +14,10 @@ import test, { expect } from '@playwright/test';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import {
-  copyAndGetClipboardText,
-  testCopyLinkButton,
-  validateCopiedLinkFormat,
-  waitForAllLoadersToDisappear,
+    copyAndGetClipboardText,
+    testCopyLinkButton,
+    validateCopiedLinkFormat,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 
 // use the admin user to login

@@ -17,8 +17,8 @@ import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-  advanceToServiceConnectionStep,
-  selectServiceConnector,
+    advanceToServiceConnectionStep,
+    selectServiceConnector
 } from '../../utils/serviceIngestion';
 
 const MOCK_WORKFLOW_ID = 'mock-test-workflow-id';

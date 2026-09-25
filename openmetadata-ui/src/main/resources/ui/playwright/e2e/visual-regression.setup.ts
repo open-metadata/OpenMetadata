@@ -16,9 +16,9 @@ import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import { deleteFixtureEntity } from '../utils/apiResponse';
 import { getDefaultAdminAPIContext } from '../utils/common';
 import {
-  VISUAL_GLOSSARY_DISPLAY_NAME,
-  VISUAL_GLOSSARY_NAME,
-  VISUAL_GLOSSARY_TERM_NAME,
+    VISUAL_GLOSSARY_DISPLAY_NAME,
+    VISUAL_GLOSSARY_NAME,
+    VISUAL_GLOSSARY_TERM_NAME
 } from '../utils/visualRegression';
 
 setup('create stable visual regression data', async ({ browser }) => {

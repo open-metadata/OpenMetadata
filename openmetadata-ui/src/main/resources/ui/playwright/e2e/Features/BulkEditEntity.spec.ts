@@ -22,28 +22,28 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  createNewPage,
-  descriptionBoxReadOnly,
-  getApiContext,
-  redirectToHomePage,
+    createNewPage,
+    descriptionBoxReadOnly,
+    getApiContext,
+    redirectToHomePage
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
 import {
-  createColumnRowDetails,
-  createCustomPropertiesForEntityViaApi,
-  createDatabaseRowDetails,
-  createDatabaseSchemaRowDetails,
-  createGlossaryTermRowDetails,
-  createTableRowDetails,
-  fillDescriptionDetails,
-  fillGlossaryRowDetails,
-  fillGlossaryTermDetails,
-  fillRowDetails,
-  fillTagDetails,
-  pressKeyXTimes,
-  saveBulkImport,
-  validateImportStatus,
+    createColumnRowDetails,
+    createCustomPropertiesForEntityViaApi,
+    createDatabaseRowDetails,
+    createDatabaseSchemaRowDetails,
+    createGlossaryTermRowDetails,
+    createTableRowDetails,
+    fillDescriptionDetails,
+    fillGlossaryRowDetails,
+    fillGlossaryTermDetails,
+    fillRowDetails,
+    fillTagDetails,
+    pressKeyXTimes,
+    saveBulkImport,
+    validateImportStatus
 } from '../../utils/importUtils';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { getCellByName } from '../../utils/scopedLocators';

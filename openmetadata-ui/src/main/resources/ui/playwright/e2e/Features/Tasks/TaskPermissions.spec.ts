@@ -14,12 +14,12 @@
 import { TaskClass } from '../../../support/entity/TaskClass';
 import { createActivityTask } from '../../../support/fixtures/taskActivity';
 import {
-  approveTaskThroughUI,
-  expect,
-  getTaskUserContext,
-  openTaskActions,
-  readTaskTable,
-  test,
+    approveTaskThroughUI,
+    expect,
+    getTaskUserContext,
+    openTaskActions,
+    readTaskTable,
+    test
 } from '../../../support/fixtures/taskPermissions';
 import { okJson } from '../../../utils/apiResponse';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';

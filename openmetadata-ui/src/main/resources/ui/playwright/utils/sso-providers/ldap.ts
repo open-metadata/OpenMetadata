@@ -12,9 +12,9 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import {
-  applyProviderConfig,
-  fetchSecurityConfig,
-  restoreSecurityConfig,
+    applyProviderConfig,
+    fetchSecurityConfig,
+    restoreSecurityConfig
 } from '../ssoAuth';
 import { SsoProviderFixture } from './fixture';
 import { forceTokenExpiry } from './force-token-expiry';

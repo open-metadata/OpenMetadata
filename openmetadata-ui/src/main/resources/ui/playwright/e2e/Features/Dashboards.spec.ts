@@ -18,16 +18,16 @@ import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    redirectToHomePage,
+    toastNotification,
+    uuid
 } from '../../utils/common';
 import {
-  assignTagToChildren,
-  generateEntityChildren,
-  removeTagsFromChildren,
-  restoreEntity,
-  waitForAllLoadersToDisappear,
+    assignTagToChildren,
+    generateEntityChildren,
+    removeTagsFromChildren,
+    restoreEntity,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 

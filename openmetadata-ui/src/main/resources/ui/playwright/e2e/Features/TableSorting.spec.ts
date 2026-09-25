@@ -23,10 +23,10 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  getApiContext,
-  redirectToHomePage,
-  testTableSorting,
-  uuid,
+    getApiContext,
+    redirectToHomePage,
+    testTableSorting,
+    uuid
 } from '../../utils/common';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { test } from '../fixtures/pages';

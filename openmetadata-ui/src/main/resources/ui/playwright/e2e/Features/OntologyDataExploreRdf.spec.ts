@@ -13,9 +13,9 @@
 
 import { APIRequestContext, Page } from '@playwright/test';
 import {
-  CreateTable,
-  DataType,
-  TableType,
+    CreateTable,
+    DataType,
+    TableType
 } from '../../../src/generated/api/data/createTable';
 import { Table } from '../../../src/generated/entity/data/table';
 import { EntityReference } from '../../../src/generated/entity/type';
@@ -27,9 +27,9 @@ import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
 import {
-  navigateToOntologyStudio,
-  readSearchHighlightIds,
-  waitForGraphLoaded,
+    navigateToOntologyStudio,
+    readSearchHighlightIds,
+    waitForGraphLoaded
 } from '../../utils/ontologyStudio';
 
 const suffix = uuid().replaceAll('-', '');

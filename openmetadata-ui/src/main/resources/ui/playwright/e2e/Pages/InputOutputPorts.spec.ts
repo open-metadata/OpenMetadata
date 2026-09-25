@@ -22,32 +22,32 @@ import { expect, test } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
 import { runDrawerQuickFilterMatrix } from '../../utils/assetDrawerQuickFilter';
 import {
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification
 } from '../../utils/common';
 import {
-  addInputPortToDataProduct,
-  addOutputPortToDataProduct,
-  expandLineageSection,
-  navigateToPortsTab,
-  selectDataProduct,
-  verifyPortCounts,
-  waitForLineageGraph,
-  waitForPortRow,
+    addInputPortToDataProduct,
+    addOutputPortToDataProduct,
+    expandLineageSection,
+    navigateToPortsTab,
+    selectDataProduct,
+    verifyPortCounts,
+    waitForLineageGraph,
+    waitForPortRow
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-  buildPortDrawerContext,
-  cleanupDrawerFilterAssets,
-  confirmPortRemoval,
-  createAssetRef,
-  seedDrawerFilterAssets,
+    buildPortDrawerContext,
+    cleanupDrawerFilterAssets,
+    confirmPortRemoval,
+    createAssetRef,
+    seedDrawerFilterAssets
 } from '../../utils/inputOutputPorts';
 import { sidebarClick } from '../../utils/sidebar';
 import {
-  waitForAntOverlayToOpen,
-  waitForResponseWithStatus,
+    waitForAntOverlayToOpen,
+    waitForResponseWithStatus
 } from '../../utils/waitHelpers';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });

@@ -17,14 +17,14 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { getAuthContext, getToken, uuid } from '../../utils/common';
 import {
-  addTermRelation,
-  createApiContext,
-  deleteEntities,
-  disposeApiContext,
-  navigateAndFilterByGlossary,
-  readGraphEdges,
-  readNodePositions,
-  waitForGraphLoaded,
+    addTermRelation,
+    createApiContext,
+    deleteEntities,
+    disposeApiContext,
+    navigateAndFilterByGlossary,
+    readGraphEdges,
+    readNodePositions,
+    waitForGraphLoaded
 } from '../../utils/ontologyStudio';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });

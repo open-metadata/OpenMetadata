@@ -17,8 +17,8 @@ import { Domain } from '../../support/domain/Domain';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  navigateToMarketplace,
-  verifyGreetingBanner,
+    navigateToMarketplace,
+    verifyGreetingBanner
 } from '../../utils/dataMarketplace';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 

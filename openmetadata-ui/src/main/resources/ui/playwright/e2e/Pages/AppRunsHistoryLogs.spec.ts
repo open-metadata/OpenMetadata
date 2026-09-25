@@ -15,8 +15,8 @@ import { Page } from '@playwright/test';
 import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage } from '../../utils/common';
 import {
-  assertLogViewerShowsLogs,
-  buildMarkerLogText,
+    assertLogViewerShowsLogs,
+    buildMarkerLogText
 } from '../../utils/logsViewer';
 
 // The new LogViewerModal only opens from AppRunsHistory for an External-type

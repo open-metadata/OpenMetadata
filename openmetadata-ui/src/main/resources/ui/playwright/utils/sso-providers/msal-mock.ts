@@ -32,10 +32,10 @@
 //
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import {
-  applyProviderConfig,
-  fetchSecurityConfig,
-  mintAdminRestoreToken,
-  restoreSecurityConfig,
+    applyProviderConfig,
+    fetchSecurityConfig,
+    mintAdminRestoreToken,
+    restoreSecurityConfig
 } from '../ssoAuth';
 import { SsoProviderFixture } from './fixture';
 import { forceTokenExpiry } from './force-token-expiry';

@@ -24,36 +24,36 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
+    createNewPage,
+    getApiContext,
+    redirectToHomePage
 } from '../../utils/common';
 import {
-  mockClipboardApi,
-  waitForAllLoadersToDisappear,
+    mockClipboardApi,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import {
-  addGridRowAndSelectFirstCell,
-  createColumnRowDetails,
-  createCustomPropertiesForEntity,
-  createDatabaseRowDetails,
-  createDatabaseSchemaRowDetails,
-  createStoredProcedureRowDetails,
-  createTableRowDetails,
-  fillColumnDetails,
-  fillRecursiveColumnDetails,
-  fillRecursiveEntityTypeFQNDetails,
-  fillRowDetails,
-  fillStoredProcedureCode,
-  firstTimeGridAddRowAction,
-  performBulkDownload,
-  performColumnSelectAndDeleteOperation,
-  performDeleteOperationOnEntity,
-  pressKeyXTimes,
-  previewBulkImportChanges,
-  saveBulkImport,
-  startCsvPreviewAndWaitForGrid,
-  validateImportStatus,
+    addGridRowAndSelectFirstCell,
+    createColumnRowDetails,
+    createCustomPropertiesForEntity,
+    createDatabaseRowDetails,
+    createDatabaseSchemaRowDetails,
+    createStoredProcedureRowDetails,
+    createTableRowDetails,
+    fillColumnDetails,
+    fillRecursiveColumnDetails,
+    fillRecursiveEntityTypeFQNDetails,
+    fillRowDetails,
+    fillStoredProcedureCode,
+    firstTimeGridAddRowAction,
+    performBulkDownload,
+    performColumnSelectAndDeleteOperation,
+    performDeleteOperationOnEntity,
+    pressKeyXTimes,
+    previewBulkImportChanges,
+    saveBulkImport,
+    startCsvPreviewAndWaitForGrid,
+    validateImportStatus
 } from '../../utils/importUtils';
 import { waitForSearchIndexed } from '../../utils/polling';
 

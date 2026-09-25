@@ -15,9 +15,9 @@ import { Page } from '@playwright/test';
 import { Task } from '../../../../src/generated/entity/tasks/task';
 import { TaskClass, TaskResponseData } from '../../../support/entity/TaskClass';
 import {
-  expect,
-  TaskActivityData,
-  test,
+    expect,
+    TaskActivityData,
+    test
 } from '../../../support/fixtures/taskActivity';
 import { getTableFqn } from '../../../utils/activityAPI';
 import { okJson } from '../../../utils/apiResponse';

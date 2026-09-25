@@ -18,8 +18,8 @@ import { UserClass } from '../../support/user/UserClass';
 import { createConversationThread } from '../../utils/activityAPI';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  dismissHoverPopovers,
-  waitForAntdPopupToSettle,
+    dismissHoverPopovers,
+    waitForAntdPopupToSettle
 } from '../../utils/common';
 import { waitForPageLoaded } from '../../utils/polling';
 import { waitForTaskListResponse } from '../../utils/task';

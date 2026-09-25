@@ -26,23 +26,23 @@ import { performAdminLogin } from '../../utils/admin';
 import { okJson, settleAll } from '../../utils/apiResponse';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import {
-  addAndVerifyWidget,
-  removeAndVerifyWidget,
-  verifyWidgetEntityNavigation,
-  verifyWidgetFooterViewMore,
-  verifyWidgetHeaderNavigation,
-  waitForLandingPageWidget,
+    addAndVerifyWidget,
+    removeAndVerifyWidget,
+    verifyWidgetEntityNavigation,
+    verifyWidgetFooterViewMore,
+    verifyWidgetHeaderNavigation,
+    waitForLandingPageWidget
 } from '../../utils/customizeLandingPage';
 import { addKpi, deleteKpiRequest } from '../../utils/dataInsight';
 import { followEntity, waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import {
-  verifyActivityFeedFilters,
-  verifyDataFilters,
-  verifyDataProductsFilters,
-  verifyDomainsFilters,
-  verifyTaskFilters,
-  verifyTotalDataAssetsFilters,
+    verifyActivityFeedFilters,
+    verifyDataFilters,
+    verifyDataProductsFilters,
+    verifyDomainsFilters,
+    verifyTaskFilters,
+    verifyTotalDataAssetsFilters
 } from '../../utils/widgetFilters';
 
 let adminUser: UserClass;

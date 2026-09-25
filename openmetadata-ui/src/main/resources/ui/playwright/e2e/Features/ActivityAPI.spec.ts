@@ -14,18 +14,18 @@ import { expect } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-  createConversationThread,
-  FEED_ITEM_TIMEOUT,
-  getFeedItemByText,
-  getTableLeafName,
-  insertActivityEventForTest,
-  THUMBS_UP_EMOJI,
-  toggleThumbsUpReaction,
-  visitTableActivityFeed,
+    createConversationThread,
+    FEED_ITEM_TIMEOUT,
+    getFeedItemByText,
+    getTableLeafName,
+    insertActivityEventForTest,
+    THUMBS_UP_EMOJI,
+    toggleThumbsUpReaction,
+    visitTableActivityFeed
 } from '../../utils/activityAPI';
 import {
-  clickFeedReaction,
-  postActivityComment,
+    clickFeedReaction,
+    postActivityComment
 } from '../../utils/activityFeed';
 import { createAdminApiContext } from '../../utils/admin';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';

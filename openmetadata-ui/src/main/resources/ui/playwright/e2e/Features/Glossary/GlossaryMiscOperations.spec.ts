@@ -17,19 +17,19 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
-  fillDeleteConfirmationIfPresent,
-  getEncodedFqn,
+    fillDeleteConfirmationIfPresent,
+    getEncodedFqn
 } from '../../../utils/entity';
 import {
-  dragAndDropTerm,
-  performExpandAll,
-  selectActiveGlossary,
-  selectActiveGlossaryTerm,
+    dragAndDropTerm,
+    performExpandAll,
+    selectActiveGlossary,
+    selectActiveGlossaryTerm
 } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
 import {
-  waitForAntOverlayToOpen,
-  waitForResponseWithStatus,
+    waitForAntOverlayToOpen,
+    waitForResponseWithStatus
 } from '../../../utils/waitHelpers';
 
 test.use({

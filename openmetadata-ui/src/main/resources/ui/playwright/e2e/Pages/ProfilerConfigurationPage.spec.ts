@@ -12,8 +12,8 @@
  */
 import { Page } from '@playwright/test';
 import {
-  PROFILER_EMPTY_RESPONSE_CONFIG,
-  PROFILER_REQUEST_CONFIG,
+    PROFILER_EMPTY_RESPONSE_CONFIG,
+    PROFILER_REQUEST_CONFIG
 } from '../../constant/profilerConfiguration';
 import { SidebarItem } from '../../constant/sidebar';
 import { expect, test as base } from '../../support/fixtures/base';
@@ -21,9 +21,9 @@ import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  clickOutside,
-  redirectToHomePage,
-  toastNotification,
+    clickOutside,
+    redirectToHomePage,
+    toastNotification
 } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
 

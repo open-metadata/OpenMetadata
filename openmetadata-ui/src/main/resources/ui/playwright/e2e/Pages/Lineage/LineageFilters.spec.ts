@@ -30,19 +30,19 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { TopicClass } from '../../../support/entity/TopicClass';
 import { WorksheetClass } from '../../../support/entity/WorksheetClass';
 import {
-  getApiContext,
-  getDefaultAdminAPIContext,
-  getEntityTypeSearchIndexMapping,
+    getApiContext,
+    getDefaultAdminAPIContext,
+    getEntityTypeSearchIndexMapping
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-  connectEdgeBetweenNodesViaAPI,
-  fitToScreen,
-  openImpactAnalysisTab,
-  performZoomOut,
-  rearrangeNodes,
-  setLineageDepthAndVerify,
-  visitLineageTab,
+    connectEdgeBetweenNodesViaAPI,
+    fitToScreen,
+    openImpactAnalysisTab,
+    performZoomOut,
+    rearrangeNodes,
+    setLineageDepthAndVerify,
+    visitLineageTab
 } from '../../../utils/lineage';
 import { waitForSearchIndexed } from '../../../utils/polling';
 import { test } from '../../fixtures/pages';

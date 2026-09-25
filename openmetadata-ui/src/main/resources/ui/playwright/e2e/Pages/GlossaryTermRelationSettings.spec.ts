@@ -14,12 +14,12 @@
 import test, { APIRequestContext, expect, Page } from '@playwright/test';
 import { authenticateAdminPage } from '../../utils/admin';
 import {
-  chooseSelectOption,
-  getApiContext,
-  getAuthContext,
-  getSavedAdminToken,
-  toastNotification,
-  uuid,
+    chooseSelectOption,
+    getApiContext,
+    getAuthContext,
+    getSavedAdminToken,
+    toastNotification,
+    uuid
 } from '../../utils/common';
 
 const PAGE_SIZE_BASE = 15;

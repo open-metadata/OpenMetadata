@@ -15,16 +15,16 @@ import { Page, Response } from '@playwright/test';
 import { Domain } from '../../../support/domain/Domain';
 import { TaskClass } from '../../../support/entity/TaskClass';
 import {
-  createActivityTask,
-  expect,
-  TaskActivityData,
-  test as base,
+    createActivityTask,
+    expect,
+    TaskActivityData,
+    test as base
 } from '../../../support/fixtures/taskActivity';
 import { getTableFqn } from '../../../utils/activityAPI';
 import { okJson, settleAll } from '../../../utils/apiResponse';
 import {
-  assignDomainToEntity,
-  selectDomainFromNavbar,
+    assignDomainToEntity,
+    selectDomainFromNavbar
 } from '../../../utils/domain';
 import { getTaskCard } from '../../../utils/task';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';

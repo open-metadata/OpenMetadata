@@ -17,12 +17,12 @@ import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  clickOutside,
-  generateRandomUsername,
-  getDefaultAdminAPIContext,
-  redirectToHomePage,
-  toastNotification,
-  visitOwnProfilePage,
+    clickOutside,
+    generateRandomUsername,
+    getDefaultAdminAPIContext,
+    redirectToHomePage,
+    toastNotification,
+    visitOwnProfilePage
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { updateJWTTokenExpiryTime } from '../../utils/login';

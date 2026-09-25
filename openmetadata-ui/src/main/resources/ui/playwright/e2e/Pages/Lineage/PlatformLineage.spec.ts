@@ -17,18 +17,18 @@ import { SidebarItem } from '../../../constant/sidebar';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import {
-  getDefaultAdminAPIContext,
-  redirectToHomePage,
-  uuid,
-  waitForAntdPopupToSettle,
+    getDefaultAdminAPIContext,
+    redirectToHomePage,
+    uuid,
+    waitForAntdPopupToSettle
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-  dismissLineageMapOnboarding,
-  expectLineageNodeVisible,
-  performZoomOut,
-  verifyExportLineagePNG,
-  visitLineageTab,
+    dismissLineageMapOnboarding,
+    expectLineageNodeVisible,
+    performZoomOut,
+    verifyExportLineagePNG,
+    visitLineageTab
 } from '../../../utils/lineage';
 import { sidebarClick } from '../../../utils/sidebar';
 import { test } from '../../fixtures/pages';

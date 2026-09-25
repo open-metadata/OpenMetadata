@@ -13,8 +13,8 @@
 import { APIRequestContext, expect, Page, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import {
-  PolicyClass,
-  PolicyRulesType,
+    PolicyClass,
+    PolicyRulesType
 } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { TableClass } from '../../support/entity/TableClass';

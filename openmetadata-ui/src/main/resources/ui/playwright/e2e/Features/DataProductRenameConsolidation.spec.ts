@@ -22,21 +22,21 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
-  resolveDescriptionBox,
-  uuid,
+    createNewPage,
+    getApiContext,
+    redirectToHomePage,
+    resolveDescriptionBox,
+    uuid
 } from '../../utils/common';
 import {
-  addAssetsToDataProduct,
-  checkAssetsCount,
-  selectDataProduct,
+    addAssetsToDataProduct,
+    checkAssetsCount,
+    selectDataProduct
 } from '../../utils/domain';
 import {
-  escapeESReservedCharacters,
-  openClassificationTagPicker,
-  waitForAllLoadersToDisappear,
+    escapeESReservedCharacters,
+    openClassificationTagPicker,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 

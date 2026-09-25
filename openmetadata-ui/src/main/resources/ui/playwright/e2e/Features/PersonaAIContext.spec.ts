@@ -13,23 +13,23 @@
 import { Locator, Page, Request, Route } from '@playwright/test';
 import { EntityType } from '../../../src/enums/entity.enum';
 import {
-  CacheState,
-  ContextRule,
-  ContextSection,
-  PersonaContextDefinition,
+    CacheState,
+    ContextRule,
+    ContextSection,
+    PersonaContextDefinition
 } from '../../../src/generated/type/personaContextDefinition';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { expect, test } from '../../support/fixtures/userPages';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { selectOption } from '../../utils/advancedSearch';
 import {
-  chooseSelectOption,
-  getDefaultAdminAPIContext,
-  toastNotification,
+    chooseSelectOption,
+    getDefaultAdminAPIContext,
+    toastNotification
 } from '../../utils/common';
 import {
-  enablePersonaRulePreloading,
-  openPersonaAIContext,
+    enablePersonaRulePreloading,
+    openPersonaAIContext
 } from '../../utils/personaAIContext';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 

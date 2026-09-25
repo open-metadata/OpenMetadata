@@ -19,8 +19,8 @@ import { performAdminLogin } from '../../../utils/admin';
 import { setupUserWithPolicy } from '../../../utils/permission';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import {
-  expandAiSubPanel,
-  redirectToAiModeHomePage,
+    expandAiSubPanel,
+    redirectToAiModeHomePage
 } from '../../Utils/appMode';
 
 const ADD_BUNDLE_SUITE = 'ask-sub-panel-item-add-bundle-suite';

@@ -16,16 +16,16 @@ import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  expectNoErrorToast,
-  getApiContext,
-  redirectToHomePage,
-  uuid,
+    expectNoErrorToast,
+    getApiContext,
+    redirectToHomePage,
+    uuid
 } from '../../utils/common';
 import { fillDeleteConfirmationIfPresent } from '../../utils/entity';
 import {
-  getFailedRowsData,
-  verifyTestCaseLastRunBanner,
-  visitDataQualityTab,
+    getFailedRowsData,
+    verifyTestCaseLastRunBanner,
+    visitDataQualityTab
 } from '../../utils/testCases';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 

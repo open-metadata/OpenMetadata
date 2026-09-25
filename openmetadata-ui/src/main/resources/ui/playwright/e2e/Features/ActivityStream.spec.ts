@@ -17,11 +17,11 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  ACTIVITY_TEST_TIMEOUT,
-  getTableFqn,
-  insertActivityEventForTest,
-  visitTableActivityFeed,
-  waitForActivityEvent,
+    ACTIVITY_TEST_TIMEOUT,
+    getTableFqn,
+    insertActivityEventForTest,
+    visitTableActivityFeed,
+    waitForActivityEvent
 } from '../../utils/activityAPI';
 import { performAdminLogin } from '../../utils/admin';
 import { getDescriptionBox, uuid } from '../../utils/common';

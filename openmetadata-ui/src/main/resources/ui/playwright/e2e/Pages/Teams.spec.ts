@@ -13,8 +13,8 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import {
-  EDIT_USER_FOR_TEAM_RULES,
-  OWNER_TEAM_RULES,
+    EDIT_USER_FOR_TEAM_RULES,
+    OWNER_TEAM_RULES
 } from '../../constant/permission';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
@@ -29,43 +29,43 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  descriptionBox,
-  descriptionBoxReadOnly,
-  fetchCompletedCsvAsyncJobResult,
-  getApiContext,
-  getDefaultAdminAPIContext,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
-  visitOwnProfilePage,
-  waitForAntdPopupToSettle,
+    descriptionBox,
+    descriptionBoxReadOnly,
+    fetchCompletedCsvAsyncJobResult,
+    getApiContext,
+    getDefaultAdminAPIContext,
+    redirectToHomePage,
+    toastNotification,
+    uuid,
+    visitOwnProfilePage,
+    waitForAntdPopupToSettle
 } from '../../utils/common';
 import {
-  addMultiOwner,
-  waitForAllLoadersToDisappear,
+    addMultiOwner,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import { getCellByName } from '../../utils/scopedLocators';
 import { settingClick } from '../../utils/sidebar';
 import {
-  addEmailTeam,
-  addTeamHierarchy,
-  addTeamOwnerToEntity,
-  addUserInTeam,
-  addUserTeam,
-  applyEntityTypeFilterValue,
-  checkTeamTabCount,
-  createTeam,
-  executionOnOwnerGroupTeam,
-  executionOnOwnerTeam,
-  getNewTeamDetails,
-  hardDeleteTeam,
-  openAddTeamModal,
-  searchTeam,
-  selectAssetsFilterFromDropdown,
-  softDeleteTeam,
-  verifyAssetsInTeamsPage,
-  verifyTeamListingAssetCount,
-  waitForTeamAssetsSearchResponse,
+    addEmailTeam,
+    addTeamHierarchy,
+    addTeamOwnerToEntity,
+    addUserInTeam,
+    addUserTeam,
+    applyEntityTypeFilterValue,
+    checkTeamTabCount,
+    createTeam,
+    executionOnOwnerGroupTeam,
+    executionOnOwnerTeam,
+    getNewTeamDetails,
+    hardDeleteTeam,
+    openAddTeamModal,
+    searchTeam,
+    selectAssetsFilterFromDropdown,
+    softDeleteTeam,
+    verifyAssetsInTeamsPage,
+    verifyTeamListingAssetCount,
+    waitForTeamAssetsSearchResponse
 } from '../../utils/team';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 

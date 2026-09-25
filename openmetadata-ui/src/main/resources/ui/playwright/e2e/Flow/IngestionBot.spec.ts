@@ -18,10 +18,10 @@ import { installServerLoadReducers } from '../../support/fixtures/serverLoad';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import {
-  addAssetsToDomain,
-  addServicesToDomain,
-  selectDomain,
-  setupAssetsForDomain,
+    addAssetsToDomain,
+    addServicesToDomain,
+    selectDomain,
+    setupAssetsForDomain
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { waitForSearchIndexed } from '../../utils/polling';

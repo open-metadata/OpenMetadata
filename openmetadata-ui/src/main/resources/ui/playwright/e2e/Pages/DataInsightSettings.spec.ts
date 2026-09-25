@@ -14,19 +14,19 @@
 import test, { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification
 } from '../../utils/common';
 import {
-  customFormatDateTime,
-  getCurrentMillis,
-  getEpochMillisForFutureDays,
+    customFormatDateTime,
+    getCurrentMillis,
+    getEpochMillisForFutureDays
 } from '../../utils/dateTime';
 import {
-  expectScheduleFrequencySelected,
-  selectScheduleFrequency,
-  setScheduleTime,
+    expectScheduleFrequencySelected,
+    selectScheduleFrequency,
+    setScheduleTime
 } from '../../utils/scheduleInterval';
 import { settingClick } from '../../utils/sidebar';
 

@@ -14,8 +14,8 @@ import test, { APIRequestContext, expect, Page } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import {
-  createNewPage,
-  disableEtagConditionalReads,
+    createNewPage,
+    disableEtagConditionalReads
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';

@@ -18,25 +18,25 @@ import { expect, test as base } from '../../support/fixtures/base';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  FEED_ITEM_TIMEOUT,
-  insertActivityEventForTest,
+    FEED_ITEM_TIMEOUT,
+    insertActivityEventForTest
 } from '../../utils/activityAPI';
 import {
-  clickFeedReaction,
-  REACTION_EMOJIS,
-  reactOnFeedCard,
+    clickFeedReaction,
+    REACTION_EMOJIS,
+    reactOnFeedCard
 } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  getApiContext,
-  redirectToHomePage,
-  uuid,
-  visitOwnProfilePage,
+    getApiContext,
+    redirectToHomePage,
+    uuid,
+    visitOwnProfilePage
 } from '../../utils/common';
 import {
-  navigateToCustomizeLandingPage,
-  setUserDefaultPersona,
-  waitForLandingPageWidget,
+    navigateToCustomizeLandingPage,
+    setUserDefaultPersona,
+    waitForLandingPageWidget
 } from '../../utils/customizeLandingPage';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { editDisplayName } from '../../utils/user';

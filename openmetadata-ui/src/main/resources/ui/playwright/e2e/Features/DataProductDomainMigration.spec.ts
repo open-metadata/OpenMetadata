@@ -17,18 +17,18 @@ import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import {
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
-  uuid,
+    createNewPage,
+    getApiContext,
+    redirectToHomePage,
+    uuid
 } from '../../utils/common';
 import {
-  checkAssetsCount,
-  goToAssetsTab,
-  selectDataProduct,
-  selectDataProductFromTab,
-  selectDomain,
-  verifyAssetsInDomain,
+    checkAssetsCount,
+    goToAssetsTab,
+    selectDataProduct,
+    selectDataProductFromTab,
+    selectDomain,
+    verifyAssetsInDomain
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';

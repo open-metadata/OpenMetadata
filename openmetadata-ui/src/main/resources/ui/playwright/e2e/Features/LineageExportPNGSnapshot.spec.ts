@@ -15,8 +15,8 @@ import * as fs from 'fs';
 import { expect, test } from '../../support/fixtures/base';
 import { chooseSelectOption } from '../../utils/common';
 import {
-  dismissLineageMapOnboarding,
-  performZoomOut,
+    dismissLineageMapOnboarding,
+    performZoomOut
 } from '../../utils/lineage';
 
 /**

@@ -21,18 +21,18 @@ import { TagClass } from '../../support/tag/TagClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import {
-  assignTagToChildren,
-  copyAndGetClipboardText,
-  escapeESReservedCharacters,
-  getFirstRowColumnLink,
-  openClassificationTagPicker,
-  removeTagsFromChildren,
-  waitForAllLoadersToDisappear,
+    assignTagToChildren,
+    copyAndGetClipboardText,
+    escapeESReservedCharacters,
+    getFirstRowColumnLink,
+    openClassificationTagPicker,
+    removeTagsFromChildren,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import {
-  applyGlossaryPicker,
-  openGlossaryPicker,
-  toggleGlossaryTermInPicker,
+    applyGlossaryPicker,
+    openGlossaryPicker,
+    toggleGlossaryTermInPicker
 } from '../../utils/glossaryPicker';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
