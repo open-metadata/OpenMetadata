@@ -579,7 +579,8 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         // Select the glossary
         const glossaryResponse = page.waitForResponse('/api/v1/glossaryTerms*');
         await page
-          .getByRole('menuitem', { name: glossary.data.displayName })
+          .getByTestId('glossary-left-panel')
+          .getByRole('link', { name: glossary.data.displayName })
           .click();
         await glossaryResponse;
 

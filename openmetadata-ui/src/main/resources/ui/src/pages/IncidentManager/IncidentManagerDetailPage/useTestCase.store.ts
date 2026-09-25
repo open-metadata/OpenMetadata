@@ -33,6 +33,13 @@ export interface UseTestCaseStoreInterface {
   setDqLineageData: (data: EntityLineageResponse | undefined) => void;
   isTabExpanded: boolean;
   setIsTabExpanded: (isTabExpanded: boolean) => void;
+  /**
+   * Timestamp of the run the chart has selected. Held here rather than in the
+   * chart because the run-details card is its sibling, not its child.
+   * `undefined` means the card follows the most recent run.
+   */
+  selectedRunTimestamp: number | undefined;
+  setSelectedRunTimestamp: (timestamp: number | undefined) => void;
 }
 export const useTestCaseStore = create<UseTestCaseStoreInterface>()((set) => ({
   testCase: undefined,
@@ -42,6 +49,7 @@ export const useTestCaseStore = create<UseTestCaseStoreInterface>()((set) => ({
   showAILearningBanner: false,
   testCasePermission: undefined,
   isTabExpanded: true,
+  selectedRunTimestamp: undefined,
   setTestCase: (testCase: TestCase) => {
     set({ testCase });
   },
@@ -65,12 +73,16 @@ export const useTestCaseStore = create<UseTestCaseStoreInterface>()((set) => ({
   setIsTabExpanded: (isTabExpanded: boolean) => {
     set({ isTabExpanded });
   },
+  setSelectedRunTimestamp: (selectedRunTimestamp: number | undefined) => {
+    set({ selectedRunTimestamp });
+  },
   reset: () => {
     set({
       testCase: undefined,
       isLoading: true,
       showAILearningBanner: false,
       isTabExpanded: true,
+      selectedRunTimestamp: undefined,
     });
   },
 }));
