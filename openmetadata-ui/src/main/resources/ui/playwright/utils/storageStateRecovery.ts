@@ -234,6 +234,15 @@ const recover = async (
 const claimedContexts = new WeakSet<BrowserContext>();
 
 /**
+ * The guard can be installed on a context that has already booted (e.g. a
+ * plain spec that logs in on one page and only then calls redirectToHomePage).
+ * Any page off about:blank means the first boot happened unobserved, so a
+ * later page's first navigation must not be mistaken for it.
+ */
+const hasNavigated = (context: BrowserContext) =>
+  context.pages().some((page) => page.url() !== 'about:blank');
+
+/**
  * Call synchronously before starting the navigation to `reloadUrl`. Returns
  * undefined when that navigation is not the context's first boot; otherwise a
  * promise (never rejecting) of whether the lost token was re-seeded and
@@ -244,8 +253,7 @@ export const claimFirstBoot = (
   reloadUrl: string
 ): Promise<boolean> | undefined => {
   const context = page.context();
-  const isFirstBoot =
-    !claimedContexts.has(context) && page.url() === 'about:blank';
+  const isFirstBoot = !claimedContexts.has(context) && !hasNavigated(context);
 
   claimedContexts.add(context);
 
@@ -265,6 +273,12 @@ export const claimFirstBoot = (
  * against the signed-in app.
  */
 export const guardStorageStateBoot = (context: BrowserContext) => {
+  if (hasNavigated(context)) {
+    claimedContexts.add(context);
+
+    return;
+  }
+
   const onRequest = (request: Request) => {
     const frame = request.frame();
 
