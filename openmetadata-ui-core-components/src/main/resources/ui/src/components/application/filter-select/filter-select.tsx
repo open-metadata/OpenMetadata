@@ -15,8 +15,12 @@ import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { Skeleton } from '@/components/base/skeleton/skeleton';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { Typography } from '@/components/foundations/typography';
-import { SearchInputIcon, TriggerCountBadge } from './filter-select.shared';
-import { Input } from '@/components/base/input/input';
+import {
+  DropdownSearchField,
+  DropdownStagedFooter,
+  DropdownStatusFooter,
+  TriggerCountBadge,
+} from './filter-select.shared';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
@@ -84,7 +88,12 @@ export const TriggerButton = ({
           !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
           hasSelection &&
             'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary tw:*:data-icon:text-fg-brand-primary',
-          hasSelection && bordered && 'tw:after:outline-brand',
+          // Active-filter border is brand blue in light, but neutral (gray-700)
+          // in dark per the palette guideline — dark:*_alt flips only the dark
+          // value and leaves light frozen.
+          hasSelection &&
+            bordered &&
+            'tw:after:outline-brand tw:dark:after:outline-brand_alt',
           className
         )}
         color={bordered ? 'secondary' : 'tertiary'}
@@ -104,7 +113,7 @@ export const TriggerButton = ({
         className={cx(
           // Sized like the toolbar selects this trigger replaces: 32px tall,
           // filling the width its container gives it (constrain via className).
-          'tw:flex tw:h-8 tw:w-full tw:min-w-24 tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:px-3 tw:shadow-xs tw:outline-brand',
+          'tw:flex tw:h-8 tw:w-full tw:min-w-24 tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-primary tw:bg-surface tw:px-3 tw:shadow-xs tw:outline-brand',
           className
         )}
         data-testid={testId}>
@@ -130,7 +139,7 @@ export const TriggerButton = ({
   return (
     <AriaButton
       className={cx(
-        'tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:gap-1 tw:whitespace-nowrap tw:rounded-lg tw:bg-primary tw:px-3.5 tw:py-2.5 tw:text-sm tw:font-medium tw:text-secondary tw:shadow-xs-skeuomorphic tw:outline-brand',
+        'tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:gap-1 tw:whitespace-nowrap tw:rounded-lg tw:bg-surface tw:px-3.5 tw:py-2.5 tw:text-sm tw:font-medium tw:text-secondary tw:shadow-xs-skeuomorphic tw:outline-brand',
         borderAfter,
         'tw:after:outline-primary',
         className
@@ -336,6 +345,7 @@ const FilterSelect = ({
   nullOption,
   placeholder,
   popoverClassName,
+  popoverStyle,
   resolveMissingLabel,
   searchable,
   selectionMode = 'multiple',
@@ -708,20 +718,18 @@ const FilterSelect = ({
         }
         data-testid="drop-down-menu"
         placement="bottom left"
+        style={popoverStyle}
         triggerRef={isChips ? chipsFieldRef : undefined}>
         <div className="tw:contents" ref={popoverContentRef}>
           {searchable && (
-            <div className="tw:px-3 tw:pt-3 tw:pb-2" ref={searchWrapperRef}>
-              <Input
-                icon={SearchInputIcon}
-                inputDataTestId="search-input"
-                isDisabled={!isOpen}
-                placeholder={t('label.search')}
-                size="sm"
-                value={query}
-                onChange={handleSearch}
-              />
-            </div>
+            <DropdownSearchField
+              inputDataTestId="search-input"
+              isDisabled={!isOpen}
+              placeholder={t('label.search')}
+              value={query}
+              wrapperRef={searchWrapperRef}
+              onChange={handleSearch}
+            />
           )}
 
           {showSelectAllRow && (
@@ -808,61 +816,19 @@ const FilterSelect = ({
           )}
 
           {showFooter && (
-            <div className="tw:mt-2 tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-3 tw:pr-3 tw:pl-5">
-              <Button
-                className="tw:px-0 tw:py-1.5"
-                color="tertiary"
-                data-testid="clear-filter-btn"
-                isDisabled={staged.length === 0}
-                size="sm"
-                onPress={() => setStaged([])}>
-                {t('label.clear-all')}
-              </Button>
-              <div className="tw:flex tw:items-center tw:gap-2">
-                <Button
-                  className="tw:py-1.5"
-                  color="secondary"
-                  data-testid="close-btn"
-                  size="sm"
-                  onPress={() => handleOpenChange(false)}>
-                  {t('label.cancel')}
-                </Button>
-                <Button
-                  className="tw:py-1.5"
-                  color="primary"
-                  data-testid="update-btn"
-                  size="sm"
-                  onPress={handleApply}>
-                  {staged.length > 0
-                    ? t('label.apply-count', { count: staged.length })
-                    : t('label.apply')}
-                </Button>
-              </div>
-            </div>
+            <DropdownStagedFooter
+              count={staged.length}
+              onApply={handleApply}
+              onCancel={() => handleOpenChange(false)}
+              onClear={() => setStaged([])}
+            />
           )}
 
           {showStatusFooter && (
-            <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-2 tw:pr-2 tw:pl-5">
-              <Typography
-                className="not-prose"
-                color="secondary"
-                data-testid="selected-count"
-                size="text-xs"
-                weight="regular">
-                {selectedValues.length === 0
-                  ? t('label.none-selected')
-                  : t('label.count-selected', { count: selectedValues.length })}
-              </Typography>
-              <Button
-                className="tw:py-1.5"
-                color="tertiary"
-                data-testid="clear-filter-btn"
-                isDisabled={selectedValues.length === 0}
-                size="sm"
-                onPress={() => onChange([])}>
-                {t('label.clear-all')}
-              </Button>
-            </div>
+            <DropdownStatusFooter
+              count={selectedValues.length}
+              onClear={() => onChange([])}
+            />
           )}
         </div>
       </Dropdown.Popover>
@@ -875,5 +841,9 @@ const _FilterSelect = FilterSelect as typeof FilterSelect & {
 };
 _FilterSelect.Tree = TreeSelect;
 
-export { SearchInputIcon, TriggerCountBadge } from './filter-select.shared';
+export {
+  DropdownSearchField,
+  SearchInputIcon,
+  TriggerCountBadge,
+} from './filter-select.shared';
 export { _FilterSelect as FilterSelect };

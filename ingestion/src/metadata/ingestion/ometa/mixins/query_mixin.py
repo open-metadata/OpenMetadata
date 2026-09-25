@@ -51,7 +51,7 @@ class OMetaQueryMixin:
     get_suffix: Callable[..., str]
 
     def _get_query_hash(self, query: str) -> str:
-        result = hashlib.md5(query.encode())
+        result = hashlib.md5(query.encode(), usedforsecurity=False)
         return str(result.hexdigest())
 
     def _qualified_query_fqn(self, service_name: str, query_hash: str) -> str:

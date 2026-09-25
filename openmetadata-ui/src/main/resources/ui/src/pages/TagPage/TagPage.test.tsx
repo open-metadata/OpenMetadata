@@ -56,6 +56,8 @@ jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Box: jest.requireActual('@openmetadata/ui-core-components').Box,
+  Tabs: jest.requireActual('@openmetadata/ui-core-components').Tabs,
   Button: jest
     .fn()
     .mockImplementation(({ children, onClick }) => (
@@ -95,6 +97,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     ),
   Skeleton: jest.fn().mockImplementation(() => <span />),
   Tooltip: jest.fn().mockImplementation(({ children }) => <>{children}</>),
+  useTabItemState: jest.fn().mockReturnValue(null),
   Typography: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),

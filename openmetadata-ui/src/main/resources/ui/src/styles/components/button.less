@@ -162,7 +162,13 @@ button {
 
 .ant-btn.ant-btn-icon-only.bordered {
   border: 1px solid @grey-300;
-  background-color: var(--tw-color-bg-primary);
+  background-color: var(--om-color-bg-surface);
+
+  // Dark: a filled box reads as a patch on surface/secondary hosts (e.g. the
+  // entity summary header); let the host surface show through.
+  .dark-mode & {
+    background-color: transparent;
+  }
 
   &.ant-btn-default {
     .icon-button-default();
@@ -258,4 +264,12 @@ button {
       box-shadow: @button-box-shadow-disabled;
     }
   }
+}
+
+// Disabled antd buttons use @disabled-color (fade(@black, 25%)), compiled to a
+// static near-black that vanishes in dark; retint to the disabled text token.
+.dark-mode .ant-btn[disabled],
+.dark-mode .ant-btn[disabled]:hover,
+.dark-mode .ant-btn[disabled]:focus {
+  color: var(--om-color-text-disabled);
 }

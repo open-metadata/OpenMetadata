@@ -106,6 +106,32 @@ class IndexTemplateManagerTest {
   }
 
   @Test
+  void liveTemplateLookupIsScopedToThisDeploymentsClusterAlias() throws IOException {
+    // Template names carry the cluster alias, so a bare om_* reads every co-tenant's templates on
+    // a shared cluster. Index-template actions cannot be pattern-scoped by the security plugin,
+    // so the confinement has to come from the request.
+    SearchClient searchClient = mock(SearchClient.class);
+    IndexMapping mapping = indexMapping("current_search_index");
+    TestSearchRepository repository =
+        newRepository(new LinkedHashMap<>(Map.of("current", mapping)), searchClient, "cg-2-acme");
+    repository.setMappingContent(mapping, "{}");
+    configureMatchingStoredFingerprint("om_cg-2-acme_current_search_index", "{}");
+    when(searchClient.getIndexTemplateFingerprints("om_cg-2-acme_*"))
+        .thenReturn(
+            Map.of(
+                "om_cg-2-acme_current_search_index",
+                GenericClient.calculateIndexTemplateFingerprint(
+                    "cg-2-acme_current_search_index*", "{}")));
+
+    repository.createOrUpdateIndexTemplates(0);
+
+    verify(searchClient).getIndexTemplateFingerprints("om_cg-2-acme_*");
+    verify(searchClient, never()).getIndexTemplateFingerprints("om_*");
+    verify(searchClient, never())
+        .createOrUpdateIndexTemplate(anyString(), anyString(), anyString());
+  }
+
+  @Test
   void missingLiveTemplateIsRebuilt() throws IOException {
     SearchClient searchClient = mock(SearchClient.class);
     IndexMapping mapping = indexMapping("missing_search_index");
@@ -286,13 +312,18 @@ class IndexTemplateManagerTest {
 
   private static TestSearchRepository newRepository(
       Map<String, IndexMapping> indexMappings, SearchClient searchClient) {
+    return newRepository(indexMappings, searchClient, "");
+  }
+
+  private static TestSearchRepository newRepository(
+      Map<String, IndexMapping> indexMappings, SearchClient searchClient, String clusterAlias) {
     when(searchClient.indexTemplateFingerprint(anyString(), anyString()))
         .thenAnswer(
             invocation ->
                 GenericClient.calculateIndexTemplateFingerprint(
                     invocation.getArgument(0), invocation.getArgument(1)));
     ElasticSearchConfiguration configuration = new ElasticSearchConfiguration();
-    configuration.setClusterAlias("");
+    configuration.setClusterAlias(clusterAlias);
     IndexMappingLoader mappingLoader = mock(IndexMappingLoader.class);
     when(mappingLoader.getIndexMapping()).thenReturn(indexMappings);
     EntityLifecycleEventDispatcher dispatcher = mock(EntityLifecycleEventDispatcher.class);

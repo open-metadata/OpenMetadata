@@ -49,6 +49,7 @@ import { t } from './i18next/LocalUtil';
 import type { QueryBuilderConfigModes } from './queryBuilder/types';
 import { OMConfig } from './QueryBuilderOMConfig';
 import { getFieldsByKeys } from './QueryBuilderPureUtils';
+import { withGlossaryTermField } from './queryBuilderWidgets/glossaryTermQueryField';
 import { toTagSelectOptions } from './SearchPureUtils';
 
 // The value format RAQB's `date` widget stores and the native `<input type="date">` renders.
@@ -545,14 +546,14 @@ class JSONLogicSearchClassBase {
             defaultOperator: 'multiselect_equals',
             mainWidgetProps: this.mainWidgetProps,
             operators: MULTISELECT_FIELD_OPERATORS,
-            fieldSettings: {
+            fieldSettings: withGlossaryTermField({
               asyncFetch: this.searchAutocomplete({
                 searchIndex: SearchIndex.GLOSSARY_TERM,
                 fieldName: 'fullyQualifiedName',
                 fieldLabel: 'name',
               }),
               useAsyncSearch: true,
-            },
+            }),
           },
         },
       },

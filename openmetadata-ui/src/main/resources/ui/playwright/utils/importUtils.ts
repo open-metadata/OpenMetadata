@@ -29,6 +29,7 @@ import {
   EntityTypeEndpoint,
   ENTITY_PATH,
 } from '../support/entity/Entity.interface';
+import { CODE_EDITOR_CONTENT } from './codeEditor';
 import {
   clickOutside,
   descriptionBox,
@@ -43,7 +44,10 @@ import {
   addCustomPropertiesForEntity,
   fillTableColumnInputDetails,
 } from './customProperty';
-import { waitForAllLoadersToDisappear } from './entity';
+import {
+  escapeESReservedCharacters,
+  waitForAllLoadersToDisappear,
+} from './entity';
 import { searchGlossaryPicker } from './glossaryPicker';
 import { settingClick, SettingOptionsType } from './sidebar';
 
@@ -680,7 +684,9 @@ export const fillTagDetails = async (page: Page, tag: string) => {
   await tagSelectorInput.waitFor({ state: 'visible' });
 
   const waitForQueryResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      escapeESReservedCharacters(tag)
+    )}*`
   );
   await page.keyboard.type(tag);
   await waitForQueryResponse;
@@ -910,7 +916,7 @@ const editGlossaryCustomProperty = async (
     await page.getByTestId('inline-save-btn').click();
 
     await expect(
-      page.getByTestId(propertyName).locator('.CodeMirror-lines')
+      page.getByTestId(propertyName).locator(CODE_EDITOR_CONTENT)
     ).toContainText(FIELD_VALUES_CUSTOM_PROPERTIES.SQL_QUERY);
   }
 
