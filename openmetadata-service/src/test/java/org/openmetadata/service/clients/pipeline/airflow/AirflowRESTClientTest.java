@@ -14,7 +14,9 @@ package org.openmetadata.service.clients.pipeline.airflow;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -25,8 +27,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
+import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStoreException;
+import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -230,14 +234,14 @@ class AirflowRESTClientTest {
       server.enqueue("GET", healthPath, 401, "{\"detail\":\"denied\"}");
       AirflowRESTClient authFailureClient = newClient(server, basePath);
       PipelineServiceClientResponse authFailure = authFailureClient.getServiceStatusInternal();
-      assertEquals(500, authFailure.getCode());
+      assertEquals(401, authFailure.getCode());
       assertTrue(authFailure.getReason().contains("Authentication failed"));
 
       server.enqueue("GET", healthPath, 200, "{\"version\":\"" + version + "\"}");
       server.enqueue("GET", healthPath, 404, "{\"detail\":\"missing\"}");
       AirflowRESTClient missingPluginClient = newClient(server, basePath);
       PipelineServiceClientResponse missingPlugin = missingPluginClient.getServiceStatusInternal();
-      assertEquals(500, missingPlugin.getCode());
+      assertEquals(404, missingPlugin.getCode());
       assertTrue(missingPlugin.getReason().contains("Airflow APIs not found"));
     }
   }
@@ -255,7 +259,7 @@ class AirflowRESTClientTest {
       AirflowRESTClient client = newClient(server, basePath);
       PipelineServiceClientResponse status = client.getServiceStatusInternal();
 
-      assertEquals(500, status.getCode());
+      assertEquals(422, status.getCode());
       assertTrue(
           status.getReason().contains("upgrade your server")
               || status.getReason().contains("upgrade your ingestion client"));
@@ -515,6 +519,31 @@ class AirflowRESTClientTest {
   }
 
   @Test
+  void getServiceStatusRecoversFromTransientFailure() throws Exception {
+    try (AirflowTestServer server = new AirflowTestServer()) {
+      String basePath = "/airflow";
+      String healthPath = basePath + "/pluginsv2/api/v2/openmetadata/health-auth";
+      String version = PipelineServiceClient.getServerVersion();
+
+      // First call: detection probe succeeds
+      server.enqueue("GET", healthPath, 200, "{\"version\":\"" + version + "\"}");
+      // Second call (first getServiceStatus attempt): transient 500
+      server.enqueue("GET", healthPath, 500, "{\"error\":\"selector manager closed\"}");
+      // Third call (retry): healthy response
+      server.enqueue("GET", healthPath, 200, "{\"version\":\"" + version + "\"}");
+
+      AirflowRESTClient client = newClient(server, basePath);
+
+      PipelineServiceClientResponse status = client.getServiceStatus();
+
+      assertEquals(200, status.getCode());
+      assertEquals(version, status.getVersion());
+      List<RequestRecord> healthRequests = server.requests("GET", healthPath);
+      assertEquals(3, healthRequests.size());
+    }
+  }
+
+  @Test
   void constructorHandlesIntegerTimeout() throws Exception {
     try (AirflowTestServer server = new AirflowTestServer()) {
       AirflowRESTClient client = newClient(server, "", 10);
@@ -583,6 +612,104 @@ class AirflowRESTClientTest {
     assertTrue(exception.getMessage().contains("Missing Airflow credentials"));
   }
 
+  @Test
+  void getServiceStatusDoesNotRetryOnAuthError() throws Exception {
+    try (AirflowTestServer server = new AirflowTestServer()) {
+      String basePath = "/airflow";
+      String healthPath = basePath + "/pluginsv2/api/v2/openmetadata/health-auth";
+      String version = PipelineServiceClient.getServerVersion();
+
+      // Detection probe succeeds
+      server.enqueue("GET", healthPath, 200, "{\"version\":\"" + version + "\"}");
+      // Auth failure — should NOT be retried
+      server.enqueue("GET", healthPath, 401, "{\"error\":\"unauthorized\"}");
+
+      AirflowRESTClient client = newClient(server, basePath);
+
+      PipelineServiceClientResponse status = client.getServiceStatus();
+
+      assertEquals(401, status.getCode());
+      // Only 2 requests: detection probe + single 401 (no retry)
+      List<RequestRecord> healthRequests = server.requests("GET", healthPath);
+      assertEquals(2, healthRequests.size());
+    }
+  }
+
+  @Test
+  void getServiceStatusRecoversFromTerminatedHttpClient() throws Exception {
+    try (AirflowTestServer server = new AirflowTestServer()) {
+      String basePath = "/airflow";
+      String healthPath = basePath + "/pluginsv2/api/v2/openmetadata/health-auth";
+      String version = PipelineServiceClient.getServerVersion();
+      String healthBody = "{\"version\":\"" + version + "\"}";
+      // Detection probe, the first status call, and the call made after the client dies.
+      server.enqueue("GET", healthPath, 200, healthBody);
+      server.enqueue("GET", healthPath, 200, healthBody);
+      server.enqueue("GET", healthPath, 200, healthBody);
+
+      AirflowRESTClient client = newClient(server, basePath);
+      assertEquals(200, client.getServiceStatus().getCode());
+
+      // Stand in for the JDK selector manager dying on a transient error: every send on this
+      // instance fails with "selector manager closed" from here on.
+      HttpClient dead = client.client();
+      dead.shutdownNow();
+      assertTrue(dead.awaitTermination(Duration.ofSeconds(10)));
+
+      PipelineServiceClientResponse status = client.getServiceStatus();
+
+      assertEquals(200, status.getCode());
+      assertEquals(version, status.getVersion());
+      assertNotSame(dead, client.client());
+      assertEquals(3, server.requests("GET", healthPath).size());
+    }
+  }
+
+  @Test
+  void getServiceStatusReportsUnhealthyWhenNoApiVersionResponds() throws Exception {
+    try (AirflowTestServer server = new AirflowTestServer()) {
+      String basePath = "/airflow";
+      // Nothing is enqueued, so every probe 404s and endpoint detection finds no API version.
+      AirflowRESTClient client = newClient(server, basePath);
+
+      PipelineServiceClientResponse status = client.getServiceStatus();
+
+      assertEquals(404, status.getCode());
+      assertTrue(status.getReason().contains("Unable to connect to Airflow APIs"));
+      // v3 + v2 + v1 probed once each: an unreachable Airflow is not retried on top of that.
+      assertEquals(3, server.requests.size());
+    }
+  }
+
+  @Test
+  void getServiceStatusDoesNotRetryWhenCallerThreadIsInterrupted() throws Exception {
+    try (AirflowTestServer server = new AirflowTestServer()) {
+      String basePath = "/airflow";
+      String healthPath = basePath + "/pluginsv2/api/v2/openmetadata/health-auth";
+      server.enqueue(
+          "GET",
+          healthPath,
+          200,
+          "{\"version\":\"" + PipelineServiceClient.getServerVersion() + "\"}");
+
+      AirflowRESTClient client = newClient(server, basePath);
+      client.getApiVersion(); // detect up front so the status call is a single request
+
+      Thread.currentThread().interrupt();
+      try {
+        PipelineServiceClientResponse status = client.getServiceStatus();
+
+        assertNotEquals(200, status.getCode());
+        assertTrue(status.getReason().contains("Interrupted while checking"));
+        // Retrying would sleep on a thread whose interrupt flag is set, which fails immediately.
+        assertEquals(1, server.requests("GET", healthPath).size());
+        assertTrue(Thread.currentThread().isInterrupted(), "interrupt flag must be preserved");
+      } finally {
+        Thread.interrupted(); // don't leak the flag into the next test on this thread
+      }
+    }
+  }
+
   private static AirflowRESTClient newClient(AirflowTestServer server, String basePath)
       throws KeyStoreException {
     return newClient(server, basePath, 5);
@@ -600,7 +727,12 @@ class AirflowRESTClientTest {
     config.setApiEndpoint(server.url(basePath));
     config.setMetadataApiEndpoint("http://localhost:8585/api");
     config.setParameters(parameters);
-    return new AirflowRESTClient(config);
+    return new AirflowRESTClient(config) {
+      @Override
+      protected long getRetryBackoffMillis() {
+        return 0L;
+      }
+    };
   }
 
   @Test
@@ -704,9 +836,18 @@ class AirflowRESTClientTest {
   }
 
   private static void invokePrivate(Object target, String methodName) throws Exception {
-    Method method = target.getClass().getDeclaredMethod(methodName);
-    method.setAccessible(true);
-    method.invoke(target);
+    Class<?> clazz = target.getClass();
+    while (clazz != null) {
+      try {
+        Method method = clazz.getDeclaredMethod(methodName);
+        method.setAccessible(true);
+        method.invoke(target);
+        return;
+      } catch (NoSuchMethodException e) {
+        clazz = clazz.getSuperclass();
+      }
+    }
+    throw new NoSuchMethodException(target.getClass().getName() + "." + methodName + "()");
   }
 
   private record RequestRecord(

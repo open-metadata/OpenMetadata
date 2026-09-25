@@ -97,6 +97,12 @@ const ServiceInsightsTab = ({
   >(workflowStatesData?.mainInstanceState);
   const sessionIdRef = useRef<string>();
 
+  // The page fetches the workflow state after this tab mounts, so seeding the
+  // state once at mount would leave the AutoPilot status empty.
+  useEffect(() => {
+    setLiveAutoPilotStatusData(workflowStatesData?.mainInstanceState);
+  }, [workflowStatesData?.mainInstanceState]);
+
   const serviceName = serviceDetails.name;
 
   const widgets = serviceUtilClassBase.getInsightsTabWidgets(serviceCategory);

@@ -511,7 +511,7 @@ test.describe('Data Products', () => {
       await expect(
         page
           .getByTestId('add-domain-form')
-          .getByTestId('tags-container')
+          .getByTestId('filter-chip')
           .getByText(tag.data.displayName)
       ).toBeVisible();
     });

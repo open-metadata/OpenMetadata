@@ -52,7 +52,7 @@ const ObservabilityPageShell = ({
       </div>
       <div
         className={classNames(
-          'tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-4',
+          'tw:min-h-0 tw:flex-1 tw:overflow-auto tw:px-2 tw:py-4',
           contentClassName
         )}
         data-testid="observability-page-content">
