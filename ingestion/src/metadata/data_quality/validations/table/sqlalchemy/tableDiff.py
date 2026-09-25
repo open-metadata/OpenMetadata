@@ -23,7 +23,7 @@ from urllib.parse import urlparse
 import data_diff
 import sqlalchemy.types
 from data_diff.diff_tables import DiffResultWrapper
-from data_diff.errors import DataDiffMismatchingKeyTypesError
+from data_diff.errors import DataDiffDuplicateKeyError, DataDiffMismatchingKeyTypesError
 from data_diff.utils import ArithAlphanumeric, CaseInsensitiveDict
 from pydantic import BaseModel, Field
 from sqlalchemy import Column as SAColumn
@@ -291,7 +291,9 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
 
     def _run(self) -> TestCaseResult:
         column_diff: ColumnDiffResult = self.get_column_diff()
-        threshold = self.get_test_case_param_value(self.test_case.parameterValues, "threshold", int, default=0)
+        threshold = self.get_test_case_param_value(
+            self.test_case.parameterValues, "threshold", int, default=0
+        )
         # get_test_case_param_value is typed on the caster it is handed, so its return widens to type[int] | None
         threshold = cast("int", threshold or 0)
         if column_diff:
@@ -312,17 +314,19 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.table2.extra_columns = common_columns
         table_diff_iter = self.get_table_diff()
 
-        with self._duplicate_keys_named(table_diff_iter):
+        with self._duplicate_keys_named():
             if not threshold or self.test_case.computePassedFailedRowCount:
-                stats = table_diff_iter.get_stats_dict()
+                # Only the counts are needed: don't keep every differing row (all its columns) in memory
+                stats = table_diff_iter.get_stats_dict(retain_rows=False)
                 if stats["total"] > 0:
                     logger.debug("Sample of failed rows:")
                     # depending on the data, this require scanning a lot of data
                     # so we only log the sample in debug mode. data can be sensitive
                     # so it is masked by default
+                    # A second diff, so only when debug logs are on: logger.level is NOTSET (0) on this logger
                     for s in islice(
                         self.safe_table_diff_iterator(),
-                        10 if logger.level <= logging.DEBUG else 0,
+                        10 if logger.isEnabledFor(logging.DEBUG) else 0,
                     ):
                         logger.debug("%s", str([s[0]] + [masked(st) for st in s[1]]))
                 test_case_result = self.get_row_diff_test_case_result(
@@ -336,13 +340,21 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 count = self._compute_row_count(self.runner, None)  # type: ignore
                 test_case_result.passedRows = stats["unchanged"]
                 if count:
-                    test_case_result.passedRowsPercentage = (test_case_result.passedRows or 0) / count * 100
-                    test_case_result.failedRowsPercentage = (test_case_result.failedRows or 0) / count * 100
+                    test_case_result.passedRowsPercentage = (
+                        (test_case_result.passedRows or 0) / count * 100
+                    )
+                    test_case_result.failedRowsPercentage = (
+                        (test_case_result.failedRows or 0) / count * 100
+                    )
                 return test_case_result
+            # The raw iterator: iterating the wrapper would keep every row in its result_list
+            diff = table_diff_iter.diff
+            try:
+                total_diffs = self.calculate_diffs_with_limit(diff, threshold)
+            finally:
+                diff.close()  # Stops data-diff's worker pool rather than diffing the rest of the table
             return self.get_row_diff_test_case_result(
-                threshold,
-                self.calculate_diffs_with_limit(table_diff_iter, threshold),
-                column_diff=column_diff,
+                threshold, total_diffs, column_diff=column_diff
             )
 
     def get_incomparable_columns(self) -> List[str]:
@@ -667,14 +679,13 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 raise UnsupportedDialectError(name, dialect)
 
     @contextmanager
-    def _duplicate_keys_named(self, table_diff_iter: DiffResultWrapper) -> Iterator[None]:
+    def _duplicate_keys_named(self) -> Iterator[None]:
         """Re-raise data-diff's duplicate-key failures with the key columns named.
 
-        A key that is not unique makes a row-level diff undefined, and data-diff reports it in two
-        equally opaque ways: joindiff validates the key itself and raises
-        `ValueError("Duplicate primary keys")`, while hashdiff only trips over it in `_get_stats`,
-        which folds rows into a `{key: sign}` map and asserts a key never repeats with the same
-        sign - a bare `AssertionError`. Neither names the key, so we do.
+        A key that is not unique makes a row-level diff undefined. joindiff validates the key itself
+        and raises `ValueError("Duplicate primary keys")` without saying which table; hashdiff only
+        trips over it while counting stats, and raises `DataDiffDuplicateKeyError` with the index of
+        the table. Neither names the key, so we do.
 
         We deliberately do not check uniqueness up front: that is a COUNT/COUNT DISTINCT over both
         tables on every run, far too expensive on a large table to pay for an error that only
@@ -688,11 +699,12 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 raise
             # joindiff does not say which of the two tables it found the duplicates in.
             raise DuplicateKeyError(self._diff_key_columns()) from exc
-        except AssertionError as exc:
-            table_param = self._table_with_duplicate_keys(table_diff_iter)
-            if table_param is None:
-                # Some other invariant inside data-diff; nothing useful to add.
-                raise
+        except DataDiffDuplicateKeyError as exc:
+            table_param = (
+                self.runtime_params.table1
+                if exc.table_index == 1
+                else self.runtime_params.table2
+            )
             raise DuplicateKeyError(
                 list(table_param.key_columns or []),
                 table_param.fullyQualifiedName or table_param.path,
@@ -700,25 +712,11 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
 
     def _diff_key_columns(self) -> List[str]:  # noqa: UP006
         """The key columns the diff runs on. Both sides diff on the same key."""
-        return list(self.runtime_params.table1.key_columns or self.runtime_params.table2.key_columns or [])
-
-    def _table_with_duplicate_keys(self, table_diff_iter: DiffResultWrapper) -> Optional[TableParameter]:  # noqa: UP045
-        """The table whose rows repeat a key, or None if the diffed rows show no duplicate.
-
-        Read off the rows `_get_stats` had already materialised into `result_list` when it failed,
-        so this costs no query. A row is `(sign, values)` with the key first; "-" rows come from
-        table1 and "+" rows from table2.
-        """
-        key_length = len(self._diff_key_columns())
-        if not key_length:
-            return None
-        seen = set()
-        for sign, values in table_diff_iter.result_list:
-            marker = (sign, tuple(values[:key_length]))
-            if marker in seen:
-                return self.runtime_params.table1 if sign == "-" else self.runtime_params.table2
-            seen.add(marker)
-        return None
+        return list(
+            self.runtime_params.table1.key_columns
+            or self.runtime_params.table2.key_columns
+            or []
+        )
 
     def get_column_diff(self) -> Optional[ColumnDiffResult]:  # noqa: UP045
         """Get the column diff between the two tables. If there are no differences, return None."""
@@ -875,7 +873,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 continue
             key_set.add(k)
             if len(key_set) > limit:
-                len(key_set)
+                break  # Over the threshold: no need to diff the rest of the table
         return len(key_set)
 
     def safe_table_diff_iterator(self) -> DiffResultWrapper:
