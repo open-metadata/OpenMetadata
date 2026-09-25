@@ -29,6 +29,16 @@
 .ant-btn.entity-follow-button {
   border-radius: var(--om-radius-2xl);
   background-color: @primary-button-background;
+
+  // @primary-button-background / @primary-heading-color are static light
+  // brand values; use the dark brand tint and brand text in dark.
+  .dark-mode & {
+    background-color: var(--tw-background-color-brand-primary);
+
+    .ant-typography {
+      color: var(--tw-color-text-brand-secondary);
+    }
+  }
   padding: var(--om-space-4) var(--om-space-12);
   border: none;
   width: fit-content;

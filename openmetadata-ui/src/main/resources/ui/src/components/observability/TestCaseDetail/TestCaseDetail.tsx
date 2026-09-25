@@ -412,7 +412,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                       'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
                     )}
                     justify="center">
-                    <TestCaseIcon className="tw:size-5" />
+                    <TestCaseIcon className="tw:size-5 tw:dark:[&>rect]:fill-transparent" />
                   </Box>
                   <Box
                     align="center"

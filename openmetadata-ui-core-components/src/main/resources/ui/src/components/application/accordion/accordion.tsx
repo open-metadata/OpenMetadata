@@ -116,7 +116,7 @@ export const AccordionItem = ({
       {...props}
       className={(state) =>
         cx(
-          'tw:group/item tw:w-full tw:bg-primary',
+          'tw:group/item tw:w-full tw:bg-surface',
           state.isDisabled && 'tw:cursor-not-allowed tw:opacity-50',
           typeof className === 'function' ? className(state) : className
         )
