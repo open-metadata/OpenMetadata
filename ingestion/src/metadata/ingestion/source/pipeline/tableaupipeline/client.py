@@ -478,14 +478,19 @@ class TableauPipelineClient:
 
     def _attach_custom_sql(self, lineage: TableauFlowLineage) -> None:
         """Fetch the custom SQL of the upstream tables Tableau returns without a
-        name, the only ones whose lineage is read from it."""
+        name, the only ones whose lineage is read from it. A failure here only
+        costs those tables: the rest of the flow's lineage is already parsed."""
         unnamed = {table.id: table for table in lineage.upstream_tables if not table.name and table.id}
         if not unnamed:
             return
         table_ids = ", ".join(json.dumps(table_id) for table_id in unnamed)
-        data = self._metadata_query(
-            TABLEAU_TABLE_QUERIES_QUERY.format(table_ids=table_ids), f"custom SQL of {len(unnamed)} tables"
-        )
+        try:
+            data = self._metadata_query(
+                TABLEAU_TABLE_QUERIES_QUERY.format(table_ids=table_ids), f"custom SQL of {len(unnamed)} tables"
+            )
+        except TableauMetadataApiError as exc:
+            logger.warning("%s; unnamed tables get no custom SQL lineage", exc)
+            return
         for table in data.get("databaseTables") or []:
             upstream = unnamed.get(table.get("id"))
             if upstream is not None:

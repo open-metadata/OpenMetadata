@@ -148,6 +148,7 @@ class FakeTableau:
         self.job_detail_status = 200
         self.graphql_status = 200
         self.table_queries_response: dict = {"data": {"databaseTables": []}}
+        self.table_queries_status = 200
 
     def send(self, request: requests.PreparedRequest, **kwargs) -> requests.Response:
         self.requests.append(request)
@@ -201,9 +202,10 @@ class FakeTableau:
             return self.job_detail_status, _error(f"{self.job_detail_status}004"), "text/xml"
         if "/jobs/" in path:
             return self._lookup(self.job_details, path, "404003")
+        if path.endswith("/api/metadata/graphql") and "databaseTables" in str(request.body):
+            return self.table_queries_status, json.dumps(self.table_queries_response), "application/json"
         if path.endswith("/api/metadata/graphql"):
-            answer = self.table_queries_response if "databaseTables" in str(request.body) else self.graphql_response
-            return self.graphql_status, json.dumps(answer), "application/json"
+            return self.graphql_status, json.dumps(self.graphql_response), "application/json"
         return None
 
     @staticmethod
@@ -530,6 +532,31 @@ class TestFlowLineage:
         named, hidden = lineage.upstream_tables
         assert named.referenced_by_queries == []
         assert [q.query for q in hidden.referenced_by_queries] == ["SELECT 1 FROM t"]
+
+    def test_a_failed_custom_sql_query_keeps_the_rest_of_the_lineage(self, tableau, caplog):
+        """Only the unnamed tables depend on the custom SQL query; its failure
+        must not throw away the flow's other inputs, outputs and next flows."""
+        tableau.graphql_response = {
+            "data": {
+                "flows": [
+                    {
+                        "upstreamTables": [{"id": "gql-named", "name": "orders"}, {"id": "gql-hidden", "name": None}],
+                        "downstreamTables": [{"id": "gql-out", "name": "sales_clean"}],
+                        "nextDownstreamFlows": [{"luid": "flow-2", "name": "Ops"}],
+                    }
+                ]
+            }
+        }
+        tableau.table_queries_status = 500
+
+        with caplog.at_level(logging.WARNING):
+            lineage = _client().get_flow_lineage("flow-1")
+
+        assert [table.id for table in lineage.upstream_tables] == ["gql-named", "gql-hidden"]
+        assert lineage.upstream_tables[1].referenced_by_queries == []
+        assert [table.name for table in lineage.downstream_tables] == ["sales_clean"]
+        assert [flow.luid for flow in lineage.next_downstream_flows] == ["flow-2"]
+        assert "unnamed tables get no custom SQL lineage" in caplog.text
 
     def test_named_tables_need_no_custom_sql_query(self, tableau):
         tableau.graphql_response = {"data": {"flows": [{"upstreamTables": [{"id": "gql-named", "name": "orders"}]}]}}
