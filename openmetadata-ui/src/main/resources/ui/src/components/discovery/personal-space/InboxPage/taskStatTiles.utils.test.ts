@@ -117,7 +117,7 @@ describe('getTaskStatTiles', () => {
     );
 
     expect(tiles).toEqual([
-      { key: 'queries', label: 'label.queries-this-week', value: '9' },
+      { key: 'queries', label: 'label.queries-last-7-days', value: '9' },
       {
         key: 'currentTags',
         label: 'label.current-entity:label.tag-plural',

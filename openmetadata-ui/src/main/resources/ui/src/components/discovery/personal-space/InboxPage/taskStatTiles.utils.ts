@@ -72,15 +72,15 @@ export const columnsTile = (
   ];
 };
 
-// A calendar-week figure, so it is labelled as this week rather than as the
-// last seven days.
+// A rolling seven-day count as of the last usage ingestion (usageDetails'
+// weeklyStats), so it is labelled as the last seven days, not this week.
 export const queriesTile = (about: TaskAboutEntity, t: Translate): StatTile[] =>
   about.weeklyQueryCount === undefined
     ? []
     : [
         {
           key: 'queries',
-          label: t('label.queries-this-week'),
+          label: t('label.queries-last-7-days'),
           value: String(about.weeklyQueryCount),
         },
       ];

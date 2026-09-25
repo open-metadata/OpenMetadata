@@ -113,7 +113,7 @@ export interface TaskAboutEntity {
   columnCount?: number;
   piiColumnCount?: number;
   downstreamCount?: number;
-  /** Usage count for the current calendar week, not a rolling seven days. */
+  /** Rolling seven-day usage count as of the last usage ingestion. */
   weeklyQueryCount?: number;
   /** The failing test case behind an incident. */
   testCase?: TestCase;

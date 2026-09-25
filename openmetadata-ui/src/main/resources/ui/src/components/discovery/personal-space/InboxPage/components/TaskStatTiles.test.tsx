@@ -70,7 +70,7 @@ describe('TaskStatTiles', () => {
     renderTiles({ weeklyQueryCount: 9 });
 
     expect(screen.getByTestId('task-stat-queries')).toHaveTextContent(
-      '9label.queries-this-week'
+      '9label.queries-last-7-days'
     );
   });
 

@@ -142,6 +142,28 @@ describe('getTaskDetailDescriptor', () => {
     expect(descriptor.callout?.text).toBe('The previous owner left.');
   });
 
+  // Approving replaces the current owners, so both sides of the change show.
+  it('names the proposed owners beside the current ones', () => {
+    const newOwners = [{ id: 'u4', type: 'user', name: 'dana' }];
+    const descriptor = getTaskDetailDescriptor(
+      buildTask({
+        type: TaskType.OwnershipUpdate,
+        payload: { currentOwners: [{ id: 'u3', name: 'carol' }], newOwners },
+      } as unknown as Partial<Task>),
+      t
+    );
+
+    expect(rowKeys(descriptor.rows)).toEqual([
+      'owner',
+      'newOwners',
+      'createdAt',
+    ]);
+    expect(descriptor.rows[1]).toMatchObject({
+      label: 'label.new-entity:label.owner-plural',
+      value: { kind: 'users', refs: newOwners },
+    });
+  });
+
   it('says "No owner" when nobody holds the asset', () => {
     const descriptor = getTaskDetailDescriptor(
       buildTask({

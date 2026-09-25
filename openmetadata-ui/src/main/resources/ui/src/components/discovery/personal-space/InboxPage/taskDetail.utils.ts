@@ -406,6 +406,14 @@ const describeOwnershipUpdate = (
             label: t('label.owner'),
             value: { kind: 'text', text: t('label.no-owner') },
           },
+      // Approving replaces the current owners with these, so the reviewer sees
+      // both sides of the change before deciding.
+      ...usersRow(
+        'newOwners',
+        'owner',
+        t('label.new-entity', { entity: t('label.owner-plural') }),
+        payload.newOwners
+      ),
       ...dateRow('createdAt', t('label.raised-on'), task.createdAt),
     ],
     callout: payload.reason
