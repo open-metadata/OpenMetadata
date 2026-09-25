@@ -401,17 +401,25 @@ const TasksTab: React.FC<TasksTabProps> = ({
     [setItems]
   );
 
-  // A segmented control, each option carrying its total; the selected one's
-  // total takes the brand colour.
+  // A segmented control on a gray track: the selected option is a raised white
+  // chip with no outline, and its total takes the brand colour.
   const statusFilter = (
     <Tabs
       className="tw:w-fit"
       selectedKey={status}
       onSelectionChange={(key) => setStatus(key as TaskStatusFilter)}>
-      <Tabs.List size="sm" type="button-minimal">
+      <Tabs.List
+        className="tw:rounded-lg tw:bg-tertiary tw:p-1 tw:outline-0"
+        size="sm"
+        type="button-border">
         {STATUS_FILTERS.map(({ id, labelKey }) => (
           <Tabs.Item
-            className="tw:gap-1 tw:px-3 tw:py-1.5 tw:text-xs"
+            className={({ isSelected }) =>
+              classNames(
+                'tw:gap-1.5 tw:px-3 tw:py-1.5 tw:text-xs tw:font-semibold',
+                isSelected ? 'tw:text-primary' : 'tw:text-tertiary'
+              )
+            }
             id={id}
             key={id}>
             {({ isSelected }) => (

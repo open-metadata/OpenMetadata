@@ -92,7 +92,10 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
       direction="col">
       <Box align="center" className="tw:justify-between tw:gap-2">
         {statusFilter}
+        {/* A grouping always has a value, so FilterSelect's "active filter"
+            brand tint would be permanent; keep the trigger neutral. */}
         <FilterSelect
+          className="tw:**:text-tertiary tw:hover:**:text-secondary"
           data-testid="inbox-tasks-group-by"
           label={t('label.group')}
           options={groupingOptions}

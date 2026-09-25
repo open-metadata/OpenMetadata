@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Badge, Box, Tabs } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { DateRangeObject } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +38,30 @@ import { useInboxCounts } from './useInboxCounts';
 export type InboxTabKey = 'activity' | 'tasks';
 
 const DEFAULT_TAB: InboxTabKey = 'activity';
+
+// A soft pill with no outline, brand-tinted on the selected tab. The tab's own
+// `badge` prop draws an outlined pill, so the count is rendered here instead.
+const renderTabLabel = (label: string, count: number) =>
+  function TabLabel({ isSelected }: { isSelected: boolean }) {
+    return (
+      <>
+        {label}
+        {count > 0 && (
+          <Badge
+            bordered={false}
+            className={classNames(
+              'tw:px-2.5',
+              !isSelected && 'tw:bg-utility-gray-100'
+            )}
+            color={isSelected ? 'brand' : 'gray'}
+            size="sm"
+            type="pill-color">
+            {count}
+          </Badge>
+        )}
+      </>
+    );
+  };
 
 /**
  * The Inbox: the Activity / Triage tabs (with live counts) in the page header,
@@ -114,16 +139,12 @@ const InboxContent: React.FC = () => {
       selectedKey={selectedTab}
       onSelectionChange={onTabChange}>
       <Tabs.List size="sm" type="underline">
-        <Tabs.Item
-          badge={activityCount || undefined}
-          id="activity"
-          label={t('label.activity')}
-        />
-        <Tabs.Item
-          badge={taskCount || undefined}
-          id="tasks"
-          label={t('label.triage')}
-        />
+        <Tabs.Item id="activity">
+          {renderTabLabel(t('label.activity'), activityCount)}
+        </Tabs.Item>
+        <Tabs.Item id="tasks">
+          {renderTabLabel(t('label.triage'), taskCount)}
+        </Tabs.Item>
       </Tabs.List>
     </Tabs>
   );
