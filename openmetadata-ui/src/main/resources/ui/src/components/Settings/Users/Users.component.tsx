@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -45,10 +46,7 @@ import { DomainLabelNew } from '../../common/DomainLabel/DomainLabelNew';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import AssetsTabs from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
-import {
-  AssetNoDataPlaceholderProps,
-  AssetsOfEntity,
-} from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { AssetNoDataPlaceholderProps } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import ProfileSectionUserDetailsCard from '../../ProfileCard/ProfileSectionUserDetailsCard.component';
 import { useApplicationsProvider } from '../Applications/ApplicationsProvider/ApplicationsProvider';
 import AccessTokenCard from './AccessTokenCard/AccessTokenCard.component';

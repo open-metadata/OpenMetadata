@@ -17,19 +17,6 @@ import type { Edge as FlowEdge, Node } from 'reactflow';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { EntityReference } from '../../../generated/entity/type';
 
-export interface Edge {
-  edge: {
-    fromEntity: {
-      id: string;
-      type: string;
-    };
-    toEntity: {
-      id: string;
-      type: string;
-    };
-  };
-}
-
 export interface EdgeData {
   fromEntity: string;
   fromId: string;
@@ -59,7 +46,7 @@ export interface CustomEdgeData {
 export type ElementLoadingState = Exclude<LoadingState, 'waiting'>;
 export type CustomElement = { node: Node[]; edge: FlowEdge[] };
 
-import type { LineageConfig } from '../../../interface/lineage.interface';
+import type { Edge, LineageConfig } from '../../../interface/lineage.interface';
 
 export type { LineageConfig };
 

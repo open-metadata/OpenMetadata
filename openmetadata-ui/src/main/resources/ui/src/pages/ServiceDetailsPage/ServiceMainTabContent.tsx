@@ -51,6 +51,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { Paging } from '../../generated/type/paging';
 import { UsePagingInterface } from '../../hooks/paging/usePaging';
+import { ServicePageData } from '../../interface/platform/service.interface';
 import { ServicesType } from '../../interface/service.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
@@ -71,7 +72,6 @@ import { getTagsWithoutTier, getTierTags } from '../../utils/TablePureUtils';
 import { createTagObject } from '../../utils/TagsPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import { ServicePageData } from './ServiceDetailsPage.interface';
 
 interface ServiceMainTabContentProps {
   serviceName: string;

@@ -41,8 +41,8 @@ import {
 } from '../../../constants/constants';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TestCase } from '../../../generated/tests/testCase';
 import { EntityReference, TestSuite } from '../../../generated/tests/testSuite';

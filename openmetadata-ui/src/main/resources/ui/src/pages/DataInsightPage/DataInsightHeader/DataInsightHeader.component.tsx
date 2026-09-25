@@ -22,8 +22,8 @@ import DataInsightSummary from '../../../components/DataInsight/DataInsightSumma
 import KPIChart from '../../../components/DataInsight/KPIChart';
 import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { DataInsightTabs } from '../../../interface/data-insight.interface';
 import { getOptionalDataInsightTabFlag } from '../../../utils/DataInsightPureUtils';

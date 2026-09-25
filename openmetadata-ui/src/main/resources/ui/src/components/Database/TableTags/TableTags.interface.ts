@@ -18,7 +18,7 @@ import { Task } from '../../../generated/entity/data/pipeline';
 import { Column } from '../../../generated/entity/data/table';
 import { Field } from '../../../generated/entity/data/topic';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
-import { ChartType } from '../../../pages/DashboardDetailsPage/DashboardDetailsPage.component';
+import { ChartType } from '../../../interface/entity/chart.interface';
 
 export interface TableTagsComponentProps<T> {
   tags: TagLabel[];

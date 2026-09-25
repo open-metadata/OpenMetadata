@@ -31,9 +31,9 @@ import {
   pagingObject,
 } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';

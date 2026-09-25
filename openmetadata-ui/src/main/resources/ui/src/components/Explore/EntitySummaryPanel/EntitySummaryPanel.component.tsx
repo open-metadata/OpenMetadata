@@ -20,15 +20,15 @@ import { get, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { LineageData } from '../../../components/Lineage/Lineage.interface';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference, Type } from '../../../generated/entity/type';
 import { PipelineViewMode } from '../../../generated/settings/settings';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
+import { LineageData } from '../../../interface/lineage.interface';
 import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
 import {
   getApiCollectionByFQN,

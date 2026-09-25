@@ -26,11 +26,9 @@ import {
 } from '../../../../../constants/constants';
 import { AirflowStatusContextType } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider.interface';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
-import {
-  IngestionServicePermission,
-  ResourceEntity,
-} from '../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { IngestionServicePermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SORT_ORDER } from '../../../../../enums/common.enum';
+import { ResourceEntity } from '../../../../../enums/permissions.enum';
 import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { deleteIngestionPipelineById } from '../../../../../rest/ingestionPipelineAPI';

@@ -12,10 +12,8 @@
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';

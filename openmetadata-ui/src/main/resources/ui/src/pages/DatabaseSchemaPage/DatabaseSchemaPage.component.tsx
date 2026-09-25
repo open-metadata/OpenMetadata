@@ -34,7 +34,6 @@ import { GenericProvider } from '../../components/Customization/GenericProvider/
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import ProfilerSettings from '../../components/Database/Profiler/ProfilerSettings/ProfilerSettings';
-import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -45,7 +44,6 @@ import {
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
@@ -54,6 +52,7 @@ import {
   FqnPart,
   TabSpecificField,
 } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { PageType } from '../../generated/system/ui/page';
@@ -63,6 +62,7 @@ import { useCustomPages } from '../../hooks/useCustomPages';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
+import { QueryVote } from '../../interface/entity/vote.interface';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
   addFollowers,

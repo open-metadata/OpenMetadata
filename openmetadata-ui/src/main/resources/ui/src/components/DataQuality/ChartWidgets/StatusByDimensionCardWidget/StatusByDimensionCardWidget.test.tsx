@@ -13,7 +13,7 @@
 import '@testing-library/jest-dom/extend-expect';
 import { act, screen, waitFor } from '@testing-library/react';
 import { DataQualityDimensions } from '../../../../enums/DataQuality.enum';
-import { DataQualityDashboardChartFilters } from '../../../../pages/DataQuality/DataQualityPage.interface';
+import { DataQualityDashboardChartFilters } from '../../../../interface/observability/dataQuality.interface';
 import {
   fetchTestCaseSummaryByDimension,
   fetchTestCaseSummaryByNoDimension,

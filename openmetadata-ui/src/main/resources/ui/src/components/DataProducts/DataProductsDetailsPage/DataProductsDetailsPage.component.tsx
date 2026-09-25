@@ -33,12 +33,13 @@ import { ROUTES } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import {
   EntityTabs,
   EntityType,
   TabSpecificField,
 } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
@@ -55,6 +56,10 @@ import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEnt
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
+import {
+  QueryVote,
+  VotingDataProps,
+} from '../../../interface/entity/vote.interface';
 import { FeedCounts } from '../../../interface/feed.interface';
 import {
   AnnouncementEntity,
@@ -105,14 +110,11 @@ import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
-import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
-import { VotingDataProps } from '../../Entity/Voting/voting.interface';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
-import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';

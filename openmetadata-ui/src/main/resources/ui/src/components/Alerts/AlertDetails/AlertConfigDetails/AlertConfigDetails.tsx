@@ -18,10 +18,8 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import {
   NotificationTemplate,
   ProviderType,

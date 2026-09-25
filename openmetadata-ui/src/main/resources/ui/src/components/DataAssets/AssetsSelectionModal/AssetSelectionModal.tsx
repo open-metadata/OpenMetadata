@@ -13,7 +13,7 @@
 import { Dialog, Modal, ModalOverlay } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import './asset-selection-model.style.less';
 import AssetSelectionContentBody from './AssetSelectionContentBody';
 import AssetSelectionFooter from './AssetSelectionFooter';

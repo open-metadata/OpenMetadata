@@ -11,16 +11,9 @@
  *  limitations under the License.
  */
 
-import { EntityType } from '../../enums/entity.enum';
+import { EntityRule } from '../../interface/platform/ruleEnforcement.interface';
 
-export interface EntityRule {
-  name: string;
-  description: string;
-  rule: string;
-  enabled: boolean;
-  ignoredEntities: string[];
-  provider: 'system' | 'custom';
-}
+import { EntityType } from '../../enums/entity.enum';
 
 export interface EntityRulesSettings {
   rules: EntityRule[];

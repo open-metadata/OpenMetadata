@@ -46,6 +46,7 @@ import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
+import { AssetsOfEntity } from '../../../../enums/Assets.enum';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Tag } from '../../../../generated/entity/classification/tag';
@@ -110,7 +111,7 @@ import {
   SourceType,
 } from '../../../SearchedData/SearchedData.interface';
 import './assets-tabs.less';
-import { AssetsOfEntity, AssetsTabsProps } from './AssetsTabs.interface';
+import { AssetsTabsProps } from './AssetsTabs.interface';
 
 export interface AssetsTabRef {
   refreshAssets: () => void;

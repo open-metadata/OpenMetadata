@@ -25,6 +25,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import { REDIRECT_PATHNAME } from '../../constants/router.constants';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
   permissionQueryKeys,
@@ -46,7 +47,6 @@ import {
 import {
   PermissionContextType,
   PermissionProviderProps,
-  ResourceEntity,
   UIPermission,
 } from './PermissionProvider.interface';
 

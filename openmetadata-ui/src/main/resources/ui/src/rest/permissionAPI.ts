@@ -12,7 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../enums/permissions.enum';
 import { ResourcePermission } from '../generated/entity/policies/accessControl/resourcePermission';
 import { EntityReference } from '../generated/entity/type';
 import { Paging } from '../generated/type/paging';

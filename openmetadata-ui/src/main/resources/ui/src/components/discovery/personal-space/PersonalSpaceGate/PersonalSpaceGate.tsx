@@ -15,11 +15,9 @@ import { Box } from '@openmetadata/ui-core-components';
 import React, { PropsWithChildren, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';

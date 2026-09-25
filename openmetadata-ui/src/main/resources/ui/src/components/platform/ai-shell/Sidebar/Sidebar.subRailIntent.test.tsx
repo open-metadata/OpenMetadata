@@ -14,10 +14,8 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { act, SVGProps } from 'react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import {
-  ResourceEntity,
-  type UIPermission,
-} from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { type UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { OBSERVABILITY_ROUTES } from '../../../observability/observability.constants';
 import ObservabilityLayout from '../../../observability/ObservabilityLayout/ObservabilityLayout';

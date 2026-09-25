@@ -25,7 +25,7 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import AddGlossary from '../../components/Glossary/AddGlossary/AddGlossary.component';
 import { ERROR_MESSAGE } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { Operation } from '../../generated/entity/policies/policy';
 import { withPageLayout } from '../../hoc/withPageLayout';

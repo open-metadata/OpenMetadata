@@ -24,8 +24,8 @@
  */
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Worksheet } from '../../../generated/entity/data/worksheet';
+import { QueryVote } from '../../../interface/entity/vote.interface';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 
 export interface WorksheetDetailsProps {
   worksheetDetails: Worksheet;

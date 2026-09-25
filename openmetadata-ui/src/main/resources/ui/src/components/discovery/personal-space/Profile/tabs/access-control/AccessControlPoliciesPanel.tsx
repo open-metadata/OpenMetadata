@@ -45,8 +45,8 @@ import {
   NO_PERMISSION_TO_VIEW,
 } from '../../../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../../../enums/entity.enum';
+import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import {
   Operation,
   Policy,

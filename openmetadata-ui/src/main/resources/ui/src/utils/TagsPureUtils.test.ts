@@ -10,11 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  ResourceEntity,
-  UIPermission,
-} from '../context/PermissionProvider/PermissionProvider.interface';
+import { UIPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
+import { ResourceEntity } from '../enums/permissions.enum';
 import { Operation } from '../generated/entity/policies/policy';
 import { getExcludedIndexesBasedOnEntityTypeEditTagPermission } from './TagsPureUtils';
 

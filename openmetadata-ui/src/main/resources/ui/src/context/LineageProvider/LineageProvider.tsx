@@ -52,24 +52,13 @@ import 'reactflow/dist/style.css';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import { CSVExportResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import EdgeInfoDrawer from '../../components/Entity/EntityInfoDrawer/EdgeInfoDrawer.component';
 import AddPipeLineModal from '../../components/Entity/EntityLineage/AppPipelineModel/AddPipeLineModal';
 import '../../components/Entity/EntityLineage/entity-lineage.style.less';
-import {
-  ElementLoadingState,
-  LineageConfig,
-} from '../../components/Entity/EntityLineage/EntityLineage.interface';
+import { ElementLoadingState } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import EntityLineageSidebar from '../../components/Entity/EntityLineage/EntityLineageSidebar.component';
 import NodeSuggestions from '../../components/Entity/EntityLineage/NodeSuggestions.component';
 import { ExploreQuickFilterField } from '../../components/Explore/ExplorePage.interface';
-import {
-  EdgeDetails,
-  EntityLineageResponse,
-  LineageData,
-  LineageNodeType,
-  NodeData,
-} from '../../components/Lineage/Lineage.interface';
 import { getRealEntityRef } from '../../components/Lineage/LineageMap/LineageMapEdit.utils';
 import LineageNodeRemoveButton from '../../components/Lineage/LineageNodeRemoveButton';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
@@ -104,6 +93,15 @@ import { useDomainStore } from '../../hooks/useDomainStore';
 import { useFqn } from '../../hooks/useFqn';
 import { useLineageStore } from '../../hooks/useLineageStore';
 import { useMapBasedNodesEdges } from '../../hooks/useMapBasedNodesEdges';
+import { CSVExportResponse } from '../../interface/entity/csv.interface';
+import {
+  EdgeDetails,
+  EntityLineageResponse,
+  LineageConfig,
+  LineageData,
+  LineageNodeType,
+  NodeData,
+} from '../../interface/lineage.interface';
 import {
   QueryFieldInterface,
   QueryFilterInterface,

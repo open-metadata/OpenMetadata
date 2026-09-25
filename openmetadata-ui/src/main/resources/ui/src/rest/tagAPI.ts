@@ -14,7 +14,6 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { PAGE_SIZE } from '../constants/constants';
 import { AddTagToAssetsRequest } from '../generated/api/addTagToAssetsRequest';
 import { CreateClassification } from '../generated/api/classification/createClassification';
@@ -23,6 +22,7 @@ import { Classification } from '../generated/entity/classification/classificatio
 import { EntityReference, Tag } from '../generated/entity/classification/tag';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
+import { CSVExportResponse } from '../interface/entity/csv.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
 

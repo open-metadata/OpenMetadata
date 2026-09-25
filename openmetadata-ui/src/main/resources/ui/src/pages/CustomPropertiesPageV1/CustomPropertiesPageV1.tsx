@@ -29,8 +29,8 @@ import AddCustomProperty from '../../components/Settings/CustomProperty/AddCusto
 import { CustomPropertyTable } from '../../components/Settings/CustomProperty/CustomPropertyTable';
 import { ENTITY_PATH } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Type } from '../../generated/entity/type';
 import { CustomProperty } from '../../generated/type/customProperty';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';

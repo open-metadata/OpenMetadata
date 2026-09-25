@@ -20,7 +20,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { TeamType } from '../../generated/entity/teams/team';
 import { useApplicationStore } from '../../hooks/useApplicationStore';

@@ -24,8 +24,8 @@
  */
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Spreadsheet } from '../../../generated/entity/data/spreadsheet';
+import { QueryVote } from '../../../interface/entity/vote.interface';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 
 export interface SpreadsheetDetailsProps {
   spreadsheetDetails: Spreadsheet;

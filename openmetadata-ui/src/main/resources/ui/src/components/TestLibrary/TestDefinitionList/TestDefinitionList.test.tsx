@@ -14,7 +14,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { ProviderType } from '../../../generated/entity/bot';
 import { Access } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { getEntityPermissionByFqn } from '../../../rest/permissionAPI';

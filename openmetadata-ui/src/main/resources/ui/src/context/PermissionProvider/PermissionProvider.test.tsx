@@ -14,6 +14,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import { CookieStorage } from 'cookie-storage';
 import { BrowserRouter } from 'react-router-dom';
 import { REDIRECT_PATHNAME } from '../../constants/router.constants';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { permissionQueryKeys } from '../../hooks/useEntityPermissions/permissionQueryKeys';
 import { queryClient } from '../../queryClient';
 import {
@@ -25,7 +26,6 @@ import {
 import PermissionProvider, {
   usePermissionProvider,
 } from './PermissionProvider';
-import { ResourceEntity } from './PermissionProvider.interface';
 
 jest.mock('../../rest/permissionAPI', () => ({
   getLoggedInUserPermissions: jest

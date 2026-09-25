@@ -54,11 +54,9 @@ import {
   TestDataType,
   type TestDefinition,
 } from '../../generated/tests/testDefinition';
+import { type DataQualityDashboardChartFilters } from '../../interface/observability/dataQuality.interface';
 import type { TableSearchSource } from '../../interface/search.interface';
-import {
-  DataQualityPageTabs,
-  type DataQualityDashboardChartFilters,
-} from '../../pages/DataQuality/DataQualityPage.interface';
+import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
 import type { ListTestCaseParamsBySearch } from '../../rest/testAPI';
 import { formatDate } from '../date-time/DateTimeUtils';
 import { CUSTOM_DATE_RANGE_KEY } from '../DatePickerMenuUtils';

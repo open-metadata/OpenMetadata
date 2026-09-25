@@ -20,12 +20,12 @@ import {
 import { SearchIndex } from '../../enums/search.enum';
 import { exportSearchResultsAsync, searchQuery } from '../../rest/searchAPI';
 
+import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 import { useAdvanceSearch } from '../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
   MOCK_EXPLORE_SEARCH_RESULTS,
   MOCK_EXPLORE_TAB_ITEMS,
 } from '../Explore/Explore.mock';
-import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
 import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import SearchedData from '../SearchedData/SearchedData';
 import ExploreV1 from './ExploreV1.component';
