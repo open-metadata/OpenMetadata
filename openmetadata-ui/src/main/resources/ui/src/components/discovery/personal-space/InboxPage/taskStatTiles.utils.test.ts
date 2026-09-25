@@ -24,6 +24,7 @@ import {
   TaskType,
 } from '../../../../generated/entity/tasks/task';
 import { TestCase } from '../../../../generated/tests/testCase';
+import { EntityUnion } from '../../../Explore/ExplorePage.interface';
 import { StatTile, TaskAboutEntity } from './taskDetail.types';
 import { getTaskStatTiles } from './taskStatTiles.utils';
 
@@ -106,24 +107,66 @@ describe('getTaskStatTiles', () => {
     });
   });
 
-  it('shows usage and current tags for a tag request', () => {
-    const tiles = getTaskStatTiles(
-      task({
-        type: TaskType.TagUpdate,
-        payload: { currentTags: [] },
-      } as unknown as Partial<Task>),
-      { weeklyQueryCount: 9 },
-      t
-    );
+  describe('tag request', () => {
+    const tagTask = (payload: Record<string, unknown>) =>
+      task({ type: TaskType.TagUpdate, payload } as unknown as Partial<Task>);
+    const currentTags = (tiles: StatTile[]) =>
+      tiles.find((tile) => tile.key === 'currentTags')?.value;
 
-    expect(tiles).toEqual([
-      { key: 'queries', label: 'label.queries-last-7-days', value: '9' },
-      {
-        key: 'currentTags',
-        label: 'label.current-entity:label.tag-plural',
-        value: '0',
-      },
-    ]);
+    it('shows usage and the tags the payload says the target carries', () => {
+      expect(
+        getTaskStatTiles(
+          tagTask({ currentTags: [{ tagFQN: 'PII.Sensitive' }] }),
+          { weeklyQueryCount: 9 },
+          t
+        )
+      ).toEqual([
+        { key: 'queries', label: 'label.queries-last-7-days', value: '9' },
+        {
+          key: 'currentTags',
+          label: 'label.current-entity:label.tag-plural',
+          value: '1',
+        },
+      ]);
+    });
+
+    // RequestTagPage always sends currentTags: [], so an empty payload is no
+    // proof the asset is untagged; its own tags are, tier aside.
+    it('counts an asset-level request from the asset, tier excluded', () => {
+      const entity = {
+        tags: [
+          { tagFQN: 'Tier.Tier1' },
+          { tagFQN: 'PII.Sensitive' },
+          { tagFQN: 'Glossary.Revenue' },
+        ],
+      } as unknown as EntityUnion;
+
+      expect(
+        currentTags(
+          getTaskStatTiles(tagTask({ currentTags: [] }), { entity }, t)
+        )
+      ).toBe('2');
+    });
+
+    it('omits the count when nobody can vouch for it', () => {
+      const entity = {
+        tags: [{ tagFQN: 'PII.Sensitive' }],
+      } as unknown as EntityUnion;
+
+      // No asset fetched, and a column request the asset's tags do not describe.
+      expect(
+        currentTags(getTaskStatTiles(tagTask({ currentTags: [] }), {}, t))
+      ).toBeUndefined();
+      expect(
+        currentTags(
+          getTaskStatTiles(
+            tagTask({ currentTags: [], fieldPath: 'columns.country' }),
+            { entity },
+            t
+          )
+        )
+      ).toBeUndefined();
+    });
   });
 
   describe('ownership', () => {

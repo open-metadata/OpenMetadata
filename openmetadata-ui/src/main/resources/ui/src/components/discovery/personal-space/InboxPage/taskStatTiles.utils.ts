@@ -18,12 +18,14 @@ import {
   TaskCategory,
   TaskType,
 } from '../../../../generated/entity/tasks/task';
+import { TagLabel } from '../../../../generated/type/tagLabel';
 import { TagUpdatePayload } from '../../../../generated/type/tagUpdatePayload';
 import { TestCaseResolutionPayload } from '../../../../generated/type/testCaseResolutionPayload';
 import { getElapsedTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import Fqn from '../../../../utils/Fqn';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import { getTagsWithoutTier } from '../../../../utils/TablePureUtils';
 import { StatTile, TaskAboutEntity } from './taskDetail.types';
 import { getTaskStatusBadge } from './taskResolution.utils';
 
@@ -166,20 +168,46 @@ const getIncidentTiles = (
   ];
 };
 
+// How many tags the request's target carries now, or undefined when nobody can
+// vouch for a count. RequestTagPage always sends `currentTags: []`, so an empty
+// payload is not proof of "none": an asset-level request (no fieldPath) counts
+// the fetched asset's own tags instead, tier excluded since the card badges it.
+// A column-level request has no such fallback and leaves the tile out.
+const getCurrentTagCount = (
+  task: Task,
+  about: TaskAboutEntity
+): number | undefined => {
+  const payload = task.payload as Partial<TagUpdatePayload> | undefined;
+  const assetTags = (about.entity as { tags?: TagLabel[] } | undefined)?.tags;
+  const payloadCount = payload?.currentTags?.length;
+  const assetCount =
+    !payload?.fieldPath && assetTags
+      ? getTagsWithoutTier(assetTags).length
+      : undefined;
+
+  return payloadCount || assetCount;
+};
+
 const getTagTiles = (
   task: Task,
   about: TaskAboutEntity,
   t: Translate
-): StatTile[] => [
-  ...queriesTile(about, t),
-  {
-    key: 'currentTags',
-    label: t('label.current-entity', { entity: t('label.tag-plural') }),
-    value: String(
-      (task.payload as Partial<TagUpdatePayload>)?.currentTags?.length ?? 0
-    ),
-  },
-];
+): StatTile[] => {
+  const currentTagCount = getCurrentTagCount(task, about);
+
+  return [
+    ...queriesTile(about, t),
+    ...(currentTagCount === undefined
+      ? []
+      : [
+          {
+            key: 'currentTags',
+            label: t('label.current-entity', { entity: t('label.tag-plural') }),
+            value: String(currentTagCount),
+          },
+        ]),
+  ];
+};
 
 // Nothing records when an asset lost its owner, so an unowned asset says so
 // plainly, with no duration.
