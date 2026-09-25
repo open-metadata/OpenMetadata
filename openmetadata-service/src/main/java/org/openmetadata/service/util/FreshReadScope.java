@@ -14,26 +14,34 @@
 package org.openmetadata.service.util;
 
 /**
- * Thread-scoped marker that forces entity reads to bypass the in-JVM caches and go to the database.
+ * Thread-scoped marker for reads that decide what happens next: they answer from the database, never
+ * from a cache that can be behind it.
  *
- * <p>Governance workflows use this. Their decisions are gates — "does this term have reviewers?" —
+ * <p>Inside the scope an entity read skips the in-process entity caches, does not answer from what
+ * this thread read earlier in the request, and neither trusts nor records a not-found marker, which
+ * is written as a delete runs and can briefly call an existing entity missing. Relations are still
+ * resolved through the shared Redis caches, which every write evicts once it commits.
+ *
+ * <p>Governance workflows use this. Their decisions are gates ("does this term have reviewers?"),
  * and a stale answer silently routes an entity to the wrong terminal status with no error and no
  * retry. The in-JVM L1 is invalidated on write locally and, when Redis is configured, across nodes
  * via pub/sub; but with Redis disabled a multi-node deployment has no cross-node invalidation at
- * all, so another node's L1 can answer from before the write. Workflow volume is low, so paying for
- * a fresh read is the cheaper side of that trade.
+ * all, so another node's L1 can answer from before the write. Alerting uses it for the stored alert,
+ * whose answer can remove a job or retire an alert's records. Both read rarely, so paying for a
+ * fresh read is the cheaper side of the trade.
+ *
+ * <p>The scope changes reads only. It must not also enter {@link
+ * org.openmetadata.service.cache.EntityCacheBypass}: that scope skips the Redis evictions as well,
+ * so a write made inside it would leave stale entries behind.
  *
  * <p>Scope it with try-with-resources so the marker is always restored, including on exceptions:
  *
  * <pre>{@code
  * try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
- *   ...
  * }
  * }</pre>
  *
- * <p>{@link #enter()} restores the previous value rather than clearing, so nesting is safe. This is
- * the same shape as {@link org.openmetadata.service.cache.EntityCacheBypass}, which opts out of the
- * Redis layer; this one opts out of the in-process caches.
+ * <p>{@link #enter()} restores the previous value rather than clearing, so nesting is safe.
  */
 public final class FreshReadScope {
 
