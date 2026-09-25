@@ -277,7 +277,11 @@ for (const fixture of FIXTURES) {
           const authorizeUrls: string[] = [];
           page.on('request', (req) => {
             const url = req.url();
-            if (/\/(authorize|auth)(\?|$)/i.test(new URL(url).pathname)) {
+            // Match a REAL OIDC /authorize endpoint — the trailing
+            // path segment is exactly `authorize`. Guards against
+            // matching OM's own `/api/v1/system/config/auth` (a
+            // config endpoint on the OM host, not an IdP handshake).
+            if (/\/authorize(\?|$)/i.test(new URL(url).pathname)) {
               authorizeUrls.push(url);
             }
           });
