@@ -139,7 +139,7 @@ class SystemMetricsComputer(Protocol):
 
 
 class SystemMetricsRegistry:
-    _registry: dict[str, type["SystemMetricsComputer"]] = {}  # noqa: RUF012
+    _registry: dict[str, type["SystemMetricsComputer"] | None] = {}  # noqa: RUF012
 
     @classmethod
     def register(cls, dialect: PythonDialects, implementation: type):
@@ -153,13 +153,20 @@ class SystemMetricsRegistry:
 
     @classmethod
     def _discover_implementation(cls, dialect: PythonDialects):
-        """Auto-discover the implementation in the profiler metrics"""
+        """Auto-discover the implementation in the profiler metrics.
+
+        A dialect with no implementation is cached as ``None``. The profiler builds one
+        interface per table, so leaving the miss uncached retries the failing import and
+        re-logs it for every table profiled.
+        """
+        dialect_name = dialect.name.lower()
         try:
-            implementation = import_from_module(f"metadata.profiler.metrics.system.{dialect.name.lower()}.system")
+            implementation = import_from_module(f"metadata.profiler.metrics.system.{dialect_name}.system")
         except DynamicImportException:
-            logger.warning(f"No implementation found for {dialect.name.lower()}")
+            logger.debug(f"No implementation found for {dialect_name}")
+            cls._registry[dialect_name] = None
             return
-        cls._registry[dialect.name.lower()] = implementation
+        cls._registry[dialect_name] = implementation
 
 
 def register_system_metrics(
