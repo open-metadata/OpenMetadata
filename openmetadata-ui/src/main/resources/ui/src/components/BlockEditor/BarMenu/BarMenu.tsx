@@ -14,17 +14,17 @@ import { ButtonUtility, Divider } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { uniqueId } from 'lodash';
 import { FC, Fragment, MouseEvent } from 'react';
-import BlockQuoteIcon from '../../../assets/svg/ic-format-block-quote.svg';
-import BoldIcon from '../../../assets/svg/ic-format-bold.svg';
-import UnorderedListIcon from '../../../assets/svg/ic-format-bullet-list.svg';
-import CodeBlockIcon from '../../../assets/svg/ic-format-code-block.svg';
-import HorizontalLineIcon from '../../../assets/svg/ic-format-horizontal-line.svg';
-import ImageIcon from '../../../assets/svg/ic-format-image-inline.svg';
-import InlineCodeIcon from '../../../assets/svg/ic-format-inline-code.svg';
-import ItalicIcon from '../../../assets/svg/ic-format-italic.svg';
-import LinkIcon from '../../../assets/svg/ic-format-link.svg';
-import OrderedListIcon from '../../../assets/svg/ic-format-numbered-list.svg';
-import StrikeIcon from '../../../assets/svg/ic-format-strike.svg';
+import { ReactComponent as BlockQuoteIcon } from '../../../assets/svg/ic-format-block-quote.svg';
+import { ReactComponent as BoldIcon } from '../../../assets/svg/ic-format-bold.svg';
+import { ReactComponent as UnorderedListIcon } from '../../../assets/svg/ic-format-bullet-list.svg';
+import { ReactComponent as CodeBlockIcon } from '../../../assets/svg/ic-format-code-block.svg';
+import { ReactComponent as HorizontalLineIcon } from '../../../assets/svg/ic-format-horizontal-line.svg';
+import { ReactComponent as ImageIcon } from '../../../assets/svg/ic-format-image-inline.svg';
+import { ReactComponent as InlineCodeIcon } from '../../../assets/svg/ic-format-inline-code.svg';
+import { ReactComponent as ItalicIcon } from '../../../assets/svg/ic-format-italic.svg';
+import { ReactComponent as LinkIcon } from '../../../assets/svg/ic-format-link.svg';
+import { ReactComponent as OrderedListIcon } from '../../../assets/svg/ic-format-numbered-list.svg';
+import { ReactComponent as StrikeIcon } from '../../../assets/svg/ic-format-strike.svg';
 import { BarMenuProps, FileType } from '../BlockEditor.interface';
 
 const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
@@ -167,10 +167,11 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
                     )}
                     color="tertiary"
                     icon={
-                      <img
-                        alt={item.name}
-                        className="bar-menu-wrapper--format--button--icon tw:size-7"
-                        src={item.icon}
+                      // Inline SVG so the glyph follows the theme; light keeps the
+                      // black it had as an <img> (currentColor defaulted to black).
+                      <item.icon
+                        aria-hidden
+                        className="bar-menu-wrapper--format--button--icon tw:size-7 tw:text-black tw:dark:text-fg-secondary"
                       />
                     }
                     key={item.name}
