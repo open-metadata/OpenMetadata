@@ -20,6 +20,7 @@ import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.MessagingServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
+import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreatePipeline;
@@ -94,6 +95,7 @@ public class LineagePipelineAnnotatorIT {
     safeDeletePipeline(pipeline);
     safeDeleteTopic(topic);
     safeDeleteTable(table);
+    NamespaceCleanup.deleteRoots(namespace.drainTrackedRoots());
   }
 
   @Test
