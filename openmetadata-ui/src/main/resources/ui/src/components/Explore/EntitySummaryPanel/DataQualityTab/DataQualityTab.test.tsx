@@ -156,8 +156,12 @@ jest.mock('../../../common/Loader/Loader', () => {
 });
 
 jest.mock('../../../common/StatusBadge/StatusBadgeV2.component', () => {
-  return jest.fn().mockImplementation(({ label, status }) => (
-    <div data-label={label} data-status={status} data-testid="status-badge">
+  return jest.fn().mockImplementation(({ className, label, status }) => (
+    <div
+      className={className}
+      data-label={label}
+      data-status={status}
+      data-testid="status-badge">
       {label}
     </div>
   ));
@@ -613,6 +617,15 @@ describe('DataQualityTab', () => {
       expect(screen.queryByText('Test Case 1')).not.toBeInTheDocument();
       expect(screen.queryByText('Test Case 2')).not.toBeInTheDocument();
       expect(screen.getByText('Test Case 3')).toBeInTheDocument();
+
+      const abortedBadge = screen
+        .getAllByTestId('status-badge')
+        .find((badge) => badge.dataset.status === 'aborted');
+
+      expect(abortedBadge).toHaveClass(
+        'tw:bg-utility-warning-50',
+        'tw:text-utility-warning-700'
+      );
     });
 
     it('should show no test cases message when filter has no results', async () => {
