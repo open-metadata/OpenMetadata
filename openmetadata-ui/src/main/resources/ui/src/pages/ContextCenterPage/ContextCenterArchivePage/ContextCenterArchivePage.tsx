@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Tabs } from '@openmetadata/ui-core-components';
+import { Card, PageLayout, Tabs } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -21,6 +21,7 @@ import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitl
 import ArchiveView from '../../../components/ContextCenter/ArchiveView/ArchiveView.component';
 import { ArchiveItem } from '../../../components/ContextCenter/ArchiveView/ArchiveView.interface';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
+import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
 import { ARCHIVE_PAGE_SIZE } from '../../../constants/ContextCenter.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -49,6 +50,7 @@ type FilterKey = 'all' | 'mine' | 'article' | 'document';
 
 const ContextCenterArchivePage: FC = () => {
   const { t } = useTranslation();
+  const pageLayoutClassNames = useContextCenterPageLayout();
   const { currentUser } = useApplicationStore();
   const { getResourcePermission } = usePermissionProvider();
   const { paging, pageSize, handlePagingChange } = usePaging(ARCHIVE_PAGE_SIZE);
@@ -235,62 +237,72 @@ const ContextCenterArchivePage: FC = () => {
       className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden tw:bg-secondary ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-archive-page">
       <DocumentTitle title={t('label.archive')} />
-      <div className="context-center-header-section tw:px-5">
-        <ContextCenterHeader
-          breadcrumbs={[
-            {
-              label: t('label.archive'),
-            },
-          ]}
-          hasPermission={permissions?.Create}
-          subtitle={t('label.view-archived-document-plural')}
-          title={t('label.archive-plural')}
-        />
-      </div>
-      <div className="context-center-content-section tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:px-5 tw:pb-5">
-        {(hasEverHadItems || items.length > 0) && (
-          <div className="tw:pb-5">
-            <Tabs
-              className="tw:w-max"
-              selectedKey={activeFilter}
-              onSelectionChange={(key) => handleFilterChange(key as FilterKey)}>
-              <Tabs.List
-                className="tw:gap-2"
-                items={filterTabItems}
-                type="button-brand">
-                {(tab) => (
-                  <Tabs.Item
-                    {...tab}
-                    className={({ isSelected }) =>
-                      classNames(
-                        'tw:rounded-md tw:border tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:cursor-pointer',
-                        {
-                          'tw:border-utility-brand-100 tw:bg-brand-primary_alt tw:text-brand-secondary':
-                            isSelected,
-                          'tw:border-primary tw:bg-primary tw:text-secondary':
-                            !isSelected,
-                        }
-                      )
-                    }
-                  />
-                )}
-              </Tabs.List>
-            </Tabs>
-          </div>
-        )}
-        <Card className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden">
-          <ArchiveView
-            canDelete={permissions?.Delete}
-            canRestore={canEditAll}
-            data={items}
-            isLoading={isLoading}
-            isLoadingMore={isLoadingMore}
-            onDelete={handleDeleteClick}
-            onRestore={handleRestore}
-            onScrollEnd={handleScrollEnd}
+      <PageLayout
+        className={pageLayoutClassNames.root}
+        data-testid="context-center-page-layout">
+        <PageLayout.Header className={pageLayoutClassNames.header}>
+          <ContextCenterHeader
+            breadcrumbs={[
+              {
+                label: t('label.archive'),
+              },
+            ]}
+            hasPermission={permissions?.Create}
+            subtitle={t('label.view-archived-document-plural')}
+            title={t('label.archive-plural')}
           />
-        </Card>
-      </div>
+        </PageLayout.Header>
+        <PageLayout.Content
+          className={classNames(
+            'tw:flex tw:flex-col tw:min-h-0',
+            pageLayoutClassNames.content
+          )}>
+          {(hasEverHadItems || items.length > 0) && (
+            <div className="tw:pb-5">
+              <Tabs
+                className="tw:w-max"
+                selectedKey={activeFilter}
+                onSelectionChange={(key) =>
+                  handleFilterChange(key as FilterKey)
+                }>
+                <Tabs.List
+                  className="tw:gap-2"
+                  items={filterTabItems}
+                  type="button-brand">
+                  {(tab) => (
+                    <Tabs.Item
+                      {...tab}
+                      className={({ isSelected }) =>
+                        classNames(
+                          'tw:rounded-md tw:border tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:cursor-pointer',
+                          {
+                            'tw:border-utility-brand-100 tw:bg-brand-primary_alt tw:text-brand-secondary':
+                              isSelected,
+                            'tw:border-primary tw:bg-primary tw:text-secondary':
+                              !isSelected,
+                          }
+                        )
+                      }
+                    />
+                  )}
+                </Tabs.List>
+              </Tabs>
+            </div>
+          )}
+          <Card className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden">
+            <ArchiveView
+              canDelete={permissions?.Delete}
+              canRestore={canEditAll}
+              data={items}
+              isLoading={isLoading}
+              isLoadingMore={isLoadingMore}
+              onDelete={handleDeleteClick}
+              onRestore={handleRestore}
+              onScrollEnd={handleScrollEnd}
+            />
+          </Card>
+        </PageLayout.Content>
+      </PageLayout>
 
       {itemToDelete && (
         <DeleteModal

@@ -231,7 +231,7 @@ test.describe(
       await expect(maxRow).toContainText('34');
     });
 
-    test('aligns the page header card with the tab body content', async ({
+    test('insets the page header card 8px less than the tab body content', async ({
       page,
     }) => {
       await openDetailsPage(page);
@@ -252,12 +252,18 @@ test.describe(
 
       expect(headerCard).not.toBeNull();
       expect(grid).not.toBeNull();
+
+      // AI padding standard: the header band sits 8px inside the shell and
+      // page content 16px, so the header card extends 8px past the tab body
+      // on each side.
+      const headerOutset = 8;
+
       expect(Math.round(Number(headerCard?.x))).toBe(
-        Math.round(Number(grid?.x))
+        Math.round(Number(grid?.x)) - headerOutset
       );
       expect(
         Math.round(Number(headerCard?.x) + Number(headerCard?.width))
-      ).toBe(Math.round(Number(grid?.x) + Number(grid?.width)));
+      ).toBe(Math.round(Number(grid?.x) + Number(grid?.width)) + headerOutset);
     });
 
     test('aligns the last run banner with the tab body grid', async ({

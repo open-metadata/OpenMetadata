@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { FC, ReactNode } from 'react';
+import type { CSSProperties, FC, ReactNode } from 'react';
 
 export interface FilterSelectOption {
   /** Raw filter value (aggregation bucket key, FQN, …) — what onChange reports. */
@@ -74,6 +74,7 @@ export interface FilterSelectProps {
   /** Input-variant text when nothing is selected; defaults to `label`. */
   placeholder?: string;
   popoverClassName?: string;
+  popoverStyle?: CSSProperties;
   /**
    * Label for a selected value missing from `options` (e.g. restored from a
    * URL before its option page is fetched). Defaults to the raw value.
