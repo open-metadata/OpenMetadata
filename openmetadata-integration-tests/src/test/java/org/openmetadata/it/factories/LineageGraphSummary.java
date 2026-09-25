@@ -20,8 +20,14 @@ import java.time.Duration;
  *
  * <p>The per-phase durations are published with the benchmark: seeding throughput is the thing most
  * likely to change underneath a latency regression and be mistaken for one.
+ *
+ * <p>{@code tables} and {@code edges} count what was <em>created</em>, which can fall short of the
+ * spec because individual create failures are tolerated; {@code columnEdges} counts planned edges
+ * that carry column lineage. {@code cohortFqnPrefix} starts every FQN in the load, for scoping
+ * search counts to this cohort.
  */
 public record LineageGraphSummary(
+    String cohortFqnPrefix,
     int services,
     int databases,
     int schemas,

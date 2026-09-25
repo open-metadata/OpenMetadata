@@ -16,6 +16,8 @@ package org.openmetadata.it.factories;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
@@ -74,14 +76,15 @@ public final class LineageGraphLoader {
         spec.schemas(),
         spec.depth(),
         workers);
+    final String cohortFqnPrefix = cohortFqnPrefix(ns);
     final ExecutorService executor = Executors.newFixedThreadPool(workers);
     try {
-      final Timed<List<String>> schemas = timed(() -> createHierarchy(spec, ns, executor));
+      final Timed<List<String>> schemas =
+          timed(() -> createHierarchy(spec, ns, cohortFqnPrefix, executor));
       final Timed<List<LineageTableNode>> tables =
           timed(() -> createTables(spec, schemas.value(), executor));
-      final Timed<List<PlannedEdge>> edges =
-          timed(() -> createEdges(spec, tables.value(), executor));
-      return summarize(spec, schemas, tables, edges);
+      final Timed<EdgeLoad> edges = timed(() -> createEdges(spec, tables.value(), executor));
+      return summarize(cohortFqnPrefix, spec, schemas, tables, edges);
     } finally {
       shutdown(executor);
     }
@@ -89,9 +92,21 @@ public final class LineageGraphLoader {
 
   // ---------------- hierarchy ----------------
 
+  /**
+   * The FQN prefix every entity this load creates shares: services are named with it, and every
+   * database, schema and table FQN starts with its service's. Lets callers scope a search count to
+   * this cohort on an index other runs also write to.
+   */
+  static String cohortFqnPrefix(final TestNamespace ns) {
+    return NAME_PREFIX + "_" + ns.shortPrefix() + "_";
+  }
+
   private static List<String> createHierarchy(
-      final LineageGraphSpec spec, final TestNamespace ns, final ExecutorService executor) {
-    final List<String> serviceFqns = createServices(spec, ns);
+      final LineageGraphSpec spec,
+      final TestNamespace ns,
+      final String cohortFqnPrefix,
+      final ExecutorService executor) {
+    final List<String> serviceFqns = createServices(spec, ns, cohortFqnPrefix);
     final List<String> databaseFqns = createDatabases(spec, serviceFqns, executor);
     return createSchemas(spec, databaseFqns, executor);
   }
@@ -101,10 +116,11 @@ public final class LineageGraphLoader {
    * {@link TestNamespace#trackRoot} ordering deterministic for cleanup. There are {@code services}
    * of them (20 by default), so this is seconds, not minutes.
    */
-  private static List<String> createServices(final LineageGraphSpec spec, final TestNamespace ns) {
+  private static List<String> createServices(
+      final LineageGraphSpec spec, final TestNamespace ns, final String cohortFqnPrefix) {
     final List<String> fqns = new ArrayList<>(spec.services());
     for (int index = 0; index < spec.services(); index++) {
-      final String name = NAME_PREFIX + "_" + ns.shortPrefix() + "_s" + index;
+      final String name = cohortFqnPrefix + "s" + index;
       final DatabaseService service = DatabaseServiceTestFactory.createPostgresWithName(name, ns);
       fqns.add(service.getFullyQualifiedName());
     }
@@ -125,7 +141,7 @@ public final class LineageGraphLoader {
                     .in(serviceFqns.get(index / spec.databasesPerService()))
                     .execute()
                     .getFullyQualifiedName()));
-    return List.copyOf(fqns);
+    return inFqnOrder(fqns);
   }
 
   private static List<String> createSchemas(
@@ -144,7 +160,7 @@ public final class LineageGraphLoader {
                     .in(databaseFqns.get(index / spec.schemasPerDatabase()))
                     .execute()
                     .getFullyQualifiedName()));
-    return List.copyOf(fqns);
+    return inFqnOrder(fqns);
   }
 
   // ---------------- tables ----------------
@@ -171,18 +187,24 @@ public final class LineageGraphLoader {
                   .execute();
           nodes.add(new LineageTableNode(table.getId(), table.getFullyQualifiedName()));
         });
-    return sortedById(nodes);
+    return inDeterministicOrder(nodes);
   }
 
   /**
-   * The planner's layering is positional, so the node order must not depend on which worker thread
-   * finished first — otherwise two runs of the same seed traverse different graphs.
+   * The planner's layering is positional and the focus points are taken by position, so the order
+   * must be the same on every run of a seed. Neither worker completion order nor ids qualify — ids
+   * are UUIDs the server assigns at random. FQNs do: every FQN in a load shares the cohort prefix,
+   * so their order is fixed by the deterministic suffix (service, database, schema, table index).
    */
-  private static List<LineageTableNode> sortedById(
-      final ConcurrentLinkedQueue<LineageTableNode> nodes) {
-    final List<LineageTableNode> sorted = new ArrayList<>(nodes);
-    sorted.sort((left, right) -> left.id().compareTo(right.id()));
-    return List.copyOf(sorted);
+  static List<LineageTableNode> inDeterministicOrder(final Collection<LineageTableNode> nodes) {
+    return nodes.stream()
+        .sorted(Comparator.comparing(LineageTableNode::fullyQualifiedName))
+        .toList();
+  }
+
+  /** Same reasoning as {@link #inDeterministicOrder}: containers are assigned by position too. */
+  static List<String> inFqnOrder(final Collection<String> fqns) {
+    return fqns.stream().sorted().toList();
   }
 
   private static List<Column> buildColumns(final int count) {
@@ -200,15 +222,23 @@ public final class LineageGraphLoader {
 
   // ---------------- edges ----------------
 
-  private static List<PlannedEdge> createEdges(
+  /**
+   * Individual edge failures are tolerated (see {@link #awaitAll}), so the created count can fall
+   * short of the plan. Callers that wait for every edge to be indexed need the created count — a
+   * wait on the planned one could never be satisfied after a single dropped request.
+   */
+  private static EdgeLoad createEdges(
       final LineageGraphSpec spec,
       final List<LineageTableNode> tables,
       final ExecutorService executor) {
     final List<PlannedEdge> planned = LineageEdgePlanner.plan(spec, tables);
     LOG.info("LineageGraphLoader planned {} edges (requested {})", planned.size(), spec.edges());
-    submitAll(executor, planned.size(), "lineageEdge", index -> addEdge(planned.get(index)));
-    return planned;
+    final int created =
+        submitAll(executor, planned.size(), "lineageEdge", index -> addEdge(planned.get(index)));
+    return new EdgeLoad(planned, created);
   }
+
+  private record EdgeLoad(List<PlannedEdge> planned, int created) {}
 
   private static void addEdge(final PlannedEdge edge) {
     final EntitiesEdge entitiesEdge =
@@ -234,18 +264,20 @@ public final class LineageGraphLoader {
   // ---------------- summary ----------------
 
   private static LineageGraphSummary summarize(
+      final String cohortFqnPrefix,
       final LineageGraphSpec spec,
       final Timed<List<String>> schemas,
       final Timed<List<LineageTableNode>> tables,
-      final Timed<List<PlannedEdge>> edges) {
+      final Timed<EdgeLoad> edges) {
     final LineageGraphSummary summary =
         new LineageGraphSummary(
+            cohortFqnPrefix,
             spec.services(),
             spec.databases(),
             schemas.value().size(),
             tables.value().size(),
-            edges.value().size(),
-            (int) edges.value().stream().filter(PlannedEdge::withColumnLineage).count(),
+            edges.value().created(),
+            (int) edges.value().planned().stream().filter(PlannedEdge::withColumnLineage).count(),
             schemas.duration(),
             tables.duration(),
             edges.duration(),
@@ -307,7 +339,8 @@ public final class LineageGraphLoader {
     return (cap != null && cap > 0) ? Math.min(requested, cap) : requested;
   }
 
-  private static void submitAll(
+  /** Returns how many of the {@code count} actions succeeded. */
+  private static int submitAll(
       final ExecutorService executor,
       final int count,
       final String what,
@@ -322,7 +355,7 @@ public final class LineageGraphLoader {
                 return null;
               }));
     }
-    awaitAll(futures, what);
+    return awaitAll(futures, what);
   }
 
   /**
@@ -330,7 +363,7 @@ public final class LineageGraphLoader {
    * handful of gateway timeouts is normal and must not throw away an hour of seeding — but fails
    * loudly if nothing at all succeeded.
    */
-  private static void awaitAll(final List<Future<Void>> futures, final String what) {
+  private static int awaitAll(final List<Future<Void>> futures, final String what) {
     int failed = 0;
     Throwable firstFailure = null;
     for (final Future<Void> future : futures) {
@@ -345,6 +378,7 @@ public final class LineageGraphLoader {
       }
     }
     reportFailures(futures.size(), failed, what, firstFailure);
+    return futures.size() - failed;
   }
 
   private static void reportFailures(

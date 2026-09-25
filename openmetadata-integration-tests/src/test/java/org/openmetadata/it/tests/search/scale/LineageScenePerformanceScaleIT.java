@@ -16,14 +16,19 @@ package org.openmetadata.it.tests.search.scale;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntUnaryOperator;
+import java.util.function.LongSupplier;
 import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
@@ -47,7 +52,7 @@ import org.openmetadata.it.factories.LineageGraphLoader;
 import org.openmetadata.it.factories.LineageGraphSpec;
 import org.openmetadata.it.factories.LineageGraphSummary;
 import org.openmetadata.it.search.IndexAliasInspector;
-import org.openmetadata.it.search.SearchAssertions;
+import org.openmetadata.it.search.SearchClient;
 import org.openmetadata.it.server.ServerHandle;
 import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.OssTestServer;
@@ -59,6 +64,7 @@ import org.openmetadata.playwright.ui.pages.LineageMapPage;
 import org.openmetadata.schema.api.lineage.LineageBand;
 import org.openmetadata.schema.api.lineage.LineageLens;
 import org.openmetadata.schema.api.lineage.LineageScene;
+import org.openmetadata.schema.api.lineage.LineageSceneNode;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -137,6 +143,10 @@ class LineageScenePerformanceScaleIT {
   private static final String ASSET_BAND = LineageBand.ASSET.value();
   private static final String FIELD_BAND = LineageBand.FIELD.value();
   private static final int ROOT_BREADCRUMB_INDEX = 0;
+  private static final String FQN_FIELD = "fullyQualifiedName";
+  private static final String UPSTREAM_ENTRY_FIELD =
+      "upstreamLineage.fromEntity.fullyQualifiedName.keyword";
+  private static final String UPSTREAM_ENTRIES_AGG = "upstreamEntries";
 
   private static final boolean SKIP_CLEANUP = Boolean.getBoolean("jpw.lineage.skipCleanup");
   private static final Duration INDEXING_TIMEOUT =
@@ -529,36 +539,110 @@ class LineageScenePerformanceScaleIT {
   }
 
   /**
-   * Waits for the seeded cohort to reach the table index. The scene API is search-backed end to
-   * end, so measuring before the corpus is indexed would benchmark an empty graph and report a
+   * Waits for this run's cohort — its tables, then its lineage — to be searchable. The scene API is
+   * search-backed end to end, so measuring early benchmarks a partial graph and reports a
    * flattering number.
+   *
+   * <p>Both counts are scoped to the cohort's FQN prefix. The index is shared: in the nightly this
+   * class runs right after a 50k-table reindex benchmark whose corpus is still being cascade-deleted,
+   * so an index-wide count passes before a single table of this graph is indexed, and a
+   * baseline-plus-delta count can never be met while that delete shrinks the baseline. Lineage gets
+   * its own wait because the loader writes every table before any edge, and each edge lands later as
+   * an entry in the downstream table's {@code upstreamLineage}.
    */
   private void awaitIndexed() {
     final ServerHandle server = OssTestServer.defaultHandle();
-    final SearchAssertions search = new SearchAssertions(server);
+    final SearchClient search = new SearchClient(server);
     final String tableAlias = new IndexAliasInspector(server).indexNameFor(Entity.TABLE);
-    Awaitility.await("lineage benchmark corpus indexed")
-        .atMost(INDEXING_TIMEOUT)
-        .pollInterval(Duration.ofSeconds(10))
-        .ignoreExceptions()
-        .until(() -> search.count(tableAlias) >= graph.tables());
-    assertSceneIsPopulated();
+    final String prefix = graph.cohortFqnPrefix();
+    awaitAtLeast(
+        "cohort tables indexed",
+        () -> cohortTableCount(search, tableAlias, prefix),
+        graph.tables());
+    awaitAtLeast(
+        "cohort lineage indexed",
+        () -> cohortUpstreamEntryCount(search, tableAlias, prefix),
+        graph.edges());
+    assertCohortVisibleToSceneApi();
+  }
+
+  private static long cohortTableCount(
+      final SearchClient search, final String tableAlias, final String prefix) {
+    final ObjectNode body = MAPPER.createObjectNode();
+    body.set("query", cohortQuery(prefix));
+    return search.count(tableAlias, body.toString()).path("count").asLong();
   }
 
   /**
-   * The doc count alone is not enough — a scene also needs its aggregations to see the new services,
-   * which lags the table index.
+   * Total {@code upstreamLineage} entries across the cohort — one per edge, on the edge's downstream
+   * table. A document count would not do: a table with three upstream edges is updated three times,
+   * and counts as indexed after the first.
    */
-  private void assertSceneIsPopulated() {
-    Awaitility.await("root lineage scene populated")
+  private static long cohortUpstreamEntryCount(
+      final SearchClient search, final String tableAlias, final String prefix) {
+    final ObjectNode body = MAPPER.createObjectNode();
+    body.put("size", 0);
+    body.set("query", cohortQuery(prefix));
+    body.putObject("aggs")
+        .putObject(UPSTREAM_ENTRIES_AGG)
+        .putObject("value_count")
+        .put("field", UPSTREAM_ENTRY_FIELD);
+    return search
+        .search(tableAlias, body.toString())
+        .path("aggregations")
+        .path(UPSTREAM_ENTRIES_AGG)
+        .path("value")
+        .asLong();
+  }
+
+  /** {@code fullyQualifiedName} carries a lowercase normalizer, so the prefix is lowercased. */
+  private static ObjectNode cohortQuery(final String prefix) {
+    final ObjectNode query = MAPPER.createObjectNode();
+    query.putObject("prefix").put(FQN_FIELD, prefix.toLowerCase(Locale.ROOT));
+    return query;
+  }
+
+  /** Reports the last observed count on timeout, so a stuck wait says how far it got. */
+  private static void awaitAtLeast(
+      final String what, final LongSupplier observed, final long expected) {
+    final AtomicLong last = new AtomicLong(-1);
+    try {
+      Awaitility.await(what)
+          .atMost(INDEXING_TIMEOUT)
+          .pollInterval(Duration.ofSeconds(5))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                last.set(observed.getAsLong());
+                return last.get() >= expected;
+              });
+    } catch (final ConditionTimeoutException e) {
+      throw new IllegalStateException(
+          what + ": expected at least " + expected + ", last observed " + last.get(), e);
+    }
+  }
+
+  /**
+   * The index counts prove the documents are there; this proves the scene API's aggregations see
+   * them. It checks for a <em>child</em> of the cohort's own service, because a focused service
+   * scene also shows sibling services as context — any other service on the cluster would make a
+   * bare "not empty" check pass.
+   */
+  private void assertCohortVisibleToSceneApi() {
+    final String serviceFqn = graph.focusPoints().serviceFqn();
+    Awaitility.await("cohort visible to the scene API")
         .atMost(INDEXING_TIMEOUT)
         .pollInterval(Duration.ofSeconds(5))
         .ignoreExceptions()
         .until(
             () ->
-                !requestScene(sceneRequest(LineageBand.LAYER).queryParam("size", "200").build())
+                requestScene(
+                        focusedRequest(
+                            serviceFqn, DATABASE_SERVICE_ENTITY_TYPE, LineageBand.ASSET, 1))
                     .getNodes()
-                    .isEmpty());
+                    .stream()
+                    .map(LineageSceneNode::getFullyQualifiedName)
+                    .anyMatch(fqn -> fqn != null && fqn.startsWith(serviceFqn + ".")));
   }
 
   private void recordGraphCounters() {
