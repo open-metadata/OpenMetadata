@@ -10,28 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-.context-center-layout {
-  padding-top: 0;
-  .context-center-embedded {
-    background: transparent !important;
-
-    .context-center-header-section {
-      padding: 0 8px;
-      padding-top: 8px;
-    }
-
-    .context-center-content-section {
-      padding: 16px;
-      padding-top: 0;
-    }
-
-    .article-list-section {
-      height: calc(100vh - 500px);
-    }
-  }
-
-  .knowledge-center-layout {
-    height: calc(100vh - 226px);
-  }
+/**
+ * Username and password authentication for SFTP
+ */
+export interface BasicAuth {
+    /**
+     * SFTP password
+     */
+    password: string;
+    /**
+     * SFTP username
+     */
+    username: string;
 }

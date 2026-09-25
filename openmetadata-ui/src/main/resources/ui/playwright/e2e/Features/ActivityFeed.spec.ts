@@ -671,9 +671,9 @@ test.describe('Mention notifications in Notification Box', () => {
 
       await expect(notificationBox).toBeVisible();
 
-      const mentionsTab = adminPage
-        .locator('.notification-box')
-        .getByText('Mentions');
+      const mentionsTab = notificationBox.getByRole('tab', {
+        name: /Mentions/,
+      });
 
       const mentionsFeedResponse = adminPage.waitForResponse(
         (response) =>
