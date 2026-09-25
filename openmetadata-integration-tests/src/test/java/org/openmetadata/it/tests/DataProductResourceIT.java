@@ -3963,7 +3963,10 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   void importFromODPS_matchesExistingProductByProductId(TestNamespace ns) {
     Domain domain = getOrCreateDomain(ns);
     String domainFqn = domain.getFullyQualifiedName();
-    String productId = "odpspid" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+    // Dotted productID (reverse-domain style, as our own export writes the FQN into
+    // productID) — its entity name is stored as a quoted FQN, so re-import must quote
+    // the lookup to match it instead of creating a duplicate.
+    String productId = "odps.pid." + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
 
     DataProduct first = putOdps(domainFqn, buildOdpsDoc(productId, "[DEV] " + productId));
     assertEquals(productId, first.getName(), "entity name should come from productID");
