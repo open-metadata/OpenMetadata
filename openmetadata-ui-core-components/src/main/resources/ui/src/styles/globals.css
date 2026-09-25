@@ -1844,6 +1844,13 @@ order. */
 .tag-color-text {
   color: var(--tag-color) !important;
 }
+
+/* Dark: a user-picked tag colour is often a dark hue that is unreadable as
+text on the dark surface. Lift the label/icon toward white while keeping the
+hue; the accent border keeps the exact colour. */
+.dark-mode .tag-color-text {
+  color: color-mix(in srgb, var(--tag-color) 55%, white) !important;
+}
 /* Let the consumer generate utilities for classes used inside the packaged
 core-components bundle. */
 @source "../../dist/**/*.{js,mjs,cjs}";
