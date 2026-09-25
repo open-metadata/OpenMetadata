@@ -1747,7 +1747,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   }
 
   private ODCSDataContract toODCS(DataContract contract) {
-    return qualityRuleExporter.toODCS(contract);
+    return ODCSConverter.toODCS(contract, qualityRuleExporter.nativeTestCaseRules(contract));
   }
 
   private DataContract loadExistingContract(EntityReference entityRef) {

@@ -25,7 +25,6 @@ import java.util.stream.Collectors;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.EntityReference;
@@ -34,7 +33,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.datacontract.odcs.ODCSRuleOutcome.TestCaseOutcome;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.ODCSConverter;
 
 /**
  * Adds the contract's own test cases to its ODCS export. Test cases that an ODCS rule of the
@@ -54,16 +52,6 @@ public final class ODCSQualityRuleExporter {
       Function<EntityReference, Table> tableLoader) {
     this.testCaseLoader = testCaseLoader;
     this.tableLoader = tableLoader;
-  }
-
-  /**
-   * The contract as an ODCS document: its stored rules, its own test cases as rules, and its SLA
-   * stated once.
-   */
-  public ODCSDataContract toODCS(DataContract contract) {
-    ODCSDataContract odcs = ODCSConverter.toODCS(contract, nativeTestCaseRules(contract));
-    ODCSFreshness.omitSlaPropertyStatedByRule(odcs, contract);
-    return odcs;
   }
 
   public List<ODCSQualityRule> nativeTestCaseRules(DataContract contract) {
