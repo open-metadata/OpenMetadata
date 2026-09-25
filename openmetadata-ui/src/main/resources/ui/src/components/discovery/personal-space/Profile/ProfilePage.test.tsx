@@ -14,6 +14,15 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 
+jest.mock('hooks/useSettingsHash', () => ({
+  useSettingsHash: () => ({
+    state: { tab: null, subPath: '', params: {} },
+    setHash: jest.fn(),
+    clearHash: jest.fn(),
+    updateParams: jest.fn(),
+  }),
+}));
+
 const mockGetUserByName = jest.fn();
 
 jest.mock('rest/userAPI', () => ({
