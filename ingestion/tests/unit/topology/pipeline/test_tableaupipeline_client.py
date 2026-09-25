@@ -133,11 +133,13 @@ class FakeTableau:
         self.unsorted_runs_response: tuple[int, str] | None = None
         self.users: dict[str, str] = {}
         self.graphql_response: dict = {"data": {"flows": []}}
-        self.tasks: list[str] = []
+        self.tasks: list[str] | None = []
         self.content: dict[str, str] = {}
         self.jobs: list[str] = []
         self.jobs_status = 200
+        self.jobs_reject_sort = False
         self.job_details: dict[str, str] = {}
+        self.graphql_status = 200
 
     def send(self, request: requests.PreparedRequest, **_kwargs) -> requests.Response:
         self.requests.append(request)
@@ -159,7 +161,10 @@ class FakeTableau:
         elif path.endswith("/flows"):
             body = self.flow_pages[int(query.get("pageNumber", ["1"])[0]) - 1]
         elif "/users/" in path:
-            body = self.users[path.rsplit("/", 1)[-1]]
+            user_id = path.rsplit("/", 1)[-1]
+            status, body = (200, self.users[user_id]) if user_id in self.users else (404, _error("404002"))
+        elif path.endswith("/tasks/extractRefreshes") and self.tasks is None:
+            status, body = 500, _error("500000")
         elif path.endswith("/tasks/extractRefreshes"):
             body = (
                 f'<tsResponse {NS}><pagination pageNumber="1" pageSize="100" totalAvailable="{len(self.tasks)}"/>'
@@ -168,12 +173,15 @@ class FakeTableau:
         elif "/datasources/" in path or "/workbooks/" in path:
             content_id = path.rsplit("/", 1)[-1]
             status, body = (200, self.content[content_id]) if content_id in self.content else (404, _error("404004"))
+        elif path.endswith("/jobs") and self.jobs_reject_sort and "sort" in query:
+            status, body = 400, _error("400006")
         elif path.endswith("/jobs"):
             status, body = self.jobs_status, self._jobs_page(query)
         elif "/jobs/" in path:
-            body = self.job_details[path.rsplit("/", 1)[-1]]
+            job_id = path.rsplit("/", 1)[-1]
+            status, body = (200, self.job_details[job_id]) if job_id in self.job_details else (404, _error("404003"))
         elif path.endswith("/api/metadata/graphql"):
-            body, content_type = json.dumps(self.graphql_response), "application/json"
+            status, body, content_type = self.graphql_status, json.dumps(self.graphql_response), "application/json"
         else:
             raise AssertionError(f"Unexpected Tableau call {request.method} {request.url}")
 
@@ -206,13 +214,16 @@ def tableau(monkeypatch):
     return fake
 
 
-def _client(number_of_status: int = 2, include_extract_refreshes: bool = True) -> TableauPipelineClient:
+def _client(
+    number_of_status: int = 2, include_extract_refreshes: bool = True, api_version: str | None = None
+) -> TableauPipelineClient:
     config = TableauPipelineConnection(
         hostPort=HOST,
         authType={"personalAccessTokenName": "pat", "personalAccessTokenSecret": "secret"},
         siteName="MarketingTeam",
         numberOfStatus=number_of_status,
         includeExtractRefreshes=include_extract_refreshes,
+        apiVersion=api_version,
     )
     return TableauPipelineClient(
         tableau_server_auth=PersonalAccessTokenAuth("pat", "secret", site_id="MarketingTeam"),
@@ -233,6 +244,17 @@ class TestFlows:
         assert sales.owner_id == "owner-1"
         assert sales.tags == ["finance", "pii"]
         assert sales.webpage_url == f"{HOST}/#/site/MarketingTeam/flows/flow-1"
+
+    def test_configured_api_version_overrides_the_server_one(self, tableau):
+        _client(api_version="3.19").get_flows().__next__()
+
+        assert "/api/3.19/sites/" in tableau.calls_to("/flows")[0].url
+
+    def test_connection_probe_reads_one_flow(self, tableau):
+        flows = _client().test_get_flows()
+
+        assert [flow.id for flow in flows] == ["flow-1"]
+        assert parse_qs(urlparse(tableau.calls_to("/flows")[0].url).query)["pageSize"] == ["1"]
 
     def test_pipelines_are_named_after_the_flow_id(self, tableau):
         pipelines = list(_client().get_pipelines())
@@ -295,6 +317,11 @@ class TestFlowRuns:
 
         assert runs[0].error == "Output step failed"
 
+    def test_failure_notes_are_optional(self, tableau):
+        tableau.runs_response = (200, _runs(_run_xml("run-1", "2025-03-01T10:00:00Z", status="Failed")))
+
+        assert _client().get_flow_runs("flow-1")[0].error is None
+
     def test_other_errors_propagate(self, tableau):
         tableau.runs_response = (403, _error("403004"))
 
@@ -327,6 +354,9 @@ class TestUserEmail:
         assert client.get_user_email("owner-2") is None
         assert client.get_user_email("owner-2") is None
         assert len([r for r in tableau.requests if "/users/" in r.url]) == 2
+
+    def test_an_unknown_user_has_no_email(self, tableau):
+        assert _client().get_user_email("ghost") is None
 
     def test_email_shaped_username_is_used_when_email_is_empty(self, tableau):
         tableau.users["owner-1"] = _user("owner-1", "carol@example.com", None)
@@ -399,6 +429,13 @@ class TestFlowLineage:
         with caplog.at_level(logging.WARNING):
             assert _client().get_flow_lineage("flow-1") is None
         assert "FieldUndefined" in caplog.text
+
+    def test_an_unreachable_metadata_api_yields_no_lineage(self, tableau, caplog):
+        tableau.graphql_status = 404
+
+        with caplog.at_level(logging.WARNING):
+            assert _client().get_flow_lineage("flow-1") is None
+        assert "Lineage requires the Metadata API" in caplog.text
 
     def test_unknown_flow_yields_no_lineage(self, tableau):
         tableau.graphql_response = {"data": {"flows": []}}
@@ -562,3 +599,64 @@ class TestExtractRefreshes:
         assert client.get_extract_datasource_ids("workbook", "wb-1") == ["gql-extract"]
         sent = json.loads(tableau.calls_to("/api/metadata/graphql")[-1].body)["query"]
         assert 'workbooks(filter: {luid: "wb-1"})' in sent
+
+    def test_pages_through_jobs_and_retries_unsorted_when_the_sort_is_rejected(self, tableau, monkeypatch):
+        monkeypatch.setattr(client_module, "JOBS_PAGE_SIZE", 2)
+        self._two_targets(tableau)
+        tableau.jobs_reject_sort = True
+        tableau.jobs = [_background_job_xml(f"j{i}", f"2025-03-0{i}T06:00:00Z") for i in (1, 2, 3)]
+        tableau.job_details = {f"j{i}": _job_detail_xml(f"j{i}", "datasource", "ds-1") for i in (1, 2, 3)}
+        client = _client(number_of_status=5)
+        list(client.get_pipelines())
+
+        runs = client.get_extract_refresh_runs("ds-1")
+
+        pages = [parse_qs(urlparse(r.url).query) for r in tableau.calls_to("/jobs")]
+        assert [(q.get("pageNumber", ["1"])[0], "sort" in q) for q in pages] == [
+            ("1", True),
+            ("1", False),
+            ("2", False),
+        ]
+        assert [run.id for run in runs] == ["j3", "j2", "j1"]
+
+    def test_a_job_that_cannot_be_read_is_skipped(self, tableau):
+        self._two_targets(tableau)
+        tableau.jobs = [
+            _background_job_xml("j2", "2025-03-02T06:00:00Z"),
+            _background_job_xml("j-pruned", "2025-03-01T12:00:00Z"),
+            _background_job_xml("j1", "2025-03-01T06:00:00Z"),
+        ]
+        tableau.job_details = {
+            "j2": _job_detail_xml("j2", "datasource", "ds-1"),
+            "j1": _job_detail_xml("j1", "datasource", "ds-1"),
+        }
+        client = _client()
+        list(client.get_pipelines())
+
+        assert [run.id for run in client.get_extract_refresh_runs("ds-1")] == ["j2", "j1"]
+
+    def test_other_job_errors_leave_the_pipelines_without_status(self, tableau, caplog):
+        self._two_targets(tableau)
+        tableau.jobs_status = 500
+        client = _client()
+        list(client.get_pipelines())
+
+        with caplog.at_level(logging.WARNING):
+            assert client.get_extract_refresh_runs("wb-1") == []
+        assert "Unable to read Tableau extract refresh jobs" in caplog.text
+
+    def test_no_refresh_tasks_means_no_job_reads(self, tableau):
+        client = _client()
+        list(client.get_pipelines())
+
+        assert client.get_extract_refresh_runs("ds-1") == []
+        assert tableau.calls_to("/jobs") == []
+
+    def test_a_failing_task_listing_still_ingests_the_flows(self, tableau, caplog):
+        tableau.tasks = None
+
+        with caplog.at_level(logging.WARNING):
+            pipelines = list(_client().get_pipelines())
+
+        assert [p.name for p in pipelines] == ["flow-1", "flow-2"]
+        assert "Unable to list Tableau extract refresh tasks" in caplog.text

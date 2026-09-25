@@ -288,8 +288,10 @@ class TableauPipelineClient:
                 )
                 if len(target_runs) == self.number_of_status:
                     incomplete -= 1
-        except ServerResponseError as exc:
-            if _has_status(exc, 403):
+        except Exception as exc:
+            # Any failure ends the scan with what was read, so it is not retried
+            # for every extract refresh pipeline.
+            if isinstance(exc, ServerResponseError) and _has_status(exc, 403):
                 logger.warning(
                     "Tableau extract refresh history needs a site administrator; "
                     "extract refresh pipelines are ingested without status."
