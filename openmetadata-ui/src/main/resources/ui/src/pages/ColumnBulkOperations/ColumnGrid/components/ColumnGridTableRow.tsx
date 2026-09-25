@@ -179,6 +179,8 @@ const ColumnGridTableRowBase: React.FC<ColumnGridTableRowProps> = ({
       data-row-id={entity.id}
       data-row-type={rowType}
       data-testid={`column-row-${entity.columnName}`}
+      // Drops react-aria's cell cache; without it cells keep their first render and its stale handlers.
+      dependencies={[cellContentById, entity, isPendingRefetch]}
       id={entity.id}>
       {(column) => (
         <Table.Cell
