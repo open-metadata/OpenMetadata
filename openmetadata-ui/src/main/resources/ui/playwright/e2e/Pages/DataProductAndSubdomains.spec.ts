@@ -414,7 +414,13 @@ test.describe('Data Product Comprehensive Tests', () => {
         await expect(assetCard).toBeVisible({ timeout: 5_000 });
       }).toPass({ timeout: 60_000 });
 
-      await assetCard.click();
+      // Toggle the card's checkbox — the card's own onClick sets the
+      // preview panel, not selectedItems, so Save had nothing to add
+      // and /assets/add never fired.
+      const tableFqn = table.entityResponseData.fullyQualifiedName ?? '';
+      await assetModal
+        .locator(`[data-testid="table-data-card_${tableFqn}"] input`)
+        .check();
 
       // Save
       const addRes = page.waitForResponse('/api/v1/dataProducts/*/assets/add');

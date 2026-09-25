@@ -214,6 +214,10 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
 
     await page.getByTestId('assets').click();
     await checkAssetsCount(page, 2);
+    // The asset card body streams tags/owners/counts after the initial
+    // render — .check() flakes "element is not stable" under SharedInfra
+    // load without waiting for loaders to settle first.
+    await waitForAllLoadersToDisappear(page);
 
     const topicFqn = topic.entityResponseData.fullyQualifiedName;
     await page

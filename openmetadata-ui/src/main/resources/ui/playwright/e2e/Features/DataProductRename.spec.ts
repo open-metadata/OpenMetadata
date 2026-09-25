@@ -30,6 +30,7 @@ import {
   checkAssetsCount,
   selectDataProduct,
 } from '../../utils/domain';
+import { visitEntityPageByFqn } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 const adminUser = new UserClass();
@@ -148,12 +149,15 @@ test.describe('Data Product Rename', () => {
 
     const tableFqn = get(table, 'entityResponseData.fullyQualifiedName');
 
-    // Click on the asset to navigate to the table page
-    await page
-      .locator(
-        `[data-testid="table-data-card_${tableFqn}"] a[data-testid="entity-link"]`
-      )
-      .click();
+    // Navigate to the table page directly instead of clicking the card
+    // entity-link — the card body re-renders as tags/owners/counts
+    // stream in, so .click() flakes "element is not stable" under
+    // SharedInfra load.
+    await visitEntityPageByFqn({
+      page,
+      endpoint: table.endpoint,
+      fqn: tableFqn,
+    });
 
     // Navigate back to data product and verify assets tab still shows the asset
     await page.goBack();
@@ -324,13 +328,15 @@ test.describe('Data Product Rename', () => {
         ).toBeVisible();
       }
 
-      // Final verification: navigate to asset and back
+      // Final verification: navigate to asset and back (direct
+      // navigation instead of card entity-link click — see sibling
+      // replacements for why).
       const tableFqn = get(testTable, 'entityResponseData.fullyQualifiedName');
-      await page
-        .locator(
-          `[data-testid="table-data-card_${tableFqn}"] a[data-testid="entity-link"]`
-        )
-        .click();
+      await visitEntityPageByFqn({
+        page,
+        endpoint: testTable.endpoint,
+        fqn: tableFqn,
+      });
 
       // Navigate back and verify assets still there
       await page.goBack();
