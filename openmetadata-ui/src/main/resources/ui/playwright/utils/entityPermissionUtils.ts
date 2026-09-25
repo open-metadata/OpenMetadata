@@ -30,7 +30,7 @@ import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { WorksheetClass } from '../support/entity/WorksheetClass';
 import { UserClass } from '../support/user/UserClass';
-import { redirectToHomePage } from './common';
+import { clickOutside, redirectToHomePage } from './common';
 import { addCustomPropertiesForEntity } from './customProperty';
 import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick, SettingOptionsType } from './sidebar';
@@ -131,6 +131,13 @@ const checkElementVisibility = async (
           await expect(
             testUserPage.locator(`[data-testid="${testId}"]`)
           ).toBeVisible();
+
+          // The core menu is modal: while open, its underlay swallows the next
+          // manage-button click, so close it before the following check.
+          await clickOutside(testUserPage);
+          await expect(
+            testUserPage.getByTestId('manage-dropdown-list-container')
+          ).not.toBeVisible();
         }
 
         break;
@@ -200,6 +207,13 @@ const checkElementVisibility = async (
 
           await expect(
             testUserPage.locator(`[data-testid="${testId}"]`)
+          ).not.toBeVisible();
+
+          // The core menu is modal: while open, its underlay swallows the next
+          // manage-button click, so close it before the following check.
+          await clickOutside(testUserPage);
+          await expect(
+            testUserPage.getByTestId('manage-dropdown-list-container')
           ).not.toBeVisible();
         }
 

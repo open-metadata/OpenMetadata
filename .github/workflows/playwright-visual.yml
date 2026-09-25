@@ -99,6 +99,9 @@ jobs:
               - 'openmetadata-ui/src/main/resources/ui/.npmrc'
               - 'openmetadata-ui/src/main/resources/ui/.nvmrc'
               - 'openmetadata-ui/src/main/resources/ui/playwright.config.ts'
+              # The UI links and builds core-components (see its package.json
+              # `preinstall`), so a core-components change reaches every screenshot.
+              - 'openmetadata-ui-core-components/**'
               - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/VisualRegression/**'
               - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/auth.setup.ts'
               - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/entity-data.setup.ts'

@@ -185,7 +185,8 @@
   width: @ask-sidebar-card-width;
   min-width: @ask-sidebar-card-width;
   max-width: @ask-sidebar-card-width;
-  height: calc(100% - 16px);
+  // 6px margin top + bottom, so the card ends on the content panel's bottom edge.
+  height: calc(100% - 12px);
   overflow: hidden;
   background: @ask-bg-card;
   border-radius: 16px;

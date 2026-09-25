@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isUndefined, startCase } from 'lodash';
@@ -287,20 +288,29 @@ const CustomEntityDetailV1 = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.custom-property')}>
-      <Row data-testid="custom-entity-container" gutter={[0, 16]}>
-        <Col span={24}>
+      <Box data-testid="custom-entity-container" direction="col" gap={4}>
+        <div>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={24}>{pageHeader}</Col>
-        <Col className="global-settings-tabs" span={24}>
-          <Tabs
-            className="tabs-new"
-            items={tabs}
-            key={tab}
-            onChange={onTabChange}
-          />
-        </Col>
-      </Row>
+        </div>
+        <div>{pageHeader}</div>
+        <Tabs
+          className="tw:gap-3"
+          selectedKey={activeTab}
+          onSelectionChange={(key) => onTabChange(String(key))}>
+          <Tabs.List size="sm" type="underline" variant="card">
+            {tabs.map(({ key, label }) => (
+              <Tabs.Item id={key} key={key}>
+                {label}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+          {tabs.map(({ key, children }) => (
+            <Tabs.Panel id={key} key={key}>
+              {children}
+            </Tabs.Panel>
+          ))}
+        </Tabs>
+      </Box>
       <AddCustomProperty
         entityType={selectedEntityTypeDetail.name as EntityType}
         formRef={form}

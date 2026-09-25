@@ -329,18 +329,10 @@
     @om-navbar-height - @size-md
 );
 
-@app-details-page-tabs-height: calc(
-  100vh - 132px - @tab-height - @om-navbar-height - @size-md
-);
 @app-install-page-tabs-height: calc(
   100vh - 70px - @om-navbar-height - @size-md
 );
 
-@users-page-tabs-height: calc(100vh - @om-navbar-height - 58px);
-
-@services-page-tabs-height: calc(
-  100vh - 36px - @tab-height - @om-navbar-height - @size-md
-);
 /* navbar+tab_height+padding = 64+46+12  */
 
 @glossary-page-height: calc(
@@ -351,8 +343,13 @@
   100vh - 96px - @tab-height - @om-navbar-height - @size-mlg
 );
 
+// Subtracts the same zero header as @entity-details-tab-height, and for the
+// same reason: a pane as tall as the viewport leaves the page room to scroll
+// the header away, so the tabs pin to the top and only the pane scrolls on.
+// Subtracting the header kept the pane short and the header on screen.
 @incident-manager-page-height: calc(
-  100vh - 154px - @tab-height - @om-navbar-height - @size-mlg
+  100vh - @data-asset-header-height - @tab-height - @om-navbar-height -
+    @size-mlg
 );
 
 @glossary-term-page-height: calc(
