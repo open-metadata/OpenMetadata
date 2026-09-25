@@ -16,6 +16,7 @@ import { escapeRegExp, isUndefined } from 'lodash';
 import { BundleTestSuiteClass } from '../../../support/entity/BundleTestSuiteClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { selectOptionWithRetry } from '../../../utils/common';
 import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
@@ -631,10 +632,12 @@ test.describe(
       });
 
       await test.step('Narrowing the range to today recounts them', async () => {
-        await card
-          .getByRole('button', { name: 'Calendar Date range picker' })
-          .click();
-        await page.getByRole('button', { name: 'Today', exact: true }).click();
+        // The picker is a react-aria popover, which closes if the page
+        // scrolls as its trigger is clicked; the helper reopens it.
+        await selectOptionWithRetry(
+          card.getByRole('button', { name: 'Calendar Date range picker' }),
+          page.getByRole('button', { name: 'Today', exact: true })
+        );
 
         const resultsResponse = page.waitForResponse(
           (response) =>
