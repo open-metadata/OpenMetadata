@@ -1,7 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
@@ -17,31 +16,32 @@ class IngestionPipelineTriggeredByTest {
   }
 
   @Test
-  void workerReportedStatusKeepsTheTriggeringPrincipalOfTheQueuedRun() {
+  void workerStatusUpdateKeepsThePrincipalRecordedWhenTheRunWasQueued() {
     PipelineStatus running = status(PipelineStatusType.RUNNING, null);
 
-    IngestionPipelineRepository.carryForwardTriggeredBy(
+    IngestionPipelineRepository.keepRecordedTriggeredBy(
         running, status(PipelineStatusType.QUEUED, "alice"));
 
     assertEquals("alice", running.getTriggeredBy());
   }
 
   @Test
-  void anExplicitPrincipalOnTheIncomingStatusWins() {
-    PipelineStatus running = status(PipelineStatusType.RUNNING, "bob");
+  void aRecordedPrincipalCannotBeOverwritten() {
+    PipelineStatus running = status(PipelineStatusType.RUNNING, "mallory");
 
-    IngestionPipelineRepository.carryForwardTriggeredBy(
+    IngestionPipelineRepository.keepRecordedTriggeredBy(
         running, status(PipelineStatusType.QUEUED, "alice"));
 
-    assertEquals("bob", running.getTriggeredBy());
+    assertEquals("alice", running.getTriggeredBy());
   }
 
   @Test
-  void firstStatusOfARunHasNothingToCarryForward() {
-    PipelineStatus queued = status(PipelineStatusType.QUEUED, null);
+  void queuedStatusRecordsItsPrincipalEvenIfTheWorkerReportedFirst() {
+    PipelineStatus queued = status(PipelineStatusType.QUEUED, "alice");
 
-    IngestionPipelineRepository.carryForwardTriggeredBy(queued, null);
+    IngestionPipelineRepository.keepRecordedTriggeredBy(
+        queued, status(PipelineStatusType.RUNNING, null));
 
-    assertNull(queued.getTriggeredBy());
+    assertEquals("alice", queued.getTriggeredBy());
   }
 }

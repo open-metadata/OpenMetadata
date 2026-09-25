@@ -939,7 +939,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
                     ingestionPipeline.getFullyQualifiedName(),
                     PIPELINE_STATUS_EXTENSION),
             PipelineStatus.class);
-    carryForwardTriggeredBy(pipelineStatus, storedPipelineStatus);
+    keepRecordedTriggeredBy(pipelineStatus, storedPipelineStatus);
     if (storedPipelineStatus != null) {
       daoCollection
           .entityExtensionTimeSeriesDao()
@@ -1050,13 +1050,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
    * failing to record its queued state must not fail the trigger.
    */
   /**
-   * Status updates for a run are reported by the worker executing it and carry no principal, so the
-   * queued status written at trigger time is the only one that knows who asked for the run. Both
-   * upsert paths replace the whole stored record, so every later write has to carry the value
-   * forward or it is lost as soon as the run starts.
+   * Once a run records who triggered it, that value is final. Both upsert paths replace the whole
+   * stored record and the worker's status reports carry no principal, so without this the value is
+   * lost as soon as the run starts. A non-null incoming value can only come from {@link
+   * #recordQueuedPipelineStatus} (the status endpoint drops client-supplied ones); it still fills
+   * the gap if the worker reported the run before the queued status was written.
    */
-  static void carryForwardTriggeredBy(PipelineStatus incoming, PipelineStatus stored) {
-    if (stored != null && incoming.getTriggeredBy() == null) {
+  static void keepRecordedTriggeredBy(PipelineStatus incoming, PipelineStatus stored) {
+    if (stored != null && stored.getTriggeredBy() != null) {
       incoming.withTriggeredBy(stored.getTriggeredBy());
     }
   }
@@ -1205,7 +1206,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
                     pipelineFqn,
                     PIPELINE_STATUS_EXTENSION),
             PipelineStatus.class);
-    carryForwardTriggeredBy(pipelineStatus, storedPipelineStatus);
+    keepRecordedTriggeredBy(pipelineStatus, storedPipelineStatus);
     String json = JsonUtils.pojoToJson(pipelineStatus);
     if (storedPipelineStatus != null) {
       daoCollection

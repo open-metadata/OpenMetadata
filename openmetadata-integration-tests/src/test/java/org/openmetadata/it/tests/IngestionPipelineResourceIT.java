@@ -905,7 +905,7 @@ public class IngestionPipelineResourceIT
   }
 
   @Test
-  void test_workerStatusUpdatesKeepTheUserWhoTriggeredTheRun(TestNamespace ns)
+  void test_statusReportsCannotSetWhoTriggeredTheRun(TestNamespace ns)
       throws OpenMetadataException {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
 
@@ -924,20 +924,10 @@ public class IngestionPipelineResourceIT
     String path =
         "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
 
-    // Recorded by OpenMetadata at trigger time; the worker's own reports carry no principal.
-    client
-        .getHttpClient()
-        .execute(
-            HttpMethod.PUT,
-            path,
-            new PipelineStatus()
-                .withPipelineState(PipelineStatusType.QUEUED)
-                .withRunId(runId)
-                .withTimestamp(System.currentTimeMillis())
-                .withTriggeredBy("alice"),
-            PipelineStatus.class);
+    // triggeredBy is recorded only from the trigger request; a status report claiming it on a new
+    // run or on a later update of the same run must not be stored.
     for (PipelineStatusType state :
-        List.of(PipelineStatusType.RUNNING, PipelineStatusType.SUCCESS)) {
+        List.of(PipelineStatusType.QUEUED, PipelineStatusType.SUCCESS)) {
       client
           .getHttpClient()
           .execute(
@@ -946,17 +936,18 @@ public class IngestionPipelineResourceIT
               new PipelineStatus()
                   .withPipelineState(state)
                   .withRunId(runId)
-                  .withTimestamp(System.currentTimeMillis()),
+                  .withTimestamp(System.currentTimeMillis())
+                  .withTriggeredBy("mallory"),
               PipelineStatus.class);
+
+      PipelineStatus stored =
+          client
+              .getHttpClient()
+              .execute(HttpMethod.GET, path + "/" + runId, null, PipelineStatus.class);
+
+      assertEquals(state, stored.getPipelineState());
+      assertNull(stored.getTriggeredBy());
     }
-
-    PipelineStatus retrieved =
-        client
-            .getHttpClient()
-            .execute(HttpMethod.GET, path + "/" + runId, null, PipelineStatus.class);
-
-    assertEquals(PipelineStatusType.SUCCESS, retrieved.getPipelineState());
-    assertEquals("alice", retrieved.getTriggeredBy());
   }
 
   @Test
