@@ -10,18 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { lazy } from 'react';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+import { EntityDetailWidgetSkeleton } from '../../../common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
+import { CommonWidgetComponent } from '../CommonWidgets.types';
 
-@import '../../../styles/variables.less';
+const CertificationWidgetLazy = withSuspenseFallback(
+  lazy(() => import('../../../common/CertificationWidget/CertificationWidget')),
+  <EntityDetailWidgetSkeleton />
+);
 
-.ant-btn-group.spaced .ant-btn.ant-btn-default.ant-button-vote-active {
-  background-color: @primary-50;
-  border-color: @primary-color;
-
-  svg {
-    color: @primary-color;
-  }
-
-  .ant-typography {
-    color: @primary-color;
-  }
-}
+export const CertificationWidget: CommonWidgetComponent = () => (
+  <CertificationWidgetLazy />
+);

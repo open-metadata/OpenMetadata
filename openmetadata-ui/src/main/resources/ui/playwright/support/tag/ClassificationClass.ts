@@ -52,9 +52,9 @@ export class ClassificationClass {
       this.responseData.displayName ?? this.data.displayName
     );
 
-    await expect(page.locator('.activeCategory')).toContainText(
-      this.responseData.displayName ?? this.data.displayName
-    );
+    await expect(
+      page.locator('[data-testid="tags-left-panel"] [aria-current="page"]')
+    ).toContainText(this.responseData.displayName ?? this.data.displayName);
   }
 
   async create(apiContext: APIRequestContext) {

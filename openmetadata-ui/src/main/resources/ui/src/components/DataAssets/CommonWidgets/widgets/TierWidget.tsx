@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../styles/variables.less';
+import { lazy } from 'react';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+import { EntityDetailWidgetSkeleton } from '../../../common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
+import { CommonWidgetComponent } from '../CommonWidgets.types';
 
-.ant-tabs.services-tabs {
-  .ant-tabs-tabpane {
-    padding: @padding-mlg;
-    border: 1px solid @grey-15;
-    height: @services-page-tabs-height;
-    overflow-y: auto;
-  }
-}
+const TierWidgetLazy = withSuspenseFallback(
+  lazy(() => import('../../../common/TierWidget/TierWidget')),
+  <EntityDetailWidgetSkeleton />
+);
+
+export const TierWidget: CommonWidgetComponent = () => <TierWidgetLazy />;
