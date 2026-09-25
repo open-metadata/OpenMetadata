@@ -2393,14 +2393,18 @@ const getCsvTiersEditor: CSVEditorFactory = ({ entityType, options }) => {
       );
     };
 
+    // The popover takes focus on open, so its keydowns bubble (via the portal)
+    // to the rdg EditCell, which closes the editor on Enter / navigates on Tab.
     return (
-      <TierCard
-        open
-        currentTier={value}
-        updateTier={handleChange}
-        onClose={() => onClose(false)}>
-        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-      </TierCard>
+      <KeyDownStopPropagationWrapper>
+        <TierCard
+          open
+          currentTier={value}
+          updateTier={handleChange}
+          onClose={() => onClose(false)}>
+          <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+        </TierCard>
+      </KeyDownStopPropagationWrapper>
     );
   };
 };
