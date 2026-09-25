@@ -20,12 +20,12 @@ import {
   screen,
 } from '@testing-library/react';
 import { cloneElement } from 'react';
+import { Area } from 'recharts';
 import { Payload } from 'recharts/types/component/DefaultLegendContent';
 import { Task } from '../../../../generated/entity/tasks/task';
+import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { getTaskById } from '../../../../rest/tasksAPI';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { TestCaseStatus } from '../../../../generated/tests/testCase';
-import { Area } from 'recharts';
 import TestSummaryGraph from './TestSummaryGraph';
 import { BOUND_AREA_OPACITY, DOT_OUTLINE } from './TestSummaryGraph.constants';
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';

@@ -24,12 +24,14 @@ import { GREEN_3, RED_3 } from '../../../../constants/Color.constants';
 import { TABLE_FRESHNESS_KEY } from '../../../../constants/TestSuite.constant';
 import { Task } from '../../../../generated/entity/tasks/task';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
-import { getIncidentDetails } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
+import {
+  getIncidentDetails,
+  PLACED_KEYS_FIELD,
+} from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import {
   convertSecondsToHumanReadableFormat,
   formatDateTime,
 } from '../../../../utils/date-time/DateTimeUtils';
-import { PLACED_KEYS_FIELD } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import { formatNumberWithComma } from '../../../../utils/NumberUtils';
 import './test-summary-custom-tooltip.less';
 

@@ -79,7 +79,6 @@ import {
   formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
 import TestSummaryCustomTooltip from '../TestSummaryCustomTooltip/TestSummaryCustomTooltip.component';
-import TestSummaryStatusKey from './TestSummaryStatusKey';
 import {
   BOUND_AREA_OPACITY,
   DOT_OUTLINE,
@@ -96,6 +95,7 @@ import {
   TOOLTIP_GAP,
 } from './TestSummaryGraph.constants';
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
+import TestSummaryStatusKey from './TestSummaryStatusKey';
 
 interface ActiveTooltip {
   anchor: Coordinate;
