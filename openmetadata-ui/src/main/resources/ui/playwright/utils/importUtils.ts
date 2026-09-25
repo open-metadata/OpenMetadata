@@ -44,7 +44,10 @@ import {
   addCustomPropertiesForEntity,
   fillTableColumnInputDetails,
 } from './customProperty';
-import { waitForAllLoadersToDisappear } from './entity';
+import {
+  escapeESReservedCharacters,
+  waitForAllLoadersToDisappear,
+} from './entity';
 import { searchGlossaryPicker } from './glossaryPicker';
 import { settingClick, SettingOptionsType } from './sidebar';
 
@@ -681,7 +684,9 @@ export const fillTagDetails = async (page: Page, tag: string) => {
   await tagSelectorInput.waitFor({ state: 'visible' });
 
   const waitForQueryResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      escapeESReservedCharacters(tag)
+    )}*`
   );
   await page.keyboard.type(tag);
   await waitForQueryResponse;
