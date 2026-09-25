@@ -54,6 +54,7 @@ import org.openmetadata.schema.entity.feed.Conversation;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -457,48 +458,72 @@ public final class AlertUtil {
       List<String> resource,
       CreateEventSubscription.AlertType alertType,
       AlertFilteringInput input) {
+    return buildFilteringConditions(resource, alertType, input, false);
+  }
+
+  /**
+   * For a definition that is already stored: what an earlier release offered still builds, so an
+   * alert saved then keeps its meaning. A new or changed definition may only use what is offered.
+   */
+  public static FilteringRules rebuildStoredFilteringConditions(
+      List<String> resource,
+      CreateEventSubscription.AlertType alertType,
+      AlertFilteringInput input) {
+    return buildFilteringConditions(resource, alertType, input, true);
+  }
+
+  private static FilteringRules buildFilteringConditions(
+      List<String> resource,
+      CreateEventSubscription.AlertType alertType,
+      AlertFilteringInput input,
+      boolean withWhatEarlierReleasesOffered) {
     if (resource.size() != 1) {
       throw new BadRequestException(
           "One resource can be specified. Zero or Multiple resources are not supported.");
     }
-
-    if (alertType.equals(CreateEventSubscription.AlertType.NOTIFICATION)) {
-      Map<String, EventFilterRule> supportedFilters =
-          buildFilteringRulesMap(
-              EventsSubscriptionRegistry.getEntityNotificationDescriptor(resource.get(0))
-                  .getSupportedFilters());
-      // Input validation
-      if (input != null) {
-        return new FilteringRules()
+    boolean compiled =
+        alertType.equals(CreateEventSubscription.AlertType.NOTIFICATION)
+            || alertType.equals(CreateEventSubscription.AlertType.OBSERVABILITY);
+    FilteringRules built =
+        new FilteringRules()
             .withResources(resource)
-            .withRules(buildRulesList(supportedFilters, input.getFilters()))
+            .withRules(Collections.emptyList())
             .withActions(Collections.emptyList());
-      }
-    } else if (alertType.equals(CreateEventSubscription.AlertType.OBSERVABILITY)) {
-      // Build a Map of Entity Filter Name
-      Map<String, EventFilterRule> supportedFilters =
-          buildFilteringRulesMap(
-              EventsSubscriptionRegistry.getObservabilityDescriptor(resource.get(0))
-                  .getSupportedFilters());
-
-      // Build a Map of Actions
-      Map<String, EventFilterRule> supportedActions =
-          buildFilteringRulesMap(
-              EventsSubscriptionRegistry.getObservabilityDescriptor(resource.get(0))
-                  .getSupportedActions());
-
-      // Input validation
-      if (input != null) {
-        return new FilteringRules()
-            .withResources(resource)
-            .withRules(buildRulesList(supportedFilters, input.getFilters()))
-            .withActions(buildRulesList(supportedActions, input.getActions()));
-      }
+    if (compiled && input != null) {
+      FilterResourceDescriptor source =
+          sourceOf(resource.get(0), alertType, withWhatEarlierReleasesOffered);
+      built
+          .withRules(
+              buildRulesList(
+                  buildFilteringRulesMap(source.getSupportedFilters()), input.getFilters()))
+          .withActions(triggersOf(source, alertType, input));
+    } else if (compiled) {
+      sourceOf(resource.get(0), alertType, withWhatEarlierReleasesOffered);
     }
-    return new FilteringRules()
-        .withResources(resource)
-        .withRules(Collections.emptyList())
-        .withActions(Collections.emptyList());
+    return built;
+  }
+
+  // Only Observability alerts have triggers; a Notification alert stores an empty list.
+  private static List<EventFilterRule> triggersOf(
+      FilterResourceDescriptor source,
+      CreateEventSubscription.AlertType alertType,
+      AlertFilteringInput input) {
+    return alertType.equals(CreateEventSubscription.AlertType.OBSERVABILITY)
+        ? buildRulesList(buildFilteringRulesMap(source.getSupportedActions()), input.getActions())
+        : Collections.emptyList();
+  }
+
+  private static FilterResourceDescriptor sourceOf(
+      String name, CreateEventSubscription.AlertType alertType, boolean withEarlierReleases) {
+    FilterResourceDescriptor source;
+    if (withEarlierReleases) {
+      source = EventsSubscriptionRegistry.getBuildableDescriptor(alertType, name);
+    } else if (alertType.equals(CreateEventSubscription.AlertType.OBSERVABILITY)) {
+      source = EventsSubscriptionRegistry.getObservabilityDescriptor(name);
+    } else {
+      source = EventsSubscriptionRegistry.getEntityNotificationDescriptor(name);
+    }
+    return source;
   }
 
   private static Map<String, EventFilterRule> buildFilteringRulesMap(
