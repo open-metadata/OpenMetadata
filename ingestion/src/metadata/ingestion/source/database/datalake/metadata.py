@@ -281,7 +281,7 @@ class DatalakeSource(DatabaseServiceSource):
                 display_name = None
                 if len(table_name) > 256:
                     display_name = table_name
-                    table_name = md5(table_name.encode()).hexdigest()
+                    table_name = md5(table_name.encode(), usedforsecurity=False).hexdigest()
                     logger.debug(
                         f"Table name exceeds 256 characters. Using MD5 hash [{table_name}] "
                         f"as name and storing the full path in displayName: [{display_name}]"
