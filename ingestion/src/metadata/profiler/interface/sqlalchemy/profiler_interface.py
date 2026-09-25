@@ -297,7 +297,9 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     sample_columns[column.key] if column.key in sample_columns else sa_column(column.name, column.type)
                 )
                 subquery = (
-                    session.query(Count(sample_column).fn().label(UNIQUE_COUNT_GROUP_ALIAS))
+                    session.query(
+                        Count(sample_column).fn().label(UNIQUE_COUNT_GROUP_ALIAS)  # pyright: ignore[reportArgumentType]
+                    )
                     .select_from(sample)
                     .group_by(sample_column)
                     .subquery()
