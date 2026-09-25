@@ -1,4 +1,4 @@
-CREATE DATABASE openmetadata_db;
+CREATE DATABASE openmetadata_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE airflow_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER 'openmetadata_user'@'%' IDENTIFIED BY 'openmetadata_password';
 CREATE USER 'airflow_user'@'%' IDENTIFIED BY 'airflow_pass';

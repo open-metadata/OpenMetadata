@@ -14,10 +14,13 @@
 package org.openmetadata.service.migration.v210;
 
 import static org.mockito.Answers.RETURNS_DEEP_STUBS;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import org.jdbi.v3.core.Handle;
@@ -45,7 +48,9 @@ class IngestionPipelineMigrationEntryPointTest {
       throws Exception {
     MigrationProcessImpl migration = createMigration.apply(mock(MigrationFile.class));
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
-    setField(migration, "handle", mock(Handle.class, RETURNS_DEEP_STUBS));
+    Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
+    when(handle.createQuery(anyString()).mapTo(String.class).list()).thenReturn(List.of());
+    setField(migration, "handle", handle);
     setField(migration, "collectionDAO", collectionDAO);
 
     try (MockedStatic<ConversationMigration> conversationMigration =
