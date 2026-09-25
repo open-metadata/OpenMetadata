@@ -110,6 +110,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.OM;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
@@ -7584,6 +7585,25 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertNotNull(stored.getTablePartition());
     assertEquals("event_date", stored.getTablePartition().getColumns().getFirst().getColumnName());
     assertTrue(stored.getVersion() > table.getVersion());
+  }
+
+  @Test
+  void patch_tablePartition_unknownColumn_400(TestNamespace ns) {
+    Table table = createAsIngestionBot(ns, "patch_bad_partition", TableType.Regular, null);
+
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            patchAsAdmin(
+                table,
+                """
+                [{"op": "add", "path": "/tablePartition", "value": {"columns": [
+                  {"columnName": "no_such_col", "intervalType": "TIME-UNIT", "interval": "daily"}]}}]
+                """));
+
+    Table stored =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "tablePartition");
+    assertNull(stored.getTablePartition());
   }
 
   private Table createAsIngestionBot(

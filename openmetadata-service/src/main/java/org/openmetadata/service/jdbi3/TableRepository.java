@@ -2261,11 +2261,12 @@ public class TableRepository extends EntityRepository<Table> {
           () -> updateTableConstraints(origTable, updatedTable, operation));
       compareAndUpdate(
           "tablePartition",
-          () ->
-              recordChange(
-                  "tablePartition",
-                  origTable.getTablePartition(),
-                  updatedTable.getTablePartition()));
+          () -> {
+            DatabaseUtil.validateTablePartition(
+                updatedTable.getColumns(), updatedTable.getTablePartition());
+            recordChange(
+                "tablePartition", origTable.getTablePartition(), updatedTable.getTablePartition());
+          });
       compareAndUpdate(
           "sourceUrl",
           () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
