@@ -55,6 +55,34 @@ class IndexMappingNestedFieldConsistencyTest {
   }
 
   @Test
+  void glossaryTermSynonymMappingsMustSupportBoostedFields() {
+    List<String> violations = new ArrayList<>();
+    for (String language : LANGUAGES) {
+      String entity = "glossaryTerm[" + language + "]";
+      JsonNode mapping = allMappings.get(entity);
+      JsonNode properties = mapping == null ? null : getTopLevelProperties(mapping);
+      JsonNode synonyms = properties == null ? null : properties.get("synonyms");
+      if (synonyms == null) {
+        violations.add(entity + " missing synonyms");
+        continue;
+      }
+      if (!"om_analyzer".equals(synonyms.path("analyzer").asText())) {
+        violations.add(entity + " synonyms analyzer");
+      }
+      JsonNode fields = synonyms.path("fields");
+      if (!"keyword".equals(fields.path("keyword").path("type").asText())) {
+        violations.add(entity + " synonyms.keyword type");
+      }
+      JsonNode ngram = fields.path("ngram");
+      if (!"text".equals(ngram.path("type").asText())
+          || !"om_ngram".equals(ngram.path("analyzer").asText())) {
+        violations.add(entity + " synonyms.ngram mapping");
+      }
+    }
+    assertTrue(violations.isEmpty(), "Glossary synonym mapping gaps: " + violations);
+  }
+
+  @Test
   void extensionFieldMustBeDisabledObjectInAllIndices() {
     List<String> violations = new ArrayList<>();
     for (Map.Entry<String, JsonNode> entry : allMappings.entrySet()) {
