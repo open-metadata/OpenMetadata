@@ -13,9 +13,7 @@
 
 package org.openmetadata.service.apps.bundles.changeEvent.slack;
 
-import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.SLACK;
 import static org.openmetadata.service.util.SubscriptionUtil.deliverTestWebhookMessage;
-import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTarget;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
@@ -25,7 +23,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Invocation;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -37,10 +34,13 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
+import org.openmetadata.service.apps.bundles.changeEvent.IsolatedSends;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.subscription.channels.builtin.HttpWebhookTransport;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.SlackMessageDecorator;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
+import org.openmetadata.service.notifications.EventContent;
 import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
 import org.openmetadata.service.notifications.channels.NotificationMessage;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
@@ -57,49 +57,72 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
 
   public SlackEventPublisher(
       EventSubscription eventSubscription, SubscriptionDestination subscriptionDest) {
-    if (subscriptionDest.getType() == SLACK) {
-      this.eventSubscription = eventSubscription;
-      this.subscriptionDestination = subscriptionDest;
-      this.webhook = JsonUtils.convertValue(subscriptionDest.getConfig(), Webhook.class);
-      this.client = getClient(subscriptionDest.getTimeout(), subscriptionDest.getReadTimeout());
-      this.messageEngine =
-          new HandlebarsNotificationMessageEngine(
-              (NotificationTemplateRepository)
-                  Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE));
-    } else {
-      throw new IllegalArgumentException("Slack Alert Invoked with Illegal Type and Settings.");
-    }
+    this.eventSubscription = eventSubscription;
+    this.subscriptionDestination = subscriptionDest;
+    this.webhook = JsonUtils.convertValue(subscriptionDest.getConfig(), Webhook.class);
+    this.client =
+        HttpWebhookTransport.shared()
+            .clientFor(subscriptionDest.getTimeout(), subscriptionDest.getReadTimeout());
+    this.messageEngine =
+        new HandlebarsNotificationMessageEngine(
+            (NotificationTemplateRepository)
+                Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE));
   }
 
   @Override
   public void sendMessage(ChangeEvent event, Set<Recipient> recipients)
       throws EventPublisherException {
     try {
-      NotificationMessage message =
-          messageEngine.generateMessage(event, eventSubscription, subscriptionDestination);
-      SlackMessage slackMessage = (SlackMessage) message;
+      String transformedJson = (String) prepare(event);
 
-      String json = JsonUtils.pojoToJsonIgnoreNull(slackMessage);
-      String transformedJson = convertCamelCaseToSnakeCase(json);
-
-      List<Invocation.Builder> targets =
+      List<WebhookRecipient> webhookRecipients =
           recipients.stream()
               .filter(WebhookRecipient.class::isInstance)
               .map(WebhookRecipient.class::cast)
-              .map(r -> r.getConfiguredRequest(client, transformedJson))
-              .filter(Objects::nonNull)
               .toList();
 
-      for (Invocation.Builder actionTarget : targets) {
-        postWebhookMessage(this, actionTarget, transformedJson);
-      }
+      IsolatedSends.sendToEach(
+          webhookRecipients, this, recipient -> sendTo(recipient, transformedJson));
     } catch (Exception e) {
       String message =
-          CatalogExceptionMessage.eventPublisherFailedToPublish(SLACK, event, e.getMessage());
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              subscriptionDestination.getType(), event, e.getMessage());
       LOG.error(message);
       throw new EventPublisherException(
-          CatalogExceptionMessage.eventPublisherFailedToPublish(SLACK, e.getMessage()),
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              subscriptionDestination.getType(), e.getMessage()),
           Pair.of(subscriptionDestination.getId(), event));
+    }
+  }
+
+  // Rendered once for an event, whatever the number of targets it is sent to.
+  private String payloadOf(ChangeEvent event, EventContent content) {
+    NotificationMessage message =
+        messageEngine.format(content.by(messageEngine), subscriptionDestination);
+    return convertCamelCaseToSnakeCase(JsonUtils.pojoToJsonIgnoreNull((SlackMessage) message));
+  }
+
+  @Override
+  public Object prepare(ChangeEvent event) {
+    return prepare(event, new EventContent(event, eventSubscription));
+  }
+
+  @Override
+  public Object prepare(ChangeEvent event, EventContent content) {
+    return payloadOf(event, content);
+  }
+
+  @Override
+  public void sendTo(Object prepared, Recipient recipient) throws EventPublisherException {
+    if (recipient instanceof WebhookRecipient webhookRecipient) {
+      sendTo(webhookRecipient, (String) prepared);
+    }
+  }
+
+  private void sendTo(WebhookRecipient recipient, String json) throws EventPublisherException {
+    Invocation.Builder target = recipient.getConfiguredRequest(client, json);
+    if (target != null) {
+      postWebhookMessage(this, target, json);
     }
   }
 
@@ -113,7 +136,9 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
       json = convertCamelCaseToSnakeCase(json);
       deliverTestWebhookMessage(this, getTarget(client, webhook, json), json);
     } catch (Exception e) {
-      String message = CatalogExceptionMessage.eventPublisherFailedToPublish(SLACK, e.getMessage());
+      String message =
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              subscriptionDestination.getType(), e.getMessage());
       LOG.error(message);
       throw new EventPublisherException(message);
     }
@@ -169,10 +194,6 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
     return subscriptionDestination.getEnabled();
   }
 
-  public void close() {
-    if (null != client) {
-      LOG.info("Closing Slack Client");
-      client.close();
-    }
-  }
+  // The client belongs to the transport, which closes it when the server shuts down.
+  public void close() {}
 }

@@ -15,55 +15,41 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.OFFSET_EXTENSION;
-import static org.openmetadata.service.events.subscription.AlertUtil.validateAndBuildFilteringConditions;
 import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
+import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
-import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
-import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.change.ChangeSource;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
+import org.openmetadata.service.events.scheduled.AlertJobs;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
-import org.openmetadata.service.events.subscription.AlertUtil;
-import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.events.subscription.AlertDefinitionPolicy;
+import org.openmetadata.service.events.subscription.DestinationValidation;
+import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
-import org.openmetadata.service.util.URLValidator;
 
 @Slf4j
 public class EventSubscriptionRepository extends EntityRepository<EventSubscription> {
-  private static final EnumSet<SubscriptionDestination.SubscriptionType> WEBHOOK_TYPES =
-      EnumSet.of(
-          SubscriptionDestination.SubscriptionType.WEBHOOK,
-          SubscriptionDestination.SubscriptionType.SLACK,
-          SubscriptionDestination.SubscriptionType.MS_TEAMS,
-          SubscriptionDestination.SubscriptionType.G_CHAT);
-
   static final String ALERT_PATCH_FIELDS =
       "trigger,enabled,batchSize,notificationTemplate,destinations";
   static final String ALERT_UPDATE_FIELDS =
@@ -83,23 +69,58 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   public void setFields(
       EventSubscription entity, Fields fields, RelationIncludes relationIncludes) {
     if (fields.contains("statusDetails") && !entity.getDestinations().isEmpty()) {
-      List<SubscriptionDestination> destinations = new ArrayList<>();
-      entity
-          .getDestinations()
-          .forEach(
-              destination ->
-                  destinations.add(
-                      destination.withStatusDetails(
-                          EventSubscriptionScheduler.getInstance()
-                              .getStatusForEventSubscription(
-                                  entity.getId(), destination.getId()))));
-      entity.withDestinations(destinations);
+      entity.withDestinations(
+          new ArrayList<>(EventSubscriptionScheduler.getInstance().destinationsWithStatus(entity)));
     }
     entity.setNotificationTemplate(getTemplateReference(entity));
   }
 
   @Override
   public void clearFields(EventSubscription entity, Fields fields) {}
+
+  // Every save path converges through these hooks, after its commit, so a saved alert and its
+  // job cannot drift apart, whoever saved it.
+  @Override
+  protected void postCreate(EventSubscription entity) {
+    super.postCreate(entity);
+    AlertJobs.convergeAfterCommit(entity.getId());
+  }
+
+  @Override
+  protected void postCreate(List<EventSubscription> entities) {
+    super.postCreate(entities);
+    entities.forEach(entity -> AlertJobs.convergeAfterCommit(entity.getId()));
+  }
+
+  @Override
+  protected void postUpdate(EventSubscription original, EventSubscription updated) {
+    super.postUpdate(original, updated);
+    AlertJobs.convergeAfterCommit(updated.getId());
+  }
+
+  // Every hard delete reaches this, inside the delete's own transaction, including deleteInternal,
+  // which skips postDelete. The job goes once the row is gone.
+  @Override
+  protected void entitySpecificCleanup(EventSubscription entity) {
+    retire(entity.getId());
+  }
+
+  // A cascade from a parent calls this outside any transaction and before the rows are deleted,
+  // and postDelete once they are gone, so the alert is retired there.
+  @Override
+  protected void bulkEntitySpecificCleanup(List<EventSubscription> entities, String deletedBy) {}
+
+  // An alert cannot be soft deleted, so every delete that reaches here removed the row.
+  @Override
+  protected void postDelete(EventSubscription entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
+    retire(entity.getId());
+  }
+
+  private static void retire(UUID alertId) {
+    AlertRecord.forget(alertId);
+    AlertJobs.convergeAfterCommit(alertId);
+  }
 
   @Override
   public void setInheritedFields(EventSubscription entity, Fields fields) {
@@ -137,10 +158,11 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
                   listOrEmpty(filter.getArguments()).sort(Comparator.comparing(Argument::getName)));
     }
 
-    if (update && !nullOrEmpty(entity.getFilteringRules())) {
-      entity.setFilteringRules(
-          validateAndBuildFilteringConditions(
-              entity.getFilteringRules().getResources(), entity.getAlertType(), entity.getInput()));
+    // An update is validated by the updater, which knows what the alert looked like before.
+    if (!update) {
+      requireLoadableConsumer(entity);
+      DestinationValidation.ofANewAlert(entity);
+      AlertDefinitionPolicy.ofNew(entity).prepareNew(entity);
     }
 
     // Validate custom template if assigned
@@ -155,66 +177,15 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
             "System templates cannot be assigned to EventSubscriptions. Please use a USER template or create a custom one.");
       }
     }
-
-    validateDestinationEndpoints(entity, update);
-    validateFilterRules(entity);
   }
 
-  /**
-   * Runs for create, PUT and PATCH alike, and for every category rather than only External, so an
-   * endpoint cannot be introduced through a path that skips the resource's own checks. An endpoint
-   * already stored is left alone: refusing it here would make an existing subscription uneditable
-   * after an upgrade, and the request it would produce is refused when it is dispatched anyway.
-   */
-  private void validateDestinationEndpoints(EventSubscription entity, boolean update) {
-    Set<String> stored = update ? storedEndpoints(entity.getId()) : Set.of();
-    for (SubscriptionDestination destination : listOrEmpty(entity.getDestinations())) {
-      String endpoint = webhookEndpoint(destination);
-      if (endpoint != null && !stored.contains(endpoint)) {
-        URLValidator.validateURL(endpoint);
-      }
-    }
-  }
-
-  private Set<String> storedEndpoints(UUID id) {
-    if (id == null) {
-      return Set.of();
-    }
-    try {
-      EventSubscription existing = find(id, Include.ALL);
-      return listOrEmpty(existing.getDestinations()).stream()
-          .map(EventSubscriptionRepository::webhookEndpoint)
-          .filter(Objects::nonNull)
-          .collect(Collectors.toSet());
-    } catch (EntityNotFoundException e) {
-      // Nothing stored to compare against, so every endpoint in the request is new.
-      return Set.of();
-    }
-  }
-
-  private static String webhookEndpoint(SubscriptionDestination destination) {
-    if (!WEBHOOK_TYPES.contains(destination.getType()) || destination.getConfig() == null) {
-      return null;
-    }
-    Webhook webhook = JsonUtils.convertValue(destination.getConfig(), Webhook.class);
-    return webhook == null || webhook.getEndpoint() == null
-        ? null
-        : webhook.getEndpoint().toString();
-  }
-
-  private void validateFilterRules(EventSubscription entity) {
-    // Resolve JSON blobs into Rule object and perform schema based validation
-    if (entity.getFilteringRules() != null) {
-      List<EventFilterRule> rules = entity.getFilteringRules().getRules();
-      // Validate all the expressions in the rule
-      for (EventFilterRule rule : rules) {
-        AlertUtil.validateExpression(rule.getCondition(), Boolean.class);
-      }
-      rules.sort(Comparator.comparing(EventFilterRule::getName));
-      if (!rules.isEmpty()) {
-        // Validate the combined condition too (each rule is validated above), so a bad
-        // combination is caught here instead of when it is first compiled at runtime.
-        AlertUtil.validateExpression(AlertUtil.buildCompleteCondition(rules), Boolean.class);
+  // A save naming a consumer this server cannot load fails here, not at every tick.
+  private static void requireLoadableConsumer(EventSubscription alert) {
+    if (alert.getClassName() != null) {
+      try {
+        Class.forName(alert.getClassName()).asSubclass(AbstractEventConsumer.class);
+      } catch (ClassNotFoundException | ClassCastException e) {
+        throw new BadRequestException("Consumer class cannot be loaded: " + alert.getClassName());
       }
     }
   }
@@ -226,28 +197,13 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
         .forEach(destination -> destination.withId(UUID.randomUUID()));
   }
 
+  /**
+   * Skips the backlog: the position and the watermark move to now. A tick that is running at this
+   * moment loses its compare-and-set on the position and keeps the skip.
+   */
   public EventSubscriptionOffset syncEventSubscriptionOffset(String eventSubscriptionName) {
     EventSubscription eventSubscription = getByName(null, eventSubscriptionName, getFields("*"));
-    long latestOffset = daoCollection.changeEventDAO().getLatestOffset();
-    long currentTime = System.currentTimeMillis();
-    // Upsert Offset
-    EventSubscriptionOffset eventSubscriptionOffset =
-        new EventSubscriptionOffset()
-            .withCurrentOffset(latestOffset)
-            .withStartingOffset(latestOffset)
-            .withStartingTimestamp(currentTime)
-            .withTimestamp(currentTime);
-
-    Entity.getCollectionDAO()
-        .eventSubscriptionDAO()
-        .upsertSubscriberExtension(
-            eventSubscription.getId().toString(),
-            OFFSET_EXTENSION,
-            "eventSubscriptionOffset",
-            JsonUtils.pojoToJson(eventSubscriptionOffset));
-
-    EventSubscriptionScheduler.getInstance().updateEventSubscription(eventSubscription);
-    return eventSubscriptionOffset;
+    return AlertRecord.skipBacklog(eventSubscription.getId());
   }
 
   @Override
@@ -303,6 +259,12 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     public EventSubscriptionUpdater(
         EventSubscription original, EventSubscription updated, Operation operation) {
       super(original, updated, operation);
+      // Once, against the alert as it is stored, before any comparison: edits merged within the
+      // session window are later compared with an older version, and only the final definition
+      // may be judged.
+      AlertDefinitionPolicy.ofUpdate(original, updated)
+          .settle(original, updated, operation.isPut());
+      DestinationValidation.ofWhatChanged(original, updated);
     }
 
     @Override

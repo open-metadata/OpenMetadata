@@ -25,6 +25,10 @@ import {
   SubscriptionCategory,
   SubscriptionType,
 } from '../../../generated/events/eventSubscription';
+import {
+  AlertSelection,
+  AlertSelectionProvider,
+} from '../../../hooks/useAlertSelection';
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DestinationFormItem from './DestinationFormItem.component';
@@ -171,10 +175,23 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
+// The page provides the chosen sources; the destination form holds only its own fields.
 function renderWithForm(
   ui: React.ReactElement,
-  defaultValues: Record<string, unknown> = {}
+  { resources = [], ...defaultValues }: Record<string, unknown> = {}
 ) {
+  const selection = {
+    sources: resources as string[],
+    support: {},
+    capabilities: { loading: false },
+    loading: false,
+    search: {
+      indexes: [],
+      containerEntities: [],
+      byName: jest.fn(),
+      byId: jest.fn(),
+    },
+  } as AlertSelection;
   const methodsRef: {
     current: UseFormReturn<Record<string, unknown>> | null;
   } = { current: null };
@@ -184,7 +201,11 @@ function renderWithForm(
 
     methodsRef.current = methods;
 
-    return <FormProvider {...methods}>{children}</FormProvider>;
+    return (
+      <AlertSelectionProvider value={selection}>
+        <FormProvider {...methods}>{children}</FormProvider>
+      </AlertSelectionProvider>
+    );
   }
 
   const result = render(ui, { wrapper: Wrapper });

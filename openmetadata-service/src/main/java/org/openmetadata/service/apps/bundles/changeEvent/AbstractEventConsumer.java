@@ -14,81 +14,66 @@
 package org.openmetadata.service.apps.bundles.changeEvent;
 
 import static org.openmetadata.service.events.subscription.AlertUtil.getFilteredEvents;
-import static org.openmetadata.service.events.subscription.AlertUtil.getStartingOffset;
 
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.openmetadata.schema.api.events.CreateEventSubscription;
-import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.EventSubscription;
-import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FailedEvent;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType;
+import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.scheduled.AlertJobs;
+import org.openmetadata.service.events.subscription.AlertTelemetry;
+import org.openmetadata.service.events.subscription.AlertingSettings;
+import org.openmetadata.service.events.subscription.channels.ChannelResolution;
+import org.openmetadata.service.events.subscription.ledger.AlertLedger;
+import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
+import org.openmetadata.service.events.subscription.targets.TargetResolver;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
+import org.openmetadata.service.notifications.EventContent;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.util.DIContainer;
 import org.openmetadata.service.util.PerRequestContextCleaner;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
-import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
-import org.quartz.PersistJobDataAfterExecution;
+import org.quartz.JobExecutionException;
+import org.quartz.SchedulerException;
 
 @Slf4j
 @DisallowConcurrentExecution
-@PersistJobDataAfterExecution
 public abstract class AbstractEventConsumer
     implements Alert<ChangeEvent>, Consumer<ChangeEvent>, Job {
   public static final String DESTINATION_MAP_KEY = "SubscriptionMapKey";
-  public static final String ALERT_OFFSET_KEY = "alertOffsetKey";
-  public static final String ALERT_PENDING_GAP_SINCE_KEY = "alertPendingGapSinceKey";
-  public static final String ALERT_INFO_KEY = "alertInfoKey";
-  public static final String OFFSET_EXTENSION = "eventSubscription.Offset";
-  public static final String METRICS_EXTENSION = "eventSubscription.metrics";
+  public static final String OFFSET_EXTENSION = LedgerKeys.POSITION;
+  public static final String METRICS_EXTENSION = LedgerKeys.COUNTERS;
   public static final String FAILED_EVENT_EXTENSION = "eventSubscription.failedEvent";
   static final long GAP_RESOLVE_TIMEOUT_MS = 30_000;
+  private static final int MAX_FAILURE_REASON_LENGTH = 2000;
+  private static final int COMMIT_AFTER_EVERY_EVENT_AT = 3;
+  private static final int SET_ASIDE_FIRST_EVENT_AT = 6;
   protected final DIContainer dependencies;
-  private long offset = -1;
-  // Highest change_event.offset that is safe to commit after the last poll.
-  private long lastReadOffset = -1;
-  private long pendingGapSince;
-  private boolean gapStateChanged;
-  private long startingOffset = -1;
-  private Long startingTimestamp;
+  protected AlertLedger ledger;
+  // Offsets of the events the last poll returned, in the same order.
+  private List<Long> polledOffsets = List.of();
+  private TickStopSignal stopSignal;
+  private boolean stoppedEarly;
 
-  private AlertMetrics alertMetrics;
-  // Set when a consumer that makes its own deliveries records one, so the tick still persists
-  // metrics even though no change_event offset moved.
-  private boolean metricsChanged;
-
-  // Collect successful events during HTTP phase, batch write in commit phase.
-  // This reduces connection pool contention from N connections to 1.
-  // Thread-safety note: ArrayList is not thread-safe, but this is safe because
-  // @DisallowConcurrentExecution ensures Quartz won't run the same job concurrently,
-  // so this instance is only accessed by a single thread at a time.
-  private final List<ChangeEvent> successfulEvents = new ArrayList<>();
-
-  @Getter @Setter private JobDetail jobDetail;
   protected EventSubscription eventSubscription;
   protected Map<UUID, Destination<ChangeEvent>> destinationMap;
 
@@ -96,54 +81,10 @@ public abstract class AbstractEventConsumer
     this.dependencies = dependencies;
   }
 
-  private void init(JobExecutionContext context) {
-    this.jobDetail = context.getJobDetail();
-    try {
-      Object alertInfoValue = context.getJobDetail().getJobDataMap().get(ALERT_INFO_KEY);
-      if (alertInfoValue == null) {
-        LOG.error("ALERT_INFO_KEY not found in JobDataMap");
-        return;
-      }
+  private TickHealth healthOfThisTick = new TickHealth();
 
-      if (alertInfoValue instanceof String subscriptionJson) {
-        this.eventSubscription = JsonUtils.readValue(subscriptionJson, EventSubscription.class);
-        if (this.eventSubscription == null) {
-          LOG.error("Failed to deserialize EventSubscription from JSON: {}", subscriptionJson);
-          return;
-        }
-      } else if (alertInfoValue instanceof EventSubscription subscription) {
-        this.eventSubscription = subscription;
-      } else {
-        LOG.error(
-            "Unexpected type for ALERT_INFO_KEY: {}. Expected String or EventSubscription.",
-            alertInfoValue.getClass().getName());
-        return;
-      }
-
-      EventSubscriptionOffset eventSubscriptionOffset = loadInitialOffset(context);
-      this.offset = eventSubscriptionOffset.getCurrentOffset();
-      this.startingOffset = eventSubscriptionOffset.getStartingOffset();
-      this.startingTimestamp = eventSubscriptionOffset.getStartingTimestamp();
-      this.lastReadOffset = this.offset;
-      this.pendingGapSince = loadPendingGapSince();
-      this.gapStateChanged = false;
-      this.alertMetrics = loadInitialMetrics();
-      this.destinationMap = loadDestinationsMap(context);
-
-      // We do not log warning for custom alert type. eg: Reverse Metadata
-      if (this.destinationMap.isEmpty()
-          && this.eventSubscription.getAlertType() != CreateEventSubscription.AlertType.CUSTOM) {
-        LOG.warn(
-            "EventSubscription {} has no destinations configured",
-            this.eventSubscription.getName());
-      }
-
-      this.doInit(context);
-    } catch (Exception e) {
-      LOG.error("Failed to initialize EventConsumer from JobDataMap", e);
-      this.eventSubscription = null;
-    }
-  }
+  /** Which kind of consumer this is. The kind decides what a tick reads and guarantees. */
+  protected abstract ConsumerKind kind();
 
   protected void doInit(JobExecutionContext context) {
     // To be implemented by the Subclass if needed
@@ -172,84 +113,31 @@ public abstract class AbstractEventConsumer
 
     FailureTowards source = errorOnSub ? FailureTowards.SUBSCRIBER : FailureTowards.PUBLISHER;
 
-    Entity.getCollectionDAO()
-        .eventSubscriptionDAO()
-        .upsertFailedEvent(
-            eventSubscription.getId().toString(),
-            String.format("%s-%s", FAILED_EVENT_EXTENSION, changeEvent.getId()),
-            JsonUtils.pojoToJson(
-                new FailedEvent()
-                    .withFailingSubscriptionId(failingSubscriptionId)
-                    .withChangeEvent(changeEvent)
-                    .withRetriesLeft(eventSubscription.getRetries())
-                    .withReason(ex.getMessage())
-                    .withTimestamp(System.currentTimeMillis())),
-            source.toString());
+    ledger.failure(
+        String.format("%s-%s", FAILED_EVENT_EXTENSION, changeEvent.getId()),
+        JsonUtils.pojoToJson(
+            new FailedEvent()
+                .withFailingSubscriptionId(failingSubscriptionId)
+                .withChangeEvent(changeEvent)
+                .withRetriesLeft(eventSubscription.getRetries())
+                .withReason(ex.getMessage())
+                .withTimestamp(System.currentTimeMillis())),
+        source.toString());
   }
 
-  private EventSubscriptionOffset loadInitialOffset(JobExecutionContext context) {
-    Object offsetValue = jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY);
-    if (offsetValue != null) {
-      EventSubscriptionOffset offset = null;
-      if (offsetValue instanceof String offsetJson) {
-        offset = JsonUtils.readValue(offsetJson, EventSubscriptionOffset.class);
-      } else if (offsetValue instanceof EventSubscriptionOffset existingOffset) {
-        offset = existingOffset;
-      }
-      if (offset != null) {
-        return offset;
-      }
-    }
-
-    EventSubscriptionOffset dbOffset = getStartingOffset(eventSubscription.getId());
-    if (dbOffset != null) {
-      context.getJobDetail().getJobDataMap().put(ALERT_OFFSET_KEY, JsonUtils.pojoToJson(dbOffset));
-      return dbOffset;
-    }
-
-    LOG.warn("No offset found for subscription {}, using default", eventSubscription.getId());
-    return getStartingOffset(eventSubscription.getId());
-  }
-
-  private long loadPendingGapSince() {
-    Object value = jobDetail.getJobDataMap().get(ALERT_PENDING_GAP_SINCE_KEY);
-    if (value instanceof Number number) {
-      return number.longValue();
-    }
-    if (value instanceof String stringValue && !stringValue.isBlank()) {
-      try {
-        return Long.parseLong(stringValue);
-      } catch (NumberFormatException e) {
-        LOG.warn(
-            "Invalid pending gap timestamp '{}' for event subscription {}",
-            stringValue,
-            eventSubscription.getId());
-      }
-    }
-    return 0L;
-  }
-
-  private Map<UUID, Destination<ChangeEvent>> loadDestinationsMap(JobExecutionContext context) {
-    Map<UUID, Destination<ChangeEvent>> dMap = new HashMap<>();
+  private Map<UUID, Destination<ChangeEvent>> loadDestinationsMap() {
+    // In the order the alert declares them: that order decides which destination sends first and
+    // which one supplies the configuration when several share a type.
+    Map<UUID, Destination<ChangeEvent>> dMap = new LinkedHashMap<>();
     if (eventSubscription.getDestinations() == null) {
       return dMap;
     }
     for (SubscriptionDestination subscriptionDest : eventSubscription.getDestinations()) {
+      subscriptionDest.setStatusDetails(null);
       dMap.put(
           subscriptionDest.getId(), AlertFactory.getAlert(eventSubscription, subscriptionDest));
     }
     return dMap;
-  }
-
-  private AlertMetrics loadInitialMetrics() {
-    String json =
-        Entity.getCollectionDAO()
-            .eventSubscriptionDAO()
-            .getSubscriberExtension(eventSubscription.getId().toString(), METRICS_EXTENSION);
-    if (json != null) {
-      return JsonUtils.readValue(json, AlertMetrics.class);
-    }
-    return new AlertMetrics().withTotalEvents(0).withFailedEvents(0).withSuccessEvents(0);
   }
 
   @Override
@@ -258,7 +146,7 @@ public abstract class AbstractEventConsumer
       return;
     }
     Map<ChangeEvent, Set<UUID>> filteredEvents =
-        getFilteredEvents(eventSubscription, events, startingTimestamp, this::deadLetterEvent);
+        getFilteredEvents(eventSubscription, events, ledger.watermark(), this::deadLetterEvent);
     RecipientResolver resolver = new RecipientResolver();
     int successDeliveries = 0;
     int failedDeliveries = 0;
@@ -268,13 +156,12 @@ public abstract class AbstractEventConsumer
       // Record once per (event, subscription): the table has no destination dimension, so
       // recording per type would duplicate rows and break Postgres ON CONFLICT.
       if (result.delivered()) {
-        successfulEvents.add(eventWithReceivers.getKey());
+        ledger.delivered(eventWithReceivers.getKey());
       }
       successDeliveries += result.successCount();
       failedDeliveries += result.failedCount();
     }
-    alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + successDeliveries);
-    alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + failedDeliveries);
+    ledger.channelOutcomes(successDeliveries, failedDeliveries);
   }
 
   /** An event we could not even filter is a publisher-side failure, so record it as one. */
@@ -293,141 +180,95 @@ public abstract class AbstractEventConsumer
 
   private EventDeliveryResult publishEvent(
       ChangeEvent event, Set<UUID> destinationIds, RecipientResolver resolver) {
-    // Group destinations by type to enable cross-destination recipient deduplication
-    Map<SubscriptionType, List<Destination<ChangeEvent>>> destinationsByType =
-        groupDestinationsByType(destinationIds);
-    int successCount = 0;
-    int failedCount = 0;
-    for (Map.Entry<SubscriptionType, List<Destination<ChangeEvent>>> entry :
-        destinationsByType.entrySet()) {
-      if (sendToDestinationType(event, entry.getValue(), resolver)) {
-        successCount++;
-      } else {
-        failedCount++;
-      }
+    // Group destinations by channel to enable cross-destination recipient deduplication
+    Map<String, List<Destination<ChangeEvent>>> destinationsByChannel =
+        groupDestinationsByChannel(destinationIds);
+    List<EventPublisherException> failures = new ArrayList<>();
+    // Rendered when the first channel that renders asks, and shared by the alert's other channels.
+    EventContent content = new EventContent(event, eventSubscription);
+    for (List<Destination<ChangeEvent>> sameChannel : destinationsByChannel.values()) {
+      sendToDestinationType(event, content, sameChannel, resolver).ifPresent(failures::add);
     }
-    return new EventDeliveryResult(successCount > 0, successCount, failedCount);
+    recordSendFailures(event, failures);
+    int successCount = destinationsByChannel.size() - failures.size();
+    return new EventDeliveryResult(successCount > 0, successCount, failures.size());
   }
 
   private record EventDeliveryResult(boolean delivered, int successCount, int failedCount) {}
 
-  private boolean sendToDestinationType(
-      ChangeEvent event, List<Destination<ChangeEvent>> destinations, RecipientResolver resolver) {
+  private Optional<EventPublisherException> sendToDestinationType(
+      ChangeEvent event,
+      EventContent content,
+      List<Destination<ChangeEvent>> destinations,
+      RecipientResolver resolver) {
     Destination<ChangeEvent> publisher = destinations.getFirst();
-    // Resolve recipients from all destinations of this type for deduplication
-    Set<Recipient> recipients = Set.of();
-    if (publisher.requiresRecipients()) {
-      List<SubscriptionDestination> subDestinations =
-          destinations.stream().map(Destination::getSubscriptionDestination).toList();
-      recipients = resolver.resolveRecipients(event, subDestinations);
+    EventPublisherException failure = null;
+    try {
+      failure = dispatchOf(destinations, resolver).send(event, content).orElse(null);
+    } catch (EventPublisherException e) {
+      LOG.error("Failed to send alert: {}", e.getMessage());
+      failure = e;
+    } catch (RuntimeException e) {
+      // Anything unexpected costs this channel for this event, never the rest of the batch.
+      LOG.error("Unexpected error sending alert for change event {}", event.getId(), e);
+      failure = unexpectedSendFailure(publisher, event, e);
     }
-    // Send via primary destination only, with deduplicated recipients (one send per type).
-    // Empty recipients is treated as successful (no-op send).
-    boolean status = true;
-    if (!publisher.requiresRecipients() || !recipients.isEmpty()) {
-      try {
-        publisher.sendMessage(event, recipients);
-      } catch (EventPublisherException e) {
-        LOG.error("Failed to send alert: {}", e.getMessage());
-        handleFailedEvent(e, true);
-        status = false;
-      }
-    }
-    return status;
+    return Optional.ofNullable(failure);
   }
 
-  private Map<SubscriptionType, List<Destination<ChangeEvent>>> groupDestinationsByType(
+  // One failure row per event and alert. It names the first failing destination and lists every
+  // one, so a second failure on the same event adds detail and never overwrites the first.
+  private void recordSendFailures(ChangeEvent event, List<EventPublisherException> failures) {
+    if (failures.size() == 1) {
+      recordSendFailure(failures.getFirst());
+    } else if (failures.size() > 1) {
+      String everyReason =
+          failures.stream().map(Throwable::getMessage).collect(Collectors.joining("; "));
+      UUID firstFailing = failures.getFirst().getChangeEventWithSubscription().getLeft();
+      recordSendFailure(
+          new EventPublisherException(
+              StringUtils.abbreviate(everyReason, MAX_FAILURE_REASON_LENGTH),
+              Pair.of(firstFailing, event)));
+    }
+  }
+
+  private ChannelDispatch dispatchOf(
+      List<Destination<ChangeEvent>> ofOneChannel, RecipientResolver resolver) {
+    return new ChannelDispatch(
+        ofOneChannel, new TargetResolver(resolver::recipientsOf), healthOfThisTick);
+  }
+
+  private static EventPublisherException unexpectedSendFailure(
+      Destination<ChangeEvent> publisher, ChangeEvent event, RuntimeException cause) {
+    return new EventPublisherException(
+        String.format("Unexpected error while sending: %s", cause.getMessage()),
+        Pair.of(publisher.getSubscriptionDestination().getId(), event));
+  }
+
+  private void recordSendFailure(EventPublisherException failure) {
+    try {
+      handleFailedEvent(failure, true);
+    } catch (RuntimeException recordingError) {
+      LOG.error("Failed to record a send failure: {}", failure.getMessage(), recordingError);
+    }
+  }
+
+  private Map<String, List<Destination<ChangeEvent>>> groupDestinationsByChannel(
       Set<UUID> destinationIds) {
-    return destinationIds.stream()
-        .map(destinationMap::get)
-        .filter(Objects::nonNull)
+    return destinationMap.entrySet().stream()
+        .filter(entry -> destinationIds.contains(entry.getKey()))
+        .map(Map.Entry::getValue)
         .filter(Destination::getEnabled)
-        .collect(Collectors.groupingBy(dest -> dest.getSubscriptionDestination().getType()));
+        .collect(
+            Collectors.groupingBy(
+                dest -> ChannelResolution.of(dest.getSubscriptionDestination()).channelId(),
+                LinkedHashMap::new,
+                Collectors.toList()));
   }
 
   @Override
   public void commit(JobExecutionContext jobExecutionContext) {
-    long currentTime = System.currentTimeMillis();
-
-    // Batch write all successful events in ONE DB call instead of N calls.
-    // This reduces connection pool contention significantly.
-    // Important: We catch exceptions here to ensure offset is always updated.
-    // If batch record fails but events were already sent to destinations,
-    // we must still advance the offset to prevent duplicate HTTP calls on retry.
-    if (!successfulEvents.isEmpty()) {
-      try {
-        batchRecordSuccessfulEvents(eventSubscription.getId(), currentTime);
-      } catch (Exception e) {
-        LOG.error(
-            "Batch recording failed for {} events in subscription {}. "
-                + "Events were delivered but success records lost. Continuing with offset update.",
-            successfulEvents.size(),
-            eventSubscription.getId(),
-            e);
-      } finally {
-        successfulEvents.clear();
-      }
-    }
-
-    EventSubscriptionOffset eventSubscriptionOffset =
-        new EventSubscriptionOffset()
-            .withCurrentOffset(offset)
-            .withStartingOffset(startingOffset)
-            .withStartingTimestamp(startingTimestamp)
-            .withTimestamp(currentTime);
-
-    Entity.getCollectionDAO()
-        .eventSubscriptionDAO()
-        .upsertSubscriberExtension(
-            eventSubscription.getId().toString(),
-            OFFSET_EXTENSION,
-            "eventSubscriptionOffset",
-            JsonUtils.pojoToJson(eventSubscriptionOffset));
-
-    jobExecutionContext
-        .getJobDetail()
-        .getJobDataMap()
-        .put(ALERT_OFFSET_KEY, JsonUtils.pojoToJson(eventSubscriptionOffset));
-
-    persistPendingGapState(jobExecutionContext);
-
-    jobExecutionContext
-        .getJobDetail()
-        .getJobDataMap()
-        .put(ALERT_INFO_KEY, JsonUtils.pojoToJson(eventSubscription));
-
-    AlertMetrics metrics =
-        new AlertMetrics()
-            .withTotalEvents(alertMetrics.getTotalEvents())
-            .withFailedEvents(alertMetrics.getFailedEvents())
-            .withSuccessEvents(alertMetrics.getSuccessEvents())
-            .withTimestamp(currentTime);
-
-    Entity.getCollectionDAO()
-        .eventSubscriptionDAO()
-        .upsertSubscriberExtension(
-            eventSubscription.getId().toString(),
-            METRICS_EXTENSION,
-            "alertMetrics",
-            JsonUtils.pojoToJson(metrics));
-  }
-
-  private void batchRecordSuccessfulEvents(UUID subscriptionId, long timestamp) {
-    List<String> changeEventIds = new ArrayList<>();
-    List<String> subscriptionIds = new ArrayList<>();
-    List<String> jsonList = new ArrayList<>();
-    List<Long> timestamps = new ArrayList<>();
-
-    for (ChangeEvent event : successfulEvents) {
-      changeEventIds.add(event.getId().toString());
-      subscriptionIds.add(subscriptionId.toString());
-      jsonList.add(JsonUtils.pojoToJson(event));
-      timestamps.add(timestamp);
-    }
-
-    Entity.getCollectionDAO()
-        .eventSubscriptionDAO()
-        .batchUpsertSuccessfulChangeEvents(changeEventIds, subscriptionIds, jsonList, timestamps);
+    ledger.commit();
   }
 
   @Override
@@ -435,12 +276,11 @@ public abstract class AbstractEventConsumer
     var records =
         Entity.getCollectionDAO().changeEventDAO().listWithOffset((int) batchSize, offset);
     CursorPlan cursorPlan =
-        planCursor(offset, pendingGapSince, records, System.currentTimeMillis());
-    gapStateChanged = cursorPlan.pendingGapSince() != pendingGapSince;
-    pendingGapSince = cursorPlan.pendingGapSince();
-    lastReadOffset = cursorPlan.offset();
+        planCursor(offset, ledger.gapWaitSince(), records, System.currentTimeMillis());
+    ledger.readUpTo(cursorPlan.offset(), cursorPlan.pendingGapSince());
 
     if (cursorPlan.skippedGap()) {
+      AlertTelemetry.absorbed(AlertTelemetry.GAP_STEPPED_OVER);
       LOG.warn(
           "Event subscription {} skipping unfilled change_event gap [{} .. {}] after {}ms",
           eventSubscription.getId(),
@@ -451,6 +291,7 @@ public abstract class AbstractEventConsumer
 
     List<ChangeEvent> changeEvents = new ArrayList<>();
     List<EntityError> errorEvents = new ArrayList<>();
+    List<Long> offsets = new ArrayList<>();
     for (int index = 0; index < cursorPlan.recordCount(); index++) {
       var eventRecord = records.get(index);
       try {
@@ -463,6 +304,7 @@ public abstract class AbstractEventConsumer
               "Null or blank change_event.json at offset " + eventRecord.offset());
         }
         changeEvents.add(event);
+        offsets.add(eventRecord.offset());
       } catch (Exception ex) {
         errorEvents.add(
             new EntityError().withMessage(ex.getMessage()).withEntity(eventRecord.json()));
@@ -473,6 +315,7 @@ public abstract class AbstractEventConsumer
             ex);
       }
     }
+    polledOffsets = offsets;
     return new ResultList<>(changeEvents, errorEvents, null, null, cursorPlan.recordCount());
   }
 
@@ -512,7 +355,7 @@ public abstract class AbstractEventConsumer
   record CursorPlan(long offset, long pendingGapSince, int recordCount, boolean skippedGap) {}
 
   @Override
-  public void execute(JobExecutionContext jobExecutionContext) {
+  public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
     // Quartz worker threads are long lived, shared with every other scheduled job, and never pass
     // through the JAX-RS response filter. Per-request ThreadLocal caches left behind here would be
     // served to whatever runs next on this thread — indefinitely stale. Destinations on this thread
@@ -520,53 +363,184 @@ public abstract class AbstractEventConsumer
     // tick: start clean, and leave clean however this exits.
     PerRequestContextCleaner.clear();
     try {
-      executeTick(jobExecutionContext);
+      AlertTick.run(this, jobExecutionContext);
     } finally {
       PerRequestContextCleaner.clear();
     }
   }
 
-  private void executeTick(JobExecutionContext jobExecutionContext) {
-    this.init(jobExecutionContext);
-    if (this.eventSubscription == null) {
-      LOG.error("Skipping job execution - EventSubscription could not be loaded");
-      return;
-    }
-    long batchSize = 0;
-    Map<ChangeEvent, Set<UUID>> eventsWithReceivers = new HashMap<>();
+  /** One tick of this consumer for an alert whose row was just read and whose ledger is open. */
+  final void tick(EventSubscription alert, AlertLedger openLedger, JobExecutionContext context) {
+    this.eventSubscription = alert;
+    this.ledger = openLedger;
+    this.destinationMap = loadDestinationsMap();
+    this.healthOfThisTick = new TickHealth();
+    this.stopSignal = TickStopSignal.startingNow(AlertingSettings.current());
+    this.stoppedEarly = false;
+    TickMemory.begin(stopSignal);
     try {
-      ResultList<ChangeEvent> batch = pollEvents(offset, eventSubscription.getBatchSize());
-      batchSize = batch.getPaging().getTotal();
-      eventsWithReceivers.putAll(createEventsWithReceivers(batch.getData()));
-      if (!eventsWithReceivers.isEmpty()) {
-        alertMetrics.withTotalEvents(alertMetrics.getTotalEvents() + eventsWithReceivers.size());
-        publishEvents(eventsWithReceivers);
+      doInit(context);
+      if (kind() != ConsumerKind.SELF_DRIVEN) {
+        readAndPublish(context);
       }
     } catch (Exception e) {
-      LOG.error(
-          "Error in polling events for alert : {} , Offset : {} , Batch Size : {} ",
-          e.getMessage(),
-          offset,
-          batchSize,
-          e);
-
+      LOG.error("Tick of alert {} failed at position {}", alert.getName(), ledger.position(), e);
     } finally {
-      persistTick(jobExecutionContext);
+      TickMemory.end();
+      finishTick(context);
     }
   }
 
-  private void persistTick(JobExecutionContext jobExecutionContext) {
-    boolean offsetMoved = lastReadOffset > offset;
-    boolean commitNeeded = offsetMoved || metricsChanged;
-    if (offsetMoved) {
-      offset = lastReadOffset;
+  /** Set when this tick should end after the event, or the batch, it is working on. */
+  protected final TickStopSignal stopSignal() {
+    return stopSignal;
+  }
+
+  private void readAndPublish(JobExecutionContext context) {
+    int interruptedBefore = ledger.interruptedAttempts();
+    long latestOffset = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+    AlertTelemetry.lag(latestOffset - ledger.position());
+    if (latestOffset > ledger.position()) {
+      ledger.noteOpening();
     }
-    if (commitNeeded) {
-      metricsChanged = false;
-      commit(jobExecutionContext);
+    ResultList<ChangeEvent> batch = pollEvents(ledger.position(), eventSubscription.getBatchSize());
+    List<ChangeEvent> events = new ArrayList<>(batch.getData());
+    if (interruptedBefore >= SET_ASIDE_FIRST_EVENT_AT && !events.isEmpty()) {
+      setAside(events.removeFirst());
     }
-    if (!commitNeeded && gapStateChanged) {
-      persistPendingGapState(jobExecutionContext);
+    boolean careful = interruptedBefore >= COMMIT_AFTER_EVERY_EVENT_AT;
+    // A consumer that reads its events its own way gives the tick no offset to stop at.
+    boolean canStopBetweenEvents = polledOffsets.size() == batch.getData().size();
+    boolean wholeBatchAtOnce = kind() == ConsumerKind.BATCH && !careful;
+    if (wholeBatchAtOnce || !canStopBetweenEvents) {
+      publish(events);
+    } else {
+      publishOneByOne(events, careful, context);
+    }
+  }
+
+  private void publish(List<ChangeEvent> events) {
+    Map<ChangeEvent, Set<UUID>> eventsWithReceivers = createEventsWithReceivers(events);
+    if (!eventsWithReceivers.isEmpty()) {
+      ledger.eventsRead(eventsWithReceivers.size());
+      publishEvents(eventsWithReceivers);
+    }
+  }
+
+  // A tick can only stop between two events. After ticks that never came back it also commits after
+  // every
+  // event: the event that stops the server then becomes the first one after the committed
+  // position, where it can be found and set aside.
+  private void publishOneByOne(
+      List<ChangeEvent> events, boolean commitAfterEach, JobExecutionContext context) {
+    long endOfBatch = ledger.readUpTo();
+    long gapSince = ledger.pendingGapSince();
+    int skipped = polledOffsets.size() - events.size();
+    // The reader pointed the ledger at the end of the batch. Until an event is finished, the
+    // position may only move past what was set aside.
+    ledger.readUpTo(skipped > 0 ? polledOffsets.get(skipped - 1) : ledger.position(), 0L);
+    int processed = 0;
+    while (processed < events.size() && !mustStopBefore(processed)) {
+      publishIsolated(events.get(processed));
+      ledger.readUpTo(polledOffsets.get(processed + skipped), 0L);
+      processed++;
+      if (commitAfterEach) {
+        commit(context);
+      }
+    }
+    stoppedEarly = processed < events.size();
+    if (!stoppedEarly) {
+      ledger.readUpTo(endOfBatch, gapSince);
+    }
+  }
+
+  // The position now follows each event, so an event that cannot be processed at all is recorded
+  // as a failure and passed, or the alert would come back to it on every tick and never get past.
+  private void publishIsolated(ChangeEvent event) {
+    try {
+      publish(List.of(event));
+    } catch (RuntimeException e) {
+      LOG.error(
+          "Alert {} could not process change event {}",
+          eventSubscription.getName(),
+          event.getId(),
+          e);
+      handleFailedEvent(
+          new EventPublisherException(
+              String.format("Failed to process the event: %s", e.getMessage()),
+              Pair.of(eventSubscription.getId(), event)),
+          false);
+    }
+  }
+
+  // The budget never stops a tick before its first event, so an alert always moves forward.
+  private boolean mustStopBefore(int processed) {
+    return ServerStopping.isSet() || (processed > 0 && stopSignal.budgetHasPassed());
+  }
+
+  private void setAside(ChangeEvent event) {
+    LOG.error(
+        "Alert {} sets change event {} aside: the ticks that reached it never came back",
+        eventSubscription.getName(),
+        event.getId());
+    ledger.eventsRead(1);
+    AlertTelemetry.absorbed(AlertTelemetry.EVENT_SET_ASIDE_AS_INTERRUPTED);
+    handleFailedEvent(
+        new EventPublisherException(
+            "Interrupted repeatedly while processing this event",
+            Pair.of(eventSubscription.getId(), event)),
+        false);
+  }
+
+  private void finishTick(JobExecutionContext context) {
+    try {
+      reportDestinationStatus();
+      commit(context);
+      ledger.clearOpeningNote();
+      runAgainAtOnceIfStoppedForTime(context);
+    } finally {
+      closeDestinations();
+    }
+  }
+
+  // A one-off trigger for the same job. Quartz holds it until this tick is over, and it then
+  // competes with every other alert's due trigger by fire time, so an alert that has been waiting
+  // goes first and the stopped alert loses no poll interval. A stopping server starts nothing.
+  private void runAgainAtOnceIfStoppedForTime(JobExecutionContext context) {
+    if (stoppedEarly && !ServerStopping.isSet()) {
+      AlertTelemetry.tickStoppedByBudget();
+      try {
+        AlertJobs.runAgainNow(context);
+        AlertTelemetry.ranAgainAtOnce();
+      } catch (SchedulerException e) {
+        LOG.warn(
+            "Alert {} could not run again at once; the rest waits for its next poll",
+            eventSubscription.getName(),
+            e);
+      }
+    }
+  }
+
+  // A consumer that sends by itself leaves its outcome on the destination it sent through. What
+  // the tick sent target by target is summed per destination, and is what counts when both exist.
+  private void reportDestinationStatus() {
+    for (Map.Entry<UUID, Destination<ChangeEvent>> entry : destinationMap.entrySet()) {
+      Object status = entry.getValue().getSubscriptionDestination().getStatusDetails();
+      boolean sentByItself = !healthOfThisTick.covers(entry.getKey());
+      if (sentByItself && status instanceof SubscriptionStatus reported) {
+        ledger.destinationStatus(entry.getKey(), reported);
+      }
+    }
+    healthOfThisTick.reportTo(ledger::destinationStatus);
+  }
+
+  private void closeDestinations() {
+    for (Destination<ChangeEvent> destination : destinationMap.values()) {
+      try {
+        destination.close();
+      } catch (RuntimeException e) {
+        LOG.warn("Failed to close a destination of {}", eventSubscription.getName(), e);
+      }
     }
   }
 
@@ -575,16 +549,13 @@ public abstract class AbstractEventConsumer
    * instead of polling change events.
    *
    * <p>Metrics otherwise reach the subscription only through the poll-and-publish path, and
-   * {@link #executeTick} commits only when the change_event offset moves. A consumer with nothing
+   * a tick commits only when something changed. A consumer with nothing
    * to poll never moves it, so its total, success and failure counts stay at zero for the life of
    * the subscription however much it has delivered, and the status and diagnostics endpoints
    * report an alert that has never sent anything.
    */
   protected void recordDelivery(int successCount, int failedCount) {
-    alertMetrics.withTotalEvents(alertMetrics.getTotalEvents() + successCount + failedCount);
-    alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + successCount);
-    alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + failedCount);
-    metricsChanged = true;
+    ledger.selfReportedDelivery(successCount, failedCount);
   }
 
   /**
@@ -603,20 +574,10 @@ public abstract class AbstractEventConsumer
             .withReason(reason)
             .withRetriesLeft(0)
             .withTimestamp(System.currentTimeMillis());
-    Entity.getCollectionDAO()
-        .eventSubscriptionDAO()
-        .upsertFailedEvent(
-            eventSubscription.getId().toString(),
-            String.format("%s-self", FAILED_EVENT_EXTENSION),
-            JsonUtils.pojoToJson(failedEvent),
-            FailureTowards.SUBSCRIBER.toString());
-  }
-
-  private void persistPendingGapState(JobExecutionContext jobExecutionContext) {
-    jobExecutionContext
-        .getJobDetail()
-        .getJobDataMap()
-        .put(ALERT_PENDING_GAP_SINCE_KEY, Long.toString(pendingGapSince));
+    ledger.failure(
+        String.format("%s-self", FAILED_EVENT_EXTENSION),
+        JsonUtils.pojoToJson(failedEvent),
+        FailureTowards.SUBSCRIBER.toString());
   }
 
   public EventSubscription getEventSubscription() {
@@ -624,11 +585,10 @@ public abstract class AbstractEventConsumer
   }
 
   private Map<ChangeEvent, Set<UUID>> createEventsWithReceivers(List<ChangeEvent> events) {
-    Map<ChangeEvent, Set<UUID>> eventsWithReceivers =
-        new TreeMap<>(Comparator.comparing(ChangeEvent::getId));
+    // In the order they were read, which is the order the changes happened.
+    Map<ChangeEvent, Set<UUID>> eventsWithReceivers = new LinkedHashMap<>();
     for (ChangeEvent changeEvent : events) {
-      Set<UUID> receivers = Set.of(destinationMap.keySet().toArray(UUID[]::new));
-      eventsWithReceivers.put(changeEvent, receivers);
+      eventsWithReceivers.put(changeEvent, new LinkedHashSet<>(destinationMap.keySet()));
     }
     return eventsWithReceivers;
   }

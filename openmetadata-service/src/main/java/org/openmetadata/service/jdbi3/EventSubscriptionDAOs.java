@@ -16,11 +16,17 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import org.jdbi.v3.core.mapper.RowMapper;
+import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
+import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -52,6 +58,9 @@ public interface EventSubscriptionDAOs {
     @SqlQuery("SELECT json FROM event_subscription_entity")
     List<String> listAllEventsSubscriptions();
 
+    @SqlQuery("SELECT id FROM event_subscription_entity")
+    List<String> listAllIds();
+
     @Override
     default boolean supportsSoftDelete() {
       return false;
@@ -77,6 +86,69 @@ public interface EventSubscriptionDAOs {
         @Bind("extension") String extension,
         @Bind("jsonSchema") String jsonSchema,
         @BindJson("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT IGNORE INTO change_event_consumers(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO change_event_consumers(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, (:json :: jsonb)) "
+                + "ON CONFLICT (id, extension) DO NOTHING",
+        connectionType = POSTGRES)
+    int insertSubscriberExtensionIfAbsent(
+        @Bind("id") String id,
+        @Bind("extension") String extension,
+        @Bind("jsonSchema") String jsonSchema,
+        @BindJson("json") String json);
+
+    // MySQL compares a JSON column with a plain string parameter as strings, so the expected
+    // document is cast. Both engines then compare values, not text.
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE change_event_consumers SET json = :json "
+                + "WHERE id = :id AND extension = :extension AND json = CAST(:expected AS JSON)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE change_event_consumers SET json = (:json :: jsonb) "
+                + "WHERE id = :id AND extension = :extension AND json = (:expected :: jsonb)",
+        connectionType = POSTGRES)
+    int compareAndSetSubscriberExtension(
+        @Bind("id") String id,
+        @Bind("extension") String extension,
+        @BindJson("json") String json,
+        @BindJson("expected") String expected);
+
+    @SqlQuery("SELECT extension, json FROM change_event_consumers WHERE id = :id")
+    @RegisterRowMapper(SubscriberExtensionMapper.class)
+    List<SubscriberExtension> listSubscriberExtensions(@Bind("id") String id);
+
+    @SqlUpdate("DELETE FROM change_event_consumers WHERE id = :id AND extension = :extension")
+    int deleteSubscriberExtension(@Bind("id") String id, @Bind("extension") String extension);
+
+    @SqlQuery("SELECT DISTINCT id FROM change_event_consumers WHERE extension IN (<extensions>)")
+    List<String> listIdsHavingExtensions(@BindList("extensions") List<String> extensions);
+
+    // The database's clock, for comparisons with times another server stored.
+    @ConnectionAwareSqlQuery(
+        value = "SELECT CAST(UNIX_TIMESTAMP(NOW(3)) * 1000 AS UNSIGNED)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint",
+        connectionType = POSTGRES)
+    long databaseTimeMillis();
+
+    record SubscriberExtension(String extension, String json) {}
+
+    class SubscriberExtensionMapper implements RowMapper<SubscriberExtension> {
+      @Override
+      public SubscriberExtension map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new SubscriberExtension(rs.getString("extension"), rs.getString("json"));
+      }
+    }
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -161,6 +233,14 @@ public interface EventSubscriptionDAOs {
     @SqlQuery(
         "SELECT COUNT(*) FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId")
     long getSuccessfulRecordCount(@Bind("eventSubscriptionId") String eventSubscriptionId);
+
+    // Events delivered through one channel and failed through another have a row in both tables.
+    @SqlQuery(
+        "SELECT COUNT(*) FROM consumers_dlq d JOIN successful_sent_change_events s "
+            + "ON s.event_subscription_id = d.id "
+            + "AND d.extension = CONCAT('eventSubscription.failedEvent-', s.change_event_id) "
+            + "WHERE d.id = :eventSubscriptionId")
+    long countEventsBothDeliveredAndFailed(@Bind("eventSubscriptionId") String eventSubscriptionId);
 
     @SqlQuery(
         "SELECT event_subscription_id FROM successful_sent_change_events "

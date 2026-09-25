@@ -58,6 +58,7 @@ import {
   NotificationTemplate,
   ProviderType,
 } from '../../generated/entity/events/notificationTemplate';
+import { AlertType as CapabilitiesAlertType } from '../../generated/events/api/alertCapabilitiesRequest';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
@@ -65,6 +66,10 @@ import {
 } from '../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import {
+  AlertSelectionProvider,
+  useAlertSelection,
+} from '../../hooks/useAlertSelection';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -74,6 +79,7 @@ import {
   updateNotificationAlert,
 } from '../../rest/alertsAPI';
 import { getAllNotificationTemplates } from '../../rest/notificationtemplateAPI';
+import { toCapabilitiesInput } from '../../utils/Alerts/AlertSelectionUtil';
 import alertsClassBase from '../../utils/AlertsClassBase';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
@@ -88,6 +94,9 @@ import {
   ModifiedEventSubscription,
 } from '../AddObservabilityPage/AddObservabilityPage.interface';
 import { AddAlertPageLoadingState } from './AddNotificationPage.interface';
+
+// One array for "nothing selected", so what depends on the selection does not change every render.
+const NO_SOURCES: string[] = [];
 
 const AddNotificationPage = () => {
   const [form] = useForm<ModifiedCreateEventSubscription>();
@@ -221,36 +230,26 @@ const AddNotificationPage = () => {
 
   const resources =
     Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
-    [];
+    NO_SOURCES;
   const destinations = Form.useWatch('destinations', form);
   const timeout = Form.useWatch('timeout', form);
   const readTimeout = Form.useWatch('readTimeout', form);
-  const [selectedTrigger] = resources;
-
-  const supportedFilters = useMemo(
-    () =>
-      entityFunctions.find((resource) => resource.name === selectedTrigger)
-        ?.supportedFilters,
-    [entityFunctions, selectedTrigger]
+  const chosenSoFar = Form.useWatch('input', form);
+  const capabilitiesInput = useMemo(
+    () => toCapabilitiesInput(chosenSoFar),
+    [chosenSoFar]
   );
-
-  const containerEntities = useMemo(
-    () =>
-      entityFunctions.find((resource) => resource.name === selectedTrigger)
-        ?.containerEntities,
-    [entityFunctions, selectedTrigger]
-  );
-
-  const supportedEventTypes = useMemo(
-    () =>
-      entityFunctions.find((resource) => resource.name === selectedTrigger)
-        ?.supportedEventTypes,
-    [entityFunctions, selectedTrigger]
-  );
+  const selection = useAlertSelection({
+    alertType: CapabilitiesAlertType.Notification,
+    sources: resources,
+    input: capabilitiesInput,
+    catalog: entityFunctions,
+  });
+  const { supportedFilters } = selection.support;
 
   const shouldShowFiltersSection = useMemo(
-    () => (selectedTrigger ? !isEmpty(supportedFilters) : true),
-    [selectedTrigger, supportedFilters]
+    () => (isEmpty(resources) ? true : !isEmpty(supportedFilters)),
+    [resources, supportedFilters]
   );
 
   const extraFormWidgets = useMemo(
@@ -346,171 +345,171 @@ const AddNotificationPage = () => {
                 </Typography.Text>
               </Col>
               <Col span={24}>
-                <Form<ModifiedCreateEventSubscription>
-                  className="alerts-notification-form"
-                  form={form}
-                  initialValues={{
-                    ...alert,
-                    displayName: getEntityName(alert),
-                    resources: alert?.filteringRules?.resources,
-                  }}
-                  validateMessages={VALIDATION_MESSAGES}
-                  onFinish={handleSave}>
-                  {isLoading ? (
-                    <Skeleton title paragraph={{ rows: 8 }} />
-                  ) : (
-                    <Row gutter={[20, 20]}>
-                      <Col span={24}>
-                        <Form.Item
-                          label={t('label.name')}
-                          labelCol={{ span: 24 }}
-                          name="displayName"
-                          rules={NAME_FIELD_RULES}>
-                          <Input placeholder={t('label.name')} />
-                        </Form.Item>
-                      </Col>
-                      <Col span={24}>
-                        <Form.Item
-                          label={t('label.description')}
-                          labelCol={{ span: 24 }}
-                          name="description"
-                          trigger="onTextChange">
-                          <RichTextEditor
-                            data-testid="description"
-                            initialValue={alert?.description}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col span={24}>
-                        <Row justify="center">
-                          <Col span={24}>
-                            <AlertFormSourceItem
-                              filterResources={entityFunctions}
-                            />
-                          </Col>
-                          {shouldShowFiltersSection && (
-                            <>
-                              <Col>
-                                <Divider dashed type="vertical" />
-                              </Col>
-                              <Col span={24}>
-                                <ObservabilityFormFiltersItem
-                                  containerEntities={containerEntities}
-                                  supportedEventTypes={supportedEventTypes}
-                                  supportedFilters={supportedFilters}
-                                />
-                              </Col>
-                            </>
-                          )}
-                          <Col>
-                            <Divider dashed type="vertical" />
-                          </Col>
-                          <Col span={24}>
-                            <DestinationFormItemFormBridge
-                              renderValidationField={(validate) => (
-                                <Form.Item
-                                  hidden
-                                  name="destinations"
-                                  rules={[{ validator: validate }]}>
-                                  <DestinationFormFieldRegistrar />
-                                </Form.Item>
-                              )}
-                              values={{
-                                destinations,
-                                readTimeout,
-                                resources,
-                                timeout,
-                              }}
-                              onChange={(values) => {
-                                // Each shared field must be replaced at its root. Ant's
-                                // bulk setter deep-merges destination array entries and
-                                // would restore config removed by a type change.
-                                Object.entries(values).forEach(
-                                  ([name, value]) =>
-                                    form.setFieldValue(name, value)
-                                );
-                              }}
-                            />
-                          </Col>
-
-                          {!isEmpty(extraFormWidgets) && (
-                            <>
-                              {Object.entries(extraFormWidgets).map(
-                                ([name, Widget]) => (
-                                  <Fragment key={name}>
-                                    <Col>
-                                      <Divider dashed type="vertical" />
-                                    </Col>
-                                    <Col span={24}>
-                                      <Widget
-                                        alertDetails={alert}
-                                        formRef={form}
-                                        loading={isLoading}
-                                        templateResourcePermission={
-                                          templateResourcePermission
-                                        }
-                                        templates={templates}
-                                      />
-                                    </Col>
-                                  </Fragment>
-                                )
-                              )}
-                            </>
-                          )}
-                        </Row>
-                      </Col>
-                      <Form.Item
-                        hidden
-                        initialValue={AlertType.Notification}
-                        name="alertType"
-                      />
-                      <Form.Item
-                        hidden
-                        initialValue={ProviderType.User}
-                        name="provider"
-                      />
-                      <Form.Item hidden name="customNotificationTemplateData" />
-
-                      {!isUndefined(inlineAlertDetails) && (
+                <AlertSelectionProvider value={selection}>
+                  <Form<ModifiedCreateEventSubscription>
+                    className="alerts-notification-form"
+                    form={form}
+                    initialValues={{
+                      ...alert,
+                      displayName: getEntityName(alert),
+                      resources: alert?.filteringRules?.resources,
+                    }}
+                    validateMessages={VALIDATION_MESSAGES}
+                    onFinish={handleSave}>
+                    {isLoading ? (
+                      <Skeleton title paragraph={{ rows: 8 }} />
+                    ) : (
+                      <Row gutter={[20, 20]}>
                         <Col span={24}>
-                          <InlineAlert {...inlineAlertDetails} />
+                          <Form.Item
+                            label={t('label.name')}
+                            labelCol={{ span: 24 }}
+                            name="displayName"
+                            rules={NAME_FIELD_RULES}>
+                            <Input placeholder={t('label.name')} />
+                          </Form.Item>
                         </Col>
-                      )}
-
-                      <Col span={24}>
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            data-testid="cancel-button"
-                            type="text"
-                            onClick={() => navigate(-1)}>
-                            {t('label.cancel')}
-                          </Button>
-
-                          {Object.entries(extraFormButtons).map(
-                            ([name, ButtonComponent]) => (
-                              <ButtonComponent
-                                alertDetails={alert}
-                                formRef={form}
-                                key={name}
-                                templateResourcePermission={
-                                  templateResourcePermission
-                                }
-                                templates={templates}
+                        <Col span={24}>
+                          <Form.Item
+                            label={t('label.description')}
+                            labelCol={{ span: 24 }}
+                            name="description"
+                            trigger="onTextChange">
+                            <RichTextEditor
+                              data-testid="description"
+                              initialValue={alert?.description}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={24}>
+                          <Row justify="center">
+                            <Col span={24}>
+                              <AlertFormSourceItem
+                                filterResources={entityFunctions}
                               />
-                            )
-                          )}
-                          <Button
-                            data-testid="save-button"
-                            htmlType="submit"
-                            loading={isButtonLoading}
-                            type="primary">
-                            {t('label.save')}
-                          </Button>
-                        </div>
-                      </Col>
-                    </Row>
-                  )}
-                </Form>
+                            </Col>
+                            {shouldShowFiltersSection && (
+                              <>
+                                <Col>
+                                  <Divider dashed type="vertical" />
+                                </Col>
+                                <Col span={24}>
+                                  <ObservabilityFormFiltersItem />
+                                </Col>
+                              </>
+                            )}
+                            <Col>
+                              <Divider dashed type="vertical" />
+                            </Col>
+                            <Col span={24}>
+                              <DestinationFormItemFormBridge
+                                renderValidationField={(validate) => (
+                                  <Form.Item
+                                    hidden
+                                    name="destinations"
+                                    rules={[{ validator: validate }]}>
+                                    <DestinationFormFieldRegistrar />
+                                  </Form.Item>
+                                )}
+                                values={{
+                                  destinations,
+                                  readTimeout,
+                                  timeout,
+                                }}
+                                onChange={(values) => {
+                                  // Each shared field must be replaced at its root. Ant's
+                                  // bulk setter deep-merges destination array entries and
+                                  // would restore config removed by a type change.
+                                  Object.entries(values).forEach(
+                                    ([name, value]) =>
+                                      form.setFieldValue(name, value)
+                                  );
+                                }}
+                              />
+                            </Col>
+
+                            {!isEmpty(extraFormWidgets) && (
+                              <>
+                                {Object.entries(extraFormWidgets).map(
+                                  ([name, Widget]) => (
+                                    <Fragment key={name}>
+                                      <Col>
+                                        <Divider dashed type="vertical" />
+                                      </Col>
+                                      <Col span={24}>
+                                        <Widget
+                                          alertDetails={alert}
+                                          formRef={form}
+                                          loading={isLoading}
+                                          templateResourcePermission={
+                                            templateResourcePermission
+                                          }
+                                          templates={templates}
+                                        />
+                                      </Col>
+                                    </Fragment>
+                                  )
+                                )}
+                              </>
+                            )}
+                          </Row>
+                        </Col>
+                        <Form.Item
+                          hidden
+                          initialValue={AlertType.Notification}
+                          name="alertType"
+                        />
+                        <Form.Item
+                          hidden
+                          initialValue={ProviderType.User}
+                          name="provider"
+                        />
+                        <Form.Item
+                          hidden
+                          name="customNotificationTemplateData"
+                        />
+
+                        {!isUndefined(inlineAlertDetails) && (
+                          <Col span={24}>
+                            <InlineAlert {...inlineAlertDetails} />
+                          </Col>
+                        )}
+
+                        <Col span={24}>
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              data-testid="cancel-button"
+                              type="text"
+                              onClick={() => navigate(-1)}>
+                              {t('label.cancel')}
+                            </Button>
+
+                            {Object.entries(extraFormButtons).map(
+                              ([name, ButtonComponent]) => (
+                                <ButtonComponent
+                                  alertDetails={alert}
+                                  formRef={form}
+                                  key={name}
+                                  templateResourcePermission={
+                                    templateResourcePermission
+                                  }
+                                  templates={templates}
+                                />
+                              )
+                            )}
+                            <Button
+                              data-testid="save-button"
+                              htmlType="submit"
+                              loading={isButtonLoading}
+                              type="primary">
+                              {t('label.save')}
+                            </Button>
+                          </div>
+                        </Col>
+                      </Row>
+                    )}
+                  </Form>
+                </AlertSelectionProvider>
               </Col>
             </Row>
           </Card>

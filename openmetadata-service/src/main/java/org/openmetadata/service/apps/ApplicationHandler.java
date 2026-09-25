@@ -27,7 +27,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheConfig;
-import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
+import org.openmetadata.service.events.scheduled.AlertJobs;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
@@ -251,14 +251,7 @@ public class ApplicationHandler {
                           appRepository.addEventSubscription(app, createdEventSub);
                           return createdEventSub;
                         }))
-        .forEach(
-            eventSub -> {
-              try {
-                EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub);
-              } catch (Exception e) {
-                throw new RuntimeException(e);
-              }
-            });
+        .forEach(eventSub -> AlertJobs.convergeAfterCommit(eventSub.getId()));
   }
 
   public void configureApplication(
@@ -298,13 +291,9 @@ public class ApplicationHandler {
                 EventSubscription eventSub =
                     eventSubscriptionRepository.find(
                         eventSubscriptionReference.getId(), Include.ALL);
-                EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSub);
                 eventSubscriptionRepository.delete(deletedBy, eventSub.getId(), false, true);
-
               } catch (EntityNotFoundException e) {
                 LOG.debug("Event subscription {} not found", eventSubscriptionReference.getId());
-              } catch (SchedulerException e) {
-                throw new RuntimeException(e);
               }
             });
   }

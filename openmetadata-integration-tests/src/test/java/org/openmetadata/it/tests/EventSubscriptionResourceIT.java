@@ -926,9 +926,9 @@ public class EventSubscriptionResourceIT
    * the scheduler second deleted the job a later enable had just installed: the row read enabled
    * while no Quartz job remained, so the subscription looked active and silently never fired again.
    *
-   * <p>The status endpoint is the observable. It reports the scheduled job's own snapshot when one
-   * exists and falls back to DISABLED when the row is disabled, so an empty body means exactly the
-   * broken state -- enabled, with nothing scheduled.
+   * <p>The scheduling endpoint is the observable: it names the job's class when a job exists, so an
+   * enabled row with no class is exactly the broken state, and a disabled row with one is the same
+   * bug the other way round.
    */
   @Test
   void test_concurrentEnableDisableLeavesScheduleMatchingCommittedState(TestNamespace ns)
@@ -955,23 +955,17 @@ public class EventSubscriptionResourceIT
         disabling.get(1, TimeUnit.MINUTES);
 
         EventSubscription settled = getEntity(subscriptionId);
-        String destinationId = settled.getDestinations().get(0).getId().toString();
-        String scheduled = readScheduledStatus(subscriptionId, destinationId);
-        if (Boolean.TRUE.equals(settled.getEnabled())) {
-          // An empty body is the broken state exactly: no job, and the row is not disabled either.
-          assertFalse(
-              scheduled.isBlank(),
-              "Round " + round + ": the row reads enabled but nothing is scheduled for it");
-        } else {
-          // Disabled with no job falls back to the row and reports "disabled"; a job left behind
-          // would answer from its own snapshot instead, which is the same bug the other way round.
-          assertTrue(
-              scheduled.contains("\"disabled\""),
-              "Round "
-                  + round
-                  + ": the row reads disabled but the scheduler still reports "
-                  + scheduled);
-        }
+        JsonNode scheduling = JsonUtils.readTree(readScheduling(subscriptionId));
+        boolean hasJob = scheduling.hasNonNull("jobClass");
+        assertEquals(
+            Boolean.TRUE.equals(settled.getEnabled()),
+            hasJob,
+            "Round "
+                + round
+                + ": the row reads enabled="
+                + settled.getEnabled()
+                + ", job "
+                + hasJob);
       }
     } finally {
       pool.shutdownNow();
@@ -1018,16 +1012,15 @@ public class EventSubscriptionResourceIT
   }
 
   /** Empty body means the scheduler holds no job and the row is not disabled either. */
-  private String readScheduledStatus(String subscriptionId, String destinationId) throws Exception {
+  private String readScheduling(String subscriptionId) throws Exception {
     HttpRequest request =
         HttpRequest.newBuilder()
             .uri(
                 URI.create(
                     SdkClients.getServerUrl()
-                        + "/v1/events/subscriptions/"
+                        + "/v1/events/subscriptions/id/"
                         + subscriptionId
-                        + "/status/"
-                        + destinationId))
+                        + "/scheduling"))
             .header("Authorization", "Bearer " + SdkClients.getAdminToken())
             .GET()
             .build();
@@ -1035,7 +1028,7 @@ public class EventSubscriptionResourceIT
         HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
     assertTrue(
         response.statusCode() < 300,
-        "Subscription status endpoint failed: " + response.statusCode() + " " + response.body());
+        "Scheduling endpoint failed: " + response.statusCode() + " " + response.body());
     return response.body() == null ? "" : response.body().trim();
   }
 
@@ -1272,7 +1265,7 @@ public class EventSubscriptionResourceIT
   }
 
   @Test
-  void test_multipleResourceTypesRejected(TestNamespace ns) {
+  void test_multipleResourceTypesOfOneKindAccepted(TestNamespace ns) {
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("multi_resource_sub"))
@@ -1282,10 +1275,37 @@ public class EventSubscriptionResourceIT
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
 
+    EventSubscription subscription = createEntity(request);
+
+    assertEquals(
+        List.of("table", "topic", "dashboard"), subscription.getFilteringRules().getResources());
+  }
+
+  @Test
+  void test_resourceTypesThatDoNotCombineRejected(TestNamespace ns) {
+    CreateEventSubscription entityPlusActivity =
+        new CreateEventSubscription()
+            .withName(ns.prefix("two_kinds_sub"))
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("table", "conversation"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+    CreateEventSubscription wildcardPlusOne =
+        new CreateEventSubscription()
+            .withName(ns.prefix("wildcard_plus_sub"))
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all", "table"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
     assertThrows(
         Exception.class,
-        () -> createEntity(request),
-        "Multiple resources are not supported - only one resource can be specified");
+        () -> createEntity(entityPlusActivity),
+        "Entity and activity sources share no filters and cannot be combined");
+    assertThrows(
+        Exception.class,
+        () -> createEntity(wildcardPlusOne),
+        "The wildcard already watches everything and stands alone");
   }
 
   @Test

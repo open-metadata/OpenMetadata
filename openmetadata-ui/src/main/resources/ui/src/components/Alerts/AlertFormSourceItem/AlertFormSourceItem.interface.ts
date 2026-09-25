@@ -15,4 +15,5 @@ export interface AlertFormSourceItemProps {
   filterResources?: {
     name?: string;
   }[];
+  isViewMode?: boolean;
 }

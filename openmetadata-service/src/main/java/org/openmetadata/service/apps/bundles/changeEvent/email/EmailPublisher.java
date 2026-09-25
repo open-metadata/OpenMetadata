@@ -13,10 +13,10 @@
 
 package org.openmetadata.service.apps.bundles.changeEvent.email;
 
-import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.EMAIL;
-
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -29,11 +29,14 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
+import org.openmetadata.service.apps.bundles.changeEvent.IsolatedSends;
+import org.openmetadata.service.apps.bundles.changeEvent.TickMemory;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
+import org.openmetadata.service.notifications.EventContent;
 import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
-import org.openmetadata.service.notifications.channels.NotificationMessage;
 import org.openmetadata.service.notifications.channels.email.EmailMessage;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
@@ -49,18 +52,14 @@ public class EmailPublisher implements Destination<ChangeEvent> {
 
   public EmailPublisher(
       EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
-    if (subscriptionDestination.getType() == EMAIL) {
-      this.eventSubscription = eventSubscription;
-      this.subscriptionDestination = subscriptionDestination;
-      this.emailAlertConfig =
-          JsonUtils.convertValue(subscriptionDestination.getConfig(), EmailAlertConfig.class);
-      this.messageEngine =
-          new HandlebarsNotificationMessageEngine(
-              (NotificationTemplateRepository)
-                  Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE));
-    } else {
-      throw new IllegalArgumentException("Email Alert Invoked with Illegal Type and Settings.");
-    }
+    this.eventSubscription = eventSubscription;
+    this.subscriptionDestination = subscriptionDestination;
+    this.emailAlertConfig =
+        JsonUtils.convertValue(subscriptionDestination.getConfig(), EmailAlertConfig.class);
+    this.messageEngine =
+        new HandlebarsNotificationMessageEngine(
+            (NotificationTemplateRepository)
+                Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE));
   }
 
   @Override
@@ -73,9 +72,7 @@ public class EmailPublisher implements Destination<ChangeEvent> {
       return;
     }
     try {
-      NotificationMessage message =
-          messageEngine.generateMessage(event, eventSubscription, subscriptionDestination);
-      EmailMessage emailMessage = (EmailMessage) message;
+      EmailMessage emailMessage = prepare(event);
 
       // Convert type-agnostic Recipient objects to email addresses
       Set<String> receivers =
@@ -86,22 +83,56 @@ public class EmailPublisher implements Destination<ChangeEvent> {
               .filter(Objects::nonNull)
               .collect(Collectors.toSet());
 
-      // Send email to each recipient
-      for (String receiver : receivers) {
-        EmailUtil.sendNotificationEmail(
-            receiver, emailMessage.getSubject(), emailMessage.getHtmlContent());
-      }
+      IsolatedSends.sendToEach(
+          receivers,
+          this,
+          receiver ->
+              EmailUtil.sendNotificationEmail(
+                  receiver, emailMessage.getSubject(), emailMessage.getHtmlContent()));
 
       setSuccessStatus(System.currentTimeMillis());
     } catch (Exception e) {
       setErrorStatus(System.currentTimeMillis(), 500, e.getMessage());
       String message =
-          CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, event, e.getMessage());
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              subscriptionDestination.getType(), event, e.getMessage());
       LOG.error(message);
       throw new EventPublisherException(
-          CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, e.getMessage()),
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              subscriptionDestination.getType(), e.getMessage()),
           Pair.of(subscriptionDestination.getId(), event));
     }
+  }
+
+  // Rendered once for an event, whatever the number of mailboxes it is sent to.
+  @Override
+  public EmailMessage prepare(ChangeEvent event) {
+    return prepare(event, new EventContent(event, eventSubscription));
+  }
+
+  @Override
+  public EmailMessage prepare(ChangeEvent event, EventContent content) {
+    return (EmailMessage) messageEngine.format(content.by(messageEngine), subscriptionDestination);
+  }
+
+  @Override
+  public void sendTo(Object prepared, Recipient recipient) throws EventPublisherException {
+    if (recipient instanceof EmailRecipient mailbox) {
+      EmailMessage message = (EmailMessage) prepared;
+      CompletableFuture<Void> outcome =
+          EmailUtil.handOverNotificationEmail(
+              mailbox.getEmail(), message.getSubject(), message.getHtmlContent());
+      if (AlertingSettings.current().sending().awaitEmailOutcome()) {
+        EmailOutcome.await(outcome, TickMemory.timeLeft());
+      }
+      setSuccessStatus(System.currentTimeMillis());
+    }
+  }
+
+  @Override
+  public Optional<String> notAttemptedBecause() {
+    boolean smtpOn = Boolean.TRUE.equals(EmailUtil.getSmtpSettings().getEnableSmtpServer());
+    return smtpOn ? Optional.empty() : Optional.of("the mail server is not enabled");
   }
 
   @Override
@@ -119,7 +150,9 @@ public class EmailPublisher implements Destination<ChangeEvent> {
     } catch (Exception e) {
       this.setStatusForTestDestination(
           TestDestinationStatus.Status.FAILED, 500, System.currentTimeMillis());
-      String message = CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, e.getMessage());
+      String message =
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              subscriptionDestination.getType(), e.getMessage());
       LOG.error(message);
       throw new EventPublisherException(message);
     }

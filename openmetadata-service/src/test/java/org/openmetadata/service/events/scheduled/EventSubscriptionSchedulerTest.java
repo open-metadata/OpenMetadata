@@ -14,9 +14,9 @@
 package org.openmetadata.service.events.scheduled;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.dropwizard.db.DataSourceFactory;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
@@ -37,30 +37,43 @@ import org.quartz.impl.StdSchedulerFactory;
 
 class EventSubscriptionSchedulerTest {
 
+  // Quartz cannot acquire a trigger later than the threshold, and a waiting alert can be later
+  // than a time budget plus one slow event.
   @Test
-  @DisplayName("Scheduler should use ALERT_JOB_GROUP for job grouping")
-  void testAlertJobGroupConstant() {
-    assertEquals(
-        "OMAlertJobGroup",
-        EventSubscriptionScheduler.ALERT_JOB_GROUP,
-        "Job group should be OMAlertJobGroup");
+  void misfireThresholdIsTenMinutes() {
+    DataSourceFactory database = new DataSourceFactory();
+    database.setDriverClass("org.postgresql.Driver");
+    database.setUrl("jdbc:postgresql://localhost/openmetadata_db");
+    database.setUser("openmetadata_user");
+    database.setPassword("openmetadata_password");
+
+    Properties quartz = EventSubscriptionScheduler.quartzProperties(database);
+
+    assertEquals("600000", quartz.get("org.quartz.jobStore.misfireThreshold"));
   }
 
   @Test
-  @DisplayName("Scheduler should use ALERT_TRIGGER_GROUP for trigger grouping")
-  void testAlertTriggerGroupConstant() {
-    assertEquals(
-        "OMAlertJobGroup",
-        EventSubscriptionScheduler.ALERT_TRIGGER_GROUP,
-        "Trigger group should be OMAlertJobGroup");
-  }
+  void configuresClusteredJdbcStore() {
+    DataSourceFactory postgres = new DataSourceFactory();
+    postgres.setDriverClass("org.postgresql.Driver");
+    postgres.setUrl("jdbc:postgresql://localhost/openmetadata_db");
+    postgres.setUser("openmetadata_user");
+    postgres.setPassword("openmetadata_password");
 
-  @Test
-  @DisplayName("Scheduler constants should be defined")
-  void testSchedulerConstantsExist() {
-    assertNotNull(EventSubscriptionScheduler.ALERT_JOB_GROUP, "ALERT_JOB_GROUP should be defined");
-    assertNotNull(
-        EventSubscriptionScheduler.ALERT_TRIGGER_GROUP, "ALERT_TRIGGER_GROUP should be defined");
+    Properties quartz = EventSubscriptionScheduler.quartzProperties(postgres);
+
+    assertEquals(
+        "org.quartz.impl.jdbcjobstore.JobStoreTX", quartz.get("org.quartz.jobStore.class"));
+    assertEquals("true", quartz.get("org.quartz.jobStore.isClustered"));
+    assertEquals(
+        "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate",
+        quartz.get("org.quartz.jobStore.driverDelegateClass"));
+    assertEquals("10", quartz.get("org.quartz.threadPool.threadCount"));
+    assertEquals("OMEventSubSchedulerDS", quartz.get("org.quartz.jobStore.dataSource"));
+    assertTrue(
+        quartz.stringPropertyNames().stream()
+            .noneMatch(name -> name.startsWith("org.quartz.dataSource.")),
+        "the pool is the server's own, so Quartz is given no data source of its own to build");
   }
 
   @Test
@@ -68,7 +81,7 @@ class EventSubscriptionSchedulerTest {
   void testEnsureAuditLogConsumerSchedulesWhenAbsent() throws SchedulerException {
     Scheduler scheduler = newStandbyScheduler("audit-absent");
     try {
-      EventSubscriptionScheduler.ensureAuditLogConsumerScheduled(scheduler);
+      AuditLogSchedule.ensureScheduled(scheduler);
 
       assertTrue(scheduler.checkExists(auditJobKey()), "Audit log consumer job should exist");
       assertEquals(
@@ -92,7 +105,7 @@ class EventSubscriptionSchedulerTest {
           scheduler.getTriggerState(auditTriggerKey()),
           "Precondition: an abandoned trigger still reports as NORMAL/WAITING");
 
-      EventSubscriptionScheduler.ensureAuditLogConsumerScheduled(scheduler);
+      AuditLogSchedule.ensureScheduled(scheduler);
 
       Date freshNextFire = scheduler.getTrigger(auditTriggerKey()).getNextFireTime();
       assertTrue(
@@ -108,14 +121,14 @@ class EventSubscriptionSchedulerTest {
   void testEnsureAuditLogConsumerRecoversPausedTrigger() throws SchedulerException {
     Scheduler scheduler = newStandbyScheduler("audit-paused");
     try {
-      EventSubscriptionScheduler.ensureAuditLogConsumerScheduled(scheduler);
+      AuditLogSchedule.ensureScheduled(scheduler);
       scheduler.pauseTrigger(auditTriggerKey());
       assertEquals(
           Trigger.TriggerState.PAUSED,
           scheduler.getTriggerState(auditTriggerKey()),
           "Precondition: trigger is paused");
 
-      EventSubscriptionScheduler.ensureAuditLogConsumerScheduled(scheduler);
+      AuditLogSchedule.ensureScheduled(scheduler);
 
       assertEquals(
           Trigger.TriggerState.NORMAL,
@@ -131,8 +144,8 @@ class EventSubscriptionSchedulerTest {
   void testEnsureAuditLogConsumerIsIdempotent() throws SchedulerException {
     Scheduler scheduler = newStandbyScheduler("audit-idempotent");
     try {
-      EventSubscriptionScheduler.ensureAuditLogConsumerScheduled(scheduler);
-      EventSubscriptionScheduler.ensureAuditLogConsumerScheduled(scheduler);
+      AuditLogSchedule.ensureScheduled(scheduler);
+      AuditLogSchedule.ensureScheduled(scheduler);
 
       assertEquals(
           1,
@@ -163,15 +176,11 @@ class EventSubscriptionSchedulerTest {
   }
 
   private static JobKey auditJobKey() {
-    return new JobKey(
-        EventSubscriptionScheduler.AUDIT_LOG_JOB_ID,
-        EventSubscriptionScheduler.AUDIT_LOG_JOB_GROUP);
+    return new JobKey(AuditLogSchedule.AUDIT_LOG_JOB_ID, AuditLogSchedule.AUDIT_LOG_JOB_GROUP);
   }
 
   private static TriggerKey auditTriggerKey() {
-    return new TriggerKey(
-        EventSubscriptionScheduler.AUDIT_LOG_JOB_ID,
-        EventSubscriptionScheduler.AUDIT_LOG_JOB_GROUP);
+    return new TriggerKey(AuditLogSchedule.AUDIT_LOG_JOB_ID, AuditLogSchedule.AUDIT_LOG_JOB_GROUP);
   }
 
   private static Scheduler newStandbyScheduler(String instanceName) throws SchedulerException {

@@ -828,6 +828,26 @@ bulkOperation:
   # Timeout in seconds for entire bulk operation
   timeoutSeconds: ${BULK_OPERATION_TIMEOUT_SECONDS:-300}
 
+alerting:
+  # A tick of an alert stops after the event it is processing once it has run this long, commits,
+  # and runs again at once, so one alert on a slow endpoint cannot keep a scheduler thread from the
+  # others. Every event is still processed, in order. 0 switches the budget off; otherwise 10 or more.
+  tickTimeBudgetSeconds: ${ALERTING_TICK_TIME_BUDGET_SECONDS:-60}
+  # When true, a target that could not be reached (connect timeout, connection refused, unknown
+  # host) is recorded as failed without another attempt for the rest of that tick.
+  skipUnreachableTargetWithinTick: ${ALERTING_SKIP_UNREACHABLE_TARGET_WITHIN_TICK:-false}
+  # When true, a webhook delivery uses the method its destination configures, POST or PUT. When
+  # false every delivery is a POST, which is what the server has always done.
+  honourWebhookMethod: ${ALERTING_HONOUR_WEBHOOK_METHOD:-false}
+  # When true, an event waits for the mail server's answer to each of its emails, up to the time
+  # left in the tick's budget, and a rejection or a wait that runs out is recorded as a failure.
+  # When false an email counts as delivered once it is handed to the mail library.
+  awaitEmailOutcome: ${ALERTING_AWAIT_EMAIL_OUTCOME:-false}
+  # How many of one event's targets are sent to at the same time, 1 to 8. With 1 they are sent one
+  # after another, so an event takes the sum of its targets' waits. The next event never starts
+  # before every target of the previous one is done.
+  targetSendConcurrency: ${ALERTING_TARGET_SEND_CONCURRENCY:-1}
+
 startupConfiguration:
   # Compares bundled seed files and the server version with the last successful startup.
   # Warm starts also verify rows for every bundled type and non-deletable policy and role. This

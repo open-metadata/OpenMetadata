@@ -14,7 +14,6 @@ package org.openmetadata.service.notifications;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -27,13 +26,11 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.subscription.channels.Channel;
+import org.openmetadata.service.events.subscription.channels.Channels;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.notifications.channels.ChannelRenderer;
 import org.openmetadata.service.notifications.channels.NotificationMessage;
-import org.openmetadata.service.notifications.channels.email.EmailHtmlRenderer;
-import org.openmetadata.service.notifications.channels.gchat.GChatCardRenderer;
-import org.openmetadata.service.notifications.channels.slack.SlackBlockKitRenderer;
-import org.openmetadata.service.notifications.channels.teams.TeamsAdaptiveCardRenderer;
 import org.openmetadata.service.notifications.template.NotificationTemplateProcessor;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsNotificationTemplateProcessor;
 import org.openmetadata.service.util.email.EmailUtil;
@@ -45,26 +42,11 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
 
   private final NotificationTemplateRepository templateRepository;
   private final NotificationTemplateProcessor templateProcessor;
-  private final Map<SubscriptionDestination.SubscriptionType, ChannelRenderer> channelRenderers;
+  private final Map<String, ChannelRenderer> channelRenderers = new HashMap<>();
 
   public HandlebarsNotificationMessageEngine(NotificationTemplateRepository templateRepository) {
     this.templateRepository = templateRepository;
     this.templateProcessor = new HandlebarsNotificationTemplateProcessor();
-    this.channelRenderers = initializeChannelRenderers();
-  }
-
-  private Map<SubscriptionDestination.SubscriptionType, ChannelRenderer>
-      initializeChannelRenderers() {
-    Map<SubscriptionDestination.SubscriptionType, ChannelRenderer> renderers =
-        new EnumMap<>(SubscriptionDestination.SubscriptionType.class);
-
-    renderers.put(SubscriptionDestination.SubscriptionType.EMAIL, new EmailHtmlRenderer());
-    renderers.put(SubscriptionDestination.SubscriptionType.SLACK, SlackBlockKitRenderer.create());
-    renderers.put(
-        SubscriptionDestination.SubscriptionType.MS_TEAMS, TeamsAdaptiveCardRenderer.create());
-    renderers.put(SubscriptionDestination.SubscriptionType.G_CHAT, GChatCardRenderer.create());
-
-    return renderers;
   }
 
   @Override
@@ -83,27 +65,53 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
       EventSubscription subscription,
       SubscriptionDestination destination,
       NotificationTemplate template) {
+    return format(renderWith(event, subscription, template), destination);
+  }
 
-    // Create deep copy of event to avoid modifying the original
+  /** The template that applies to the event, rendered to Markdown. No channel is involved yet. */
+  public EventContent.Rendered render(ChangeEvent event, EventSubscription subscription) {
+    return renderWith(event, subscription, resolveTemplate(event, subscription));
+  }
+
+  /** Markdown made once, in the format of the destination's channel. */
+  public NotificationMessage format(
+      EventContent.Rendered content, SubscriptionDestination destination) {
+    return rendererOf(destination).render(content.body(), content.subject());
+  }
+
+  // From a copy of the event, so no template helper can change what a webhook sends or what the
+  // delivered record stores.
+  private EventContent.Rendered renderWith(
+      ChangeEvent event, EventSubscription subscription, NotificationTemplate template) {
     ChangeEvent eventCopy = JsonUtils.deepCopy(event, ChangeEvent.class);
-
-    // Phase 1: Render Handlebars template to Markdown
     Map<String, Object> context = buildEventContext(eventCopy, subscription);
-    String markdownContent = templateProcessor.process(template.getTemplateBody(), context);
-    String markdownSubject = null;
-
+    String body = templateProcessor.process(template.getTemplateBody(), context);
+    String subject = null;
     if (template.getTemplateSubject() != null && !template.getTemplateSubject().isEmpty()) {
-      markdownSubject = templateProcessor.process(template.getTemplateSubject(), context);
+      subject = templateProcessor.process(template.getTemplateSubject(), context);
     }
+    return new EventContent.Rendered(body, subject);
+  }
 
-    // Phase 2: Convert Markdown to channel-specific format
-    ChannelRenderer renderer = channelRenderers.get(destination.getType());
-    if (renderer == null) {
-      throw new IllegalArgumentException("Unsupported destination type: " + destination.getType());
-    }
+  /** What a template may say about the server. Read from the settings, which a unit test lacks. */
+  protected Map<String, Object> serverSettings() {
+    Map<String, Object> settings = new HashMap<>();
+    settings.put("baseUrl", EmailUtil.getOMBaseURL());
+    settings.put("emailingEntity", EmailUtil.getSmtpSettings().getEmailingEntity());
+    return settings;
+  }
 
-    // Let the renderer handle markdown parsing and conversion
-    return renderer.render(markdownContent, markdownSubject);
+  private ChannelRenderer rendererOf(SubscriptionDestination destination) {
+    Channel channel = Channels.required(destination);
+    return channelRenderers.computeIfAbsent(
+        channel.id(),
+        id ->
+            channel
+                .newRenderer()
+                .orElseThrow(
+                    () ->
+                        new IllegalArgumentException(
+                            "Unsupported destination type: " + destination.getType())));
   }
 
   private Map<String, Object> buildEventContext(ChangeEvent event, EventSubscription subscription) {
@@ -122,9 +130,8 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
       // Already a Map or POJO
       context.put("entity", rawEntity);
     }
-    context.put("baseUrl", EmailUtil.getOMBaseURL());
+    context.putAll(serverSettings());
     context.put("publisherName", getDisplayNameOrFqn(subscription));
-    context.put("emailingEntity", EmailUtil.getSmtpSettings().getEmailingEntity());
     return context;
   }
 

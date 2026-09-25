@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.apps.bundles.changeEvent.feed;
 
-import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.ACTIVITY_FEED;
-
 import java.util.List;
 import java.util.Set;
 import lombok.Getter;
@@ -69,14 +67,9 @@ public class ActivityStreamPublisher implements Destination<ChangeEvent> {
 
   public ActivityStreamPublisher(
       EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
-    if (subscriptionDestination.getType() == ACTIVITY_FEED) {
-      this.eventSubscription = eventSubscription;
-      this.subscriptionDestination = subscriptionDestination;
-      this.activityStreamRepository = new ActivityStreamRepository();
-    } else {
-      throw new IllegalArgumentException(
-          "ActivityStreamPublisher invoked with illegal subscription type.");
-    }
+    this.eventSubscription = eventSubscription;
+    this.subscriptionDestination = subscriptionDestination;
+    this.activityStreamRepository = new ActivityStreamRepository();
   }
 
   @Override
@@ -131,10 +124,11 @@ public class ActivityStreamPublisher implements Destination<ChangeEvent> {
     } catch (Exception ex) {
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(
-              ACTIVITY_FEED, changeEvent, ex.getMessage());
+              subscriptionDestination.getType(), changeEvent, ex.getMessage());
       LOG.error(message, ex);
       throw new EventPublisherException(
-          CatalogExceptionMessage.eventPublisherFailedToPublish(ACTIVITY_FEED, ex.getMessage()),
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              subscriptionDestination.getType(), ex.getMessage()),
           Pair.of(subscriptionDestination.getId(), changeEvent));
     }
   }
