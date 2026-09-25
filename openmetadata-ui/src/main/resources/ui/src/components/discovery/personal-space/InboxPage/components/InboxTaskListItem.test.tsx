@@ -27,7 +27,7 @@ jest.mock('components/common/ProfilePicture/ProfilePicture', () => ({
 }));
 
 jest.mock('../taskTitle.utils', () => ({
-  getTaskTitle: (task: {
+  getTaskTitleParts: (task: {
     displayName?: string;
     name?: string;
     taskId?: string;
@@ -35,8 +35,8 @@ jest.mock('../taskTitle.utils', () => ({
     const authored = task.displayName ?? task.name;
 
     return authored && authored !== task.taskId
-      ? authored
-      : 'Approval request for orders';
+      ? { title: authored }
+      : { title: 'Approval request for orders', entityType: 'table' };
   },
 }));
 
@@ -46,7 +46,13 @@ jest.mock('utils/EntityNameUtils', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Badge: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
+  Badge: ({
+    children,
+    ...rest
+  }: {
+    children?: ReactNode;
+    'data-testid'?: string;
+  }) => <span data-testid={rest['data-testid']}>{children}</span>,
   Box: ({
     children,
     className,
@@ -153,6 +159,10 @@ describe('InboxTaskListItem', () => {
     // The bare id never doubles as the title.
     expect(screen.queryByText('11345')).not.toBeInTheDocument();
     expect(screen.getByText('Approval request for orders')).toBeInTheDocument();
+    // The asset type sits beside the composed title as a badge.
+    expect(screen.getByTestId('task-title-entity-type')).toHaveTextContent(
+      'Table'
+    );
   });
 
   // The list shows a short reference; the detail header keeps "TASK-…".

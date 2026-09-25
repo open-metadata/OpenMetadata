@@ -13,7 +13,7 @@
 
 import { TFunction } from 'i18next';
 import { Task } from '../../../../generated/entity/tasks/task';
-import { getTaskTitle } from './taskTitle.utils';
+import { getTaskTitle, getTaskTitleParts } from './taskTitle.utils';
 
 const TASK_ID = 'TASK-19665';
 
@@ -63,14 +63,12 @@ describe('getTaskTitle', () => {
   });
 
   it('composes type + entity when the name is the taskId default', () => {
-    expect(getTaskTitle(task(), t)).toBe(
-      'Approval request for CRM Customers (table)'
-    );
+    expect(getTaskTitle(task(), t)).toBe('Approval request for CRM Customers');
   });
 
   it('composes type + entity when the display name is the taskId too', () => {
     expect(getTaskTitle(task({ displayName: TASK_ID }), t)).toBe(
-      'Approval request for CRM Customers (table)'
+      'Approval request for CRM Customers'
     );
   });
 
@@ -83,7 +81,7 @@ describe('getTaskTitle', () => {
         } as Partial<Task>),
         t
       )
-    ).toBe('Data access request for orders (table)');
+    ).toBe('Data access request for orders');
   });
 
   // The server writes incident titles itself, from a test case display name
@@ -99,7 +97,7 @@ describe('getTaskTitle', () => {
         } as Partial<Task>),
         t
       )
-    ).toBe('Request TestCase Failure Resolution for orders_rows (testCase)');
+    ).toBe('Request TestCase Failure Resolution for orders_rows');
   });
 
   it('names the test case of an incident that has no about entity', () => {
@@ -114,7 +112,21 @@ describe('getTaskTitle', () => {
         } as Partial<Task>),
         t
       )
-    ).toBe('Request TestCase Failure Resolution for orders_rows (testCase)');
+    ).toBe('Request TestCase Failure Resolution for orders_rows');
+  });
+
+  // The asset type is drawn as a badge beside a composed title, not in it.
+  it('returns the asset type of a composed title apart from its text', () => {
+    expect(getTaskTitleParts(task(), t)).toEqual({
+      title: 'Approval request for CRM Customers',
+      entityType: 'table',
+    });
+  });
+
+  it('carries no asset type for a title someone wrote', () => {
+    expect(
+      getTaskTitleParts(task({ displayName: 'Access to Sales Table' }), t)
+    ).toEqual({ title: 'Access to Sales Table' });
   });
 
   it('falls back to the description when the task has no about entity', () => {

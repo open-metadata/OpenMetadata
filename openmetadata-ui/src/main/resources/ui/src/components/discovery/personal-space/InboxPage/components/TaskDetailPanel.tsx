@@ -70,7 +70,7 @@ import {
   getTaskResolveActions,
   TaskResolveAction,
 } from '../taskResolve.utils';
-import { getTaskTitle } from '../taskTitle.utils';
+import { getTaskTitleParts } from '../taskTitle.utils';
 import { useTaskAboutEntity } from '../useTaskAboutEntity';
 import ClampedText from './ClampedText';
 import InboxCommentComposer from './InboxCommentComposer';
@@ -80,6 +80,7 @@ import TaskAssetCard from './TaskAssetCard';
 import TaskDetailHeader from './TaskDetailHeader';
 import TaskDetailSkeleton from './TaskDetailSkeleton';
 import TaskDetailSummary from './TaskDetailSummary';
+import TaskTitleEntityBadge from './TaskTitleEntityBadge';
 
 const TASK_FIELDS =
   'about,createdBy,reviewers,assignees,resolution,approvedBy,approvedAt,availableTransitions,payload,comments';
@@ -619,9 +620,12 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
 
   const statusBadge = getTaskStatusLabel(task, actions, currentUserIds, t);
   // Titleless tasks (governance workflows) carry the taskId as their name, so
-  // getTaskTitle composes a title from the task type and the entity it is about
+  // getTaskTitleParts composes a title from the task type and the entity it is about
   // instead of repeating the id.
-  const titleText = getTaskTitle(task, t);
+  const { title: titleText, entityType: titleEntityType } = getTaskTitleParts(
+    task,
+    t
+  );
   // Two lines, the full title in a tooltip when clamped; see ClampedText for
   // why Typography's own `ellipsis` cannot hold the inline asset link.
   const title = titleText ? (
@@ -629,6 +633,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       <Typography size="text-lg" weight="semibold">
         {resolveTaskAboutTitle(task, titleText)}
       </Typography>
+      <TaskTitleEntityBadge entityType={titleEntityType} />
     </ClampedText>
   ) : null;
   const LegacyPanel = contribution?.component;

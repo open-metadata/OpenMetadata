@@ -20,8 +20,9 @@ import ProfilePicture from '../../../../../components/common/ProfilePicture/Prof
 import { Task } from '../../../../../generated/entity/tasks/task';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getTaskTypeBadge } from '../taskDetail.utils';
-import { getTaskTitle } from '../taskTitle.utils';
+import { getTaskTitleParts } from '../taskTitle.utils';
 import ClampedText from './ClampedText';
+import TaskTitleEntityBadge from './TaskTitleEntityBadge';
 import TaskTypeIcon from './TaskTypeIcon';
 
 export interface InboxTaskListItemProps {
@@ -100,9 +101,9 @@ const InboxTaskListItem: React.FC<InboxTaskListItemProps> = ({
 }) => {
   const { t } = useTranslation();
   // Titleless tasks (governance workflows) carry the taskId as their name, so
-  // getTaskTitle composes a title from the task type and the entity it is about
+  // getTaskTitleParts composes a title from the task type and the entity it is about
   // instead of repeating the id shown in the meta row.
-  const taskTitle = getTaskTitle(task, t);
+  const { title: taskTitle, entityType } = getTaskTitleParts(task, t);
 
   return (
     <Box
@@ -131,6 +132,7 @@ const InboxTaskListItem: React.FC<InboxTaskListItemProps> = ({
             <Typography className="tw:text-primary" size="text-sm">
               {taskTitle}
             </Typography>
+            <TaskTitleEntityBadge entityType={entityType} />
           </ClampedText>
         )}
         <TaskCardMeta task={task} />
