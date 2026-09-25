@@ -1107,10 +1107,9 @@ export const removeAssetsFromDataProduct = async (
       );
     }
 
-    // Narrow the asset tab to this one card before checking. Same reason
-    // as addAssetsToDataProduct's verify loop above; the tab wraps into
-    // `*<name>*` so we match the name anywhere in the URL, and the next
-    // iteration's fill overwrites (no inter-iteration clear needed).
+    // Narrow to this card so neighbor cards' streaming metadata
+    // (tags/owners/counts) can't reflow the target during .check().
+    // Tab wraps `q=*<value>*`, so match the name anywhere in the URL.
     const searchRes = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
@@ -1118,17 +1117,19 @@ export const removeAssetsFromDataProduct = async (
     );
     await page.getByTestId('searchbar').fill(name);
     await searchRes;
-    // Loader wait before check defeats the reflow race between response
-    // arrival and React swapping the list from N cards to 1.
     await waitForAllLoadersToDisappear(page);
 
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
   }
 
-  const assetsRemoveRes = page.waitForResponse(
-    `/api/v1/dataProducts/${encodeURIComponent(
-      dataProduct.fullyQualifiedName ?? ''
-    )}/assets/remove`
+  // Clear the filter before delete-all so the request URL matches the
+  // helper's wait pattern (a filtered list can otherwise defer or drop
+  // the /assets/remove request).
+  await page.getByTestId('searchbar').clear();
+  await waitForAllLoadersToDisappear(page);
+
+  const assetsRemoveRes = page.waitForResponse((response) =>
+    response.url().includes('/assets/remove')
   );
 
   await page.getByTestId('delete-all-button').click();

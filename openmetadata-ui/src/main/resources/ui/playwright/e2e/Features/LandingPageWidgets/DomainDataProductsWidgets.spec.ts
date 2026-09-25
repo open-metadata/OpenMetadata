@@ -214,15 +214,32 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
 
     await page.getByTestId('assets').click();
     await checkAssetsCount(page, 2);
-    // The asset card body streams tags/owners/counts after the initial
-    // render — .check() flakes "element is not stable" under SharedInfra
-    // load without waiting for loaders to settle first.
+
+    const topicName = topic.entityResponseData.name;
+    const topicFqn = topic.entityResponseData.fullyQualifiedName;
+    // Narrow the list to just the topic before .check() — the asset
+    // card body streams tags/owners/counts after the initial render,
+    // and the sibling table's card re-renders shift the topic card's
+    // Y-position for the full test timeout. Narrowing to one card
+    // eliminates the neighbor and lets the layout settle. Tab wraps
+    // `q=*<value>*`, so match the name anywhere in the URL.
+    const narrowRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(topicName)
+    );
+    await page.getByTestId('searchbar').fill(topicName);
+    await narrowRes;
     await waitForAllLoadersToDisappear(page);
 
-    const topicFqn = topic.entityResponseData.fullyQualifiedName;
     await page
       .locator(`[data-testid="table-data-card_${topicFqn}"] input`)
       .check();
+    // Clear so delete-all's post-flow sees the domain-wide state, not
+    // a filtered subset (delete-all acts on selectedItems, but the
+    // dry-run modal preview shows the visible list).
+    await page.getByTestId('searchbar').clear();
+    await waitForAllLoadersToDisappear(page);
 
     const dryRunRes = page.waitForResponse(
       (r) =>
