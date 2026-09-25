@@ -26,7 +26,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 for (const [
   entityType,
-  { CreationClass, tabSelector, supportDisplayNameUpdate },
+  { CreationClass, tabName, supportDisplayNameUpdate },
 ] of Object.entries(nestedChildrenTestData)) {
   test.describe(entityType, () => {
     test.describe.configure({ mode: 'default' });
@@ -49,10 +49,11 @@ for (const [
         );
 
         await entity.visitEntityPage(page);
-        if (tabSelector) {
-          await page.locator(tabSelector).waitFor({ state: 'visible' });
+        if (tabName) {
+          const tab = page.getByRole('tab', { name: tabName });
+          await tab.waitFor({ state: 'visible' });
 
-          await page.click(tabSelector);
+          await tab.click();
         }
         if (expand) {
           await expandNestedColumn(page, level0Key, level1Key);
@@ -164,10 +165,11 @@ for (const [
         );
 
         await entity.visitEntityPage(page);
-        if (tabSelector) {
-          await page.locator(tabSelector).waitFor({ state: 'visible' });
+        if (tabName) {
+          const tab = page.getByRole('tab', { name: tabName });
+          await tab.waitFor({ state: 'visible' });
 
-          await page.click(tabSelector);
+          await tab.click();
         }
         await expandNestedColumn(page, level0Key, level1Key);
         await expandNestedColumn(page, level1Key, level2Key);

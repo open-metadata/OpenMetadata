@@ -13,7 +13,10 @@
 
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { EventSubscription } from '../../generated/events/eventSubscription';
+import {
+  AlertType,
+  EventSubscription,
+} from '../../generated/events/eventSubscription';
 import { Paging } from '../../generated/type/paging';
 import { AlertTableColumn } from './ObservabilityAlertsPage.constants';
 
@@ -24,6 +27,10 @@ export interface AlertPermission {
 }
 
 export interface UseObservabilityAlertsOptions {
+  /** Defaults to Observability; the AI pages also serve Notification alerts. */
+  alertType?: AlertType;
+  /** Show system-provided alerts (the Notification `ActivityFeedAlert`). */
+  includeSystemAlerts?: boolean;
   getAlertDetailsPath?: (fqn: string) => string;
   onAddAlert?: () => void;
   onViewAlert?: (alert: EventSubscription) => void;

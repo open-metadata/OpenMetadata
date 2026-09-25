@@ -37,6 +37,7 @@ import {
   getDecodedFqn,
   getEncodedFqn,
   getPermissionErrorText,
+  getQueryWithSlash,
   getTrimmedContent,
   jsonToCSV,
   ordinalize,
@@ -592,6 +593,60 @@ describe('StringUtils', () => {
       expect(escapeESReservedCharacters('name:value')).toBe(
         String.raw`name\:value`
       );
+    });
+  });
+
+  describe('getQueryWithSlash', () => {
+    it.each([['&'], ['\\'], ['&&'], ['\\\\'], ['\\&'], ['  &  ']])(
+      'should return an empty string for a query made only of %j',
+      (query) => {
+        expect(getQueryWithSlash(query)).toBe('');
+      }
+    );
+
+    // The last two cases cover backslash parity: two raw backslashes resolve
+    // to one literal backslash (quote is NOT already escaped), while three
+    // resolve to one literal backslash plus one escaping backslash (quote
+    // IS already escaped) -- so they land on opposite sides of the check.
+    it.each<[string, string, string]>([
+      ['escapes a single quote', "it's", String.raw`it\'s`],
+      [
+        'leaves a plain query untouched',
+        'sample_data orders',
+        'sample_data orders',
+      ],
+      [
+        'escapes a raw double quote from a caller that skips escapeESReservedCharacters (e.g. TagsUtils#fetchGlossaryList)',
+        '*"customer"*',
+        String.raw`*\"customer\"*`,
+      ],
+      [
+        'escapes a leading raw double quote but leaves a trailing already-escaped one alone',
+        String.raw`"customer\"`,
+        String.raw`\"customer\"`,
+      ],
+      [
+        'escapes both single and double quotes in the same query',
+        String.raw`o'brien "test"`,
+        String.raw`o\'brien \"test\"`,
+      ],
+      [
+        'does not re-escape a double quote already escaped by escapeESReservedCharacters',
+        String.raw`\"customer`,
+        String.raw`\"customer`,
+      ],
+      [
+        'escapes a quote preceded by an even (already-literal) run of backslashes',
+        String.raw`\\"customer`,
+        String.raw`\\\"customer`,
+      ],
+      [
+        'leaves a quote preceded by an odd run of backslashes alone',
+        String.raw`\\\"customer`,
+        String.raw`\\\"customer`,
+      ],
+    ])('should %s', (_description, input, expected) => {
+      expect(getQueryWithSlash(input)).toBe(expected);
     });
   });
 

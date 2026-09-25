@@ -46,7 +46,12 @@ import {
   selectOptionWithRetry,
   uuid,
 } from './common';
-import { addOwner, waitForAllLoadersToDisappear } from './entity';
+import {
+  addOwner,
+  escapeESReservedCharacters,
+  openClassificationTagPicker,
+  waitForAllLoadersToDisappear,
+} from './entity';
 import {
   applyGlossaryPicker,
   openGlossaryPicker,
@@ -1001,9 +1006,19 @@ export const addAssetsToDataProduct = async (
 
   await expect(page.getByTestId('empty-placeholder')).toBeVisible();
 
-  const assetRes = page.waitForResponse('/api/v1/search/query?q=&index=all&*');
+  // Must match size=25 specifically: the drawer also fires a size=0 count query
+  // that matches a broader string pattern and can take 50+ s under load.
+  const assetRes = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('q=&') &&
+      response.url().includes('index=all') &&
+      response.url().includes('size=25')
+  );
   await page.getByTestId('data-product-details-add-button').click();
   await assetRes;
+
+  await expect(page.getByTestId('searchbar')).toBeVisible();
 
   for (const asset of assets) {
     const name = get(asset, 'entityResponseData.name') as string | undefined;
@@ -1018,7 +1033,11 @@ export const addAssetsToDataProduct = async (
     }
 
     const searchRes = page.waitForResponse(
-      `/api/v1/search/query?q=${name}&index=all&from=0&size=25&*`
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(`q=${name}`) &&
+        response.url().includes('index=all') &&
+        response.url().includes('size=25')
     );
     await page.getByTestId('searchbar').fill(name);
     await searchRes;
@@ -1267,15 +1286,28 @@ export const addTagsAndGlossaryToDomain = async (
       .includes(`/api/v1/${isDomain ? 'domains' : 'dataProducts'}/`) &&
     response.request().method() === 'PATCH';
 
-  // Add classification tag (still uses the old tag-select form)
+  // Add classification tag via ClassificationTagPicker
   const tagsContainer = '[data-testid="tags-container"]';
-  await page.locator(`${tagsContainer} [data-testid="add-tag"]`).click();
-  const tagInput = page.locator(`${tagsContainer} #tagsForm_tags`);
-  await tagInput.click();
-  await tagInput.fill(tagFqn);
-  await page.getByTestId(`tag-${tagFqn}`).click();
+  const trigger = page.locator(`${tagsContainer} [data-testid="add-tag"]`);
+
+  await openClassificationTagPicker(page, trigger);
+
+  const searchTagResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response
+        .url()
+        .includes(encodeURIComponent(escapeESReservedCharacters(tagFqn))) &&
+      response.request().method() === 'GET'
+  );
+  await page.getByTestId('classification-tag-picker-search').fill(tagFqn);
+  await searchTagResponse;
+  await page.getByTestId(`tree-node-${tagFqn}`).click();
+
+  await page.getByTestId('update-btn').waitFor({ state: 'visible' });
   const tagPatchResponse = page.waitForResponse(patchUrl);
-  await page.getByTestId('saveAssociatedTag').click();
+  await expect(page.getByTestId('update-btn')).toBeEnabled();
+  await page.getByTestId('update-btn').click();
   await tagPatchResponse;
 
   // Add glossary term (uses the new GlossaryTermPicker)
@@ -2235,7 +2267,9 @@ export const openDataProductDrawer = async (page: Page, domain: Domain) => {
 
   await page.getByTestId('name').locator('input').fill(`test-dp-${Date.now()}`);
 
-  const descriptionEditor = page.locator('[contenteditable="true"]').first();
+  const descriptionEditor = page
+    .locator('.add-domain-form-description')
+    .locator('[contenteditable="true"]');
   await descriptionEditor.waitFor({ state: 'visible', timeout: 10000 });
   await descriptionEditor.click();
   await page.keyboard.type('Test data product description');
