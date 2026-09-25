@@ -1004,7 +1004,12 @@ describe('TaskDetailPanel', () => {
       'href',
       '/test-case/mysql_sample.default.posts_db.Comments.comments_table_column_count_to_equal_scby/issues'
     );
-    expect(link.textContent).toBe('comments_table_column_count_to_equal_scby');
+    // The server-written "Test Case Incident - …" is not used as the title;
+    // the composed one is covered in taskTitle.utils.test.
+    expect(link.textContent).toContain(
+      'comments_table_column_count_to_equal_scby'
+    );
+    expect(link.textContent).not.toContain('Test Case Incident');
   });
 
   it('renders a plain title when the task has no about reference', async () => {

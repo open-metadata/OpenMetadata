@@ -22,6 +22,8 @@ const TASK_ID = 'TASK-19665';
 const MESSAGES: Record<string, string> = {
   'message.request-approval-message': 'Approval request for',
   'message.data-access-request-message': 'Data access request for',
+  'message.request-test-case-failure-resolution-message':
+    'Request TestCase Failure Resolution for',
 };
 const t = ((key: string) => MESSAGES[key] ?? key) as unknown as TFunction;
 
@@ -61,12 +63,14 @@ describe('getTaskTitle', () => {
   });
 
   it('composes type + entity when the name is the taskId default', () => {
-    expect(getTaskTitle(task(), t)).toBe('Approval request for CRM Customers');
+    expect(getTaskTitle(task(), t)).toBe(
+      'Approval request for CRM Customers (table)'
+    );
   });
 
   it('composes type + entity when the display name is the taskId too', () => {
     expect(getTaskTitle(task({ displayName: TASK_ID }), t)).toBe(
-      'Approval request for CRM Customers'
+      'Approval request for CRM Customers (table)'
     );
   });
 
@@ -79,7 +83,38 @@ describe('getTaskTitle', () => {
         } as Partial<Task>),
         t
       )
-    ).toBe('Data access request for orders');
+    ).toBe('Data access request for orders (table)');
+  });
+
+  // The server writes incident titles itself, from a test case display name
+  // that is usually unset ("Test Case Incident - null").
+  it('composes an incident title instead of the server-written one', () => {
+    expect(
+      getTaskTitle(
+        task({
+          type: 'TestCaseResolution',
+          category: 'Incident',
+          displayName: 'Test Case Incident - null',
+          about: { id: 't1', type: 'testCase', name: 'orders_rows' },
+        } as Partial<Task>),
+        t
+      )
+    ).toBe('Request TestCase Failure Resolution for orders_rows (testCase)');
+  });
+
+  it('names the test case of an incident that has no about entity', () => {
+    expect(
+      getTaskTitle(
+        task({
+          type: 'TestCaseResolution',
+          category: 'Incident',
+          about: undefined,
+          description:
+            'New incident for test case: svc.db.sch.orders.orders_rows',
+        } as Partial<Task>),
+        t
+      )
+    ).toBe('Request TestCase Failure Resolution for orders_rows (testCase)');
   });
 
   it('falls back to the description when the task has no about entity', () => {

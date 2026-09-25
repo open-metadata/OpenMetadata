@@ -13,20 +13,38 @@
 
 import { TFunction } from 'i18next';
 import { TASK_ENTITY_TYPES } from '../../../../constants/Task.constant';
-import { Task } from '../../../../generated/entity/tasks/task';
+import {
+  Task,
+  TaskCategory,
+  TaskType,
+} from '../../../../generated/entity/tasks/task';
+import { EntityType } from '../../../../enums/entity.enum';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import Fqn from '../../../../utils/Fqn';
+import { resolveIncidentTestCaseFqn } from './taskDetail.utils';
 
 // `TASK_ENTITY_TYPES` is keyed by the createTask `TaskType` enum while a Task
 // carries the identically-valued entity enum, so index it by the raw value.
 const TASK_TYPE_MESSAGE_KEYS = TASK_ENTITY_TYPES as Record<string, string>;
 
+// The server names incident tasks itself ("Test Case Incident - <test case
+// display name>"), and a test case usually has no display name, so the title
+// reads "… - null". Nobody wrote it: compose one instead, as the entity-page
+// task card does.
+const isSystemTitled = (task: Task) =>
+  task.category === TaskCategory.Incident ||
+  task.type === TaskType.TestCaseResolution ||
+  task.type === TaskType.IncidentResolution;
+
 // An author-supplied title wins; the id-derived default is not a title.
 // Extracted so this lookup doesn't add to the cyclomatic complexity of
 // getTaskTitle that calls it.
 const getAuthoredTaskTitle = (task: Task) =>
-  [task.displayName, task.name]
-    .map((value) => value?.trim())
-    .find((value) => value && value !== task.taskId);
+  isSystemTitled(task)
+    ? undefined
+    : [task.displayName, task.name]
+        .map((value) => value?.trim())
+        .find((value) => value && value !== task.taskId);
 
 // Several task-type message keys are unset upstream and i18next echoes the
 // key back — that must never reach the UI, so treat it as no label.
@@ -37,11 +55,27 @@ const getTaskTypeLabel = (task: Task, t?: TFunction) => {
   return typeLabel && typeLabel !== typeKey ? typeLabel : '';
 };
 
+// What the task is about: its `about` reference, or — for an incident that
+// names none — the failing test case read off its description.
+const getTitleEntity = (task: Task) => {
+  if (task.about) {
+    return { name: getEntityName(task.about), type: task.about.type };
+  }
+  const testCaseFqn = resolveIncidentTestCaseFqn(task);
+
+  return testCaseFqn
+    ? { name: Fqn.split(testCaseFqn).pop() ?? '', type: EntityType.TEST_CASE }
+    : undefined;
+};
+
+// "<type message> <entity> (<entity type>)", as the entity-page task card
+// reads: "Request TestCase Failure Resolution for orders_rows (testCase)".
 const getPrefixedEntityTitle = (task: Task, t?: TFunction) => {
   const prefix = getTaskTypeLabel(task, t);
-  const entityName = task.about ? getEntityName(task.about) : '';
+  const entity = getTitleEntity(task);
+  const entityType = entity?.type ? ` (${entity.type})` : '';
 
-  return prefix && entityName ? `${prefix} ${entityName}` : '';
+  return prefix && entity?.name ? `${prefix} ${entity.name}${entityType}` : '';
 };
 
 /**
